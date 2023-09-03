@@ -132,7 +132,7 @@ namespace Spartan
 
             // Create image
             void*& resource = texture->GetRhiResource();
-            RHI_Device::CreateTexture(static_cast<void*>(&create_info), resource, texture->GetObjectName().c_str());
+            RHI_Device::MemoryTextureCreate(static_cast<void*>(&create_info), resource, texture->GetObjectName().c_str());
         }
 
         static void create_image_view(
@@ -265,12 +265,12 @@ namespace Spartan
             }
 
             // Create staging buffer
-            RHI_Device::CreateBuffer(staging_buffer, buffer_offset, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr, "staging_buffer_texture");
+            RHI_Device::MemoryBufferCreate(staging_buffer, buffer_offset, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr, "staging_buffer_texture");
 
             // Copy array and mip level data to the staging buffer
             void* mapped_data = nullptr;
             buffer_offset = 0;
-            RHI_Device::MapMemory(staging_buffer, mapped_data);
+            RHI_Device::MemoryMap(staging_buffer, mapped_data);
             {
                 for (uint32_t array_index = 0; array_index < array_length; array_index++)
                 {
@@ -282,7 +282,7 @@ namespace Spartan
                     }
                 }
 
-                RHI_Device::UnmapMemory(staging_buffer, mapped_data);
+                RHI_Device::MemoryUnmap(staging_buffer, mapped_data);
             }
 
             return true;
@@ -297,7 +297,7 @@ namespace Spartan
                 return false;
 
             // copy the staging buffer into the image
-            if (RHI_CommandList* cmd_list = RHI_Device::ImmediateBegin(RHI_Queue_Type::Graphics))
+            if (RHI_CommandList* cmd_list = RHI_Device::CmdImmediateBegin(RHI_Queue_Type::Graphics))
             {
                 // optimal layout for images which are the destination of a transfer format
                 RHI_Image_Layout layout = RHI_Image_Layout::Transfer_Dst_Optimal;
@@ -316,10 +316,10 @@ namespace Spartan
                 );
 
                 // end/flush
-                RHI_Device::ImmediateSubmit(cmd_list);
+                RHI_Device::CmdImmediateSubmit(cmd_list);
 
                 // free staging buffer
-                RHI_Device::DestroyBuffer(staging_buffer);
+                RHI_Device::MemoryBufferDestroy(staging_buffer);
 
                 // update texture layout
                 texture->SetLayout(layout, nullptr);
@@ -370,7 +370,7 @@ namespace Spartan
         }
 
         // transition to target layout
-        if (RHI_CommandList* cmd_list = RHI_Device::ImmediateBegin(RHI_Queue_Type::Graphics))
+        if (RHI_CommandList* cmd_list = RHI_Device::CmdImmediateBegin(RHI_Queue_Type::Graphics))
         {
             RHI_Image_Layout target_layout = GetAppropriateLayout(this);
 
@@ -378,7 +378,7 @@ namespace Spartan
             cmd_list->InsertMemoryBarrierImage(this, 0, m_mip_count, m_array_length, m_layout[0], target_layout);
         
             // flush
-            RHI_Device::ImmediateSubmit(cmd_list);
+            RHI_Device::CmdImmediateSubmit(cmd_list);
 
             // update this texture with the new layout
             for (uint32_t i = 0; i < m_mip_count; i++)
@@ -434,15 +434,15 @@ namespace Spartan
         // De-allocate everything
         if (destroy_main)
         {
-            RHI_Device::DeletionQueue_Add(RHI_Resource_Type::TextureView, m_rhi_srv);
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::TextureView, m_rhi_srv);
             m_rhi_srv = nullptr;
 
             for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
             {
-                RHI_Device::DeletionQueue_Add(RHI_Resource_Type::TextureView, m_rhi_dsv[i]);
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::TextureView, m_rhi_dsv[i]);
                 m_rhi_dsv[i] = nullptr;
 
-                RHI_Device::DeletionQueue_Add(RHI_Resource_Type::TextureView, m_rhi_rtv[i]);
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::TextureView, m_rhi_rtv[i]);
                 m_rhi_rtv[i] = nullptr;
             }
         }
@@ -451,14 +451,14 @@ namespace Spartan
         {
             for (uint32_t i = 0; i < m_mip_count; i++)
             {
-                RHI_Device::DeletionQueue_Add(RHI_Resource_Type::TextureView, m_rhi_srv_mips[i]);
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::TextureView, m_rhi_srv_mips[i]);
                 m_rhi_srv_mips[i] = nullptr;
             }
         }
 
         if (destroy_main)
         {
-            RHI_Device::DeletionQueue_Add(RHI_Resource_Type::Texture, m_rhi_resource);
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Texture, m_rhi_resource);
             m_rhi_resource = nullptr;
         }
     }

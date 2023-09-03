@@ -67,7 +67,7 @@ namespace ImGui::RHI
         ViewportRhiResources(const char* name, RHI_SwapChain* swapchain)
         {
             // allocate command pool
-            cmd_pool = RHI_Device::AllocateCommandPool(name, swapchain->GetObjectId(), RHI_Queue_Type::Graphics);
+            cmd_pool = RHI_Device::CommandPoolAllocate(name, swapchain->GetObjectId(), RHI_Queue_Type::Graphics);
 
             // allocate buffers
             for (uint32_t i = 0; i < buffer_count; i++)
@@ -449,7 +449,7 @@ namespace ImGui::RHI
     {
         if (WindowData* window = static_cast<WindowData*>(viewport->RendererUserData))
         {
-            RHI_Device::DestroyCommandPool(window->viewport_rhi_resources->cmd_pool);
+            RHI_Device::CommandPoolDestroy(window->viewport_rhi_resources->cmd_pool);
             delete window;
         }
 

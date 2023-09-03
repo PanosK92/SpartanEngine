@@ -335,7 +335,7 @@ namespace Spartan
 
     namespace cache
     {
-        static uint32_t descriptor_set_capacity = 4096;
+        static uint32_t descriptor_set_capacity = 4098;
         static VkDescriptorPool descriptor_pool = nullptr;
 
         // cache
@@ -374,7 +374,7 @@ namespace Spartan
             SP_VK_ASSERT_MSG(vkCreateDescriptorSetLayout(RHI_Context::device, &layout_info, nullptr, descriptor_set_layout), "Failed to create descriptor set layout");
             RHI_Device::SetResourceName(static_cast<void*>(*descriptor_set_layout), RHI_Resource_Type::DescriptorSetLayout, debug_name);
 
-            // Create descriptor set
+            // create descriptor set
             VkDescriptorSetAllocateInfo allocInfo = {};
             allocInfo.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
             allocInfo.descriptorPool              = descriptor_pool;
@@ -384,7 +384,7 @@ namespace Spartan
             SP_VK_ASSERT_MSG(vkAllocateDescriptorSets(RHI_Context::device, &allocInfo, descriptor_set), "Failed to allocate descriptor set");
             RHI_Device::SetResourceName(static_cast<void*>(*descriptor_set), RHI_Resource_Type::DescriptorSet, debug_name);
 
-            // Update descriptor set with samplers
+            // update descriptor set with samplers
             vector<VkDescriptorImageInfo> image_infos(sampler_count);
             for (uint32_t i = 0; i < sampler_count; i++)
             {
@@ -606,8 +606,8 @@ namespace Spartan
         }
 
         // Find a physical device
-        SP_ASSERT_MSG(DetectPhysicalDevices(), "Failed to detect any devices");
-        SelectPrimaryPhysicalDevice();
+        SP_ASSERT_MSG(PhysicalDeviceDetect(), "Failed to detect any devices");
+        PhysicalDeviceSelectPrimary();
 
         // Device
         {
@@ -850,7 +850,7 @@ namespace Spartan
         vkDestroyInstance(RHI_Context::instance, nullptr);
     }
 
-    bool RHI_Device::DetectPhysicalDevices()
+    bool RHI_Device::PhysicalDeviceDetect()
     {
         uint32_t device_count = 0;
         SP_ASSERT_MSG(
@@ -883,7 +883,7 @@ namespace Spartan
             if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)            type = RHI_PhysicalDevice_Type::Cpu;
 
             // Let the engine know about it as it will sort all of the devices from best to worst
-            RegisterPhysicalDevice(PhysicalDevice
+            PhysicalDeviceRegister(PhysicalDevice
             (
                 device_properties.apiVersion,                                        // api version
                 device_properties.driverVersion,                                     // driver version
@@ -898,7 +898,7 @@ namespace Spartan
         return true;
     }
 
-    void RHI_Device::SelectPrimaryPhysicalDevice()
+    void RHI_Device::PhysicalDeviceSelectPrimary()
     {
         auto get_queue_family_index = [](VkQueueFlagBits queue_flags, const vector<VkQueueFamilyProperties>& queue_family_properties, uint32_t* index)
         {
@@ -955,7 +955,7 @@ namespace Spartan
             uint32_t index = 0;
             if (get_queue_family_index(VK_QUEUE_GRAPHICS_BIT, queue_families_properties, &index))
             {
-                SetQueueIndex(RHI_Queue_Type::Graphics, index);
+                QueueSetIndex(RHI_Queue_Type::Graphics, index);
             }
             else
             {
@@ -966,7 +966,7 @@ namespace Spartan
             // Compute
             if (get_queue_family_index(VK_QUEUE_COMPUTE_BIT, queue_families_properties, &index))
             {
-                SetQueueIndex(RHI_Queue_Type::Compute, index);
+                QueueSetIndex(RHI_Queue_Type::Compute, index);
             }
             else
             {
@@ -977,7 +977,7 @@ namespace Spartan
             // Copy
             if (get_queue_family_index(VK_QUEUE_TRANSFER_BIT, queue_families_properties, &index))
             {
-                SetQueueIndex(RHI_Queue_Type::Copy, index);
+                QueueSetIndex(RHI_Queue_Type::Copy, index);
             }
             else
             {
@@ -989,14 +989,14 @@ namespace Spartan
         };
 
         // Go through all the devices (sorted from best to worst based on their properties)
-        for (uint32_t device_index = 0; device_index < GetPhysicalDevices().size(); device_index++)
+        for (uint32_t device_index = 0; device_index < PhysicalDeviceGet().size(); device_index++)
         {
-            VkPhysicalDevice device = static_cast<VkPhysicalDevice>(GetPhysicalDevices()[device_index].GetData());
+            VkPhysicalDevice device = static_cast<VkPhysicalDevice>(PhysicalDeviceGet()[device_index].GetData());
 
             // Get the first device that has a graphics, a compute and a transfer queue
             if (get_queue_family_indices(device))
             {
-                SetPrimaryPhysicalDevice(device_index);
+                PhysicalDeviceSetPrimary(device_index);
                 RHI_Context::device_physical = device;
                 break;
             }
@@ -1065,7 +1065,7 @@ namespace Spartan
         void* vk_signal_fence = signal_fence ? signal_fence->GetRhiResource() : nullptr;
 
         // The actual submit
-        SP_VK_ASSERT_MSG(vkQueueSubmit(static_cast<VkQueue>(GetQueue(type)), 1, &submit_info, static_cast<VkFence>(vk_signal_fence)), "Failed to submit");
+        SP_VK_ASSERT_MSG(vkQueueSubmit(static_cast<VkQueue>(QueueGet(type)), 1, &submit_info, static_cast<VkFence>(vk_signal_fence)), "Failed to submit");
 
         // Update semaphore states
         if (wait_semaphore)   wait_semaphore->SetStateCpu(RHI_Sync_State::Idle);
@@ -1077,16 +1077,16 @@ namespace Spartan
     {
         lock_guard<mutex> lock(queues::mutex_queue);
 
-        SP_VK_ASSERT_MSG(vkQueueWaitIdle(static_cast<VkQueue>(GetQueue(type))), "Failed to wait for queue");
+        SP_VK_ASSERT_MSG(vkQueueWaitIdle(static_cast<VkQueue>(QueueGet(type))), "Failed to wait for queue");
     }
 
-    void RHI_Device::DeletionQueue_Add(const RHI_Resource_Type resource_type, void* resource)
+    void RHI_Device::DeletionQueueAdd(const RHI_Resource_Type resource_type, void* resource)
     {
         lock_guard<mutex> guard(mutex_deletion_queue);
         deletion_queue[resource_type].emplace_back(resource);
     }
 
-    void RHI_Device::DeletionQueue_Parse()
+    void RHI_Device::DeletionQueueParse()
     {
         lock_guard<mutex> guard(mutex_deletion_queue);
        
@@ -1096,10 +1096,10 @@ namespace Spartan
             {
                 switch (it.first)
                 {
-                    case RHI_Resource_Type::Texture:             DestroyTexture(resource); break;
+                    case RHI_Resource_Type::Texture:             MemoryTextureDestroy(resource); break;
                     case RHI_Resource_Type::TextureView:         vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(resource), nullptr);                     break;
                     case RHI_Resource_Type::Sampler:             vkDestroySampler(RHI_Context::device, reinterpret_cast<VkSampler>(resource), nullptr);                    break;
-                    case RHI_Resource_Type::Buffer:              DestroyBuffer(resource);                                                                                  break;
+                    case RHI_Resource_Type::Buffer:              MemoryBufferDestroy(resource);                                                                                  break;
                     case RHI_Resource_Type::Shader:              vkDestroyShaderModule(RHI_Context::device, static_cast<VkShaderModule>(resource), nullptr);               break;
                     case RHI_Resource_Type::Semaphore:           vkDestroySemaphore(RHI_Context::device, static_cast<VkSemaphore>(resource), nullptr);                     break;
                     case RHI_Resource_Type::Fence:               vkDestroyFence(RHI_Context::device, static_cast<VkFence>(resource), nullptr);                             break;
@@ -1115,7 +1115,7 @@ namespace Spartan
         deletion_queue.clear();
     }
 
-    bool RHI_Device::DeletionQueue_NeedsToParse()
+    bool RHI_Device::DeletionQueueNeedsToParse()
     {
         return deletion_queue.size() > 5;
     }
@@ -1156,7 +1156,7 @@ namespace Spartan
 
             SP_VK_ASSERT_MSG(
                 vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, &cache::descriptor_pool),
-                "Failed to create descriptor pool."
+                "Failed to create descriptor pool"
             );
         }
 
@@ -1175,7 +1175,7 @@ namespace Spartan
         {
             if (cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)] != nullptr)
             {
-                RHI_Device::DeletionQueue_Add(RHI_Resource_Type::DescriptorSetLayout, cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)]);
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::DescriptorSetLayout, cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)]);
                 cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)] = nullptr;
             }
 
@@ -1191,7 +1191,7 @@ namespace Spartan
         {
             if (cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)] != nullptr)
             {
-                RHI_Device::DeletionQueue_Add(RHI_Resource_Type::DescriptorSetLayout, cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)]);
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::DescriptorSetLayout, cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)]);
                 cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)] = nullptr;
             }
 
@@ -1219,7 +1219,7 @@ namespace Spartan
         return static_cast<void*>(cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(resource_type)]);
     }
 
-    void* RHI_Device::GetMappedDataFromBuffer(void* resource)
+    void* RHI_Device::MemoryGetMappedDataFromBuffer(void* resource)
     {
         if (VmaAllocation allocation = static_cast<VmaAllocation>(vulkan_memory_allocator::get_allocation_from_resource(resource)))
         {
@@ -1229,7 +1229,7 @@ namespace Spartan
         return nullptr;
     }
 
-    void RHI_Device::CreateBuffer(void*& resource, const uint64_t size, uint32_t usage, uint32_t memory_property_flags, const void* data_initial, const char* name)
+    void RHI_Device::MemoryBufferCreate(void*& resource, const uint64_t size, uint32_t usage, uint32_t memory_property_flags, const void* data_initial, const char* name)
     {
         lock_guard<mutex> lock(vulkan_memory_allocator::mutex_allocator);
 
@@ -1306,7 +1306,7 @@ namespace Spartan
         vulkan_memory_allocator::save_allocation(resource, name, allocation);
     }
 
-    void RHI_Device::DestroyBuffer(void*& resource)
+    void RHI_Device::MemoryBufferDestroy(void*& resource)
     {
         SP_ASSERT_MSG(resource != nullptr, "Resource is null");
         lock_guard<mutex> lock(vulkan_memory_allocator::mutex_allocator);
@@ -1318,7 +1318,7 @@ namespace Spartan
         }
     }
 
-    void RHI_Device::CreateTexture(void* vk_image_creat_info, void*& resource, const char* name)
+    void RHI_Device::MemoryTextureCreate(void* vk_image_creat_info, void*& resource, const char* name)
     {
         lock_guard<mutex> lock(vulkan_memory_allocator::mutex_allocator);
 
@@ -1338,7 +1338,7 @@ namespace Spartan
         vulkan_memory_allocator::save_allocation(resource, name, allocation);
     }
 
-    void RHI_Device::DestroyTexture(void*& resource)
+    void RHI_Device::MemoryTextureDestroy(void*& resource)
     {
         SP_ASSERT_MSG(resource != nullptr, "Resource is null");
         lock_guard<mutex> lock(vulkan_memory_allocator::mutex_allocator);
@@ -1350,7 +1350,7 @@ namespace Spartan
         }
     }
 
-    void RHI_Device::MapMemory(void* resource, void*& mapped_data)
+    void RHI_Device::MemoryMap(void* resource, void*& mapped_data)
     {
         if (VmaAllocation allocation = static_cast<VmaAllocation>(vulkan_memory_allocator::get_allocation_from_resource(resource)))
         {
@@ -1358,7 +1358,7 @@ namespace Spartan
         }
     }
 
-    void RHI_Device::UnmapMemory(void* resource, void*& mapped_data)
+    void RHI_Device::MemoryUnmap(void* resource, void*& mapped_data)
     {
         SP_ASSERT_MSG(mapped_data, "Memory is already unmapped");
 
@@ -1369,15 +1369,59 @@ namespace Spartan
         }
     }
 
-    void RHI_Device::FlushAllocation(void* resource, uint64_t offset, uint64_t size)
+    uint32_t RHI_Device::MemoryGetUsageMb()
     {
-        if (VmaAllocation allocation = static_cast<VmaAllocation>(vulkan_memory_allocator::get_allocation_from_resource(resource)))
+        VkDeviceSize bytes = 0;
+
+        // Get the physical device memory properties
+        VkPhysicalDeviceMemoryProperties memory_properties;
+        vkGetPhysicalDeviceMemoryProperties(static_cast<VkPhysicalDevice>(RHI_Context::device_physical), &memory_properties);
+
+        // Get the memory usage
+        VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
+        vmaGetHeapBudgets(vulkan_memory_allocator::allocator, budgets);
+        for (uint32_t i = 0; i < VK_MAX_MEMORY_HEAPS; i++)
         {
-            SP_ASSERT_MSG(vmaFlushAllocation(vulkan_memory_allocator::allocator, allocation, offset, size) == VK_SUCCESS, "Failed to flush");
+            // Only consider device local heaps
+            if (memory_properties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+            {
+                if (budgets[i].budget < 1ull << 60)
+                {
+                    bytes += budgets[i].usage;
+                }
+            }
         }
+
+        return static_cast<uint32_t>(bytes / 1024 / 1024);
     }
 
-    void* RHI_Device::GetQueue(const RHI_Queue_Type type)
+    uint32_t RHI_Device::MemoryGetBudgetMb()
+    {
+        VkDeviceSize bytes = 0;
+
+        // Get the physical device memory properties
+        VkPhysicalDeviceMemoryProperties memory_properties;
+        vkGetPhysicalDeviceMemoryProperties(static_cast<VkPhysicalDevice>(RHI_Context::device_physical), &memory_properties);
+
+        // Get available memory
+        VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
+        vmaGetHeapBudgets(vulkan_memory_allocator::allocator, budgets);
+        for (uint32_t i = 0; i < VK_MAX_MEMORY_HEAPS; i++)
+        {
+            // Only consider device local heaps
+            if (memory_properties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+            {
+                if (budgets[i].budget < 1ull << 60)
+                {
+                    bytes += budgets[i].budget;
+                }
+            }
+        }
+
+        return static_cast<uint32_t>(bytes / 1024 / 1024);
+    }
+
+    void* RHI_Device::QueueGet(const RHI_Queue_Type type)
     {
         if (type == RHI_Queue_Type::Graphics)
         {
@@ -1395,7 +1439,7 @@ namespace Spartan
         return nullptr;
     }
 
-    uint32_t RHI_Device::GetQueueIndex(const RHI_Queue_Type type)
+    uint32_t RHI_Device::QueueGetIndex(const RHI_Queue_Type type)
     {
         if (type == RHI_Queue_Type::Graphics)
         {
@@ -1413,7 +1457,7 @@ namespace Spartan
         return 0;
     }
 
-    void RHI_Device::SetQueueIndex(const RHI_Queue_Type type, const uint32_t index)
+    void RHI_Device::QueueSetIndex(const RHI_Queue_Type type, const uint32_t index)
     {
         if (type == RHI_Queue_Type::Graphics)
         {
@@ -1460,13 +1504,12 @@ namespace Spartan
         pipeline = it->second.get();
     }
 
-    bool RHI_Device::HasDescriptorSetCapacity()
+    uint32_t RHI_Device::GetDescriptorSetCapacity()
     {
-        const uint32_t required_capacity = static_cast<uint32_t>(cache::descriptor_sets.size());
-        return cache::descriptor_set_capacity > required_capacity;
+        return cache::descriptor_set_capacity;
     }
 
-    RHI_CommandList* RHI_Device::ImmediateBegin(const RHI_Queue_Type queue_type)
+    RHI_CommandList* RHI_Device::CmdImmediateBegin(const RHI_Queue_Type queue_type)
     {
         // Wait until it's safe to proceed
         unique_lock<mutex> lock(command_pools::mutex_immediate_execution);
@@ -1489,7 +1532,7 @@ namespace Spartan
         return cmd_pool->GetCurrentCommandList();
     }
 
-    void RHI_Device::ImmediateSubmit(RHI_CommandList* cmd_list)
+    void RHI_Device::CmdImmediateSubmit(RHI_CommandList* cmd_list)
     {
         cmd_list->End();
         cmd_list->Submit();
@@ -1500,12 +1543,12 @@ namespace Spartan
         command_pools::condition_variable_immediate_execution.notify_one();
     }
 
-    RHI_CommandPool* RHI_Device::AllocateCommandPool(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type)
+    RHI_CommandPool* RHI_Device::CommandPoolAllocate(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type)
     {
         return command_pools::regular.emplace_back(make_shared<RHI_CommandPool>(name, swap_chain_id, queue_type)).get();
     }
 
-    void RHI_Device::DestroyCommandPool(RHI_CommandPool* cmd_pool)
+    void RHI_Device::CommandPoolDestroy(RHI_CommandPool* cmd_pool)
     {
         vector<shared_ptr<RHI_CommandPool>>::iterator it;
         for (it = command_pools::regular.begin(); it != command_pools::regular.end();)
@@ -1564,58 +1607,6 @@ namespace Spartan
 
             functions::set_object_name(RHI_Context::device, &name_info);
         }
-    }
-
-    uint32_t RHI_Device::GetMemoryUsageMb()
-    {
-        VkDeviceSize bytes = 0;
-
-        // Get the physical device memory properties
-        VkPhysicalDeviceMemoryProperties memory_properties;
-        vkGetPhysicalDeviceMemoryProperties(static_cast<VkPhysicalDevice>(RHI_Context::device_physical), &memory_properties);
-
-        // Get the memory usage
-        VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
-        vmaGetHeapBudgets(vulkan_memory_allocator::allocator, budgets);
-        for (uint32_t i = 0; i < VK_MAX_MEMORY_HEAPS; i++)
-        {
-            // Only consider device local heaps
-            if (memory_properties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
-            {
-                if (budgets[i].budget < 1ull << 60)
-                {
-                    bytes += budgets[i].usage;
-                }
-            }
-        }
-
-        return static_cast<uint32_t>(bytes / 1024 / 1024);
-    }
-
-    uint32_t RHI_Device::GetMemoryBudgetMb()
-    {
-        VkDeviceSize bytes = 0;
-
-        // Get the physical device memory properties
-        VkPhysicalDeviceMemoryProperties memory_properties;
-        vkGetPhysicalDeviceMemoryProperties(static_cast<VkPhysicalDevice>(RHI_Context::device_physical), &memory_properties);
-
-        // Get available memory
-        VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
-        vmaGetHeapBudgets(vulkan_memory_allocator::allocator, budgets);
-        for (uint32_t i = 0; i < VK_MAX_MEMORY_HEAPS; i++)
-        {
-            // Only consider device local heaps
-            if (memory_properties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
-            {
-                if (budgets[i].budget < 1ull << 60)
-                {
-                    bytes += budgets[i].budget;
-                }
-            }
-        }
-
-        return static_cast<uint32_t>(bytes / 1024 / 1024);
     }
 
     uint32_t RHI_Device::GetPipelineCount()

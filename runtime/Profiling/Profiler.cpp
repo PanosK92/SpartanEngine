@@ -423,8 +423,8 @@ namespace Spartan
         if (const PhysicalDevice* physical_device = RHI_Device::GetPrimaryPhysicalDevice())
         {
             gpu_name             = physical_device->GetName();
-            gpu_memory_used      = RHI_Device::GetMemoryUsageMb();
-            gpu_memory_available = RHI_Device::GetMemoryBudgetMb();
+            gpu_memory_used      = RHI_Device::MemoryGetUsageMb();
+            gpu_memory_available = RHI_Device::MemoryGetBudgetMb();
             gpu_driver           = physical_device->GetDriverVersion();
             gpu_api              = RHI_Context::api_version_str;
         }

@@ -66,7 +66,7 @@ namespace Spartan
             {
                 if (descriptor.type == RHI_Descriptor_Type::PushConstantBuffer)
                 { 
-                    SP_ASSERT(descriptor.struct_size <= RHI_Device::GetMaxPushConstantSize());
+                    SP_ASSERT(descriptor.struct_size <= RHI_Device::PropertyGetMaxPushConstantSize());
 
                     VkPushConstantRange push_constant_range  = {};
                     push_constant_range.offset               = 0;
@@ -420,10 +420,10 @@ namespace Spartan
     
     RHI_Pipeline::~RHI_Pipeline()
     {
-        RHI_Device::DeletionQueue_Add(RHI_Resource_Type::Pipeline, m_resource_pipeline);
+        RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Pipeline, m_resource_pipeline);
         m_resource_pipeline = nullptr;
         
-        RHI_Device::DeletionQueue_Add(RHI_Resource_Type::PipelineLayout, m_resource_pipeline_layout);
+        RHI_Device::DeletionQueueAdd(RHI_Resource_Type::PipelineLayout, m_resource_pipeline_layout);
         m_resource_pipeline_layout = nullptr;
     }
 }

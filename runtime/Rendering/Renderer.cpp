@@ -181,7 +181,7 @@ namespace Spartan
         );
 
         // command pool
-        m_cmd_pool = RHI_Device::AllocateCommandPool("renderer", swap_chain->GetObjectId(), RHI_Queue_Type::Graphics);
+        m_cmd_pool = RHI_Device::CommandPoolAllocate("renderer", swap_chain->GetObjectId(), RHI_Queue_Type::Graphics);
 
         // AMD FidelityFX suite
         RHI_AMD_FidelityFX::Initialize();
@@ -268,7 +268,7 @@ namespace Spartan
         RHI_RenderDoc::Shutdown();
         RHI_Device::QueueWaitAll();
         RHI_AMD_FidelityFX::Destroy();
-        RHI_Device::DeletionQueue_Parse();
+        RHI_Device::DeletionQueueParse();
         RHI_Device::Destroy();
     }
 
@@ -296,10 +296,10 @@ namespace Spartan
             return;
 
         // delete any RHI resources that have accumulated
-        if (RHI_Device::DeletionQueue_NeedsToParse())
+        if (RHI_Device::DeletionQueueNeedsToParse())
         {
             RHI_Device::QueueWaitAll();
-            RHI_Device::DeletionQueue_Parse();
+            RHI_Device::DeletionQueueParse();
             SP_LOG_INFO("Parsed deletion queue");
         }
 
@@ -751,7 +751,7 @@ namespace Spartan
             // Shadow resolution
             else if (option == Renderer_Option::ShadowResolution)
             {
-                value = Helper::Clamp(value, static_cast<float>(resolution_shadow_min), static_cast<float>(RHI_Device::GetMaxTexture2dDimension()));
+                value = Helper::Clamp(value, static_cast<float>(resolution_shadow_min), static_cast<float>(RHI_Device::PropertyGetMaxTexture2dDimension()));
             }
         }
 
