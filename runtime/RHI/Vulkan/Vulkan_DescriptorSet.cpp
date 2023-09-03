@@ -58,7 +58,7 @@ namespace Spartan
         descriptor_sets = {};
         for (const RHI_Descriptor& descriptor : descriptors)
         {
-            // Ignore null resources (this is legal, as a render pass can choose to not use one or more resources)
+            // ignore null resources (this is legal, as a render pass can choose to not use one or more resources)
             if (!descriptor.data)
                 continue;
 
