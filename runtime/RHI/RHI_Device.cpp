@@ -48,7 +48,7 @@ namespace Spartan
     uint32_t  RHI_Device::m_enabled_graphics_shader_stages = 0;
     static vector<PhysicalDevice> physical_devices;
 
-    void RHI_Device::RegisterPhysicalDevice(const PhysicalDevice& physical_device)
+    void RHI_Device::PhysicalDeviceRegister(const PhysicalDevice& physical_device)
     {
         physical_devices.emplace_back(physical_device);
 
@@ -75,7 +75,7 @@ namespace Spartan
         return &physical_devices[m_physical_device_index];
     }
 
-    void RHI_Device::SetPrimaryPhysicalDevice(const uint32_t index)
+    void RHI_Device::PhysicalDeviceSetPrimary(const uint32_t index)
     {
         m_physical_device_index = index;
 
@@ -85,7 +85,7 @@ namespace Spartan
         }
     }
  
-    vector<PhysicalDevice>& RHI_Device::GetPhysicalDevices()
+    vector<PhysicalDevice>& RHI_Device::PhysicalDeviceGet()
     {
         return physical_devices;
     }

@@ -41,7 +41,7 @@ namespace Spartan
     {
         if (m_rhi_resource)
         {
-            RHI_Device::DeletionQueue_Add(RHI_Resource_Type::Buffer, m_rhi_resource);
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_rhi_resource);
             m_rhi_resource = nullptr;
         }
     }
@@ -51,12 +51,12 @@ namespace Spartan
         // Destroy previous buffer
         if (m_rhi_resource)
         {
-            RHI_Device::DeletionQueue_Add(RHI_Resource_Type::Buffer, m_rhi_resource);
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_rhi_resource);
             m_rhi_resource = nullptr;
         }
 
         // Calculate required alignment based on minimum device offset alignment
-        size_t min_alignment = RHI_Device::GetMinUniformBufferOffsetAllignment();
+        size_t min_alignment = RHI_Device::PropertyGetMinUniformBufferOffsetAllignment();
         if (min_alignment > 0)
         {
             m_stride = static_cast<uint32_t>(static_cast<uint64_t>((m_stride + min_alignment - 1) & ~(min_alignment - 1)));
@@ -67,10 +67,10 @@ namespace Spartan
         VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
 
         // Create buffer
-        RHI_Device::CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags, nullptr, m_object_name.c_str());
+        RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags, nullptr, m_object_name.c_str());
 
         // Get mapped data pointer
-        m_mapped_data = RHI_Device::GetMappedDataFromBuffer(m_rhi_resource);
+        m_mapped_data = RHI_Device::MemoryGetMappedDataFromBuffer(m_rhi_resource);
 
         // Set debug name
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::Buffer, (m_object_name + string("_size_") + to_string(m_object_size_gpu)));

@@ -61,8 +61,8 @@ namespace Spartan
 
         // Find a physical device
         {
-            SP_ASSERT_MSG(DetectPhysicalDevices(), "Failed to detect any devices");
-            SelectPrimaryPhysicalDevice();
+            SP_ASSERT_MSG(PhysicalDeviceDetect(), "Failed to detect any devices");
+            PhysicalDeviceSelectPrimary();
         }
 
         // Debug layer
@@ -172,7 +172,7 @@ namespace Spartan
        RHI_Context::device = nullptr;
     }
 
-    bool RHI_Device::DetectPhysicalDevices()
+    bool RHI_Device::PhysicalDeviceDetect()
     {
         // Create DirectX graphics interface factory
         IDXGIFactory1* factory;
@@ -222,7 +222,7 @@ namespace Spartan
             auto def_char = ' ';
             WideCharToMultiByte(CP_ACP, 0, adapter_desc.Description, -1, name, 128, &def_char, nullptr);
 
-            RegisterPhysicalDevice(PhysicalDevice
+            PhysicalDeviceRegister(PhysicalDevice
             (
                 11 << 22,                                                 // api version
                 0,                                                        // driver version
@@ -237,23 +237,23 @@ namespace Spartan
         return true;
     }
 
-    void RHI_Device::SelectPrimaryPhysicalDevice()
+    void RHI_Device::PhysicalDeviceSelectPrimary()
     {
         // Get the first available device
-        SetPrimaryPhysicalDevice(0);
+        PhysicalDeviceSetPrimary(0);
     }
 
-    void RHI_Device::DeletionQueue_Add(const RHI_Resource_Type resource_type, void* resource)
+    void RHI_Device::DeletionQueueAdd(const RHI_Resource_Type resource_type, void* resource)
     {
 
     }
 
-    void RHI_Device::DeletionQueue_Parse()
+    void RHI_Device::DeletionQueueParse()
     {
 
     }
 
-    bool RHI_Device::DeletionQueue_NeedsToParse()
+    bool RHI_Device::DeletionQueueNeedsToParse()
     {
         return false;
     }
@@ -268,7 +268,7 @@ namespace Spartan
 
     }
 
-    void* RHI_Device::GetQueue(const RHI_Queue_Type type)
+    void* RHI_Device::QueueGet(const RHI_Queue_Type type)
     {
         if (type == RHI_Queue_Type::Graphics)
         {
@@ -286,12 +286,12 @@ namespace Spartan
         return nullptr;
     }
 
-    RHI_CommandPool* RHI_Device::AllocateCommandPool(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type)
+    RHI_CommandPool* RHI_Device::CommandPoolAllocate(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type)
     {
         return cmd_pools.emplace_back(make_shared<RHI_CommandPool>(name, swap_chain_id, queue_type)).get();
     }
 
-    void RHI_Device::DestroyCommandPool(RHI_CommandPool* cmd_pool)
+    void RHI_Device::CommandPoolDestroy(RHI_CommandPool* cmd_pool)
     {
         vector<shared_ptr<RHI_CommandPool>>::iterator it;
         for (it = cmd_pools.begin(); it != cmd_pools.end();)
@@ -310,12 +310,12 @@ namespace Spartan
 
     }
 
-    uint32_t RHI_Device::GetMemoryUsageMb()
+    uint32_t RHI_Device::MemoryGetUsageMb()
     {
         return 0;
     }
 
-    uint32_t RHI_Device::GetMemoryBudgetMb()
+    uint32_t RHI_Device::MemoryGetBudgetMb()
     {
         return 0;
     }

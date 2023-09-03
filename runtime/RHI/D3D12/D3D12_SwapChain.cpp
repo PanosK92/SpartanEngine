@@ -111,7 +111,7 @@ namespace Spartan
 
         IDXGISwapChain1* swap_chain;
         d3d12_utility::error::check(factory->CreateSwapChainForHwnd(
-            static_cast<ID3D12CommandQueue*>(RHI_Device::GetQueue(RHI_Queue_Type::Graphics)), // Swap chain needs the queue so that it can force a flush on it.
+            static_cast<ID3D12CommandQueue*>(RHI_Device::QueueGet(RHI_Queue_Type::Graphics)), // Swap chain needs the queue so that it can force a flush on it.
             hwnd,
             &swap_chain_desc,
             nullptr,

@@ -43,22 +43,19 @@ namespace Spartan
         static void Tick(const uint64_t frame_count);
         static void Destroy();
 
-        // Physical device
-        static PhysicalDevice* GetPrimaryPhysicalDevice();
-
         // Queues
         static void QueuePresent(void* swapchain_view, uint32_t* image_index, std::vector<RHI_Semaphore*>& wait_semaphores);
         static void QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore = nullptr, RHI_Semaphore* signal_semaphore = nullptr, RHI_Fence* signal_fence = nullptr);
         static void QueueWait(const RHI_Queue_Type type);
         static void QueueWaitAll();
-        static void* GetQueue(const RHI_Queue_Type type);
-        static uint32_t GetQueueIndex(const RHI_Queue_Type type);
-        static void SetQueueIndex(const RHI_Queue_Type type, const uint32_t index);
+        static uint32_t QueueGetIndex(const RHI_Queue_Type type);
+        static void QueueSetIndex(const RHI_Queue_Type type, const uint32_t index);
+        static void* QueueGet(const RHI_Queue_Type type);
 
         // Descriptors sets, descriptor set layouts and pipelines
         static void* GetDescriptorPool();
         static std::unordered_map<uint64_t, RHI_DescriptorSet>& GetDescriptorSets();
-        static bool HasDescriptorSetCapacity();
+        static uint32_t GetDescriptorSetCapacity();
         static void SetDescriptorSetCapacity(uint32_t descriptor_set_capacity);
         static void SetBindlessSamplers(const std::array<std::shared_ptr<RHI_Sampler>, 7>& samplers);
         static void* GetDescriptorSet(const RHI_Device_Resource resource_type);
@@ -66,62 +63,60 @@ namespace Spartan
         static void GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout);
 
         // Command pools
-        static RHI_CommandPool* AllocateCommandPool(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type);
-        static void DestroyCommandPool(RHI_CommandPool* cmd_pool);
+        static RHI_CommandPool* CommandPoolAllocate(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type);
+        static void CommandPoolDestroy(RHI_CommandPool* cmd_pool);
         static const std::vector<std::shared_ptr<RHI_CommandPool>>& GetCommandPools();
 
         // Deletion queue
-        static void DeletionQueue_Add(const RHI_Resource_Type resource_type, void* resource);
-        static void DeletionQueue_Parse();
-        static bool DeletionQueue_NeedsToParse();
-
-        // Vulkan memory allocator
-        static void* GetMappedDataFromBuffer(void* resource);
-        static void CreateBuffer(void*& resource, const uint64_t size, uint32_t usage, uint32_t memory_property_flags, const void* data_initial, const char* name);
-        static void DestroyBuffer(void*& resource);
-        static void CreateTexture(void* vk_image_creat_info, void*& resource, const char* name);
-        static void DestroyTexture(void*& resource);
-        static void MapMemory(void* resource, void*& mapped_data);
-        static void UnmapMemory(void* resource, void*& mapped_data);
-        static void FlushAllocation(void* resource, uint64_t offset, uint64_t size);
-
-        // Immediate execution
-        static RHI_CommandList* ImmediateBegin(const RHI_Queue_Type queue_type);
-        static void ImmediateSubmit(RHI_CommandList* cmd_list);
-
-        // Debug
-        static void MarkerBegin(RHI_CommandList* cmd_list, const char* name, const Math::Vector4& color);
-        static void MarkerEnd(RHI_CommandList* cmd_list);
-        static void SetResourceName(void* resource, const RHI_Resource_Type resource_type, const std::string name);
+        static void DeletionQueueAdd(const RHI_Resource_Type resource_type, void* resource);
+        static void DeletionQueueParse();
+        static bool DeletionQueueNeedsToParse();
 
         // Memory
-        static uint32_t GetMemoryUsageMb();
-        static uint32_t GetMemoryBudgetMb();
+        static void* MemoryGetMappedDataFromBuffer(void* resource);
+        static void MemoryBufferCreate(void*& resource, const uint64_t size, uint32_t usage, uint32_t memory_property_flags, const void* data_initial, const char* name);
+        static void MemoryBufferDestroy(void*& resource);
+        static void MemoryTextureCreate(void* vk_image_creat_info, void*& resource, const char* name);
+        static void MemoryTextureDestroy(void*& resource);
+        static void MemoryMap(void* resource, void*& mapped_data);
+        static void MemoryUnmap(void* resource, void*& mapped_data);
+        static uint32_t MemoryGetUsageMb();
+        static uint32_t MemoryGetBudgetMb();
+
+        // Immediate execution command list
+        static RHI_CommandList* CmdImmediateBegin(const RHI_Queue_Type queue_type);
+        static void CmdImmediateSubmit(RHI_CommandList* cmd_list);
 
         // Properties
-        static float GetTimestampPeriod()                     { return m_timestamp_period; }
-        static uint64_t GetMinUniformBufferOffsetAllignment() { return m_min_uniform_buffer_offset_alignment; }
-        static uint64_t GetMinStorageBufferOffsetAllignment() { return m_min_storage_buffer_offset_alignment; }
-        static uint32_t GetMaxTexture1dDimension()            { return m_max_texture_1d_dimension; }
-        static uint32_t GetMaxTexture2dDimension()            { return m_max_texture_2d_dimension; }
-        static uint32_t GetMaxTexture3dDimension()            { return m_max_texture_3d_dimension; }
-        static uint32_t GetMaxTextureCubeDimension()          { return m_max_texture_cube_dimension; }
-        static uint32_t GetMaxTextureArrayLayers()            { return m_max_texture_array_layers; }
-        static uint32_t GetMaxPushConstantSize()              { return m_max_push_constant_size; }
+        static float PropertyGetTimestampPeriod()                     { return m_timestamp_period; }
+        static uint64_t PropertyGetMinUniformBufferOffsetAllignment() { return m_min_uniform_buffer_offset_alignment; }
+        static uint64_t PropertyGetMinStorageBufferOffsetAllignment() { return m_min_storage_buffer_offset_alignment; }
+        static uint32_t PropertyGetMaxTexture1dDimension()            { return m_max_texture_1d_dimension; }
+        static uint32_t PropertyGetMaxTexture2dDimension()            { return m_max_texture_2d_dimension; }
+        static uint32_t PropertyGetMaxTexture3dDimension()            { return m_max_texture_3d_dimension; }
+        static uint32_t PropertyGetMaxTextureCubeDimension()          { return m_max_texture_cube_dimension; }
+        static uint32_t PropertyGetMaxTextureArrayLayers()            { return m_max_texture_array_layers; }
+        static uint32_t PropertyGetMaxPushConstantSize()              { return m_max_push_constant_size; }
+
+        // Markers
+        static void MarkerBegin(RHI_CommandList* cmd_list, const char* name, const Math::Vector4& color);
+        static void MarkerEnd(RHI_CommandList* cmd_list);
 
         // Misc
+        static void SetResourceName(void* resource, const RHI_Resource_Type resource_type, const std::string name);
         static bool IsValidResolution(const uint32_t width, const uint32_t height);
         static uint32_t GetEnabledGraphicsStages() { return m_enabled_graphics_shader_stages; }
         static uint32_t GetPipelineCount();
         static uint32_t GetDescriptorType(const RHI_Descriptor& descriptor);
+        static PhysicalDevice* GetPrimaryPhysicalDevice();
  
     private:
         // Physical device
-        static bool DetectPhysicalDevices();
-        static void RegisterPhysicalDevice(const PhysicalDevice& physical_device);
-        static void SelectPrimaryPhysicalDevice();
-        static void SetPrimaryPhysicalDevice(const uint32_t index);
-        static std::vector<PhysicalDevice>& GetPhysicalDevices();
+        static bool PhysicalDeviceDetect();
+        static void PhysicalDeviceRegister(const PhysicalDevice& physical_device);
+        static void PhysicalDeviceSelectPrimary();
+        static void PhysicalDeviceSetPrimary(const uint32_t index);
+        static std::vector<PhysicalDevice>& PhysicalDeviceGet();
 
         // Properties
         static float m_timestamp_period;

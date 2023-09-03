@@ -303,7 +303,7 @@ namespace Spartan
     {
         if (m_rhi_query_pool)
         {
-            RHI_Device::DeletionQueue_Add(RHI_Resource_Type::QueryPool, m_rhi_query_pool);
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::QueryPool, m_rhi_query_pool);
             m_rhi_query_pool = nullptr;
         }
     }
@@ -1064,7 +1064,7 @@ namespace Spartan
     void RHI_CommandList::PushConstants(const uint32_t offset, const uint32_t size, const void* data)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        SP_ASSERT(size <= RHI_Device::GetMaxPushConstantSize());
+        SP_ASSERT(size <= RHI_Device::PropertyGetMaxPushConstantSize());
 
         uint32_t stages = 0;
         if (m_pso.IsCompute())
@@ -1261,7 +1261,7 @@ namespace Spartan
             return 0.0f;
 
         uint64_t duration = Math::Helper::Clamp<uint64_t>(end - start, 0, numeric_limits<uint64_t>::max());
-        float duration_ms = static_cast<float>(duration * RHI_Device::GetTimestampPeriod() * 1e-6f);
+        float duration_ms = static_cast<float>(duration * RHI_Device::PropertyGetTimestampPeriod() * 1e-6f);
 
         return duration_ms;
     }
