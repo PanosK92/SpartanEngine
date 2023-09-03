@@ -335,11 +335,11 @@ namespace Spartan
 
     namespace descriptors
     {
-        static uint32_t descriptor_pool_sets                               = 0;
+        static uint32_t allocated_descriptor_sets                          = 0;
         static uint32_t descriptor_pool_max_sets                           = 4098;
         static const uint16_t descriptor_pool_max_textures                 = 16536;
         static const uint16_t descriptor_pool_max_storage_textures         = 16536;
-        static const uint16_t descriptor_pool_max_storage_buffers          = 32;
+        static const uint16_t descriptor_pool_max_storage_buffers_dynamic  = 32;
         static const uint16_t descriptor_pool_max_constant_buffers_dynamic = 32;
         static const uint16_t descriptor_pool_max_samplers                 = 32;
 
@@ -1194,7 +1194,7 @@ namespace Spartan
             VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                descriptors::descriptor_pool_max_samplers },
             VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          descriptors::descriptor_pool_max_textures },
             VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          descriptors::descriptor_pool_max_storage_textures },
-            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, descriptors::descriptor_pool_max_storage_buffers }, // aka structured buffer
+            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, descriptors::descriptor_pool_max_storage_buffers_dynamic }, // aka structured buffer
             VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, descriptors::descriptor_pool_max_constant_buffers_dynamic }
         };
 
@@ -1218,14 +1218,50 @@ namespace Spartan
         Profiler::m_descriptor_set_capacity = capacity;
     }
 
-
-    void RHI_Device::AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout)
+    void RHI_Device::AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const vector<RHI_Descriptor>& descriptors_)
     {
-        SP_ASSERT_MSG(descriptors::descriptor_pool_sets < descriptors::descriptor_pool_max_sets, "Not enough memory for another allocation");
+        // verify that an allocation is possible
+        {
+            SP_ASSERT_MSG(descriptors::allocated_descriptor_sets < descriptors::descriptor_pool_max_sets, "Reached descriptor set limit");
 
-        array<void*, 1> descriptor_set_layouts = { descriptor_set_layout->GetRhiResource() };
+            uint32_t textures                 = 0;
+            uint32_t storage_textures         = 0;
+            uint32_t storage_buffers          = 0;
+            uint32_t dynamic_constant_buffers = 0;
+            uint32_t samplers                 = 0;
+            for (const RHI_Descriptor& descriptor : descriptors_)
+            {
+                if (descriptor.type == RHI_Descriptor_Type::Sampler)
+                {
+                    samplers++;
+                }
+                else if (descriptor.type == RHI_Descriptor_Type::Texture)
+                {
+                    textures++;
+                }
+                else if (descriptor.type == RHI_Descriptor_Type::TextureStorage)
+                {
+                    storage_textures++;
+                }
+                else if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer)
+                {
+                    storage_buffers++;
+                }
+                else if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
+                {
+                    dynamic_constant_buffers++;
+                }
+            }
+
+            SP_ASSERT_MSG(samplers                 <= descriptors::descriptor_pool_max_samplers,                 "Descriptor set requires more samplers");
+            SP_ASSERT_MSG(textures                 <= descriptors::descriptor_pool_max_textures,                 "Descriptor set requires more textures");
+            SP_ASSERT_MSG(storage_textures         <= descriptors::descriptor_pool_max_storage_textures,         "Descriptor set requires more storage textures");
+            SP_ASSERT_MSG(storage_buffers          <= descriptors::descriptor_pool_max_storage_buffers_dynamic,  "Descriptor set requires more dynamic storage buffers");
+            SP_ASSERT_MSG(dynamic_constant_buffers <= descriptors::descriptor_pool_max_constant_buffers_dynamic, "Descriptor set requires more dynamic constant buffers");
+        }
 
         // describe
+        array<void*, 1> descriptor_set_layouts    = { descriptor_set_layout->GetRhiResource() };
         VkDescriptorSetAllocateInfo allocate_info = {};
         allocate_info.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocate_info.descriptorPool              = static_cast<VkDescriptorPool>(descriptors::descriptor_pool);
@@ -1237,8 +1273,9 @@ namespace Spartan
         SP_VK_ASSERT_MSG(vkAllocateDescriptorSets(RHI_Context::device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&resource)),
             "Failed to allocate descriptor set");
 
+        // track allocations
+        descriptors::allocated_descriptor_sets++;
         Profiler::m_descriptor_set_count++;
-        descriptors::descriptor_pool_sets++;
     }
 
     void* RHI_Device::GetDescriptorSet(const RHI_Device_Resource resource_type)

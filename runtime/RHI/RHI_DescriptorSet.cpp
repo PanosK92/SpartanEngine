@@ -34,9 +34,9 @@ namespace Spartan
             m_object_name = name;
         }
 
-        // Allocate
+        // allocate
         {
-            RHI_Device::AllocateDescriptorSet(m_resource, descriptor_set_layout);
+            RHI_Device::AllocateDescriptorSet(m_resource, descriptor_set_layout, descriptors);
             RHI_Device::SetResourceName(m_resource, RHI_Resource_Type::DescriptorSet, m_object_name);
         }
 

@@ -54,7 +54,7 @@ namespace Spartan
         
         // Descriptors
         static void SetDescriptorSetCapacity(uint32_t descriptor_set_capacity);
-        static void AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout);
+        static void AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const std::vector<RHI_Descriptor>& descriptors);
         static std::unordered_map<uint64_t, RHI_DescriptorSet>& GetDescriptorSets();
         static void* GetDescriptorSet(const RHI_Device_Resource resource_type);
         static void* GetDescriptorSetLayout(const RHI_Device_Resource resource_type);
