@@ -283,15 +283,14 @@ void MenuBar::OnTick()
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(GetPadding(), GetPadding()));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 
+    // menu bar entries
     if (ImGui::BeginMainMenuBar())
     {
-        CreateWorldMenuItem();
+        EntryWorld();
+        EntryView();
+        EntryHelp();
 
-        CreateViewMenuItem();
-
-        CreateHelpMenuItem();
-
-        // Tool bar
+        // toolbar
         ImGui::Spacing();
         m_tool_bar->Tick();
 
@@ -299,6 +298,8 @@ void MenuBar::OnTick()
     }
 
     ImGui::PopStyleVar(2);
+
+    // ticking of windows (if visible)
 
     if (show_imgui_metrics_window)
     {
@@ -324,7 +325,7 @@ void MenuBar::OnTick()
     window_shortcuts(m_editor);
 }
 
-void MenuBar::CreateWorldMenuItem()
+void MenuBar::EntryWorld()
 {
     if (ImGui::BeginMenu("World"))
     {
@@ -356,7 +357,7 @@ void MenuBar::CreateWorldMenuItem()
     }
 }
 
-void MenuBar::CreateViewMenuItem()
+void MenuBar::EntryView()
 {
     if (ImGui::BeginMenu("View"))
     {
@@ -388,7 +389,7 @@ void MenuBar::CreateViewMenuItem()
     }
 }
 
-void MenuBar::CreateHelpMenuItem()
+void MenuBar::EntryHelp()
 {
     if (ImGui::BeginMenu("Help"))
     {
@@ -403,6 +404,11 @@ void MenuBar::CreateHelpMenuItem()
         if (ImGui::MenuItem("Join the Discord server", nullptr, nullptr))
         {
             Spartan::FileSystem::OpenUrl("https://discord.gg/TG5r2BS");
+        }
+
+        if (ImGui::MenuItem("Report a bug", nullptr, nullptr))
+        {
+            Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/issues/new/choose");
         }
 
         ImGui::MenuItem("Shortcuts & Input Reference", "Ctrl+P", &show_shortcuts_window);

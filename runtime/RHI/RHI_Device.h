@@ -48,19 +48,21 @@ namespace Spartan
         static void QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore = nullptr, RHI_Semaphore* signal_semaphore = nullptr, RHI_Fence* signal_fence = nullptr);
         static void QueueWait(const RHI_Queue_Type type);
         static void QueueWaitAll();
+        static void* QueueGet(const RHI_Queue_Type type);
         static uint32_t QueueGetIndex(const RHI_Queue_Type type);
         static void QueueSetIndex(const RHI_Queue_Type type, const uint32_t index);
-        static void* QueueGet(const RHI_Queue_Type type);
-
-        // Descriptors sets, descriptor set layouts and pipelines
-        static void* GetDescriptorPool();
-        static std::unordered_map<uint64_t, RHI_DescriptorSet>& GetDescriptorSets();
-        static uint32_t GetDescriptorSetCapacity();
+        
+        // Descriptors
         static void SetDescriptorSetCapacity(uint32_t descriptor_set_capacity);
-        static void SetBindlessSamplers(const std::array<std::shared_ptr<RHI_Sampler>, 7>& samplers);
+        static void AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout);
+        static std::unordered_map<uint64_t, RHI_DescriptorSet>& GetDescriptorSets();
         static void* GetDescriptorSet(const RHI_Device_Resource resource_type);
         static void* GetDescriptorSetLayout(const RHI_Device_Resource resource_type);
+        static void SetBindlessSamplers(const std::array<std::shared_ptr<RHI_Sampler>, 7>& samplers);
+
+        // Pipelines
         static void GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout);
+        static uint32_t GetPipelineCount();
 
         // Command pools
         static RHI_CommandPool* CommandPoolAllocate(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type);
@@ -87,7 +89,7 @@ namespace Spartan
         static RHI_CommandList* CmdImmediateBegin(const RHI_Queue_Type queue_type);
         static void CmdImmediateSubmit(RHI_CommandList* cmd_list);
 
-        // Properties
+        // Properties (actual silicon properties)
         static float PropertyGetTimestampPeriod()                     { return m_timestamp_period; }
         static uint64_t PropertyGetMinUniformBufferOffsetAllignment() { return m_min_uniform_buffer_offset_alignment; }
         static uint64_t PropertyGetMinStorageBufferOffsetAllignment() { return m_min_storage_buffer_offset_alignment; }
@@ -106,7 +108,6 @@ namespace Spartan
         static void SetResourceName(void* resource, const RHI_Resource_Type resource_type, const std::string name);
         static bool IsValidResolution(const uint32_t width, const uint32_t height);
         static uint32_t GetEnabledGraphicsStages() { return m_enabled_graphics_shader_stages; }
-        static uint32_t GetPipelineCount();
         static uint32_t GetDescriptorType(const RHI_Descriptor& descriptor);
         static PhysicalDevice* GetPrimaryPhysicalDevice();
  

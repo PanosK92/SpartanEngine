@@ -19,12 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES =================
 #include "pch.h"
 #include "RHI_DescriptorSet.h"
 #include "RHI_Device.h"
-#include "../Profiling/Profiler.h"
-//================================
+//============================
 
 namespace Spartan
 {
@@ -35,9 +34,12 @@ namespace Spartan
             m_object_name = name;
         }
 
-        Create(descriptor_set_layout);
-        Update(descriptors);
+        // Allocate
+        {
+            RHI_Device::AllocateDescriptorSet(m_resource, descriptor_set_layout);
+            RHI_Device::SetResourceName(m_resource, RHI_Resource_Type::DescriptorSet, m_object_name);
+        }
 
-        Profiler::m_descriptor_set_count++;
+        Update(descriptors);
     }
 }
