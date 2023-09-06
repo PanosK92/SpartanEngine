@@ -2,7 +2,7 @@ FROM ubuntu:22.04
 
 
 RUN apt update -y &&\
-    apt install -y build-essential libassimp-dev libfreeimage-dev libfreetype-dev libbullet-dev libsdl2-dev git python3 mesa-vulkan-drivers pkg-config cmake &&\
+    apt install -y build-essential libassimp-dev libfreeimage-dev libfreetype-dev libbullet-dev libsdl2-dev git python3 mesa-vulkan-drivers pkg-config cmake wget &&\
     mkdir /deps; cd /deps
 
 RUN cd /deps &&\
@@ -12,3 +12,10 @@ RUN cd /deps &&\
     make; \
     mkdir /usr/lib/Compressonator; cp cmp_compressonatorlib/compressonator.h /usr/lib/Compressonator &&\
     cp lib/*.a /usr/lib
+
+RUN cd /deps &&\
+    wget https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.7.2308/linux_dxc_2023_08_14.x86_64.tar.gz &&\
+    mkdir linux_dxc_2023_08_14; cd linux_dxc_2023_08_14 &&\
+    tar xvf ../linux_dxc_2023_08_14.x86_64.tar.gz &&\
+    cp -r include/* /usr/include/dxc/ &&\
+    cp lib/* /usr/lib/
