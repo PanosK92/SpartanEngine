@@ -32,11 +32,6 @@ using namespace std;
 
 namespace Spartan
 {
-    void RHI_DescriptorSet::Create(RHI_DescriptorSetLayout* descriptor_set_layout)
-    {
-
-    }
-
     void RHI_DescriptorSet::Update(const vector<RHI_Descriptor>& descriptors)
     {
 
