@@ -60,7 +60,6 @@ API_LIBRARIES = {
             "spirv-cross-cpp",
             "spirv-cross-glsl",
             "spirv-cross-hlsl",
-            "spirv-cross-reflect",
             "ffx_backend_vk",
 			"ffx_fsr2",
 			"ffx_spd"
@@ -71,7 +70,6 @@ API_LIBRARIES = {
             "spirv-cross-cpp_debug",
             "spirv-cross-glsl_debug",
             "spirv-cross-hlsl_debug",
-            "spirv-cross-reflect_debug",
             "ffx_backend_vk_debug",
 			"ffx_fsr2_debug",
 			"ffx_spd_debug"

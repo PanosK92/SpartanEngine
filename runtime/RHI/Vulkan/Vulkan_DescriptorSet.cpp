@@ -69,7 +69,7 @@ namespace Spartan
             {
                 image_index++;
 
-                info_images[image_index].sampler     = static_cast<VkSampler>(static_cast<RHI_Sampler*>(descriptor.data)->GetResource());
+                info_images[image_index].sampler     = static_cast<VkSampler>(static_cast<RHI_Sampler*>(descriptor.data)->GetRhiResource());
                 info_images[image_index].imageView   = nullptr;
                 info_images[image_index].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 

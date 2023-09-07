@@ -30,8 +30,8 @@ SP_WARNINGS_ON
 namespace Spartan
 {
     /*
-    Version: dxcompiler.dll: 1.7 - 1.7.0.3942 (e8b1fcb05)
-
+    Version: dxcompiler.dll: 1.7 - 1.7.0.4069 (1598cd8bd)
+    
     USAGE: dxc.exe [options] <inputs>
     
     Common Options:
@@ -162,6 +162,8 @@ namespace Spartan
       -fspv-flatten-resource-arrays
                               Flatten arrays of resources so each array element takes one binding number
       -fspv-preserve-bindings Preserves all bindings declared within the module, even when those bindings are unused
+      -fspv-preserve-interface
+                              Preserves all interface variables in the entry point, even when those variables are unused
       -fspv-print-all         Print the SPIR-V module before each pass and after the last one. Useful for debugging SPIR-V legalization and optimization passes.
       -fspv-reduce-load-size  Replaces loads of composite objects to reduce memory pressure for the loads
       -fspv-reflect           Emit additional SPIR-V instructions to aid reflection

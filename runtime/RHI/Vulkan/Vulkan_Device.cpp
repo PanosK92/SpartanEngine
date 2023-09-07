@@ -395,7 +395,7 @@ namespace Spartan
             vector<VkDescriptorImageInfo> image_infos(sampler_count);
             for (uint32_t i = 0; i < sampler_count; i++)
             {
-                image_infos[i].sampler     = static_cast<VkSampler>(samplers[i]->GetResource());
+                image_infos[i].sampler     = static_cast<VkSampler>(samplers[i]->GetRhiResource());
                 image_infos[i].imageView   = nullptr;
                 image_infos[i].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             }
