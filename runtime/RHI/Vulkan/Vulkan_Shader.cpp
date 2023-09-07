@@ -102,7 +102,8 @@ namespace Spartan
                 arguments.emplace_back("-fspv-target-env=vulkan1.3"); // specify the target environment
 
                 // this prevents all sorts of issues with constant buffers having random data.
-                arguments.emplace_back("-fspv-preserve-bindings"); // preserves all bindings declared within the module, even when those bindings are unused
+                arguments.emplace_back("-fspv-preserve-bindings");  // preserves all bindings declared within the module, even when those bindings are unused
+                arguments.emplace_back("-fspv-preserve-interface"); // preserves all interface variables in the entry point, even when those variables are unused
 
                 // shift registers to avoid conflicts
                 arguments.emplace_back("-fvk-u-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_u)); arguments.emplace_back("all"); // binding number shift for u-type (read/write buffer) register
