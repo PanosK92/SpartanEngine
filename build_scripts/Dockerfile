@@ -6,6 +6,13 @@ RUN apt update -y &&\
     apt install -y build-essential libassimp-dev libfreeimage-dev libfreetype-dev libbullet-dev libsdl2-dev git python3 mesa-vulkan-drivers pkg-config cmake wget &&\
     mkdir /deps
 
+# Download and install premake5
+RUN cd/deps &&\
+    mkdir premake5; cd premake5 &&\
+    wget https://github.com/premake/premake-core/releases/download/v5.0.0-beta2/premake-5.0.0-beta2-linux.tar.gz &&\
+    tar xvf premake-5.0.0-beta2-linux.tar.gz &&\
+    mv premake5 /bin/premake5
+
 # Download, build and install the compressonator library 
 RUN cd /deps &&\
     git clone --recursive --depth=1 https://github.com/GPUOpen-Tools/Compressonator.git; cd Compressonator &&\
