@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderer.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_SwapChain.h"
-#include "../RHI/RHI_RenderDoc.h"
 #include "../RHI/RHI_CommandPool.h"
 #include "../RHI/RHI_ConstantBuffer.h"
 #include "../RHI/RHI_Implementation.h"
@@ -36,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Environment.h"
 #include "../World/Components/AudioSource.h"
 #include "../World/Components/ReflectionProbe.h"
+#include "../Profiling/RenderDoc.h"
 #include "../Core/Window.h"
 #include "../Input/Input.h"
 #include "../Display/Display.h"
@@ -145,7 +145,7 @@ namespace Spartan
 
             if (RHI_Context::renderdoc)
             {
-                RHI_RenderDoc::OnPreDeviceCreation();
+                RenderDoc::OnPreDeviceCreation();
             }
 
             RHI_Device::Initialize();
@@ -265,7 +265,7 @@ namespace Spartan
             environment_texture   = nullptr;
         }
 
-        RHI_RenderDoc::Shutdown();
+        RenderDoc::Shutdown();
         RHI_Device::QueueWaitAll();
         RHI_AMD_FidelityFX::Destroy();
         RHI_Device::DeletionQueueParse();

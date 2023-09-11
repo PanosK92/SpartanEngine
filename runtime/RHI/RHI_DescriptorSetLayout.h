@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =================
-#include "../Core/SP_Object.h"
+#include "../Core/SpObject.h"
 #include <vector>
 #include "RHI_Descriptor.h"
 //============================
@@ -37,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  
 namespace Spartan
 {
-    class SP_CLASS RHI_DescriptorSetLayout : public SP_Object
+    class SP_CLASS RHI_DescriptorSetLayout : public SpObject
     {
     public:
         RHI_DescriptorSetLayout() = default;

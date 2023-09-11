@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "../Core/SP_Object.h"
+#include "../Core/SpObject.h"
 #include "RHI_Vertex.h"
 #include "RHI_Descriptor.h"
 //============================
@@ -41,7 +41,7 @@ namespace Spartan
         Failed
     };
 
-    class SP_CLASS RHI_Shader : public SP_Object
+    class SP_CLASS RHI_Shader : public SpObject
     {
     public:
         RHI_Shader();

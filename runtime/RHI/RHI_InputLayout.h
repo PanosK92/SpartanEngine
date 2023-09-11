@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "RHI_Definitions.h"
 #include "RHI_Vertex.h"
-#include "../Core/SP_Object.h"
+#include "../Core/SpObject.h"
 #include "../Logging/Log.h"
 //============================
 
@@ -50,7 +50,7 @@ namespace Spartan
         uint32_t offset;
     };
 
-    class SP_CLASS RHI_InputLayout : public SP_Object
+    class SP_CLASS RHI_InputLayout : public SpObject
     {
     public:
         RHI_InputLayout() = default;

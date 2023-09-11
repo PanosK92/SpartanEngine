@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RenderOptions.h"
 #include "TextureViewer.h"
 #include "Core/Engine.h"
-#include "RHI/RHI_RenderDoc.h"
+#include "Profiling/RenderDoc.h"
 #include "../ImGui/ImGuiExtension.h"
 //==================================
 
@@ -103,9 +103,9 @@ void Toolbar::OnTick()
             IconType::Button_RenderDoc, "Captures the next frame and then launches RenderDoc",
             []() { return false; },
             []() {
-                    if (Spartan::RHI_RenderDoc::IsEnabled())
+                    if (Spartan::RenderDoc::IsEnabled())
                     {
-                        Spartan::RHI_RenderDoc::FrameCapture();
+                        Spartan::RenderDoc::FrameCapture();
                     }
                     else
                     {

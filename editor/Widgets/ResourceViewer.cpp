@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ResourceViewer.h"
 #include "Resource/ResourceCache.h"
 #include "../ImGui/Source/imgui.h"
-#include "Core/SP_Object.h"
+#include "Core/SpObject.h"
 //=================================
 
 //= NAMESPACES ==========
@@ -86,7 +86,7 @@ void ResourceViewer::OnTickVisible()
 
         for (const shared_ptr<IResource>& resource : resources)
         {
-            if (SP_Object* object = dynamic_cast<SP_Object*>(resource.get()))
+            if (SpObject* object = dynamic_cast<SpObject*>(resource.get()))
             {
                 // Switch row
                 ImGui::TableNextRow();

@@ -23,12 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include <memory>
-#include "../Core/SP_Object.h"
+#include "../Core/SpObject.h"
 //============================
 
 namespace Spartan
 {
-    class SP_CLASS RHI_ConstantBuffer : public SP_Object
+    class SP_CLASS RHI_ConstantBuffer : public SpObject
     {
     public:
         RHI_ConstantBuffer() = default;

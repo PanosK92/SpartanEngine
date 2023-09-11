@@ -24,12 +24,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include <memory>
 #include "RHI_PipelineState.h"
-#include "SP_Object.h"
+#include "SpObject.h"
 //============================
 
 namespace Spartan
 {
-    class SP_CLASS RHI_Pipeline : public SP_Object
+    class SP_CLASS RHI_Pipeline : public SpObject
     {
     public:
         RHI_Pipeline() = default;

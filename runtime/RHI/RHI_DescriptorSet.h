@@ -24,13 +24,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =================
-#include "../Core/SP_Object.h"
+#include "../Core/SpObject.h"
 #include "RHI_Descriptor.h"   
 //============================
 
 namespace Spartan
 {
-    class SP_CLASS RHI_DescriptorSet : public SP_Object
+    class SP_CLASS RHI_DescriptorSet : public SpObject
     {
     public:
         RHI_DescriptorSet() = default;
