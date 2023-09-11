@@ -48,7 +48,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
+unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
     Cb_Frame Renderer::m_cb_frame_cpu;
     Pcb_Pass Renderer::m_cb_pass_cpu;
     Cb_Light Renderer::m_cb_light_cpu;
@@ -68,7 +68,6 @@ namespace Spartan
     {
         // states
         atomic<bool> is_rendering_allowed  = true;
-        atomic<bool> flush_requested       = false;
         bool dirty_orthographic_projection = true;
 
         // resolution & viewport
@@ -93,7 +92,6 @@ namespace Spartan
 
         // misc
         array<float, 34> m_options;
-        thread::id render_thread_id;
         mutex mutex_entity_addition;
         vector<shared_ptr<Entity>> m_entities_to_add;
         uint64_t frame_num                       = 0;
@@ -134,7 +132,6 @@ namespace Spartan
 
     void Renderer::Initialize()
     {
-        render_thread_id             = this_thread::get_id();
         m_brdf_specular_lut_rendered = false;
 
         Display::DetectDisplayModes();
@@ -284,12 +281,6 @@ namespace Spartan
         {
             Log::SetLogToFile(false);
             SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
-        }
-
-        // happens when core resources are created/destroyed
-        if (flush_requested)
-        {
-            Flush();
         }
 
         if (!is_rendering_allowed)
@@ -614,8 +605,6 @@ namespace Spartan
 
     void Renderer::OnClear()
     {
-        // Flush to remove references to entity resources that will be deallocated
-        Flush();
         m_renderables.clear();
     }
 
@@ -721,11 +710,6 @@ namespace Spartan
     void Renderer::OnFrameEnd(RHI_CommandList* cmd_list)
     {
         Lines_OnFrameEnd();
-    }
-
-    bool Renderer::IsCallingFromOtherThread()
-    {
-        return render_thread_id != this_thread::get_id();
     }
 
     const shared_ptr<RHI_Texture> Renderer::GetEnvironmentTexture()
@@ -879,33 +863,6 @@ namespace Spartan
         SP_FIRE_EVENT(EventType::RendererPostPresent);
     }
 
-    void Renderer::Flush()
-    {
-        // The external thread requests a flush from the renderer thread (to avoid a myriad of thread issues and Vulkan errors)
-        if (IsCallingFromOtherThread())
-        {
-            is_rendering_allowed = false;
-            flush_requested      = true;
-
-            while (flush_requested)
-            {
-                SP_LOG_INFO("External thread is waiting for the renderer thread to flush...");
-                this_thread::sleep_for(chrono::milliseconds(16));
-            }
-
-            return;
-        }
-
-        // Flushing
-        if (!is_rendering_allowed)
-        {
-            SP_LOG_INFO("Renderer thread is flushing...");
-            RHI_Device::QueueWaitAll();
-        }
-
-        flush_requested = false;
-    }
-
     void Renderer::AddTextureForMipGeneration(RHI_Texture* texture)
     {
         lock_guard<mutex> guard(mutex_mip_generation);
@@ -940,5 +897,28 @@ namespace Spartan
     unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& Renderer::GetEntities()
     {
         return m_renderables;
+    }
+
+    void Renderer::BindTexturesGfbuffer(RHI_CommandList* cmd_list)
+    {
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,            GetRenderTarget(Renderer_RenderTexture::gbuffer_albedo));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,            GetRenderTarget(Renderer_RenderTexture::gbuffer_normal));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,             GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material,          GetRenderTarget(Renderer_RenderTexture::gbuffer_material));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material_2,        GetRenderTarget(Renderer_RenderTexture::gbuffer_material_2));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity,          GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity_previous, GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity_previous));
+    }
+
+    void Renderer::BindTexturesMaterial(RHI_CommandList* cmd_list, Material* material)
+    {
+        cmd_list->SetTexture(Renderer_BindingsSrv::material_albedo,    material->GetTexture(MaterialTexture::Color));
+        cmd_list->SetTexture(Renderer_BindingsSrv::material_roughness, material->GetTexture(MaterialTexture::Roughness));
+        cmd_list->SetTexture(Renderer_BindingsSrv::material_metallic,  material->GetTexture(MaterialTexture::Metalness));
+        cmd_list->SetTexture(Renderer_BindingsSrv::material_normal,    material->GetTexture(MaterialTexture::Normal));
+        cmd_list->SetTexture(Renderer_BindingsSrv::material_height,    material->GetTexture(MaterialTexture::Height));
+        cmd_list->SetTexture(Renderer_BindingsSrv::material_occlusion, material->GetTexture(MaterialTexture::Occlusion));
+        cmd_list->SetTexture(Renderer_BindingsSrv::material_emission,  material->GetTexture(MaterialTexture::Emission));
+        cmd_list->SetTexture(Renderer_BindingsSrv::material_mask,      material->GetTexture(MaterialTexture::AlphaMask));
     }
 }
