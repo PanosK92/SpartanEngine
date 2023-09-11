@@ -67,6 +67,8 @@ Livestreams [![Image1](https://raw.githubusercontent.com/PanosK92/SpartanEngine/
 - Improved the editor style/theme.
 - Scripting.
 - Linux port.
+  
+If you are looking at what to do, there are more ideas in the [issues]([https://github.com/PanosK92/SpartanEngine/wiki/Wiki](https://github.com/PanosK92/SpartanEngine/issues)) section.
 
 # Wiki
 Don't forget that there is a [wiki](https://github.com/PanosK92/SpartanEngine/wiki/Wiki) that can help answer some of your questions. Here are some of it's contents:
