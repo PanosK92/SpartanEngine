@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <any>
 #include <vector>
 #include <functional>
-#include "../../Core/SP_Object.h"
+#include "../../Core/SpObject.h"
 //===============================
 
 namespace Spartan
@@ -60,7 +60,7 @@ namespace Spartan
         std::function<void(std::any)> setter;
     };
 
-    class SP_CLASS Component : public SP_Object
+    class SP_CLASS Component : public SpObject
     {
     public:
         Component(std::weak_ptr<Entity> entity);

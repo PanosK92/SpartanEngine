@@ -21,8 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include "pch.h"
-#include "RHI_RenderDoc.h"
-#include "RHI_Implementation.h"
+#include "RenderDoc.h"
+#include "../RHI/RHI_Implementation.h"
 #include "../Core/Window.h"
 #include "../Core/Definitions.h"
 #include "../Rendering/Renderer.h"
@@ -150,7 +150,7 @@ namespace Spartan
     }
 #endif
 
-    void RHI_RenderDoc::OnPreDeviceCreation()
+    void RenderDoc::OnPreDeviceCreation()
     {
          // Load RenderDoc module and get a pointer to it's API
         if (rdc_api == nullptr)
@@ -189,7 +189,7 @@ namespace Spartan
         rdc_api->MaskOverlayBits(eRENDERDOC_Overlay_None, eRENDERDOC_Overlay_None);
     }
 
-    void RHI_RenderDoc::Shutdown()
+    void RenderDoc::Shutdown()
     {
         if (rdc_module != nullptr)
         {
@@ -201,7 +201,7 @@ namespace Spartan
         }
     }
 
-    void RHI_RenderDoc::FrameCapture()
+    void RenderDoc::FrameCapture()
     {
         SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc is not initialized, ensure that RenderDoc is set to true in RHI_Context");
 
@@ -211,14 +211,14 @@ namespace Spartan
         LaunchRenderDocUi();
     }
 
-    void RHI_RenderDoc::StartCapture()
+    void RenderDoc::StartCapture()
     {
         SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc is not initialized, ensure that RenderDoc is set to true in RHI_Context");
 
         rdc_api->StartFrameCapture(nullptr, nullptr);
     }
 
-    void RHI_RenderDoc::EndCapture()
+    void RenderDoc::EndCapture()
     {
         SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc is not initialized, ensure that RenderDoc is set to true in RHI_Context");
 
@@ -227,7 +227,7 @@ namespace Spartan
         LaunchRenderDocUi();
     }
 
-    void RHI_RenderDoc::LaunchRenderDocUi()
+    void RenderDoc::LaunchRenderDocUi()
     {
         // If the RenderDoc UI is already running, make sure it's visible.
         if (rdc_api->IsTargetControlConnected())
@@ -246,7 +246,7 @@ namespace Spartan
         }
     }
 
-    bool RHI_RenderDoc::IsEnabled()
+    bool RenderDoc::IsEnabled()
     {
         return RHI_Context::renderdoc;
     }

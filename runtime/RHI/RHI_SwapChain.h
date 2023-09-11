@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <array>
 #include "RHI_Definitions.h"
-#include "../Core/SP_Object.h"
+#include "../Core/SpObject.h"
 //============================
 
 namespace Spartan
@@ -35,7 +35,7 @@ namespace Spartan
     static const RHI_Format format_sdr    = RHI_Format::R8G8B8A8_Unorm;
     static const RHI_Format format_hdr    = RHI_Format::R10G10B10A2_Unorm;
 
-    class SP_CLASS RHI_SwapChain : public SP_Object
+    class SP_CLASS RHI_SwapChain : public SpObject
     {
     public:
         RHI_SwapChain() = default;

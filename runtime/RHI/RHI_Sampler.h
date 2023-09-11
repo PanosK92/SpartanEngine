@@ -23,13 +23,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include <memory>
-#include "../Core/SP_Object.h"
+#include "../Core/SpObject.h"
 #include "RHI_Definitions.h"
 //============================
 
 namespace Spartan
 {
-    class RHI_Sampler : public SP_Object
+    class RHI_Sampler : public SpObject
     {
     public:
         RHI_Sampler(

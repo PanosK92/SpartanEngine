@@ -53,7 +53,7 @@ namespace Spartan
         {
             // clone the name and the ID
             Entity* clone = World::CreateEntity().get();
-            clone->SetObjectId(SP_Object::GenerateObjectId());
+            clone->SetObjectId(SpObject::GenerateObjectId());
             clone->SetObjectName(entity->GetObjectName());
             clone->SetActive(entity->IsActive());
             clone->SetHierarchyVisibility(entity->IsVisibleInHierarchy());
