@@ -569,10 +569,11 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
         m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Normal)                            ? (1U << 2) : 0;
         m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Color)                             ? (1U << 3) : 0;
         m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Roughness)                         ? (1U << 4) : 0;
-        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Metalness)                        ? (1U << 5) : 0;
+        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Metalness)                         ? (1U << 5) : 0;
         m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::AlphaMask)                         ? (1U << 6) : 0;
         m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Emission)                          ? (1U << 7) : 0;
         m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Occlusion)                         ? (1U << 8) : 0;
+        m_cb_material_cpu.properties          |= material->GetProperty(MaterialProperty::IsTerrain)                       ? (1U << 9) : 0;
 
         // Update
         GetConstantBuffer(Renderer_ConstantBuffer::Material)->Update(&m_cb_material_cpu);
@@ -913,6 +914,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
     void Renderer::BindTexturesMaterial(RHI_CommandList* cmd_list, Material* material)
     {
         cmd_list->SetTexture(Renderer_BindingsSrv::material_albedo,    material->GetTexture(MaterialTexture::Color));
+        cmd_list->SetTexture(Renderer_BindingsSrv::material_albedo2,   material->GetTexture(MaterialTexture::Color2));
         cmd_list->SetTexture(Renderer_BindingsSrv::material_roughness, material->GetTexture(MaterialTexture::Roughness));
         cmd_list->SetTexture(Renderer_BindingsSrv::material_metallic,  material->GetTexture(MaterialTexture::Metalness));
         cmd_list->SetTexture(Renderer_BindingsSrv::material_normal,    material->GetTexture(MaterialTexture::Normal));

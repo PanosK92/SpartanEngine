@@ -152,7 +152,7 @@ namespace Spartan
 
         if (texture)
         {
-            // Cache the texture to ensure scene serialization/deserialization
+            // cache the texture to ensure scene serialization/deserialization
             m_textures[type_int] = ResourceCache::Cache(texture->GetSharedPtr());
         }
         else
@@ -195,6 +195,13 @@ namespace Spartan
         SetTexture(type, static_pointer_cast<RHI_Texture>(texture));
     }
 
+    void Material::SetTexture(const MaterialTexture texture_type, const string& file_path)
+    {
+        shared_ptr<RHI_Texture2D> texture = make_shared<RHI_Texture2D>(RHI_Texture_Srv, FileSystem::GetFileNameFromFilePath(file_path).c_str());
+        texture->LoadFromFile(file_path);
+        SetTexture(texture_type, texture);
+    }
+ 
     bool Material::HasTexture(const string& path) const
     {
         for (const auto& texture : m_textures)

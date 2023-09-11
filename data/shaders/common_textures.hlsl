@@ -21,51 +21,52 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // Material
 Texture2D tex_material_albedo     : register (t0);
-Texture2D tex_material_roughness  : register (t1);
-Texture2D tex_material_metallness : register (t2);
-Texture2D tex_material_normal     : register (t3);
-Texture2D tex_material_height     : register (t4);
-Texture2D tex_material_occlusion  : register (t5);
-Texture2D tex_material_emission   : register (t6);
-Texture2D tex_material_mask       : register (t7);
+Texture2D tex_material_albedo_2   : register (t1);
+Texture2D tex_material_roughness  : register (t2);
+Texture2D tex_material_metallness : register (t3);
+Texture2D tex_material_normal     : register (t4);
+Texture2D tex_material_height     : register (t5);
+Texture2D tex_material_occlusion  : register (t6);
+Texture2D tex_material_emission   : register (t7);
+Texture2D tex_material_mask       : register (t8);
 
 // G-buffer
-Texture2D tex_albedo            : register(t8);
-Texture2D tex_normal            : register(t9);
-Texture2D tex_material          : register(t10);
-Texture2D tex_material_2        : register(t11);
-Texture2D tex_velocity          : register(t12);
-Texture2D tex_velocity_previous : register(t13);
-Texture2D tex_depth             : register(t14);
+Texture2D tex_albedo            : register(t9);
+Texture2D tex_normal            : register(t10);
+Texture2D tex_material          : register(t11);
+Texture2D tex_material_2        : register(t12);
+Texture2D tex_velocity          : register(t13);
+Texture2D tex_velocity_previous : register(t14);
+Texture2D tex_depth             : register(t15);
 
-Texture2D tex_light_diffuse              : register(t15);
-Texture2D tex_light_diffuse_transparent  : register(t16);
-Texture2D tex_light_specular             : register(t17);
-Texture2D tex_light_specular_transparent : register(t18);
-Texture2D tex_light_volumetric           : register(t19);
+Texture2D tex_light_diffuse              : register(t16);
+Texture2D tex_light_diffuse_transparent  : register(t17);
+Texture2D tex_light_specular             : register(t18);
+Texture2D tex_light_specular_transparent : register(t19);
+Texture2D tex_light_volumetric           : register(t20);
 
 // Light depth/color maps
-Texture2DArray tex_light_directional_depth : register(t20);
-Texture2DArray tex_light_directional_color : register(t21);
-TextureCube tex_light_point_depth          : register(t22);
-TextureCube tex_light_point_color          : register(t23);
-Texture2D tex_light_spot_depth             : register(t24);
-Texture2D tex_light_spot_color             : register(t25);
+Texture2DArray tex_light_directional_depth : register(t21);
+Texture2DArray tex_light_directional_color : register(t22);
+TextureCube tex_light_point_depth          : register(t23);
+TextureCube tex_light_point_color          : register(t24);
+Texture2D tex_light_spot_depth             : register(t25);
+Texture2D tex_light_spot_color             : register(t26);
 
 // Noise
-Texture2D tex_noise_normal    : register(t26);
-Texture2DArray tex_noise_blue : register(t27);
+Texture2D tex_noise_normal    : register(t27);
+Texture2DArray tex_noise_blue : register(t28);
 
 // Misc
-Texture2D tex_lut_ibl            : register(t28);
-Texture2D tex_environment        : register(t29);
-Texture2D tex_ssgi               : register(t30);
-Texture2D tex_ssr                : register(t31);
-Texture2D tex_frame              : register(t32);
-Texture2D tex                    : register(t33);
-Texture2D tex2                   : register(t34);
-Texture2D tex_font_atlas         : register(t35);
-TextureCube tex_reflection_probe : register(t36);
+Texture2D tex_lut_ibl            : register(t29);
+Texture2D tex_environment        : register(t30);
+Texture2D tex_ssgi               : register(t31);
+Texture2D tex_ssr                : register(t32);
+Texture2D tex_frame              : register(t33);
+Texture2D tex                    : register(t34);
+Texture2D tex2                   : register(t35);
+Texture2D tex_font_atlas         : register(t36);
+TextureCube tex_reflection_probe : register(t37);
 
 // Storage
 RWTexture2D<float4> tex_uav                                : register(u0);

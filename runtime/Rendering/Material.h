@@ -33,13 +33,14 @@ namespace Spartan
     enum class MaterialTexture
     {
         Color,
-        Roughness,  // Specifies microfacet roughness of the surface for diffuse and specular reflection
+        Color2,    // A second color for blending purposes
+        Roughness, // Specifies microfacet roughness of the surface for diffuse and specular reflection
         Metalness, // Blends between a non-metallic and metallic material model
         Normal,
-        Occlusion,  // A texture that will be mixed with ssao.
-        Emission,   // A texture that will cause a surface to be lit, works nice with bloom.
-        Height,     // Perceived depth for parallax mapping.
-        AlphaMask,  // A texture which will use pixel shader discards for transparent pixels.
+        Occlusion, // A texture that will be mixed with ssao.
+        Emission,  // A texture that will cause a surface to be lit, works nice with bloom.
+        Height,    // Perceived depth for parallax mapping.
+        AlphaMask, // A texture which will use pixel shader discards for transparent pixels.
         Undefined
     };
 
@@ -66,6 +67,7 @@ namespace Spartan
         UvOffsetY,
         SingleTextureRoughnessMetalness,
         CanBeEdited,
+        IsTerrain,
         Undefined
     };
 
@@ -85,6 +87,7 @@ namespace Spartan
         void SetTexture(const MaterialTexture texture_type, std::shared_ptr<RHI_Texture> texture);
         void SetTexture(const MaterialTexture texture_type, std::shared_ptr<RHI_Texture2D> texture);
         void SetTexture(const MaterialTexture texture_type, std::shared_ptr<RHI_TextureCube> texture);
+        void SetTexture(const MaterialTexture texture_type, const std::string& file_path);
         bool HasTexture(const std::string& path) const;
         bool HasTexture(const MaterialTexture texture_type) const;
         std::string GetTexturePathByType(const MaterialTexture texture_type);
@@ -99,7 +102,7 @@ namespace Spartan
         void SetColor(const Color& color);
  
     private:
-        std::array<std::shared_ptr<RHI_Texture>, 9> m_textures;
+        std::array<std::shared_ptr<RHI_Texture>, 10> m_textures;
         std::array<float, 22> m_properties;
     };
 }
