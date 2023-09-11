@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================================
+//= INCLUDES ===================================
 #include "pch.h"
 #include "Window.h"
 #include "ThreadPool.h"
@@ -33,7 +33,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Import/FontImporter.h"
 #include "../Resource/Import/ModelImporter.h"
 #include "../Resource/Import/ImageImporter.h"
-//===========================================
+#include "../Profiling/AMD_DeviceLibraryExtra.h"
+//==============================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -68,6 +69,7 @@ namespace Spartan
             Renderer::Initialize();
             World::Initialize();
             Settings::Initialize();
+            AMD_DeviceLibraryExtra::Initialize();
         }
 
         SP_LOG_INFO("Initialization took %.1f ms", timer_initialize.GetElapsedTimeMs());
@@ -89,6 +91,7 @@ namespace Spartan
         ImageImporter::Shutdown();
         FontImporter::Shutdown();
         Settings::Shutdown();
+        AMD_DeviceLibraryExtra::Shutdown();
     }
 
     void Engine::Tick()

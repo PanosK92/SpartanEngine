@@ -83,7 +83,6 @@ namespace Spartan
         static void Pass_GenerateMips(RHI_CommandList* cmd_list, RHI_Texture* texture);
 
         // Misc
-        static void Flush();
         static void SetGlobalShaderResources(RHI_CommandList* cmd_list);
         static uint64_t GetFrameNum();
         static RHI_Api_Type GetRhiApiType();
@@ -202,8 +201,11 @@ namespace Spartan
         static void OnFrameStart(RHI_CommandList* cmd_list);
         static void OnFrameEnd(RHI_CommandList* cmd_list);
 
+        // Common texture binding
+        static void BindTexturesGfbuffer(RHI_CommandList* cmd_list);
+        static void BindTexturesMaterial(RHI_CommandList* cmd_list, Material* material);
+
         // Misc
-        static bool IsCallingFromOtherThread();
         static void DestroyResources();
 
         // misc

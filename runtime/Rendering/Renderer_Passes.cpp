@@ -315,37 +315,37 @@ namespace Spartan
 
     void Renderer::Pass_ReflectionProbes(RHI_CommandList* cmd_list)
     {
-        // Acquire shaders
+        // acquire shaders
         RHI_Shader* shader_v = GetShader(Renderer_Shader::reflection_probe_v).get();
         RHI_Shader* shader_p = GetShader(Renderer_Shader::reflection_probe_p).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        // Acquire reflections probes
+        // acquire reflections probes
         const vector<shared_ptr<Entity>>& probes = m_renderables[Renderer_Entity::ReflectionProbe];
         if (probes.empty())
             return;
 
-        // Acquire renderables
+        // acquire renderables
         const vector<shared_ptr<Entity>>& renderables = m_renderables[Renderer_Entity::Geometry];
         if (renderables.empty())
             return;
 
-        // Acquire lights
+        // acquire lights
         const vector<shared_ptr<Entity>>& lights = m_renderables[Renderer_Entity::Light];
         if (lights.empty())
             return;
 
         cmd_list->BeginTimeblock("reflection_probes");
 
-        // For each reflection probe
+        // for each reflection probe
         for (uint32_t probe_index = 0; probe_index < static_cast<uint32_t>(probes.size()); probe_index++)
         {
             shared_ptr<ReflectionProbe> probe = probes[probe_index]->GetComponent<ReflectionProbe>();
             if (!probe || !probe->GetNeedsToUpdate())
                 continue;
 
-            // Define pipeline state
+            // define pipeline state
             static RHI_PipelineState pso;
             pso.shader_vertex                   = shader_v;
             pso.shader_pixel                    = shader_p;
@@ -359,68 +359,66 @@ namespace Spartan
             pso.clear_stencil                   = rhi_stencil_dont_care;
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
-            // Update cube faces
+            // update cube faces
             uint32_t index_start = probe->GetUpdateFaceStartIndex();
             uint32_t index_end   = (index_start + probe->GetUpdateFaceCount()) % 7;
             for (uint32_t face_index = index_start; face_index < index_end; face_index++)
             {
-                // Set render target texture array index
+                // set render target texture array index
                 pso.render_target_color_texture_array_index = face_index;
 
-                // Set pipeline state
+                // set pipeline state
                 cmd_list->SetPipelineState(pso);
 
-                // Begin render pass
+                // begin render pass
                 cmd_list->BeginRenderPass();
 
-                // Compute view projection matrix
+                // compute view projection matrix
                 Matrix view_projection = probe->GetViewMatrix(face_index) * probe->GetProjectionMatrix();
 
-                // For each renderable entity
+                // for each renderable entity
                 for (uint32_t index_renderable = 0; index_renderable < static_cast<uint32_t>(renderables.size()); index_renderable++)
                 {
                     shared_ptr<Entity> entity = renderables[index_renderable];
 
-                    // For each light entity
+                    // for each light entity
                     for (uint32_t index_light = 0; index_light < static_cast<uint32_t>(lights.size()); index_light++)
                     {
                         if (shared_ptr<Light> light = lights[index_light]->GetComponent<Light>())
                         {
                             if (light->GetIntensityWatt(GetCamera().get()) != 0)
                             {
-                                // Get renderable
+                                // get renderable
                                 shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
                                 if (!renderable)
                                     continue;
 
-                                // Get material
+                                // get material
                                 Material* material = renderable->GetMaterial();
                                 if (!material)
                                     continue;
 
-                                // Get geometry
+                                // get geometry
                                 Mesh* mesh = renderable->GetMesh();
                                 if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
                                     continue;
 
-                                // Skip objects outside of the view frustum
+                                // skip objects outside of the view frustum
                                 if (!probe->IsInViewFrustum(renderable, face_index))
                                     continue;
 
-                                // Set geometry (will only happen if not already set)
+                                // set geometry (will only happen if not already set)
                                 cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
                                 cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
 
-                                // Bind material textures
-                                cmd_list->SetTexture(Renderer_BindingsSrv::material_albedo,    material->GetTexture(MaterialTexture::Color));
-                                cmd_list->SetTexture(Renderer_BindingsSrv::material_roughness, material->GetTexture(MaterialTexture::Roughness));
-                                cmd_list->SetTexture(Renderer_BindingsSrv::material_metallic,  material->GetTexture(MaterialTexture::Metalness));
+                                // bind material textures
+                                BindTexturesMaterial(cmd_list, material);
 
-                                // Set pass constants with cascade transform
+                                // set pass constants with cascade transform
                                 m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
                                 PushPassConstants(cmd_list);
 
-                                // Update light buffer
+                                // update light buffer
                                 UpdateConstantBufferLight(cmd_list, light);
 
                                 cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
@@ -440,7 +438,7 @@ namespace Spartan
         if (!GetOption<bool>(Renderer_Option::DepthPrepass))
             return;
 
-        // Acquire shaders
+        // acquire shaders
         RHI_Shader* shader_v = GetShader(Renderer_Shader::depth_prepass_v).get();
         RHI_Shader* shader_p = GetShader(Renderer_Shader::depth_prepass_p).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
@@ -451,7 +449,7 @@ namespace Spartan
         RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
         const vector<shared_ptr<Entity>> entities = m_renderables[Renderer_Entity::Geometry];
 
-        // Define pipeline state
+        // define pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex               = shader_v;
         pso.shader_pixel                = shader_p; // alpha testing
@@ -462,29 +460,29 @@ namespace Spartan
         pso.clear_depth                 = 0.0f; // reverse-z
         pso.primitive_topology          = RHI_PrimitiveTopology_Mode::TriangleList;
 
-        // Set pipeline state
+        // set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // Render
+        // render
         cmd_list->BeginRenderPass();
         { 
-            // Variables that help reduce state changes
+            // variables that help reduce state changes
             uint64_t currently_bound_geometry = 0;
             
-            // Draw opaque
+            // draw opaque
             for (shared_ptr<Entity> entity : entities)
             {
-                // Get renderable
+                // get renderable
                 shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
                 if (!renderable)
                     continue;
 
-                // Get material
+                // get material
                 Material* material = renderable->GetMaterial();
                 if (!material)
                     continue;
 
-                // Get geometry
+                // get geometry
                 Mesh* mesh = renderable->GetMesh();
                 if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
                     continue;
@@ -494,11 +492,11 @@ namespace Spartan
                 if (!transform)
                     continue;
 
-                // Skip objects outside of the view frustum
+                // skip objects outside of the view frustum
                 if (!GetCamera()->IsInViewFrustum(renderable))
                     continue;
             
-                // Bind geometry
+                // bind geometry
                 if (currently_bound_geometry != mesh->GetObjectId())
                 {
                     cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
@@ -506,16 +504,15 @@ namespace Spartan
                     currently_bound_geometry = mesh->GetObjectId();
                 }
 
-                // Bind alpha testing textures
-                cmd_list->SetTexture(Renderer_BindingsSrv::material_albedo,  material->GetTexture(MaterialTexture::Color));
-                cmd_list->SetTexture(Renderer_BindingsSrv::material_mask,    material->GetTexture(MaterialTexture::AlphaMask));
+                // set alpha testing textures
+                BindTexturesMaterial(cmd_list, material);
 
                 // Set pass constants
                 m_cb_pass_cpu.transform = transform->GetMatrix();
                 m_cb_pass_cpu.set_f3_value(material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f, material->GetProperty(MaterialProperty::ColorA), 0.0f);
                 PushPassConstants(cmd_list);
             
-                // Draw
+                // draw
                 cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
             }
 
@@ -621,22 +618,11 @@ namespace Spartan
                 cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
                 cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
 
-                // update material
+                // set material
                 if (bound_material_id != material->GetObjectId())
                 {
-                    // set textures
-                    cmd_list->SetTexture(Renderer_BindingsSrv::material_albedo,    material->GetTexture(MaterialTexture::Color));
-                    cmd_list->SetTexture(Renderer_BindingsSrv::material_roughness, material->GetTexture(MaterialTexture::Roughness));
-                    cmd_list->SetTexture(Renderer_BindingsSrv::material_metallic,  material->GetTexture(MaterialTexture::Metalness));
-                    cmd_list->SetTexture(Renderer_BindingsSrv::material_normal,    material->GetTexture(MaterialTexture::Normal));
-                    cmd_list->SetTexture(Renderer_BindingsSrv::material_height,    material->GetTexture(MaterialTexture::Height));
-                    cmd_list->SetTexture(Renderer_BindingsSrv::material_occlusion, material->GetTexture(MaterialTexture::Occlusion));
-                    cmd_list->SetTexture(Renderer_BindingsSrv::material_emission,  material->GetTexture(MaterialTexture::Emission));
-                    cmd_list->SetTexture(Renderer_BindingsSrv::material_mask,      material->GetTexture(MaterialTexture::AlphaMask));
-
-                    // set properties
+                    BindTexturesMaterial(cmd_list, material);
                     UpdateConstantBufferMaterial(cmd_list, material);
-
                     bound_material_id = material->GetObjectId();
                 }
 
@@ -700,11 +686,9 @@ namespace Spartan
             PushPassConstants(cmd_list);
 
             // set textures
-            cmd_list->SetTexture(Renderer_BindingsUav::tex,            tex_ssgi);
-            cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo, GetRenderTarget(Renderer_RenderTexture::gbuffer_albedo));
-            cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal, GetRenderTarget(Renderer_RenderTexture::gbuffer_normal));
-            cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,  GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));
-            cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,  GetRenderTarget(Renderer_RenderTexture::light_diffuse));
+            BindTexturesGfbuffer(cmd_list);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex,           tex_ssgi);
+            cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse, GetRenderTarget(Renderer_RenderTexture::light_diffuse));
 
             // render
             cmd_list->Dispatch(thread_group_count_x(tex_ssgi), thread_group_count_y(tex_ssgi));
@@ -726,11 +710,10 @@ namespace Spartan
             PushPassConstants(cmd_list);
 
             // set textures
-            cmd_list->SetTexture(Renderer_BindingsUav::tex,                       tex_ssgi_filtered);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex2,                      tex_ssgi);
-            cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity,          GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity));
-            cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity_previous, GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity_previous));
-
+            BindTexturesGfbuffer(cmd_list);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_ssgi_filtered);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_ssgi);
+                                                             
             // render
             cmd_list->Dispatch(thread_group_count_x(tex_ssgi), thread_group_count_y(tex_ssgi));
         }
@@ -744,43 +727,39 @@ namespace Spartan
         if (!GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
             return;
 
-        // Acquire shaders
+        // acquire shaders
         RHI_Shader* shader_c = GetShader(Renderer_Shader::ssr_c).get();
         if (!shader_c->IsCompiled())
             return;
 
-        // Acquire render targets
+        // acquire render targets
         RHI_Texture* tex_ssr = GetRenderTarget(Renderer_RenderTexture::ssr).get();
 
         cmd_list->BeginTimeblock("ssr");
 
-        // Define pipeline state
+        // define pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
 
-        // Set pipeline state
+        // set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // Set pass constants
+        // set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_ssr);
         PushPassConstants(cmd_list);
 
-        // Set textures
-        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssr);    // write to that
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);     // reflect from that
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,   GetRenderTarget(Renderer_RenderTexture::gbuffer_albedo));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,   GetRenderTarget(Renderer_RenderTexture::gbuffer_normal));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTexture::gbuffer_material));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity, GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity));
+        // set textures
+        BindTexturesGfbuffer(cmd_list);
+        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssr); // write to that
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);  // reflect from that
 
-        // Render
+        // render
         cmd_list->Dispatch(thread_group_count_x(tex_ssr), thread_group_count_y(tex_ssr));
 
-        // Generate frame mips so that we can simulate roughness
+        // generate frame mips so that we can simulate roughness
         Pass_Ffx_Spd(cmd_list, tex_ssr);
 
-        // Blur the smaller mips to reduce blockiness/flickering
+        // blur the smaller mips to reduce blockiness/flickering
         for (uint32_t i = 1; i < tex_ssr->GetMipCount(); i++)
         {
             const bool depth_aware = true;
@@ -829,15 +808,11 @@ namespace Spartan
             if (shared_ptr<Light> light = entity->GetComponent<Light>())
             {
                 // do the lighting even when intensity is zero, since we can have emissive lighting.
-                cmd_list->SetTexture(Renderer_BindingsUav::tex,                tex_diffuse);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex2,               tex_specular);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex3,               tex_volumetric);
-                cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,     GetRenderTarget(Renderer_RenderTexture::gbuffer_albedo));
-                cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,     GetRenderTarget(Renderer_RenderTexture::gbuffer_normal));
-                cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material,   GetRenderTarget(Renderer_RenderTexture::gbuffer_material));
-                cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material_2, GetRenderTarget(Renderer_RenderTexture::gbuffer_material_2));
-                cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,      GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));
-                cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,               GetRenderTarget(Renderer_RenderTexture::ssgi_filtered));
+                BindTexturesGfbuffer(cmd_list);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_diffuse);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_specular);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex3, tex_volumetric);
+                cmd_list->SetTexture(Renderer_BindingsSrv::ssgi, GetRenderTarget(Renderer_RenderTexture::ssgi_filtered));
                 
                 // set shadow maps
                 if (light->GetShadowsEnabled())
@@ -896,7 +871,7 @@ namespace Spartan
         // push pass constants
         m_cb_pass_cpu.set_resolution_out(tex_out);
         m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
-        m_cb_pass_cpu.set_f3_value(GetRenderTarget(Renderer_RenderTexture::frame_render)->GetMipCount(), 0.0f, 0.0f);
+        m_cb_pass_cpu.set_f3_value(static_cast<float>(GetRenderTarget(Renderer_RenderTexture::frame_render)->GetMipCount()), 0.0f, 0.0f);
         PushPassConstants(cmd_list);
 
         // update light buffer with the directional light
@@ -913,11 +888,8 @@ namespace Spartan
         }
 
         // set textures
+        BindTexturesGfbuffer(cmd_list);
         cmd_list->SetTexture(Renderer_BindingsUav::tex,              tex_out);
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,   GetRenderTarget(Renderer_RenderTexture::gbuffer_albedo));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTexture::gbuffer_material));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,   GetRenderTarget(Renderer_RenderTexture::gbuffer_normal));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));
         cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,    is_transparent_pass ? GetRenderTarget(Renderer_RenderTexture::light_diffuse_transparent).get()  : GetRenderTarget(Renderer_RenderTexture::light_diffuse).get());
         cmd_list->SetTexture(Renderer_BindingsSrv::light_specular,   is_transparent_pass ? GetRenderTarget(Renderer_RenderTexture::light_specular_transparent).get() : GetRenderTarget(Renderer_RenderTexture::light_specular).get());
         cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric, GetRenderTarget(Renderer_RenderTexture::light_volumetric));
@@ -932,7 +904,7 @@ namespace Spartan
 
     void Renderer::Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass)
     {
-        // Acquire shaders
+        // acquire shaders
         RHI_Shader* shader_v = GetShader(Renderer_Shader::fullscreen_triangle_v).get();
         RHI_Shader* shader_p = GetShader(Renderer_Shader::light_image_based_p).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
@@ -940,10 +912,10 @@ namespace Spartan
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_image_based_transparent" : "light_image_based");
 
-        // Get reflection probe entities
+        // get reflection probe entities
         const vector<shared_ptr<Entity>>& probes = m_renderables[Renderer_Entity::ReflectionProbe];
 
-        // Define pipeline state
+        // define pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
         pso.shader_pixel                    = shader_p;
@@ -955,20 +927,17 @@ namespace Spartan
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.can_use_vertex_index_buffers    = false;
 
-        // Set pipeline state
+        // set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // Set textures
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,   GetRenderTarget(Renderer_RenderTexture::gbuffer_albedo));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,   GetRenderTarget(Renderer_RenderTexture::gbuffer_normal));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTexture::gbuffer_material));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));
-        cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,             GetRenderTarget(Renderer_RenderTexture::ssgi_filtered));
-        cmd_list->SetTexture(Renderer_BindingsSrv::ssr,              GetRenderTarget(Renderer_RenderTexture::ssr));
-        cmd_list->SetTexture(Renderer_BindingsSrv::lutIbl,           GetRenderTarget(Renderer_RenderTexture::brdf_specular_lut));
-        cmd_list->SetTexture(Renderer_BindingsSrv::environment,      GetEnvironmentTexture());
+        // set textures
+        BindTexturesGfbuffer(cmd_list);
+        cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,        GetRenderTarget(Renderer_RenderTexture::ssgi_filtered));
+        cmd_list->SetTexture(Renderer_BindingsSrv::ssr,         GetRenderTarget(Renderer_RenderTexture::ssr));
+        cmd_list->SetTexture(Renderer_BindingsSrv::lutIbl,      GetRenderTarget(Renderer_RenderTexture::brdf_specular_lut));
+        cmd_list->SetTexture(Renderer_BindingsSrv::environment, GetEnvironmentTexture());
 
-        // Set probe textures and data
+        // set probe textures and data
         if (!probes.empty())
         {
             shared_ptr<ReflectionProbe> probe = probes[0]->GetComponent<ReflectionProbe>();
@@ -978,13 +947,13 @@ namespace Spartan
             m_cb_pass_cpu.set_f3_value2(probe->GetExtents());
         }
 
-        // Set pass constants
+        // set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_out);
         m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
-        m_cb_pass_cpu.set_f4_value(!probes.empty() ? 1.0f : 0.0f, GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount(), 0.0f, 0.0f); // reflection probe available
+        m_cb_pass_cpu.set_f4_value(!probes.empty() ? 1.0f : 0.0f, static_cast<float>(GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount()), 0.0f, 0.0f); // reflection probe available
         PushPassConstants(cmd_list);
 
-        // Update light buffer with the directional light
+        // update light buffer with the directional light
         {
             const vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Light];
             for (shared_ptr<Entity> entity : entities)
@@ -997,7 +966,7 @@ namespace Spartan
             }
         }
 
-        // Render
+        // render
         cmd_list->BeginRenderPass();
         {
             cmd_list->Draw(3, 0);
@@ -1009,7 +978,7 @@ namespace Spartan
 
     void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float radius, const float sigma, const uint32_t mip /*= all_mips*/)
     {
-        // Acquire shaders
+        // acquire shaders
         RHI_Shader* shader_c = GetShader(depth_aware ? Renderer_Shader::blur_gaussian_bilaterial_c : Renderer_Shader::blur_gaussian_c).get();
         if (!shader_c->IsCompiled())
             return;
@@ -1018,85 +987,83 @@ namespace Spartan
         const bool mip_requested = mip != rhi_all_mips;
         const uint32_t mip_range = mip_requested ? 1 : 0;
 
-        // If we need to blur a specific mip, ensure that the texture has per mip views
+        // if we need to blur a specific mip, ensure that the texture has per mip views
         if (mip_requested)
         {
             SP_ASSERT(tex_in->HasPerMipViews());
         }
 
-        // Compute width and height
+        // compute width and height
         const uint32_t width  = mip_requested ? (tex_in->GetWidth()  >> mip) : tex_in->GetWidth();
         const uint32_t height = mip_requested ? (tex_in->GetHeight() >> mip) : tex_in->GetHeight();
 
-        // Acquire render targets
+        // acquire render targets
         RHI_Texture* tex_depth  = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
         RHI_Texture* tex_normal = GetRenderTarget(Renderer_RenderTexture::gbuffer_normal).get();
         RHI_Texture* tex_blur   = GetRenderTarget(Renderer_RenderTexture::blur).get();
 
-        // Ensure that the blur scratch texture is big enough
+        // ensure that the blur scratch texture is big enough
         SP_ASSERT(tex_blur->GetWidth() >= width && tex_blur->GetHeight() >= height);
 
-        // Compute thread group count
+        // compute thread group count
         const uint32_t thread_group_count_x_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(width) / thread_group_count));
         const uint32_t thread_group_count_y_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(height) / thread_group_count));
 
         cmd_list->BeginMarker("blur_gaussian");
 
-        // Horizontal pass
+        // horizontal pass
         {
-            // Define pipeline state
+            // define pipeline state
             static RHI_PipelineState pso;
             pso.shader_compute = shader_c;
 
-            // Set pipeline state
+            // set pipeline state
             cmd_list->SetPipelineState(pso);
 
-            // Set pass constants
+            // set pass constants
             m_cb_pass_cpu.set_resolution_in(Vector2(static_cast<float>(width), static_cast<float>(height)));
             m_cb_pass_cpu.set_resolution_out(tex_blur);
             m_cb_pass_cpu.set_f3_value(pixel_stride, 0.0f, radius);
             m_cb_pass_cpu.set_f3_value2(sigma);
             PushPassConstants(cmd_list);
 
-            // Set textures
+            // set textures
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_blur);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in, mip, mip_range);
             if (depth_aware)
             {
-                cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth, tex_depth);
-                cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal, tex_normal);
+                BindTexturesGfbuffer(cmd_list);
             }
 
-            // Render
+            // render
             cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
         }
 
-        // Vertical pass
+        // vertical pass
         {
-            // Define pipeline state
+            // define pipeline state
             static RHI_PipelineState pso;
             pso.shader_compute = shader_c;
 
-            // Set pipeline state
+            // set pipeline state
             cmd_list->SetPipelineState(pso);
 
-            // Set pass constants
+            // set pass constants
             m_cb_pass_cpu.set_resolution_in(Vector2(static_cast<float>(width), static_cast<float>(height)));
             m_cb_pass_cpu.set_resolution_out(tex_blur);
             m_cb_pass_cpu.set_f3_value(0.0f, pixel_stride, radius);
             m_cb_pass_cpu.set_f3_value2(sigma);
             PushPassConstants(cmd_list);
 
-            // Set textures
+            // set textures
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_in, mip, mip_range);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_blur);
             if (depth_aware)
             {
-                cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth, tex_depth);
-                cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal, tex_normal);
+                BindTexturesGfbuffer(cmd_list);
             }
 
-            // Render
+            // render
             cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
         }
 
@@ -1444,10 +1411,9 @@ namespace Spartan
         PushPassConstants(cmd_list);
 
         // set textures
+        BindTexturesGfbuffer(cmd_list);
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity, GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));
 
         // render
         cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
@@ -1470,7 +1436,6 @@ namespace Spartan
         // acquire render targets
         RHI_Texture* tex_bokeh_half   = GetRenderTarget(Renderer_RenderTexture::dof_half).get();
         RHI_Texture* tex_bokeh_half_2 = GetRenderTarget(Renderer_RenderTexture::dof_half_2).get();
-        RHI_Texture* tex_depth        = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
 
         // downsample and compute circle of confusion
         cmd_list->BeginMarker("circle_of_confusion");
@@ -1488,8 +1453,8 @@ namespace Spartan
             PushPassConstants(cmd_list);
 
             // set textures
+            BindTexturesGfbuffer(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_bokeh_half);
-            cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth, tex_depth);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
 
             // Render
@@ -1561,8 +1526,8 @@ namespace Spartan
             PushPassConstants(cmd_list);
 
             // set textures
+            BindTexturesGfbuffer(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
-            cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth, tex_depth);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_bokeh_half);
 
