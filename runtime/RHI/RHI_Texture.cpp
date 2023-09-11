@@ -275,7 +275,11 @@ namespace Spartan
 
     bool RHI_Texture::LoadFromFile(const string& file_path)
     {
-        SP_ASSERT_MSG(!file_path.empty(), "A file path is required");
+        if (!FileSystem::IsFile(file_path))
+        {
+            SP_LOG_ERROR("Invalid file path \"%s\".", file_path.c_str());
+            return false;
+         }
 
         m_data.clear();
         m_data.shrink_to_fit();

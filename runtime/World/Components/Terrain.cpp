@@ -68,58 +68,54 @@ namespace Spartan
     static void generate_vertices_and_indices(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const vector<Vector3>& positions, const uint32_t width, const uint32_t height)
     {
         SP_ASSERT_MSG(!positions.empty(), "Positions are empty");
-
-        uint32_t index   = 0;
-        uint32_t k       = 0;
-        uint32_t u_index = 0;
-        uint32_t v_index = 0;
-
+    
+        uint32_t index = 0;
+        uint32_t k = 0;
+    
         for (uint32_t y = 0; y < height - 1; y++)
         {
             for (uint32_t x = 0; x < width - 1; x++)
             {
+                float u = static_cast<float>(x) / static_cast<float>(width - 1);
+                float v = static_cast<float>(y) / static_cast<float>(height - 1);
+    
                 const uint32_t index_bottom_left  = y * width + x;
                 const uint32_t index_bottom_right = y * width + x + 1;
                 const uint32_t index_top_left     = (y + 1) * width + x;
                 const uint32_t index_top_right    = (y + 1) * width + x + 1;
-
+    
                 // Bottom right of quad
-                index           = index_bottom_right;
-                indices[k]      = index;
-                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 1.0f, v_index + 1.0f));
-
+                index = index_bottom_right;
+                indices[k] = index;
+                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v + 1.0f / (height - 1)));
+    
                 // Bottom left of quad
-                index           = index_bottom_left;
-                indices[k + 1]  = index;
-                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 0.0f, v_index + 1.0f));
-
+                index = index_bottom_left;
+                indices[k + 1] = index;
+                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v + 1.0f / (height - 1)));
+    
                 // Top left of quad
-                index           = index_top_left;
-                indices[k + 2]  = index;
-                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 0.0f, v_index + 0.0f));
-
+                index = index_top_left;
+                indices[k + 2] = index;
+                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v));
+    
                 // Bottom right of quad
-                index           = index_bottom_right;
-                indices[k + 3]  = index;
-                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 1.0f, v_index + 1.0f));
-
+                index = index_bottom_right;
+                indices[k + 3] = index;
+                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v + 1.0f / (height - 1)));
+    
                 // Top left of quad
-                index           = index_top_left;
-                indices[k + 4]  = index;
-                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 0.0f, v_index + 0.0f));
-
+                index = index_top_left;
+                indices[k + 4] = index;
+                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v));
+    
                 // Top right of quad
-                index           = index_top_right;
-                indices[k + 5]  = index;
-                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 1.0f, v_index + 0.0f));
-
+                index = index_top_right;
+                indices[k + 5] = index;
+                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v));
+    
                 k += 6; // next quad
-
-                u_index++;
             }
-
-            u_index = 0;
-            v_index++;
         }
     }
 
@@ -279,7 +275,7 @@ namespace Spartan
 
         if (!m_height_map)
         {
-            SP_LOG_WARNING("You need to assign a height map before trying to generate a terrain.");
+            SP_LOG_WARNING("You need to assign a height map before trying to generate a terrain");
 
             ResourceCache::Remove(m_mesh);
             m_mesh = nullptr;
@@ -379,20 +375,28 @@ namespace Spartan
                 mesh->GetVertexCount() // vertex count
             );
 
-            renderable->SetDefaultMaterial();
+            shared_ptr<Material> material = make_shared<Material>();
+            material->SetResourceFilePath(string("project\\terrain\\material_terrain") + string(EXTENSION_MATERIAL));
+            material->SetTexture(MaterialTexture::Color, "project\\terrain\\flat.jpg");
+            material->SetTexture(MaterialTexture::Color2, "project\\terrain\\slope.jpg");
+            material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
+            material->SetProperty(MaterialProperty::UvTilingX, 20.0f);
+            material->SetProperty(MaterialProperty::UvTilingY, 20.0f);
+
+            m_entity_ptr->GetComponent<Renderable>()->SetMaterial(material);
         }
     }
 
     void Terrain::UpdateFromVertices(const vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
     {
-        // Add vertices and indices into a mesh struct (and cache that)
+        // add vertices and indices into a mesh struct (and cache that)
         if (!m_mesh)
         {
-            // Create new model
+            // create new model
             m_mesh = make_shared<Mesh>();
             m_mesh->SetObjectName("Terrain");
 
-            // Set geometry
+            // set geometry
             m_mesh->AddIndices(indices);
             m_mesh->AddVertices(vertices);
             m_mesh->CreateGpuBuffers();
@@ -405,7 +409,7 @@ namespace Spartan
         }
         else
         {
-            // Update with new geometry
+            // update with new geometry
             m_mesh->Clear();
             m_mesh->AddIndices(indices);
             m_mesh->AddVertices(vertices);

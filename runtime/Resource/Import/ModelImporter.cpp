@@ -688,7 +688,7 @@ namespace Spartan
             // convert it and add it to the model
             shared_ptr<Material> material = load_material(mesh, model_file_path, model_is_gltf, assimp_material);
 
-            mesh->AddMaterial(material, entity_parent);
+            mesh->SetMaterial(material, entity_parent);
         }
 
         // Bones

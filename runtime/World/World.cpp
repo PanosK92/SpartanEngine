@@ -767,24 +767,24 @@ namespace Spartan
         Vector3 camera_rotation = Vector3(13.9972f, -27.1993f, 0.0f);
         create_default_world_common(false, camera_position, camera_rotation);
 
-        // Terrain
+        // terrain
         {
             shared_ptr<Entity> entity = CreateEntity();
             entity->SetObjectName("terrain");
 
-            entity->GetTransform()->SetPosition(Vector3(0.0f, -6.5f, 0.0f));
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
 
-            shared_ptr<RHI_Texture2D> height_map = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "height_map");
-            height_map->LoadFromFile("project\\height_maps\\a.png");
+            shared_ptr<RHI_Texture2D> texture_height = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "height");
+            texture_height->LoadFromFile("project\\terrain\\height.png");
 
             shared_ptr<Terrain> terrain = entity->AddComponent<Terrain>();
             terrain->SetMinY(0.0f);
             terrain->SetMaxY(25.0f);
-            terrain->SetHeightMap(height_map);
+            terrain->SetHeightMap(texture_height);
             terrain->GenerateAsync();
         }
 
-        // Start simulating (for the physics and the music to work)
+        // start simulating (for the physics and the music to work)
         Engine::AddFlag(EngineMode::Game);
     }
 

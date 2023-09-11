@@ -270,16 +270,16 @@ namespace Spartan
         m_vertex_buffer->Create(m_vertices);
     }
 
-    void Mesh::AddMaterial(shared_ptr<Material>& material, Entity* entity) const
+    void Mesh::SetMaterial(shared_ptr<Material>& material, Entity* entity) const
     {
         SP_ASSERT(material != nullptr);
         SP_ASSERT(entity != nullptr);
 
-        // Create a file path for this material (required for the material to be able to be cached by the resource cache)
+        // create a file path for this material (required for the material to be able to be cached by the resource cache)
         const string spartan_asset_path = FileSystem::GetDirectoryFromFilePath(GetResourceFilePathNative()) + material->GetObjectName() + EXTENSION_MATERIAL;
         material->SetResourceFilePath(spartan_asset_path);
 
-        // Create a Renderable and pass the material to it
+        // create a Renderable and pass the material to it
         entity->AddComponent<Renderable>()->SetMaterial(material);
     }
 

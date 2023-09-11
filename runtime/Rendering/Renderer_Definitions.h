@@ -102,52 +102,53 @@ namespace Spartan
     {
         // Material
         material_albedo    = 0,
-        material_roughness = 1,
-        material_metallic  = 2,
-        material_normal    = 3,
-        material_height    = 4,
-        material_occlusion = 5,
-        material_emission  = 6,
-        material_mask      = 7,
+        material_albedo2   = 1,
+        material_roughness = 2,
+        material_metallic  = 3,
+        material_normal    = 4,
+        material_height    = 5,
+        material_occlusion = 6,
+        material_emission  = 7,
+        material_mask      = 8,
     
         // G-buffer
-        gbuffer_albedo            = 8,
-        gbuffer_normal            = 9,
-        gbuffer_material          = 10,
-        gbuffer_material_2        = 11,
-        gbuffer_velocity          = 12,
-        gbuffer_velocity_previous = 13,
-        gbuffer_depth             = 14,
+        gbuffer_albedo            = 9,
+        gbuffer_normal            = 10,
+        gbuffer_material          = 11,
+        gbuffer_material_2        = 12,
+        gbuffer_velocity          = 13,
+        gbuffer_velocity_previous = 14,
+        gbuffer_depth             = 15,
     
         // Lighting
-        light_diffuse              = 15,
-        light_diffuse_transparent  = 16,
-        light_specular             = 17,
-        light_specular_transparent = 18,
-        light_volumetric           = 19,
+        light_diffuse              = 16,
+        light_diffuse_transparent  = 17,
+        light_specular             = 18,
+        light_specular_transparent = 19,
+        light_volumetric           = 20,
     
         // Light depth/color maps
-        light_directional_depth = 20,
-        light_directional_color = 21,
-        light_point_depth       = 22,
-        light_point_color       = 23,
-        light_spot_depth        = 24,
-        light_spot_color        = 25,
+        light_directional_depth = 21,
+        light_directional_color = 22,
+        light_point_depth       = 23,
+        light_point_color       = 24,
+        light_spot_depth        = 25,
+        light_spot_color        = 26,
     
         // Noise
-        noise_normal = 26,
-        noise_blue   = 27,
+        noise_normal = 27,
+        noise_blue   = 28,
     
         // Misc
-        lutIbl           = 28,
-        environment      = 29,
-        ssgi             = 30,
-        ssr              = 31,
-        frame            = 32,
-        tex              = 33,
-        tex2             = 34,
-        font_atlas       = 35,
-        reflection_probe = 36
+        lutIbl           = 29,
+        environment      = 30,
+        ssgi             = 31,
+        ssr              = 32,
+        frame            = 33,
+        tex              = 34,
+        tex2             = 35,
+        font_atlas       = 36,
+        reflection_probe = 37
     };
 
     enum class Renderer_BindingsUav

@@ -71,7 +71,7 @@ PixelOutputType mainPS(PixelInputType input)
     float2 uv = input.uv;
     uv = float2(uv.x * buffer_material.tiling.x + buffer_material.offset.x, uv.y * buffer_material.tiling.y + buffer_material.offset.y);
 
-    // Parallax mapping
+    // parallax mapping
     if (has_texture_height())
     {
         float scale = buffer_material.height * 0.01f;
@@ -83,32 +83,66 @@ PixelOutputType mainPS(PixelInputType input)
         uv                             += (camera_to_pixel_tangent.xy / camera_to_pixel_tangent.z) * height * scale;
     }
 
-    // Alpha mask
+    // alpha mask
     float alpha_mask = 1.0f;
     if (has_texture_alpha_mask())
     {
         alpha_mask = tex_material_mask.Sample(samplers[sampler_anisotropic_wrap], uv).r;
     }
 
-    // Albedo
+    // normal
+    float3 normal = input.normal_world.xyz;
+    if (has_texture_normal())
+    {
+        // Get tangent space normal and apply the user defined intensity. Then transform it to world space.
+        float3 tangent_normal      = normalize(unpack(tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], uv).rgb));
+        float normal_intensity     = clamp(buffer_material.normal, 0.012f, buffer_material.normal);
+        tangent_normal.xy         *= saturate(normal_intensity);
+        float3x3 tangent_to_world  = make_tangent_to_world_matrix(input.normal_world, input.tangent_world);
+        normal                     = normalize(mul(tangent_normal, tangent_to_world).xyz);
+    }
+    
+    // albedo
     float4 albedo = buffer_material.color;
     if (has_texture_albedo())
     {
-        float4 albedo_sample = tex_material_albedo.Sample(samplers[sampler_anisotropic_wrap], uv);
+        if (material_is_terrain()) // in case of a terrain we do a slope based texture blend
+        {
+            // calculate the slope factor based on the y component of the normal
+            float slope = saturate(dot(normal, float3(0.0f, 1.0f, 0.0f)));
 
-        // Read albedo's alpha channel as an alpha mask as well.
-        alpha_mask      = min(alpha_mask, albedo_sample.a);
-        albedo_sample.a = 1.0f;
+            // sample textures
+            float4 tex_flat  = tex_material_albedo.Sample(samplers[sampler_anisotropic_wrap], uv);
+            float4 tex_slope = tex_material_albedo_2.Sample(samplers[sampler_anisotropic_wrap], uv);
 
-        albedo_sample.rgb = degamma(albedo_sample.rgb);
-        albedo            *= albedo_sample;
+            // blend based on slope
+            if (slope < 0.5f)
+            {
+                albedo = tex_slope;
+            }
+            else
+            {
+                albedo = lerp(tex_slope, tex_flat, (slope - 0.5f) / (1.0f - 0.5f));
+            }
+        }
+        else
+        {
+            float4 albedo_sample = tex_material_albedo.Sample(samplers[sampler_anisotropic_wrap], uv);
+
+            // read albedo's alpha channel as an alpha mask as well.
+            alpha_mask      = min(alpha_mask, albedo_sample.a);
+            albedo_sample.a = 1.0f;
+
+            albedo_sample.rgb  = degamma(albedo_sample.rgb);
+            albedo            *= albedo_sample;
+        }
     }
 
-    // Discard masked pixels
+    // discard masked pixels
     if (alpha_mask <= ALPHA_THRESHOLD)
         discard;
 
-    // Roughness + Metalness
+    // roughness + metalness
     float roughness = buffer_material.roughness;
     float metalness = buffer_material.metallness;
     {
@@ -138,19 +172,7 @@ PixelOutputType mainPS(PixelInputType input)
         }
     }
     
-    // Normal
-    float3 normal = input.normal_world.xyz;
-    if (has_texture_normal())
-    {
-        // Get tangent space normal and apply the user defined intensity. Then transform it to world space.
-        float3 tangent_normal      = normalize(unpack(tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], uv).rgb));
-        float normal_intensity     = clamp(buffer_material.normal, 0.012f, buffer_material.normal);
-        tangent_normal.xy         *= saturate(normal_intensity);
-        float3x3 tangent_to_world  = make_tangent_to_world_matrix(input.normal_world, input.tangent_world);
-        normal                     = normalize(mul(tangent_normal, tangent_to_world).xyz);
-    }
-
-    // Occlusion
+    // occlusion
     float occlusion = 1.0f;
     if (has_texture_occlusion())
     {

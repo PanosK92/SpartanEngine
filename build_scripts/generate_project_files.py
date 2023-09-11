@@ -10,7 +10,7 @@ paths = {
         "models": Path("binaries/project/models"),
         "environment": Path("binaries/project/environment"),
         "music": Path("binaries/project/music"),
-        "height_maps": Path("binaries/project/height_maps"),
+        "terrain": Path("binaries/project/terrain"),
         "materials": Path("binaries/project/materials"),
     },
     "third_party_libs": {
@@ -22,7 +22,7 @@ paths = {
         "models": Path("assets/models"),
         "environment": Path("assets/environment"),
         "music": Path("assets/music"),
-        "height_maps": Path("assets/height_maps"),
+        "terrain": Path("assets/terrain"),
         "materials": Path("assets/materials"),
     },
 }

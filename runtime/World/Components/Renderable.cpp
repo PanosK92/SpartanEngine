@@ -112,6 +112,9 @@ namespace Spartan
         m_geometry_vertex_offset = vertex_offset;
         m_geometry_vertex_count  = vertex_count;
 
+        if (!m_mesh)
+            return;
+
         if (m_geometry_index_count == 0)
         {
             m_geometry_index_count = m_mesh->GetIndexCount();
