@@ -345,11 +345,11 @@ namespace Spartan
 
             shared_ptr<Material> material = make_shared<Material>();
             material->SetResourceFilePath(string("project\\terrain\\material_terrain") + string(EXTENSION_MATERIAL));
-            material->SetTexture(MaterialTexture::Color, "project\\terrain\\flat.jpg");
-            material->SetTexture(MaterialTexture::Color2, "project\\terrain\\slope.jpg");
+            material->SetTexture(MaterialTexture::Color, "project\\terrain\\grass.jpg");
+            material->SetTexture(MaterialTexture::Color2, "project\\terrain\\rock.jpg");
             material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
-            material->SetProperty(MaterialProperty::UvTilingX, 20.0f);
-            material->SetProperty(MaterialProperty::UvTilingY, 20.0f);
+            material->SetProperty(MaterialProperty::UvTilingX, 100.0f);
+            material->SetProperty(MaterialProperty::UvTilingY, 100.0f);
 
             m_entity_ptr->GetComponent<Renderable>()->SetMaterial(material);
         }
