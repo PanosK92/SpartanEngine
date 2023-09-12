@@ -928,7 +928,7 @@ void Properties::ShowTerrain(shared_ptr<Terrain> terrain) const
                 terrain->SetHeightMap(static_pointer_cast<RHI_Texture2D>(texture));
             });
 
-            if (ImGuiSp::button("Generate", ImVec2(82, 0)))
+            if (ImGuiSp::button("Generate", ImVec2(82.0f * Spartan::Window::GetDpiScale(), 0)))
             {
                 terrain->GenerateAsync();
             }
