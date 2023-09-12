@@ -7,7 +7,7 @@ RUN apt update -y &&\
     mkdir /deps
 
 # Download and install premake5
-RUN cd/deps &&\
+RUN cd /deps &&\
     mkdir premake5; cd premake5 &&\
     wget https://github.com/premake/premake-core/releases/download/v5.0.0-beta2/premake-5.0.0-beta2-linux.tar.gz &&\
     tar xvf premake-5.0.0-beta2-linux.tar.gz &&\
