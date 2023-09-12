@@ -763,8 +763,8 @@ namespace Spartan
 
     void World::CreateDefaultWorldTerrain()
     {
-        Vector3 camera_position = Vector3(-0.7081f, 6.1650f, 97.5307f);
-        Vector3 camera_rotation = Vector3(-7.6010f, -132.1778f, 0.0f);
+        Vector3 camera_position = Vector3(314.5927f, 71.7475f, 916.1439f);
+        Vector3 camera_rotation = Vector3(3.3966f, -128.5409f, 0.0f);
         create_default_world_common(false, camera_position, camera_rotation);
 
         // terrain
@@ -779,7 +779,7 @@ namespace Spartan
 
             shared_ptr<Terrain> terrain = entity->AddComponent<Terrain>();
             terrain->SetMinY(0.0f);
-            terrain->SetMaxY(25.0f);
+            terrain->SetMaxY(100.0f);
             terrain->SetHeightMap(texture_height);
             terrain->GenerateAsync();
         }
