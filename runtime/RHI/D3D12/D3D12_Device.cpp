@@ -50,7 +50,7 @@ namespace Spartan
 
     void RHI_Device::Initialize()
     {
-        SP_ERROR_WINDOW("The D3D12 backend is not implemented, use it only if your goal is to work on it.");
+        SP_ERROR_WINDOW("The D3D12 backend is not finished, use it only if your goal is to work on it.");
 
         // Detect device limits
         m_max_texture_1d_dimension   = D3D12_REQ_TEXTURE1D_U_DIMENSION;

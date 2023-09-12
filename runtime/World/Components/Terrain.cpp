@@ -25,12 +25,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderable.h"
 #include "../Entity.h"
 #include "../../RHI/RHI_Texture2D.h"
-#include "../../RHI/RHI_Vertex.h"
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../Rendering/Mesh.h"
 #include "../../Core/ThreadPool.h"
-#include "ProgressTracker.h"
 //=======================================
 
 //= NAMESPACES ===============
