@@ -38,47 +38,27 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    namespace
-    {
-        uint32_t tessellation_factor = 1;
-    }
-
-    static void generate_positions(vector<Vector3>& positions, const vector<byte>& height_map, uint32_t width, uint32_t height, float min_x, float max_y)
+    static void generate_positions(vector<Vector3>& positions, const vector<std::byte>& height_map, const uint32_t width, const uint32_t height, float min_x, float max_y)
     {
         SP_ASSERT_MSG(!height_map.empty(), "Height map is empty");
 
-        uint32_t new_width = (width - 1) * tessellation_factor + 1;
-        uint32_t new_height = (height - 1) * tessellation_factor + 1;
+        uint32_t index = 0;
+        uint32_t k = 0;
 
-        positions.resize(new_width * new_height);
-
-        for (uint32_t y = 0; y < new_height; ++y)
+        for (uint32_t y = 0; y < height; y++)
         {
-            for (uint32_t x = 0; x < new_width; ++x)
+            for (uint32_t x = 0; x < width; x++)
             {
-                uint32_t orig_x = x / tessellation_factor;
-                uint32_t orig_y = y / tessellation_factor;
+                // Read height and scale it to a [0, 1] range
+                const float height = (static_cast<float>(height_map[k]) / 255.0f);
 
-                uint32_t next_x = std::min(orig_x + 1, width - 1);
-                uint32_t next_y = std::min(orig_y + 1, height - 1);
+                // Construct position
+                const uint32_t index = y * width + x;
+                positions[index].x = static_cast<float>(x) - width * 0.5f;  // center on the X axis
+                positions[index].z = static_cast<float>(y) - height * 0.5f; // center on the Z axis
+                positions[index].y = Helper::Lerp(min_x, max_y, height);
 
-                float lerp_x = (x % tessellation_factor) / static_cast<float>(tessellation_factor);
-                float lerp_y = (y % tessellation_factor) / static_cast<float>(tessellation_factor);
-
-                float height1 = static_cast<float>(height_map[(orig_y * width + orig_x) * 4]) / 255.0f;
-                float height2 = static_cast<float>(height_map[(orig_y * width + next_x) * 4]) / 255.0f;
-                float height3 = static_cast<float>(height_map[(next_y * width + orig_x) * 4]) / 255.0f;
-                float height4 = static_cast<float>(height_map[(next_y * width + next_x) * 4]) / 255.0f;
-
-                float height_x1 = Helper::Lerp(height1, height2, lerp_x);
-                float height_x2 = Helper::Lerp(height3, height4, lerp_x);
-
-                float final_height = Helper::Lerp(height_x1, height_x2, lerp_y);
-
-                uint32_t index     = y * new_width + x;
-                positions[index].x = x - new_width * 0.5f;
-                positions[index].z = y - new_height * 0.5f;
-                positions[index].y = Helper::Lerp(min_x, max_y, final_height);
+                k += 4;
             }
         }
     }
@@ -86,52 +66,52 @@ namespace Spartan
     static void generate_vertices_and_indices(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const vector<Vector3>& positions, const uint32_t width, const uint32_t height)
     {
         SP_ASSERT_MSG(!positions.empty(), "Positions are empty");
-    
+
         uint32_t index = 0;
         uint32_t k = 0;
-    
+
         for (uint32_t y = 0; y < height - 1; y++)
         {
             for (uint32_t x = 0; x < width - 1; x++)
             {
                 float u = static_cast<float>(x) / static_cast<float>(width - 1);
                 float v = static_cast<float>(y) / static_cast<float>(height - 1);
-    
-                const uint32_t index_bottom_left  = y * width + x;
+
+                const uint32_t index_bottom_left = y * width + x;
                 const uint32_t index_bottom_right = y * width + x + 1;
-                const uint32_t index_top_left     = (y + 1) * width + x;
-                const uint32_t index_top_right    = (y + 1) * width + x + 1;
-    
+                const uint32_t index_top_left = (y + 1) * width + x;
+                const uint32_t index_top_right = (y + 1) * width + x + 1;
+
                 // Bottom right of quad
-                index           = index_bottom_right;
-                indices[k]      = index;
+                index = index_bottom_right;
+                indices[k] = index;
                 vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v + 1.0f / (height - 1)));
-    
+
                 // Bottom left of quad
-                index           = index_bottom_left;
-                indices[k + 1]  = index;
+                index = index_bottom_left;
+                indices[k + 1] = index;
                 vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v + 1.0f / (height - 1)));
-    
+
                 // Top left of quad
-                index           = index_top_left;
-                indices[k + 2]  = index;
+                index = index_top_left;
+                indices[k + 2] = index;
                 vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v));
-    
+
                 // Bottom right of quad
-                index           = index_bottom_right;
-                indices[k + 3]  = index;
+                index = index_bottom_right;
+                indices[k + 3] = index;
                 vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v + 1.0f / (height - 1)));
-    
+
                 // Top left of quad
-                index           = index_top_left;
-                indices[k + 4]  = index;
+                index = index_top_left;
+                indices[k + 4] = index;
                 vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v));
-    
+
                 // Top right of quad
-                index           = index_top_right;
-                indices[k + 5]  = index;
+                index = index_top_right;
+                indices[k + 5] = index;
                 vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v));
-    
+
                 k += 6; // next quad
             }
         }
@@ -241,7 +221,7 @@ namespace Spartan
     void Terrain::Deserialize(FileStream* stream)
     {
         m_height_map = ResourceCache::GetByPath<RHI_Texture2D>(stream->ReadAs<string>());
-        m_mesh       = ResourceCache::GetByName<Mesh>(stream->ReadAs<string>());
+        m_mesh = ResourceCache::GetByName<Mesh>(stream->ReadAs<string>());
         stream->Read(&m_min_y);
         stream->Read(&m_max_y);
 
@@ -271,7 +251,7 @@ namespace Spartan
             {
                 renderable->SetGeometry(nullptr);
             }
-            
+
             return;
         }
 
@@ -301,7 +281,7 @@ namespace Spartan
                 }
             }
 
-            // Deduce some stuff
+            // deduce some stuff
             uint32_t width   = m_height_map->GetWidth();
             uint32_t height  = m_height_map->GetHeight();
             m_height_samples = width * height;
