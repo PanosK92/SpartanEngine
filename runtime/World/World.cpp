@@ -763,8 +763,8 @@ namespace Spartan
 
     void World::CreateDefaultWorldTerrain()
     {
-        Vector3 camera_position = Vector3(-4.3516f, 3.8306f, 95.2394f);
-        Vector3 camera_rotation = Vector3(-7.2006f, -132.3860f, 0.0f);
+        Vector3 camera_position = Vector3(-6.4083f, 4.7103f, -31.3227f);
+        Vector3 camera_rotation = Vector3(-2.0008f, -136.7802f, 0.0f);
         create_default_world_common(false, camera_position, camera_rotation);
 
         // terrain

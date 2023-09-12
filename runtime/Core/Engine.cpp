@@ -44,7 +44,7 @@ namespace Spartan
 {
     namespace
     {
-        uint32_t m_flags = 0;
+        uint32_t flags = 0;
     }
 
     void Engine::Initialize()
@@ -113,17 +113,17 @@ namespace Spartan
 
     void Engine::AddFlag(const EngineMode flag)
     {
-        m_flags |= static_cast<uint32_t>(flag);
+        flags |= static_cast<uint32_t>(flag);
     }
 
     void Engine::RemoveFlag(const EngineMode flag)
     {
-        m_flags &= ~static_cast<uint32_t>(flag);
+        flags &= ~static_cast<uint32_t>(flag);
     }
 
     bool Engine::IsFlagSet(const EngineMode flag)
     {
-        return m_flags & static_cast<uint32_t>(flag);
+        return flags & static_cast<uint32_t>(flag);
     }
 
     void Engine::ToggleFlag(const EngineMode flag)

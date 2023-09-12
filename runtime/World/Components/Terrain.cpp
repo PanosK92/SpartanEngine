@@ -38,27 +38,47 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static void generate_positions(vector<Vector3>& positions, const vector<std::byte>& height_map, const uint32_t width, const uint32_t height, float min_x, float max_y)
+    namespace
+    {
+        uint32_t tessellation_factor = 1;
+    }
+
+    static void generate_positions(vector<Vector3>& positions, const vector<byte>& height_map, uint32_t width, uint32_t height, float min_x, float max_y)
     {
         SP_ASSERT_MSG(!height_map.empty(), "Height map is empty");
 
-        uint32_t index = 0;
-        uint32_t k     = 0;
+        uint32_t new_width = (width - 1) * tessellation_factor + 1;
+        uint32_t new_height = (height - 1) * tessellation_factor + 1;
 
-        for (uint32_t y = 0; y < height; y++)
+        positions.resize(new_width * new_height);
+
+        for (uint32_t y = 0; y < new_height; ++y)
         {
-            for (uint32_t x = 0; x < width; x++)
+            for (uint32_t x = 0; x < new_width; ++x)
             {
-                // Read height and scale it to a [0, 1] range
-                const float height = (static_cast<float>(height_map[k]) / 255.0f);
+                uint32_t orig_x = x / tessellation_factor;
+                uint32_t orig_y = y / tessellation_factor;
 
-                // Construct position
-                const uint32_t index = y * width + x;
-                positions[index].x = static_cast<float>(x) - width * 0.5f;  // center on the X axis
-                positions[index].z = static_cast<float>(y) - height * 0.5f; // center on the Z axis
-                positions[index].y = Helper::Lerp(min_x, max_y, height);
+                uint32_t next_x = std::min(orig_x + 1, width - 1);
+                uint32_t next_y = std::min(orig_y + 1, height - 1);
 
-                k += 4;
+                float lerp_x = (x % tessellation_factor) / static_cast<float>(tessellation_factor);
+                float lerp_y = (y % tessellation_factor) / static_cast<float>(tessellation_factor);
+
+                float height1 = static_cast<float>(height_map[(orig_y * width + orig_x) * 4]) / 255.0f;
+                float height2 = static_cast<float>(height_map[(orig_y * width + next_x) * 4]) / 255.0f;
+                float height3 = static_cast<float>(height_map[(next_y * width + orig_x) * 4]) / 255.0f;
+                float height4 = static_cast<float>(height_map[(next_y * width + next_x) * 4]) / 255.0f;
+
+                float height_x1 = Helper::Lerp(height1, height2, lerp_x);
+                float height_x2 = Helper::Lerp(height3, height4, lerp_x);
+
+                float final_height = Helper::Lerp(height_x1, height_x2, lerp_y);
+
+                uint32_t index     = y * new_width + x;
+                positions[index].x = x - new_width * 0.5f;
+                positions[index].z = y - new_height * 0.5f;
+                positions[index].y = Helper::Lerp(min_x, max_y, final_height);
             }
         }
     }
@@ -119,103 +139,73 @@ namespace Spartan
 
     static void generate_normals_and_tangents(const vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
     {
-        SP_ASSERT_MSG(!indices.empty(),  "Indices are empty");
+        SP_ASSERT_MSG(!indices.empty(), "Indices are empty");
         SP_ASSERT_MSG(!vertices.empty(), "Vertices are empty");
 
-        // Pre-allocate everything needed by the loop
         uint32_t triangle_count = static_cast<uint32_t>(indices.size()) / 3;
         vector<Vector3> face_normals(triangle_count);
-        face_normals.reserve(triangle_count);
         vector<Vector3> face_tangents(triangle_count);
-        face_tangents.reserve(triangle_count);
-        Vector3 edge_a;
-        Vector3 edge_b;
+        Vector3 edge_a, edge_b;
 
-        // Compute the normal and tangent for each face
+        unordered_map<uint32_t, vector<uint32_t>> vertex_to_triangle_map;
+
         for (uint32_t i = 0; i < triangle_count; ++i)
         {
-            // Normal
-            {
-                // Get the vector describing one edge of our triangle (edge 0, 1)
-                edge_a.x = vertices[indices[(i * 3)]].pos[0] - vertices[indices[(i * 3) + 1]].pos[0];
-                edge_a.y = vertices[indices[(i * 3)]].pos[1] - vertices[indices[(i * 3) + 1]].pos[1];
-                edge_a.z = vertices[indices[(i * 3)]].pos[2] - vertices[indices[(i * 3) + 1]].pos[2];
+            uint32_t index_a = indices[i * 3];
+            uint32_t index_b = indices[i * 3 + 1];
+            uint32_t index_c = indices[i * 3 + 2];
 
-                // Get the vector describing another edge of our triangle (edge 2,1)
-                edge_b.x = vertices[indices[(i * 3) + 1]].pos[0] - vertices[indices[(i * 3) + 2]].pos[0];
-                edge_b.y = vertices[indices[(i * 3) + 1]].pos[1] - vertices[indices[(i * 3) + 2]].pos[1];
-                edge_b.z = vertices[indices[(i * 3) + 1]].pos[2] - vertices[indices[(i * 3) + 2]].pos[2];
+            vertex_to_triangle_map[index_a].push_back(i);
+            vertex_to_triangle_map[index_b].push_back(i);
+            vertex_to_triangle_map[index_c].push_back(i);
 
-                // Cross multiply the two edge vectors to get the unnormalized face normal
-                face_normals[i] = Vector3::Cross(edge_a, edge_b);
-            }
+            edge_a.x = vertices[index_a].pos[0] - vertices[index_b].pos[0];
+            edge_a.y = vertices[index_a].pos[1] - vertices[index_b].pos[1];
+            edge_a.z = vertices[index_a].pos[2] - vertices[index_b].pos[2];
 
-            // Tangent
-            {
-                // find first texture coordinate edge 2d vector
-                const float tc_u1 = vertices[indices[(i * 3)]].tex[0] - vertices[indices[(i * 3) + 1]].tex[0];
-                const float tc_v1 = vertices[indices[(i * 3)]].tex[1] - vertices[indices[(i * 3) + 1]].tex[1];
+            edge_b.x = vertices[index_b].pos[0] - vertices[index_c].pos[0];
+            edge_b.y = vertices[index_b].pos[1] - vertices[index_c].pos[1];
+            edge_b.z = vertices[index_b].pos[2] - vertices[index_c].pos[2];
 
-                // find second texture coordinate edge 2d vector
-                const float tc_u2 = vertices[indices[(i * 3) + 1]].tex[0] - vertices[indices[(i * 3) + 2]].tex[0];
-                const float tc_v2 = vertices[indices[(i * 3) + 1]].tex[1] - vertices[indices[(i * 3) + 2]].tex[1];
+            face_normals[i] = Vector3::Cross(edge_a, edge_b);
 
-                // find tangent using both tex coord edges and position edges
-                face_tangents[i].x = (tc_v1 * edge_a.x - tc_v2 * edge_b.x * (1.0f / (tc_u1 * tc_v2 - tc_u2 * tc_v1)));
-                face_tangents[i].y = (tc_v1 * edge_a.y - tc_v2 * edge_b.y * (1.0f / (tc_u1 * tc_v2 - tc_u2 * tc_v1)));
-                face_tangents[i].z = (tc_v1 * edge_a.z - tc_v2 * edge_b.z * (1.0f / (tc_u1 * tc_v2 - tc_u2 * tc_v1)));
-            }
+            const float tc_u1 = vertices[index_a].tex[0] - vertices[index_b].tex[0];
+            const float tc_v1 = vertices[index_a].tex[1] - vertices[index_b].tex[1];
+            const float tc_u2 = vertices[index_b].tex[0] - vertices[index_c].tex[0];
+            const float tc_v2 = vertices[index_b].tex[1] - vertices[index_c].tex[1];
+
+            float coef = 1.0f / (tc_u1 * tc_v2 - tc_u2 * tc_v1);
+
+            face_tangents[i].x = (tc_v1 * edge_a.x - tc_v2 * edge_b.x) * coef;
+            face_tangents[i].y = (tc_v1 * edge_a.y - tc_v2 * edge_b.y) * coef;
+            face_tangents[i].z = (tc_v1 * edge_a.z - tc_v2 * edge_b.z) * coef;
         }
 
-        // Compute vertex normals and tangents (normals averaging) - This is very expensive show we split it into multiple threads below
-        const auto compute_vertex_normals_tangents = [&vertices, &indices, &face_normals , &face_tangents, triangle_count](uint32_t start_index, uint32_t range)
+        const auto compute_vertex_normals_tangents = [&vertices, &vertex_to_triangle_map, &face_normals, &face_tangents](uint32_t start_index, uint32_t range)
         {
-            uint32_t product = 0;
-            uint32_t index_0 = 0;
-            uint32_t index_1 = 0;
-            uint32_t index_2 = 0;
-
             for (uint32_t i = start_index; i < range; i++)
             {
-                Vector3 normal_average  = Vector3::Zero;
+                Vector3 normal_average = Vector3::Zero;
                 Vector3 tangent_average = Vector3::Zero;
-                float face_usage_count  = 0;
+                float face_usage_count = 0;
 
-                // Check which triangles use this vertex
-                for (uint32_t j = 0; j < triangle_count; ++j)
+                for (uint32_t j : vertex_to_triangle_map[i])
                 {
-                    //= MOST EXPENSIVE PART ============
-                    // The cost comes mainly from misses
-                    product = (j << 1) + j; // j * 3;
-                    index_0 = indices[product];
-                    index_1 = indices[product + 1];
-                    index_2 = indices[product + 2];
-                    //==================================
-
-                    if (index_0 == i || index_1 == i || index_2 == i)
-                    {
-                        // If a face is using the vertex, accumulate the face normal/tangent
-                        normal_average  += face_normals[j];
-                        tangent_average += face_tangents[j];
-
-                        face_usage_count++;
-                    }
+                    normal_average += face_normals[j];
+                    tangent_average += face_tangents[j];
+                    face_usage_count++;
                 }
 
-                // Compute actual normal
                 normal_average /= face_usage_count;
-                normal_average.Normalize();
-
-                // Compute actual tangent
                 tangent_average /= face_usage_count;
+
+                normal_average.Normalize();
                 tangent_average.Normalize();
 
-                // Write normal to vertex
                 vertices[i].nor[0] = normal_average.x;
                 vertices[i].nor[1] = normal_average.y;
                 vertices[i].nor[2] = normal_average.z;
 
-                // Write tangent to vertex
                 vertices[i].tan[0] = tangent_average.x;
                 vertices[i].tan[1] = tangent_average.y;
                 vertices[i].tan[2] = tangent_average.z;
