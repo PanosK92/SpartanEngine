@@ -83,33 +83,33 @@ namespace Spartan
                 const uint32_t index_top_right    = (y + 1) * width + x + 1;
     
                 // Bottom right of quad
-                index = index_bottom_right;
-                indices[k] = index;
+                index           = index_bottom_right;
+                indices[k]      = index;
                 vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v + 1.0f / (height - 1)));
     
                 // Bottom left of quad
-                index = index_bottom_left;
-                indices[k + 1] = index;
+                index           = index_bottom_left;
+                indices[k + 1]  = index;
                 vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v + 1.0f / (height - 1)));
     
                 // Top left of quad
-                index = index_top_left;
-                indices[k + 2] = index;
+                index           = index_top_left;
+                indices[k + 2]  = index;
                 vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v));
     
                 // Bottom right of quad
-                index = index_bottom_right;
-                indices[k + 3] = index;
+                index           = index_bottom_right;
+                indices[k + 3]  = index;
                 vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v + 1.0f / (height - 1)));
     
                 // Top left of quad
-                index = index_top_left;
-                indices[k + 4] = index;
+                index           = index_top_left;
+                indices[k + 4]  = index;
                 vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v));
     
                 // Top right of quad
-                index = index_top_right;
-                indices[k + 5] = index;
+                index           = index_top_right;
+                indices[k + 5]  = index;
                 vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v));
     
                 k += 6; // next quad
