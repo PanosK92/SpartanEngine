@@ -23,9 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-//==========================================================================================
-// REINHARD
-//==========================================================================================
+float3 reinhard(float3 hdr, float k = 1.0f)
+{
+    return hdr / (hdr + k);
+}
+
 float3 uncharted_2(float3 x)
 {
     float A = 0.15;
@@ -38,10 +40,13 @@ float3 uncharted_2(float3 x)
     return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
 }
 
-//==========================================================================================
-// REINHARD
-//==========================================================================================
-float3 reinhard(float3 hdr, float k = 1.0f) { return hdr / (hdr + k); }
+float3 matrix_movie(float3 keannu)
+{
+    static const float pow_a = 3.0f / 2.0f;
+    static const float pow_b = 4.0f / 5.0f;
+
+    return float3(pow(abs(keannu.r), pow_a), pow(abs(keannu.g), pow_b), pow(abs(keannu.b), pow_a));
+}
 
 //==========================================================================================
 // ACES
@@ -88,18 +93,6 @@ float3 aces(float3 color)
     color = saturate(color);
 
     return color;
-}
-
-//==========================================================================================
-// MATRIX
-//==========================================================================================
-
-float3 matrix_movie(float3 keannu)
-{
-    static const float pow_a = 3.0f / 2.0f;
-    static const float pow_b = 4.0f / 5.0f;
-
-    return float3(pow(abs(keannu.r), pow_a), pow(abs(keannu.g), pow_b), pow(abs(keannu.b), pow_a));
 }
 
 //==========================================================================================
@@ -170,7 +163,6 @@ float3 amd(float3 color)
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    // Out of bounds check
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
@@ -182,40 +174,43 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float tone_mapping       = f3_value.y;
     float exposure           = f3_value.z;
     
-    // 1. Normalize luminance based on monitor capabilities
+    // 1. normalize luminance based on monitor capabilities
     {
-
-        
-        // Normalize the color's luminance
+        // normalize the color's luminance
         float luminance_original   = luminance(color.rgb) * 100; // compute luminance in cd/m^2 and convert it to nits
         float luminance_normalized = luminance_original / luminance_max_nits;
     
-        // Apply the display's luminance range
+        // apply the display's luminance range
         float luminance_display = luminance_normalized * luminance_max_nits;
     
-        // Replace original luminance with the new display luminance
+        // replace original luminance with the new display luminance
         color.rgb *= luminance_display / max(luminance_original, FLT_MIN);
     }
 
-    // 2. Expose
+    // 2. expose
     color.rgb *= exposure;
 
-    // 3. Tone-map
+    // 3. tone-map
     switch (tone_mapping)
     {
         case 0:
             color.rgb = amd(color.rgb);
+            break;
         case 1:
             color.rgb = aces(color.rgb);
+            break;
         case 2:
             color.rgb = reinhard(color.rgb);
+            break;
         case 3:
             color.rgb = uncharted_2(color.rgb);
+            break;
         case 4:
             color.rgb = matrix_movie(color.rgb);
+            break;
     }
 
-    // 4. Gamma-correct
+    // 4. gamma-correct
     color.rgb = gamma(color.rgb);
 
     tex_uav[thread_id.xy] = color;
