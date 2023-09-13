@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================================
+//= INCLUDES ================================
 #include "pch.h"
 #include "Window.h"
 #include "ThreadPool.h"
@@ -33,8 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Import/FontImporter.h"
 #include "../Resource/Import/ModelImporter.h"
 #include "../Resource/Import/ImageImporter.h"
-#include "../Profiling/AMD_DeviceLibraryExtra.h"
-//==============================================
+//===========================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -45,7 +44,7 @@ namespace Spartan
 {
     namespace
     {
-        uint32_t m_flags = 0;
+        uint32_t flags = 0;
     }
 
     void Engine::Initialize()
@@ -69,7 +68,6 @@ namespace Spartan
             Renderer::Initialize();
             World::Initialize();
             Settings::Initialize();
-            AMD_DeviceLibraryExtra::Initialize();
         }
 
         SP_LOG_INFO("Initialization took %.1f ms", timer_initialize.GetElapsedTimeMs());
@@ -91,7 +89,6 @@ namespace Spartan
         ImageImporter::Shutdown();
         FontImporter::Shutdown();
         Settings::Shutdown();
-        AMD_DeviceLibraryExtra::Shutdown();
     }
 
     void Engine::Tick()
@@ -116,17 +113,17 @@ namespace Spartan
 
     void Engine::AddFlag(const EngineMode flag)
     {
-        m_flags |= static_cast<uint32_t>(flag);
+        flags |= static_cast<uint32_t>(flag);
     }
 
     void Engine::RemoveFlag(const EngineMode flag)
     {
-        m_flags &= ~static_cast<uint32_t>(flag);
+        flags &= ~static_cast<uint32_t>(flag);
     }
 
     bool Engine::IsFlagSet(const EngineMode flag)
     {
-        return m_flags & static_cast<uint32_t>(flag);
+        return flags & static_cast<uint32_t>(flag);
     }
 
     void Engine::ToggleFlag(const EngineMode flag)

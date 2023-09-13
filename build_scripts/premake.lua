@@ -192,7 +192,6 @@ function runtime_project_configuration()
         includedirs { "../third_party/compressonator" }
         includedirs { "../third_party/renderdoc" }
         includedirs { "../third_party/pugixml" }
-		includedirs { "../third_party/amd_device_library_extra" }
         includedirs(API_INCLUDES[ARG_API_GRAPHICS] or {})
 		includedirs { "../runtime/Core" } -- This is here because clang needs the full pre-compiled header path
 
