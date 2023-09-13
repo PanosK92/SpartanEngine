@@ -221,7 +221,7 @@ namespace Spartan
     void Terrain::Deserialize(FileStream* stream)
     {
         m_height_map = ResourceCache::GetByPath<RHI_Texture2D>(stream->ReadAs<string>());
-        m_mesh = ResourceCache::GetByName<Mesh>(stream->ReadAs<string>());
+        m_mesh       = ResourceCache::GetByName<Mesh>(stream->ReadAs<string>());
         stream->Read(&m_min_y);
         stream->Read(&m_max_y);
 
@@ -230,7 +230,7 @@ namespace Spartan
 
     void Terrain::SetHeightMap(const shared_ptr<RHI_Texture>& height_map)
     {
-        m_height_map = ResourceCache::Cache<RHI_Texture>(height_map);
+        m_height_map = height_map;
     }
 
     void Terrain::GenerateAsync()
