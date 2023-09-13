@@ -197,9 +197,7 @@ namespace Spartan
 
     void Material::SetTexture(const MaterialTexture texture_type, const string& file_path)
     {
-        shared_ptr<RHI_Texture2D> texture = make_shared<RHI_Texture2D>(RHI_Texture_Srv, FileSystem::GetFileNameFromFilePath(file_path).c_str());
-        texture->LoadFromFile(file_path);
-        SetTexture(texture_type, texture);
+        SetTexture(texture_type, ResourceCache::Load<RHI_Texture2D>(file_path, RHI_Texture_Srv));
     }
  
     bool Material::HasTexture(const string& path) const

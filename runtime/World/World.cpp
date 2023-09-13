@@ -772,19 +772,14 @@ namespace Spartan
             shared_ptr<Entity> entity = CreateEntity();
             entity->SetObjectName("terrain");
 
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
-
-            shared_ptr<RHI_Texture2D> texture_height = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "height");
-            texture_height->LoadFromFile("project\\terrain\\height.png");
-
             shared_ptr<Terrain> terrain = entity->AddComponent<Terrain>();
             terrain->SetMinY(0.0f);
             terrain->SetMaxY(100.0f);
-            terrain->SetHeightMap(texture_height);
+            terrain->SetHeightMap(ResourceCache::Load<RHI_Texture2D>("project\\terrain\\height.png", RHI_Texture_Srv));
             terrain->GenerateAsync();
         }
 
-        // start simulating (for the physics and the music to work)
+        // start simulating (for the music to play)
         Engine::AddFlag(EngineMode::Game);
     }
 
