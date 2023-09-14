@@ -27,9 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector3.h"
 //=============================
 
-class btRigidBody;
-class btCollisionShape;
-
 namespace Spartan
 {
     class Entity;
@@ -37,13 +34,13 @@ namespace Spartan
     class Physics;
     namespace Math { class Quaternion; }
 
-    enum ForceMode
+    enum class PhysicsForce
     {
-        Force,
+        Constant,
         Impulse
     };
 
-    enum class ShapeType
+    enum class PhysicsShape
     {
         Box,
         Sphere,
@@ -98,9 +95,9 @@ namespace Spartan
         // Forces
         void SetLinearVelocity(const Math::Vector3& velocity, const bool activate = true) const;
         void SetAngularVelocity(const Math::Vector3& velocity, const bool activate = true) const;
-        void ApplyForce(const Math::Vector3& force, ForceMode mode) const;
-        void ApplyForceAtPosition(const Math::Vector3& force, const Math::Vector3& position, ForceMode mode) const;
-        void ApplyTorque(const Math::Vector3& torque, ForceMode mode) const;
+        void ApplyForce(const Math::Vector3& force, PhysicsForce mode) const;
+        void ApplyForceAtPosition(const Math::Vector3& force, const Math::Vector3& position, PhysicsForce mode) const;
+        void ApplyTorque(const Math::Vector3& torque, PhysicsForce mode) const;
 
         // Position lock
         void SetPositionLock(bool lock);
@@ -113,7 +110,7 @@ namespace Spartan
         Math::Vector3 GetRotationLock() const { return m_rotation_lock; }
 
         // Center of mass
-        void SetCenterOfMass(const Math::Vector3& centerOfMass);
+        void SetCenterOfMass(const Math::Vector3& center_of_mass);
         const Math::Vector3& GetCenterOfMass() const { return m_center_of_mass; }
 
         // Position
@@ -133,8 +130,8 @@ namespace Spartan
         void SetBoundingBox(const Math::Vector3& boundingBox);
 
         // Shape type
-        ShapeType GetShapeType() const { return m_shape_type; }
-        void SetShapeType(ShapeType type);
+        PhysicsShape GetShapeType() const { return m_shape_type; }
+        void SetShapeType(PhysicsShape type);
 
         // Optimize shape
         bool GetOptimizedShape() const { return m_shaped_optimized; }
@@ -144,8 +141,8 @@ namespace Spartan
         void ClearForces() const;
         void Activate() const;
         void Deactivate() const;
-        bool IsInWorld() const { return m_in_world; }
-        btRigidBody* GetBtRigidBody() const { return m_rigid_body; }
+        bool IsInWorld()       const { return m_in_world; }
+        void* GetBtRigidBody() const { return m_rigid_body; }
 
     private:
         void AddBodyToWorld();
@@ -163,11 +160,11 @@ namespace Spartan
         Math::Vector3 m_rotation_lock  = Math::Vector3::Zero;
         Math::Vector3 m_center_of_mass = Math::Vector3::Zero;
         Math::Vector3 m_size           = Math::Vector3::One;
-        ShapeType m_shape_type         = ShapeType::Box;
+        PhysicsShape m_shape_type      = PhysicsShape::Box;
         bool m_shaped_optimized        = false;
         bool m_in_world                = false;
-        btCollisionShape* m_shape      = nullptr;
-        btRigidBody* m_rigid_body      = nullptr;
+        void* m_shape                  = nullptr;
+        void* m_rigid_body             = nullptr;
         std::vector<Constraint*> m_constraints;
     };
 }
