@@ -484,6 +484,7 @@ void Properties::ShowPhysicsBody(shared_ptr<PhysicsBody> body) const
                 "Cylinder",
                 "Capsule",
                 "Cone",
+                "Terrain",
                 "Mesh Convex Hull (Cheap)",
                 "Mesh (Expensive)"
             };
@@ -905,7 +906,7 @@ void Properties::ShowTerrain(shared_ptr<Terrain> terrain) const
         // Stats
         ImGui::BeginGroup();
         {
-            ImGui::Text("Height samples: %d", terrain->GetHeightsamples());
+            ImGui::Text("Height samples: %d", terrain->GetHeightSampleCount());
             ImGui::Text("Vertices: %d",  terrain->GetVertexCount());
             ImGui::Text("Indices:  %d ", terrain->GetIndexCount());
         }

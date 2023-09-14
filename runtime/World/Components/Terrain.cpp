@@ -38,25 +38,21 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static void generate_positions(vector<Vector3>& positions, const vector<std::byte>& height_map, const uint32_t width, const uint32_t height, float min_x, float max_y)
+    static void generate_positions(vector<Vector3>& positions, const vector<float>& height_map, const uint32_t width, const uint32_t height, float min_x, float max_y)
     {
         SP_ASSERT_MSG(!height_map.empty(), "Height map is empty");
 
         uint32_t index = 0;
-        uint32_t k = 0;
+        uint32_t k     = 0;
 
         for (uint32_t y = 0; y < height; y++)
         {
             for (uint32_t x = 0; x < width; x++)
             {
-                // Read height and scale it to a [0, 1] range
-                const float height = (static_cast<float>(height_map[k]) / 255.0f);
-
-                // Construct position
                 const uint32_t index = y * width + x;
                 positions[index].x = static_cast<float>(x) - width * 0.5f;  // center on the X axis
                 positions[index].z = static_cast<float>(y) - height * 0.5f; // center on the Z axis
-                positions[index].y = Helper::Lerp(min_x, max_y, height);
+                positions[index].y = Helper::Lerp(min_x, max_y, height_map[k]);
 
                 k += 4;
             }
@@ -259,12 +255,12 @@ namespace Spartan
         {
             m_is_generating = true;
 
-            // Get height map data
-            vector<std::byte> height_data;
+            // get height map data
             {
+                std::vector<std::byte> height_data;
                 height_data = m_height_map->GetMip(0, 0).bytes;
 
-                // If not the data is not there, load it
+                // if not the data is not there, load it
                 if (height_data.empty())
                 {
                     if (m_height_map->LoadFromFile(m_height_map->GetResourceFilePath()))
@@ -278,6 +274,14 @@ namespace Spartan
                             return;
                         }
                     }
+                }
+
+                // normalize height data
+                m_height_data.resize(height_data.size());
+                m_height_data.reserve(height_data.size());
+                for (uint32_t i = 0; i < height_data.size(); i++)
+                {
+                    m_height_data[i] = static_cast<float>(height_data[i]) / 255.0f;
                 }
             }
 
@@ -308,7 +312,7 @@ namespace Spartan
 
             // 1. Generate positions by reading the height map
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating positions...");
-            generate_positions(positions, height_data, width, height, m_min_y, m_max_y);
+            generate_positions(positions, m_height_data, width, height, m_min_y, m_max_y);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
             // 2. Compute vertices and indices

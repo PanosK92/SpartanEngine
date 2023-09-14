@@ -48,6 +48,7 @@ namespace Spartan
         Cylinder,
         Capsule,
         Cone,
+        Terrain,
         MeshConvexHull,
         Mesh
     };

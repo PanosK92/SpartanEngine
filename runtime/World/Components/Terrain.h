@@ -55,9 +55,10 @@ namespace Spartan
         float GetMaxY()     const { return m_max_y; }
         void SetMaxY(float max_z) { m_max_y = max_z; }
 
-        uint64_t GetHeightsamples() const { return m_height_samples; }
-        uint32_t GetVertexCount()   const { return m_vertex_count; }
-        uint32_t GetIndexCount()    const { return m_index_count; }
+        uint32_t GetVertexCount()       const { return m_vertex_count; }
+        uint32_t GetIndexCount()        const { return m_index_count; }
+        uint64_t GetHeightSampleCount() const { return m_height_samples; }
+        float* GetHeightData()                { return &m_height_data[0]; }
 
         void GenerateAsync();
 
@@ -74,6 +75,7 @@ namespace Spartan
         uint32_t m_index_count            = 0;
         uint32_t m_triangle_count         = 0;
         std::shared_ptr<RHI_Texture> m_height_map;
+        std::vector<float> m_height_data;
         std::shared_ptr<Mesh> m_mesh;
     };
 }
