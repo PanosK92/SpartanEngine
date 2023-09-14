@@ -108,22 +108,13 @@ PixelOutputType mainPS(PixelInputType input)
     {
         if (material_is_terrain()) // in case of a terrain we do a slope based texture blend
         {
-            // calculate the slope factor based on the y component of the normal
-            float slope = saturate(dot(normal, float3(0.0f, 1.0f, 0.0f)));
-
             // sample textures
             float4 tex_flat  = tex_material_albedo.Sample(samplers[sampler_anisotropic_wrap], uv);
             float4 tex_slope = tex_material_albedo_2.Sample(samplers[sampler_anisotropic_wrap], uv);
 
             // blend based on slope
-            if (slope < 0.5f)
-            {
-                albedo = tex_slope;
-            }
-            else
-            {
-                albedo = lerp(tex_slope, tex_flat, (slope - 0.5f) / (1.0f - 0.5f));
-            }
+            float slope = saturate(dot(normal, float3(0.0f, 1.0f, 0.0f)));
+            albedo = lerp(tex_slope, tex_flat, pow(slope, 4.0f));
         }
         else
         {
