@@ -191,23 +191,34 @@ function runtime_project_configuration()
             links { "FreeImageLib" }
             links { "freetype" }
             links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
-            links { "SDL2.lib" }
-            links { "Compressonator_MT.lib" }
+            links { "SDL2" }
+            links { "Compressonator_MT" }
 			links(API_LIBRARIES[ARG_API_GRAPHICS].release or {})
 			
         -- "Debug"
         filter "configurations:debug"
             debugdir (TARGET_DIR)
             targetdir (TARGET_DIR)
-            links { "dxcompiler" }
-            links { "assimp_debug" }
-            links { "fmodL_vc" }
-            links { "FreeImageLib_debug" }
-            links { "freetype_debug" }
-            links { "BulletCollision_debug", "BulletDynamics_debug", "BulletSoftBody_debug", "LinearMath_debug" }
-            links { "SDL2_debug.lib" }
-            links { "Compressonator_MT_debug.lib" }
-            links(API_LIBRARIES[ARG_API_GRAPHICS].debug or {})
+            if os.target() == "windows" then
+                links { "dxcompiler" }
+                links { "assimp_debug" }
+                links { "fmodL_vc" }
+                links { "FreeImageLib_debug" }
+                links { "freetype_debug" }
+                links { "BulletCollision_debug", "BulletDynamics_debug", "BulletSoftBody_debug", "LinearMath_debug" }
+                links { "SDL2_debug.lib" }
+                links { "Compressonator_MT_debug.lib" }
+                links(API_LIBRARIES[ARG_API_GRAPHICS].debug or {})
+            else
+                links { "dxcompiler" }
+                links { "assimp" }
+                links { "fmod_vc" }
+                links { "FreeImageLib" }
+                links { "freetype" }
+                links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
+                links { "SDL2" }
+                links { "Compressonator_MT" }
+            end
 end
 
 function editor_project_configuration()
@@ -271,8 +282,13 @@ function editor_project_configuration()
             targetname ( EXECUTABLE_NAME .. "_debug" )
             targetdir (TARGET_DIR)
             debugdir (TARGET_DIR)
-            links { "freetype_debug" }
-            links { "SDL2_debug" }
+            if os.target() == "windows" then
+                links { "freetype_debug" }
+                links { "SDL2_debug" }
+            else
+                links { "freetype" }
+                links { "SDL2" }
+            end
 end
 
 configure_graphics_api()
