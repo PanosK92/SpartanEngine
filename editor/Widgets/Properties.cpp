@@ -413,23 +413,23 @@ void Properties::ShowPhysicsBody(shared_ptr<PhysicsBody> body) const
 
     if (component_begin("PhysicsBody", IconType::Component_PhysicsBody, body))
     {
-        //= REFLECT =================================================================
-        float mass                    = body->GetMass();
-        float friction                = body->GetFriction();
-        float friction_rolling        = body->GetFrictionRolling();
-        float restitution             = body->GetRestitution();
-        bool use_gravity              = body->GetUseGravity();
-        bool is_kinematic             = body->GetIsKinematic();
-        bool freeze_pos_x             = static_cast<bool>(body->GetPositionLock().x);
-        bool freeze_pos_y             = static_cast<bool>(body->GetPositionLock().y);
-        bool freeze_pos_z             = static_cast<bool>(body->GetPositionLock().z);
-        bool freeze_rot_x             = static_cast<bool>(body->GetRotationLock().x);
-        bool freeze_rot_y             = static_cast<bool>(body->GetRotationLock().y);
-        bool freeze_rot_z             = static_cast<bool>(body->GetRotationLock().z);
-        bool optimize                 = body->GetOptimizedShape();
-        Vector3 collider_center       = body->GetShapeCenter();
-        Vector3 collider_bounding_box = body->GetBoundingBox();
-        //===========================================================================
+        //= REFLECT ==========================================================
+        float mass             = body->GetMass();
+        float friction         = body->GetFriction();
+        float friction_rolling = body->GetFrictionRolling();
+        float restitution      = body->GetRestitution();
+        bool use_gravity       = body->GetUseGravity();
+        bool is_kinematic      = body->GetIsKinematic();
+        bool freeze_pos_x      = static_cast<bool>(body->GetPositionLock().x);
+        bool freeze_pos_y      = static_cast<bool>(body->GetPositionLock().y);
+        bool freeze_pos_z      = static_cast<bool>(body->GetPositionLock().z);
+        bool freeze_rot_x      = static_cast<bool>(body->GetRotationLock().x);
+        bool freeze_rot_y      = static_cast<bool>(body->GetRotationLock().y);
+        bool freeze_rot_z      = static_cast<bool>(body->GetRotationLock().z);
+        bool optimized_shape   = body->GetOptimizedShape();
+        Vector3 center_of_mass = body->GetCenterOfMass();
+        Vector3 bounding_box   = body->GetBoundingBox();
+        //====================================================================
 
         // Mass
         ImGui::Text("Mass");
@@ -499,21 +499,21 @@ void Properties::ShowPhysicsBody(shared_ptr<PhysicsBody> body) const
         
         // center
         ImGui::Text("Shape Center");
-        ImGui::SameLine(column_pos_x); ImGui::PushID("PhysicsBodyColCenterX"); ImGui::InputFloat("X", &collider_center.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();             ImGui::PushID("PhysicsBodyColCenterY"); ImGui::InputFloat("Y", &collider_center.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();             ImGui::PushID("PhysicsBodyColCenterZ"); ImGui::InputFloat("Z", &collider_center.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine(column_pos_x); ImGui::PushID("PhysicsBodyColCenterX"); ImGui::InputFloat("X", &center_of_mass.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();             ImGui::PushID("PhysicsBodyColCenterY"); ImGui::InputFloat("Y", &center_of_mass.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();             ImGui::PushID("PhysicsBodyColCenterZ"); ImGui::InputFloat("Z", &center_of_mass.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
         
         // size
         ImGui::Text("Shape Size");
-        ImGui::SameLine(column_pos_x); ImGui::PushID("PhysicsBodyColSizeX"); ImGui::InputFloat("X", &collider_bounding_box.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();             ImGui::PushID("PhysicsBodyColSizeY"); ImGui::InputFloat("Y", &collider_bounding_box.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();             ImGui::PushID("PhysicsBodyColSizeZ"); ImGui::InputFloat("Z", &collider_bounding_box.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine(column_pos_x); ImGui::PushID("PhysicsBodyColSizeX"); ImGui::InputFloat("X", &bounding_box.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();             ImGui::PushID("PhysicsBodyColSizeY"); ImGui::InputFloat("Y", &bounding_box.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();             ImGui::PushID("PhysicsBodyColSizeZ"); ImGui::InputFloat("Z", &bounding_box.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
         
         // optimize
         if (body->GetShapeType() == ShapeType::Mesh)
         {
             ImGui::Text("Optimized Shape");
-            ImGui::SameLine(column_pos_x); ImGui::Checkbox("##PhysicsBodyOptimized", &optimize);
+            ImGui::SameLine(column_pos_x); ImGui::Checkbox("##PhysicsBodyOptimized", &optimized_shape);
         }
 
         //= MAP ===============================================================================================================================================================================================
@@ -529,9 +529,9 @@ void Properties::ShowPhysicsBody(shared_ptr<PhysicsBody> body) const
         if (freeze_rot_x != static_cast<bool>(body->GetRotationLock().x)) body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
         if (freeze_rot_y != static_cast<bool>(body->GetRotationLock().y)) body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
         if (freeze_rot_z != static_cast<bool>(body->GetRotationLock().z)) body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
-        if (collider_center != body->GetShapeCenter())                    body->SetShapeCenter(collider_center);
-        if (collider_bounding_box != body->GetBoundingBox())              body->SetBoundingBox(collider_bounding_box);
-        if (optimize != body->GetOptimizedShape())                        body->SetOptimizedShape(optimize);
+        if (center_of_mass != body->GetCenterOfMass())                    body->SetCenterOfMass(center_of_mass);
+        if (bounding_box != body->GetBoundingBox())                       body->SetBoundingBox(bounding_box);
+        if (optimized_shape != body->GetOptimizedShape())                 body->SetOptimizedShape(optimized_shape);
         //=====================================================================================================================================================================================================
     }
     component_end();

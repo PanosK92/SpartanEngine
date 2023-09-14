@@ -99,7 +99,7 @@ namespace Spartan
         m_rotation_lock    = Vector3::Zero;
         m_rigid_body       = nullptr;
         m_shape_type       = ShapeType::Box;
-        m_shape_center     = Vector3::Zero;
+        m_center_of_mass   = Vector3::Zero;
         m_size             = Vector3::One;
         m_shape            = nullptr;
 
@@ -114,15 +114,14 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotation_lock, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_center_of_mass, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_size, Vector3);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shape_center, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shaped_optimized, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_shape_type, SetShapeType, ShapeType);
 
         if (Renderable* renderable = GetEntityPtr()->GetComponent<Renderable>().get())
         {
-            m_shape_type   = ShapeType::Mesh;
-            m_shape_center = Vector3::Zero;
-            m_size         = renderable->GetAabb().GetSize();
+            m_shape_type     = ShapeType::Mesh;
+            m_center_of_mass = Vector3::Zero;
+            m_size           = renderable->GetAabb().GetSize();
         }
 
         UpdateShape();
@@ -187,7 +186,7 @@ namespace Spartan
         stream->Write(m_in_world);
         stream->Write(uint32_t(m_shape_type));
         stream->Write(m_size);
-        stream->Write(m_shape_center);
+        stream->Write(m_center_of_mass);
     }
 
     void PhysicsBody::Deserialize(FileStream* stream)
@@ -204,7 +203,7 @@ namespace Spartan
         stream->Read(&m_in_world);
         m_shape_type = ShapeType(stream->ReadAs<uint32_t>());
         stream->Read(&m_size);
-        stream->Read(&m_shape_center);
+        stream->Read(&m_center_of_mass);
 
         AddBodyToWorld();
         UpdateShape();

@@ -132,10 +132,6 @@ namespace Spartan
         const Math::Vector3& GetBoundingBox() const { return m_size; }
         void SetBoundingBox(const Math::Vector3& boundingBox);
 
-        // Shape center
-        const Math::Vector3& GetShapeCenter() const { return m_shape_center; }
-        void SetShapeCenter(const Math::Vector3& center) { m_shape_center = center; }
-
         // Shape type
         ShapeType GetShapeType() const { return m_shape_type; }
         void SetShapeType(ShapeType type);
@@ -167,7 +163,6 @@ namespace Spartan
         Math::Vector3 m_rotation_lock  = Math::Vector3::Zero;
         Math::Vector3 m_center_of_mass = Math::Vector3::Zero;
         Math::Vector3 m_size           = Math::Vector3::One;
-        Math::Vector3 m_shape_center   = Math::Vector3::Zero;
         ShapeType m_shape_type         = ShapeType::Box;
         bool m_shaped_optimized        = false;
         bool m_in_world                = false;
