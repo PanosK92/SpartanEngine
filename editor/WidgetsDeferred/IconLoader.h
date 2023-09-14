@@ -42,7 +42,7 @@ enum class IconType
     Component_Material_RemoveTexture,
     Component_MeshCollider,
     Component_Renderable,
-    Component_RigidBody,
+    Component_PhysicsBody,
     Component_SoftBody,
     Component_Script,
     Component_Terrain,

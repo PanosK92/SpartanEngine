@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Entity.h"
 #include "World/Components/Transform.h"
 #include "World/Components/Renderable.h"
-#include "World/Components/RigidBody.h"
+#include "World/Components/PhysicsBody.h"
 #include "World/Components/Collider.h"
 #include "World/Components/Constraint.h"
 #include "World/Components/Light.h"
@@ -165,7 +165,7 @@ void Properties::OnTickVisible()
         ShowReflectionProbe(entity_ptr->GetComponent<ReflectionProbe>());
         ShowRenderable(renderable);
         ShowMaterial(material);
-        ShowRigidBody(entity_ptr->GetComponent<RigidBody>());
+        ShowPhysicsBody(entity_ptr->GetComponent<PhysicsBody>());
         ShowCollider(entity_ptr->GetComponent<Collider>());
         ShowConstraint(entity_ptr->GetComponent<Constraint>());
 
@@ -403,26 +403,26 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
     component_end();
 }
 
-void Properties::ShowRigidBody(shared_ptr<RigidBody> rigid_body) const
+void Properties::ShowPhysicsBody(shared_ptr<PhysicsBody> physics_body) const
 {
-    if (!rigid_body)
+    if (!physics_body)
         return;
 
-    if (component_begin("RigidBody", IconType::Component_RigidBody, rigid_body))
+    if (component_begin("PhysicsBody", IconType::Component_PhysicsBody, physics_body))
     {
         //= REFLECT ===============================================================
-        auto mass             = rigid_body->GetMass();
-        auto friction         = rigid_body->GetFriction();
-        auto friction_rolling = rigid_body->GetFrictionRolling();
-        auto restitution      = rigid_body->GetRestitution();
-        auto use_gravity      = rigid_body->GetUseGravity();
-        auto is_kinematic     = rigid_body->GetIsKinematic();
-        auto freeze_pos_x     = static_cast<bool>(rigid_body->GetPositionLock().x);
-        auto freeze_pos_y     = static_cast<bool>(rigid_body->GetPositionLock().y);
-        auto freeze_pos_z     = static_cast<bool>(rigid_body->GetPositionLock().z);
-        auto freeze_rot_x     = static_cast<bool>(rigid_body->GetRotationLock().x);
-        auto freeze_rot_y     = static_cast<bool>(rigid_body->GetRotationLock().y);
-        auto freeze_rot_z     = static_cast<bool>(rigid_body->GetRotationLock().z);
+        auto mass             = physics_body->GetMass();
+        auto friction         = physics_body->GetFriction();
+        auto friction_rolling = physics_body->GetFrictionRolling();
+        auto restitution      = physics_body->GetRestitution();
+        auto use_gravity      = physics_body->GetUseGravity();
+        auto is_kinematic     = physics_body->GetIsKinematic();
+        auto freeze_pos_x     = static_cast<bool>(physics_body->GetPositionLock().x);
+        auto freeze_pos_y     = static_cast<bool>(physics_body->GetPositionLock().y);
+        auto freeze_pos_z     = static_cast<bool>(physics_body->GetPositionLock().z);
+        auto freeze_rot_x     = static_cast<bool>(physics_body->GetRotationLock().x);
+        auto freeze_rot_y     = static_cast<bool>(physics_body->GetRotationLock().y);
+        auto freeze_rot_z     = static_cast<bool>(physics_body->GetRotationLock().z);
         //=========================================================================
 
         const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
@@ -432,60 +432,60 @@ void Properties::ShowRigidBody(shared_ptr<RigidBody> rigid_body) const
 
         // Mass
         ImGui::Text("Mass");
-        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##RigidBodyMass", &mass, step, step_fast, precision, input_text_flags);
+        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##PhysicsBodyMass", &mass, step, step_fast, precision, input_text_flags);
 
         // Friction
         ImGui::Text("Friction");
-        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##RigidBodyFriction", &friction, step, step_fast, precision, input_text_flags);
+        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##PhysicsBodyFriction", &friction, step, step_fast, precision, input_text_flags);
 
         // Rolling Friction
         ImGui::Text("Rolling Friction");
-        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##RigidBodyRollingFriction", &friction_rolling, step, step_fast, precision, input_text_flags);
+        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##PhysicsBodyRollingFriction", &friction_rolling, step, step_fast, precision, input_text_flags);
 
         // Restitution
         ImGui::Text("Restitution");
-        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##RigidBodyRestitution", &restitution, step, step_fast, precision, input_text_flags);
+        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##PhysicsBodyRestitution", &restitution, step, step_fast, precision, input_text_flags);
 
         // Use Gravity
         ImGui::Text("Use Gravity");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##RigidBodyUseGravity", &use_gravity);
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##PhysicsBodyUseGravity", &use_gravity);
 
         // Is Kinematic
         ImGui::Text("Is Kinematic");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##RigidBodyKinematic", &is_kinematic);
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##PhysicsBodyKinematic", &is_kinematic);
 
         // Freeze Position
         ImGui::Text("Freeze Position");
         ImGui::SameLine(column_pos_x); ImGui::Text("X");
-        ImGui::SameLine(); ImGui::Checkbox("##RigidFreezePosX", &freeze_pos_x);
+        ImGui::SameLine(); ImGui::Checkbox("##PhysicsBodyPosX", &freeze_pos_x);
         ImGui::SameLine(); ImGui::Text("Y");
-        ImGui::SameLine(); ImGui::Checkbox("##RigidFreezePosY", &freeze_pos_y);
+        ImGui::SameLine(); ImGui::Checkbox("##PhysicsBodyPosY", &freeze_pos_y);
         ImGui::SameLine(); ImGui::Text("Z");
-        ImGui::SameLine(); ImGui::Checkbox("##RigidFreezePosZ", &freeze_pos_z);
+        ImGui::SameLine(); ImGui::Checkbox("##PhysicsBodyPosZ", &freeze_pos_z);
 
         // Freeze Rotation
         ImGui::Text("Freeze Rotation");
         ImGui::SameLine(column_pos_x); ImGui::Text("X");
-        ImGui::SameLine(); ImGui::Checkbox("##RigidFreezeRotX", &freeze_rot_x);
+        ImGui::SameLine(); ImGui::Checkbox("##PhysicsBodyRotX", &freeze_rot_x);
         ImGui::SameLine(); ImGui::Text("Y");
-        ImGui::SameLine(); ImGui::Checkbox("##RigidFreezeRotY", &freeze_rot_y);
+        ImGui::SameLine(); ImGui::Checkbox("##PhysicsBodyRotY", &freeze_rot_y);
         ImGui::SameLine(); ImGui::Text("Z");
-        ImGui::SameLine(); ImGui::Checkbox("##RigidFreezeRotZ", &freeze_rot_z);
+        ImGui::SameLine(); ImGui::Checkbox("##PhysicsBodyRotZ", &freeze_rot_z);
 
-        //= MAP ===========================================================================================================================================================================================================
-        if (mass != rigid_body->GetMass())                                      rigid_body->SetMass(mass);
-        if (friction != rigid_body->GetFriction())                              rigid_body->SetFriction(friction);
-        if (friction_rolling != rigid_body->GetFrictionRolling())               rigid_body->SetFrictionRolling(friction_rolling);
-        if (restitution != rigid_body->GetRestitution())                        rigid_body->SetRestitution(restitution);
-        if (use_gravity != rigid_body->GetUseGravity())                         rigid_body->SetUseGravity(use_gravity);
-        if (is_kinematic != rigid_body->GetIsKinematic())                       rigid_body->SetIsKinematic(is_kinematic);
-        if (freeze_pos_x != static_cast<bool>(rigid_body->GetPositionLock().x)) rigid_body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
-        if (freeze_pos_y != static_cast<bool>(rigid_body->GetPositionLock().y)) rigid_body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
-        if (freeze_pos_z != static_cast<bool>(rigid_body->GetPositionLock().z)) rigid_body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
-        if (freeze_rot_x != static_cast<bool>(rigid_body->GetRotationLock().x)) rigid_body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
-        if (freeze_rot_y != static_cast<bool>(rigid_body->GetRotationLock().y)) rigid_body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
-        if (freeze_rot_z != static_cast<bool>(rigid_body->GetRotationLock().z)) rigid_body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
-        //=================================================================================================================================================================================================================
+        //= MAP ===============================================================================================================================================================================================================
+        if (mass != physics_body->GetMass())                                      physics_body->SetMass(mass);
+        if (friction != physics_body->GetFriction())                              physics_body->SetFriction(friction);
+        if (friction_rolling != physics_body->GetFrictionRolling())               physics_body->SetFrictionRolling(friction_rolling);
+        if (restitution != physics_body->GetRestitution())                        physics_body->SetRestitution(restitution);
+        if (use_gravity != physics_body->GetUseGravity())                         physics_body->SetUseGravity(use_gravity);
+        if (is_kinematic != physics_body->GetIsKinematic())                       physics_body->SetIsKinematic(is_kinematic);
+        if (freeze_pos_x != static_cast<bool>(physics_body->GetPositionLock().x)) physics_body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
+        if (freeze_pos_y != static_cast<bool>(physics_body->GetPositionLock().y)) physics_body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
+        if (freeze_pos_z != static_cast<bool>(physics_body->GetPositionLock().z)) physics_body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
+        if (freeze_rot_x != static_cast<bool>(physics_body->GetRotationLock().x)) physics_body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
+        if (freeze_rot_y != static_cast<bool>(physics_body->GetRotationLock().y)) physics_body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
+        if (freeze_rot_z != static_cast<bool>(physics_body->GetRotationLock().z)) physics_body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
+        //=====================================================================================================================================================================================================================
     }
     component_end();
 }
@@ -1140,7 +1140,7 @@ void Properties::ComponentContextMenu_Add() const
             {
                 if (ImGui::MenuItem("Rigid Body"))
                 {
-                    entity->AddComponent<RigidBody>();
+                    entity->AddComponent<PhysicsBody>();
                 }
                 else if (ImGui::MenuItem("Collider"))
                 {

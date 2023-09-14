@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Collider.h"
 #include "Transform.h"
-#include "RigidBody.h"
+#include "PhysicsBody.h"
 #include "Renderable.h"
 #include "../Entity.h"
 #include "../../IO/FileStream.h"
@@ -223,7 +223,7 @@ namespace Spartan
 
     void Collider::RigidBody_SetShape(btCollisionShape* shape) const
     {
-        if (const auto& rigidBody = m_entity_ptr->GetComponent<RigidBody>())
+        if (const auto& rigidBody = m_entity_ptr->GetComponent<PhysicsBody>())
         {
             rigidBody->SetShape(shape);
         }
@@ -231,7 +231,7 @@ namespace Spartan
 
     void Collider::RigidBody_SetCenterOfMass(const Vector3& center) const
     {
-        if (const auto& rigidBody = m_entity_ptr->GetComponent<RigidBody>())
+        if (const auto& rigidBody = m_entity_ptr->GetComponent<PhysicsBody>())
         {
             rigidBody->SetCenterOfMass(center);
         }

@@ -111,7 +111,7 @@ void IconLoader::Initialize()
         IconLoader::LoadFromFile(data_dir + "Icons\\component_material_removeTexture.png", IconType::Component_Material_RemoveTexture);
         IconLoader::LoadFromFile(data_dir + "Icons\\component_meshCollider.png", IconType::Component_MeshCollider);
         IconLoader::LoadFromFile(data_dir + "Icons\\component_renderable.png", IconType::Component_Renderable);
-        IconLoader::LoadFromFile(data_dir + "Icons\\component_rigidBody.png", IconType::Component_RigidBody);
+        IconLoader::LoadFromFile(data_dir + "Icons\\component_rigidBody.png", IconType::Component_PhysicsBody);
         IconLoader::LoadFromFile(data_dir + "Icons\\component_softBody.png", IconType::Component_SoftBody);
         IconLoader::LoadFromFile(data_dir + "Icons\\component_script.png", IconType::Component_Script);
         IconLoader::LoadFromFile(data_dir + "Icons\\component_transform.png", IconType::Component_Transform);

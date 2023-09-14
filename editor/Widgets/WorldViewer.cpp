@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
 #include "World/Components/AudioListener.h"
-#include "World/Components/RigidBody.h"
+#include "World/Components/PhysicsBody.h"
 #include "World/Components/Collider.h"
 #include "World/Components/Constraint.h"
 #include "World/Components/Environment.h"
@@ -484,9 +484,9 @@ void WorldViewer::PopupContextMenu() const
     // PHYSICS
     if (ImGui::BeginMenu("Physics"))
     {
-        if (ImGui::MenuItem("Rigid Body"))
+        if (ImGui::MenuItem("Physics Body"))
         {
-            ActionEntityCreateRigidBody();
+            ActionEntityCreatePhysicsBody();
         }
         else if (ImGui::MenuItem("Collider"))
         {
@@ -714,11 +714,11 @@ void WorldViewer::ActionEntityCreateLightSpot()
     light->SetIntensity(Spartan::LightIntensity::bulb_150_watt);
 }
 
-void WorldViewer::ActionEntityCreateRigidBody()
+void WorldViewer::ActionEntityCreatePhysicsBody()
 {
     auto entity = ActionEntityCreateEmpty();
-    entity->AddComponent<Spartan::RigidBody>();
-    entity->SetObjectName("RigidBody");
+    entity->AddComponent<Spartan::PhysicsBody>();
+    entity->SetObjectName("PhysicsBody");
 }
 
 void WorldViewer::ActionEntityCreateCollider()

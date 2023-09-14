@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Environment.h"
 #include "Components/AudioListener.h"
 #include "Components/AudioSource.h"
-#include "Components/RigidBody.h"
+#include "Components/PhysicsBody.h"
 #include "Components/Collider.h"
 #include "Components/Terrain.h"
 #include "../Resource/ResourceCache.h"
@@ -141,7 +141,7 @@ namespace Spartan
                 renderable->SetDefaultMaterial();
 
                 // Add physics components
-                shared_ptr<RigidBody> rigid_body = m_default_model_floor->AddComponent<RigidBody>();
+                shared_ptr<PhysicsBody> rigid_body = m_default_model_floor->AddComponent<PhysicsBody>();
                 rigid_body->SetMass(0.0f); // make it static/immovable
                 rigid_body->SetFriction(0.5f);
                 rigid_body->SetRestitution(0.2f);
@@ -518,7 +518,7 @@ namespace Spartan
             renderable->SetMaterial(material);
 
             // Add physics components
-            shared_ptr<RigidBody> rigid_body = entity->AddComponent<RigidBody>();
+            shared_ptr<PhysicsBody> rigid_body = entity->AddComponent<PhysicsBody>();
             rigid_body->SetMass(1.0f); // give it some mass
             rigid_body->SetRestitution(1.0f);
             rigid_body->SetFriction(0.2f);
