@@ -159,6 +159,8 @@ namespace Spartan
         Math::Vector3 m_center_of_mass = Math::Vector3::Zero;
         Math::Vector3 m_size           = Math::Vector3::One;
         PhysicsShape m_shape_type      = PhysicsShape::Box;
+        uint32_t terrain_width         = 0;
+        uint32_t terrain_length        = 0;
         bool m_in_world                = false;
         void* m_shape                  = nullptr;
         void* m_rigid_body             = nullptr;

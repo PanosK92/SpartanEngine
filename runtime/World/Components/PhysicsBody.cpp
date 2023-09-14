@@ -121,9 +121,14 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_size, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_shape_type, SetShapeType, PhysicsShape);
 
-        if (Renderable* renderable = GetEntityPtr()->GetComponent<Renderable>().get())
+        if (GetEntityPtr()->GetComponent<Renderable>())
         {
             m_shape_type = PhysicsShape::MeshConvexHull;
+        }
+
+        if (GetEntityPtr()->GetComponent<Terrain>())
+        {
+            m_shape_type = PhysicsShape::Terrain;
         }
 
         UpdateShape();
@@ -603,8 +608,10 @@ namespace Spartan
             }
         }
 
-        // transform
+        // position
         SetPosition(GetTransform()->GetPosition());
+
+        // rotation
         SetRotation(GetTransform()->GetRotation());
 
         // constraints
@@ -758,50 +765,54 @@ namespace Spartan
                     return;
                 }
 
-                btHeightfieldTerrainShape* heightfield_terrain_shape = new btHeightfieldTerrainShape(
-                    terrain->GetHeightMap()->GetWidth(),    // width
-                    terrain->GetHeightMap()->GetHeight(),   // length
-                    terrain->GetHeightData(),               // data
-                    1.0f,                                   // height scale
-                    terrain->GetMinY(), terrain->GetMaxY(), // min and max height
-                    1,                                      // Up axis (0=x, 1=y, 2=z)
-                    PHY_FLOAT,                              // Data type
-                    false                                   // Flip quad edges or not
-                );
-                heightfield_terrain_shape->setLocalScaling(ToBtVector3(size));
+                terrain_width  = terrain->GetHeightMap()->GetWidth();
+                terrain_length = terrain->GetHeightMap()->GetHeight();
 
-                m_shape = heightfield_terrain_shape;
+                btHeightfieldTerrainShape* shape = new btHeightfieldTerrainShape(
+                    terrain_width,            // width
+                    terrain_length,           // length
+                    terrain->GetHeightData(), // data - row major
+                    1.0f,                     // height scale
+                    terrain->GetMinY(),       // min height
+                    terrain->GetMaxY(),       // max height
+                    1,                        // Up axis (0=x, 1=y, 2=z)
+                    PHY_FLOAT,                // Data type
+                    false                     // Flip quad edges or not
+                );
+                
+                shape->setLocalScaling(ToBtVector3(size));
+                m_shape = shape;
 
                 break;
             }
 
             case PhysicsShape::Mesh:
             {
-                btTriangleMesh* trimesh = new btTriangleMesh();
+                btTriangleMesh* shape = new btTriangleMesh();
                 for (uint32_t i = 0; i < static_cast<uint32_t>(indices.size()); i += 3)
                 {
                     btVector3 vertex0(vertices[indices[i]].pos[0],     vertices[indices[i]].pos[1],     vertices[indices[i]].pos[2]);
                     btVector3 vertex1(vertices[indices[i + 1]].pos[0], vertices[indices[i + 1]].pos[1], vertices[indices[i + 1]].pos[2]);
                     btVector3 vertex2(vertices[indices[i + 2]].pos[0], vertices[indices[i + 2]].pos[1], vertices[indices[i + 2]].pos[2]);
-                    trimesh->addTriangle(vertex0, vertex1, vertex2);
+                    shape->addTriangle(vertex0, vertex1, vertex2);
                 }
-                trimesh->setScaling(ToBtVector3(size));
+                shape->setScaling(ToBtVector3(size));
 
-                m_shape = new btBvhTriangleMeshShape(trimesh, true);
+                m_shape = new btBvhTriangleMeshShape(shape, true);
                 break;
             }
 
             case PhysicsShape::MeshConvexHull:
             {
-                btConvexHullShape* approximation = new btConvexHullShape(
+                btConvexHullShape* shape_approximated = new btConvexHullShape(
                     (btScalar*)&vertices[0],                                 // points
                     renderable->GetVertexCount(),                            // point count
                     static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan))); // stride
 
-                approximation->setLocalScaling(ToBtVector3(size));
+                shape_approximated->setLocalScaling(ToBtVector3(size));
 
                 // turn it into a proper convex hull since btConvexHullShape is an approximation
-                m_shape = static_cast<btConvexHullShape*>(approximation);
+                m_shape = static_cast<btConvexHullShape*>(shape_approximated);
                 static_cast<btConvexHullShape*>(m_shape)->optimizeConvexHull();
                 static_cast<btConvexHullShape*>(m_shape)->initializePolyhedralFeatures();
                 break;

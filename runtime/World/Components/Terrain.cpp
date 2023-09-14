@@ -38,7 +38,37 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static void generate_positions(vector<Vector3>& positions, const vector<float>& height_map, const uint32_t width, const uint32_t height, float min_x, float max_y)
+    static bool load_and_normalize_height_data(std::vector<float>& height_data_out, std::shared_ptr<RHI_Texture> height_texture, float min_y, float max_y)
+    {
+        vector<std::byte> height_data = height_texture->GetMip(0, 0).bytes;
+
+        // If the data is not there, load it
+        if (height_data.empty())
+        {
+            if (height_texture->LoadFromFile(height_texture->GetResourceFilePath()))
+            {
+                height_data = height_texture->GetMip(0, 0).bytes;
+
+                if (height_data.empty())
+                {
+                    SP_LOG_ERROR("Failed to load height map");
+                    return false;
+                }
+            }
+        }
+
+        // Normalize and scale height data
+        height_data_out.resize(height_data.size());
+        for (uint32_t i = 0; i < height_data.size(); i++)
+        {
+            height_data_out[i] = min_y + (static_cast<float>(height_data[i]) / 255.0f) * (max_y - min_y);
+        }
+
+        return true;
+    }
+
+
+    static void generate_positions(vector<Vector3>& positions, const vector<float>& height_map, const uint32_t width, const uint32_t height)
     {
         SP_ASSERT_MSG(!height_map.empty(), "Height map is empty");
 
@@ -49,10 +79,10 @@ namespace Spartan
         {
             for (uint32_t x = 0; x < width; x++)
             {
-                const uint32_t index = y * width + x;
+                uint32_t index     = y * width + x;
                 positions[index].x = static_cast<float>(x) - width * 0.5f;  // center on the X axis
                 positions[index].z = static_cast<float>(y) - height * 0.5f; // center on the Z axis
-                positions[index].y = Helper::Lerp(min_x, max_y, height_map[k]);
+                positions[index].y = height_map[k];
 
                 k += 4;
             }
@@ -63,20 +93,40 @@ namespace Spartan
     {
         SP_ASSERT_MSG(!positions.empty(), "Positions are empty");
 
-        uint32_t index = 0;
-        uint32_t k = 0;
+        Vector3 offset = Vector3::Zero;
+        {
+            // calculate offsets to center the terrain
+            float offset_x   = -static_cast<float>(width) * 0.5f;
+            float offset_z   = -static_cast<float>(height) * 0.5f;
+            float min_height = FLT_MAX;
 
+            // find the minimum height to align the lower part of the terrain at y = 0
+            for (const Vector3& pos : positions)
+            {
+                if (pos.y < min_height)
+                {
+                    min_height = pos.y;
+                }
+            }
+
+            offset = Vector3(offset_x, -min_height, offset_z);
+        }
+
+        uint32_t index = 0;
+        uint32_t k     = 0;
         for (uint32_t y = 0; y < height - 1; y++)
         {
             for (uint32_t x = 0; x < width - 1; x++)
             {
+                Vector3 position = positions[index] + offset;
+
                 float u = static_cast<float>(x) / static_cast<float>(width - 1);
                 float v = static_cast<float>(y) / static_cast<float>(height - 1);
 
-                const uint32_t index_bottom_left = y * width + x;
+                const uint32_t index_bottom_left  = y * width + x;
                 const uint32_t index_bottom_right = y * width + x + 1;
-                const uint32_t index_top_left = (y + 1) * width + x;
-                const uint32_t index_top_right = (y + 1) * width + x + 1;
+                const uint32_t index_top_left     = (y + 1) * width + x;
+                const uint32_t index_top_right    = (y + 1) * width + x + 1;
 
                 // Bottom right of quad
                 index = index_bottom_right;
@@ -201,14 +251,14 @@ namespace Spartan
 
     Terrain::~Terrain()
     {
-        m_height_map = nullptr;
+        m_height_texture = nullptr;
     }
 
     void Terrain::Serialize(FileStream* stream)
     {
         const string no_path;
 
-        stream->Write(m_height_map ? m_height_map->GetResourceFilePathNative() : no_path);
+        stream->Write(m_height_texture ? m_height_texture->GetResourceFilePathNative() : no_path);
         stream->Write(m_mesh ? m_mesh->GetObjectName() : no_path);
         stream->Write(m_min_y);
         stream->Write(m_max_y);
@@ -216,7 +266,7 @@ namespace Spartan
 
     void Terrain::Deserialize(FileStream* stream)
     {
-        m_height_map = ResourceCache::GetByPath<RHI_Texture2D>(stream->ReadAs<string>());
+        m_height_texture = ResourceCache::GetByPath<RHI_Texture2D>(stream->ReadAs<string>());
         m_mesh       = ResourceCache::GetByName<Mesh>(stream->ReadAs<string>());
         stream->Read(&m_min_y);
         stream->Read(&m_max_y);
@@ -226,7 +276,7 @@ namespace Spartan
 
     void Terrain::SetHeightMap(const shared_ptr<RHI_Texture>& height_map)
     {
-        m_height_map = height_map;
+        m_height_texture = height_map;
     }
 
     void Terrain::GenerateAsync()
@@ -237,7 +287,7 @@ namespace Spartan
             return;
         }
 
-        if (!m_height_map)
+        if (!m_height_texture)
         {
             SP_LOG_WARNING("You need to assign a height map before trying to generate a terrain");
 
@@ -255,39 +305,15 @@ namespace Spartan
         {
             m_is_generating = true;
 
-            // get height map data
+            if (!load_and_normalize_height_data(m_height_data, m_height_texture, m_min_y, m_max_y))
             {
-                std::vector<std::byte> height_data;
-                height_data = m_height_map->GetMip(0, 0).bytes;
-
-                // if not the data is not there, load it
-                if (height_data.empty())
-                {
-                    if (m_height_map->LoadFromFile(m_height_map->GetResourceFilePath()))
-                    {
-                        height_data = m_height_map->GetMip(0, 0).bytes;
-
-                        if (height_data.empty())
-                        {
-                            SP_LOG_ERROR("Failed to load height map");
-                            m_is_generating = false;
-                            return;
-                        }
-                    }
-                }
-
-                // normalize height data
-                m_height_data.resize(height_data.size());
-                m_height_data.reserve(height_data.size());
-                for (uint32_t i = 0; i < height_data.size(); i++)
-                {
-                    m_height_data[i] = static_cast<float>(height_data[i]) / 255.0f;
-                }
+                m_is_generating = false;
+                return;
             }
 
             // deduce some stuff
-            uint32_t width   = m_height_map->GetWidth();
-            uint32_t height  = m_height_map->GetHeight();
+            uint32_t width   = m_height_texture->GetWidth();
+            uint32_t height  = m_height_texture->GetHeight();
             m_height_samples = width * height;
             m_vertex_count   = m_height_samples;
             m_index_count    = m_vertex_count * 6;
@@ -312,7 +338,7 @@ namespace Spartan
 
             // 1. Generate positions by reading the height map
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating positions...");
-            generate_positions(positions, m_height_data, width, height, m_min_y, m_max_y);
+            generate_positions(positions, m_height_data, width, height);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
             // 2. Compute vertices and indices
