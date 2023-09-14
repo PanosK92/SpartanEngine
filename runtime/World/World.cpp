@@ -473,38 +473,19 @@ namespace Spartan
 
         // Cube
         {
-            // Create entity
+            // create entity
             shared_ptr<Entity> entity = CreateEntity();
             entity->SetObjectName("cube");
             entity->GetTransform()->SetPosition(Vector3(0.0f, 4.0f, 0.0f));
 
-            // Load textures
-            shared_ptr<RHI_Texture2D> tex_albedo = make_shared<RHI_Texture2D>();
-            tex_albedo->LoadFromFile("project\\materials\\crate_space\\albedo.png");
-
-            shared_ptr<RHI_Texture2D> tex_normal = make_shared<RHI_Texture2D>();
-            tex_normal->LoadFromFile("project\\materials\\crate_space\\normal.png");
-
-            shared_ptr<RHI_Texture2D> tex_occlusion = make_shared<RHI_Texture2D>();
-            tex_occlusion->LoadFromFile("project\\materials\\crate_space\\ao.png");
-
-            shared_ptr<RHI_Texture2D> tex_roughness = make_shared<RHI_Texture2D>();
-            tex_roughness->LoadFromFile("project\\materials\\crate_space\\roughness.png");
-
-            shared_ptr<RHI_Texture2D> tex_metalness = make_shared<RHI_Texture2D>();
-            tex_metalness->LoadFromFile("project\\materials\\crate_space\\metallic.png");
-
-            shared_ptr<RHI_Texture2D> tex_height = make_shared<RHI_Texture2D>();
-            tex_height->LoadFromFile("project\\materials\\crate_space\\height.png");
-
-            // Create material
+            // create material
             shared_ptr<Material> material = make_shared<Material>();
-            material->SetTexture(MaterialTexture::Color, tex_albedo);
-            material->SetTexture(MaterialTexture::Normal, tex_normal);
-            material->SetTexture(MaterialTexture::Occlusion, tex_occlusion);
-            material->SetTexture(MaterialTexture::Roughness, tex_roughness);
-            material->SetTexture(MaterialTexture::Metalness, tex_metalness);
-            material->SetTexture(MaterialTexture::Height, tex_height);
+            material->SetTexture(MaterialTexture::Color,     "project\\materials\\crate_space\\albedo.png");
+            material->SetTexture(MaterialTexture::Normal,    "project\\materials\\crate_space\\normal.png");
+            material->SetTexture(MaterialTexture::Occlusion, "project\\materials\\crate_space\\ao.png");
+            material->SetTexture(MaterialTexture::Roughness, "project\\materials\\crate_space\\roughness.png");
+            material->SetTexture(MaterialTexture::Metalness, "project\\materials\\crate_space\\metallic.png");
+            material->SetTexture(MaterialTexture::Height,    "project\\materials\\crate_space\\height.png");
 
             // Create a file path for this material (required for the material to be able to be cached by the resource cache)
             const string file_path = "project\\materials\\crate_space" + string(EXTENSION_MATERIAL);
@@ -760,8 +741,8 @@ namespace Spartan
 
     void World::CreateDefaultWorldTerrain()
     {
-        Vector3 camera_position = Vector3(320.9897f, 41.3801f, 666.2982f);
-        Vector3 camera_rotation = Vector3(4.7933f, -123.5102f, 0.0f);
+        Vector3 camera_position = Vector3(333.5016f, 57.5577f, 176.9949f);
+        Vector3 camera_rotation = Vector3(7.7930f, -126.5014f, 0.0f);
         create_default_world_common(false, camera_position, camera_rotation);
 
         // terrain
