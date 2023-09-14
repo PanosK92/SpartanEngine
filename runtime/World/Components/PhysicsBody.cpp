@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================================================
+//= INCLUDES ======================================================
 #include "pch.h"
 #include "PhysicsBody.h"
 #include "Transform.h"
@@ -37,9 +37,11 @@ SP_WARNINGS_OFF
 #include "BulletCollision/CollisionShapes/btCylinderShape.h"
 #include "BulletCollision/CollisionShapes/btCapsuleShape.h"
 #include "BulletCollision/CollisionShapes/btConeShape.h"
+#include "BulletCollision/CollisionShapes/btTriangleMesh.h"
+#include "BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h"
 #include "BulletCollision/CollisionShapes/btConvexHullShape.h"
 SP_WARNINGS_ON
-//=============================================================
+//=================================================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -114,12 +116,11 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotation_lock, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_center_of_mass, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_size, Vector3);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shaped_optimized, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_shape_type, SetShapeType, PhysicsShape);
 
         if (Renderable* renderable = GetEntityPtr()->GetComponent<Renderable>().get())
         {
-            m_shape_type     = PhysicsShape::Mesh;
+            m_shape_type     = PhysicsShape::MeshConvexHull;
             m_center_of_mass = Vector3::Zero;
             m_size           = renderable->GetAabb().GetSize();
         }
@@ -522,7 +523,10 @@ namespace Spartan
 
         // transfer inertia to new collision shape
         btVector3 local_intertia = btVector3(0, 0, 0);
-        if (m_shape && m_rigid_body)
+        bool is_static           = m_mass == 0.0f; // static objects don't have inertia
+        bool is_supported_shape  = m_shape_type != PhysicsShape::Mesh; // shape like btBvhTriangleMeshShape don't support local inertia
+        bool support_inertia     = is_static && is_supported_shape;
+        if (support_inertia && m_shape && m_rigid_body)
         {
             local_intertia = static_cast<btRigidBody*>(m_rigid_body)->getLocalInertia();
             static_cast<btCollisionShape*>(m_shape)->calculateLocalInertia(m_mass, local_intertia);
@@ -674,15 +678,6 @@ namespace Spartan
         UpdateShape();
     }
 
-    void PhysicsBody::SetOptimizedShape(bool optimize)
-    {
-        if (m_shaped_optimized == optimize)
-            return;
-
-        m_shaped_optimized = optimize;
-        UpdateShape();
-    }
-
     void PhysicsBody::UpdateShape()
     {
         // delete old shape
@@ -692,35 +687,14 @@ namespace Spartan
             m_shape = nullptr;
         }
 
-        // construct new shape
-        switch (m_shape_type)
+        // get common prerequisites for certain shapes
+        vector<uint32_t> indices;
+        vector<RHI_Vertex_PosTexNorTan> vertices;
+        shared_ptr<Renderable> renderable = nullptr;
+        if (m_shape_type == PhysicsShape::Mesh || m_shape_type == PhysicsShape::MeshConvexHull)
         {
-        case PhysicsShape::Box:
-            m_shape = new btBoxShape(ToBtVector3(m_size * 0.5f));
-            break;
-
-        case PhysicsShape::Sphere:
-            m_shape = new btSphereShape(m_size.x * 0.5f);
-            break;
-
-        case PhysicsShape::StaticPlane:
-            m_shape = new btStaticPlaneShape(btVector3(0.0f, 1.0f, 0.0f), 0.0f);
-            break;
-
-        case PhysicsShape::Cylinder:
-            m_shape = new btCylinderShape(btVector3(m_size.x * 0.5f, m_size.y * 0.5f, m_size.x * 0.5f));
-            break;
-
-        case PhysicsShape::Capsule:
-            m_shape = new btCapsuleShape(m_size.x * 0.5f, Helper::Max(m_size.y - m_size.x, 0.0f));
-            break;
-
-        case PhysicsShape::Cone:
-            m_shape = new btConeShape(m_size.x * 0.5f, m_size.y);
-            break;
-
-        case PhysicsShape::Mesh:
-            shared_ptr<Renderable> renderable = GetEntityPtr()->GetComponent<Renderable>();
+            // get renderable
+            renderable = GetEntityPtr()->GetComponent<Renderable>();
             if (!renderable)
             {
                 SP_LOG_WARNING("For a mesh shape to be constructed, there needs to be a Renderable component");
@@ -728,29 +702,68 @@ namespace Spartan
             }
 
             // get geometry
-            vector<uint32_t> indices;
-            vector<RHI_Vertex_PosTexNorTan> vertices;
             renderable->GetGeometry(&indices, &vertices);
             if (vertices.empty())
             {
-                SP_LOG_WARNING("No vertices.");
+                SP_LOG_WARNING("A shape can't be constructed without vertices");
                 return;
             }
+        }
 
-            // construct hull approximation
-            m_shape = new btConvexHullShape(
-                (btScalar*)&vertices[0],                                 // points
-                renderable->GetVertexCount(),                            // point count
-                static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan))); // stride
+        // construct new shape
+        switch (m_shape_type)
+        {
+            case PhysicsShape::Box:
+                m_shape = new btBoxShape(ToBtVector3(m_size * 0.5f));
+                break;
 
-            // optimize if requested
-            if (m_shaped_optimized)
+            case PhysicsShape::Sphere:
+                m_shape = new btSphereShape(m_size.x * 0.5f);
+                break;
+
+            case PhysicsShape::StaticPlane:
+                m_shape = new btStaticPlaneShape(btVector3(0.0f, 1.0f, 0.0f), 0.0f);
+                break;
+
+            case PhysicsShape::Cylinder:
+                m_shape = new btCylinderShape(btVector3(m_size.x * 0.5f, m_size.y * 0.5f, m_size.x * 0.5f));
+                break;
+
+            case PhysicsShape::Capsule:
+                m_shape = new btCapsuleShape(m_size.x * 0.5f, Helper::Max(m_size.y - m_size.x, 0.0f));
+                break;
+
+            case PhysicsShape::Cone:
+                m_shape = new btConeShape(m_size.x * 0.5f, m_size.y);
+                break;
+
+            case PhysicsShape::Mesh:
             {
-                auto hull = static_cast<btConvexHullShape*>(m_shape);
-                hull->optimizeConvexHull();
-                hull->initializePolyhedralFeatures();
+                btTriangleMesh* trimesh = new btTriangleMesh();
+                for (uint32_t i = 0; i < static_cast<uint32_t>(indices.size()); i += 3)
+                {
+                    btVector3 vertex0(vertices[indices[i]].pos[0],     vertices[indices[i]].pos[1],     vertices[indices[i]].pos[2]);
+                    btVector3 vertex1(vertices[indices[i + 1]].pos[0], vertices[indices[i + 1]].pos[1], vertices[indices[i + 1]].pos[2]);
+                    btVector3 vertex2(vertices[indices[i + 2]].pos[0], vertices[indices[i + 2]].pos[1], vertices[indices[i + 2]].pos[2]);
+                    trimesh->addTriangle(vertex0, vertex1, vertex2);
+                }
+                m_shape = new btBvhTriangleMeshShape(trimesh, true);
+                break;
             }
-            break;
+
+            case PhysicsShape::MeshConvexHull:
+            {
+                btConvexHullShape* approximation = new btConvexHullShape(
+                    (btScalar*)&vertices[0],                                 // points
+                    renderable->GetVertexCount(),                            // point count
+                    static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan))); // stride
+
+                // turn it into a proper convex hull since btConvexHullShape is an approximation
+                m_shape = static_cast<btConvexHullShape*>(approximation);
+                static_cast<btConvexHullShape*>(m_shape)->optimizeConvexHull();
+                static_cast<btConvexHullShape*>(m_shape)->initializePolyhedralFeatures();
+                break;
+            }
         }
 
         static_cast<btCollisionShape*>(m_shape)->setUserPointer(this);

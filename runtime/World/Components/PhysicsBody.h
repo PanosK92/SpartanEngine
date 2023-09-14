@@ -48,7 +48,8 @@ namespace Spartan
         Cylinder,
         Capsule,
         Cone,
-        Mesh,
+        MeshConvexHull,
+        Mesh
     };
 
     class SP_CLASS PhysicsBody : public Component
@@ -133,10 +134,6 @@ namespace Spartan
         PhysicsShape GetShapeType() const { return m_shape_type; }
         void SetShapeType(PhysicsShape type);
 
-        // Optimize shape
-        bool GetOptimizedShape() const { return m_shaped_optimized; }
-        void SetOptimizedShape(bool optimize);
-
         // Misc
         void ClearForces() const;
         void Activate() const;
@@ -161,7 +158,6 @@ namespace Spartan
         Math::Vector3 m_center_of_mass = Math::Vector3::Zero;
         Math::Vector3 m_size           = Math::Vector3::One;
         PhysicsShape m_shape_type      = PhysicsShape::Box;
-        bool m_shaped_optimized        = false;
         bool m_in_world                = false;
         void* m_shape                  = nullptr;
         void* m_rigid_body             = nullptr;
