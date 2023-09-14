@@ -140,26 +140,22 @@ namespace Spartan
         ColliderShape GetShapeType() const { return m_shape_type; }
         void SetShapeType(ColliderShape type);
 
-        bool GetOptimize() const { return m_shape_optimize; }
-        void SetOptimize(bool optimize);
+        // Optimize shape
+        bool GetOptimizedShape() const { return m_shaped_optimized; }
+        void SetOptimizedShape(bool optimize);
 
         // Misc
         void ClearForces() const;
         void Activate() const;
         void Deactivate() const;
         bool IsInWorld() const { return m_in_world; }
-        bool IsActive() const;
         btRigidBody* GetBtRigidBody() const { return m_rigid_body; }
 
     private:
         void AddBodyToWorld();
-        void DeleteBody();
-        void Flags_UpdateKinematic() const;
-        void Flags_UpdateGravity() const;
-        bool IsActivated() const;
+        void RemoveBodyFromWorld();
         void UpdateShape();
 
-        //= RIGID BODY ======================================
         float m_mass                   = 0.0f;
         float m_friction               = 0.0f;
         float m_friction_rolling       = 0.0f;
@@ -170,20 +166,14 @@ namespace Spartan
         Math::Vector3 m_position_lock  = Math::Vector3::Zero;
         Math::Vector3 m_rotation_lock  = Math::Vector3::Zero;
         Math::Vector3 m_center_of_mass = Math::Vector3::Zero;
+        Math::Vector3 m_size           = Math::Vector3::Zero;
+        Math::Vector3 m_shape_center   = Math::Vector3::Zero;
+        uint32_t m_vertex_limit        = 100000;
+        ColliderShape m_shape_type     = ColliderShape::Box;
+        bool m_shaped_optimized        = true;
+        bool m_in_world                = false;
+        btCollisionShape* m_shape      = nullptr;
         btRigidBody* m_rigid_body      = nullptr;
-        //===================================================
-
-        //= COLLISION SHAPE ============
-        ColliderShape m_shape_type;
-        btCollisionShape* m_shape;
-        Math::Vector3 m_size;
-        Math::Vector3 m_shape_center;
-        uint32_t m_vertexLimit = 100000;
-        bool m_shape_optimize  = true;
-        //==============================
-
-        // misc
-        bool m_in_world = false;
         std::vector<Constraint*> m_constraints;
     };
 }

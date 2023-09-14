@@ -401,35 +401,35 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
     component_end();
 }
 
-void Properties::ShowPhysicsBody(shared_ptr<PhysicsBody> physics_body) const
+void Properties::ShowPhysicsBody(shared_ptr<PhysicsBody> body) const
 {
-    if (!physics_body)
+    if (!body)
         return;
 
-    if (component_begin("PhysicsBody", IconType::Component_PhysicsBody, physics_body))
-    {
-        //= REFLECT =========================================================================
-        float mass                    = physics_body->GetMass();
-        float friction                = physics_body->GetFriction();
-        float friction_rolling        = physics_body->GetFrictionRolling();
-        float restitution             = physics_body->GetRestitution();
-        bool use_gravity              = physics_body->GetUseGravity();
-        bool is_kinematic             = physics_body->GetIsKinematic();
-        bool freeze_pos_x             = static_cast<bool>(physics_body->GetPositionLock().x);
-        bool freeze_pos_y             = static_cast<bool>(physics_body->GetPositionLock().y);
-        bool freeze_pos_z             = static_cast<bool>(physics_body->GetPositionLock().z);
-        bool freeze_rot_x             = static_cast<bool>(physics_body->GetRotationLock().x);
-        bool freeze_rot_y             = static_cast<bool>(physics_body->GetRotationLock().y);
-        bool freeze_rot_z             = static_cast<bool>(physics_body->GetRotationLock().z);
-        bool optimize                 = physics_body->GetOptimize();
-        Vector3 collider_center       = physics_body->GetShapeCenter();
-        Vector3 collider_bounding_box = physics_body->GetBoundingBox();
-        //===================================================================================
+    const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
+    const auto step             = 0.1f;
+    const auto step_fast        = 0.1f;
+    const auto precision        = "%.3f";
 
-        const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
-        const auto step             = 0.1f;
-        const auto step_fast        = 0.1f;
-        const auto precision        = "%.3f";
+    if (component_begin("PhysicsBody", IconType::Component_PhysicsBody, body))
+    {
+        //= REFLECT =================================================================
+        float mass                    = body->GetMass();
+        float friction                = body->GetFriction();
+        float friction_rolling        = body->GetFrictionRolling();
+        float restitution             = body->GetRestitution();
+        bool use_gravity              = body->GetUseGravity();
+        bool is_kinematic             = body->GetIsKinematic();
+        bool freeze_pos_x             = static_cast<bool>(body->GetPositionLock().x);
+        bool freeze_pos_y             = static_cast<bool>(body->GetPositionLock().y);
+        bool freeze_pos_z             = static_cast<bool>(body->GetPositionLock().z);
+        bool freeze_rot_x             = static_cast<bool>(body->GetRotationLock().x);
+        bool freeze_rot_y             = static_cast<bool>(body->GetRotationLock().y);
+        bool freeze_rot_z             = static_cast<bool>(body->GetRotationLock().z);
+        bool optimize                 = body->GetOptimizedShape();
+        Vector3 collider_center       = body->GetShapeCenter();
+        Vector3 collider_bounding_box = body->GetBoundingBox();
+        //===========================================================================
 
         // Mass
         ImGui::Text("Mass");
@@ -490,10 +490,10 @@ void Properties::ShowPhysicsBody(shared_ptr<PhysicsBody> physics_body) const
 
             ImGui::Text("Shape Type");
             ImGui::SameLine(column_pos_x);
-            uint32_t selection_index = static_cast<uint32_t>(physics_body->GetShapeType());
+            uint32_t selection_index = static_cast<uint32_t>(body->GetShapeType());
             if (ImGuiSp::combo_box("##PhysicsBodyCollisionShape", shape_types, &selection_index))
             {
-                physics_body->SetShapeType(static_cast<ColliderShape>(selection_index));
+                body->SetShapeType(static_cast<ColliderShape>(selection_index));
             }
         }
         
@@ -510,29 +510,29 @@ void Properties::ShowPhysicsBody(shared_ptr<PhysicsBody> physics_body) const
         ImGui::SameLine();             ImGui::PushID("PhysicsBodyColSizeZ"); ImGui::InputFloat("Z", &collider_bounding_box.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
         
         // optimize
-        if (physics_body->GetShapeType() == ColliderShape::Mesh)
+        if (body->GetShapeType() == ColliderShape::Mesh)
         {
-            ImGui::Text("Optimize Mesh");
-            ImGui::SameLine(column_pos_x); ImGui::Checkbox("##PhysicsBodyOptimize", &optimize);
+            ImGui::Text("Optimized Shape");
+            ImGui::SameLine(column_pos_x); ImGui::Checkbox("##PhysicsBodyOptimized", &optimize);
         }
 
-        //= MAP ===============================================================================================================================================================================================================
-        if (mass != physics_body->GetMass())                                      physics_body->SetMass(mass);
-        if (friction != physics_body->GetFriction())                              physics_body->SetFriction(friction);
-        if (friction_rolling != physics_body->GetFrictionRolling())               physics_body->SetFrictionRolling(friction_rolling);
-        if (restitution != physics_body->GetRestitution())                        physics_body->SetRestitution(restitution);
-        if (use_gravity != physics_body->GetUseGravity())                         physics_body->SetUseGravity(use_gravity);
-        if (is_kinematic != physics_body->GetIsKinematic())                       physics_body->SetIsKinematic(is_kinematic);
-        if (freeze_pos_x != static_cast<bool>(physics_body->GetPositionLock().x)) physics_body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
-        if (freeze_pos_y != static_cast<bool>(physics_body->GetPositionLock().y)) physics_body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
-        if (freeze_pos_z != static_cast<bool>(physics_body->GetPositionLock().z)) physics_body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
-        if (freeze_rot_x != static_cast<bool>(physics_body->GetRotationLock().x)) physics_body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
-        if (freeze_rot_y != static_cast<bool>(physics_body->GetRotationLock().y)) physics_body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
-        if (freeze_rot_z != static_cast<bool>(physics_body->GetRotationLock().z)) physics_body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
-        if (collider_center != physics_body->GetShapeCenter())                    physics_body->SetShapeCenter(collider_center);
-        if (collider_bounding_box != physics_body->GetBoundingBox())              physics_body->SetBoundingBox(collider_bounding_box);
-        if (optimize != physics_body->GetOptimize())                              physics_body->SetOptimize(optimize);
-        //=====================================================================================================================================================================================================================
+        //= MAP ===============================================================================================================================================================================================
+        if (mass != body->GetMass())                                      body->SetMass(mass);
+        if (friction != body->GetFriction())                              body->SetFriction(friction);
+        if (friction_rolling != body->GetFrictionRolling())               body->SetFrictionRolling(friction_rolling);
+        if (restitution != body->GetRestitution())                        body->SetRestitution(restitution);
+        if (use_gravity != body->GetUseGravity())                         body->SetUseGravity(use_gravity);
+        if (is_kinematic != body->GetIsKinematic())                       body->SetIsKinematic(is_kinematic);
+        if (freeze_pos_x != static_cast<bool>(body->GetPositionLock().x)) body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
+        if (freeze_pos_y != static_cast<bool>(body->GetPositionLock().y)) body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
+        if (freeze_pos_z != static_cast<bool>(body->GetPositionLock().z)) body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
+        if (freeze_rot_x != static_cast<bool>(body->GetRotationLock().x)) body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
+        if (freeze_rot_y != static_cast<bool>(body->GetRotationLock().y)) body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
+        if (freeze_rot_z != static_cast<bool>(body->GetRotationLock().z)) body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
+        if (collider_center != body->GetShapeCenter())                    body->SetShapeCenter(collider_center);
+        if (collider_bounding_box != body->GetBoundingBox())              body->SetBoundingBox(collider_bounding_box);
+        if (optimize != body->GetOptimizedShape())                        body->SetOptimizedShape(optimize);
+        //=====================================================================================================================================================================================================
     }
     component_end();
 }
