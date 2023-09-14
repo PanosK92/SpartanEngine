@@ -493,7 +493,7 @@ void Properties::ShowPhysicsBody(shared_ptr<PhysicsBody> body) const
             uint32_t selection_index = static_cast<uint32_t>(body->GetShapeType());
             if (ImGuiSp::combo_box("##PhysicsBodyCollisionShape", shape_types, &selection_index))
             {
-                body->SetShapeType(static_cast<ColliderShape>(selection_index));
+                body->SetShapeType(static_cast<ShapeType>(selection_index));
             }
         }
         
@@ -510,7 +510,7 @@ void Properties::ShowPhysicsBody(shared_ptr<PhysicsBody> body) const
         ImGui::SameLine();             ImGui::PushID("PhysicsBodyColSizeZ"); ImGui::InputFloat("Z", &collider_bounding_box.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
         
         // optimize
-        if (body->GetShapeType() == ColliderShape::Mesh)
+        if (body->GetShapeType() == ShapeType::Mesh)
         {
             ImGui::Text("Optimized Shape");
             ImGui::SameLine(column_pos_x); ImGui::Checkbox("##PhysicsBodyOptimized", &optimize);

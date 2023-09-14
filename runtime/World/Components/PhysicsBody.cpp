@@ -32,8 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IO/FileStream.h"
 SP_WARNINGS_OFF
 #include "BulletDynamics/Dynamics/btRigidBody.h"
-#include "BulletCollision/CollisionShapes/btCollisionShape.h"
-#include "BulletCollision/CollisionShapes/btBoxShape.h"
 #include "BulletCollision/CollisionShapes/btSphereShape.h"
 #include "BulletCollision/CollisionShapes/btStaticPlaneShape.h"
 #include "BulletCollision/CollisionShapes/btCylinderShape.h"
@@ -100,7 +98,7 @@ namespace Spartan
         m_position_lock    = Vector3::Zero;
         m_rotation_lock    = Vector3::Zero;
         m_rigid_body       = nullptr;
-        m_shape_type       = ColliderShape::Box;
+        m_shape_type       = ShapeType::Box;
         m_shape_center     = Vector3::Zero;
         m_size             = Vector3::One;
         m_shape            = nullptr;
@@ -117,36 +115,28 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_center_of_mass, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_size, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shape_center, Vector3);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_vertex_limit, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shaped_optimized, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_shape_type, SetShapeType, ColliderShape);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_shape_type, SetShapeType, ShapeType);
+
+        if (Renderable* renderable = GetEntityPtr()->GetComponent<Renderable>().get())
+        {
+            m_shape_type   = ShapeType::Mesh;
+            m_shape_center = Vector3::Zero;
+            m_size         = renderable->GetAabb().GetSize();
+        }
+
+        UpdateShape();
     }
 
     PhysicsBody::~PhysicsBody()
     {
-        RemoveBodyFromWorld();
-
-        delete m_shape;
-        m_shape = nullptr;
+        OnRemove();
     }
 
     void PhysicsBody::OnInitialize()
     {
         Component::OnInitialize();
-
-        // shape
-        {
-            // If there is a mesh, use it's bounding box
-            if (Renderable* renderable = GetEntityPtr()->GetComponent<Renderable>().get())
-            {
-                m_shape_center = Vector3::Zero;
-                m_size         = renderable->GetAabb().GetSize();
-            }
-
-            UpdateShape();
-        }
-
-        AddBodyToWorld();
+        UpdateShape();
     }
 
     void PhysicsBody::OnRemove()
@@ -212,7 +202,7 @@ namespace Spartan
         stream->Read(&m_position_lock);
         stream->Read(&m_rotation_lock);
         stream->Read(&m_in_world);
-        m_shape_type = ColliderShape(stream->ReadAs<uint32_t>());
+        m_shape_type = ShapeType(stream->ReadAs<uint32_t>());
         stream->Read(&m_size);
         stream->Read(&m_shape_center);
 
@@ -676,7 +666,7 @@ namespace Spartan
         UpdateShape();
     }
 
-    void PhysicsBody::SetShapeType(ColliderShape type)
+    void PhysicsBody::SetShapeType(ShapeType type)
     {
         if (m_shape_type == type)
             return;
@@ -706,43 +696,35 @@ namespace Spartan
         // construct new shape
         switch (m_shape_type)
         {
-        case ColliderShape::Box:
+        case ShapeType::Box:
             m_shape = new btBoxShape(ToBtVector3(m_size * 0.5f));
             break;
 
-        case ColliderShape::Sphere:
+        case ShapeType::Sphere:
             m_shape = new btSphereShape(m_size.x * 0.5f);
             break;
 
-        case ColliderShape::StaticPlane:
+        case ShapeType::StaticPlane:
             m_shape = new btStaticPlaneShape(btVector3(0.0f, 1.0f, 0.0f), 0.0f);
             break;
 
-        case ColliderShape::Cylinder:
+        case ShapeType::Cylinder:
             m_shape = new btCylinderShape(btVector3(m_size.x * 0.5f, m_size.y * 0.5f, m_size.x * 0.5f));
             break;
 
-        case ColliderShape::Capsule:
+        case ShapeType::Capsule:
             m_shape = new btCapsuleShape(m_size.x * 0.5f, Helper::Max(m_size.y - m_size.x, 0.0f));
             break;
 
-        case ColliderShape::Cone:
+        case ShapeType::Cone:
             m_shape = new btConeShape(m_size.x * 0.5f, m_size.y);
             break;
 
-        case ColliderShape::Mesh:
-            // Gget Renderable
+        case ShapeType::Mesh:
             shared_ptr<Renderable> renderable = GetEntityPtr()->GetComponent<Renderable>();
             if (!renderable)
             {
-                SP_LOG_WARNING("Can't construct mesh shape, there is no Renderable component attached.");
-                return;
-            }
-
-            // validate vertex count
-            if (renderable->GetVertexCount() >= m_vertex_limit)
-            {
-                SP_LOG_WARNING("No user defined shape with more than %d vertices is allowed.", m_vertex_limit);
+                SP_LOG_WARNING("For a mesh shape to be constructed, there needs to be a Renderable component");
                 return;
             }
 
@@ -750,7 +732,6 @@ namespace Spartan
             vector<uint32_t> indices;
             vector<RHI_Vertex_PosTexNorTan> vertices;
             renderable->GetGeometry(&indices, &vertices);
-
             if (vertices.empty())
             {
                 SP_LOG_WARNING("No vertices.");
