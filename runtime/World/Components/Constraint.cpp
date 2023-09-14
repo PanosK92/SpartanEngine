@@ -223,8 +223,8 @@ namespace Spartan
 
         shared_ptr<PhysicsBody> rigid_body_own   = m_entity_ptr->GetComponent<PhysicsBody>();
         shared_ptr<PhysicsBody> rigid_body_other = !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<PhysicsBody>() : nullptr;
-        btRigidBody* bt_own_body               = rigid_body_own ? rigid_body_own->GetBtRigidBody() : nullptr;
-        btRigidBody* bt_other_body             = rigid_body_other ? rigid_body_other->GetBtRigidBody() : nullptr;
+        btRigidBody* bt_own_body                 = rigid_body_own ? static_cast<btRigidBody*>(rigid_body_own->GetBtRigidBody()) : nullptr;
+        btRigidBody* bt_other_body               = rigid_body_other ? static_cast<btRigidBody*>(rigid_body_other->GetBtRigidBody()) : nullptr;
 
         Vector3 own_body_scaled_position    = m_position * GetTransform()->GetScale() - rigid_body_own->GetCenterOfMass();
         Vector3 other_body_scaled_position  = !m_bodyOther.expired() ? m_positionOther * rigid_body_other->GetTransform()->GetScale() - rigid_body_other->GetCenterOfMass() : m_positionOther;
@@ -293,8 +293,8 @@ namespace Spartan
             m_deferredConstruction = false;
         }
 
-        btRigidBody* bt_own_body    = rigid_body_own ? rigid_body_own->GetBtRigidBody() : nullptr;
-        btRigidBody* bt_other_body    = rigid_body_other ? rigid_body_other->GetBtRigidBody() : nullptr;
+        btRigidBody* bt_own_body   = static_cast<btRigidBody*>(rigid_body_own ? rigid_body_own->GetBtRigidBody() : nullptr);
+        btRigidBody* bt_other_body = static_cast<btRigidBody*>(rigid_body_other ? rigid_body_other->GetBtRigidBody() : nullptr);
 
         if (!bt_own_body)
             return;

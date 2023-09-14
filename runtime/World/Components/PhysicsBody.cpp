@@ -98,7 +98,7 @@ namespace Spartan
         m_position_lock    = Vector3::Zero;
         m_rotation_lock    = Vector3::Zero;
         m_rigid_body       = nullptr;
-        m_shape_type       = ShapeType::Box;
+        m_shape_type       = PhysicsShape::Box;
         m_center_of_mass   = Vector3::Zero;
         m_size             = Vector3::One;
         m_shape            = nullptr;
@@ -115,11 +115,11 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_center_of_mass, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_size, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shaped_optimized, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_shape_type, SetShapeType, ShapeType);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_shape_type, SetShapeType, PhysicsShape);
 
         if (Renderable* renderable = GetEntityPtr()->GetComponent<Renderable>().get())
         {
-            m_shape_type     = ShapeType::Mesh;
+            m_shape_type     = PhysicsShape::Mesh;
             m_center_of_mass = Vector3::Zero;
             m_size           = renderable->GetAabb().GetSize();
         }
@@ -142,7 +142,7 @@ namespace Spartan
     {
         RemoveBodyFromWorld();
 
-        delete m_shape;
+        delete static_cast<btCollisionShape*>(m_shape);
         m_shape = nullptr;
     }
 
@@ -154,7 +154,7 @@ namespace Spartan
     void PhysicsBody::OnTick()
     {
         // When the rigid body is inactive or we are in editor mode, allow the user to move/rotate it
-        if (!m_rigid_body->isActive() || !Engine::IsFlagSet(EngineMode::Game))
+        if (!static_cast<btRigidBody*>(m_rigid_body)->isActive() || !Engine::IsFlagSet(EngineMode::Game))
         {
             if (GetPosition() != GetTransform()->GetPosition())
             {
@@ -201,7 +201,7 @@ namespace Spartan
         stream->Read(&m_position_lock);
         stream->Read(&m_rotation_lock);
         stream->Read(&m_in_world);
-        m_shape_type = ShapeType(stream->ReadAs<uint32_t>());
+        m_shape_type = PhysicsShape(stream->ReadAs<uint32_t>());
         stream->Read(&m_size);
         stream->Read(&m_center_of_mass);
 
@@ -225,7 +225,7 @@ namespace Spartan
             return;
 
         m_friction = friction;
-        m_rigid_body->setFriction(friction);
+        static_cast<btRigidBody*>(m_rigid_body)->setFriction(friction);
     }
 
     void PhysicsBody::SetFrictionRolling(float frictionRolling)
@@ -234,7 +234,7 @@ namespace Spartan
             return;
 
         m_friction_rolling = frictionRolling;
-        m_rigid_body->setRollingFriction(frictionRolling);
+        static_cast<btRigidBody*>(m_rigid_body)->setRollingFriction(frictionRolling);
     }
 
     void PhysicsBody::SetRestitution(float restitution)
@@ -243,7 +243,7 @@ namespace Spartan
             return;
 
         m_restitution = restitution;
-        m_rigid_body->setRestitution(restitution);
+        static_cast<btRigidBody*>(m_rigid_body)->setRestitution(restitution);
     }
 
     void PhysicsBody::SetUseGravity(bool gravity)
@@ -278,7 +278,7 @@ namespace Spartan
         if (!m_rigid_body)
             return;
 
-        m_rigid_body->setLinearVelocity(ToBtVector3(velocity));
+        static_cast<btRigidBody*>(m_rigid_body)->setLinearVelocity(ToBtVector3(velocity));
         if (velocity != Vector3::Zero && activate)
         {
             Activate();
@@ -290,61 +290,61 @@ namespace Spartan
         if (!m_rigid_body)
             return;
 
-        m_rigid_body->setAngularVelocity(ToBtVector3(velocity));
+        static_cast<btRigidBody*>(m_rigid_body)->setAngularVelocity(ToBtVector3(velocity));
         if (velocity != Vector3::Zero && activate)
         {
             Activate();
         }
     }
 
-    void PhysicsBody::ApplyForce(const Vector3& force, ForceMode mode) const
+    void PhysicsBody::ApplyForce(const Vector3& force, PhysicsForce mode) const
     {
         if (!m_rigid_body)
             return;
 
         Activate();
 
-        if (mode == Force)
+        if (mode == PhysicsForce::Constant)
         {
-            m_rigid_body->applyCentralForce(ToBtVector3(force));
+            static_cast<btRigidBody*>(m_rigid_body)->applyCentralForce(ToBtVector3(force));
         }
-        else if (mode == Impulse)
+        else if (mode == PhysicsForce::Impulse)
         {
-            m_rigid_body->applyCentralImpulse(ToBtVector3(force));
+            static_cast<btRigidBody*>(m_rigid_body)->applyCentralImpulse(ToBtVector3(force));
         }
     }
 
-    void PhysicsBody::ApplyForceAtPosition(const Vector3& force, const Vector3& position, ForceMode mode) const
+    void PhysicsBody::ApplyForceAtPosition(const Vector3& force, const Vector3& position, PhysicsForce mode) const
     {
         if (!m_rigid_body)
             return;
 
         Activate();
 
-        if (mode == Force)
+        if (mode == PhysicsForce::Constant)
         {
-            m_rigid_body->applyForce(ToBtVector3(force), ToBtVector3(position));
+            static_cast<btRigidBody*>(m_rigid_body)->applyForce(ToBtVector3(force), ToBtVector3(position));
         }
-        else if (mode == Impulse)
+        else if (mode == PhysicsForce::Impulse)
         {
-            m_rigid_body->applyImpulse(ToBtVector3(force), ToBtVector3(position));
+            static_cast<btRigidBody*>(m_rigid_body)->applyImpulse(ToBtVector3(force), ToBtVector3(position));
         }
     }
 
-    void PhysicsBody::ApplyTorque(const Vector3& torque, ForceMode mode) const
+    void PhysicsBody::ApplyTorque(const Vector3& torque, PhysicsForce mode) const
     {
         if (!m_rigid_body)
             return;
 
         Activate();
 
-        if (mode == Force)
+        if (mode == PhysicsForce::Constant)
         {
-            m_rigid_body->applyTorque(ToBtVector3(torque));
+            static_cast<btRigidBody*>(m_rigid_body)->applyTorque(ToBtVector3(torque));
         }
-        else if (mode == Impulse)
+        else if (mode == PhysicsForce::Impulse)
         {
-            m_rigid_body->applyTorqueImpulse(ToBtVector3(torque));
+            static_cast<btRigidBody*>(m_rigid_body)->applyTorqueImpulse(ToBtVector3(torque));
         }
     }
 
@@ -366,7 +366,7 @@ namespace Spartan
             return;
 
         m_position_lock = lock;
-        m_rigid_body->setLinearFactor(ToBtVector3(Vector3::One - lock));
+        static_cast<btRigidBody*>(m_rigid_body)->setLinearFactor(ToBtVector3(Vector3::One - lock));
     }
 
     void PhysicsBody::SetRotationLock(bool lock)
@@ -387,12 +387,12 @@ namespace Spartan
             return;
 
         m_rotation_lock = lock;
-        m_rigid_body->setAngularFactor(ToBtVector3(Vector3::One - lock));
+        static_cast<btRigidBody*>(m_rigid_body)->setAngularFactor(ToBtVector3(Vector3::One - lock));
     }
 
-    void PhysicsBody::SetCenterOfMass(const Vector3& centerOfMass)
+    void PhysicsBody::SetCenterOfMass(const Vector3& center_of_mass)
     {
-        m_center_of_mass = centerOfMass;
+        m_center_of_mass = center_of_mass;
         SetPosition(GetPosition());
     }
 
@@ -400,7 +400,7 @@ namespace Spartan
     {
         if (m_rigid_body)
         {
-            const btTransform& transform = m_rigid_body->getWorldTransform();
+            const btTransform& transform = static_cast<btRigidBody*>(m_rigid_body)->getWorldTransform();
             return ToVector3(transform.getOrigin()) - ToQuaternion(transform.getRotation()) * m_center_of_mass;
         }
     
@@ -413,13 +413,13 @@ namespace Spartan
             return;
 
         // Set position to world transform
-        btTransform& transform_world = m_rigid_body->getWorldTransform();
+        btTransform& transform_world = static_cast<btRigidBody*>(m_rigid_body)->getWorldTransform();
         transform_world.setOrigin(ToBtVector3(position + ToQuaternion(transform_world.getRotation()) * m_center_of_mass));
 
         // Set position to interpolated world transform
-        btTransform transform_world_interpolated = m_rigid_body->getInterpolationWorldTransform();
+        btTransform transform_world_interpolated = static_cast<btRigidBody*>(m_rigid_body)->getInterpolationWorldTransform();
         transform_world_interpolated.setOrigin(transform_world.getOrigin());
-        m_rigid_body->setInterpolationWorldTransform(transform_world_interpolated);
+        static_cast<btRigidBody*>(m_rigid_body)->setInterpolationWorldTransform(transform_world_interpolated);
 
         if (activate)
         {
@@ -429,7 +429,7 @@ namespace Spartan
 
     Quaternion PhysicsBody::GetRotation() const
     {
-        return m_rigid_body ? ToQuaternion(m_rigid_body->getWorldTransform().getRotation()) : Quaternion::Identity;
+        return m_rigid_body ? ToQuaternion(static_cast<btRigidBody*>(m_rigid_body)->getWorldTransform().getRotation()) : Quaternion::Identity;
     }
 
     void PhysicsBody::SetRotation(const Quaternion& rotation, const bool activate /*= true*/) const
@@ -439,7 +439,7 @@ namespace Spartan
 
         // Set rotation to world transform
         const Vector3 oldPosition = GetPosition();
-        btTransform& transform_world = m_rigid_body->getWorldTransform();
+        btTransform& transform_world = static_cast<btRigidBody*>(m_rigid_body)->getWorldTransform();
         transform_world.setRotation(ToBtQuaternion(rotation));
         if (m_center_of_mass != Vector3::Zero)
         {
@@ -447,15 +447,15 @@ namespace Spartan
         }
 
         // Set rotation to interpolated world transform
-        btTransform interpTrans = m_rigid_body->getInterpolationWorldTransform();
+        btTransform interpTrans = static_cast<btRigidBody*>(m_rigid_body)->getInterpolationWorldTransform();
         interpTrans.setRotation(transform_world.getRotation());
         if (m_center_of_mass != Vector3::Zero)
         {
             interpTrans.setOrigin(transform_world.getOrigin());
         }
-        m_rigid_body->setInterpolationWorldTransform(interpTrans);
+        static_cast<btRigidBody*>(m_rigid_body)->setInterpolationWorldTransform(interpTrans);
 
-        m_rigid_body->updateInertiaTensor();
+        static_cast<btRigidBody*>(m_rigid_body)->updateInertiaTensor();
 
         if (activate)
         {
@@ -468,7 +468,7 @@ namespace Spartan
         if (!m_rigid_body)
             return;
 
-        m_rigid_body->clearForces();
+        static_cast<btRigidBody*>(m_rigid_body)->clearForces();
     }
 
     void PhysicsBody::Activate() const
@@ -478,7 +478,7 @@ namespace Spartan
 
         if (m_mass > 0.0f)
         {
-            m_rigid_body->activate(true);
+            static_cast<btRigidBody*>(m_rigid_body)->activate(true);
         }
     }
 
@@ -487,7 +487,7 @@ namespace Spartan
         if (!m_rigid_body)
             return;
 
-        m_rigid_body->setActivationState(WANTS_DEACTIVATION);
+        static_cast<btRigidBody*>(m_rigid_body)->setActivationState(WANTS_DEACTIVATION);
     }
 
     void PhysicsBody::AddConstraint(Constraint* constraint)
@@ -524,8 +524,8 @@ namespace Spartan
         btVector3 local_intertia = btVector3(0, 0, 0);
         if (m_shape && m_rigid_body)
         {
-            local_intertia = m_rigid_body ? m_rigid_body->getLocalInertia() : local_intertia;
-            m_shape->calculateLocalInertia(m_mass, local_intertia);
+            local_intertia = static_cast<btRigidBody*>(m_rigid_body)->getLocalInertia();
+            static_cast<btCollisionShape*>(m_shape)->calculateLocalInertia(m_mass, local_intertia);
         }
         
         RemoveBodyFromWorld();
@@ -540,12 +540,12 @@ namespace Spartan
             construction_info.m_friction         = m_friction;
             construction_info.m_rollingFriction  = m_friction_rolling;
             construction_info.m_restitution      = m_restitution;
-            construction_info.m_collisionShape   = m_shape;
+            construction_info.m_collisionShape   = static_cast<btCollisionShape*>(m_shape);
             construction_info.m_localInertia     = local_intertia;
             construction_info.m_motionState      = new MotionState(this); // we delete this manually later
 
             m_rigid_body = new btRigidBody(construction_info);
-            m_rigid_body->setUserPointer(this);
+            static_cast<btRigidBody*>(m_rigid_body)->setUserPointer(this);
         }
 
         // reapply constraint positions for new center of mass shift
@@ -556,7 +556,7 @@ namespace Spartan
 
         // flags
         {
-            int flags = m_rigid_body->getCollisionFlags();
+            int flags = static_cast<btRigidBody*>(m_rigid_body)->getCollisionFlags();
 
             // kinematic
             {
@@ -569,9 +569,9 @@ namespace Spartan
                     flags &= ~btCollisionObject::CF_KINEMATIC_OBJECT;
                 }
 
-                m_rigid_body->setCollisionFlags(flags);
-                m_rigid_body->forceActivationState(m_is_kinematic ? DISABLE_DEACTIVATION : ISLAND_SLEEPING);
-                m_rigid_body->setDeactivationTime(DEFAULT_DEACTIVATION_TIME);
+                static_cast<btRigidBody*>(m_rigid_body)->setCollisionFlags(flags);
+                static_cast<btRigidBody*>(m_rigid_body)->forceActivationState(m_is_kinematic ? DISABLE_DEACTIVATION : ISLAND_SLEEPING);
+                static_cast<btRigidBody*>(m_rigid_body)->setDeactivationTime(DEFAULT_DEACTIVATION_TIME);
             }
 
             // gravity
@@ -585,15 +585,15 @@ namespace Spartan
                     flags |= BT_DISABLE_WORLD_GRAVITY;
                 }
 
-                m_rigid_body->setFlags(flags);
+                static_cast<btRigidBody*>(m_rigid_body)->setFlags(flags);
 
                 if (m_use_gravity)
                 {
-                    m_rigid_body->setGravity(ToBtVector3(m_gravity));
+                    static_cast<btRigidBody*>(m_rigid_body)->setGravity(ToBtVector3(m_gravity));
                 }
                 else
                 {
-                    m_rigid_body->setGravity(btVector3(0.0f, 0.0f, 0.0f));
+                    static_cast<btRigidBody*>(m_rigid_body)->setGravity(btVector3(0.0f, 0.0f, 0.0f));
                 }
             }
         }
@@ -611,7 +611,7 @@ namespace Spartan
         SetRotationLock(m_rotation_lock);
 
         // add to world
-        Physics::AddBody(m_rigid_body);
+        Physics::AddBody(static_cast<btRigidBody*>(m_rigid_body));
 
         if (m_mass > 0.0f)
         {
@@ -642,12 +642,12 @@ namespace Spartan
         {
             if (m_in_world)
             {
-                Physics::RemoveBody(m_rigid_body);
+                Physics::RemoveBody(reinterpret_cast<btRigidBody*&>(m_rigid_body));
                 m_in_world = false;
             }
 
-            delete m_rigid_body->getMotionState();
-            delete m_rigid_body;
+            delete static_cast<btRigidBody*>(m_rigid_body)->getMotionState();
+            delete static_cast<btRigidBody*>(m_rigid_body);
             m_rigid_body = nullptr;
         }
     }
@@ -665,7 +665,7 @@ namespace Spartan
         UpdateShape();
     }
 
-    void PhysicsBody::SetShapeType(ShapeType type)
+    void PhysicsBody::SetShapeType(PhysicsShape type)
     {
         if (m_shape_type == type)
             return;
@@ -688,38 +688,38 @@ namespace Spartan
         // delete old shape
         if (m_shape)
         {
-            delete m_shape;
+            delete static_cast<btCollisionShape*>(m_shape);
             m_shape = nullptr;
         }
 
         // construct new shape
         switch (m_shape_type)
         {
-        case ShapeType::Box:
+        case PhysicsShape::Box:
             m_shape = new btBoxShape(ToBtVector3(m_size * 0.5f));
             break;
 
-        case ShapeType::Sphere:
+        case PhysicsShape::Sphere:
             m_shape = new btSphereShape(m_size.x * 0.5f);
             break;
 
-        case ShapeType::StaticPlane:
+        case PhysicsShape::StaticPlane:
             m_shape = new btStaticPlaneShape(btVector3(0.0f, 1.0f, 0.0f), 0.0f);
             break;
 
-        case ShapeType::Cylinder:
+        case PhysicsShape::Cylinder:
             m_shape = new btCylinderShape(btVector3(m_size.x * 0.5f, m_size.y * 0.5f, m_size.x * 0.5f));
             break;
 
-        case ShapeType::Capsule:
+        case PhysicsShape::Capsule:
             m_shape = new btCapsuleShape(m_size.x * 0.5f, Helper::Max(m_size.y - m_size.x, 0.0f));
             break;
 
-        case ShapeType::Cone:
+        case PhysicsShape::Cone:
             m_shape = new btConeShape(m_size.x * 0.5f, m_size.y);
             break;
 
-        case ShapeType::Mesh:
+        case PhysicsShape::Mesh:
             shared_ptr<Renderable> renderable = GetEntityPtr()->GetComponent<Renderable>();
             if (!renderable)
             {
@@ -753,7 +753,7 @@ namespace Spartan
             break;
         }
 
-        m_shape->setUserPointer(this);
+        static_cast<btCollisionShape*>(m_shape)->setUserPointer(this);
 
         // Re-add the body to the world so it's re-created with the new shape
         AddBodyToWorld();
