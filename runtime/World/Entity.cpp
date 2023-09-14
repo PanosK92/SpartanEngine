@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Entity.h"
 #include "World.h"
 #include "Components/Camera.h"
-#include "Components/Collider.h"
 #include "Components/Transform.h"
 #include "Components/Constraint.h"
 #include "Components/Light.h"
@@ -306,11 +305,10 @@ namespace Spartan
             case ComponentType::AudioListener:   component = static_pointer_cast<Component>(AddComponent<AudioListener>());   break;
             case ComponentType::AudioSource:     component = static_pointer_cast<Component>(AddComponent<AudioSource>());     break;
             case ComponentType::Camera:          component = static_pointer_cast<Component>(AddComponent<Camera>());          break;
-            case ComponentType::Collider:        component = static_pointer_cast<Component>(AddComponent<Collider>());        break;
             case ComponentType::Constraint:      component = static_pointer_cast<Component>(AddComponent<Constraint>());      break;
             case ComponentType::Light:           component = static_pointer_cast<Component>(AddComponent<Light>());           break;
             case ComponentType::Renderable:      component = static_pointer_cast<Component>(AddComponent<Renderable>());      break;
-            case ComponentType::PhysicsBody:       component = static_pointer_cast<Component>(AddComponent<PhysicsBody>());       break;
+            case ComponentType::PhysicsBody:     component = static_pointer_cast<Component>(AddComponent<PhysicsBody>());     break;
             case ComponentType::Environment:     component = static_pointer_cast<Component>(AddComponent<Environment>());     break;
             case ComponentType::Transform:       component = static_pointer_cast<Component>(AddComponent<Transform>());       break;
             case ComponentType::Terrain:         component = static_pointer_cast<Component>(AddComponent<Terrain>());         break;

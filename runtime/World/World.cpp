@@ -30,7 +30,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/AudioListener.h"
 #include "Components/AudioSource.h"
 #include "Components/PhysicsBody.h"
-#include "Components/Collider.h"
 #include "Components/Terrain.h"
 #include "../Resource/ResourceCache.h"
 #include "../IO/FileStream.h"
@@ -127,7 +126,7 @@ namespace Spartan
                 audio_source->SetLoop(true);
             }
 
-            // Floor
+            // floor
             if (create_floor)
             {
                 m_default_model_floor = World::CreateEntity();
@@ -135,18 +134,17 @@ namespace Spartan
                 m_default_model_floor->GetTransform()->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise it a bit to avoid z-fighting with world grid
                 m_default_model_floor->GetTransform()->SetScale(Vector3(30.0f, 1.0f, 30.0f));
 
-                // Add a renderable component
+                // add a renderable component
                 shared_ptr<Renderable> renderable = m_default_model_floor->AddComponent<Renderable>();
                 renderable->SetGeometry(Renderer::GetStandardMesh(Renderer_MeshType::Quad).get());
                 renderable->SetDefaultMaterial();
 
-                // Add physics components
+                // add physics components
                 shared_ptr<PhysicsBody> rigid_body = m_default_model_floor->AddComponent<PhysicsBody>();
-                rigid_body->SetMass(0.0f); // make it static/immovable
+                rigid_body->SetMass(0.0f); // static
                 rigid_body->SetFriction(0.5f);
                 rigid_body->SetRestitution(0.2f);
-                shared_ptr<Collider> collider = m_default_model_floor->AddComponent<Collider>();
-                collider->SetShapeType(ColliderShape::StaticPlane); // set shape
+                rigid_body->SetShapeType(ColliderShape::StaticPlane);
             }
         }
     }
@@ -519,11 +517,10 @@ namespace Spartan
 
             // Add physics components
             shared_ptr<PhysicsBody> rigid_body = entity->AddComponent<PhysicsBody>();
-            rigid_body->SetMass(1.0f); // give it some mass
+            rigid_body->SetMass(1.0f);
             rigid_body->SetRestitution(1.0f);
             rigid_body->SetFriction(0.2f);
-            shared_ptr<Collider> collider = entity->AddComponent<Collider>();
-            collider->SetShapeType(ColliderShape::Box); // set shape
+            rigid_body->SetShapeType(ColliderShape::Box);
         }
 
         // Start simulating (for the physics and the music to work)

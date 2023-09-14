@@ -203,8 +203,6 @@ namespace Spartan
             return;
 
         m_world->removeRigidBody(body);
-        delete body->getMotionState();
-        delete body;
     }
 
     void Physics::AddConstraint(btTypedConstraint* constraint, bool collision_with_linked_body /*= true*/)

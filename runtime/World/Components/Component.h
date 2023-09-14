@@ -41,7 +41,6 @@ namespace Spartan
         AudioListener,
         AudioSource,
         Camera,
-        Collider,
         Constraint,
         Light,
         Renderable,
