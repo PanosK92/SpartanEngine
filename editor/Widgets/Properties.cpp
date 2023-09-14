@@ -684,6 +684,14 @@ void Properties::ShowMaterial(Material* material) const
                         auto setter = [&material, &mat_tex](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(mat_tex, texture); };
                         ImGuiSp::image_slot(material->GetTexture_PtrShared(mat_tex), setter);
 
+                        // 2nd texture, used for blending by the terrain
+                        if (mat_tex == MaterialTexture::Color)
+                        {
+                            auto setter = [&material](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(MaterialTexture::Color2, texture); };
+                            ImGui::SameLine();
+                            ImGuiSp::image_slot(material->GetTexture_PtrShared(MaterialTexture::Color2), setter);
+                        }
+
                         if (show_modifier)
                         {
                             ImGui::SameLine();
@@ -725,7 +733,7 @@ void Properties::ShowMaterial(Material* material) const
                 show_property("Anisotropic rotation", "Rotates the direction of anisotropy, with 1.0 going full circle",                   MaterialTexture::Undefined,  MaterialProperty::AnisotropicRotation);
                 show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTexture::Undefined,  MaterialProperty::Sheen);
                 show_property("Sheen tint",           "Mix between white and using base color for sheen reflection",                       MaterialTexture::Undefined,  MaterialProperty::SheenTint);
-                show_property("Color",                "Diffuse or metal surface color",                                                    MaterialTexture::Color,      MaterialProperty::ColorTint);
+                show_property("Color",                "Surface color",                                                                     MaterialTexture::Color,      MaterialProperty::ColorTint);
                 show_property("Roughness",            "Specifies microfacet roughness of the surface for diffuse and specular reflection", MaterialTexture::Roughness,  MaterialProperty::RoughnessMultiplier);
                 show_property("Metalness",            "Blends between a non-metallic and metallic material model",                         MaterialTexture::Metalness,  MaterialProperty::MetalnessMultiplier);
                 show_property("Normal",               "Controls the normals of the base layers",                                           MaterialTexture::Normal,     MaterialProperty::NormalMultiplier);
