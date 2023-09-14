@@ -144,7 +144,7 @@ namespace Spartan
                 rigid_body->SetMass(0.0f); // static
                 rigid_body->SetFriction(0.5f);
                 rigid_body->SetRestitution(0.2f);
-                rigid_body->SetShapeType(ColliderShape::StaticPlane);
+                rigid_body->SetShapeType(ShapeType::StaticPlane);
             }
         }
     }
@@ -520,7 +520,7 @@ namespace Spartan
             rigid_body->SetMass(1.0f);
             rigid_body->SetRestitution(1.0f);
             rigid_body->SetFriction(0.2f);
-            rigid_body->SetShapeType(ColliderShape::Box);
+            rigid_body->SetShapeType(ShapeType::Box);
         }
 
         // Start simulating (for the physics and the music to work)
