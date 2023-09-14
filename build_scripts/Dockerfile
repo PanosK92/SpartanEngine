@@ -19,7 +19,7 @@ RUN cd /deps &&\
     cd scripts/; python3 fetch_dependencies.py; cd .. &&\
     cmake -DOPTION_ENABLE_ALL_APPS=OFF -DOPTION_BUILD_CMP_SDK=ON -DOPTION_CMP_OPENGL=OFF -DOPTION_CMP_QT=OFF -DOPTION_CMP_OPENCV=OFF &&\
     make; \
-    mkdir /usr/lib/Compressonator; cp cmp_compressonatorlib/compressonator.h /usr/lib/Compressonator &&\
+    mkdir /usr/lib/Compressonator; cp cmp_compressonatorlib/compressonator.h /usr/include/compressonator.h &&\
     cp lib/*.a /usr/lib
 
 # Download and install the DirectXShaderCompiler library 
