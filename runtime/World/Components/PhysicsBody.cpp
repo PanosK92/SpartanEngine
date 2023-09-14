@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================================================
+//= INCLUDES =========================================================
 #include "pch.h"
 #include "PhysicsBody.h"
 #include "Transform.h"
@@ -37,11 +37,14 @@ SP_WARNINGS_OFF
 #include "BulletCollision/CollisionShapes/btCylinderShape.h"
 #include "BulletCollision/CollisionShapes/btCapsuleShape.h"
 #include "BulletCollision/CollisionShapes/btConeShape.h"
+#include "BulletCollision/CollisionShapes/btHeightfieldTerrainShape.h"
 #include "BulletCollision/CollisionShapes/btTriangleMesh.h"
 #include "BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h"
 #include "BulletCollision/CollisionShapes/btConvexHullShape.h"
+#include "Terrain.h"
+#include "../RHI/RHI_Texture.h"
 SP_WARNINGS_ON
-//=================================================================
+//====================================================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -736,6 +739,32 @@ namespace Spartan
             case PhysicsShape::Cone:
                 m_shape = new btConeShape(m_size.x * 0.5f, m_size.y);
                 break;
+
+            case PhysicsShape::Terrain:
+            {
+                Terrain* terrain = GetEntityPtr()->GetComponent<Terrain>().get();
+                if (!terrain)
+                {
+                    SP_LOG_WARNING("For a terrain shape to be constructed, there needs to be a Terrain component");
+                    return;
+                }
+
+                btHeightfieldTerrainShape* heightfield_terrain_shape = new btHeightfieldTerrainShape(
+                    terrain->GetHeightMap()->GetWidth(),    // width
+                    terrain->GetHeightMap()->GetHeight(),   // length
+                    terrain->GetHeightData(),               // data
+                    1.0f,                                   // height scale
+                    terrain->GetMinY(), terrain->GetMaxY(), // min and max height
+                    1,                                      // Up axis (0=x, 1=y, 2=z)
+                    PHY_FLOAT,                              // Data type
+                    false                                   // Flip quad edges or not
+                );
+                heightfield_terrain_shape->setLocalScaling(btVector3(1.0f, 1.0f, 1.0f));
+
+                m_shape = heightfield_terrain_shape;
+
+                break;
+            }
 
             case PhysicsShape::Mesh:
             {
