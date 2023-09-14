@@ -46,7 +46,7 @@ namespace Spartan
         void Deserialize(FileStream* stream) override;
         //============================================
 
-        const std::shared_ptr<RHI_Texture> GetHeightMap() const { return m_height_map; }
+        const std::shared_ptr<RHI_Texture> GetHeightMap() const { return m_height_texture; }
         void SetHeightMap(const std::shared_ptr<RHI_Texture>& height_map);
 
         float GetMinY()     const { return m_min_y; }
@@ -74,7 +74,7 @@ namespace Spartan
         uint32_t m_vertex_count           = 0;
         uint32_t m_index_count            = 0;
         uint32_t m_triangle_count         = 0;
-        std::shared_ptr<RHI_Texture> m_height_map;
+        std::shared_ptr<RHI_Texture> m_height_texture;
         std::vector<float> m_height_data;
         std::shared_ptr<Mesh> m_mesh;
     };
