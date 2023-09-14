@@ -46,7 +46,6 @@ namespace Spartan
         Light,
         Renderable,
         RigidBody,
-        SoftBody,
         Environment,
         Transform,
         Terrain,

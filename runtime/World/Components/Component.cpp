@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Light.h"
 #include "Environment.h"
 #include "RigidBody.h"
-#include "SoftBody.h"
 #include "Collider.h"
 #include "Constraint.h"
 #include "Camera.h"
@@ -74,7 +73,6 @@ namespace Spartan
     REGISTER_COMPONENT(Light,           ComponentType::Light)
     REGISTER_COMPONENT(Renderable,      ComponentType::Renderable)
     REGISTER_COMPONENT(RigidBody,       ComponentType::RigidBody)
-    REGISTER_COMPONENT(SoftBody,        ComponentType::SoftBody)
     REGISTER_COMPONENT(Environment,     ComponentType::Environment)
     REGISTER_COMPONENT(Terrain,         ComponentType::Terrain)
     REGISTER_COMPONENT(Transform,       ComponentType::Transform)

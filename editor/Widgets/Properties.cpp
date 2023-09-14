@@ -31,7 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Transform.h"
 #include "World/Components/Renderable.h"
 #include "World/Components/RigidBody.h"
-#include "World/Components/SoftBody.h"
 #include "World/Components/Collider.h"
 #include "World/Components/Constraint.h"
 #include "World/Components/Light.h"
@@ -167,7 +166,6 @@ void Properties::OnTickVisible()
         ShowRenderable(renderable);
         ShowMaterial(material);
         ShowRigidBody(entity_ptr->GetComponent<RigidBody>());
-        ShowSoftBody(entity_ptr->GetComponent<SoftBody>());
         ShowCollider(entity_ptr->GetComponent<Collider>());
         ShowConstraint(entity_ptr->GetComponent<Constraint>());
 
@@ -488,22 +486,6 @@ void Properties::ShowRigidBody(shared_ptr<RigidBody> rigid_body) const
         if (freeze_rot_y != static_cast<bool>(rigid_body->GetRotationLock().y)) rigid_body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
         if (freeze_rot_z != static_cast<bool>(rigid_body->GetRotationLock().z)) rigid_body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
         //=================================================================================================================================================================================================================
-    }
-    component_end();
-}
-
-void Properties::ShowSoftBody(shared_ptr<SoftBody> soft_body) const
-{
-    if (!soft_body)
-        return;
-
-    if (component_begin("SoftBody", IconType::Component_SoftBody, soft_body))
-    {
-        //= REFLECT ===============================================================
-        //=========================================================================
-
-        //= MAP ===================================================================
-        //=========================================================================
     }
     component_end();
 }
@@ -1159,10 +1141,6 @@ void Properties::ComponentContextMenu_Add() const
                 if (ImGui::MenuItem("Rigid Body"))
                 {
                     entity->AddComponent<RigidBody>();
-                }
-                else if (ImGui::MenuItem("Soft Body"))
-                {
-                    entity->AddComponent<SoftBody>();
                 }
                 else if (ImGui::MenuItem("Collider"))
                 {
