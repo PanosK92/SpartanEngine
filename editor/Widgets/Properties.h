@@ -66,7 +66,6 @@ private:
     void ShowLight(std::shared_ptr<Spartan::Light> light) const;
     void ShowRenderable(std::shared_ptr<Spartan::Renderable> renderable) const;
     void ShowPhysicsBody(std::shared_ptr<Spartan::PhysicsBody> rigid_body) const;
-    void ShowCollider(std::shared_ptr<Spartan::Collider> collider) const;
     void ShowConstraint(std::shared_ptr<Spartan::Constraint> constraint) const;
     void ShowMaterial(Spartan::Material* material) const;
     void ShowCamera(std::shared_ptr<Spartan::Camera> camera) const;

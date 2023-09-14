@@ -19,12 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================================================
+//= INCLUDES ==================================================
 #include "pch.h"
 #include "PhysicsBody.h"
 #include "Transform.h"
-#include "Collider.h"
 #include "Constraint.h"
+#include "Renderable.h"
+#include "../RHI/RHI_Vertex.h"
 #include "../Entity.h"
 #include "../../Physics/Physics.h"
 #include "../../Physics/BulletPhysicsHelper.h"
@@ -32,8 +33,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 SP_WARNINGS_OFF
 #include "BulletDynamics/Dynamics/btRigidBody.h"
 #include "BulletCollision/CollisionShapes/btCollisionShape.h"
+#include "BulletCollision/CollisionShapes/btBoxShape.h"
+#include "BulletCollision/CollisionShapes/btSphereShape.h"
+#include "BulletCollision/CollisionShapes/btStaticPlaneShape.h"
+#include "BulletCollision/CollisionShapes/btCylinderShape.h"
+#include "BulletCollision/CollisionShapes/btCapsuleShape.h"
+#include "BulletCollision/CollisionShapes/btConeShape.h"
+#include "BulletCollision/CollisionShapes/btConvexHullShape.h"
 SP_WARNINGS_ON
-//===========================================================
+//=============================================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -42,11 +50,14 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static const float DEFAULT_MASS              = 0.0f;
-    static const float DEFAULT_FRICTION          = 0.5f;
-    static const float DEFAULT_FRICTION_ROLLING  = 0.0f;
-    static const float DEFAULT_RESTITUTION       = 0.0f;
-    static const float DEFAULT_DEACTIVATION_TIME = 2000;
+    namespace
+    {
+        static const float DEFAULT_MASS              = 0.0f;
+        static const float DEFAULT_FRICTION          = 0.5f;
+        static const float DEFAULT_FRICTION_ROLLING  = 0.0f;
+        static const float DEFAULT_RESTITUTION       = 0.0f;
+        static const float DEFAULT_DEACTIVATION_TIME = 2000;
+    }
 
     class MotionState : public btMotionState
     {
@@ -88,8 +99,11 @@ namespace Spartan
         m_is_kinematic     = false;
         m_position_lock    = Vector3::Zero;
         m_rotation_lock    = Vector3::Zero;
-        m_collision_shape  = nullptr;
         m_rigid_body       = nullptr;
+        m_shape_type       = ColliderShape::Box;
+        m_shape_center     = Vector3::Zero;
+        m_size             = Vector3::One;
+        m_shape            = nullptr;
 
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mass, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction, float);
@@ -101,24 +115,46 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_position_lock, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotation_lock, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_center_of_mass, Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_size, Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shape_center, Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_vertexLimit, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shape_optimize, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_shape_type, SetShapeType, ColliderShape);
     }
 
     PhysicsBody::~PhysicsBody()
     {
-        Body_Release();
+        DeleteBody();
+
+        delete m_shape;
+        m_shape = nullptr;
     }
 
     void PhysicsBody::OnInitialize()
     {
         Component::OnInitialize();
 
-        Body_AcquireShape();
-        Body_AddToWorld();
+        // shape
+        {
+            // If there is a mesh, use it's bounding box
+            if (Renderable* renderable = GetEntityPtr()->GetComponent<Renderable>().get())
+            {
+                m_shape_center = Vector3::Zero;
+                m_size         = renderable->GetAabb().GetSize();
+            }
+
+            UpdateShape();
+        }
+
+        AddBodyToWorld();
     }
 
     void PhysicsBody::OnRemove()
     {
-        Body_Release();
+        DeleteBody();
+
+        delete m_shape;
+        m_shape = nullptr;
     }
 
     void PhysicsBody::OnStart()
@@ -159,6 +195,9 @@ namespace Spartan
         stream->Write(m_position_lock);
         stream->Write(m_rotation_lock);
         stream->Write(m_in_world);
+        stream->Write(uint32_t(m_shape_type));
+        stream->Write(m_size);
+        stream->Write(m_shape_center);
     }
 
     void PhysicsBody::Deserialize(FileStream* stream)
@@ -173,9 +212,12 @@ namespace Spartan
         stream->Read(&m_position_lock);
         stream->Read(&m_rotation_lock);
         stream->Read(&m_in_world);
+        m_shape_type = ColliderShape(stream->ReadAs<uint32_t>());
+        stream->Read(&m_size);
+        stream->Read(&m_shape_center);
 
-        Body_AcquireShape();
-        Body_AddToWorld();
+        AddBodyToWorld();
+        UpdateShape();
     }
 
     void PhysicsBody::SetMass(float mass)
@@ -184,7 +226,7 @@ namespace Spartan
         if (mass != m_mass)
         {
             m_mass = mass;
-            Body_AddToWorld();
+            AddBodyToWorld();
         }
     }
 
@@ -221,7 +263,7 @@ namespace Spartan
             return;
 
         m_use_gravity = gravity;
-        Body_AddToWorld();
+        AddBodyToWorld();
     }
 
     void PhysicsBody::SetGravity(const Vector3& acceleration)
@@ -230,7 +272,7 @@ namespace Spartan
             return;
 
         m_gravity = acceleration;
-        Body_AddToWorld();
+        AddBodyToWorld();
     }
 
     void PhysicsBody::SetIsKinematic(bool kinematic)
@@ -239,7 +281,7 @@ namespace Spartan
             return;
 
         m_is_kinematic = kinematic;
-        Body_AddToWorld();
+        AddBodyToWorld();
     }
 
     void PhysicsBody::SetLinearVelocity(const Vector3& velocity, const bool activate /*= true*/) const
@@ -487,57 +529,42 @@ namespace Spartan
         Activate();
     }
 
-    void PhysicsBody::SetShape(btCollisionShape* shape)
-    {
-        m_collision_shape = shape;
-
-        if (m_collision_shape)
-        {
-            Body_AddToWorld();
-        }
-        else
-        {
-            Body_RemoveFromWorld();
-        }
-    }
-
-    void PhysicsBody::Body_AddToWorld()
+    void PhysicsBody::AddBodyToWorld()
     {
         if (m_mass < 0.0f)
         {
             m_mass = 0.0f;
         }
 
-        // Transfer inertia to new collision shape
+        // transfer inertia to new collision shape
         btVector3 local_intertia = btVector3(0, 0, 0);
-        if (m_collision_shape && m_rigid_body)
+        if (m_shape && m_rigid_body)
         {
             local_intertia = m_rigid_body ? m_rigid_body->getLocalInertia() : local_intertia;
-            m_collision_shape->calculateLocalInertia(m_mass, local_intertia);
+            m_shape->calculateLocalInertia(m_mass, local_intertia);
         }
         
-        Body_Release();
+        DeleteBody();
 
-        // CONSTRUCTION
+        // construct a new rigid body
         {
-            // Create a motion state (memory will be freed by the RigidBody)
-            const auto motion_state = new MotionState(this);
-            
-            // Info
-            btRigidBody::btRigidBodyConstructionInfo constructionInfo(m_mass, motion_state, m_collision_shape, local_intertia);
-            constructionInfo.m_mass            = m_mass;
-            constructionInfo.m_friction        = m_friction;
-            constructionInfo.m_rollingFriction = m_friction_rolling;
-            constructionInfo.m_restitution     = m_restitution;
-            constructionInfo.m_collisionShape  = m_collision_shape;
-            constructionInfo.m_localInertia    = local_intertia;
-            constructionInfo.m_motionState     = motion_state;
+            SP_ASSERT(m_shape != nullptr);
 
-            m_rigid_body = new btRigidBody(constructionInfo);
+            // construction info
+            btRigidBody::btRigidBodyConstructionInfo construction_info(0.0f, nullptr, nullptr);
+            construction_info.m_mass             = m_mass;
+            construction_info.m_friction         = m_friction;
+            construction_info.m_rollingFriction  = m_friction_rolling;
+            construction_info.m_restitution      = m_restitution;
+            construction_info.m_collisionShape   = m_shape;
+            construction_info.m_localInertia     = local_intertia;
+            construction_info.m_motionState      = new MotionState(this); // we delete this manually later
+
+            m_rigid_body = new btRigidBody(construction_info);
             m_rigid_body->setUserPointer(this);
         }
 
-        // Reapply constraint positions for new center of mass shift
+        // reapply constraint positions for new center of mass shift
         for (const auto& constraint : m_constraints)
         {
             constraint->ApplyFrames();
@@ -546,19 +573,19 @@ namespace Spartan
         Flags_UpdateKinematic();
         Flags_UpdateGravity();
 
-        // Transform
+        // transform
         SetPosition(GetTransform()->GetPosition());
         SetRotation(GetTransform()->GetRotation());
 
-        // Constraints
+        // constraints
         SetPositionLock(m_position_lock);
         SetRotationLock(m_rotation_lock);
 
-        // Position and rotation locks
+        // position and rotation locks
         SetPositionLock(m_position_lock);
         SetRotationLock(m_rotation_lock);
 
-        // Add to world
+        // add to world
         Physics::AddBody(m_rigid_body);
 
         if (m_mass > 0.0f)
@@ -574,42 +601,29 @@ namespace Spartan
         m_in_world = true;
     }
 
-    void PhysicsBody::Body_Release()
+    void PhysicsBody::DeleteBody()
     {
         if (!m_rigid_body)
             return;
 
-        // Release any constraints that refer to it
+        // release any constraints that refer to it
         for (const auto& constraint : m_constraints)
         {
             constraint->ReleaseConstraint();
         }
 
-        // Remove it from the world
-        Body_RemoveFromWorld();
-
-        // Reset it
-        m_rigid_body = nullptr;
-    }
-
-    void PhysicsBody::Body_RemoveFromWorld()
-    {
-        if (!m_rigid_body)
-            return;
-
-        if (m_in_world)
+        // remove it from the world and delete it
+        if (m_rigid_body)
         {
-            Physics::RemoveBody(m_rigid_body);
-            m_in_world = false;
-        }
-    }
+            if (m_in_world)
+            {
+                Physics::RemoveBody(m_rigid_body);
+                m_in_world = false;
+            }
 
-    void PhysicsBody::Body_AcquireShape()
-    {
-        if (const auto& collider = m_entity_ptr->GetComponent<Collider>())
-        {
-            m_collision_shape    = collider->GetShape();
-            m_center_of_mass    = collider->GetCenter();
+            delete m_rigid_body->getMotionState();
+            delete m_rigid_body;
+            m_rigid_body = nullptr;
         }
     }
 
@@ -659,5 +673,115 @@ namespace Spartan
     bool PhysicsBody::IsActivated() const
     {
         return m_rigid_body->isActive();
+    }
+
+    void PhysicsBody::SetBoundingBox(const Vector3& boundingBox)
+    {
+        if (m_size == boundingBox)
+            return;
+
+        m_size = boundingBox;
+        m_size.x = Helper::Clamp(m_size.x, Helper::EPSILON, INFINITY);
+        m_size.y = Helper::Clamp(m_size.y, Helper::EPSILON, INFINITY);
+        m_size.z = Helper::Clamp(m_size.z, Helper::EPSILON, INFINITY);
+
+        UpdateShape();
+    }
+
+    void PhysicsBody::SetShapeType(ColliderShape type)
+    {
+        if (m_shape_type == type)
+            return;
+
+        m_shape_type = type;
+        UpdateShape();
+    }
+
+    void PhysicsBody::SetOptimize(bool optimize)
+    {
+        if (m_shape_optimize == optimize)
+            return;
+
+        m_shape_optimize = optimize;
+        UpdateShape();
+    }
+
+    void PhysicsBody::UpdateShape()
+    {
+        delete m_shape;
+        m_shape = nullptr;
+
+        switch (m_shape_type)
+        {
+        case ColliderShape::Box:
+            m_shape = new btBoxShape(ToBtVector3(m_size * 0.5f));
+            break;
+
+        case ColliderShape::Sphere:
+            m_shape = new btSphereShape(m_size.x * 0.5f);
+            break;
+
+        case ColliderShape::StaticPlane:
+            m_shape = new btStaticPlaneShape(btVector3(0.0f, 1.0f, 0.0f), 0.0f);
+            break;
+
+        case ColliderShape::Cylinder:
+            m_shape = new btCylinderShape(btVector3(m_size.x * 0.5f, m_size.y * 0.5f, m_size.x * 0.5f));
+            break;
+
+        case ColliderShape::Capsule:
+            m_shape = new btCapsuleShape(m_size.x * 0.5f, Helper::Max(m_size.y - m_size.x, 0.0f));
+            break;
+
+        case ColliderShape::Cone:
+            m_shape = new btConeShape(m_size.x * 0.5f, m_size.y);
+            break;
+
+        case ColliderShape::Mesh:
+            // Get Renderable
+            shared_ptr<Renderable> renderable = GetEntityPtr()->GetComponent<Renderable>();
+            if (!renderable)
+            {
+                SP_LOG_WARNING("Can't construct mesh shape, there is no Renderable component attached.");
+                return;
+            }
+
+            // Validate vertex count
+            if (renderable->GetVertexCount() >= m_vertexLimit)
+            {
+                SP_LOG_WARNING("No user defined collider with more than %d vertices is allowed.", m_vertexLimit);
+                return;
+            }
+
+            // Get geometry
+            vector<uint32_t> indices;
+            vector<RHI_Vertex_PosTexNorTan> vertices;
+            renderable->GetGeometry(&indices, &vertices);
+
+            if (vertices.empty())
+            {
+                SP_LOG_WARNING("No vertices.");
+                return;
+            }
+
+            // Construct hull approximation
+            m_shape = new btConvexHullShape(
+                (btScalar*)&vertices[0],                                 // points
+                renderable->GetVertexCount(),                            // point count
+                static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan))); // stride
+
+            // Optimize if requested
+            if (m_shape_optimize)
+            {
+                auto hull = static_cast<btConvexHullShape*>(m_shape);
+                hull->optimizeConvexHull();
+                hull->initializePolyhedralFeatures();
+            }
+            break;
+        }
+
+        m_shape->setUserPointer(this);
+
+        AddBodyToWorld();
     }
 }

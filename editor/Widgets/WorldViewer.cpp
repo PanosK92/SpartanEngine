@@ -30,7 +30,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/AudioSource.h"
 #include "World/Components/AudioListener.h"
 #include "World/Components/PhysicsBody.h"
-#include "World/Components/Collider.h"
 #include "World/Components/Constraint.h"
 #include "World/Components/Environment.h"
 #include "World/Components/Terrain.h"
@@ -43,8 +42,8 @@ using namespace std;
 
 namespace
 {
-    static bool popup_rename_entity        = false;
-    static Spartan::Entity* entity_copied  = nullptr;
+    static bool popup_rename_entity       = false;
+    static Spartan::Entity* entity_copied = nullptr;
     static weak_ptr <Spartan::Entity> entity_clicked;
     static weak_ptr <Spartan::Entity> entity_hovered;
     static ImGuiSp::DragDropPayload g_payload;
@@ -488,10 +487,6 @@ void WorldViewer::PopupContextMenu() const
         {
             ActionEntityCreatePhysicsBody();
         }
-        else if (ImGui::MenuItem("Collider"))
-        {
-            ActionEntityCreateCollider();
-        }
         else if (ImGui::MenuItem("Constraint"))
         {
             ActionEntityCreateConstraint();
@@ -719,13 +714,6 @@ void WorldViewer::ActionEntityCreatePhysicsBody()
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Spartan::PhysicsBody>();
     entity->SetObjectName("PhysicsBody");
-}
-
-void WorldViewer::ActionEntityCreateCollider()
-{
-    auto entity = ActionEntityCreateEmpty();
-    entity->AddComponent<Spartan::Collider>();
-    entity->SetObjectName("Collider");
 }
 
 void WorldViewer::ActionEntityCreateConstraint()
