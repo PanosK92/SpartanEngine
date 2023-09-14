@@ -30,7 +30,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/AudioSource.h"
 #include "World/Components/AudioListener.h"
 #include "World/Components/RigidBody.h"
-#include "World/Components/SoftBody.h"
 #include "World/Components/Collider.h"
 #include "World/Components/Constraint.h"
 #include "World/Components/Environment.h"
@@ -489,10 +488,6 @@ void WorldViewer::PopupContextMenu() const
         {
             ActionEntityCreateRigidBody();
         }
-        else if (ImGui::MenuItem("Soft Body"))
-        {
-            ActionEntityCreateSoftBody();
-        }
         else if (ImGui::MenuItem("Collider"))
         {
             ActionEntityCreateCollider();
@@ -724,13 +719,6 @@ void WorldViewer::ActionEntityCreateRigidBody()
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Spartan::RigidBody>();
     entity->SetObjectName("RigidBody");
-}
-
-void WorldViewer::ActionEntityCreateSoftBody()
-{
-    auto entity = ActionEntityCreateEmpty();
-    entity->AddComponent<Spartan::SoftBody>();
-    entity->SetObjectName("SoftBody");
 }
 
 void WorldViewer::ActionEntityCreateCollider()

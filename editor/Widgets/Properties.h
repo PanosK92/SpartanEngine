@@ -34,7 +34,6 @@ namespace Spartan
     class Light;
     class Renderable;
     class RigidBody;
-    class SoftBody;
     class Collider;
     class Constraint;
     class Material;
@@ -67,7 +66,6 @@ private:
     void ShowLight(std::shared_ptr<Spartan::Light> light) const;
     void ShowRenderable(std::shared_ptr<Spartan::Renderable> renderable) const;
     void ShowRigidBody(std::shared_ptr<Spartan::RigidBody> rigid_body) const;
-    void ShowSoftBody(std::shared_ptr<Spartan::SoftBody> soft_body) const;
     void ShowCollider(std::shared_ptr<Spartan::Collider> collider) const;
     void ShowConstraint(std::shared_ptr<Spartan::Constraint> constraint) const;
     void ShowMaterial(Spartan::Material* material) const;
