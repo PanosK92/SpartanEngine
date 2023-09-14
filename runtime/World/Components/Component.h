@@ -45,7 +45,7 @@ namespace Spartan
         Constraint,
         Light,
         Renderable,
-        RigidBody,
+        PhysicsBody,
         Environment,
         Transform,
         Terrain,

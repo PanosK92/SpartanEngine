@@ -43,11 +43,11 @@ namespace Spartan
         Impulse
     };
 
-    class SP_CLASS RigidBody : public Component
+    class SP_CLASS PhysicsBody : public Component
     {
     public:
-        RigidBody(std::weak_ptr<Entity> entity);
-        ~RigidBody();
+        PhysicsBody(std::weak_ptr<Entity> entity);
+        ~PhysicsBody();
 
         //= ICOMPONENT ===============================
         void OnInitialize() override;

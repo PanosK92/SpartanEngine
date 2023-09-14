@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================================================
 #include "pch.h"
-#include "RigidBody.h"
+#include "PhysicsBody.h"
 #include "Transform.h"
 #include "Collider.h"
 #include "Constraint.h"
@@ -51,7 +51,7 @@ namespace Spartan
     class MotionState : public btMotionState
     {
     public:
-        MotionState(RigidBody* rigidBody) { m_rigidBody = rigidBody; }
+        MotionState(PhysicsBody* rigidBody) { m_rigidBody = rigidBody; }
 
         // Update from engine, ENGINE -> BULLET
         void getWorldTransform(btTransform& worldTrans) const override
@@ -73,10 +73,10 @@ namespace Spartan
             m_rigidBody->GetTransform()->SetRotation(newWorldRot);
         }
     private:
-        RigidBody* m_rigidBody;
+        PhysicsBody* m_rigidBody;
     };
 
-    RigidBody::RigidBody(weak_ptr<Entity> entity) : Component(entity)
+    PhysicsBody::PhysicsBody(weak_ptr<Entity> entity) : Component(entity)
     {
         m_in_world         = false;
         m_mass             = DEFAULT_MASS;
@@ -103,12 +103,12 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_center_of_mass, Vector3);
     }
 
-    RigidBody::~RigidBody()
+    PhysicsBody::~PhysicsBody()
     {
         Body_Release();
     }
 
-    void RigidBody::OnInitialize()
+    void PhysicsBody::OnInitialize()
     {
         Component::OnInitialize();
 
@@ -116,17 +116,17 @@ namespace Spartan
         Body_AddToWorld();
     }
 
-    void RigidBody::OnRemove()
+    void PhysicsBody::OnRemove()
     {
         Body_Release();
     }
 
-    void RigidBody::OnStart()
+    void PhysicsBody::OnStart()
     {
         Activate();
     }
 
-    void RigidBody::OnTick()
+    void PhysicsBody::OnTick()
     {
         // When the rigid body is inactive or we are in editor mode, allow the user to move/rotate it
         if (!IsActivated() || !Engine::IsFlagSet(EngineMode::Game))
@@ -147,7 +147,7 @@ namespace Spartan
         }
     }
 
-    void RigidBody::Serialize(FileStream* stream)
+    void PhysicsBody::Serialize(FileStream* stream)
     {
         stream->Write(m_mass);
         stream->Write(m_friction);
@@ -161,7 +161,7 @@ namespace Spartan
         stream->Write(m_in_world);
     }
 
-    void RigidBody::Deserialize(FileStream* stream)
+    void PhysicsBody::Deserialize(FileStream* stream)
     {
         stream->Read(&m_mass);
         stream->Read(&m_friction);
@@ -178,7 +178,7 @@ namespace Spartan
         Body_AddToWorld();
     }
 
-    void RigidBody::SetMass(float mass)
+    void PhysicsBody::SetMass(float mass)
     {
         mass = Helper::Max(mass, 0.0f);
         if (mass != m_mass)
@@ -188,7 +188,7 @@ namespace Spartan
         }
     }
 
-    void RigidBody::SetFriction(float friction)
+    void PhysicsBody::SetFriction(float friction)
     {
         if (!m_rigid_body || m_friction == friction)
             return;
@@ -197,7 +197,7 @@ namespace Spartan
         m_rigid_body->setFriction(friction);
     }
 
-    void RigidBody::SetFrictionRolling(float frictionRolling)
+    void PhysicsBody::SetFrictionRolling(float frictionRolling)
     {
         if (!m_rigid_body || m_friction_rolling == frictionRolling)
             return;
@@ -206,7 +206,7 @@ namespace Spartan
         m_rigid_body->setRollingFriction(frictionRolling);
     }
 
-    void RigidBody::SetRestitution(float restitution)
+    void PhysicsBody::SetRestitution(float restitution)
     {
         if (!m_rigid_body || m_restitution == restitution)
             return;
@@ -215,7 +215,7 @@ namespace Spartan
         m_rigid_body->setRestitution(restitution);
     }
 
-    void RigidBody::SetUseGravity(bool gravity)
+    void PhysicsBody::SetUseGravity(bool gravity)
     {
         if (gravity == m_use_gravity)
             return;
@@ -224,7 +224,7 @@ namespace Spartan
         Body_AddToWorld();
     }
 
-    void RigidBody::SetGravity(const Vector3& acceleration)
+    void PhysicsBody::SetGravity(const Vector3& acceleration)
     {
         if (m_gravity == acceleration)
             return;
@@ -233,7 +233,7 @@ namespace Spartan
         Body_AddToWorld();
     }
 
-    void RigidBody::SetIsKinematic(bool kinematic)
+    void PhysicsBody::SetIsKinematic(bool kinematic)
     {
         if (kinematic == m_is_kinematic)
             return;
@@ -242,7 +242,7 @@ namespace Spartan
         Body_AddToWorld();
     }
 
-    void RigidBody::SetLinearVelocity(const Vector3& velocity, const bool activate /*= true*/) const
+    void PhysicsBody::SetLinearVelocity(const Vector3& velocity, const bool activate /*= true*/) const
     {
         if (!m_rigid_body)
             return;
@@ -254,7 +254,7 @@ namespace Spartan
         }
     }
 
-    void RigidBody::SetAngularVelocity(const Vector3& velocity, const bool activate /*= true*/) const
+    void PhysicsBody::SetAngularVelocity(const Vector3& velocity, const bool activate /*= true*/) const
     {
         if (!m_rigid_body)
             return;
@@ -266,7 +266,7 @@ namespace Spartan
         }
     }
 
-    void RigidBody::ApplyForce(const Vector3& force, ForceMode mode) const
+    void PhysicsBody::ApplyForce(const Vector3& force, ForceMode mode) const
     {
         if (!m_rigid_body)
             return;
@@ -283,7 +283,7 @@ namespace Spartan
         }
     }
 
-    void RigidBody::ApplyForceAtPosition(const Vector3& force, const Vector3& position, ForceMode mode) const
+    void PhysicsBody::ApplyForceAtPosition(const Vector3& force, const Vector3& position, ForceMode mode) const
     {
         if (!m_rigid_body)
             return;
@@ -300,7 +300,7 @@ namespace Spartan
         }
     }
 
-    void RigidBody::ApplyTorque(const Vector3& torque, ForceMode mode) const
+    void PhysicsBody::ApplyTorque(const Vector3& torque, ForceMode mode) const
     {
         if (!m_rigid_body)
             return;
@@ -317,7 +317,7 @@ namespace Spartan
         }
     }
 
-    void RigidBody::SetPositionLock(bool lock)
+    void PhysicsBody::SetPositionLock(bool lock)
     {
         if (lock)
         {
@@ -329,7 +329,7 @@ namespace Spartan
         }
     }
 
-    void RigidBody::SetPositionLock(const Vector3& lock)
+    void PhysicsBody::SetPositionLock(const Vector3& lock)
     {
         if (!m_rigid_body || m_position_lock == lock)
             return;
@@ -338,7 +338,7 @@ namespace Spartan
         m_rigid_body->setLinearFactor(ToBtVector3(Vector3::One - lock));
     }
 
-    void RigidBody::SetRotationLock(bool lock)
+    void PhysicsBody::SetRotationLock(bool lock)
     {
         if (lock)
         {
@@ -350,7 +350,7 @@ namespace Spartan
         }
     }
 
-    void RigidBody::SetRotationLock(const Vector3& lock)
+    void PhysicsBody::SetRotationLock(const Vector3& lock)
     {
         if (!m_rigid_body || m_rotation_lock == lock)
             return;
@@ -359,13 +359,13 @@ namespace Spartan
         m_rigid_body->setAngularFactor(ToBtVector3(Vector3::One - lock));
     }
 
-    void RigidBody::SetCenterOfMass(const Vector3& centerOfMass)
+    void PhysicsBody::SetCenterOfMass(const Vector3& centerOfMass)
     {
         m_center_of_mass = centerOfMass;
         SetPosition(GetPosition());
     }
 
-    Vector3 RigidBody::GetPosition() const
+    Vector3 PhysicsBody::GetPosition() const
     {
         if (m_rigid_body)
         {
@@ -376,7 +376,7 @@ namespace Spartan
         return Vector3::Zero;
     }
 
-    void RigidBody::SetPosition(const Vector3& position, const bool activate /*= true*/) const
+    void PhysicsBody::SetPosition(const Vector3& position, const bool activate /*= true*/) const
     {
         if (!m_rigid_body)
             return;
@@ -396,12 +396,12 @@ namespace Spartan
         }
     }
 
-    Quaternion RigidBody::GetRotation() const
+    Quaternion PhysicsBody::GetRotation() const
     {
         return m_rigid_body ? ToQuaternion(m_rigid_body->getWorldTransform().getRotation()) : Quaternion::Identity;
     }
 
-    void RigidBody::SetRotation(const Quaternion& rotation, const bool activate /*= true*/) const
+    void PhysicsBody::SetRotation(const Quaternion& rotation, const bool activate /*= true*/) const
     {
         if (!m_rigid_body)
             return;
@@ -432,7 +432,7 @@ namespace Spartan
         }
     }
 
-    void RigidBody::ClearForces() const
+    void PhysicsBody::ClearForces() const
     {
         if (!m_rigid_body)
             return;
@@ -440,7 +440,7 @@ namespace Spartan
         m_rigid_body->clearForces();
     }
 
-    void RigidBody::Activate() const
+    void PhysicsBody::Activate() const
     {
         if (!m_rigid_body)
             return;
@@ -451,7 +451,7 @@ namespace Spartan
         }
     }
 
-    void RigidBody::Deactivate() const
+    void PhysicsBody::Deactivate() const
     {
         if (!m_rigid_body)
             return;
@@ -459,17 +459,17 @@ namespace Spartan
         m_rigid_body->setActivationState(WANTS_DEACTIVATION);
     }
 
-    bool RigidBody::IsActive() const
+    bool PhysicsBody::IsActive() const
     {
         return m_rigid_body->isActive();
     }
 
-    void RigidBody::AddConstraint(Constraint* constraint)
+    void PhysicsBody::AddConstraint(Constraint* constraint)
     {
         m_constraints.emplace_back(constraint);
     }
 
-    void RigidBody::RemoveConstraint(Constraint* constraint)
+    void PhysicsBody::RemoveConstraint(Constraint* constraint)
     {
         for (auto it = m_constraints.begin(); it != m_constraints.end(); )
         {
@@ -487,7 +487,7 @@ namespace Spartan
         Activate();
     }
 
-    void RigidBody::SetShape(btCollisionShape* shape)
+    void PhysicsBody::SetShape(btCollisionShape* shape)
     {
         m_collision_shape = shape;
 
@@ -501,7 +501,7 @@ namespace Spartan
         }
     }
 
-    void RigidBody::Body_AddToWorld()
+    void PhysicsBody::Body_AddToWorld()
     {
         if (m_mass < 0.0f)
         {
@@ -574,7 +574,7 @@ namespace Spartan
         m_in_world = true;
     }
 
-    void RigidBody::Body_Release()
+    void PhysicsBody::Body_Release()
     {
         if (!m_rigid_body)
             return;
@@ -592,7 +592,7 @@ namespace Spartan
         m_rigid_body = nullptr;
     }
 
-    void RigidBody::Body_RemoveFromWorld()
+    void PhysicsBody::Body_RemoveFromWorld()
     {
         if (!m_rigid_body)
             return;
@@ -604,7 +604,7 @@ namespace Spartan
         }
     }
 
-    void RigidBody::Body_AcquireShape()
+    void PhysicsBody::Body_AcquireShape()
     {
         if (const auto& collider = m_entity_ptr->GetComponent<Collider>())
         {
@@ -613,7 +613,7 @@ namespace Spartan
         }
     }
 
-    void RigidBody::Flags_UpdateKinematic() const
+    void PhysicsBody::Flags_UpdateKinematic() const
     {
         int flags = m_rigid_body->getCollisionFlags();
 
@@ -631,7 +631,7 @@ namespace Spartan
         m_rigid_body->setDeactivationTime(DEFAULT_DEACTIVATION_TIME);
     }
 
-    void RigidBody::Flags_UpdateGravity() const
+    void PhysicsBody::Flags_UpdateGravity() const
     {
         int flags = m_rigid_body->getFlags();
 
@@ -656,7 +656,7 @@ namespace Spartan
         }
     }
 
-    bool RigidBody::IsActivated() const
+    bool PhysicsBody::IsActivated() const
     {
         return m_rigid_body->isActive();
     }

@@ -65,7 +65,7 @@ private:
     static void ActionEntityCreateLightDirectional();
     static void ActionEntityCreateLightPoint();
     static void ActionEntityCreateLightSpot();
-    static void ActionEntityCreateRigidBody();
+    static void ActionEntityCreatePhysicsBody();
     static void ActionEntityCreateCollider();
     static void ActionEntityCreateConstraint();
     static void ActionEntityCreateAudioSource();

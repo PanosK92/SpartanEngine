@@ -32,7 +32,7 @@ class btTypedConstraint;
 
 namespace Spartan
 {
-    class RigidBody;
+    class PhysicsBody;
     class Entity;
     class Physics;
 
