@@ -123,9 +123,7 @@ namespace Spartan
 
         if (Renderable* renderable = GetEntityPtr()->GetComponent<Renderable>().get())
         {
-            m_shape_type     = PhysicsShape::MeshConvexHull;
-            m_center_of_mass = Vector3::Zero;
-            m_size           = renderable->GetAabb().GetSize();
+            m_shape_type = PhysicsShape::MeshConvexHull;
         }
 
         UpdateShape();
@@ -659,12 +657,12 @@ namespace Spartan
         }
     }
 
-    void PhysicsBody::SetBoundingBox(const Vector3& boundingBox)
+    void PhysicsBody::SetBoundingBox(const Vector3& bounding_box)
     {
-        if (m_size == boundingBox)
+        if (m_size == bounding_box)
             return;
 
-        m_size = boundingBox;
+        m_size   = bounding_box;
         m_size.x = Helper::Clamp(m_size.x, Helper::EPSILON, INFINITY);
         m_size.y = Helper::Clamp(m_size.y, Helper::EPSILON, INFINITY);
         m_size.z = Helper::Clamp(m_size.z, Helper::EPSILON, INFINITY);
@@ -676,6 +674,15 @@ namespace Spartan
     {
         if (m_shape_type == type)
             return;
+
+        if (type == PhysicsShape::Terrain)
+        {
+            if (!m_entity_ptr->GetComponent<Terrain>())
+            {
+                SP_LOG_WARNING("Can't set terrain shape as there is no terrain component");
+                return;
+            }
+        }
 
         m_shape_type = type;
         UpdateShape();
@@ -713,15 +720,17 @@ namespace Spartan
             }
         }
 
+        Vector3 size = m_size * m_entity_ptr->GetTransform()->GetScale();
+
         // construct new shape
         switch (m_shape_type)
         {
             case PhysicsShape::Box:
-                m_shape = new btBoxShape(ToBtVector3(m_size * 0.5f));
+                m_shape = new btBoxShape(ToBtVector3(size * 0.5f));
                 break;
 
             case PhysicsShape::Sphere:
-                m_shape = new btSphereShape(m_size.x * 0.5f);
+                m_shape = new btSphereShape(size.x * 0.5f);
                 break;
 
             case PhysicsShape::StaticPlane:
@@ -729,15 +738,15 @@ namespace Spartan
                 break;
 
             case PhysicsShape::Cylinder:
-                m_shape = new btCylinderShape(btVector3(m_size.x * 0.5f, m_size.y * 0.5f, m_size.x * 0.5f));
+                m_shape = new btCylinderShape(ToBtVector3(size * 0.5f));
                 break;
 
             case PhysicsShape::Capsule:
-                m_shape = new btCapsuleShape(m_size.x * 0.5f, Helper::Max(m_size.y - m_size.x, 0.0f));
+                m_shape = new btCapsuleShape(size.x * 0.5f, Helper::Max(size.y - size.x, 0.0f));
                 break;
 
             case PhysicsShape::Cone:
-                m_shape = new btConeShape(m_size.x * 0.5f, m_size.y);
+                m_shape = new btConeShape(size.x * 0.5f, size.y);
                 break;
 
             case PhysicsShape::Terrain:
@@ -759,7 +768,7 @@ namespace Spartan
                     PHY_FLOAT,                              // Data type
                     false                                   // Flip quad edges or not
                 );
-                heightfield_terrain_shape->setLocalScaling(btVector3(1.0f, 1.0f, 1.0f));
+                heightfield_terrain_shape->setLocalScaling(ToBtVector3(size));
 
                 m_shape = heightfield_terrain_shape;
 
@@ -776,6 +785,8 @@ namespace Spartan
                     btVector3 vertex2(vertices[indices[i + 2]].pos[0], vertices[indices[i + 2]].pos[1], vertices[indices[i + 2]].pos[2]);
                     trimesh->addTriangle(vertex0, vertex1, vertex2);
                 }
+                trimesh->setScaling(ToBtVector3(size));
+
                 m_shape = new btBvhTriangleMeshShape(trimesh, true);
                 break;
             }
@@ -786,6 +797,8 @@ namespace Spartan
                     (btScalar*)&vertices[0],                                 // points
                     renderable->GetVertexCount(),                            // point count
                     static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan))); // stride
+
+                approximation->setLocalScaling(ToBtVector3(size));
 
                 // turn it into a proper convex hull since btConvexHullShape is an approximation
                 m_shape = static_cast<btConvexHullShape*>(approximation);
