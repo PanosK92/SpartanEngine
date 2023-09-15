@@ -114,7 +114,7 @@ function solution_configuration()
 
         -- "Debug"
         filter "configurations:debug"
-            defines { "DEBUG", "SPARTAN_RUNTIME_STATIC=1", "SPARTAN_RUNTIME_SHARED=0" }
+            defines { "DEBUG", "SPARTAN_RUNTIME_STATIC=0", "SPARTAN_RUNTIME_SHARED=1" }
             flags { "MultiProcessorCompile" }
             optimize "Off"
             symbols "On"
@@ -122,7 +122,7 @@ function solution_configuration()
 
         -- "Release"
         filter "configurations:release"
-            defines { "NDEBUG", "SPARTAN_RUNTIME_STATIC=1", "SPARTAN_RUNTIME_SHARED=0" }
+            defines { "NDEBUG", "SPARTAN_RUNTIME_STATIC=0", "SPARTAN_RUNTIME_SHARED=1" }
             flags { "MultiProcessorCompile", "LinkTimeOptimization" }
             optimize "Speed"
             symbols "Off"
@@ -133,7 +133,7 @@ function runtime_project_configuration()
         location (RUNTIME_DIR)
         objdir (OBJ_DIR)
         cppdialect (CPP_VERSION)
-        kind "StaticLib"
+        kind "SharedLib"
         staticruntime "On"
         defines{ "SPARTAN_RUNTIME", API_CPP_DEFINE  }
         if os.target() == "windows" then
