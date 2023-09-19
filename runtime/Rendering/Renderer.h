@@ -86,6 +86,7 @@ namespace Spartan
         static void SetGlobalShaderResources(RHI_CommandList* cmd_list);
         static uint64_t GetFrameNum();
         static RHI_Api_Type GetRhiApiType();
+        static void Screenshot(const std::string& file_path);
 
         //= RESOLUTION/SIZE =============================================================================
         // Viewport
