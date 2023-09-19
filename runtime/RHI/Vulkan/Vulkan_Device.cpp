@@ -684,7 +684,6 @@ namespace Spartan
                 {
                     queues::index_graphics,
                     queues::index_compute,
-                    //2,
                     queues::index_copy
                 };
 
@@ -699,7 +698,6 @@ namespace Spartan
                     queue_create_info.pQueuePriorities        = &queue_priority;
                     queue_create_infos.push_back(queue_create_info);
                 }
-                queue_create_infos[0].flags = VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT;
             }
 
             // detect device properties
