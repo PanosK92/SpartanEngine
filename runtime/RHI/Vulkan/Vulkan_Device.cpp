@@ -183,6 +183,46 @@ namespace Spartan
         static uint32_t index_compute  = invalid_index;
         static uint32_t index_copy     = invalid_index;
 
+        static uint32_t get_queue_family_index(const vector<VkQueueFamilyProperties>& queue_families, VkQueueFlags queue_flags)
+        {
+            // based on Sascha Willems' Vulkan examples
+
+            // try to find a queue family index that supports compute but not graphics
+            if ((queue_flags & VK_QUEUE_COMPUTE_BIT) == queue_flags)
+            {
+                for (uint32_t i = 0; i < static_cast<uint32_t>(queue_families.size()); i++)
+                {
+                    if ((queue_families[i].queueFlags & VK_QUEUE_COMPUTE_BIT) && ((queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0))
+                    {
+                        return i;
+                    }
+                }
+            }
+
+            // try to find a queue family index that supports transfer but not graphics and compute
+            if ((queue_flags & VK_QUEUE_TRANSFER_BIT) == queue_flags)
+            {
+                for (uint32_t i = 0; i < static_cast<uint32_t>(queue_families.size()); i++)
+                {
+                    if ((queue_families[i].queueFlags & VK_QUEUE_TRANSFER_BIT) && ((queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) && ((queue_families[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
+                    {
+                        return i;
+                    }
+                }
+            }
+
+            // for other queue types or if no separate compute queue is present, return the first one to support the requested flags
+            for (uint32_t i = 0; i < static_cast<uint32_t>(queue_families.size()); i++)
+            {
+                if ((queue_families[i].queueFlags & queue_flags) == queue_flags)
+                {
+                    return i;
+                }
+            }
+
+            SP_ASSERT_MSG(false, "Could not find a matching queue family index");
+        }
+
         static void detect_queue_family_indices(VkPhysicalDevice device_physical)
         {
             uint32_t queue_family_count = 0;
@@ -191,44 +231,9 @@ namespace Spartan
             vector<VkQueueFamilyProperties> queue_families(queue_family_count);
             vkGetPhysicalDeviceQueueFamilyProperties(device_physical, &queue_family_count, queue_families.data());
 
-            // reset indices
-            index_graphics = invalid_index;
-            index_compute  = invalid_index;
-            index_copy     = invalid_index;
-
-            // temporary indices to hold non-unique values
-            uint32_t temp_index_compute = invalid_index;
-            uint32_t temp_index_copy    = invalid_index;
-
-            // find graphics, compute, and copy queue family indices
-            for (uint32_t i = 0; i < queue_family_count; ++i)
-            {
-                const VkQueueFamilyProperties& queue_family_properties = queue_families[i];
-
-                if (queue_family_properties.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-                {
-                    index_graphics = i;
-                }
-
-                if (queue_family_properties.queueFlags & VK_QUEUE_COMPUTE_BIT)
-                {
-                    temp_index_compute = i;
-                }
-
-                if (queue_family_properties.queueFlags & VK_QUEUE_TRANSFER_BIT)
-                {
-                    temp_index_copy = i;
-                }
-            }
-
-            // prioritize unique indices, but allow fallback to non-unique ones
-            index_compute = (index_graphics != temp_index_compute) ? temp_index_compute : index_graphics;
-            index_copy    = (index_graphics != temp_index_copy && index_compute != temp_index_copy) ? temp_index_copy : index_graphics;
-
-            if (index_graphics == invalid_index || index_compute == invalid_index || index_copy == invalid_index)
-            {
-                SP_ASSERT_MSG(false, "Failed to find queue family indices");
-            }
+            index_graphics = get_queue_family_index(queue_families, VK_QUEUE_GRAPHICS_BIT);
+            index_compute  = get_queue_family_index(queue_families, VK_QUEUE_COMPUTE_BIT);
+            index_copy     = get_queue_family_index(queue_families, VK_QUEUE_TRANSFER_BIT);
         }
     }
 
