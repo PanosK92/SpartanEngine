@@ -185,13 +185,14 @@ namespace Spartan
 
         static uint32_t get_queue_family_index(const vector<VkQueueFamilyProperties>& queue_families, VkQueueFlags queue_flags)
         {
-            // based on Sascha Willems' Vulkan examples
-
-            // try to find a queue family index that supports compute but not graphics
+            // compute only queue family index
             if ((queue_flags & VK_QUEUE_COMPUTE_BIT) == queue_flags)
             {
                 for (uint32_t i = 0; i < static_cast<uint32_t>(queue_families.size()); i++)
                 {
+                    if (i == index_graphics)
+                        continue;
+
                     if ((queue_families[i].queueFlags & VK_QUEUE_COMPUTE_BIT) && ((queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0))
                     {
                         return i;
@@ -199,11 +200,14 @@ namespace Spartan
                 }
             }
 
-            // try to find a queue family index that supports transfer but not graphics and compute
+            // transfer only queue family index
             if ((queue_flags & VK_QUEUE_TRANSFER_BIT) == queue_flags)
             {
                 for (uint32_t i = 0; i < static_cast<uint32_t>(queue_families.size()); i++)
                 {
+                    if (i == index_graphics || i == index_compute)
+                        continue;
+
                     if ((queue_families[i].queueFlags & VK_QUEUE_TRANSFER_BIT) && ((queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) && ((queue_families[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
                     {
                         return i;
@@ -211,7 +215,7 @@ namespace Spartan
                 }
             }
 
-            // for other queue types or if no separate compute queue is present, return the first one to support the requested flags
+            // first available graphics queue family index
             for (uint32_t i = 0; i < static_cast<uint32_t>(queue_families.size()); i++)
             {
                 if ((queue_families[i].queueFlags & queue_flags) == queue_flags)
