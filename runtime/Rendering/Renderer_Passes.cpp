@@ -771,6 +771,42 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
+    void Renderer::Pass_Sss(RHI_CommandList* cmd_list, RHI_Texture* tex_in)
+    {
+        //if (!GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
+        //    return;
+
+        //// acquire shaders
+        //RHI_Shader* shader_c = GetShader(Renderer_Shader::ssr_c).get();
+        //if (!shader_c->IsCompiled())
+        //    return;
+
+        //// acquire render targets
+        //RHI_Texture* tex_ssr = GetRenderTarget(Renderer_RenderTexture::ssr).get();
+
+        //cmd_list->BeginTimeblock("ssr");
+
+        //// define pipeline state
+        //static RHI_PipelineState pso;
+        //pso.shader_compute = shader_c;
+
+        //// set pipeline state
+        //cmd_list->SetPipelineState(pso);
+
+        //// set pass constants
+        //m_cb_pass_cpu.set_resolution_out(tex_ssr);
+        //PushPassConstants(cmd_list);
+
+        //// set textures
+        //BindTexturesGfbuffer(cmd_list);
+        //cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssr); // write to that
+        //cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);  // reflect from that
+
+        //// render
+        //cmd_list->Dispatch(thread_group_count_x(tex_ssr), thread_group_count_y(tex_ssr));
+        //cmd_list->EndTimeblock();
+    }
+
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // acquire shaders
