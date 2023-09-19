@@ -54,26 +54,6 @@ namespace Spartan
             return VK_IMAGE_TILING_MAX_ENUM;
         }
 
-        static VkImageUsageFlags get_usage_flags(const RHI_Texture* texture)
-        {
-            VkImageUsageFlags flags = 0;
-
-            flags |= texture->IsSrv()                      ? VK_IMAGE_USAGE_SAMPLED_BIT                  : 0;
-            flags |= texture->IsUav()                      ? VK_IMAGE_USAGE_STORAGE_BIT                  : 0;
-            flags |= texture->IsRenderTargetDepthStencil() ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
-            flags |= texture->IsRenderTargetColor()        ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT         : 0;
-
-            // If the texture has data, it will be staged, so it needs transfer bits.
-            // If the texture participates in clear or blit operations, it needs transfer bits.
-            if (texture->HasData() || (texture->GetFlags() & RHI_Texture_ClearOrBlit) != 0)
-            {
-                flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT; // source of a transfer command.
-                flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; // destination of a transfer command
-            }
-
-            return flags;
-        }
-
         static VkImageAspectFlags get_aspect_mask(const RHI_Texture* texture, const bool only_depth = false, const bool only_stencil = false)
         {
             VkImageAspectFlags aspect_mask = 0;
@@ -100,39 +80,21 @@ namespace Spartan
 
         static void create_image(RHI_Texture* texture)
         {
-            // Deduce format flags
+            // deduce format flags
             bool is_render_target_depth_stencil = texture->IsRenderTargetDepthStencil();
             VkFormatFeatureFlags format_flags  = is_render_target_depth_stencil ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
 
-            // Deduce image tiling
+            // deduce image tiling
             RHI_Format format           = texture->GetFormat();
             VkImageTiling image_tiling  = get_format_tiling(format, format_flags);
             
             SP_ASSERT_MSG(image_tiling != VK_IMAGE_TILING_MAX_ENUM, "The GPU doesn't support this format");
             SP_ASSERT_MSG(image_tiling == VK_IMAGE_TILING_OPTIMAL,  "This format doesn't support optimal tiling, switch to a more efficient format");
 
-            // Set layout to pre-initialised (required by Vulkan)
+            // set layout to pre-initialised (required by Vulkan)
             texture->SetLayout(RHI_Image_Layout::Preinitialized, nullptr);
 
-            VkImageCreateInfo create_info = {};
-            create_info.sType             = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-            create_info.imageType         = VK_IMAGE_TYPE_2D;
-            create_info.flags             = texture->GetResourceType() == ResourceType::TextureCube ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
-            create_info.usage             = get_usage_flags(texture);
-            create_info.extent.width      = texture->GetWidth();
-            create_info.extent.height     = texture->GetHeight();
-            create_info.extent.depth      = 1;
-            create_info.mipLevels         = texture->GetMipCount();
-            create_info.arrayLayers       = texture->GetArrayLength();
-            create_info.format            = vulkan_format[rhi_format_to_index(format)];
-            create_info.tiling            = VK_IMAGE_TILING_OPTIMAL;
-            create_info.initialLayout     = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout(0))];
-            create_info.samples           = VK_SAMPLE_COUNT_1_BIT;
-            create_info.sharingMode       = VK_SHARING_MODE_EXCLUSIVE;
-
-            // Create image
-            void*& resource = texture->GetRhiResource();
-            RHI_Device::MemoryTextureCreate(static_cast<void*>(&create_info), resource, texture->GetObjectName().c_str());
+            RHI_Device::MemoryTextureCreate(texture);
         }
 
         static void create_image_view(
@@ -282,7 +244,7 @@ namespace Spartan
                     }
                 }
 
-                RHI_Device::MemoryUnmap(staging_buffer, mapped_data);
+                RHI_Device::MemoryUnmap(staging_buffer);
             }
 
             return true;

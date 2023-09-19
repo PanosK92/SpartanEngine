@@ -183,7 +183,7 @@ namespace Spartan
         // Render resolution
         if (create_render)
         {
-            // Frame (HDR) - Mips are used to emulate roughness when blending with transparent surfaces
+            // Frame - Mips are used to emulate roughness when blending with transparent surfaces
             render_target(Renderer_RenderTexture::frame_render)   = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_RenderTarget | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ClearOrBlit, "rt_frame_render");
             render_target(Renderer_RenderTexture::frame_render_2) = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_RenderTarget | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ClearOrBlit, "rt_frame_render_2");
 
@@ -225,7 +225,7 @@ namespace Spartan
         // Output resolution
         if (create_output)
         {
-            // Frame (LDR)
+            // Frame
             render_target(Renderer_RenderTexture::frame_output)   = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_RenderTarget | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_frame_output");
             render_target(Renderer_RenderTexture::frame_output_2) = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_RenderTarget | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_frame_output_2");
 
