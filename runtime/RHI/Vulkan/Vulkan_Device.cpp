@@ -174,9 +174,9 @@ namespace Spartan
     namespace queues
     {
         static mutex mutex_queue;
-        static void* graphics          = nullptr;
-        static void* compute           = nullptr;
-        static void* copy              = nullptr;
+        static void* graphics = nullptr;
+        static void* compute  = nullptr;
+        static void* copy     = nullptr;
 
         #define invalid_index numeric_limits<uint32_t>::max()
         static uint32_t index_graphics = invalid_index;
@@ -191,35 +191,47 @@ namespace Spartan
             vector<VkQueueFamilyProperties> queue_families(queue_family_count);
             vkGetPhysicalDeviceQueueFamilyProperties(device_physical, &queue_family_count, queue_families.data());
 
+            // reset indices
+            index_graphics = invalid_index;
+            index_compute  = invalid_index;
+            index_copy     = invalid_index;
+
+            // temporary indices to hold non-unique values
+            uint32_t temp_index_compute = invalid_index;
+            uint32_t temp_index_copy    = invalid_index;
+
             // find graphics, compute, and copy queue family indices
-            // we try to find queues which are different from each other, so we can use them in parallel
             for (uint32_t i = 0; i < queue_family_count; ++i)
             {
                 const VkQueueFamilyProperties& queue_family_properties = queue_families[i];
 
-                if (queue_family_properties.queueFlags & VK_QUEUE_GRAPHICS_BIT && index_graphics == invalid_index)
+                if (queue_family_properties.queueFlags & VK_QUEUE_GRAPHICS_BIT)
                 {
                     index_graphics = i;
                 }
 
-                if (queue_family_properties.queueFlags & VK_QUEUE_COMPUTE_BIT && index_compute == invalid_index && i != index_graphics)
+                if (queue_family_properties.queueFlags & VK_QUEUE_COMPUTE_BIT)
                 {
-                    index_compute = i;
+                    temp_index_compute = i;
                 }
 
-                if (queue_family_properties.queueFlags & VK_QUEUE_TRANSFER_BIT && index_copy == invalid_index && i != index_graphics && i != index_compute)
+                if (queue_family_properties.queueFlags & VK_QUEUE_TRANSFER_BIT)
                 {
-                    index_copy = i;
+                    temp_index_copy = i;
                 }
             }
 
-            if (index_graphics == invalid_index || index_compute  == invalid_index || index_copy == invalid_index)
+            // prioritize unique indices, but allow fallback to non-unique ones
+            index_compute = (index_graphics != temp_index_compute) ? temp_index_compute : index_graphics;
+            index_copy    = (index_graphics != temp_index_copy && index_compute != temp_index_copy) ? temp_index_copy : index_graphics;
+
+            if (index_graphics == invalid_index || index_compute == invalid_index || index_copy == invalid_index)
             {
                 SP_ASSERT_MSG(false, "Failed to find queue family indices");
             }
         }
     }
-    
+
     namespace functions
     {
         static PFN_vkCreateDebugUtilsMessengerEXT  create_messenger;
@@ -616,9 +628,9 @@ namespace Spartan
                 // in case the SDK is not supported by the driver, prompt the user to update
                 if (sdk_version > driver_version)
                 {
-                    // Detect and log version
+                    // detect and log version
                     string driver_version_str = to_string(VK_API_VERSION_MAJOR(driver_version)) + "." + to_string(VK_API_VERSION_MINOR(driver_version)) + "." + to_string(VK_API_VERSION_PATCH(driver_version));
-                    string sdk_version_str    = to_string(VK_API_VERSION_MAJOR(sdk_version)) + "." + to_string(VK_API_VERSION_MINOR(sdk_version)) + "." + to_string(VK_API_VERSION_PATCH(sdk_version));
+                    string sdk_version_str    = to_string(VK_API_VERSION_MAJOR(sdk_version))    + "." + to_string(VK_API_VERSION_MINOR(sdk_version))    + "." + to_string(VK_API_VERSION_PATCH(sdk_version));
                     SP_LOG_WARNING("Using Vulkan %s, update drivers or wait for GPU vendor to support Vulkan %s, engine may still work", driver_version_str.c_str(), sdk_version_str.c_str());
                 }
 
