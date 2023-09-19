@@ -350,6 +350,8 @@ namespace Spartan
             case RHI_Format::R16G16B16A16_Snorm: return 16;
             case RHI_Format::R16G16B16A16_Float: return 16;
             case RHI_Format::R32G32B32A32_Float: return 32;
+            case RHI_Format::D32_Float:          return 32;
+            case RHI_Format::R11G11B10_Float:    return 11;
         }
 
         assert(false && "Unsupported format");

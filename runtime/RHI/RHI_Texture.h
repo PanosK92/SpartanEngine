@@ -42,7 +42,8 @@ namespace Spartan
         RHI_Texture_Transparent  = 1U << 6,
         RHI_Texture_Srgb         = 1U << 7,
         RHI_Texture_Mips         = 1U << 8,
-        RHI_Texture_Compressed   = 1U << 9
+        RHI_Texture_Compressed   = 1U << 9,
+        RHI_Texture_Mappable     = 1U << 10
     };
 
     enum RHI_Shader_View_Type : uint8_t
@@ -91,7 +92,9 @@ namespace Spartan
         RHI_Format GetFormat()                             const { return m_format; }
         void SetFormat(const RHI_Format format)                  { m_format = format; }
 
+        // Misc
         std::shared_ptr<RHI_Texture> GetSharedPtr() { return shared_from_this(); }
+        void SaveAsImage(const std::string& file_path);
 
         // Data
         uint32_t GetArrayLength()                          const { return m_array_length; }
@@ -137,6 +140,7 @@ namespace Spartan
         void* GetRhiDsvReadOnly(const uint32_t i = 0) const { return i < m_rhi_dsv_read_only.size() ? m_rhi_dsv_read_only[i] : nullptr; }
         void* GetRhiRtv(const uint32_t i = 0)         const { return i < m_rhi_rtv.size()           ? m_rhi_rtv[i]           : nullptr; }
         void RHI_DestroyResource(const bool destroy_main, const bool destroy_per_view);
+        void*& GetMappedData() { return m_mapped_data; }
 
     protected:
         bool RHI_CreateResource();
@@ -162,6 +166,7 @@ namespace Spartan
         std::array<void*, rhi_max_render_target_count> m_rhi_rtv;
         std::array<void*, rhi_max_render_target_count> m_rhi_dsv;
         std::array<void*, rhi_max_render_target_count> m_rhi_dsv_read_only;
+        void* m_mapped_data = nullptr;
 
     private:
         void ComputeMemoryUsage();
