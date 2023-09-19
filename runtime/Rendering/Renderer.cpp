@@ -923,4 +923,9 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
         cmd_list->SetTexture(Renderer_BindingsSrv::material_emission,  material->GetTexture(MaterialTexture::Emission));
         cmd_list->SetTexture(Renderer_BindingsSrv::material_mask,      material->GetTexture(MaterialTexture::AlphaMask));
     }
+
+    void Renderer::Screenshot(const string& file_path)
+    {
+        GetFrameTexture()->SaveAsImage(file_path);
+    }
 }

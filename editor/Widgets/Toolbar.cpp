@@ -113,5 +113,12 @@ void Toolbar::OnTick()
                     }
                 }
         );
+
+        // screenshot
+        //toolbar_button(
+        //    IconType::Screenshot, "Screenshot",
+        //    []() { return false; },
+        //    []() { return Spartan::Renderer::Screenshot("screenshot.png"); }
+        //);
     }
 }

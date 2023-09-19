@@ -69,14 +69,15 @@ namespace Spartan
         // Creates a texture without any data (intended for usage as a render target)
         RHI_Texture2D(const uint32_t width, const uint32_t height, const uint32_t mip_count, const RHI_Format format, const uint32_t flags, const char* name = nullptr)
         {
-            m_resource_type = ResourceType::Texture2d;
-            m_width         = width;
-            m_height        = height;
-            m_viewport      = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
-            m_format        = format;
-            m_mip_count     = mip_count;
-            m_flags         = flags;
-            m_channel_count = rhi_to_format_channel_count(format);
+            m_resource_type    = ResourceType::Texture2d;
+            m_width            = width;
+            m_height           = height;
+            m_viewport         = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
+            m_format           = format;
+            m_mip_count        = mip_count;
+            m_flags            = flags;
+            m_channel_count    = rhi_to_format_channel_count(format);
+            m_bits_per_channel = rhi_format_to_bits_per_channel(m_format);
 
             if (name != nullptr)
             {

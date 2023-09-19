@@ -136,6 +136,7 @@ void IconLoader::Initialize()
         IconLoader::LoadFromFile(data_dir + "Icons\\exe.png", IconType::Directory_File_Exe);
         IconLoader::LoadFromFile(data_dir + "Icons\\font.png", IconType::Directory_File_Font);
         IconLoader::LoadFromFile(data_dir + "Icons\\texture.png", IconType::Directory_File_Texture);
+        IconLoader::LoadFromFile(data_dir + "Icons\\screenshot.png", IconType::Screenshot);
     });
 }
 

@@ -140,6 +140,26 @@ namespace Spartan
 
             return extensions_supported;
         }
+
+        static VkImageUsageFlags get_image_usage_flags(const RHI_Texture* texture)
+        {
+            VkImageUsageFlags flags = 0;
+
+            flags |= texture->IsSrv() ? VK_IMAGE_USAGE_SAMPLED_BIT : 0;
+            flags |= texture->IsUav() ? VK_IMAGE_USAGE_STORAGE_BIT : 0;
+            flags |= texture->IsRenderTargetDepthStencil() ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
+            flags |= texture->IsRenderTargetColor() ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : 0;
+
+            // If the texture has data, it will be staged, so it needs transfer bits.
+            // If the texture participates in clear or blit operations, it needs transfer bits.
+            if (texture->HasData() || (texture->GetFlags() & RHI_Texture_ClearOrBlit) != 0)
+            {
+                flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT; // source of a transfer command.
+                flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; // destination of a transfer command
+            }
+
+            return flags;
+        }
     }
 
     namespace command_pools
@@ -503,15 +523,15 @@ namespace Spartan
         SP_ASSERT_MSG(RHI_Context::api_type == RHI_Api_Type::Vulkan, "RHI context not initialized");
 
         #ifdef DEBUG
-            // Add validation related extensions
+            // ad validation related extensions
             RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
             RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
-            // Add debugging related extensions
+            // add debugging related extensions
             RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_report");
             RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_utils");
         #endif
 
-        // Create instance
+        // create instance
         VkApplicationInfo app_info = {};
         {
             app_info.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -520,12 +540,12 @@ namespace Spartan
             app_info.engineVersion      = VK_MAKE_VERSION(sp_info::version_major, sp_info::version_minor, sp_info::version_revision);
             app_info.applicationVersion = app_info.engineVersion;
 
-            // Deduce API version to use
+            // deduce API version to use
             {
-                // Get sdk version
+                // get sdk version
                 uint32_t sdk_version = VK_HEADER_VERSION_COMPLETE;
 
-                // Get driver version
+                // get driver version
                 uint32_t driver_version = 0;
                 {
                     // Per LunarG, if vkEnumerateInstanceVersion is not present, we are running on Vulkan 1.0
@@ -542,7 +562,7 @@ namespace Spartan
                     }
                 }
 
-                // Choose the version which is supported by both the sdk and the driver
+                // choose the version which is supported by both the sdk and the driver
                 app_info.apiVersion = Helper::Min(sdk_version, driver_version);
 
                 // The following extensions have been promoted to 1.2 and 1.3.
@@ -555,20 +575,20 @@ namespace Spartan
                 // We make Vulkan 1.3 the minimum required version and we enable those extensions from the core.
                 SP_ASSERT_MSG(app_info.apiVersion >= VK_API_VERSION_1_3, "Vulkan 1.3 is not supported");
 
-                // In case the SDK is not supported by the driver, prompt the user to update
+                // in case the SDK is not supported by the driver, prompt the user to update
                 if (sdk_version > driver_version)
                 {
                     // Detect and log version
                     string driver_version_str = to_string(VK_API_VERSION_MAJOR(driver_version)) + "." + to_string(VK_API_VERSION_MINOR(driver_version)) + "." + to_string(VK_API_VERSION_PATCH(driver_version));
                     string sdk_version_str    = to_string(VK_API_VERSION_MAJOR(sdk_version)) + "." + to_string(VK_API_VERSION_MINOR(sdk_version)) + "." + to_string(VK_API_VERSION_PATCH(sdk_version));
-                    SP_LOG_WARNING("Falling back to Vulkan %s. Please update your graphics drivers to support Vulkan %s.", driver_version_str.c_str(), sdk_version_str.c_str());
+                    SP_LOG_WARNING("Using Vulkan %s, update drivers or wait for GPU vendor to support Vulkan %s, engine may still work", driver_version_str.c_str(), sdk_version_str.c_str());
                 }
 
-                //  Save API version
+                //  save API version
                 RHI_Context::api_version_str = to_string(VK_API_VERSION_MAJOR(app_info.apiVersion)) + "." + to_string(VK_API_VERSION_MINOR(app_info.apiVersion)) + "." + to_string(VK_API_VERSION_PATCH(app_info.apiVersion));
             }
 
-            // Get the supported extensions out of the requested extensions
+            // get the supported extensions out of the requested extensions
             vector<const char*> extensions_supported = get_supported_extensions(RHI_Context::extensions_instance);
 
             VkInstanceCreateInfo create_info    = {};
@@ -578,7 +598,7 @@ namespace Spartan
             create_info.ppEnabledExtensionNames = extensions_supported.data();
             create_info.enabledLayerCount       = 0;
 
-            // Validation features
+            // validation features
             VkValidationFeaturesEXT validation_features       = {};
             validation_features.sType                         = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
             validation_features.enabledValidationFeatureCount = static_cast<uint32_t>(RHI_Context::validation_extensions.size());
@@ -586,39 +606,39 @@ namespace Spartan
 
             if (RHI_Context::validation)
             {
-                // Enable validation layer
+                // enable validation layer
                 if (is_present_instance_layer(RHI_Context::validation_layers.front()))
                 {
-                    // Validation layers
+                    // validation layers
                     create_info.enabledLayerCount   = static_cast<uint32_t>(RHI_Context::validation_layers.size());
                     create_info.ppEnabledLayerNames = RHI_Context::validation_layers.data();
                     create_info.pNext               = &validation_features;
                 }
                 else
                 {
-                    SP_LOG_ERROR("Validation layer was requested, but not available.");
+                    SP_LOG_ERROR("Validation layer unavailable, install Vulkan SDK: https://vulkan.lunarg.com/sdk/home");
                 }
             }
 
             SP_ASSERT_MSG(vkCreateInstance(&create_info, nullptr, &RHI_Context::instance) == VK_SUCCESS, "Failed to create instance");
         }
 
-        // Get function pointers (from extensions)
+        // get function pointers (from extensions)
         functions::initialize(RHI_Context::validation, RHI_Context::gpu_markers);
 
-        // Debug
+        // debug
         if (RHI_Context::validation)
         {
             validation_layer_logging::initialize(RHI_Context::instance);
         }
 
-        // Find a physical device
+        // find a physical device
         SP_ASSERT_MSG(PhysicalDeviceDetect(), "Failed to detect any devices");
         PhysicalDeviceSelectPrimary();
 
-        // Device
+        // device
         {
-            // Queue create info
+            // queue create info
             vector<VkDeviceQueueCreateInfo> queue_create_infos;
             {
                 vector<uint32_t> unique_queue_families =
@@ -633,6 +653,7 @@ namespace Spartan
                 {
                     VkDeviceQueueCreateInfo queue_create_info = {};
                     queue_create_info.sType                   = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+                    queue_create_info.flags                   = 0;
                     queue_create_info.queueFamilyIndex        = queue_family;
                     queue_create_info.queueCount              = 1;
                     queue_create_info.pQueuePriorities        = &queue_priority;
@@ -640,7 +661,7 @@ namespace Spartan
                 }
             }
 
-            // Detect device properties
+            // detect device properties
             {
                 VkPhysicalDeviceVulkan13Properties device_properties_1_3 = {};
                 device_properties_1_3.sType                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
@@ -652,7 +673,7 @@ namespace Spartan
 
                 vkGetPhysicalDeviceProperties2(static_cast<VkPhysicalDevice>(RHI_Context::device_physical), &properties_device);
 
-                // Save some properties
+                // save some properties
                 m_timestamp_period                    = properties_device.properties.limits.timestampPeriod;
                 m_min_uniform_buffer_offset_alignment = properties_device.properties.limits.minUniformBufferOffsetAlignment;
                 m_min_storage_buffer_offset_alignment = properties_device.properties.limits.minStorageBufferOffsetAlignment;
@@ -663,15 +684,15 @@ namespace Spartan
                 m_max_texture_array_layers            = properties_device.properties.limits.maxImageArrayLayers;
                 m_max_push_constant_size              = properties_device.properties.limits.maxPushConstantsSize;
 
-                // Disable profiler if timestamps are not supported
+                // disable profiler if timestamps are not supported
                 if (RHI_Context::gpu_profiling && !properties_device.properties.limits.timestampComputeAndGraphics)
                 {
-                    SP_LOG_ERROR("Device doesn't support timestamps, disabling gpu profiling...");
+                    SP_LOG_ERROR("Device doesn't support timestamps, disabling gpu profiling");
                     RHI_Context::gpu_profiling = false;
                 }
             }
 
-            // Enable certain features
+            // enable certain features
             VkPhysicalDeviceVulkan13Features device_features_to_enable_1_3 = {};
             device_features_to_enable_1_3.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
             VkPhysicalDeviceVulkan12Features device_features_to_enable_1_2 = {};
@@ -681,7 +702,7 @@ namespace Spartan
             device_features_to_enable.sType                                = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
             device_features_to_enable.pNext                                = &device_features_to_enable_1_2;
             {
-                // Check feature support
+                // check feature support
                 VkPhysicalDeviceVulkan13Features features_supported_1_3 = {};
                 features_supported_1_3.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
                 VkPhysicalDeviceVulkan12Features features_supported_1_2 = {};
@@ -692,61 +713,61 @@ namespace Spartan
                 features_supported.pNext                                = &features_supported_1_2;
                 vkGetPhysicalDeviceFeatures2(RHI_Context::device_physical, &features_supported);
 
-                // Check if certain features are supported and enable them
+                // check if certain features are supported and enable them
                 {
-                    // Anisotropic filtering
+                    // anisotropic filtering
                     SP_ASSERT(features_supported.features.samplerAnisotropy == VK_TRUE);
                     device_features_to_enable.features.samplerAnisotropy = VK_TRUE;
 
-                    // Line and point rendering
+                    // line and point rendering
                     SP_ASSERT(features_supported.features.fillModeNonSolid == VK_TRUE);
                     device_features_to_enable.features.fillModeNonSolid = VK_TRUE;
 
-                    // Lines with adjustable thickness
+                    // lines with adjustable thickness
                     SP_ASSERT(features_supported.features.wideLines == VK_TRUE);
                     device_features_to_enable.features.wideLines = VK_TRUE;
 
-                    // Cubemaps
+                    // cubemaps
                     SP_ASSERT(features_supported.features.imageCubeArray == VK_TRUE);
                     device_features_to_enable.features.imageCubeArray = VK_TRUE;
 
-                    // Partially bound descriptors
+                    // partially bound descriptors
                     SP_ASSERT(features_supported_1_2.descriptorBindingPartiallyBound == VK_TRUE);
                     device_features_to_enable_1_2.descriptorBindingPartiallyBound = VK_TRUE;
 
-                    // Runtime descriptor array
+                    // runtime descriptor array
                     SP_ASSERT(features_supported_1_2.runtimeDescriptorArray == VK_TRUE);
                     device_features_to_enable_1_2.runtimeDescriptorArray = VK_TRUE;
 
-                    // Timeline semaphores
+                    // timeline semaphores
                     SP_ASSERT(features_supported_1_2.timelineSemaphore == VK_TRUE);
                     device_features_to_enable_1_2.timelineSemaphore = VK_TRUE;
 
-                    // Rendering without render passes and frame buffer objects
+                    // rendering without render passes and frame buffer objects
                     SP_ASSERT(features_supported_1_3.dynamicRendering == VK_TRUE);
                     device_features_to_enable_1_3.dynamicRendering = VK_TRUE;
 
-                    // Extended types (int8, int16, int64, etc) - SPD
+                    // extended types (int8, int16, int64, etc) - SPD
                     SP_ASSERT(features_supported_1_2.shaderSubgroupExtendedTypes == VK_TRUE);
                     device_features_to_enable_1_2.shaderSubgroupExtendedTypes = VK_TRUE;
 
-                    // Wave64
+                    // wave64
                     SP_ASSERT(features_supported_1_3.shaderDemoteToHelperInvocation == VK_TRUE);
                     device_features_to_enable_1_3.shaderDemoteToHelperInvocation = VK_TRUE;
 
-                    // Wave64 - If supported, FSR 2 will opt for it, so don't assert.
+                    // wave64 - If supported, FSR 2 will opt for it, so don't assert.
                     if (features_supported_1_3.subgroupSizeControl == VK_TRUE)
                     {
                         device_features_to_enable_1_3.subgroupSizeControl = VK_TRUE;
                     }
 
-                    // Float16 - If supported, FSR 2 will opt for it, so don't assert.
+                    // float16 - If supported, FSR 2 will opt for it, so don't assert.
                     if (features_supported_1_2.shaderFloat16 == VK_TRUE)
                     {
                         device_features_to_enable_1_2.shaderFloat16 = VK_TRUE;
                     }
 
-                    // Int16 - If supported, FSR 2 will opt for it, so don't assert.
+                    // int16 - If supported, FSR 2 will opt for it, so don't assert.
                     if (features_supported.features.shaderInt16 == VK_TRUE)
                     {
                         device_features_to_enable.features.shaderInt16 = VK_TRUE;
@@ -754,7 +775,7 @@ namespace Spartan
                 }
             }
 
-            // Enable certain graphics shader stages
+            // enable certain graphics shader stages
             {
                 m_enabled_graphics_shader_stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
                 if (device_features_to_enable.features.geometryShader)
@@ -767,10 +788,10 @@ namespace Spartan
                 }
             }
 
-            // Get the supported extensions out of the requested extensions
+            // get the supported extensions out of the requested extensions
             vector<const char*> extensions_supported = get_physical_device_supported_extensions(RHI_Context::extensions_device, RHI_Context::device_physical);
 
-            // Device create info
+            // device create info
             VkDeviceCreateInfo create_info = {};
             {
                 create_info.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -787,11 +808,11 @@ namespace Spartan
                 }
             }
 
-            // Create
+            // create
             SP_ASSERT_MSG(vkCreateDevice(RHI_Context::device_physical, &create_info, nullptr, &RHI_Context::device) == VK_SUCCESS, "Failed to create device");
         }
 
-        // Get a graphics, compute and a copy queue.
+        // get a graphics, compute and a copy queue.
         {
             vkGetDeviceQueue(RHI_Context::device, queues::index_graphics, 0, reinterpret_cast<VkQueue*>(&queues::graphics));
             SetResourceName(queues::graphics, RHI_Resource_Type::Queue, "graphics");
@@ -805,10 +826,10 @@ namespace Spartan
 
         vulkan_memory_allocator::initialize(app_info.apiVersion);
 
-        // Set the descriptor set capacity to an initial value
+        // set the descriptor set capacity to an initial value
         SetDescriptorSetCapacity(descriptors::descriptor_pool_max_sets);
 
-        // Detect and log version
+        // detect and log version
         {
             string version_major = to_string(VK_VERSION_MAJOR(app_info.apiVersion));
             string version_minor = to_string(VK_VERSION_MINOR(app_info.apiVersion));
@@ -1398,8 +1419,6 @@ namespace Spartan
 
     void RHI_Device::MemoryBufferCreate(void*& resource, const uint64_t size, uint32_t usage, uint32_t memory_property_flags, const void* data_initial, const char* name)
     {
-        lock_guard<mutex> lock(vulkan_memory_allocator::mutex_allocator);
-
         // Deduce some memory properties
         bool is_buffer_storage       = (usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0; // aka structured buffer
         bool is_buffer_constant      = (usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) != 0;
@@ -1485,24 +1504,55 @@ namespace Spartan
         }
     }
 
-    void RHI_Device::MemoryTextureCreate(void* vk_image_creat_info, void*& resource, const char* name)
+    void RHI_Device::MemoryTextureCreate(RHI_Texture* texture)
     {
-        lock_guard<mutex> lock(vulkan_memory_allocator::mutex_allocator);
+        // describe image
+        VkImageCreateInfo create_info_image = {};
+        create_info_image.sType             = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        create_info_image.imageType         = VK_IMAGE_TYPE_2D;
+        create_info_image.flags             = texture->GetResourceType() == ResourceType::TextureCube ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
+        create_info_image.usage             = get_image_usage_flags(texture);
+        create_info_image.extent.width      = texture->GetWidth();
+        create_info_image.extent.height     = texture->GetHeight();
+        create_info_image.extent.depth      = 1;
+        create_info_image.mipLevels         = texture->GetMipCount();
+        create_info_image.arrayLayers       = texture->GetArrayLength();
+        create_info_image.format            = vulkan_format[rhi_format_to_index(texture->GetFormat())];
+        create_info_image.tiling            = VK_IMAGE_TILING_OPTIMAL;
+        create_info_image.initialLayout     = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout(0))];
+        create_info_image.samples           = VK_SAMPLE_COUNT_1_BIT;
+        create_info_image.sharingMode       = VK_SHARING_MODE_EXCLUSIVE;
 
-        VmaAllocationCreateInfo allocation_info = {};
-        allocation_info.usage                   = VMA_MEMORY_USAGE_AUTO;
+        // describe allocation
+        VmaAllocationCreateInfo create_info_allocation = {};
+        create_info_allocation.usage                   = VMA_MEMORY_USAGE_AUTO;
+        if (texture->GetFlags() & RHI_Texture_Mappable)
+        {
+            create_info_allocation.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+        }
 
-        // Create image
+        // allocate
+        VmaAllocationInfo allocation_info;
         VmaAllocation allocation;
+        void*& resource = texture->GetRhiResource();
         SP_VK_ASSERT_MSG(vmaCreateImage(
             vulkan_memory_allocator::allocator,
-            static_cast<VkImageCreateInfo*>(vk_image_creat_info), &allocation_info,
+            &create_info_image,
+            &create_info_allocation,
             reinterpret_cast<VkImage*>(&resource),
             &allocation,
-            nullptr),
-        "Failed to allocate texture");
+            &allocation_info),
+            "Failed to allocate texture");
 
-        vulkan_memory_allocator::save_allocation(resource, name, allocation);
+        // save mapped data pointer
+        if (texture->GetFlags() & RHI_Texture_Mappable)
+        {
+            void*& mapped_data = texture->GetMappedData();
+            mapped_data = allocation_info.pMappedData;
+        }
+
+        // save allocation
+        vulkan_memory_allocator::save_allocation(resource, texture->GetObjectName().c_str(), allocation);
     }
 
     void RHI_Device::MemoryTextureDestroy(void*& resource)
@@ -1521,18 +1571,15 @@ namespace Spartan
     {
         if (VmaAllocation allocation = static_cast<VmaAllocation>(vulkan_memory_allocator::get_allocation_from_resource(resource)))
         {
-            SP_ASSERT_MSG(vmaMapMemory(vulkan_memory_allocator::allocator, allocation, reinterpret_cast<void**>(&mapped_data)) == VK_SUCCESS, "Failed to map memory");
+            SP_VK_ASSERT_MSG(vmaMapMemory(vulkan_memory_allocator::allocator, allocation, reinterpret_cast<void**>(&mapped_data)), "Failed to map memory");
         }
     }
 
-    void RHI_Device::MemoryUnmap(void* resource, void*& mapped_data)
+    void RHI_Device::MemoryUnmap(void* resource)
     {
-        SP_ASSERT_MSG(mapped_data, "Memory is already unmapped");
-
         if (VmaAllocation allocation = static_cast<VmaAllocation>(vulkan_memory_allocator::get_allocation_from_resource(resource)))
         {
             vmaUnmapMemory(vulkan_memory_allocator::allocator, static_cast<VmaAllocation>(allocation));
-            mapped_data = nullptr;
         }
     }
 
