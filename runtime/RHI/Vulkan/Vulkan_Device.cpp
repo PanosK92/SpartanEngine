@@ -225,6 +225,7 @@ namespace Spartan
             }
 
             SP_ASSERT_MSG(false, "Could not find a matching queue family index");
+            return invalid_index;
         }
 
         static void detect_queue_family_indices(VkPhysicalDevice device_physical)
