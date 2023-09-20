@@ -873,7 +873,7 @@ namespace Spartan
             SP_ASSERT_MSG(vkCreateDevice(RHI_Context::device_physical, &create_info, nullptr, &RHI_Context::device) == VK_SUCCESS, "Failed to create device");
         }
 
-        // get a graphics, compute and a copy queue.
+        // get queues
         {
             vkGetDeviceQueue(RHI_Context::device, queues::index_graphics, 0, reinterpret_cast<VkQueue*>(&queues::graphics));
             SetResourceName(queues::graphics, RHI_Resource_Type::Queue, "graphics");
@@ -1396,7 +1396,7 @@ namespace Spartan
         return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
 
-    void RHI_Device::SetBindlessSamplers(const std::array<std::shared_ptr<RHI_Sampler>, 7>& samplers)
+    void RHI_Device::SetBindlessSamplers(const array<shared_ptr<RHI_Sampler>, 7>& samplers)
     {
         descriptors::pipelines.clear();
 
