@@ -21,6 +21,8 @@ Livestreams [![Image1](https://raw.githubusercontent.com/PanosK92/SpartanEngine/
 :- | :- 
 
 #### Gallery
+<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/screenshot-v0.3_preview5.jpg"/>
+
 <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/readme_1.1.jpg"/> | <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/readme_1.2.jpg"/>
 :- | :-
 
