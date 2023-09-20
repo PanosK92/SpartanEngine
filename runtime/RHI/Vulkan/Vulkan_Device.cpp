@@ -183,6 +183,51 @@ namespace Spartan
         static uint32_t index_compute  = invalid_index;
         static uint32_t index_copy     = invalid_index;
 
+        static uint32_t get_queue_family_index(const vector<VkQueueFamilyProperties>& queue_families, VkQueueFlags queue_flags)
+        {
+            // compute only queue family index
+            if ((queue_flags & VK_QUEUE_COMPUTE_BIT) == queue_flags)
+            {
+                for (uint32_t i = 0; i < static_cast<uint32_t>(queue_families.size()); i++)
+                {
+                    if (i == index_graphics)
+                        continue;
+
+                    if ((queue_families[i].queueFlags & VK_QUEUE_COMPUTE_BIT) && ((queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0))
+                    {
+                        return i;
+                    }
+                }
+            }
+
+            // transfer only queue family index
+            if ((queue_flags & VK_QUEUE_TRANSFER_BIT) == queue_flags)
+            {
+                for (uint32_t i = 0; i < static_cast<uint32_t>(queue_families.size()); i++)
+                {
+                    if (i == index_graphics || i == index_compute)
+                        continue;
+
+                    if ((queue_families[i].queueFlags & VK_QUEUE_TRANSFER_BIT) && ((queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) && ((queue_families[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
+                    {
+                        return i;
+                    }
+                }
+            }
+
+            // first available graphics queue family index
+            for (uint32_t i = 0; i < static_cast<uint32_t>(queue_families.size()); i++)
+            {
+                if ((queue_families[i].queueFlags & queue_flags) == queue_flags)
+                {
+                    return i;
+                }
+            }
+
+            SP_ASSERT_MSG(false, "Could not find a matching queue family index");
+            return invalid_index;
+        }
+
         static void detect_queue_family_indices(VkPhysicalDevice device_physical)
         {
             uint32_t queue_family_count = 0;
@@ -191,44 +236,9 @@ namespace Spartan
             vector<VkQueueFamilyProperties> queue_families(queue_family_count);
             vkGetPhysicalDeviceQueueFamilyProperties(device_physical, &queue_family_count, queue_families.data());
 
-            // reset indices
-            index_graphics = invalid_index;
-            index_compute  = invalid_index;
-            index_copy     = invalid_index;
-
-            // temporary indices to hold non-unique values
-            uint32_t temp_index_compute = invalid_index;
-            uint32_t temp_index_copy    = invalid_index;
-
-            // find graphics, compute, and copy queue family indices
-            for (uint32_t i = 0; i < queue_family_count; ++i)
-            {
-                const VkQueueFamilyProperties& queue_family_properties = queue_families[i];
-
-                if (queue_family_properties.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-                {
-                    index_graphics = i;
-                }
-
-                if (queue_family_properties.queueFlags & VK_QUEUE_COMPUTE_BIT)
-                {
-                    temp_index_compute = i;
-                }
-
-                if (queue_family_properties.queueFlags & VK_QUEUE_TRANSFER_BIT)
-                {
-                    temp_index_copy = i;
-                }
-            }
-
-            // prioritize unique indices, but allow fallback to non-unique ones
-            index_compute = (index_graphics != temp_index_compute) ? temp_index_compute : index_graphics;
-            index_copy    = (index_graphics != temp_index_copy && index_compute != temp_index_copy) ? temp_index_copy : index_graphics;
-
-            if (index_graphics == invalid_index || index_compute == invalid_index || index_copy == invalid_index)
-            {
-                SP_ASSERT_MSG(false, "Failed to find queue family indices");
-            }
+            index_graphics = get_queue_family_index(queue_families, VK_QUEUE_GRAPHICS_BIT);
+            index_compute  = get_queue_family_index(queue_families, VK_QUEUE_COMPUTE_BIT);
+            index_copy     = get_queue_family_index(queue_families, VK_QUEUE_TRANSFER_BIT);
         }
     }
 
@@ -863,7 +873,7 @@ namespace Spartan
             SP_ASSERT_MSG(vkCreateDevice(RHI_Context::device_physical, &create_info, nullptr, &RHI_Context::device) == VK_SUCCESS, "Failed to create device");
         }
 
-        // get a graphics, compute and a copy queue.
+        // get queues
         {
             vkGetDeviceQueue(RHI_Context::device, queues::index_graphics, 0, reinterpret_cast<VkQueue*>(&queues::graphics));
             SetResourceName(queues::graphics, RHI_Resource_Type::Queue, "graphics");
@@ -1386,7 +1396,7 @@ namespace Spartan
         return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
 
-    void RHI_Device::SetBindlessSamplers(const std::array<std::shared_ptr<RHI_Sampler>, 7>& samplers)
+    void RHI_Device::SetBindlessSamplers(const array<shared_ptr<RHI_Sampler>, 7>& samplers)
     {
         descriptors::pipelines.clear();
 
