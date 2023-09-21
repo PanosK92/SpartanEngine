@@ -257,7 +257,7 @@ namespace Spartan
         m_queue_type  = queue_type;
         m_object_name = name;
 
-        // Command buffer
+        // command buffer
         {
             VkCommandBufferAllocateInfo allocate_info = {};
             allocate_info.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -273,7 +273,7 @@ namespace Spartan
             RHI_Device::SetResourceName(static_cast<void*>(m_rhi_resource), RHI_Resource_Type::CommandList, name);
         }
 
-        // Query pool
+        // query pool
         if (RHI_Context::gpu_profiling)
         {
             VkQueryPoolCreateInfo query_pool_create_info = {};
@@ -288,10 +288,10 @@ namespace Spartan
             m_timestamps.fill(0);
         }
 
-        // Sync objects
+        // sync objects
         m_proccessed_fence = make_shared<RHI_Fence>(name);
 
-        // Semaphore
+        // semaphore
         bool presents_to_swapchain = swapchain_id != 0;
         if (presents_to_swapchain)
         {
@@ -312,7 +312,7 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
-        // Get queries
+        // get queries
         if (m_queue_type != RHI_Queue_Type::Copy)
         {
             if (RHI_Context::gpu_profiling)
@@ -342,7 +342,7 @@ namespace Spartan
             m_timestamp_index = 0;
         }
 
-        // Begin command buffer
+        // begin command buffer
         VkCommandBufferBeginInfo begin_info = {};
         begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -354,7 +354,7 @@ namespace Spartan
             vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkQueryPool>(m_rhi_query_pool), 0, m_max_timestamps);
         }
 
-        // Update states
+        // update states
         m_state          = RHI_CommandListState::Recording;
         m_pipeline_dirty = true;
     }
@@ -374,6 +374,14 @@ namespace Spartan
     void RHI_CommandList::Submit()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Ended);
+
+        // we can reach this code path and have a submitted semaphore when exiting full screen
+        // it's okay to reset it manually here but ideally, we should find out why this happens
+        if (m_proccessed_semaphore && m_proccessed_semaphore->GetStateCpu() == RHI_Sync_State::Submitted)
+        {
+            m_proccessed_fence     = make_shared<RHI_Fence>(m_object_name.c_str());
+            m_proccessed_semaphore = make_shared<RHI_Semaphore>(false, m_object_name.c_str());
+        }
 
         RHI_Device::QueueSubmit(
             m_queue_type,                                  // queue
@@ -397,30 +405,30 @@ namespace Spartan
         uint64_t hash_previous = m_pso.GetHash();
         m_pso                  = pso;
 
-        // Determine if the pipeline is dirty
+        // determine if the pipeline is dirty
         if (!m_pipeline_dirty)
         {
             m_pipeline_dirty = hash_previous != m_pso.GetHash();
         }
 
-        // Bind pipeline
+        // bind pipeline
         if (m_pipeline_dirty)
         {
-            // Get vulkan pipeline object
+            // get vulkan pipeline object
             SP_ASSERT(m_pipeline != nullptr);
             VkPipeline vk_pipeline = static_cast<VkPipeline>(m_pipeline->GetResource_Pipeline());
             SP_ASSERT(vk_pipeline != nullptr);
 
-            // Bind
+            // bind
             VkPipelineBindPoint pipeline_bind_point = m_pso.IsCompute() ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
             vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_rhi_resource), pipeline_bind_point, vk_pipeline);
 
-            // Profile
+            // profile
             Profiler::m_rhi_bindings_pipeline++;
 
             m_pipeline_dirty = false;
 
-            // Also, If the pipeline changed, resources have to be set again
+            // also, If the pipeline changed, resources have to be set again
             m_vertex_buffer_id = 0;
             m_index_buffer_id  = 0;
         }
@@ -444,14 +452,14 @@ namespace Spartan
         rendering_info.pDepthAttachment     = nullptr;
         rendering_info.pStencilAttachment   = nullptr;
 
-        // Color attachments
+        // color attachments
         vector<VkRenderingAttachmentInfo> attachments_color;
         {
-            // Swapchain buffer as a render target
+            // swapchain buffer as a render target
             RHI_SwapChain* swapchain = m_pso.render_target_swapchain;
             if (swapchain)
             {
-                // Transition to the appropriate layout
+                // transition to the appropriate layout
                 if (swapchain->GetLayout() != RHI_Image_Layout::Color_Attachment_Optimal)
                 {
                     swapchain->SetLayout(RHI_Image_Layout::Color_Attachment_Optimal, this);
@@ -468,7 +476,7 @@ namespace Spartan
 
                 attachments_color.push_back(color_attachment);
             }
-            else // Regular render target(s)
+            else // regular render target(s)
             { 
                 for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
                 {
@@ -502,7 +510,7 @@ namespace Spartan
             rendering_info.pColorAttachments    = attachments_color.data();
         }
 
-        // Depth-stencil attachment
+        // depth-stencil attachment
         VkRenderingAttachmentInfoKHR attachment_depth_stencil = {};
         if (m_pso.render_target_depth_texture != nullptr)
         {
@@ -529,18 +537,18 @@ namespace Spartan
 
             rendering_info.pDepthAttachment = &attachment_depth_stencil;
 
-            // We are using the combined depth-stencil approach.
-            // This means we can assign the depth attachment as the stencil attachment.
+            // we are using the combined depth-stencil approach
+            // this means we can assign the depth attachment as the stencil attachment
             if (m_pso.render_target_depth_texture->IsStencilFormat())
             {
                 rendering_info.pStencilAttachment = rendering_info.pDepthAttachment;
             }
         }
 
-        // Begin dynamic render pass instance
+        // begin dynamic render pass instance
         vkCmdBeginRendering(static_cast<VkCommandBuffer>(m_rhi_resource), &rendering_info);
 
-        // Set viewport
+        // set viewport
         RHI_Viewport viewport = RHI_Viewport(
             0.0f, 0.0f,
             static_cast<float>(m_pso.GetWidth()),

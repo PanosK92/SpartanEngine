@@ -45,18 +45,6 @@ namespace Spartan
     namespace
     {
         uint32_t flags = 0;
-
-        static void set_editor_state()
-        {
-            if (Window::IsFullScreen())
-            {
-                Engine::RemoveFlag(EngineMode::Editor);
-            }
-            else
-            {
-                Engine::AddFlag(EngineMode::Editor);
-            }
-        }
     }
 
     void Engine::Initialize()
@@ -84,8 +72,6 @@ namespace Spartan
         }
 
         SP_LOG_INFO("Initialization took %.1f ms", timer_initialize.GetElapsedTimeMs());
-
-        SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(set_editor_state));
     }
 
     void Engine::Shutdown()
