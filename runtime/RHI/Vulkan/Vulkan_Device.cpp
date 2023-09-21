@@ -1133,16 +1133,16 @@ namespace Spartan
 
         SP_ASSERT_MSG(cmd_buffer != nullptr, "Invalid command buffer");
 
-        // Validate semaphores
+        // validate semaphores
         if (wait_semaphore)   SP_ASSERT_MSG(wait_semaphore->GetStateCpu()   != RHI_Sync_State::Idle,      "Wait semaphore is in an idle state and will never be signaled");
         if (signal_semaphore) SP_ASSERT_MSG(signal_semaphore->GetStateCpu() != RHI_Sync_State::Submitted, "Signal semaphore is already in a signaled state.");
         if (signal_fence)     SP_ASSERT_MSG(signal_fence->GetStateCpu()     != RHI_Sync_State::Submitted, "Signal fence is already in a signaled state.");
 
-        // Get semaphores
+        // get semaphores
         array<VkSemaphore, 1> vk_wait_semaphore   = { wait_semaphore   ? static_cast<VkSemaphore>(wait_semaphore->GetRhiResource())   : nullptr };
         array<VkSemaphore, 1> vk_signal_semaphore = { signal_semaphore ? static_cast<VkSemaphore>(signal_semaphore->GetRhiResource()) : nullptr };
 
-        // Submit info
+        // submit info
         VkSubmitInfo submit_info         = {};
         submit_info.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submit_info.pNext                = nullptr;
@@ -1154,13 +1154,13 @@ namespace Spartan
         submit_info.commandBufferCount   = 1;
         submit_info.pCommandBuffers      = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
 
-        // Get signal fence
+        // get signal fence
         void* vk_signal_fence = signal_fence ? signal_fence->GetRhiResource() : nullptr;
 
-        // The actual submit
+        // the actual submit
         SP_VK_ASSERT_MSG(vkQueueSubmit(static_cast<VkQueue>(QueueGet(type)), 1, &submit_info, static_cast<VkFence>(vk_signal_fence)), "Failed to submit");
 
-        // Update semaphore states
+        // update semaphore states
         if (wait_semaphore)   wait_semaphore->SetStateCpu(RHI_Sync_State::Idle);
         if (signal_semaphore) signal_semaphore->SetStateCpu(RHI_Sync_State::Submitted);
         if (signal_fence)     signal_fence->SetStateCpu(RHI_Sync_State::Submitted);

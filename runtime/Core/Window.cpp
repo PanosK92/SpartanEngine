@@ -20,15 +20,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 
-//= INCLUDES =====================
+//= INCLUDES ==================
 #include "pch.h"
 #include "Window.h"
 #include "../Input/Input.h"
 #include "../Display/Display.h"
-#include "../Rendering/Renderer.h"
+SP_WARNINGS_OFF
 #include <SDL.h>
 #include <SDL_syswm.h>
-//================================
+SP_WARNINGS_ON
+//=============================
 
 //= LINKING ============================
 #ifdef _MSC_VER
@@ -36,7 +37,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma comment(lib, "Imm32.lib")
 #pragma comment(lib, "Setupapi.lib")
 // SetProcessDpiAwareness() requirements
-#include <ShellScalingAPI.h>
 #pragma comment(lib, "Shcore.lib")
 #endif
 //======================================
@@ -273,6 +273,7 @@ namespace Spartan
 
         if (was_windowed)
         {
+            Engine::RemoveFlag(EngineMode::Editor);
             SP_FIRE_EVENT(EventType::WindowFullScreenToggled);
         }
     }
@@ -289,6 +290,7 @@ namespace Spartan
 
         if (was_fullscreen)
         {
+            Engine::AddFlag(EngineMode::Editor);
             SP_FIRE_EVENT(EventType::WindowFullScreenToggled);
         }
     }
