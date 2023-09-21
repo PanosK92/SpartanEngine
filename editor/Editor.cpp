@@ -225,10 +225,10 @@ Editor::~Editor()
 
 void Editor::Tick()
 {
-    // This is the main editor/engine loop
+    // this is the main editor/engine loop
     while (!Spartan::Window::WantsToClose())
     {
-        bool render_editor = !Spartan::Window::IsFullScreen();
+        bool render_editor = Spartan::Engine::IsFlagSet(Spartan::EngineMode::Editor);
 
         // ImGui tick
         if (render_editor)
@@ -237,47 +237,40 @@ void Editor::Tick()
             ImGui::NewFrame();
         }
 
-        // Engine tick
+        // engine tick
         Spartan::Engine::Tick();
 
-        // Editor
+        // editor
         {
-            // Window
+            // window
             if (render_editor)
             {
-                // Begin window
+                // begin window
                 BeginWindow();
 
-                // Tick widgets
+                // tick widgets
                 for (shared_ptr<Widget>& widget : m_widgets)
                 {
                     widget->Tick();
                 }
 
-                // End window
+                // end window
                 if (m_editor_begun)
                 {
                     ImGui::End();
                 }
 
-                // Render
+                // render
                 ImGui::Render();
                 ImGui::RHI::render(ImGui::GetDrawData());
             }
 
-            // Child windows
+            // child windows
             if (render_editor && ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
             {
                 ImGui::UpdatePlatformWindows();
                 ImGui::RenderPlatformWindowsDefault();
             }
-
-        }
-
-        // Engine present
-        if (!Spartan::Window::IsMinimised())
-        {
-            Spartan::Renderer::Present();
         }
     }
 }

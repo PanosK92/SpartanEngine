@@ -58,26 +58,25 @@ namespace Spartan
     enum class EventType
     {
         // Engine
-        EngineShutdown,                  // The engine is about to shutdown
-        // Renderer                      
-        RendererOnInitialized,           // The renderer has been initialized
-        RendererOnFirstFrameCompleted,   // The renderer has completed the first frame
-        RendererPostPresent,             // The renderer has finished presenting a frame
-        RendererOnShutdown,              // The renderer is about to shutdown
-        // World                         
-        WorldSaveStart,                  // The world is about to be saved to a file
-        WorldSavedEnd,                   // The world finished saving to file
-        WorldLoadStart,                  // The world is about to be loaded from a file
-        WorldLoadEnd,                    // The world finished loading from file
-        WorldClear,                      // The world is about to clear everything
-        WorldResolve,                    // The world is resolving
-        WorldResolved,                   // The world has finished resolving
-        // SDL                           
-        Sdl,                             // An SDL event
-        // Window                        
-        WindowResized,                   // The window has been resized
-        WindowFullscreen,                // The window has been set to fullscreen
-        WindowFullscreenWindowedToggled, // The window has been toggled between fullscreen and windowed
+        EngineShutdown,                // The engine is about to shutdown
+        // Renderer                    
+        RendererOnInitialized,         // The renderer has been initialized
+        RendererOnFirstFrameCompleted, // The renderer has completed the first frame
+        RendererPostPresent,           // The renderer has finished presenting a frame
+        RendererOnShutdown,            // The renderer is about to shutdown
+        // World                       
+        WorldSaveStart,                // The world is about to be saved to a file
+        WorldSavedEnd,                 // The world finished saving to file
+        WorldLoadStart,                // The world is about to be loaded from a file
+        WorldLoadEnd,                  // The world finished loading from file
+        WorldClear,                    // The world is about to clear everything
+        WorldResolve,                  // The world is resolving
+        WorldResolved,                 // The world has finished resolving
+        // SDL                         
+        Sdl,                           // An SDL event
+        // Window                      
+        WindowResized,                 // The window has been resized
+        WindowFullScreenToggled        // The window has been toggled to fullscreen
     };
 
     class Entity;
