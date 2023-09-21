@@ -1715,13 +1715,13 @@ namespace Spartan
         if (!GetOption<bool>(Renderer_Option::Debug_Lights))
             return;
 
-        // Acquire shaders
+        // acquire shaders
         RHI_Shader* shader_v = GetShader(Renderer_Shader::quad_v).get();
         RHI_Shader* shader_p = GetShader(Renderer_Shader::quad_p).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        // Acquire entities
+        // acquire entities
         auto& lights        = m_renderables[Renderer_Entity::Light];
         auto& audio_sources = m_renderables[Renderer_Entity::AudioSource];
         if ((lights.empty() && audio_sources.empty()) || !GetCamera())
@@ -1729,7 +1729,7 @@ namespace Spartan
 
         cmd_list->BeginTimeblock("icons");
 
-        // Define pipeline state
+        // define pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
         pso.shader_pixel                    = shader_p;
@@ -1739,7 +1739,7 @@ namespace Spartan
         pso.render_target_color_textures[0] = tex_out;
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
-        // Set pipeline state
+        // set pipeline state
         cmd_list->SetPipelineState(pso);
 
         bool render_pass_started = false;
@@ -1750,7 +1750,7 @@ namespace Spartan
             const Vector3 camera_to_light  = (pos_world - pos_world_camera).Normalized();
             const float v_dot_l            = Vector3::Dot(GetCamera()->GetTransform()->GetForward(), camera_to_light);
 
-            // Only draw if it's inside our view
+            // only draw if it's inside our view
             if (v_dot_l > 0.5f)
             {
                 if (!render_pass_started)
@@ -1759,7 +1759,7 @@ namespace Spartan
                     render_pass_started = true;
                 }
 
-                // Compute transform
+                // compute transform
                 {
                     // Use the distance from the camera to scale the icon, this will
                     // cancel out perspective scaling, hence keeping the icon scale constant.
@@ -1773,12 +1773,12 @@ namespace Spartan
 
                     Matrix transform = Matrix(pos_world, rotation_camera_billboard * rotation_reorient_quad, scale);
 
-                    // Update transform
+                    // update transform
                     m_cb_pass_cpu.transform = transform * m_cb_frame_cpu.view_projection;
                     PushPassConstants(cmd_list);
                 }
 
-                // Draw rectangle
+                // draw rectangle
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
                 cmd_list->SetBufferVertex(GetStandardMesh(Renderer_MeshType::Quad)->GetVertexBuffer());
                 cmd_list->SetBufferIndex(GetStandardMesh(Renderer_MeshType::Quad)->GetIndexBuffer());
@@ -1786,21 +1786,21 @@ namespace Spartan
             }
         };
 
-        // Draw audio source icons
+        // draw audio source icons
         for (shared_ptr<Entity> entity : audio_sources)
         {
             draw_icon(entity->GetTransform().get(), GetStandardTexture(Renderer_StandardTexture::Gizmo_audio_source).get());
         }
 
-        // Draw light icons
+        // draw light icons
         for (shared_ptr<Entity> entity : lights)
         {
             RHI_Texture* texture = nullptr;
 
-            // Light can be null if it just got removed and our buffer doesn't update till the next frame
+            // light can be null if it just got removed and our buffer doesn't update till the next frame
             if (shared_ptr<Light> light = entity->GetComponent<Light>())
             {
-                // Get the texture
+                // get the texture
                 if (light->GetLightType() == LightType::Directional) texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_directional).get();
                 else if (light->GetLightType() == LightType::Point)  texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_point).get();
                 else if (light->GetLightType() == LightType::Spot)   texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_spot).get();

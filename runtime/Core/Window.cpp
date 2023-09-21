@@ -265,16 +265,32 @@ namespace Spartan
     {
         SP_ASSERT(window != nullptr);
 
+        bool was_windowed = !IsFullScreen();
+
         SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
 
-        SP_FIRE_EVENT(EventType::WindowFullscreen);
+        SP_FIRE_EVENT(EventType::WindowResized);
+
+        if (was_windowed)
+        {
+            SP_FIRE_EVENT(EventType::WindowFullScreenToggled);
+        }
     }
 
     void Window::Windowed()
     {
         SP_ASSERT(window != nullptr);
 
+        bool was_fullscreen = IsFullScreen();
+
         SDL_SetWindowFullscreen(window, 0);
+
+        SP_FIRE_EVENT(EventType::WindowResized);
+
+        if (was_fullscreen)
+        {
+            SP_FIRE_EVENT(EventType::WindowFullScreenToggled);
+        }
     }
 
     void Window::ToggleFullScreen()
@@ -287,8 +303,6 @@ namespace Spartan
         {
             FullScreen();
         }
-
-        SP_FIRE_EVENT(EventType::WindowFullscreenWindowedToggled);
 	}
 
 	void Window::FullScreenBorderless()

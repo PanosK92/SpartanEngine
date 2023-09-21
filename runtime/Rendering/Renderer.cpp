@@ -66,10 +66,6 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
 
     namespace
     {
-        // states
-        atomic<bool> is_rendering_allowed  = true;
-        bool dirty_orthographic_projection = true;
-
         // resolution & viewport
         Math::Vector2 m_resolution_render = Math::Vector2::Zero;
         Math::Vector2 m_resolution_output = Math::Vector2::Zero;
@@ -100,6 +96,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
         float near_plane                         = 0.0f;
         float far_plane                          = 1.0f;
         uint32_t buffers_frames_since_last_reset = 0;
+        bool dirty_orthographic_projection       = true;
 
         void sort_renderables(Camera* camera, vector<shared_ptr<Entity>>* renderables, const bool are_transparent)
         {
@@ -232,9 +229,9 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
         // events
         {
             // subscribe
-            SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,                   SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
-            SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,                      SP_EVENT_HANDLER_STATIC(OnClear));
-            SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullscreenWindowedToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
+            SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,           SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
+            SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,              SP_EVENT_HANDLER_STATIC(OnClear));
+            SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
 
             // fire
             SP_FIRE_EVENT(EventType::RendererOnInitialized);
@@ -283,9 +280,6 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
             SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
         }
 
-        if (!is_rendering_allowed)
-            return;
-
         // delete any RHI resources that have accumulated
         if (RHI_Device::DeletionQueueNeedsToParse())
         {
@@ -321,7 +315,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
 
         // update frame buffer
         {
-            // Matrices
+            // matrices
             {
                 if (m_camera)
                 {
@@ -379,7 +373,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
             m_cb_frame_cpu.gamma               = GetOption<float>(Renderer_Option::Gamma);
             m_cb_frame_cpu.frame               = static_cast<uint32_t>(frame_num);
 
-            // These must match what Common_Buffer.hlsl is reading
+            // these must match what Common_Buffer.hlsl is reading
             m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections), 1 << 0);
             m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Ssgi),                   1 << 1);
             m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::VolumetricFog),          1 << 2);
@@ -389,7 +383,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
         Pass_Frame(cmd_current);
 
         // blit to back buffer when in full screen
-        if (Window::IsFullScreen())
+        if (!Engine::IsFlagSet(EngineMode::Editor))
         {
             cmd_current->BeginMarker("copy_to_back_buffer");
             cmd_current->Blit(GetRenderTarget(Renderer_RenderTexture::frame_output).get(), swap_chain.get());
@@ -404,6 +398,14 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
 
         // track frame
         frame_num++;
+    }
+
+    void Renderer::PostTick()
+    {
+        if (!Engine::IsFlagSet(EngineMode::Editor))
+        {
+            Present();
+        }
     }
 
     const RHI_Viewport& Renderer::GetViewport()
@@ -853,9 +855,6 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
     
     void Renderer::Present()
     {
-        if (!is_rendering_allowed)
-            return;
-
         SP_ASSERT_MSG(!Window::IsMinimised(), "Don't call present if the window is minimized");
         SP_ASSERT(swap_chain->GetLayout() == RHI_Image_Layout::Present_Src);
 

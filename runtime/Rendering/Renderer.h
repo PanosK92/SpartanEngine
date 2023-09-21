@@ -56,6 +56,7 @@ namespace Spartan
         static void Initialize();
         static void Shutdown();
         static void Tick();
+        static void PostTick();
 
         // Primitive rendering (excellent for debugging)
         static void DrawLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& color_from = DEBUG_COLOR, const Math::Vector4& color_to = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
