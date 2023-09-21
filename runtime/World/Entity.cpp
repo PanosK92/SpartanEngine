@@ -143,7 +143,7 @@ namespace Spartan
         if (!m_is_active)
             return;
 
-        for (shared_ptr<Component> component : m_components)
+        for (shared_ptr<Component>& component : m_components)
         {
             if (component)
             {
