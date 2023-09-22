@@ -32,6 +32,7 @@ using namespace std;
 
 namespace Spartan
 {
+
     PhysicsDebugDraw::PhysicsDebugDraw()
     {
         m_debugMode = DBG_DrawWireframe | DBG_DrawContactPoints | DBG_DrawConstraints | DBG_DrawConstraintLimits;
@@ -45,7 +46,7 @@ namespace Spartan
     void PhysicsDebugDraw::drawContactPoint(const btVector3& PointOnB, const btVector3& normalOnB, btScalar distance, int lifeTime, const btVector3& color)
     {
         const btVector3& from = PointOnB;
-        const btVector3 to = PointOnB + normalOnB * distance;
+        const btVector3 to    = PointOnB + normalOnB * distance;
         drawLine(from, to, color);
     }
 
