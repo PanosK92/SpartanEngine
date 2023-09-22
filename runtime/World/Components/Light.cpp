@@ -339,7 +339,7 @@ namespace Spartan
                     ShadowSlice& shadow_map = m_shadow_map.slices[i];
                     Vector3 position        = shadow_map.center - GetTransform()->GetForward() * shadow_map.max.z;
                     Vector3 target          = shadow_map.center;
-                    Vector3 up              = Vector3::Up;
+                    Vector3 up              = GetTransform()->GetUp();
                     m_matrix_view[i]        = Matrix::CreateLookAtLH(position, target, up);
                 }
             }
