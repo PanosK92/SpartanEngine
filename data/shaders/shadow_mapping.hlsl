@@ -360,14 +360,14 @@ float4 Shadow_Map(Surface surface, Light light)
     {
         for (uint cascade_index = 0; cascade_index < light.array_size; cascade_index++)
         {
-            // Project into light space
+            // project into light space
             float3 pos_ndc = world_to_ndc(position_world, buffer_light.view_projection[cascade_index]);
             float2 pos_uv  = ndc_to_uv(pos_ndc);
 
-            // Ensure not out of bound
+            // ensure not out of bound
             if (is_saturated(pos_uv))
             {
-                // Sample primary cascade
+                // sample primary cascade
                 auto_bias(surface, pos_ndc, light, cascade_index);
                 shadow.a = SampleShadowMap(surface, float3(pos_uv, cascade_index), pos_ndc.z);
 
@@ -379,21 +379,21 @@ float4 Shadow_Map(Surface surface, Light light)
                     }
                 }
 
-                // If we are close to the edge a secondary cascade exists, lerp with it.
+                // if we are close to the edge a secondary cascade exists, lerp with it.
                 float cascade_fade = (max2(abs(pos_ndc.xy)) - g_shadow_cascade_blend_threshold) * 4.0f;
                 uint cascade_index_next = cascade_index + 1;
 
                 if (cascade_fade > 0.0f && cascade_index_next < light.array_size - 1)
                 {
-                    // Project into light space
+                    // project into light space
                     pos_ndc = world_to_ndc(position_world, buffer_light.view_projection[cascade_index_next]);
                     pos_uv  = ndc_to_uv(pos_ndc);
 
-                    // Sample secondary cascade
+                    // sample secondary cascade
                     auto_bias(surface, pos_ndc, light, cascade_index_next);
                     float shadow_secondary = SampleShadowMap(surface, float3(pos_uv, cascade_index_next), pos_ndc.z);
 
-                    // Blend cascades
+                    // blend cascades
                     shadow.a = lerp(shadow.a, shadow_secondary, cascade_fade);
                     
                     if (light_has_shadows_transparent())
@@ -413,7 +413,7 @@ float4 Shadow_Map(Surface surface, Light light)
     {
         if (light.distance_to_pixel < light.far)
         {
-            // Project into light space
+            // project into light space
             uint slice_index  = direction_to_cube_face_index(light.to_pixel);
             float3 pos_ndc    = world_to_ndc(position_world, buffer_light.view_projection[slice_index]);
 
@@ -433,11 +433,11 @@ float4 Shadow_Map(Surface surface, Light light)
     {
         if (light.distance_to_pixel < light.far)
         {
-            // Project into light space
+            // project into light space
             float3 pos_ndc  = world_to_ndc(position_world, buffer_light.view_projection[0]);
             float3 pos_uv   = float3(ndc_to_uv(pos_ndc), 0);
 
-            // Ensure not out of bound
+            // ensure not out of bound
             if (is_saturated(pos_uv.xy))
             {
                 auto_bias(surface, pos_ndc, light);
