@@ -398,17 +398,17 @@ namespace Spartan
 
     void Window::CreateAndShowSplashScreen()
     {
-        // Load banner image - todo: remove hardcoded path
+        // lod splash screen image
         SDL_Surface* image = SDL_LoadBMP("data\\textures\\banner.bmp");
         SP_ASSERT_MSG(image != nullptr, "Failed to load splash screen image");
 
-        // Compute window position
+        // compute window position
         uint32_t width  = image->w;
         uint32_t height = image->h;
         uint32_t pos_x  = (Display::GetWidth() / 2)  - (width / 2);
         uint32_t pos_y  = (Display::GetHeight() / 2) - (height / 2);
 
-        // Create splash screen
+        // create splash screen
         m_splash_sceen_window = SDL_CreateWindow(
             "splash_screen",                         // window title
             pos_x,                                   // initial x position
@@ -418,14 +418,14 @@ namespace Spartan
             SDL_WINDOW_SHOWN | SDL_WINDOW_BORDERLESS // flags
         );
 
-        // Create a renderer
+        // create a renderer
         m_splash_screen_renderer = SDL_CreateRenderer(m_splash_sceen_window, -1, 0);
 
-        // Create texture (GPU) and free image (CPU)
+        // create texture (GPU) and free image (CPU)
         m_splash_screen_texture = SDL_CreateTextureFromSurface(m_splash_screen_renderer, image);
         SDL_FreeSurface(image);
 
-        // Draw/copy and present
+        // draw/copy and present
         SDL_RenderCopy(m_splash_screen_renderer, m_splash_screen_texture, nullptr, nullptr);
         SDL_RenderPresent(m_splash_screen_renderer);
     }
