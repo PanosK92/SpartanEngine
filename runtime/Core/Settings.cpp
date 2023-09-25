@@ -25,8 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/ThreadPool.h"
 #include "../Rendering/Renderer.h"
 #include "../Input/Input.h"
-#include "../IO/XmlDocument.h"
-#include "pugixml.hpp"
+SP_WARNINGS_OFF
+#include "../IO/pugixml.hpp"
+SP_WARNINGS_ON
 //=================================
 
 //= NAMESPACES ================
