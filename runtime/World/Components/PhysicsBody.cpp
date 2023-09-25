@@ -773,6 +773,12 @@ namespace Spartan
                 shape->setLocalScaling(ToBtVector3(size));
                 m_shape = shape;
 
+                // calculate the offset needed to re-center the terrain
+                float offset = (terrain->GetMaxY() + terrain->GetMinY()) / 2.0f;
+
+                // set the center of mass to adjust for Bullet's re-centering
+                SetCenterOfMass(Vector3(0, offset, 0));
+
                 break;
             }
 
