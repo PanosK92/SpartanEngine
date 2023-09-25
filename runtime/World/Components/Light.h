@@ -151,7 +151,7 @@ namespace Spartan
         // Shadows
         bool m_shadows_enabled             = true;
         bool m_shadows_transparent_enabled = true;
-        uint32_t m_cascade_count           = 4;
+        uint32_t m_cascade_count           = 3;
         ShadowMap m_shadow_map;
 
         // Bias

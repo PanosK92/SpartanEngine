@@ -444,7 +444,7 @@ void MenuBar::DrawFileDialog() const
         ImGui::SetNextWindowFocus();
     }
 
-    if (m_file_dialog->Show(&show_file_dialog, m_editor, &file_dialog_selection_path))
+    if (m_file_dialog->Show(&show_file_dialog, m_editor, nullptr, &file_dialog_selection_path))
     {
         // LOAD
         if (m_file_dialog->GetOperation() == FileDialog_Op_Open || m_file_dialog->GetOperation() == FileDialog_Op_Load)

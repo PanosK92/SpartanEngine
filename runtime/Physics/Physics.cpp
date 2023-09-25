@@ -276,7 +276,7 @@ namespace Spartan
 
             if (picking_ray.IsDefined())
             { 
-                // Get camera picking ray
+                // get camera picking ray
                 Vector3 ray_start     = picking_ray.GetStart();
                 Vector3 ray_direction = picking_ray.GetDirection();
                 Vector3 ray_end       = ray_start + ray_direction * camera->GetFarPlane();
