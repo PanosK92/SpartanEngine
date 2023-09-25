@@ -45,25 +45,29 @@ namespace Spartan
         {
             switch (material_property)
             {
-                case MaterialProperty::ColorR:              return "color_r";
-                case MaterialProperty::ColorG:              return "color_g";
-                case MaterialProperty::ColorB:              return "color_b";
-                case MaterialProperty::ColorA:              return "color_a";
-                case MaterialProperty::RoughnessMultiplier: return "roughness_multiplier";
-                case MaterialProperty::MetalnessMultiplier: return "metalness_multiplier";
-                case MaterialProperty::NormalMultiplier:    return "normal_multiplier";
-                case MaterialProperty::HeightMultiplier:    return "height_multiplier";
-                case MaterialProperty::Clearcoat:           return "clearcoat_multiplier";
-                case MaterialProperty::Clearcoat_Roughness: return "clearcoat_roughness_multiplier";
-                case MaterialProperty::Anisotropic:         return "anisotropic_multiplier";
-                case MaterialProperty::AnisotropicRotation: return "anisotropic_rotation_multiplier";
-                case MaterialProperty::Sheen:               return "sheen_multiplier";
-                case MaterialProperty::SheenTint:           return "sheen_tint_multiplier";
-                case MaterialProperty::UvTilingX:           return "uv_tiling_x";
-                case MaterialProperty::UvTilingY:           return "uv_tiling_y";
-                case MaterialProperty::UvOffsetX:           return "uv_offset_x";
-                case MaterialProperty::UvOffsetY:           return "uv_offset_y";
-                case MaterialProperty::CanBeEdited:         return "can_be_edited";
+                case MaterialProperty::Clearcoat:                       return "clearcoat_multiplier";
+                case MaterialProperty::Clearcoat_Roughness:             return "clearcoat_roughness_multiplier";
+                case MaterialProperty::Anisotropic:                     return "anisotropic_multiplier";
+                case MaterialProperty::AnisotropicRotation:             return "anisotropic_rotation_multiplier";
+                case MaterialProperty::Sheen:                           return "sheen_multiplier";
+                case MaterialProperty::SheenTint:                       return "sheen_tint_multiplier";
+                case MaterialProperty::ColorTint:                       return "color_tint";
+                case MaterialProperty::ColorR:                          return "color_r";
+                case MaterialProperty::ColorG:                          return "color_g";
+                case MaterialProperty::ColorB:                          return "color_b";
+                case MaterialProperty::ColorA:                          return "color_a";
+                case MaterialProperty::RoughnessMultiplier:             return "roughness_multiplier";
+                case MaterialProperty::MetalnessMultiplier:             return "metalness_multiplier";
+                case MaterialProperty::NormalMultiplier:                return "normal_multiplier";
+                case MaterialProperty::HeightMultiplier:                return "height_multiplier";
+                case MaterialProperty::UvTilingX:                       return "uv_tiling_x";
+                case MaterialProperty::UvTilingY:                       return "uv_tiling_y";
+                case MaterialProperty::UvOffsetX:                       return "uv_offset_x";
+                case MaterialProperty::UvOffsetY:                       return "uv_offset_y";
+                case MaterialProperty::SingleTextureRoughnessMetalness: return "single_texture_roughness_metalness";
+                case MaterialProperty::CanBeEdited:                     return "can_be_edited";
+                case MaterialProperty::IsTerrain:                       return "is_terrain";
+                case MaterialProperty::Undefined:                       return "undefined";
                 default:
                 {
                     SP_ASSERT_MSG(false, "Unknown material property");
@@ -71,7 +75,7 @@ namespace Spartan
                 }
             }
         }
-    }
+     }
 
     Material::Material() : IResource(ResourceType::Material)
     {
