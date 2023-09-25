@@ -39,11 +39,11 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static bool load_and_normalize_height_data(std::vector<float>& height_data_out, std::shared_ptr<RHI_Texture> height_texture, float min_y, float max_y)
+    static bool load_and_normalize_height_data(vector<float>& height_data_out, shared_ptr<RHI_Texture> height_texture, float min_y, float max_y)
     {
         vector<std::byte> height_data = height_texture->GetMip(0, 0).bytes;
 
-        // If the data is not there, load it
+        // if the data is not there, load it
         if (height_data.empty())
         {
             if (height_texture->LoadFromFile(height_texture->GetResourceFilePath()))
@@ -58,34 +58,38 @@ namespace Spartan
             }
         }
 
-        // Normalize and scale height data
-        height_data_out.resize(height_data.size());
-        for (uint32_t i = 0; i < height_data.size(); i++)
+        // bytes per pixel
+        uint32_t bytes_per_pixel = (height_texture->GetChannelCount() * height_texture->GetBitsPerChannel()) / 8;
+
+        // normalize and scale height data
+        height_data_out.resize(height_data.size() / bytes_per_pixel);
+        for (uint32_t i = 0; i < height_data.size(); i += bytes_per_pixel)
         {
-            height_data_out[i] = min_y + (static_cast<float>(height_data[i]) / 255.0f) * (max_y - min_y);
+            // assuming the height is stored in the red channel (first channel)
+            height_data_out[i / bytes_per_pixel] = min_y + (static_cast<float>(height_data[i]) / 255.0f) * (max_y - min_y);
         }
 
         return true;
     }
 
-
     static void generate_positions(vector<Vector3>& positions, const vector<float>& height_map, const uint32_t width, const uint32_t height)
     {
         SP_ASSERT_MSG(!height_map.empty(), "Height map is empty");
-
-        uint32_t index = 0;
-        uint32_t k     = 0;
 
         for (uint32_t y = 0; y < height; y++)
         {
             for (uint32_t x = 0; x < width; x++)
             {
-                uint32_t index     = y * width + x;
-                positions[index].x = static_cast<float>(x) - width * 0.5f;  // center on the X axis
-                positions[index].z = static_cast<float>(y) - height * 0.5f; // center on the Z axis
-                positions[index].y = height_map[k];
+                uint32_t index = y * width + x;
 
-                k += 4;
+                // center on the X and Z axis
+                float centered_x = static_cast<float>(x) - width * 0.5f;
+                float centered_z = static_cast<float>(y) - height * 0.5f;
+
+                // get height from height_map
+                float height_value = height_map[index]; 
+
+                positions[index] = Vector3(centered_x, height_value, centered_z);
             }
         }
     }
@@ -130,8 +134,8 @@ namespace Spartan
                 const uint32_t index_top_right    = (y + 1) * width + x + 1;
 
                 // Bottom right of quad
-                index = index_bottom_right;
-                indices[k] = index;
+                index           = index_bottom_right;
+                indices[k]      = index;
                 vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v + 1.0f / (height - 1)));
 
                 // Bottom left of quad
@@ -155,8 +159,8 @@ namespace Spartan
                 vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v));
 
                 // Top right of quad
-                index = index_top_right;
-                indices[k + 5] = index;
+                index           = index_top_right;
+                indices[k + 5]  = index;
                 vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v));
 
                 k += 6; // next quad
@@ -358,7 +362,7 @@ namespace Spartan
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
             // Add physics so we can walk on it
-            //m_entity_ptr->AddComponent<PhysicsBody>();
+            m_entity_ptr->AddComponent<PhysicsBody>();
 
             m_is_generating = false;
         });
