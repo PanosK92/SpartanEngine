@@ -109,41 +109,42 @@ namespace Spartan
     {
         SetResourceFilePath(file_path);
 
-        auto xml = make_unique<XmlDocument>();
-        xml->AddNode("Material");
-        xml->AddAttribute("Material", "color_r",                         GetProperty(MaterialProperty::ColorR));
-        xml->AddAttribute("Material", "color_g",                         GetProperty(MaterialProperty::ColorG));
-        xml->AddAttribute("Material", "color_b",                         GetProperty(MaterialProperty::ColorB));
-        xml->AddAttribute("Material", "color_a",                         GetProperty(MaterialProperty::ColorA));
-        xml->AddAttribute("Material", "roughness_multiplier",            GetProperty(MaterialProperty::RoughnessMultiplier));
-        xml->AddAttribute("Material", "metalness_multiplier",            GetProperty(MaterialProperty::MetalnessMultiplier));
-        xml->AddAttribute("Material", "normal_multiplier",               GetProperty(MaterialProperty::NormalMultiplier));
-        xml->AddAttribute("Material", "height_multiplier",               GetProperty(MaterialProperty::HeightMultiplier));
-        xml->AddAttribute("Material", "clearcoat_multiplier",            GetProperty(MaterialProperty::Clearcoat));
-        xml->AddAttribute("Material", "clearcoat_roughness_multiplier",  GetProperty(MaterialProperty::Clearcoat_Roughness));
-        xml->AddAttribute("Material", "anisotropic_multiplier",          GetProperty(MaterialProperty::Anisotropic));
-        xml->AddAttribute("Material", "anisotropic_rotation_multiplier", GetProperty(MaterialProperty::AnisotropicRotation));
-        xml->AddAttribute("Material", "sheen_multiplier",                GetProperty(MaterialProperty::Sheen));
-        xml->AddAttribute("Material", "sheen_tint_multiplier",           GetProperty(MaterialProperty::SheenTint));
-        xml->AddAttribute("Material", "uv_tiling_x",                     GetProperty(MaterialProperty::UvTilingX));
-        xml->AddAttribute("Material", "uv_tiling_y",                     GetProperty(MaterialProperty::UvTilingY));
-        xml->AddAttribute("Material", "uv_offset_x",                     GetProperty(MaterialProperty::UvOffsetX));
-        xml->AddAttribute("Material", "uv_offset_y",                     GetProperty(MaterialProperty::UvOffsetY));
-        xml->AddAttribute("Material", "can_be_edited",                   GetProperty(MaterialProperty::CanBeEdited));
+        XmlDocument xml_document;
 
-        xml->AddChildNode("Material", "textures");
-        xml->AddAttribute("textures", "count", static_cast<uint32_t>(m_textures.size()));
+        xml_document.AddNode("Material");
+        xml_document.AddAttribute("Material", "color_r",                         GetProperty(MaterialProperty::ColorR));
+        xml_document.AddAttribute("Material", "color_g",                         GetProperty(MaterialProperty::ColorG));
+        xml_document.AddAttribute("Material", "color_b",                         GetProperty(MaterialProperty::ColorB));
+        xml_document.AddAttribute("Material", "color_a",                         GetProperty(MaterialProperty::ColorA));
+        xml_document.AddAttribute("Material", "roughness_multiplier",            GetProperty(MaterialProperty::RoughnessMultiplier));
+        xml_document.AddAttribute("Material", "metalness_multiplier",            GetProperty(MaterialProperty::MetalnessMultiplier));
+        xml_document.AddAttribute("Material", "normal_multiplier",               GetProperty(MaterialProperty::NormalMultiplier));
+        xml_document.AddAttribute("Material", "height_multiplier",               GetProperty(MaterialProperty::HeightMultiplier));
+        xml_document.AddAttribute("Material", "clearcoat_multiplier",            GetProperty(MaterialProperty::Clearcoat));
+        xml_document.AddAttribute("Material", "clearcoat_roughness_multiplier",  GetProperty(MaterialProperty::Clearcoat_Roughness));
+        xml_document.AddAttribute("Material", "anisotropic_multiplier",          GetProperty(MaterialProperty::Anisotropic));
+        xml_document.AddAttribute("Material", "anisotropic_rotation_multiplier", GetProperty(MaterialProperty::AnisotropicRotation));
+        xml_document.AddAttribute("Material", "sheen_multiplier",                GetProperty(MaterialProperty::Sheen));
+        xml_document.AddAttribute("Material", "sheen_tint_multiplier",           GetProperty(MaterialProperty::SheenTint));
+        xml_document.AddAttribute("Material", "uv_tiling_x",                     GetProperty(MaterialProperty::UvTilingX));
+        xml_document.AddAttribute("Material", "uv_tiling_y",                     GetProperty(MaterialProperty::UvTilingY));
+        xml_document.AddAttribute("Material", "uv_offset_x",                     GetProperty(MaterialProperty::UvOffsetX));
+        xml_document.AddAttribute("Material", "uv_offset_y",                     GetProperty(MaterialProperty::UvOffsetY));
+        xml_document.AddAttribute("Material", "can_be_edited",                   GetProperty(MaterialProperty::CanBeEdited));
+
+        xml_document.AddChildNode("Material", "textures");
+        xml_document.AddAttribute("textures", "count", static_cast<uint32_t>(m_textures.size()));
         uint32_t i = 0;
         for (const auto& texture : m_textures)
         {
             auto tex_node = "texture_" + to_string(i);
-            xml->AddChildNode("textures", tex_node);
-            xml->AddAttribute(tex_node, "texture_type", i++);
-            xml->AddAttribute(tex_node, "texture_name", texture ? texture->GetObjectName() : "");
-            xml->AddAttribute(tex_node, "texture_path", texture ? texture->GetResourceFilePathNative() : "");
+            xml_document.AddChildNode("textures", tex_node);
+            xml_document.AddAttribute(tex_node, "texture_type", i++);
+            xml_document.AddAttribute(tex_node, "texture_name", texture ? texture->GetObjectName() : "");
+            xml_document.AddAttribute(tex_node, "texture_path", texture ? texture->GetResourceFilePathNative() : "");
         }
 
-        return xml->Save(GetResourceFilePathNative());
+        return xml_document.Save(GetResourceFilePathNative());
     }
 
     void Material::SetTexture(const MaterialTexture texture_type, RHI_Texture* texture)

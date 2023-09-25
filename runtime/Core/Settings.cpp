@@ -25,6 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/ThreadPool.h"
 #include "../Rendering/Renderer.h"
 #include "../Input/Input.h"
+#include "../IO/XmlDocument.h"
+#include "pugixml.hpp"
 //=================================
 
 //= NAMESPACES ================
@@ -34,112 +36,100 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static bool m_is_fullscreen            = false;
-    static bool m_is_mouse_visible         = true;
-    static Vector2 m_resolution_output     = Vector2::Zero;
-    static Vector2 m_resolution_render     = Vector2::Zero;
-    static double fps_limit                = 0;
-    static bool m_has_loaded_user_settings = false;
-    string file_path                       = "spartan.ini";
-    ofstream fout;
-    ifstream fin;
-    static std::array<float, 34> m_render_options;
-    static std::vector<third_party_lib> m_third_party_libs;
+    namespace
+    { 
+        static bool m_is_fullscreen            = false;
+        static bool m_is_mouse_visible         = true;
+        static Vector2 m_resolution_output     = Vector2::Zero;
+        static Vector2 m_resolution_render     = Vector2::Zero;
+        static double fps_limit                = 0;
+        static bool m_has_loaded_user_settings = false;
+        string file_path                       = "spartan.xml";
+        static array<float, 34> m_render_options;
+        static vector<third_party_lib> m_third_party_libs;
 
-    template <class T>
-    void write_setting(const string& name, T value)
-    {
-        fout << name << "=" << value << endl;
-    }
-
-    template <class T>
-    void read_setting(const string& name, T& value)
-    {
-        for (string line; getline(fin, line); )
+        static void save()
         {
-            const auto first_index = line.find_first_of('=');
-            if (name == line.substr(0, first_index))
+            pugi::xml_document doc;
+
+            // write settings
+            pugi::xml_node root = doc.append_child("Settings");
             {
-                const auto lastindex = line.find_last_of('=');
-                const auto read_value = line.substr(lastindex + 1, line.length());
-                value = static_cast<T>(stof(read_value));
+                root.append_child("FullScreen").text().set(m_is_fullscreen);
+                root.append_child("IsMouseVisible").text().set(m_is_mouse_visible);
+                root.append_child("ResolutionOutputWidth").text().set(m_resolution_output.x);
+                root.append_child("ResolutionOutputHeight").text().set(m_resolution_output.y);
+                root.append_child("ResolutionRenderWidth").text().set(m_resolution_render.x);
+                root.append_child("ResolutionRenderHeight").text().set(m_resolution_render.y);
+                root.append_child("FPSLimit").text().set(fps_limit);
+
+                for (uint32_t i = 0; i < static_cast<uint32_t>(m_render_options.size()); i++)
+                {
+                    root.append_child(("render_option_" + to_string(i)).c_str()).text().set(m_render_options[i]);
+                }
+            }
+
+            doc.save_file(file_path.c_str());
+        }
+
+        static void load()
+        {
+            // attempt to load file
+            pugi::xml_document doc;
+            if (!doc.load_file(file_path.c_str()))
+            {
+                SP_LOG_ERROR("Failed to load XML file");
                 return;
             }
+
+            pugi::xml_node root = doc.child("Settings");
+
+            // load settings
+            {
+                m_is_fullscreen       = root.child("FullScreen").text().as_bool();
+                m_is_mouse_visible    = root.child("IsMouseVisible").text().as_bool();
+                m_resolution_output.x = root.child("ResolutionOutputWidth").text().as_float();
+                m_resolution_output.y = root.child("ResolutionOutputHeight").text().as_float();
+                m_resolution_render.x = root.child("ResolutionRenderWidth").text().as_float();
+                m_resolution_render.y = root.child("ResolutionRenderHeight").text().as_float();
+                fps_limit             = root.child("FPSLimit").text().as_int();
+
+                m_render_options.fill(0.0f);
+                for (uint32_t i = 0; i < static_cast<uint32_t>(m_render_options.size()); ++i)
+                {
+                    string option_name = "render_option_" + to_string(i);
+                    m_render_options[i] = root.child(option_name.c_str()).text().as_float();
+                }
+            }
+
+            m_has_loaded_user_settings = true;
         }
-    }
 
-    static void save()
-    {
-        // Create a settings file
-        fout.open(file_path, ofstream::out);
-
-        // Write the settings
-        write_setting("bFullScreen",             m_is_fullscreen);
-        write_setting("bIsMouseVisible",         m_is_mouse_visible);
-        write_setting("iResolutionOutputWidth",  m_resolution_output.x);
-        write_setting("iResolutionOutputHeight", m_resolution_output.y);
-        write_setting("iResolutionRenderWidth",  m_resolution_render.x);
-        write_setting("iResolutionRenderHeight", m_resolution_render.y);
-        write_setting("fFPSLimit",               fps_limit);
-
-        for (uint32_t i = 0; i < static_cast<uint32_t>(m_render_options.size()); i++)
+        static void map()
         {
-            write_setting("render_option_" + to_string(i), m_render_options[i]);
+            Timer::SetFpsLimit(static_cast<float>(fps_limit));
+
+            Input::SetMouseCursorVisible(m_is_mouse_visible);
+
+            Renderer::SetResolutionOutput(static_cast<uint32_t>(m_resolution_output.x), static_cast<uint32_t>(m_resolution_output.y));
+            Renderer::SetResolutionRender(static_cast<uint32_t>(m_resolution_render.x), static_cast<uint32_t>(m_resolution_render.y));
+            Renderer::SetOptions(m_render_options);
+
+            if (m_is_fullscreen)
+            {
+                Window::FullScreen();
+            }
         }
 
-        // Close the file.
-        fout.close();
-    }
-
-    static void load()
-    {
-        // Create a settings file
-        fin.open(file_path, ifstream::in);
-
-        // Read the settings
-        read_setting("bFullScreen",             m_is_fullscreen);
-        read_setting("bIsMouseVisible",         m_is_mouse_visible);
-        read_setting("iResolutionOutputWidth",  m_resolution_output.x);
-        read_setting("iResolutionOutputHeight", m_resolution_output.y);
-        read_setting("iResolutionRenderWidth",  m_resolution_render.x);
-        read_setting("iResolutionRenderHeight", m_resolution_render.y);
-        read_setting("fFPSLimit",               fps_limit);
-
-        for (uint32_t i = 0; i < static_cast<uint32_t>(m_render_options.size()); i++)
+        static void reflect()
         {
-            read_setting("render_option_" + to_string(i), m_render_options[i]);
+            fps_limit           = Timer::GetFpsLimit();
+            m_is_fullscreen     = Window::IsFullScreen();
+            m_is_mouse_visible  = Input::GetMouseCursorVisible();
+            m_resolution_output = Renderer::GetResolutionOutput();
+            m_resolution_render = Renderer::GetResolutionRender();
+            m_render_options    = Renderer::GetOptions();
         }
-
-        // Close the file.
-        fin.close();
-
-        m_has_loaded_user_settings = true;
-    }
-
-    static void map()
-    {
-        Timer::SetFpsLimit(static_cast<float>(fps_limit));
-
-        Input::SetMouseCursorVisible(m_is_mouse_visible);
-
-        Renderer::SetResolutionOutput(static_cast<uint32_t>(m_resolution_output.x), static_cast<uint32_t>(m_resolution_output.y));
-        Renderer::SetResolutionRender(static_cast<uint32_t>(m_resolution_render.x), static_cast<uint32_t>(m_resolution_render.y));
-        Renderer::SetOptions(m_render_options);
-
-        if (m_is_fullscreen)
-        {
-            Window::FullScreen();
-        }
-    }
-
-    static void reflect()
-    {
-        fps_limit           = Timer::GetFpsLimit();
-        m_is_fullscreen     = Window::IsFullScreen();
-        m_is_mouse_visible  = Input::GetMouseCursorVisible();
-        m_resolution_output = Renderer::GetResolutionOutput();
-        m_resolution_render = Renderer::GetResolutionRender();
-        m_render_options    = Renderer::GetOptions();
     }
 
     void Settings::Initialize()
