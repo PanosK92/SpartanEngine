@@ -751,8 +751,6 @@ namespace Spartan
             entity->SetObjectName("terrain");
 
             shared_ptr<Terrain> terrain = entity->AddComponent<Terrain>();
-            terrain->SetMinY(0.0f);
-            terrain->SetMaxY(100.0f);
             terrain->SetHeightMap(ResourceCache::Load<RHI_Texture2D>("project\\terrain\\height.png", RHI_Texture_Srv));
             terrain->GenerateAsync();
         }

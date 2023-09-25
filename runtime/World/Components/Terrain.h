@@ -67,7 +67,7 @@ namespace Spartan
         void UpdateFromVertices(const std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices);
 
         float m_min_y                     = 0.0f;
-        float m_max_y                     = 30.0f;
+        float m_max_y                     = 100.0f;
         float m_vertex_density            = 1.0f;
         std::atomic<bool> m_is_generating = false;
         uint32_t m_height_samples         = 0;
