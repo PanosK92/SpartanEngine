@@ -37,14 +37,14 @@ namespace Spartan
 {
     XmlDocument::XmlDocument()
     {
-        // Generate new XML document within memory
+        // generate new XML document within memory
         m_document = make_unique<xml_document>();
 
-        // Generate XML declaration
-        auto declarationNode = m_document->append_child(node_declaration);
-        declarationNode.append_attribute("version") = "1.0";
-        declarationNode.append_attribute("encoding") = "ISO-8859-1";
-        declarationNode.append_attribute("standalone") = "yes";
+        // generate XML declaration
+        auto decleration_node = m_document->append_child(node_declaration);
+        decleration_node.append_attribute("version")    = "1.0";
+        decleration_node.append_attribute("encoding")   = "ISO-8859-1";
+        decleration_node.append_attribute("standalone") = "yes";
     }
 
     XmlDocument::~XmlDocument()
@@ -52,33 +52,30 @@ namespace Spartan
         m_nodes.clear();
     }
 
-
-    //= NODES =======================================================================
-    void XmlDocument::AddNode(const string& nodeName)
+    void XmlDocument::AddNode(const string& node_name)
     {
         if (!m_document)
             return;
 
-        const auto node = make_shared<xml_node>(m_document->append_child(nodeName.c_str()));
+        const auto node = make_shared<xml_node>(m_document->append_child(node_name.c_str()));
         m_nodes.push_back(node);
     }
 
-    bool XmlDocument::AddChildNode(const string& parentNodeName, const string& childNodeName)
+    bool XmlDocument::AddChildNode(const string& parent_node_name, const string& child_node_name)
     {
-        auto parentNode = GetNodeByName(parentNodeName);
-        if (!parentNode)
+        auto parent_node = GetNodeByName(parent_node_name);
+        if (!parent_node)
         {
-            SP_LOG_WARNING("Can't add child node \"%s\", parent node \"%s\" doesn't exist.", childNodeName.c_str(), parentNodeName.c_str());
+            SP_LOG_WARNING("Can't add child node \"%s\", parent node \"%s\" doesn't exist.", child_node_name.c_str(), parent_node_name.c_str());
             return false;
         }
 
-        const auto node = make_shared<xml_node>(parentNode->append_child(childNodeName.c_str()));
+        const auto node = make_shared<xml_node>(parent_node->append_child(child_node_name.c_str()));
         m_nodes.push_back(node);
 
         return true;
     }
 
-    //= ADD ATTRIBUTE ================================================================================================
     bool XmlDocument::AddAttribute(const string& nodeName, const string& attributeName, const string& value)
     {
         auto node = GetNodeByName(nodeName);
@@ -134,7 +131,6 @@ namespace Spartan
         return AddAttribute(nodeName, attributeName, value.ToString());
     }
 
-    //= GET ATTRIBUTE ===================================================================================
     bool XmlDocument::GetAttribute(const string& nodeName, const string& attributeName, string* value)
     {
         const xml_attribute attribute = GetAttribute(nodeName, attributeName);
@@ -290,7 +286,6 @@ namespace Spartan
         return m_document->save_file(path.c_str());
     }
 
-    //= PRIVATE =======================================================
     xml_attribute XmlDocument::GetAttribute(const string& nodeName, const string& attributeName)
     {
         xml_attribute attribute;
