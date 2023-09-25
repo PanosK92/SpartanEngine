@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Terrain.h"
 #include "Renderable.h"
+#include "PhysicsBody.h"
 #include "../Entity.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../IO/FileStream.h"
@@ -356,6 +357,9 @@ namespace Spartan
             UpdateFromVertices(indices, vertices);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
+            // Add physics so we can walk on it
+            //m_entity_ptr->AddComponent<PhysicsBody>();
+
             m_is_generating = false;
         });
     }
@@ -401,7 +405,7 @@ namespace Spartan
             m_mesh->ComputeNormalizedScale();
             m_mesh->ComputeAabb();
 
-            // Set a file path so the model can be used by the resource cache
+            // set a file path so the model can be used by the resource cache
             m_mesh->SetResourceFilePath(ResourceCache::GetProjectDirectory() + m_entity_ptr->GetObjectName() + "_terrain_" + to_string(m_object_id) + string(EXTENSION_MODEL));
             m_mesh = ResourceCache::Cache(m_mesh);
         }

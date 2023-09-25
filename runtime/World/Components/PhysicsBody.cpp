@@ -25,7 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "Constraint.h"
 #include "Renderable.h"
+#include "Terrain.h"
 #include "../RHI/RHI_Vertex.h"
+#include "../RHI/RHI_Texture.h"
 #include "../Entity.h"
 #include "../../Physics/Physics.h"
 #include "../../Physics/BulletPhysicsHelper.h"
@@ -41,8 +43,6 @@ SP_WARNINGS_OFF
 #include "BulletCollision/CollisionShapes/btTriangleMesh.h"
 #include "BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h"
 #include "BulletCollision/CollisionShapes/btConvexHullShape.h"
-#include "Terrain.h"
-#include "../RHI/RHI_Texture.h"
 SP_WARNINGS_ON
 //====================================================================
 
@@ -811,7 +811,7 @@ namespace Spartan
 
         static_cast<btCollisionShape*>(m_shape)->setUserPointer(this);
 
-        // Re-add the body to the world so it's re-created with the new shape
+        // re-add the body to the world so it's re-created with the new shape
         AddBodyToWorld();
     }
 }

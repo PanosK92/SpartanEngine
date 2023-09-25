@@ -471,7 +471,7 @@ namespace Spartan
     {
         create_default_world_common(true);
 
-        // Cube
+        // cube
         {
             // create entity
             shared_ptr<Entity> entity = CreateEntity();
@@ -487,16 +487,16 @@ namespace Spartan
             material->SetTexture(MaterialTexture::Metalness, "project\\materials\\crate_space\\metallic.png");
             material->SetTexture(MaterialTexture::Height,    "project\\materials\\crate_space\\height.png");
 
-            // Create a file path for this material (required for the material to be able to be cached by the resource cache)
+            // create a file path for this material (required for the material to be able to be cached by the resource cache)
             const string file_path = "project\\materials\\crate_space" + string(EXTENSION_MATERIAL);
             material->SetResourceFilePath(file_path);
 
-            // Add a renderable component
+            // add a renderable component
             shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>();
             renderable->SetGeometry(Renderer::GetStandardMesh(Renderer_MeshType::Cube).get());
             renderable->SetMaterial(material);
 
-            // Add physics components
+            // add physics components
             shared_ptr<PhysicsBody> rigid_body = entity->AddComponent<PhysicsBody>();
             rigid_body->SetMass(1.0f);
             rigid_body->SetRestitution(1.0f);
@@ -504,7 +504,7 @@ namespace Spartan
             rigid_body->SetShapeType(PhysicsShape::Box);
         }
 
-        // Start simulating (for the physics and the music to work)
+        // start simulating (for the physics and the music to work)
         Engine::AddFlag(EngineMode::Game);
     }
 
