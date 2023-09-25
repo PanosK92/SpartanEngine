@@ -24,10 +24,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Material.h"
 #include "Renderer.h"
 #include "../Resource/ResourceCache.h"
-#include "../IO/XmlDocument.h"
 #include "../RHI/RHI_Texture2D.h"
 #include "../RHI/RHI_TextureCube.h"
 #include "../World/World.h"
+SP_WARNINGS_OFF
+#include "../IO/pugixml.hpp"
+SP_WARNINGS_ON
 //====================================
 
 //= NAMESPACES ===============
@@ -37,6 +39,44 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    namespace
+    {
+        const char* material_property_to_char_ptr(MaterialProperty material_property)
+        {
+            switch (material_property)
+            {
+                case MaterialProperty::Clearcoat:                       return "clearcoat_multiplier";
+                case MaterialProperty::Clearcoat_Roughness:             return "clearcoat_roughness_multiplier";
+                case MaterialProperty::Anisotropic:                     return "anisotropic_multiplier";
+                case MaterialProperty::AnisotropicRotation:             return "anisotropic_rotation_multiplier";
+                case MaterialProperty::Sheen:                           return "sheen_multiplier";
+                case MaterialProperty::SheenTint:                       return "sheen_tint_multiplier";
+                case MaterialProperty::ColorTint:                       return "color_tint";
+                case MaterialProperty::ColorR:                          return "color_r";
+                case MaterialProperty::ColorG:                          return "color_g";
+                case MaterialProperty::ColorB:                          return "color_b";
+                case MaterialProperty::ColorA:                          return "color_a";
+                case MaterialProperty::RoughnessMultiplier:             return "roughness_multiplier";
+                case MaterialProperty::MetalnessMultiplier:             return "metalness_multiplier";
+                case MaterialProperty::NormalMultiplier:                return "normal_multiplier";
+                case MaterialProperty::HeightMultiplier:                return "height_multiplier";
+                case MaterialProperty::UvTilingX:                       return "uv_tiling_x";
+                case MaterialProperty::UvTilingY:                       return "uv_tiling_y";
+                case MaterialProperty::UvOffsetX:                       return "uv_offset_x";
+                case MaterialProperty::UvOffsetY:                       return "uv_offset_y";
+                case MaterialProperty::SingleTextureRoughnessMetalness: return "single_texture_roughness_metalness";
+                case MaterialProperty::CanBeEdited:                     return "can_be_edited";
+                case MaterialProperty::IsTerrain:                       return "is_terrain";
+                case MaterialProperty::Undefined:                       return "undefined";
+                default:
+                {
+                    SP_ASSERT_MSG(false, "Unknown material property");
+                    return nullptr;
+                }
+            }
+        }
+     }
+
     Material::Material() : IResource(ResourceType::Material)
     {
         m_textures.fill(nullptr);
@@ -53,41 +93,36 @@ namespace Spartan
         SetProperty(MaterialProperty::UvTilingY,           1.0f);
     }
 
-    bool Material::LoadFromFile(const string& file_path)
+    bool Material::LoadFromFile(const std::string& file_path)
     {
-        auto xml = make_unique<XmlDocument>();
-        if (!xml->Load(file_path))
+        pugi::xml_document doc;
+        if (!doc.load_file(file_path.c_str()))
+        {
+            SP_LOG_ERROR("Failed to load XML file");
             return false;
+        }
 
         SetResourceFilePath(file_path);
 
-        xml->GetAttribute("Material", "color_r",                         &m_properties[static_cast<uint32_t>(MaterialProperty::ColorR)]);
-        xml->GetAttribute("Material", "color_g",                         &m_properties[static_cast<uint32_t>(MaterialProperty::ColorG)]);
-        xml->GetAttribute("Material", "color_b",                         &m_properties[static_cast<uint32_t>(MaterialProperty::ColorB)]);
-        xml->GetAttribute("Material", "color_a",                         &m_properties[static_cast<uint32_t>(MaterialProperty::ColorA)]);
-        xml->GetAttribute("Material", "roughness_multiplier",            &m_properties[static_cast<uint32_t>(MaterialProperty::RoughnessMultiplier)]);
-        xml->GetAttribute("Material", "metalness_multiplier",            &m_properties[static_cast<uint32_t>(MaterialProperty::MetalnessMultiplier)]);
-        xml->GetAttribute("Material", "normal_multiplier",               &m_properties[static_cast<uint32_t>(MaterialProperty::NormalMultiplier)]);
-        xml->GetAttribute("Material", "height_multiplier",               &m_properties[static_cast<uint32_t>(MaterialProperty::HeightMultiplier)]);
-        xml->GetAttribute("Material", "clearcoat_multiplier",            &m_properties[static_cast<uint32_t>(MaterialProperty::Clearcoat)]);
-        xml->GetAttribute("Material", "clearcoat_roughness_multiplier",  &m_properties[static_cast<uint32_t>(MaterialProperty::Clearcoat_Roughness)]);
-        xml->GetAttribute("Material", "anisotropic_multiplier",          &m_properties[static_cast<uint32_t>(MaterialProperty::Anisotropic)]);
-        xml->GetAttribute("Material", "anisotropic_rotation_multiplier", &m_properties[static_cast<uint32_t>(MaterialProperty::AnisotropicRotation)]);
-        xml->GetAttribute("Material", "sheen_multiplier",                &m_properties[static_cast<uint32_t>(MaterialProperty::Sheen)]);
-        xml->GetAttribute("Material", "sheen_tint_multiplier",           &m_properties[static_cast<uint32_t>(MaterialProperty::SheenTint)]);
-        xml->GetAttribute("Material", "uv_tiling_x",                     &m_properties[static_cast<uint32_t>(MaterialProperty::UvTilingX)]);
-        xml->GetAttribute("Material", "uv_tiling_y",                     &m_properties[static_cast<uint32_t>(MaterialProperty::UvTilingY)]);
-        xml->GetAttribute("Material", "uv_offset_x",                     &m_properties[static_cast<uint32_t>(MaterialProperty::UvOffsetX)]);
-        xml->GetAttribute("Material", "uv_offset_y",                     &m_properties[static_cast<uint32_t>(MaterialProperty::UvOffsetY)]);
-        xml->GetAttribute("Material", "can_be_edited",                   &m_properties[static_cast<uint32_t>(MaterialProperty::CanBeEdited)]);
+        pugi::xml_node node_material = doc.child("Material");
 
-        const uint32_t texture_count = xml->GetAttributeAs<uint32_t>("textures", "count");
-        for (uint32_t i = 0; i < texture_count; i++)
+        // load properties
+        for (uint32_t i = 0; i < static_cast<uint32_t>(MaterialProperty::Undefined); ++i)
         {
-            auto node_name                 = "texture_" + to_string(i);
-            const MaterialTexture tex_type = static_cast<MaterialTexture>(xml->GetAttributeAs<uint32_t>(node_name, "texture_type"));
-            auto tex_name                  = xml->GetAttributeAs<string>(node_name, "texture_name");
-            auto tex_path                  = xml->GetAttributeAs<string>(node_name, "texture_path");
+            const char* attribute_name = material_property_to_char_ptr(static_cast<MaterialProperty>(i));
+            m_properties[i] = node_material.child(attribute_name).text().as_float();
+        }
+
+        // load textures
+        uint32_t texture_count = node_material.child("textures").attribute("count").as_uint();
+        for (uint32_t i = 0; i < texture_count; ++i)
+        {
+            string node_name            = "texture_" + to_string(i);
+            pugi::xml_node node_texture = node_material.child("textures").child(node_name.c_str());
+
+            MaterialTexture tex_type = static_cast<MaterialTexture>(node_texture.attribute("texture_type").as_uint());
+            string tex_name         = node_texture.attribute("texture_name").as_string();
+            string tex_path         = node_texture.attribute("texture_path").as_string();
 
             // If the texture happens to be loaded, get a reference to it
             auto texture = ResourceCache::GetByName<RHI_Texture2D>(tex_name);
@@ -109,41 +144,31 @@ namespace Spartan
     {
         SetResourceFilePath(file_path);
 
-        auto xml = make_unique<XmlDocument>();
-        xml->AddNode("Material");
-        xml->AddAttribute("Material", "color_r",                         GetProperty(MaterialProperty::ColorR));
-        xml->AddAttribute("Material", "color_g",                         GetProperty(MaterialProperty::ColorG));
-        xml->AddAttribute("Material", "color_b",                         GetProperty(MaterialProperty::ColorB));
-        xml->AddAttribute("Material", "color_a",                         GetProperty(MaterialProperty::ColorA));
-        xml->AddAttribute("Material", "roughness_multiplier",            GetProperty(MaterialProperty::RoughnessMultiplier));
-        xml->AddAttribute("Material", "metalness_multiplier",            GetProperty(MaterialProperty::MetalnessMultiplier));
-        xml->AddAttribute("Material", "normal_multiplier",               GetProperty(MaterialProperty::NormalMultiplier));
-        xml->AddAttribute("Material", "height_multiplier",               GetProperty(MaterialProperty::HeightMultiplier));
-        xml->AddAttribute("Material", "clearcoat_multiplier",            GetProperty(MaterialProperty::Clearcoat));
-        xml->AddAttribute("Material", "clearcoat_roughness_multiplier",  GetProperty(MaterialProperty::Clearcoat_Roughness));
-        xml->AddAttribute("Material", "anisotropic_multiplier",          GetProperty(MaterialProperty::Anisotropic));
-        xml->AddAttribute("Material", "anisotropic_rotation_multiplier", GetProperty(MaterialProperty::AnisotropicRotation));
-        xml->AddAttribute("Material", "sheen_multiplier",                GetProperty(MaterialProperty::Sheen));
-        xml->AddAttribute("Material", "sheen_tint_multiplier",           GetProperty(MaterialProperty::SheenTint));
-        xml->AddAttribute("Material", "uv_tiling_x",                     GetProperty(MaterialProperty::UvTilingX));
-        xml->AddAttribute("Material", "uv_tiling_y",                     GetProperty(MaterialProperty::UvTilingY));
-        xml->AddAttribute("Material", "uv_offset_x",                     GetProperty(MaterialProperty::UvOffsetX));
-        xml->AddAttribute("Material", "uv_offset_y",                     GetProperty(MaterialProperty::UvOffsetY));
-        xml->AddAttribute("Material", "can_be_edited",                   GetProperty(MaterialProperty::CanBeEdited));
+        pugi::xml_document doc;
+        pugi::xml_node materialNode = doc.append_child("Material");
 
-        xml->AddChildNode("Material", "textures");
-        xml->AddAttribute("textures", "count", static_cast<uint32_t>(m_textures.size()));
-        uint32_t i = 0;
-        for (const auto& texture : m_textures)
+        // save properties
+        for (uint32_t i = 0; i < static_cast<uint32_t>(MaterialProperty::Undefined); ++i)
         {
-            auto tex_node = "texture_" + to_string(i);
-            xml->AddChildNode("textures", tex_node);
-            xml->AddAttribute(tex_node, "texture_type", i++);
-            xml->AddAttribute(tex_node, "texture_name", texture ? texture->GetObjectName() : "");
-            xml->AddAttribute(tex_node, "texture_path", texture ? texture->GetResourceFilePathNative() : "");
+            const char* attributeName = material_property_to_char_ptr(static_cast<MaterialProperty>(i));
+            materialNode.append_child(attributeName).text().set(m_properties[i]);
         }
 
-        return xml->Save(GetResourceFilePathNative());
+        // save textures
+        pugi::xml_node texturesNode = materialNode.append_child("textures");
+        texturesNode.append_attribute("count").set_value(static_cast<uint32_t>(m_textures.size()));
+
+        for (uint32_t i = 0; i < m_textures.size(); ++i)
+        {
+            string node_name = "texture_" + to_string(i);
+            pugi::xml_node textureNode = texturesNode.append_child(node_name.c_str());
+
+            textureNode.append_attribute("texture_type").set_value(i);
+            textureNode.append_attribute("texture_name").set_value(m_textures[i] ? m_textures[i]->GetObjectName().c_str() : "");
+            textureNode.append_attribute("texture_path").set_value(m_textures[i] ? m_textures[i]->GetResourceFilePathNative().c_str() : "");
+        }
+
+        return doc.save_file(file_path.c_str());
     }
 
     void Material::SetTexture(const MaterialTexture texture_type, RHI_Texture* texture)

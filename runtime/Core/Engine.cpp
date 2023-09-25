@@ -49,6 +49,7 @@ namespace Spartan
 
     void Engine::Initialize()
     {
+        AddFlag(EngineMode::Editor);
         AddFlag(EngineMode::Physics);
         AddFlag(EngineMode::Game);
 
@@ -109,6 +110,7 @@ namespace Spartan
         Input::PostTick();
         Timer::PostTick();
         Profiler::PostTick();
+        Renderer::PostTick();
     }
 
     void Engine::AddFlag(const EngineMode flag)

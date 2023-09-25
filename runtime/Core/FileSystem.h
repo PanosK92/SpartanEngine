@@ -91,7 +91,7 @@ namespace Spartan
     };
 
     static const char* EXTENSION_WORLD    = ".world";
-    static const char* EXTENSION_MATERIAL = ".material";
+    static const char* EXTENSION_MATERIAL = ".xml";
     static const char* EXTENSION_MODEL    = ".model";
     static const char* EXTENSION_PREFAB   = ".prefab";
     static const char* EXTENSION_SHADER   = ".shader";

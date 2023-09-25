@@ -25,7 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "Constraint.h"
 #include "Renderable.h"
+#include "Terrain.h"
 #include "../RHI/RHI_Vertex.h"
+#include "../RHI/RHI_Texture.h"
 #include "../Entity.h"
 #include "../../Physics/Physics.h"
 #include "../../Physics/BulletPhysicsHelper.h"
@@ -41,8 +43,6 @@ SP_WARNINGS_OFF
 #include "BulletCollision/CollisionShapes/btTriangleMesh.h"
 #include "BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h"
 #include "BulletCollision/CollisionShapes/btConvexHullShape.h"
-#include "Terrain.h"
-#include "../RHI/RHI_Texture.h"
 SP_WARNINGS_ON
 //====================================================================
 
@@ -67,7 +67,7 @@ namespace Spartan
     public:
         MotionState(PhysicsBody* rigidBody) { m_rigidBody = rigidBody; }
 
-        // Update from engine, ENGINE -> BULLET
+        // update from engine, ENGINE -> BULLET
         void getWorldTransform(btTransform& worldTrans) const override
         {
             const Vector3 lastPos    = m_rigidBody->GetTransform()->GetPosition();
@@ -77,7 +77,7 @@ namespace Spartan
             worldTrans.setRotation(ToBtQuaternion(lastRot));
         }
 
-        // Update from bullet, BULLET -> ENGINE
+        // update from bullet, BULLET -> ENGINE
         void setWorldTransform(const btTransform& worldTrans) override
         {
             const Quaternion newWorldRot = ToQuaternion(worldTrans.getRotation());
@@ -160,7 +160,7 @@ namespace Spartan
 
     void PhysicsBody::OnTick()
     {
-        // When the rigid body is inactive or we are in editor mode, allow the user to move/rotate it
+        // when the rigid body is inactive or we are in editor mode, allow the user to move/rotate it
         if (!static_cast<btRigidBody*>(m_rigid_body)->isActive() || !Engine::IsFlagSet(EngineMode::Game))
         {
             if (GetPosition() != GetTransform()->GetPosition())
@@ -419,11 +419,11 @@ namespace Spartan
         if (!m_rigid_body)
             return;
 
-        // Set position to world transform
+        // set position to world transform
         btTransform& transform_world = static_cast<btRigidBody*>(m_rigid_body)->getWorldTransform();
         transform_world.setOrigin(ToBtVector3(position + ToQuaternion(transform_world.getRotation()) * m_center_of_mass));
 
-        // Set position to interpolated world transform
+        // set position to interpolated world transform
         btTransform transform_world_interpolated = static_cast<btRigidBody*>(m_rigid_body)->getInterpolationWorldTransform();
         transform_world_interpolated.setOrigin(transform_world.getOrigin());
         static_cast<btRigidBody*>(m_rigid_body)->setInterpolationWorldTransform(transform_world_interpolated);
@@ -444,7 +444,7 @@ namespace Spartan
         if (!m_rigid_body)
             return;
 
-        // Set rotation to world transform
+        // set rotation to world transform
         const Vector3 oldPosition = GetPosition();
         btTransform& transform_world = static_cast<btRigidBody*>(m_rigid_body)->getWorldTransform();
         transform_world.setRotation(ToBtQuaternion(rotation));
@@ -453,7 +453,7 @@ namespace Spartan
             transform_world.setOrigin(ToBtVector3(oldPosition + rotation * m_center_of_mass));
         }
 
-        // Set rotation to interpolated world transform
+        // set rotation to interpolated world transform
         btTransform interpTrans = static_cast<btRigidBody*>(m_rigid_body)->getInterpolationWorldTransform();
         interpTrans.setRotation(transform_world.getRotation());
         if (m_center_of_mass != Vector3::Zero)
@@ -530,9 +530,9 @@ namespace Spartan
         // transfer inertia to new collision shape
         btVector3 local_intertia = btVector3(0, 0, 0);
         bool is_static           = m_mass == 0.0f; // static objects don't have inertia
-        bool is_supported_shape  = m_shape_type != PhysicsShape::Mesh; // shape like btBvhTriangleMeshShape don't support local inertia
-        bool support_inertia     = is_static && is_supported_shape;
-        if (support_inertia && m_shape && m_rigid_body)
+        bool is_supported_shape  = m_shape_type != PhysicsShape::Mesh; // shapes like btBvhTriangleMeshShape don't support local inertia
+        bool support_inertia     = !is_static && is_supported_shape;
+        if (m_rigid_body && support_inertia && m_shape)
         {
             local_intertia = static_cast<btRigidBody*>(m_rigid_body)->getLocalInertia();
             static_cast<btCollisionShape*>(m_shape)->calculateLocalInertia(m_mass, local_intertia);
@@ -559,7 +559,7 @@ namespace Spartan
         }
 
         // reapply constraint positions for new center of mass shift
-        for (const auto& constraint : m_constraints)
+        for (Constraint* constraint : m_constraints)
         {
             constraint->ApplyFrames();
         }
@@ -597,14 +597,8 @@ namespace Spartan
 
                 static_cast<btRigidBody*>(m_rigid_body)->setFlags(flags);
 
-                if (m_use_gravity)
-                {
-                    static_cast<btRigidBody*>(m_rigid_body)->setGravity(ToBtVector3(m_gravity));
-                }
-                else
-                {
-                    static_cast<btRigidBody*>(m_rigid_body)->setGravity(btVector3(0.0f, 0.0f, 0.0f));
-                }
+                btVector3 gravity = m_use_gravity ? ToBtVector3(m_gravity) : btVector3(0.0f, 0.0f, 0.0f);
+                static_cast<btRigidBody*>(m_rigid_body)->setGravity(gravity);
             }
         }
 
@@ -613,10 +607,6 @@ namespace Spartan
 
         // rotation
         SetRotation(GetTransform()->GetRotation());
-
-        // constraints
-        SetPositionLock(m_position_lock);
-        SetRotationLock(m_rotation_lock);
 
         // position and rotation locks
         SetPositionLock(m_position_lock);
@@ -783,6 +773,12 @@ namespace Spartan
                 shape->setLocalScaling(ToBtVector3(size));
                 m_shape = shape;
 
+                // calculate the offset needed to re-center the terrain
+                float offset = (terrain->GetMaxY() + terrain->GetMinY()) / 2.0f;
+
+                // set the center of mass to adjust for Bullet's re-centering
+                SetCenterOfMass(Vector3(0, offset, 0));
+
                 break;
             }
 
@@ -821,7 +817,7 @@ namespace Spartan
 
         static_cast<btCollisionShape*>(m_shape)->setUserPointer(this);
 
-        // Re-add the body to the world so it's re-created with the new shape
+        // re-add the body to the world so it's re-created with the new shape
         AddBodyToWorld();
     }
 }

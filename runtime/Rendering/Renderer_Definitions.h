@@ -64,7 +64,8 @@ namespace Spartan
         UpsamplingSharpness,
         Sharpness,
         Hdr,
-        Vsync
+        Vsync,
+        Max
     };
 
     enum class Renderer_Antialiasing : uint32_t

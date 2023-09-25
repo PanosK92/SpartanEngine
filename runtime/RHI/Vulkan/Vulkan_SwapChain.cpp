@@ -176,7 +176,7 @@ namespace Spartan
     {
         SP_ASSERT_MSG(RHI_Device::IsValidResolution(width, height), "Invalid resolution");
 
-        // Copy parameters
+        // copy parameters
         m_format       = format_sdr; // for now, we use SDR by default as HDR doesn't look rigth - Display::GetHdr() ? format_hdr : format_sdr;
         m_buffer_count = buffer_count;
         m_width        = width;
@@ -189,7 +189,6 @@ namespace Spartan
         AcquireNextImage();
 
         SP_SUBSCRIBE_TO_EVENT(EventType::WindowResized, SP_EVENT_HANDLER(ResizeToWindowSize));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullscreen, SP_EVENT_HANDLER(ResizeToWindowSize));
     }
 
     RHI_SwapChain::~RHI_SwapChain()
@@ -359,18 +358,18 @@ namespace Spartan
     {
         SP_ASSERT(RHI_Device::IsValidResolution(width, height));
 
-        // Only resize if needed
+        // only resize if needed
         if (!force)
         {
             if (m_width == width && m_height == height)
                 return;
         }
 
-        // Save new dimensions
+        // save new dimensions
         m_width  = width;
         m_height = height;
 
-        // Reset image index
+        // reset image index
         m_image_index          = numeric_limits<uint32_t>::max();
         m_image_index_previous = m_image_index;
 
@@ -425,13 +424,13 @@ namespace Spartan
         SP_ASSERT_MSG(m_image_index != m_image_index_previous,                                              "No image was acquired");
         SP_ASSERT_MSG(m_layouts[m_image_index] == RHI_Image_Layout::Present_Src,                            "Invalid layout");
 
-        // Get the semaphores that present should wait for
+        // get the semaphores that present should wait for
         m_wait_semaphores.clear();
         {
-            // Semaphores which are signaled when command lists have finished executing
+            // semaphores which are signaled when command lists have finished executing
             for (const shared_ptr<RHI_CommandPool>& cmd_pool : RHI_Device::GetCommandPools())
             {
-                // The editor supports multiple windows, so we can be dealing with multiple swapchains
+                // the editor supports multiple windows, so we can be dealing with multiple swapchains
                 if (m_object_id == cmd_pool->GetSwapchainId())
                 {
                     RHI_Semaphore* semaphore_cmd_list = cmd_pool->GetCurrentCommandList()->GetSemaphoreProccessed();
@@ -443,7 +442,7 @@ namespace Spartan
             }
             SP_ASSERT_MSG(!m_wait_semaphores.empty(), "Present() present should not be called if no work is to be presented");
 
-            // Semaphore that's signaled when the image is acquired
+            // semaphore that's signaled when the image is acquired
             RHI_Semaphore* semaphore_image_aquired = m_acquire_semaphore[m_sync_index].get();
             SP_ASSERT(semaphore_image_aquired->GetStateCpu() == RHI_Sync_State::Submitted);
             m_wait_semaphores.emplace_back(semaphore_image_aquired);
