@@ -117,8 +117,9 @@ namespace Spartan
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
 
         // Get all
-        static std::array<std::shared_ptr<RHI_Texture>, 28>& GetRenderTargets();
-        static std::array<std::shared_ptr<RHI_Shader>, 45>& GetShaders();
+        static std::array<std::shared_ptr<RHI_Texture>, 29>& GetRenderTargets();
+        static constexpr uint8_t numberOfShaders = 47;
+        static std::array<std::shared_ptr<RHI_Shader>, numberOfShaders>& GetShaders();
         static std::array<std::shared_ptr<RHI_ConstantBuffer>, 3>& GetConstantBuffers();
 
         // Get individual
@@ -162,6 +163,7 @@ namespace Spartan
         static void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_Ssgi(RHI_CommandList* cmd_list);
         static void Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in);
+        static void Pass_Bend_Sss(RHI_CommandList* cmd_list, RHI_Texture* tex_in);
         static void Pass_Sss(RHI_CommandList* cmd_list, RHI_Texture* tex_in);
         static void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
         static void Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float radius, const float sigma, const uint32_t mip = rhi_all_mips);

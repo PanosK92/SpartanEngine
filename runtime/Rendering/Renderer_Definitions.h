@@ -148,7 +148,9 @@ namespace Spartan
         tex              = 34,
         tex2             = 35,
         font_atlas       = 36,
-        reflection_probe = 37
+        reflection_probe = 37,
+        sss = 38,
+        test_sss        = 39,
     };
 
     enum class Renderer_BindingsUav
@@ -157,7 +159,8 @@ namespace Spartan
         tex2           = 1,
         tex3           = 2,
         atomic_counter = 3,
-        tex_array      = 4
+        tex_array = 4,
+        test_sss = 5
     };
 
     enum class Renderer_Shader : uint8_t
@@ -200,6 +203,8 @@ namespace Spartan
         font_p,
         ssgi_c,
         ssr_c,
+        sss_c,
+        bend_sss_c,
         temporal_filter_c,
         blur_gaussian_c,
         blur_gaussian_bilaterial_c,
@@ -234,6 +239,7 @@ namespace Spartan
         ssgi,
         ssgi_filtered,
         ssr,
+        sss,
         bloom,
         blur,
         fsr2_mask_reactive,
