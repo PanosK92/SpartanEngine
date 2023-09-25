@@ -48,7 +48,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
+    unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
     Cb_Frame Renderer::m_cb_frame_cpu;
     Pcb_Pass Renderer::m_cb_pass_cpu;
     Cb_Light Renderer::m_cb_light_cpu;
@@ -87,7 +87,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
         RHI_CommandList* cmd_current = nullptr;
 
         // misc
-        array<float, 34> m_options;
+        unordered_map<Renderer_Option, float> m_options;
         mutex mutex_entity_addition;
         vector<shared_ptr<Entity>> m_entities_to_add;
         uint64_t frame_num                       = 0;
@@ -181,7 +181,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
         RHI_AMD_FidelityFX::Initialize();
 
         // options
-        m_options.fill(0.0f);
+        m_options.clear();
         SetOption(Renderer_Option::Hdr,                      swap_chain->IsHdr() ? 1.0f : 0.0f);                 // HDR is enabled by default if the swapchain is HDR
         SetOption(Renderer_Option::Bloom,                    0.05f);                                             // non-zero values activate it and define the blend factor.
         SetOption(Renderer_Option::MotionBlur,               1.0f);
@@ -742,8 +742,8 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
             }
         }
 
-        // Early exit if the value is already set
-        if (m_options[static_cast<uint32_t>(option)] == value)
+        // early exit if the value is already set
+        if ((m_options.find(option) != m_options.end()) && m_options[option] == value)
             return;
 
         // Reject changes (if needed)
@@ -759,7 +759,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
         }
 
         // Set new value
-        m_options[static_cast<uint32_t>(option)] = value;
+        m_options[option] = value;
 
         // Handle cascading changes
         {
@@ -774,7 +774,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
                     // Implicitly enable FSR since it's doing TAA.
                     if (!fsr_enabled)
                     {
-                        m_options[static_cast<uint32_t>(Renderer_Option::Upsampling)] = static_cast<float>(Renderer_Upsampling::FSR2);
+                        m_options[Renderer_Option::Upsampling] = static_cast<float>(Renderer_Upsampling::FSR2);
                         RHI_AMD_FidelityFX::FSR2_ResetHistory();
                         SP_LOG_INFO("Enabled FSR 2.0 since it's used for TAA.");
                     }
@@ -784,7 +784,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
                     // Implicitly disable FSR since it's doing TAA
                     if (fsr_enabled)
                     {
-                        m_options[static_cast<uint32_t>(Renderer_Option::Upsampling)] = static_cast<float>(Renderer_Upsampling::Linear);
+                        m_options[Renderer_Option::Upsampling] = static_cast<float>(Renderer_Upsampling::Linear);
                         SP_LOG_INFO("Disabed FSR 2.0 since it's used for TAA.");
                     }
                 }
@@ -799,7 +799,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
                     // Implicitly disable TAA since FSR 2.0 is doing it
                     if (taa_enabled)
                     {
-                        m_options[static_cast<uint32_t>(Renderer_Option::Antialiasing)] = static_cast<float>(Renderer_Antialiasing::Disabled);
+                        m_options[Renderer_Option::Antialiasing] = static_cast<float>(Renderer_Antialiasing::Disabled);
                         SP_LOG_INFO("Disabled TAA since it's done by FSR 2.0.");
                     }
                 }
@@ -808,7 +808,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
                     // Implicitly enable TAA since FSR 2.0 is doing it
                     if (!taa_enabled)
                     {
-                        m_options[static_cast<uint32_t>(Renderer_Option::Antialiasing)] = static_cast<float>(Renderer_Antialiasing::Taa);
+                        m_options[Renderer_Option::Antialiasing] = static_cast<float>(Renderer_Antialiasing::Taa);
                         RHI_AMD_FidelityFX::FSR2_ResetHistory();
                         SP_LOG_INFO("Enabled TAA since FSR 2.0 does it.");
                     }
@@ -838,12 +838,12 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
         }
     }
 
-    array<float, 34>& Renderer::GetOptions()
+    unordered_map<Renderer_Option, float>& Renderer::GetOptions()
     {
         return m_options;
     }
 
-    void Renderer::SetOptions(array<float, 34> options)
+    void Renderer::SetOptions(const std::unordered_map<Renderer_Option, float>& options)
     {
         m_options = options;
     }

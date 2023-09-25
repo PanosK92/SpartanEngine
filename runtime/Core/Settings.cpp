@@ -46,8 +46,54 @@ namespace Spartan
         static double fps_limit                = 0;
         static bool m_has_loaded_user_settings = false;
         string file_path                       = "spartan.xml";
-        static array<float, 34> m_render_options;
+        static unordered_map<Renderer_Option, float> m_render_options;
         static vector<third_party_lib> m_third_party_libs;
+
+        const char* renderer_option_to_string(const Renderer_Option option)
+        {
+            switch (option)
+            {
+                case Renderer_Option::Debug_Aabb:               return "Debug_Aabb";
+                case Renderer_Option::Debug_PickingRay:         return "Debug_PickingRay";
+                case Renderer_Option::Debug_Grid:               return "Debug_Grid";
+                case Renderer_Option::Debug_ReflectionProbes:   return "Debug_ReflectionProbes";
+                case Renderer_Option::Debug_TransformHandle:    return "Debug_TransformHandle";
+                case Renderer_Option::Debug_SelectionOutline:   return "Debug_SelectionOutline";
+                case Renderer_Option::Debug_Lights:             return "Debug_Lights";
+                case Renderer_Option::Debug_PerformanceMetrics: return "Debug_PerformanceMetrics";
+                case Renderer_Option::Debug_Physics:            return "Debug_Physics";
+                case Renderer_Option::Debug_Wireframe:          return "Debug_Wireframe";
+                case Renderer_Option::Bloom:                    return "Bloom";
+                case Renderer_Option::VolumetricFog:            return "VolumetricFog";
+                case Renderer_Option::Ssgi:                     return "Ssgi";
+                case Renderer_Option::ScreenSpaceShadows:       return "ScreenSpaceShadows";
+                case Renderer_Option::ScreenSpaceReflections:   return "ScreenSpaceReflections";
+                case Renderer_Option::MotionBlur:               return "MotionBlur";
+                case Renderer_Option::DepthOfField:             return "DepthOfField";
+                case Renderer_Option::FilmGrain:                return "FilmGrain";
+                case Renderer_Option::ChromaticAberration:      return "ChromaticAberration";
+                case Renderer_Option::Debanding:                return "Debanding";
+                case Renderer_Option::DepthPrepass:             return "DepthPrepass";
+                case Renderer_Option::Anisotropy:               return "Anisotropy";
+                case Renderer_Option::ShadowResolution:         return "ShadowResolution";
+                case Renderer_Option::Gamma:                    return "Gamma";
+                case Renderer_Option::Exposure:                 return "Exposure";
+                case Renderer_Option::PaperWhite:               return "PaperWhite";
+                case Renderer_Option::FogDensity:               return "FogDensity";
+                case Renderer_Option::Antialiasing:             return "Antialiasing";
+                case Renderer_Option::Tonemapping:              return "Tonemapping";
+                case Renderer_Option::Upsampling:               return "Upsampling";
+                case Renderer_Option::UpsamplingSharpness:      return "UpsamplingSharpness";
+                case Renderer_Option::Sharpness:                return "Sharpness";
+                case Renderer_Option::Hdr:                      return "Hdr";
+                case Renderer_Option::Vsync:                    return "Vsync";
+                default:
+                {
+                    SP_ASSERT_MSG(false, "Renderer_Option not handled");
+                    return "";
+                }
+            }
+        }
 
         static void save()
         {
@@ -64,9 +110,9 @@ namespace Spartan
                 root.append_child("ResolutionRenderHeight").text().set(m_resolution_render.y);
                 root.append_child("FPSLimit").text().set(fps_limit);
 
-                for (uint32_t i = 0; i < static_cast<uint32_t>(m_render_options.size()); i++)
+                for (auto& [option, value] : m_render_options)
                 {
-                    root.append_child(("render_option_" + to_string(i)).c_str()).text().set(m_render_options[i]);
+                    root.append_child(renderer_option_to_string(option)).text().set(value);
                 }
             }
 
@@ -95,11 +141,11 @@ namespace Spartan
                 m_resolution_render.y = root.child("ResolutionRenderHeight").text().as_float();
                 fps_limit             = root.child("FPSLimit").text().as_int();
 
-                m_render_options.fill(0.0f);
-                for (uint32_t i = 0; i < static_cast<uint32_t>(m_render_options.size()); ++i)
+                m_render_options.clear();
+                for (uint32_t i = 0; i < static_cast<uint32_t>(Renderer_Option::Max); i++)
                 {
-                    string option_name = "render_option_" + to_string(i);
-                    m_render_options[i] = root.child(option_name.c_str()).text().as_float();
+                    Renderer_Option option = static_cast<Renderer_Option>(i);
+                    m_render_options[option] = root.child(renderer_option_to_string(option)).text().as_float();
                 }
             }
 
