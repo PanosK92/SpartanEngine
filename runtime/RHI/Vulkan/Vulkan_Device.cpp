@@ -375,14 +375,15 @@ namespace Spartan
             SP_ASSERT_MSG(resource != nullptr, "Resource can't be null");
             SP_ASSERT_MSG(name != nullptr, "Name can't be empty");
 
-            // Set allocation data
+            // set allocation data
             vmaSetAllocationUserData(allocator, allocation, resource);
             vmaSetAllocationName(allocator, allocation, name);
 
-            // Name the allocation's underlying VkDeviceMemory
+            lock_guard<mutex> lock(mutex_allocation);
+
+            // name the allocation's underlying VkDeviceMemory
             RHI_Device::SetResourceName(allocation->GetMemory(), RHI_Resource_Type::DeviceMemory, name);
 
-            lock_guard<mutex> lock(mutex_allocation);
             allocations[resource_to_id(resource)] = allocation;
         }
 
