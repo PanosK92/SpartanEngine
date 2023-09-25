@@ -233,10 +233,10 @@ namespace Spartan
         Clear();
     }
 
-    bool World::SaveToFile(const string& filePathIn)
+    bool World::SaveToFile(const string& file_path_in)
     {
         // Add scene file extension to the filepath if it's missing
-        auto file_path = filePathIn;
+        auto file_path = file_path_in;
         if (FileSystem::GetExtensionFromFilePath(file_path) != EXTENSION_WORLD)
         {
             file_path += EXTENSION_WORLD;
