@@ -795,7 +795,7 @@ void Properties::ShowCamera(shared_ptr<Camera> camera) const
         float fov                              = camera->GetFovHorizontalDeg();
         float near_plane                       = camera->GetNearPlane();
         float far_plane                        = camera->GetFarPlane();
-        bool first_person_control_enabled      = camera->GetFirstPersonControlEnabled();
+        bool first_person_control_enabled      = camera->GetIsControlEnabled();
         m_colorPicker_camera->SetColor(camera->GetClearColor());
         //==============================================================================
 
@@ -850,7 +850,7 @@ void Properties::ShowCamera(shared_ptr<Camera> camera) const
         if (fov != camera->GetFovHorizontalDeg())                                   camera->SetFovHorizontalDeg(fov);
         if (near_plane != camera->GetNearPlane())                                   camera->SetNearPlane(near_plane);
         if (far_plane != camera->GetFarPlane())                                     camera->SetFarPlane(far_plane);
-        if (first_person_control_enabled != camera->GetFirstPersonControlEnabled()) camera->SetFirstPersonControlEnabled(first_person_control_enabled);
+        if (first_person_control_enabled != camera->GetIsControlEnabled()) camera->SetIsControlEnalbed(first_person_control_enabled);
         if (m_colorPicker_camera->GetColor() != camera->GetClearColor())            camera->SetClearColor(m_colorPicker_camera->GetColor());
         //=============================================================================================================================================
     }
