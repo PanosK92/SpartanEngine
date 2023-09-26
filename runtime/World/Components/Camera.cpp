@@ -24,6 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Camera.h"
 #include "Transform.h"
 #include "Renderable.h"
+#include "Window.h"
+#include "PhysicsBody.h"
 #include "../Entity.h"
 #include "../World.h"
 #include "../../Input/Input.h"
@@ -31,7 +33,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Renderer.h"
 #include "../../Display/Display.h"
 #include "../RHI/RHI_Vertex.h"
-#include "Window.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -353,21 +354,21 @@ namespace Spartan
         Vector3 movement_direction            = Vector3::Zero;
         float delta_time                      = static_cast<float>(Timer::GetDeltaTimeSec());
 
-        // Detect if fps control should be activated
+        // detect if fps control should be activated
         {
-            // Initiate control only when the mouse is within the viewport
+            // initiate control only when the mouse is within the viewport
             if (Input::GetKeyDown(KeyCode::Click_Right) && Input::GetMouseIsInViewport())
             {
                 m_is_controlled_by_keyboard_mouse = true;
             }
 
-            // Maintain control as long as the right click is pressed and initial control has been given
+            // maintain control as long as the right click is pressed and initial control has been given
             m_is_controlled_by_keyboard_mouse = Input::GetKey(KeyCode::Click_Right) && m_is_controlled_by_keyboard_mouse;
         }
 
-        // Cursor visibility and position
+        // cursor visibility and position
         {
-            // Toggle mouse cursor and adjust mouse position
+            // toggle mouse cursor and adjust mouse position
             if (m_is_controlled_by_keyboard_mouse && !m_fps_control_cursor_hidden)
             {
                 m_mouse_last_position = Input::GetMousePosition();
@@ -394,9 +395,9 @@ namespace Spartan
 
         if (m_is_controlled_by_keyboard_mouse)
         {
-            // Mouse look
+            // mouse look
             {
-                // Wrap around left and right screen edges (to allow for infinite scrolling)
+                // wrap around left and right screen edges (to allow for infinite scrolling)
                 {
                     uint32_t edge_padding = 5;
                     Vector2 mouse_position = Input::GetMousePosition();
@@ -412,34 +413,34 @@ namespace Spartan
                     }
                 }
 
-                // Get camera rotation.
+                // get camera rotation.
                 m_first_person_rotation.x = GetTransform()->GetRotation().Yaw();
                 m_first_person_rotation.y = GetTransform()->GetRotation().Pitch();
 
-                // Get mouse delta.
+                // get mouse delta.
                 const Vector2 mouse_delta = Input::GetMouseDelta() * m_mouse_sensitivity;
 
-                // Lerp to it.
+                // lerp to it.
                 m_mouse_smoothed = Helper::Lerp(m_mouse_smoothed, mouse_delta, Helper::Saturate(1.0f - m_mouse_smoothing));
 
-                // Accumulate rotation.
+                // accumulate rotation.
                 m_first_person_rotation += m_mouse_smoothed;
 
-                // Clamp rotation along the x-axis (but not exactly at 90 degrees, this is to avoid a gimbal lock).
+                // clamp rotation along the x-axis (but not exactly at 90 degrees, this is to avoid a gimbal lock).
                 m_first_person_rotation.y = Helper::Clamp(m_first_person_rotation.y, -80.0f, 80.0f);
 
-                // Compute rotation.
+                // compute rotation.
                 const Quaternion xQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.x * Helper::DEG_TO_RAD, Vector3::Up);
                 const Quaternion yQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.y * Helper::DEG_TO_RAD, Vector3::Right);
                 const Quaternion rotation    = xQuaternion * yQuaternion;
 
-                // Rotate
+                // rotate
                 GetTransform()->SetRotationLocal(rotation);
             }
 
-            // Keyboard movement direction
+            // keyboard movement direction
             {
-                // Compute direction
+                // compute direction
                 if (Input::GetKey(KeyCode::W)) movement_direction += GetTransform()->GetForward();
                 if (Input::GetKey(KeyCode::S)) movement_direction += GetTransform()->GetBackward();
                 if (Input::GetKey(KeyCode::D)) movement_direction += GetTransform()->GetRight();
@@ -449,43 +450,43 @@ namespace Spartan
                 movement_direction.Normalize();
             }
 
-            // Wheel delta (used to adjust movement speed)
+            // wheel delta (used to adjust movement speed)
             {
-                // Accumulate
+                // accumulate
                 m_movement_scroll_accumulator += Input::GetMouseWheelDelta().y * 0.1f;
 
                 // Clamp
-                float min = -movement_acceleration + 0.1f; // Prevent it from negating or zeroing the acceleration, see translation calculation.
-                float max = movement_acceleration * 2.0f;  // An empirically chosen max.
+                float min = -movement_acceleration + 0.1f; // prevent it from negating or zeroing the acceleration, see translation calculation.
+                float max = movement_acceleration * 2.0f;  // an empirically chosen max.
                 m_movement_scroll_accumulator = Helper::Clamp(m_movement_scroll_accumulator, min, max);
             }
         }
 
-        // Controller movement
+        // controller movement
         if (Input::IsControllerConnected())
         {
-            // Look
+            // look
             {
-                // Get camera rotation
+                // get camera rotation
                 m_first_person_rotation.x += Input::GetControllerThumbStickRight().x;
                 m_first_person_rotation.y += Input::GetControllerThumbStickRight().y;
 
-                // Get mouse delta.
+                // get mouse delta.
                 const Vector2 mouse_delta = Input::GetMouseDelta() * m_mouse_sensitivity;
 
-                // Clamp rotation along the x-axis (but not exactly at 90 degrees, this is to avoid a gimbal lock).
+                // clamp rotation along the x-axis (but not exactly at 90 degrees, this is to avoid a gimbal lock).
                 m_first_person_rotation.y = Helper::Clamp(m_first_person_rotation.y, -80.0f, 80.0f);
 
-                // Compute rotation.
+                // compute rotation.
                 const Quaternion xQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.x * Helper::DEG_TO_RAD, Vector3::Up);
                 const Quaternion yQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.y * Helper::DEG_TO_RAD, Vector3::Right);
                 const Quaternion rotation    = xQuaternion * yQuaternion;
 
-                // Rotate
+                // rotate
                 GetTransform()->SetRotationLocal(rotation);
             }
 
-            // Controller movement direction
+            // controller movement direction
             movement_direction += GetTransform()->GetForward() * -Input::GetControllerThumbStickLeft().y;
             movement_direction += GetTransform()->GetRight()   * Input::GetControllerThumbStickLeft().x;
             movement_direction += GetTransform()->GetDown()    * Input::GetControllerTriggerLeft();
@@ -493,32 +494,41 @@ namespace Spartan
             movement_direction.Normalize();
         }
 
-        // Translation
+        // translation
         {
             Vector3 translation = (movement_acceleration + m_movement_scroll_accumulator) * movement_direction;
 
-            // On shift, double the translation
+            // on shift, double the translation
             if (Input::GetKey(KeyCode::Shift_Left))
             {
                 translation *= 2.0f;
             }
 
-            // Accelerate
+            // accelerate
             m_movement_speed += translation * delta_time;
 
-            // Apply drag
+            // apply drag
             m_movement_speed *= 1.0f - movement_drag * delta_time;
 
-            // Clamp it
+            // clamp it
             if (m_movement_speed.Length() > movement_speed_max)
             {
                 m_movement_speed = m_movement_speed.Normalized() * movement_speed_max;
             }
 
-            // Translate for as long as there is speed
+            // translate for as long as there is speed
             if (m_movement_speed != Vector3::Zero)
             {
-                GetTransform()->Translate(m_movement_speed);
+                if (m_physics_body_to_control)
+                {
+                    Vector3 velocity_current = m_physics_body_to_control->GetLinearVelocity();
+                    Vector3 velocity_new     = Vector3(m_movement_speed.x * 100.0f, velocity_current.y, m_movement_speed.z * 100.0f);
+                    m_physics_body_to_control->SetLinearVelocity(velocity_new);
+                }
+                else
+                {
+                    GetTransform()->Translate(m_movement_speed);
+                }
             }
         }
     }
@@ -611,9 +621,9 @@ namespace Spartan
         }
     }
 
-    bool Camera::IsControledInFirstPerson() const
+    void Camera::SetPhysicsBodyToControl(PhysicsBody* physics_body)
     {
-        return m_is_controlled_by_keyboard_mouse;
+        m_physics_body_to_control = physics_body;
     }
 
     Matrix Camera::ComputeViewMatrix() const

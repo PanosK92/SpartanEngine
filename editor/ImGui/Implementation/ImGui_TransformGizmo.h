@@ -61,7 +61,7 @@ namespace ImGui::TransformGizmo
 
         // Switch between position, rotation and scale operations, with W, E and R respectively
         static ImGuizmo::OPERATION transform_operation = ImGuizmo::TRANSLATE;
-        if (!camera->IsControledInFirstPerson())
+        if (!camera->IsActivelyControlled())
         {
             if (Spartan::Input::GetKeyDown(Spartan::KeyCode::W))
             {

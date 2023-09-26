@@ -53,6 +53,7 @@ namespace Spartan
         static string m_file_path;
         static bool m_resolve                                   = false;
         static bool m_was_in_editor_mode                        = false;
+        static shared_ptr<Entity> m_default_physics_body_camera              = nullptr;
         static shared_ptr<Entity> m_default_environment         = nullptr;
         static shared_ptr<Entity> m_default_model_floor         = nullptr;
         static shared_ptr<Mesh> m_default_model_sponza          = nullptr;
@@ -84,25 +85,40 @@ namespace Spartan
             const bool shadows_enabled           = true
         )
         {
-            // Environment
+            // environment
             {
                 m_default_environment = World::CreateEntity();
                 m_default_environment->SetObjectName("environment");
                 m_default_environment->AddComponent<Environment>();
             }
 
-            // Camera
+            // camera
             {
-                shared_ptr<Entity> entity = World::CreateEntity();
-                entity->SetObjectName("camera");
+                // create the camera's root (which will be used for movement)
+                m_default_physics_body_camera = World::CreateEntity();
+                m_default_physics_body_camera->SetObjectName("physics_body_camera");
+                m_default_physics_body_camera->GetTransform()->SetPosition(camera_position);
 
-                entity->AddComponent<Camera>();
-                entity->AddComponent<AudioListener>();
-                entity->GetTransform()->SetPosition(camera_position);
-                entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(camera_rotation));
+                // add a physics body so that the camera can move through the environment in a physical manner
+                PhysicsBody* physics_body = m_default_physics_body_camera->AddComponent<PhysicsBody>().get();
+                physics_body->SetShapeType(PhysicsShape::Capsule);
+                physics_body->SetMass(1.0f);
+                physics_body->SetRestitution(0.9f);
+                physics_body->SetFriction(0.4f);
+                physics_body->SetBoundingBox(Vector3(0.5f, 1.8f, 0.5f));
+                physics_body->SetRotationLock(true);
+
+                // create the entity that will actual hold the camera component
+                shared_ptr<Entity> camera = World::CreateEntity();
+                camera->SetObjectName("component_camera");
+                camera->AddComponent<Camera>()->SetPhysicsBodyToControl(physics_body);
+                camera->AddComponent<AudioListener>();
+                camera->GetTransform()->SetParent(m_default_physics_body_camera->GetTransform());
+                camera->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f)); // place it at the top of the capsule
+                camera->GetTransform()->SetRotation(Quaternion::FromEulerAngles(camera_rotation));
             }
 
-            // Light - Directional
+            // light - directional
             {
                 shared_ptr<Entity> entity = World::CreateEntity();
                 entity->SetObjectName("light_directional");
@@ -116,7 +132,7 @@ namespace Spartan
                 light->SetShadowsEnabled(shadows_enabled ? (light->GetIntensityLumens() > 0.0f) : false);
             }
 
-            // Music
+            // music
             {
                 shared_ptr<Entity> entity = World::CreateEntity();
                 entity->SetObjectName("audio_source");
@@ -745,18 +761,20 @@ namespace Spartan
         Vector3 camera_rotation = Vector3(7.7930f, -126.5014f, 0.0f);
         create_default_world_common(false, camera_position, camera_rotation);
 
-        // terrain
+        shared_ptr<Entity> entity = CreateEntity();
+        entity->SetObjectName("terrain");
+
+        shared_ptr<Terrain> terrain = entity->AddComponent<Terrain>();
+        terrain->SetHeightMap(ResourceCache::Load<RHI_Texture2D>("project\\terrain\\height.png", RHI_Texture_Srv));
+        terrain->GenerateAsync([entity]()
         {
-            shared_ptr<Entity> entity = CreateEntity();
-            entity->SetObjectName("terrain");
+            // add physics so we can walk on it
+            PhysicsBody* rigid_body = entity->AddComponent<PhysicsBody>().get();
+            rigid_body->SetFriction(1.0f);
 
-            shared_ptr<Terrain> terrain = entity->AddComponent<Terrain>();
-            terrain->SetHeightMap(ResourceCache::Load<RHI_Texture2D>("project\\terrain\\height.png", RHI_Texture_Srv));
-            terrain->GenerateAsync();
-        }
-
-        // start simulating (for the music to play)
-        Engine::AddFlag(EngineMode::Game);
+            // start simulating (for the music to play)
+            Engine::AddFlag(EngineMode::Game);
+        });
     }
 
     void World::CreateDefaultWorldSponza()

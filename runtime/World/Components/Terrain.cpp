@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Terrain.h"
 #include "Renderable.h"
-#include "PhysicsBody.h"
 #include "../Entity.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../IO/FileStream.h"
@@ -284,7 +283,7 @@ namespace Spartan
         m_height_texture = height_map;
     }
 
-    void Terrain::GenerateAsync()
+    void Terrain::GenerateAsync(std::function<void()> on_complete)
     {
         if (m_is_generating)
         {
@@ -306,7 +305,7 @@ namespace Spartan
             return;
         }
 
-        ThreadPool::AddTask([this]()
+        ThreadPool::AddTask([this, on_complete]()
         {
             m_is_generating = true;
 
@@ -361,8 +360,10 @@ namespace Spartan
             UpdateFromVertices(indices, vertices);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
-            // Add physics so we can walk on it
-            m_entity_ptr->AddComponent<PhysicsBody>();
+            if (on_complete)
+            {
+                on_complete();
+            }
 
             m_is_generating = false;
         });

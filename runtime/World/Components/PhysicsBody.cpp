@@ -292,7 +292,15 @@ namespace Spartan
         }
     }
 
-    void PhysicsBody::SetAngularVelocity(const Vector3& velocity, const bool activate /*= true*/) const
+    Spartan::Math::Vector3 PhysicsBody::GetLinearVelocity() const
+    {
+        if (!m_rigid_body)
+            return Vector3::Zero;
+
+        return ToVector3(static_cast<btRigidBody*>(m_rigid_body)->getLinearVelocity());
+    }
+    
+	void PhysicsBody::SetAngularVelocity(const Vector3& velocity, const bool activate /*= true*/) const
     {
         if (!m_rigid_body)
             return;
@@ -357,14 +365,7 @@ namespace Spartan
 
     void PhysicsBody::SetPositionLock(bool lock)
     {
-        if (lock)
-        {
-            SetPositionLock(Vector3::One);
-        }
-        else
-        {
-            SetPositionLock(Vector3::Zero);
-        }
+        SetPositionLock(lock ? Vector3::One : Vector3::Zero);
     }
 
     void PhysicsBody::SetPositionLock(const Vector3& lock)
@@ -378,14 +379,7 @@ namespace Spartan
 
     void PhysicsBody::SetRotationLock(bool lock)
     {
-        if (lock)
-        {
-            SetRotationLock(Vector3::One);
-        }
-        else
-        {
-            SetRotationLock(Vector3::Zero);
-        }
+        SetRotationLock(lock ? Vector3::One : Vector3::Zero);
     }
 
     void PhysicsBody::SetRotationLock(const Vector3& lock)
@@ -395,6 +389,11 @@ namespace Spartan
 
         m_rotation_lock = lock;
         static_cast<btRigidBody*>(m_rigid_body)->setAngularFactor(ToBtVector3(Vector3::One - lock));
+
+        // recalculate inertia since bullet doesn't seem to be doing it automatically
+        btVector3 inertia;
+        static_cast<btRigidBody*>(m_rigid_body)->getCollisionShape()->calculateLocalInertia(m_mass, inertia);
+        static_cast<btRigidBody*>(m_rigid_body)->setMassProps(m_mass, inertia * ToBtVector3(Vector3::One - lock));
     }
 
     void PhysicsBody::SetCenterOfMass(const Vector3& center_of_mass)

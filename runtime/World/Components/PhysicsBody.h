@@ -96,6 +96,7 @@ namespace Spartan
 
         // Forces
         void SetLinearVelocity(const Math::Vector3& velocity, const bool activate = true) const;
+        Math::Vector3 GetLinearVelocity() const;
         void SetAngularVelocity(const Math::Vector3& velocity, const bool activate = true) const;
         void ApplyForce(const Math::Vector3& force, PhysicsForce mode) const;
         void ApplyForceAtPosition(const Math::Vector3& force, const Math::Vector3& position, PhysicsForce mode) const;

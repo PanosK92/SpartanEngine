@@ -60,7 +60,7 @@ namespace Spartan
         uint64_t GetHeightSampleCount() const { return m_height_samples; }
         float* GetHeightData()                { return &m_height_data[0]; }
 
-        void GenerateAsync();
+        void GenerateAsync(std::function<void()> on_complete = nullptr);
 
     private:
         void UpdateFromMesh(const std::shared_ptr<Mesh> mesh) const;
