@@ -53,7 +53,7 @@ namespace Spartan
         static string m_file_path;
         static bool m_resolve                                   = false;
         static bool m_was_in_editor_mode                        = false;
-        static shared_ptr<Entity> m_default_physics_body_camera              = nullptr;
+        static shared_ptr<Entity> m_default_physics_body_camera = nullptr;
         static shared_ptr<Entity> m_default_environment         = nullptr;
         static shared_ptr<Entity> m_default_model_floor         = nullptr;
         static shared_ptr<Mesh> m_default_model_sponza          = nullptr;
@@ -77,9 +77,8 @@ namespace Spartan
         }
 
         static void create_default_world_common(
-            const bool create_floor,
-            const Math::Vector3& camera_position = Math::Vector3(-2.956f, 1.1474f, -2.9395f),
-            const Math::Vector3& camera_rotation = Math::Vector3(15.9976f, 43.5998f, 0.0f),
+            const Math::Vector3& camera_position = Vector3(0.0f, 1.0f, -10.0f),
+            const Math::Vector3& camera_rotation = Vector3(0.0f, 0.0f, 0.0f),
             const LightIntensity sun_intensity   = LightIntensity::sky_sunlight_noon,
             const char* soundtrack_file_path     = "project\\music\\jake_chudnow_shona.mp3",
             const bool shadows_enabled           = true
@@ -143,7 +142,6 @@ namespace Spartan
             }
 
             // floor
-            if (create_floor)
             {
                 m_default_model_floor = World::CreateEntity();
                 m_default_model_floor->SetObjectName("floor");
@@ -470,7 +468,7 @@ namespace Spartan
     {
         return m_entities;
     }
-      
+
     void World::Clear()
     {
         // Fire event
@@ -487,7 +485,7 @@ namespace Spartan
 
     void World::CreateDefaultWorldPickablePhysicsCube()
     {
-        create_default_world_common(true);
+        create_default_world_common();
 
         // cube
         {
@@ -528,9 +526,9 @@ namespace Spartan
 
     void World::CreateDefaultWorldHelmets()
     {
-        Vector3 camera_position = Vector3(-1.1131f, 1.3112f, -1.8209f);
-        Vector3 camera_rotation = Vector3(14.1965f, 43.3965f, 0.0f);
-        create_default_world_common(true, camera_position, camera_rotation, LightIntensity::black_hole);
+        Vector3 camera_position = Vector3(0.0f, 1.0f, -10.0f);
+        Vector3 camera_rotation = Vector3(0.0f, 0.0f, 0.0f);
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::black_hole);
 
         // Point light
         {
@@ -542,6 +540,7 @@ namespace Spartan
             light->SetLightType(LightType::Point);
             light->SetColor(Color::light_light_bulb);
             light->SetIntensity(LightIntensity::bulb_500_watt);
+            light->SetRange(15.0f);
         }
 
         // Flight helmet
@@ -572,15 +571,15 @@ namespace Spartan
 
     void World::CreateDefaultWorldCar()
     {
-        Vector3 camera_position = Vector3(9.3396f, 1.0f, -0.1322f);
-        Vector3 camera_rotation = Vector3(0.0f, -90.0f, 0.0f);
-        create_default_world_common(true, camera_position, camera_rotation, LightIntensity::sky_twilight, "project\\music\\isola_any_day.mp3");
+        Vector3 camera_position = Vector3(0.0f, 1.0f, -10.0f);
+        Vector3 camera_rotation = Vector3(0.0f, 0.0f, 0.0f);
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_twilight, "project\\music\\isola_any_day.mp3");
 
         // Point light - side of car
         {
             shared_ptr<Entity> entity = CreateEntity();
             entity->SetObjectName("light_point_side");
-            entity->GetTransform()->SetPosition(Vector3(4.0f, 2.5, 3.0f));
+            entity->GetTransform()->SetPosition(Vector3(4.0f, 2.5, -5.41f));
 
             shared_ptr<Light> light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
@@ -765,7 +764,7 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(333.5016f, 57.5577f, 176.9949f);
         Vector3 camera_rotation = Vector3(7.7930f, -126.5014f, 0.0f);
-        create_default_world_common(false, camera_position, camera_rotation);
+        create_default_world_common(camera_position, camera_rotation);
 
         shared_ptr<Entity> entity = CreateEntity();
         entity->SetObjectName("terrain");
@@ -787,7 +786,7 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(-10.0f, 2.0f, 0.1385f);
         Vector3 camera_rotation = Vector3(0.0f, 90.0f, 0.0f);
-        create_default_world_common(false, camera_position, camera_rotation, LightIntensity::black_hole, "project\\music\\jake_chudnow_olive.mp3");
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::black_hole, "project\\music\\jake_chudnow_olive.mp3");
 
         // Point light
         {
@@ -798,7 +797,7 @@ namespace Spartan
             shared_ptr<Light> light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
             light->SetColor(Color::light_light_bulb);
-            light->SetRange(14.960f);
+            light->SetRange(40.0f);
             light->SetIntensity(LightIntensity::bulb_500_watt);
         }
 
@@ -807,8 +806,8 @@ namespace Spartan
         {
             Entity* entity = m_default_model_sponza->GetRootEntity();
             entity->SetObjectName("sponza");
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.06f, 0.0f));
-            entity->GetTransform()->SetScale(Vector3::One);
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.15f, 0.0f));
+            entity->GetTransform()->SetScale(Vector3(2.0f, 2.0f, 2.0f)); // I actually walked in Sponza, it's that big
 
             // Make the lamp frame not cast shadows, so we can place a light within it
             if (shared_ptr<Renderable> renderable = entity->GetTransform()->GetDescendantPtrByName("lamp_1stfloor_entrance_1")->GetComponent<Renderable>())
@@ -827,8 +826,8 @@ namespace Spartan
             {
                 Entity* entity = m_default_model_sponza_curtains->GetRootEntity();
                 entity->SetObjectName("sponza_curtains");
-                entity->GetTransform()->SetPosition(Vector3(0.0f, 0.06f, 0.0f));
-                entity->GetTransform()->SetScale(Vector3::One);
+                entity->GetTransform()->SetPosition(Vector3(0.0f, 0.15f, 0.0f));
+                entity->GetTransform()->SetScale(Vector3(2.0f, 2.0f, 2.0f)); // I actually walked in Sponza, it's that big
             }
         }
 
@@ -840,14 +839,14 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(-134.9146f, 11.6170f, -31.7093f);
         Vector3 camera_rotation = Vector3(0.0f, 90.0f, 0.0f);
-        create_default_world_common(true, camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\doom_e1m1.mp3", false);
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\doom_e1m1.mp3", false);
 
         // doom level
         if (m_default_model_helmet_flight = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
         {
             Entity* entity = m_default_model_helmet_flight->GetRootEntity();
             entity->SetObjectName("doom_e1m1");
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 9.0f, -355.5300f));
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 1.8f, -355.5300f));
             entity->GetTransform()->SetScale(Vector3(0.1f, 0.1f, 0.1f));
         }
 
