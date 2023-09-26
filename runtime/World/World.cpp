@@ -53,6 +53,7 @@ namespace Spartan
         static string m_file_path;
         static bool m_resolve                                   = false;
         static bool m_was_in_editor_mode                        = false;
+        static shared_ptr<Entity> m_default_cube                = nullptr;
         static shared_ptr<Entity> m_default_physics_body_camera = nullptr;
         static shared_ptr<Entity> m_default_environment         = nullptr;
         static shared_ptr<Entity> m_default_model_floor         = nullptr;
@@ -162,6 +163,42 @@ namespace Spartan
                 rigid_body->SetRestitution(0.2f);
                 rigid_body->SetShapeType(PhysicsShape::StaticPlane);
             }
+        }
+
+        static void create_default_cube(
+            const Math::Vector3& position = Vector3(0.0f, 4.0f, 0.0f),
+            const Math::Vector3& scale    = Vector3(1.0f,1.0f, 1.0f))
+        {
+            // create entity
+            m_default_cube = World::CreateEntity();
+            m_default_cube->SetObjectName("cube");
+            m_default_cube->GetTransform()->SetPosition(position);
+            m_default_cube->GetTransform()->SetScale(scale);
+            
+            // create material
+            shared_ptr<Material> material = make_shared<Material>();
+            material->SetTexture(MaterialTexture::Color,     "project\\materials\\crate_space\\albedo.png");
+            material->SetTexture(MaterialTexture::Normal,    "project\\materials\\crate_space\\normal.png");
+            material->SetTexture(MaterialTexture::Occlusion, "project\\materials\\crate_space\\ao.png");
+            material->SetTexture(MaterialTexture::Roughness, "project\\materials\\crate_space\\roughness.png");
+            material->SetTexture(MaterialTexture::Metalness, "project\\materials\\crate_space\\metallic.png");
+            material->SetTexture(MaterialTexture::Height,    "project\\materials\\crate_space\\height.png");
+            
+            // create a file path for this material (required for the material to be able to be cached by the resource cache)
+            const string file_path = "project\\materials\\crate_space" + string(EXTENSION_MATERIAL);
+            material->SetResourceFilePath(file_path);
+            
+            // add a renderable component
+            shared_ptr<Renderable> renderable = m_default_cube->AddComponent<Renderable>();
+            renderable->SetGeometry(Renderer::GetStandardMesh(Renderer_MeshType::Cube).get());
+            renderable->SetMaterial(material);
+            
+            // add physics components
+            shared_ptr<PhysicsBody> rigid_body = m_default_cube->AddComponent<PhysicsBody>();
+            rigid_body->SetMass(15.0f);
+            rigid_body->SetRestitution(0.3f);
+            rigid_body->SetFriction(1.0f);
+            rigid_body->SetShapeType(PhysicsShape::Box);
         }
     }
 
@@ -483,44 +520,12 @@ namespace Spartan
         m_resolve = true;
     }
 
-    void World::CreateDefaultWorldPickablePhysicsCube()
+    void World::CreateDefaultWorldCube()
     {
         create_default_world_common();
+        create_default_cube();
 
-        // cube
-        {
-            // create entity
-            shared_ptr<Entity> entity = CreateEntity();
-            entity->SetObjectName("cube");
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 4.0f, 0.0f));
-
-            // create material
-            shared_ptr<Material> material = make_shared<Material>();
-            material->SetTexture(MaterialTexture::Color,     "project\\materials\\crate_space\\albedo.png");
-            material->SetTexture(MaterialTexture::Normal,    "project\\materials\\crate_space\\normal.png");
-            material->SetTexture(MaterialTexture::Occlusion, "project\\materials\\crate_space\\ao.png");
-            material->SetTexture(MaterialTexture::Roughness, "project\\materials\\crate_space\\roughness.png");
-            material->SetTexture(MaterialTexture::Metalness, "project\\materials\\crate_space\\metallic.png");
-            material->SetTexture(MaterialTexture::Height,    "project\\materials\\crate_space\\height.png");
-
-            // create a file path for this material (required for the material to be able to be cached by the resource cache)
-            const string file_path = "project\\materials\\crate_space" + string(EXTENSION_MATERIAL);
-            material->SetResourceFilePath(file_path);
-
-            // add a renderable component
-            shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>();
-            renderable->SetGeometry(Renderer::GetStandardMesh(Renderer_MeshType::Cube).get());
-            renderable->SetMaterial(material);
-
-            // add physics components
-            shared_ptr<PhysicsBody> rigid_body = entity->AddComponent<PhysicsBody>();
-            rigid_body->SetMass(15.0f);
-            rigid_body->SetRestitution(0.3f);
-            rigid_body->SetFriction(1.0f);
-            rigid_body->SetShapeType(PhysicsShape::Box);
-        }
-
-        // start simulating (for the physics and the music to work)
+        // start simulating (for the music to play)
         Engine::AddFlag(EngineMode::Game);
     }
 
@@ -762,8 +767,8 @@ namespace Spartan
 
     void World::CreateDefaultWorldTerrain()
     {
-        Vector3 camera_position = Vector3(333.5016f, 57.5577f, 176.9949f);
-        Vector3 camera_rotation = Vector3(7.7930f, -126.5014f, 0.0f);
+        Vector3 camera_position = Vector3(143.5590f, 72.0f, 17.9953f);
+        Vector3 camera_rotation = Vector3(2.9905f, -107.8783f, 0.0f);
         create_default_world_common(camera_position, camera_rotation);
 
         shared_ptr<Entity> entity = CreateEntity();
@@ -773,6 +778,8 @@ namespace Spartan
         terrain->SetHeightMap(ResourceCache::Load<RHI_Texture2D>("project\\terrain\\height.png", RHI_Texture_Srv));
         terrain->GenerateAsync([entity]()
         {
+            create_default_cube(Vector3(-5.2354f, 104.6505f, -57.4221f), Vector3(5.0f, 5.0f, 5.0f));
+
             // add physics so we can walk on it
             PhysicsBody* rigid_body = entity->AddComponent<PhysicsBody>().get();
             rigid_body->SetFriction(1.0f);
