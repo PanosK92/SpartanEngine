@@ -102,7 +102,7 @@ namespace Spartan
                 // add a physics body so that the camera can move through the environment in a physical manner
                 PhysicsBody* physics_body = m_default_physics_body_camera->AddComponent<PhysicsBody>().get();
                 physics_body->SetShapeType(PhysicsShape::Capsule);
-                physics_body->SetMass(1.0f);
+                physics_body->SetMass(82.0f);
                 physics_body->SetRestitution(0.9f);
                 physics_body->SetFriction(0.4f);
                 physics_body->SetBoundingBox(Vector3(0.5f, 1.8f, 0.5f));
@@ -148,12 +148,14 @@ namespace Spartan
                 m_default_model_floor = World::CreateEntity();
                 m_default_model_floor->SetObjectName("floor");
                 m_default_model_floor->GetTransform()->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise it a bit to avoid z-fighting with world grid
-                m_default_model_floor->GetTransform()->SetScale(Vector3(30.0f, 1.0f, 30.0f));
+                m_default_model_floor->GetTransform()->SetScale(Vector3(256.0f, 1.0f, 256.0f));
 
                 // add a renderable component
                 shared_ptr<Renderable> renderable = m_default_model_floor->AddComponent<Renderable>();
                 renderable->SetGeometry(Renderer::GetStandardMesh(Renderer_MeshType::Quad).get());
                 renderable->SetDefaultMaterial();
+                renderable->GetMaterial()->SetProperty(MaterialProperty::UvTilingX, 100.0f);
+                renderable->GetMaterial()->SetProperty(MaterialProperty::UvTilingY, 100.0f);
 
                 // add physics components
                 shared_ptr<PhysicsBody> rigid_body = m_default_model_floor->AddComponent<PhysicsBody>();
@@ -514,9 +516,9 @@ namespace Spartan
 
             // add physics components
             shared_ptr<PhysicsBody> rigid_body = entity->AddComponent<PhysicsBody>();
-            rigid_body->SetMass(1.0f);
-            rigid_body->SetRestitution(1.0f);
-            rigid_body->SetFriction(0.2f);
+            rigid_body->SetMass(15.0f);
+            rigid_body->SetRestitution(0.3f);
+            rigid_body->SetFriction(1.0f);
             rigid_body->SetShapeType(PhysicsShape::Box);
         }
 
@@ -558,6 +560,10 @@ namespace Spartan
             entity->SetObjectName("damaged_helmet");
             entity->GetTransform()->SetPosition(Vector3(1.1713f, 0.4747f, -0.1711f));
             entity->GetTransform()->SetScale(Vector3(0.4343f, 0.4343f, 0.4343f));
+
+            PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+            physics_body->SetMass(8.0f);
+            physics_body->SetFriction(0.95f);
         }
 
         // Start simulating (for the physics and the music to work)
@@ -566,7 +572,7 @@ namespace Spartan
 
     void World::CreateDefaultWorldCar()
     {
-        Vector3 camera_position = Vector3(6.2f, 1.0f, -0.2f);
+        Vector3 camera_position = Vector3(9.3396f, 1.0f, -0.1322f);
         Vector3 camera_rotation = Vector3(0.0f, -90.0f, 0.0f);
         create_default_world_common(true, camera_position, camera_rotation, LightIntensity::sky_twilight, "project\\music\\isola_any_day.mp3");
 
@@ -616,8 +622,8 @@ namespace Spartan
             material->SetTexture(MaterialTexture::Roughness, tex_roughness);
             material->SetTexture(MaterialTexture::Metalness, tex_metalness);
             material->SetTexture(MaterialTexture::Height, tex_height);
-            material->SetProperty(MaterialProperty::UvTilingX, 10.0f);
-            material->SetProperty(MaterialProperty::UvTilingY, 10.0f);
+            material->SetProperty(MaterialProperty::UvTilingX, 100.0f);
+            material->SetProperty(MaterialProperty::UvTilingY, 100.0f);
 
             // Create a file path for this material (required for the material to be able to be cached by the resource cache)
             const string file_path = "project\\materials\\tile_black" + string(EXTENSION_MATERIAL);
@@ -634,7 +640,7 @@ namespace Spartan
 
             entity->GetTransform()->SetPosition(Vector3(0.0f, 0.07f, 0.0f));
             entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(90.0f, -4.8800f, -95.0582f));
-            entity->GetTransform()->SetScale(Vector3(0.0125f, 0.0125f, 0.0125f));
+            entity->GetTransform()->SetScale(Vector3(0.02f, 0.02f, 0.02f));
 
             // Break calipers have a wrong rotation, probably a bug with sketchfab auto converting to gltf
             entity->GetTransform()->GetDescendantPtrByName("FR_Caliper_BrakeCaliper_0")->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 75.0f, 0.0f));
