@@ -738,8 +738,12 @@ namespace Spartan
                 break;
 
             case PhysicsShape::Capsule:
-                m_shape = new btCapsuleShape(size.x * 0.5f, Helper::Max(size.y - size.x, 0.0f));
+            {
+                float radius = Helper::Max(size.x, size.z) * 0.5f;
+                float height = size.y;
+                m_shape = new btCapsuleShape(radius, height);
                 break;
+            }
 
             case PhysicsShape::Cone:
                 m_shape = new btConeShape(size.x * 0.5f, size.y);
