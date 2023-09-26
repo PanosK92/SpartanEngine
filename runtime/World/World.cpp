@@ -540,7 +540,7 @@ namespace Spartan
             light->SetLightType(LightType::Point);
             light->SetColor(Color::light_light_bulb);
             light->SetIntensity(LightIntensity::bulb_500_watt);
-            light->SetRange(15.0f);
+            light->SetRange(14.78f);
         }
 
         // Flight helmet
@@ -784,8 +784,8 @@ namespace Spartan
 
     void World::CreateDefaultWorldSponza()
     {
-        Vector3 camera_position = Vector3(-10.0f, 2.0f, 0.1385f);
-        Vector3 camera_rotation = Vector3(0.0f, 90.0f, 0.0f);
+        Vector3 camera_position = Vector3(-27.405f, 2.0f, -0.07f);
+        Vector3 camera_rotation = Vector3(-8.5f, 90.0f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::black_hole, "project\\music\\jake_chudnow_olive.mp3");
 
         // Point light
@@ -797,7 +797,7 @@ namespace Spartan
             shared_ptr<Light> light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
             light->SetColor(Color::light_light_bulb);
-            light->SetRange(40.0f);
+            light->SetRange(39.66f);
             light->SetIntensity(LightIntensity::bulb_500_watt);
         }
 
