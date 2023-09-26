@@ -1712,7 +1712,7 @@ namespace Spartan
 
     void Renderer::Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        if (!GetOption<bool>(Renderer_Option::Debug_Lights))
+        if (!GetOption<bool>(Renderer_Option::Debug_Lights) || Engine::IsFlagSet(EngineMode::Game))
             return;
 
         // acquire shaders
@@ -1993,7 +1993,7 @@ namespace Spartan
 
     void Renderer::Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        if (!GetOption<bool>(Renderer_Option::Debug_SelectionOutline))
+        if (!GetOption<bool>(Renderer_Option::Debug_SelectionOutline) || Engine::IsFlagSet(EngineMode::Game))
             return;
 
         // Acquire shaders
