@@ -150,11 +150,14 @@ namespace Spartan
             uint32_t width  = Window::GetWidth();
             uint32_t height = Window::GetHeight();
 
-            // The resolution of the actual rendering
-            SetResolutionRender(width, height, false);
+            if (!Settings::HasLoadedUserSettingsFromFile())
+            {
+                // The resolution of the actual rendering
+                SetResolutionRender(width, height, false);
 
-            // The resolution of the output frame *we can upscale to that linearly or with FSR 2)
-            SetResolutionOutput(width, height, false);
+                // The resolution of the output frame *we can upscale to that linearly or with FSR 2)
+                SetResolutionOutput(width, height, false);
+            }
 
             // The resolution/size of the editor's viewport. This is overridden by the editor based on the actual viewport size
             SetViewport(static_cast<float>(width), static_cast<float>(height));

@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_Device.h"
 #include "../ImGui/ImGuiExtension.h"
 #include "../ImGui/Implementation/ImGui_TransformGizmo.h"
+#include "Settings.h"
 //=======================================================
 
 //= NAMESPACES =========
@@ -50,7 +51,7 @@ void Viewport::OnTickVisible()
 
     // update engine's viewport
     static bool first_frame         = true;
-    static bool resolutions_set     = false;
+    static bool resolutions_set     = Settings::HasLoadedUserSettingsFromFile();
     static uint32_t width_previous  = 0;
     static uint32_t height_previous = 0;
     if (!first_frame) // during the first frame the viewport is not yet initialized (it's size will be something weird)
