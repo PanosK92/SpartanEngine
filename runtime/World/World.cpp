@@ -580,7 +580,7 @@ namespace Spartan
         Vector3 camera_rotation = Vector3(0.0f, 0.0f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_twilight, "project\\music\\isola_any_day.mp3");
 
-        // Point light - side of car
+        // point light - side of car
         {
             shared_ptr<Entity> entity = CreateEntity();
             entity->SetObjectName("light_point_side");
@@ -592,48 +592,29 @@ namespace Spartan
             light->SetIntensity(LightIntensity::bulb_500_watt);
         }
 
-        // Environment
+        // environment
         {
             m_default_environment->GetComponent<Environment>()->SetFromTextureSphere("project\\environment\\kloppenheim_05_4k.hdr");
         }
 
-        // Load floor material
+        // load floor material
         {
-            // Load textures
-            shared_ptr<RHI_Texture2D> tex_albedo = make_shared<RHI_Texture2D>();
-            tex_albedo->LoadFromFile("project\\materials\\tile_black\\albedo.png");
-
-            shared_ptr<RHI_Texture2D> tex_normal = make_shared<RHI_Texture2D>();
-            tex_normal->LoadFromFile("project\\materials\\tile_black\\normal.png");
-
-            shared_ptr<RHI_Texture2D> tex_occlusion = make_shared<RHI_Texture2D>();
-            tex_occlusion->LoadFromFile("project\\materials\\tile_black\\ao.png");
-
-            shared_ptr<RHI_Texture2D> tex_roughness = make_shared<RHI_Texture2D>();
-            tex_roughness->LoadFromFile("project\\materials\\tile_black\\roughness.png");
-
-            shared_ptr<RHI_Texture2D> tex_metalness = make_shared<RHI_Texture2D>();
-            tex_metalness->LoadFromFile("project\\materials\\tile_black\\metallic.png");
-
-            shared_ptr<RHI_Texture2D> tex_height = make_shared<RHI_Texture2D>();
-            tex_height->LoadFromFile("project\\materials\\tile_black\\height.png");
-
-            // Create material
+            // create material
             shared_ptr<Material> material = make_shared<Material>();
-            material->SetTexture(MaterialTexture::Color, tex_albedo);
-            material->SetTexture(MaterialTexture::Normal, tex_normal);
-            material->SetTexture(MaterialTexture::Occlusion, tex_occlusion);
-            material->SetTexture(MaterialTexture::Roughness, tex_roughness);
-            material->SetTexture(MaterialTexture::Metalness, tex_metalness);
-            material->SetTexture(MaterialTexture::Height, tex_height);
+            material->SetTexture(MaterialTexture::Color,      "project\\materials\\tile_black\\albedo.png");
+            material->SetTexture(MaterialTexture::Normal,     "project\\materials\\tile_black\\normal.png");
+            material->SetTexture(MaterialTexture::Occlusion,  "project\\materials\\tile_black\\ao.png");
+            material->SetTexture(MaterialTexture::Roughness,  "project\\materials\\tile_black\\roughness.png");
+            material->SetTexture(MaterialTexture::Metalness,  "project\\materials\\tile_black\\metallic.png");
+            material->SetTexture(MaterialTexture::Height,     "project\\materials\\tile_black\\height.png");
             material->SetProperty(MaterialProperty::UvTilingX, 100.0f);
             material->SetProperty(MaterialProperty::UvTilingY, 100.0f);
 
-            // Create a file path for this material (required for the material to be able to be cached by the resource cache)
+            // create a file path for this material (required for the material to be able to be cached by the resource cache)
             const string file_path = "project\\materials\\tile_black" + string(EXTENSION_MATERIAL);
             material->SetResourceFilePath(file_path);
 
-            // Set material
+            // set material
             m_default_model_floor->GetComponent<Renderable>()->SetMaterial(material);
         }
 
@@ -767,8 +748,8 @@ namespace Spartan
 
     void World::CreateDefaultWorldTerrain()
     {
-        Vector3 camera_position = Vector3(143.5590f, 72.0f, 17.9953f);
-        Vector3 camera_rotation = Vector3(2.9905f, -107.8783f, 0.0f);
+        Vector3 camera_position = Vector3(148.2399f, 68.2088f, 18.2958f);
+        Vector3 camera_rotation = Vector3(-2.4108f, -81.4733f, 0.0f);
         create_default_world_common(camera_position, camera_rotation);
 
         shared_ptr<Entity> entity = CreateEntity();
@@ -778,6 +759,26 @@ namespace Spartan
         terrain->SetHeightMap(ResourceCache::Load<RHI_Texture2D>("project\\terrain\\height.png", RHI_Texture_Srv));
         terrain->GenerateAsync([entity]()
         {
+            // load a tree (todo, draw instanced and make a forest)
+            if (shared_ptr<Mesh> tree = ResourceCache::Load<Mesh>("project\\models\\tree\\tree.fbx"))
+            {
+                Entity* entity = tree->GetRootEntity();
+                entity->GetTransform()->SetPosition(Vector3(132.4801f, 68.9992f, 28.2217f));
+                entity->GetTransform()->SetScale(Vector3(0.01f, 0.01f, 0.01f));
+
+                if (Entity* body = entity->GetTransform()->GetDescendantPtrByName("Mobile_Tree_1_1"))
+                {
+                    body->GetComponent<Renderable>()->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\tree\\bark.png");
+                    body->AddComponent<PhysicsBody>();
+                }
+
+                if (Entity* leafes = entity->GetTransform()->GetDescendantPtrByName("Mobile_Tree_1_2"))
+                {
+                    leafes->GetComponent<Renderable>()->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\tree\\leaf.png");
+                }
+            }
+
+            // load a cube
             create_default_cube(Vector3(-5.2354f, 104.6505f, -57.4221f), Vector3(5.0f, 5.0f, 5.0f));
 
             // add physics so we can walk on it
