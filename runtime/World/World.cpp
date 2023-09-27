@@ -104,7 +104,7 @@ namespace Spartan
                 physics_body->SetShapeType(PhysicsShape::Capsule);
                 physics_body->SetMass(82.0f);
                 physics_body->SetRestitution(0.0f);
-                physics_body->SetFriction(0.4f);
+                physics_body->SetFriction(1.0f);
                 physics_body->SetBoundingBox(Vector3(0.5f, 1.8f, 0.5f));
                 physics_body->SetRotationLock(true);
 
@@ -220,6 +220,8 @@ namespace Spartan
         m_default_model_car             = nullptr;
         m_default_model_helmet_flight   = nullptr;
         m_default_model_helmet_damaged  = nullptr;
+        m_default_cube                  = nullptr;
+        m_default_physics_body_camera   = nullptr;
     }
 
     void World::PreTick()
