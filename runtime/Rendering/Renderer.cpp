@@ -862,8 +862,13 @@ namespace Spartan
     
     void Renderer::Present()
     {
-        SP_ASSERT_MSG(!Window::IsMinimised(), "Don't call present if the window is minimized");
         SP_ASSERT(swap_chain->GetLayout() == RHI_Image_Layout::Present_Src);
+
+        if (Window::IsMinimised())
+        {
+            SP_LOG_WARNING("Ignoring call, don't call present if the window is minimized");
+            return;
+        }
 
         swap_chain->Present();
 
