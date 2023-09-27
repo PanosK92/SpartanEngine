@@ -187,7 +187,7 @@ namespace Spartan
         SetOption(Renderer_Option::Bloom,                    0.05f);                                             // non-zero values activate it and define the blend factor.
         SetOption(Renderer_Option::MotionBlur,               1.0f);
         SetOption(Renderer_Option::Ssgi,                     1.0f);
-        SetOption(Renderer_Option::ScreenSpaceShadows,       1.0f);
+        SetOption(Renderer_Option::ScreenSpaceShadows,       static_cast<float>(Renderer_ScreenspaceShadow::Bend));
         SetOption(Renderer_Option::ScreenSpaceReflections,   1.0f);
         SetOption(Renderer_Option::Anisotropy,               16.0f);
         SetOption(Renderer_Option::ShadowResolution,         4096.0f);

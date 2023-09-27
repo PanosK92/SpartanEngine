@@ -255,3 +255,5 @@ ModelManifest.xml
 
 # Rider IDE config dir
 .idea/
+
+*.obj
