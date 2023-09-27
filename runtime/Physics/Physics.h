@@ -47,6 +47,8 @@ namespace Spartan
         static void Shutdown();
         static void Tick();
 
+        static std::vector<btRigidBody*> RayCast(Math::Vector3 start, Math::Vector3 end);
+
         // Rigid body
         static void AddBody(btRigidBody* body);
         static void RemoveBody(btRigidBody*& body);

@@ -137,6 +137,7 @@ namespace Spartan
         void SetShapeType(PhysicsShape type);
 
         // Misc
+        bool IsGrounded() const;
         void ClearForces() const;
         void Activate() const;
         void Deactivate() const;
