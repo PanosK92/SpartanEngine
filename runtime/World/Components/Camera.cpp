@@ -526,7 +526,7 @@ namespace Spartan
                         if (m_physics_body_to_control->IsGrounded())
                         {
                             Vector3 velocity_current = m_physics_body_to_control->GetLinearVelocity();
-                            Vector3 velocity_new     = Vector3(m_movement_speed.x * 100.0f, velocity_current.y, m_movement_speed.z * 100.0f);
+                            Vector3 velocity_new     = Vector3(m_movement_speed.x * 50.0f, velocity_current.y, m_movement_speed.z * 50.0f);
                             m_physics_body_to_control->SetLinearVelocity(velocity_new);
                         }
                     }

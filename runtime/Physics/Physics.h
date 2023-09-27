@@ -65,7 +65,6 @@ namespace Spartan
         static Math::Vector3 GetGravity();
         static btSoftBodyWorldInfo& GetSoftWorldInfo();
         static auto GetPhysicsDebugDraw();
-        static bool IsSimulating();
 
     private:
         // Picking
