@@ -762,7 +762,7 @@ namespace Spartan
 
     void World::CreateDefaultWorldTerrain()
     {
-        Vector3 camera_position = Vector3(148.2399f, 68.2088f, 18.2958f);
+        Vector3 camera_position = Vector3(148.2399f, 69.0f, 18.2958f);
         Vector3 camera_rotation = Vector3(-2.4108f, -81.4733f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\nature.mp3");
 

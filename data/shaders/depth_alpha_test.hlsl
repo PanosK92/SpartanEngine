@@ -23,16 +23,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-Pixel_PosUv mainVS(Vertex_PosUv input)
+void mainPS(Pixel_PosUv input)
 {
-    Pixel_PosUv output;
+    const float3 f3_value     = pass_get_f3_value();
+    const bool has_alpha_mask = f3_value.x == 1.0f;
+    const float alpha         = f3_value.y;
+    
+    if (has_alpha_mask && tex_material_mask.Sample(samplers[sampler_anisotropic_wrap], input.uv).r <= ALPHA_THRESHOLD)
+        discard;
 
-    // position computation has to be an exact match to gbuffer.hlsl
-    input.position.w = 1.0f; 
-    output.position  = mul(input.position, buffer_pass.transform);
-    output.position  = mul(output.position, buffer_frame.view_projection);
-
-    output.uv = input.uv;
-
-    return output;
+    if (alpha == 1.0f && tex_material_albedo.Sample(samplers[sampler_anisotropic_wrap], input.uv).a <= ALPHA_THRESHOLD)
+        discard;
 }
