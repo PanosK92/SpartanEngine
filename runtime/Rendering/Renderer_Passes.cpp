@@ -115,13 +115,45 @@ namespace Spartan
                     Pass_Ssgi(cmd_list);
                     Pass_Ssr(cmd_list, rt1);
 
-                    if (true)
+                    Renderer_ScreenspaceShadow screenspaceshadow_mode = GetOption<Renderer_ScreenspaceShadow>(Renderer_Option::ScreenSpaceShadows);
+
+                    if (screenspaceshadow_mode != Renderer_ScreenspaceShadow::Disabled)
                     {
-                        Pass_Bend_Sss(cmd_list, rt1);
-                    }
-                    else
-                    {
-                        Pass_Sss(cmd_list, rt1);
+                        // acquire lights
+                        const vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Light];
+                        if (entities.empty())
+                            return;
+                        // iterate through all the lights
+                        shared_ptr<Light> light;
+                        for (shared_ptr<Entity> entity : entities)
+                        {
+                            if (shared_ptr<Light> itLight = entity->GetComponent<Light>())
+                            {
+                                if (itLight->GetShadowsEnabled())
+                                {
+                                    auto transform = itLight->GetTransform();
+                                    if (m_camera->IsInViewFrustum(transform->GetPosition(), transform->GetScale()))
+                                    {
+                                        light = itLight;
+                                    }
+                                    else
+                                    {
+                                        //SP_DEBUG_BREAK();
+                                    }
+                                }
+                            }
+                        }
+                        if (light != nullptr)
+                        {
+                            if(screenspaceshadow_mode == Renderer_ScreenspaceShadow::Bend)
+                            {
+                                Pass_Bend_Sss(cmd_list, light);
+                            }
+                            else
+                            {
+                                Pass_Sss(cmd_list, light);
+                            }
+                        }
                     }
 
                     Pass_Light(cmd_list, is_transparent_pass);                  // compute diffuse and specular buffers
@@ -1036,7 +1068,7 @@ namespace Spartan
     *  -	'BilinearThreshold' may not be set to an ideal value (enable 'DebugOutputEdgeMask' to debug it), or try enabling 'IgnoreEdgePixels'
     *  -	These issues can be more common in otherwise occluded areas when BilinearSamplingOffsetMode is false, and may be prevalent if visualizing the shadow - but not noticeable in a lit scene.
     */
-    void Renderer::Pass_Bend_Sss(RHI_CommandList* cmd_list, RHI_Texture* tex_in)
+    void Renderer::Pass_Bend_Sss(RHI_CommandList* cmd_list, std::shared_ptr<Light> light)
     {
         if (!GetOption<bool>(Renderer_Option::ScreenSpaceShadows))
             return;
@@ -1046,85 +1078,64 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        // acquire render targets
-        RHI_Texture* tex_sss = GetRenderTarget(Renderer_RenderTexture::sss).get();
-
-
-        // define pipeline state
-        static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
-
-        // set pipeline state
-        cmd_list->SetPipelineState(pso);
-
-        // set pass constants
-        //m_cb_pass_cpu.set_resolution_out(tex_ssr);
-        //PushPassConstants(cmd_list);
-
-        // set textures
-        BindTexturesGfbuffer(cmd_list);
-        cmd_list->SetTexture(Renderer_BindingsSrv::test_sss, GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));  // reflect from that
-        cmd_list->SetTexture(Renderer_BindingsUav::test_sss, tex_sss); // write to that
-
-        // acquire lights
-        const vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Light];
-        if (entities.empty())
-            return;
-        // iterate through all the lights
-        shared_ptr<Light> light;
-        for (shared_ptr<Entity> entity : entities)
-        {
-            if (shared_ptr<Light> itLight = entity->GetComponent<Light>())
-            {
-                if (itLight->GetShadowsEnabled())
-                {
-                    light = itLight;
-
-                    //if (light->GetLightType() == LightType::Directional);
-                    //else if (light->GetLightType() == LightType::Point);
-                    //else if (light->GetLightType() == LightType::Spot);
-                }
-            }
-        }
-        if (light == nullptr)
-        {
-            return;
-        }
-
         cmd_list->BeginTimeblock("bend sss");
-
-        auto M = light->GetTransform()->GetMatrix();
-        auto VP = m_camera->GetViewProjectionMatrix();
-        auto MVP = M * VP;
-        Vector4 p = Vector4(0.0f, 0.0f, 0.0f, 1.0f) * MVP;
-        // TODO fill inLightProjection and send to GPU
-        float inLightProjection[] = { p.x, p.y, p.z, p.w };
-        int inViewportSize[] = { tex_sss->GetWidth(), tex_sss->GetHeight()};
-        int inMinRenderBounds[] = { 0, 0 };
-        int inMaxRenderBounds[] = { tex_sss->GetWidth(), tex_sss->GetHeight() };
-        Bend::DispatchList dispatchList =
-            Bend::BuildDispatchList(inLightProjection, inViewportSize, inMinRenderBounds, inMaxRenderBounds);
-        // Set 10 values in cbuffer
-        m_cb_pass_cpu.set_f4_value
-        (
-            dispatchList.LightCoordinate_Shader[0],
-            dispatchList.LightCoordinate_Shader[1],
-            dispatchList.LightCoordinate_Shader[2],
-            dispatchList.LightCoordinate_Shader[3]
-        );
-        m_cb_pass_cpu.set_f3_value(1 /*near*/, 0/*far*/, 0);
-        m_cb_pass_cpu.set_f3_value2(1.0f / tex_sss->GetWidth(), 1.0f / tex_sss->GetHeight(), 0.0f);
-
-        for (int iDispatch = 0; iDispatch < dispatchList.DispatchCount; ++iDispatch)
         {
-            const Bend::DispatchData& dispatch = dispatchList.Dispatch[iDispatch];
-            m_cb_pass_cpu.set_resolution_in({ dispatch.WaveOffset_Shader[0], dispatch.WaveOffset_Shader[1] });
-            cmd_list->Dispatch(dispatch.WaveCount[0], dispatch.WaveCount[1], dispatch.WaveCount[2]);
+            // acquire render targets
+            RHI_Texture* tex_sss = GetRenderTarget(Renderer_RenderTexture::sss).get();
+
+            // define pipeline state
+            static RHI_PipelineState pso;
+            pso.shader_compute = shader_c;
+
+            // set pipeline state
+            cmd_list->SetPipelineState(pso);
+
+            // set textures
+            cmd_list->SetTexture(Renderer_BindingsSrv::test_sss, GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));  // read from that
+            cmd_list->SetTexture(Renderer_BindingsUav::test_sss, tex_sss); // write to that
+
+            float near = 1.0f;
+            float far = 0.0f;
+            Math::Matrix VP = m_camera->GetViewProjectionMatrix();
+            Vector4 p = {};
+            if (light->GetLightType() == LightType::Directional)
+            {
+                // WHY flip sign
+                p = Vector4(-light->GetTransform()->GetForward().Normalized(), 0.0f) * VP;
+            }
+            else
+            {
+                p = Vector4(light->GetTransform()->GetPosition(), 1.0f) * VP;
+            }
+
+            float inLightProjection[] = { p.x, p.y, p.z, p.w };
+            int inViewportSize[] = { tex_sss->GetWidth(), tex_sss->GetHeight()};
+            int inMinRenderBounds[] = { 0, 0 };
+            int inMaxRenderBounds[] = { tex_sss->GetWidth(), tex_sss->GetHeight() };
+            Bend::DispatchList dispatchList =
+                Bend::BuildDispatchList(inLightProjection, inViewportSize, inMinRenderBounds, inMaxRenderBounds, false);
+            m_cb_pass_cpu.set_f4_value
+            (
+                dispatchList.LightCoordinate_Shader[0],
+                dispatchList.LightCoordinate_Shader[1],
+                dispatchList.LightCoordinate_Shader[2],
+                dispatchList.LightCoordinate_Shader[3]
+            );
+            m_cb_pass_cpu.set_f3_value(near, far, 0);
+            m_cb_pass_cpu.set_f3_value2(1.0f / tex_sss->GetWidth(), 1.0f / tex_sss->GetHeight(), 0.0f);
+
+            for (int iDispatch = 0; iDispatch < dispatchList.DispatchCount; ++iDispatch)
+            {
+                const Bend::DispatchData& dispatch = dispatchList.Dispatch[iDispatch];
+                m_cb_pass_cpu.set_resolution_in({ dispatch.WaveOffset_Shader[0], dispatch.WaveOffset_Shader[1] });
+                PushPassConstants(cmd_list);
+                cmd_list->Dispatch(dispatch.WaveCount[0], dispatch.WaveCount[1], dispatch.WaveCount[2]);
+            }
         }
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Sss(RHI_CommandList* cmd_list, RHI_Texture* tex_in)
+    void Renderer::Pass_Sss(RHI_CommandList* cmd_list, std::shared_ptr<Light> light)
     {
         if (!GetOption<bool>(Renderer_Option::ScreenSpaceShadows))
             return;
@@ -1134,29 +1145,27 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        // acquire render targets
-        RHI_Texture* tex_sss = GetRenderTarget(Renderer_RenderTexture::sss).get();
-
         cmd_list->BeginTimeblock("sss");
+        {
+            // acquire render targets
+            RHI_Texture* tex_sss = GetRenderTarget(Renderer_RenderTexture::sss).get();
 
-        // define pipeline state
-        static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
+            // define pipeline state
+            static RHI_PipelineState pso;
+            pso.shader_compute = shader_c;
 
-        // set pipeline state
-        cmd_list->SetPipelineState(pso);
+            // set pipeline state
+            cmd_list->SetPipelineState(pso);
 
-        // set pass constants
-        //m_cb_pass_cpu.set_resolution_out(tex_ssr);
-        //PushPassConstants(cmd_list);
+            // update light buffer
+            UpdateConstantBufferLight(cmd_list, light);
+            // set textures
+            BindTexturesGfbuffer(cmd_list);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_sss); // write to that
 
-        // set textures
-        BindTexturesGfbuffer(cmd_list);
-        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_sss); // write to that
-        //cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);  // reflect from that
-
-        // render
-        cmd_list->Dispatch(thread_group_count_x(tex_sss), thread_group_count_y(tex_sss));
+            // render
+            cmd_list->Dispatch(thread_group_count_x(tex_sss), thread_group_count_y(tex_sss));
+        }
         cmd_list->EndTimeblock();
     }
 
