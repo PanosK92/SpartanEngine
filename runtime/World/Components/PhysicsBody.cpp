@@ -161,20 +161,23 @@ namespace Spartan
     void PhysicsBody::OnTick()
     {
         // when the rigid body is inactive or we are in editor mode, allow the user to move/rotate it
-        if (!static_cast<btRigidBody*>(m_rigid_body)->isActive() || !Engine::IsFlagSet(EngineMode::Game))
+        if (!Engine::IsFlagSet(EngineMode::Game))
         {
-            if (GetPosition() != GetTransform()->GetPosition())
+            if (!static_cast<btRigidBody*>(m_rigid_body)->isActive())
             {
-                SetPosition(GetTransform()->GetPosition(), false);
-                SetLinearVelocity(Vector3::Zero, false);
-                SetAngularVelocity(Vector3::Zero, false);
-            }
+                if (GetPosition() != GetTransform()->GetPosition())
+                {
+                    SetPosition(GetTransform()->GetPosition(), false);
+                    SetLinearVelocity(Vector3::Zero, false);
+                    SetAngularVelocity(Vector3::Zero, false);
+                }
 
-            if (GetRotation() != GetTransform()->GetRotation())
-            {
-                SetRotation(GetTransform()->GetRotation(), false);
-                SetLinearVelocity(Vector3::Zero, false);
-                SetAngularVelocity(Vector3::Zero, false);
+                if (GetRotation() != GetTransform()->GetRotation())
+                {
+                    SetRotation(GetTransform()->GetRotation(), false);
+                    SetLinearVelocity(Vector3::Zero, false);
+                    SetAngularVelocity(Vector3::Zero, false);
+                }
             }
         }
     }
@@ -292,7 +295,15 @@ namespace Spartan
         }
     }
 
-    void PhysicsBody::SetAngularVelocity(const Vector3& velocity, const bool activate /*= true*/) const
+    Spartan::Math::Vector3 PhysicsBody::GetLinearVelocity() const
+    {
+        if (!m_rigid_body)
+            return Vector3::Zero;
+
+        return ToVector3(static_cast<btRigidBody*>(m_rigid_body)->getLinearVelocity());
+    }
+    
+	void PhysicsBody::SetAngularVelocity(const Vector3& velocity, const bool activate /*= true*/) const
     {
         if (!m_rigid_body)
             return;
@@ -357,14 +368,7 @@ namespace Spartan
 
     void PhysicsBody::SetPositionLock(bool lock)
     {
-        if (lock)
-        {
-            SetPositionLock(Vector3::One);
-        }
-        else
-        {
-            SetPositionLock(Vector3::Zero);
-        }
+        SetPositionLock(lock ? Vector3::One : Vector3::Zero);
     }
 
     void PhysicsBody::SetPositionLock(const Vector3& lock)
@@ -378,14 +382,7 @@ namespace Spartan
 
     void PhysicsBody::SetRotationLock(bool lock)
     {
-        if (lock)
-        {
-            SetRotationLock(Vector3::One);
-        }
-        else
-        {
-            SetRotationLock(Vector3::Zero);
-        }
+        SetRotationLock(lock ? Vector3::One : Vector3::Zero);
     }
 
     void PhysicsBody::SetRotationLock(const Vector3& lock)
@@ -395,6 +392,11 @@ namespace Spartan
 
         m_rotation_lock = lock;
         static_cast<btRigidBody*>(m_rigid_body)->setAngularFactor(ToBtVector3(Vector3::One - lock));
+
+        // recalculate inertia since bullet doesn't seem to be doing it automatically
+        btVector3 inertia;
+        static_cast<btRigidBody*>(m_rigid_body)->getCollisionShape()->calculateLocalInertia(m_mass, inertia);
+        static_cast<btRigidBody*>(m_rigid_body)->setMassProps(m_mass, inertia * ToBtVector3(Vector3::One - lock));
     }
 
     void PhysicsBody::SetCenterOfMass(const Vector3& center_of_mass)
@@ -685,6 +687,35 @@ namespace Spartan
         UpdateShape();
     }
 
+    bool PhysicsBody::IsGrounded() const
+    {
+        btRigidBody* this_body  = static_cast<btRigidBody*>(m_rigid_body);
+        btCollisionShape* shape = this_body->getCollisionShape();
+
+        // get the lowest point of the AABB
+        btVector3 aabb_min, aabb_max;
+        shape->getAabb(this_body->getWorldTransform(), aabb_min, aabb_max);
+        float min_y = aabb_min.y();
+
+        // get the lowest point of the body
+        Vector3 ray_start = ToVector3(this_body->getWorldTransform().getOrigin());
+        ray_start.y       = min_y + 0.1f; // the 0.1f is to avoid being inside another body, say a height field
+
+        // perform the ray cast a little bit below the lowest point
+        vector<btRigidBody*> hit_bodies = Physics::RayCast(ray_start, ray_start - Vector3(0.0f, 0.2f, 0.0f));
+
+        for (btRigidBody* hit_body : hit_bodies)
+        {
+            // ensure we are not hitting ourselves
+            if (hit_body != this_body)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void PhysicsBody::UpdateShape()
     {
         // delete old shape
@@ -739,8 +770,12 @@ namespace Spartan
                 break;
 
             case PhysicsShape::Capsule:
-                m_shape = new btCapsuleShape(size.x * 0.5f, Helper::Max(size.y - size.x, 0.0f));
+            {
+                float radius = Helper::Max(size.x, size.z) * 0.5f;
+                float height = size.y;
+                m_shape = new btCapsuleShape(radius, height);
                 break;
+            }
 
             case PhysicsShape::Cone:
                 m_shape = new btConeShape(size.x * 0.5f, size.y);

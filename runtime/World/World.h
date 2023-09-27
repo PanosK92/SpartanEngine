@@ -44,7 +44,7 @@ namespace Spartan
         static const std::string& GetFilePath();
 
         //= DEFAULT WORLDS==================================
-        static void CreateDefaultWorldPickablePhysicsCube();
+        static void CreateDefaultWorldCube();
         static void CreateDefaultWorldHelmets();
         static void CreateDefaultWorldCar();
         static void CreateDefaultWorldTerrain();

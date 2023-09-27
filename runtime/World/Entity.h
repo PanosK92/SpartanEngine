@@ -38,7 +38,7 @@ namespace Spartan
         ~Entity();
 
         void Initialize();
-        void Clone();
+        Entity* Clone();
 
         // Runs once, before the simulation ends.
         void OnStart();

@@ -686,11 +686,8 @@ namespace Spartan
     void RHI_CommandList::Draw(const uint32_t vertex_count, uint32_t vertex_start_index /*= 0*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-
-        // Ensure correct state before attempting to draw
         OnDraw();
 
-        // Draw
         vkCmdDraw(
             static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
             vertex_count,                                 // vertexCount
@@ -708,11 +705,8 @@ namespace Spartan
     void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-
-        // Ensure correct state before attempting to draw
         OnDraw();
 
-        // Draw
         vkCmdDrawIndexed(
             static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
             index_count,                                  // indexCount
@@ -722,7 +716,6 @@ namespace Spartan
             0                                             // firstInstance
         );
 
-        // Profile
         if (Profiler::m_granularity == ProfilerGranularity::Full)
         {
             Profiler::m_rhi_draw++;

@@ -176,15 +176,14 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     
     // 1. normalize luminance based on monitor capabilities
     {
-        // normalize the color's luminance
-        float luminance_original   = luminance(color.rgb) * 100; // compute luminance in cd/m^2 and convert it to nits
-        float luminance_normalized = luminance_original / luminance_max_nits;
-    
-        // apply the display's luminance range
-        float luminance_display = luminance_normalized * luminance_max_nits;
-    
-        // replace original luminance with the new display luminance
-        color.rgb *= luminance_display / max(luminance_original, FLT_MIN);
+          // Compute luminance in cd/m^2 and convert it to nits
+          float luminance_original = luminance(color.rgb) * 100; 
+          
+          // Clamp the luminance to the monitor's max luminance
+          float luminance_clamped = min(luminance_original, luminance_max_nits);
+          
+          // Scale the RGB color to match the clamped luminance
+          color.rgb *= luminance_clamped / max(luminance_original, FLT_MIN);
     }
 
     // 2. expose

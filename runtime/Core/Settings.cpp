@@ -214,4 +214,9 @@ namespace Spartan
     {
         return m_third_party_libs;
     }
+
+    bool Settings::HasLoadedUserSettingsFromFile()
+    {
+        return m_has_loaded_user_settings;
+    }
 }

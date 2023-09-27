@@ -59,7 +59,7 @@ namespace Spartan
             // clone all the components
             for (shared_ptr<Component> component_original : entity->GetAllComponents())
             {
-                if (component_original !=nullptr)
+                if (component_original != nullptr)
                 {
                     // component
                     shared_ptr<Component> component_clone = clone->AddComponent(component_original->GetType());
@@ -106,9 +106,9 @@ namespace Spartan
         AddComponent<Transform>();
     }
 
-    void Entity::Clone()
+    Entity* Entity::Clone()
     {
-        clone_entity_and_descendants(this);
+        return clone_entity_and_descendants(this);
     }
 
     void Entity::OnStart()

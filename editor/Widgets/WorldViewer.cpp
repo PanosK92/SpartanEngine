@@ -71,7 +71,7 @@ namespace
                     "6. The Sponza building found in Dubrovnik",
                     "7. Doom E1M1"
                 };
-                static int item_index = 2;
+                static int item_index = 4;
                 static int item_count = IM_ARRAYSIZE(items);
                 ImGui::PushItemWidth(450.0f * Spartan::Window::GetDpiScale());
                 ImGui::ListBox("##list_box", &item_index, items, item_count, item_count);
@@ -84,7 +84,7 @@ namespace
                     {
                         Spartan::ThreadPool::AddTask([]()
                         {
-                            Spartan::World::CreateDefaultWorldPickablePhysicsCube();
+                            Spartan::World::CreateDefaultWorldCube();
                         });
                     }
                     else if (item_index == 2)
@@ -627,7 +627,7 @@ void WorldViewer::ActionEntityCreateCube()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::Renderer::GetStandardMesh(Spartan::Renderer_MeshType::Cube).get());
+    renderable->SetGeometry(Spartan::Renderer_MeshType::Cube);
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Cube");
 }
@@ -636,7 +636,7 @@ void WorldViewer::ActionEntityCreateQuad()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::Renderer::GetStandardMesh(Spartan::Renderer_MeshType::Quad).get());
+    renderable->SetGeometry(Spartan::Renderer_MeshType::Quad);
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Quad");
 }
@@ -645,7 +645,7 @@ void WorldViewer::ActionEntityCreateSphere()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::Renderer::GetStandardMesh(Spartan::Renderer_MeshType::Sphere).get());
+    renderable->SetGeometry(Spartan::Renderer_MeshType::Sphere);
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Sphere");
 }
@@ -654,7 +654,7 @@ void WorldViewer::ActionEntityCreateCylinder()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::Renderer::GetStandardMesh(Spartan::Renderer_MeshType::Cylinder).get());
+    renderable->SetGeometry(Spartan::Renderer_MeshType::Cylinder);
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Cylinder");
 }
@@ -663,7 +663,7 @@ void WorldViewer::ActionEntityCreateCone()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::Renderer::GetStandardMesh(Spartan::Renderer_MeshType::Cone).get());
+    renderable->SetGeometry(Spartan::Renderer_MeshType::Cone);
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Cone");
 }
