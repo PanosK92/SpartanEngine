@@ -53,6 +53,8 @@ namespace Spartan
         static string m_file_path;
         static bool m_resolve                                   = false;
         static bool m_was_in_editor_mode                        = false;
+        static shared_ptr<Entity> m_default_cube                = nullptr;
+        static shared_ptr<Entity> m_default_physics_body_camera = nullptr;
         static shared_ptr<Entity> m_default_environment         = nullptr;
         static shared_ptr<Entity> m_default_model_floor         = nullptr;
         static shared_ptr<Mesh> m_default_model_sponza          = nullptr;
@@ -76,33 +78,47 @@ namespace Spartan
         }
 
         static void create_default_world_common(
-            const bool create_floor,
-            const Math::Vector3& camera_position = Math::Vector3(-2.956f, 1.1474f, -2.9395f),
-            const Math::Vector3& camera_rotation = Math::Vector3(15.9976f, 43.5998f, 0.0f),
+            const Math::Vector3& camera_position = Vector3(0.0f, 1.0f, -10.0f),
+            const Math::Vector3& camera_rotation = Vector3(0.0f, 0.0f, 0.0f),
             const LightIntensity sun_intensity   = LightIntensity::sky_sunlight_noon,
             const char* soundtrack_file_path     = "project\\music\\jake_chudnow_shona.mp3",
             const bool shadows_enabled           = true
         )
         {
-            // Environment
+            // environment
             {
                 m_default_environment = World::CreateEntity();
                 m_default_environment->SetObjectName("environment");
                 m_default_environment->AddComponent<Environment>();
             }
 
-            // Camera
+            // camera
             {
-                shared_ptr<Entity> entity = World::CreateEntity();
-                entity->SetObjectName("camera");
+                // create the camera's root (which will be used for movement)
+                m_default_physics_body_camera = World::CreateEntity();
+                m_default_physics_body_camera->SetObjectName("physics_body_camera");
+                m_default_physics_body_camera->GetTransform()->SetPosition(camera_position);
 
-                entity->AddComponent<Camera>();
-                entity->AddComponent<AudioListener>();
-                entity->GetTransform()->SetPosition(camera_position);
-                entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(camera_rotation));
+                // add a physics body so that the camera can move through the environment in a physical manner
+                PhysicsBody* physics_body = m_default_physics_body_camera->AddComponent<PhysicsBody>().get();
+                physics_body->SetShapeType(PhysicsShape::Capsule);
+                physics_body->SetMass(82.0f);
+                physics_body->SetRestitution(0.0f);
+                physics_body->SetFriction(1.0f);
+                physics_body->SetBoundingBox(Vector3(0.5f, 1.8f, 0.5f));
+                physics_body->SetRotationLock(true);
+
+                // create the entity that will actual hold the camera component
+                shared_ptr<Entity> camera = World::CreateEntity();
+                camera->SetObjectName("component_camera");
+                camera->AddComponent<Camera>()->SetPhysicsBodyToControl(physics_body);
+                camera->AddComponent<AudioListener>();
+                camera->GetTransform()->SetParent(m_default_physics_body_camera->GetTransform());
+                camera->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f)); // place it at the top of the capsule
+                camera->GetTransform()->SetRotation(Quaternion::FromEulerAngles(camera_rotation));
             }
 
-            // Light - Directional
+            // light - directional
             {
                 shared_ptr<Entity> entity = World::CreateEntity();
                 entity->SetObjectName("light_directional");
@@ -111,12 +127,12 @@ namespace Spartan
 
                 shared_ptr<Light> light = entity->AddComponent<Light>();
                 light->SetLightType(LightType::Directional);
-                light->SetColor(Color::light_sky_sunrise);
+                light->SetTemperature(1400.0f);
                 light->SetIntensity(sun_intensity);
                 light->SetShadowsEnabled(shadows_enabled ? (light->GetIntensityLumens() > 0.0f) : false);
             }
 
-            // Music
+            // music
             {
                 shared_ptr<Entity> entity = World::CreateEntity();
                 entity->SetObjectName("audio_source");
@@ -127,17 +143,18 @@ namespace Spartan
             }
 
             // floor
-            if (create_floor)
             {
                 m_default_model_floor = World::CreateEntity();
                 m_default_model_floor->SetObjectName("floor");
                 m_default_model_floor->GetTransform()->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise it a bit to avoid z-fighting with world grid
-                m_default_model_floor->GetTransform()->SetScale(Vector3(30.0f, 1.0f, 30.0f));
+                m_default_model_floor->GetTransform()->SetScale(Vector3(256.0f, 1.0f, 256.0f));
 
                 // add a renderable component
                 shared_ptr<Renderable> renderable = m_default_model_floor->AddComponent<Renderable>();
                 renderable->SetGeometry(Renderer::GetStandardMesh(Renderer_MeshType::Quad).get());
                 renderable->SetDefaultMaterial();
+                renderable->GetMaterial()->SetProperty(MaterialProperty::UvTilingX, 100.0f);
+                renderable->GetMaterial()->SetProperty(MaterialProperty::UvTilingY, 100.0f);
 
                 // add physics components
                 shared_ptr<PhysicsBody> rigid_body = m_default_model_floor->AddComponent<PhysicsBody>();
@@ -146,6 +163,42 @@ namespace Spartan
                 rigid_body->SetRestitution(0.2f);
                 rigid_body->SetShapeType(PhysicsShape::StaticPlane);
             }
+        }
+
+        static void create_default_cube(
+            const Math::Vector3& position = Vector3(0.0f, 4.0f, 0.0f),
+            const Math::Vector3& scale    = Vector3(1.0f,1.0f, 1.0f))
+        {
+            // create entity
+            m_default_cube = World::CreateEntity();
+            m_default_cube->SetObjectName("cube");
+            m_default_cube->GetTransform()->SetPosition(position);
+            m_default_cube->GetTransform()->SetScale(scale);
+            
+            // create material
+            shared_ptr<Material> material = make_shared<Material>();
+            material->SetTexture(MaterialTexture::Color,     "project\\materials\\crate_space\\albedo.png");
+            material->SetTexture(MaterialTexture::Normal,    "project\\materials\\crate_space\\normal.png");
+            material->SetTexture(MaterialTexture::Occlusion, "project\\materials\\crate_space\\ao.png");
+            material->SetTexture(MaterialTexture::Roughness, "project\\materials\\crate_space\\roughness.png");
+            material->SetTexture(MaterialTexture::Metalness, "project\\materials\\crate_space\\metallic.png");
+            material->SetTexture(MaterialTexture::Height,    "project\\materials\\crate_space\\height.png");
+            
+            // create a file path for this material (required for the material to be able to be cached by the resource cache)
+            const string file_path = "project\\materials\\crate_space" + string(EXTENSION_MATERIAL);
+            material->SetResourceFilePath(file_path);
+            
+            // add a renderable component
+            shared_ptr<Renderable> renderable = m_default_cube->AddComponent<Renderable>();
+            renderable->SetGeometry(Renderer::GetStandardMesh(Renderer_MeshType::Cube).get());
+            renderable->SetMaterial(material);
+            
+            // add physics components
+            shared_ptr<PhysicsBody> rigid_body = m_default_cube->AddComponent<PhysicsBody>();
+            rigid_body->SetMass(15.0f);
+            rigid_body->SetRestitution(0.3f);
+            rigid_body->SetFriction(1.0f);
+            rigid_body->SetShapeType(PhysicsShape::Box);
         }
     }
 
@@ -167,6 +220,8 @@ namespace Spartan
         m_default_model_car             = nullptr;
         m_default_model_helmet_flight   = nullptr;
         m_default_model_helmet_damaged  = nullptr;
+        m_default_cube                  = nullptr;
+        m_default_physics_body_camera   = nullptr;
     }
 
     void World::PreTick()
@@ -452,7 +507,7 @@ namespace Spartan
     {
         return m_entities;
     }
-      
+
     void World::Clear()
     {
         // Fire event
@@ -467,52 +522,20 @@ namespace Spartan
         m_resolve = true;
     }
 
-    void World::CreateDefaultWorldPickablePhysicsCube()
+    void World::CreateDefaultWorldCube()
     {
-        create_default_world_common(true);
+        create_default_world_common();
+        create_default_cube();
 
-        // cube
-        {
-            // create entity
-            shared_ptr<Entity> entity = CreateEntity();
-            entity->SetObjectName("cube");
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 4.0f, 0.0f));
-
-            // create material
-            shared_ptr<Material> material = make_shared<Material>();
-            material->SetTexture(MaterialTexture::Color,     "project\\materials\\crate_space\\albedo.png");
-            material->SetTexture(MaterialTexture::Normal,    "project\\materials\\crate_space\\normal.png");
-            material->SetTexture(MaterialTexture::Occlusion, "project\\materials\\crate_space\\ao.png");
-            material->SetTexture(MaterialTexture::Roughness, "project\\materials\\crate_space\\roughness.png");
-            material->SetTexture(MaterialTexture::Metalness, "project\\materials\\crate_space\\metallic.png");
-            material->SetTexture(MaterialTexture::Height,    "project\\materials\\crate_space\\height.png");
-
-            // create a file path for this material (required for the material to be able to be cached by the resource cache)
-            const string file_path = "project\\materials\\crate_space" + string(EXTENSION_MATERIAL);
-            material->SetResourceFilePath(file_path);
-
-            // add a renderable component
-            shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>();
-            renderable->SetGeometry(Renderer::GetStandardMesh(Renderer_MeshType::Cube).get());
-            renderable->SetMaterial(material);
-
-            // add physics components
-            shared_ptr<PhysicsBody> rigid_body = entity->AddComponent<PhysicsBody>();
-            rigid_body->SetMass(1.0f);
-            rigid_body->SetRestitution(1.0f);
-            rigid_body->SetFriction(0.2f);
-            rigid_body->SetShapeType(PhysicsShape::Box);
-        }
-
-        // start simulating (for the physics and the music to work)
+        // start simulating (for the music to play)
         Engine::AddFlag(EngineMode::Game);
     }
 
     void World::CreateDefaultWorldHelmets()
     {
-        Vector3 camera_position = Vector3(-1.1131f, 1.3112f, -1.8209f);
-        Vector3 camera_rotation = Vector3(14.1965f, 43.3965f, 0.0f);
-        create_default_world_common(true, camera_position, camera_rotation, LightIntensity::black_hole);
+        Vector3 camera_position = Vector3(0.0f, 1.0f, -10.0f);
+        Vector3 camera_rotation = Vector3(0.0f, 0.0f, 0.0f);
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::black_hole);
 
         // Point light
         {
@@ -524,6 +547,7 @@ namespace Spartan
             light->SetLightType(LightType::Point);
             light->SetColor(Color::light_light_bulb);
             light->SetIntensity(LightIntensity::bulb_500_watt);
+            light->SetRange(14.78f);
         }
 
         // Flight helmet
@@ -542,6 +566,10 @@ namespace Spartan
             entity->SetObjectName("damaged_helmet");
             entity->GetTransform()->SetPosition(Vector3(1.1713f, 0.4747f, -0.1711f));
             entity->GetTransform()->SetScale(Vector3(0.4343f, 0.4343f, 0.4343f));
+
+            PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+            physics_body->SetMass(8.0f);
+            physics_body->SetFriction(0.95f);
         }
 
         // Start simulating (for the physics and the music to work)
@@ -550,15 +578,15 @@ namespace Spartan
 
     void World::CreateDefaultWorldCar()
     {
-        Vector3 camera_position = Vector3(6.2f, 1.0f, -0.2f);
-        Vector3 camera_rotation = Vector3(0.0f, -90.0f, 0.0f);
-        create_default_world_common(true, camera_position, camera_rotation, LightIntensity::sky_twilight, "project\\music\\isola_any_day.mp3");
+        Vector3 camera_position = Vector3(0.0f, 1.0f, -10.0f);
+        Vector3 camera_rotation = Vector3(0.0f, 0.0f, 0.0f);
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_twilight, "project\\music\\isola_any_day.mp3");
 
-        // Point light - side of car
+        // point light - side of car
         {
             shared_ptr<Entity> entity = CreateEntity();
             entity->SetObjectName("light_point_side");
-            entity->GetTransform()->SetPosition(Vector3(4.0f, 2.5, 3.0f));
+            entity->GetTransform()->SetPosition(Vector3(4.0f, 2.5, -5.41f));
 
             shared_ptr<Light> light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
@@ -566,48 +594,29 @@ namespace Spartan
             light->SetIntensity(LightIntensity::bulb_500_watt);
         }
 
-        // Environment
+        // environment
         {
             m_default_environment->GetComponent<Environment>()->SetFromTextureSphere("project\\environment\\kloppenheim_05_4k.hdr");
         }
 
-        // Load floor material
+        // load floor material
         {
-            // Load textures
-            shared_ptr<RHI_Texture2D> tex_albedo = make_shared<RHI_Texture2D>();
-            tex_albedo->LoadFromFile("project\\materials\\tile_black\\albedo.png");
-
-            shared_ptr<RHI_Texture2D> tex_normal = make_shared<RHI_Texture2D>();
-            tex_normal->LoadFromFile("project\\materials\\tile_black\\normal.png");
-
-            shared_ptr<RHI_Texture2D> tex_occlusion = make_shared<RHI_Texture2D>();
-            tex_occlusion->LoadFromFile("project\\materials\\tile_black\\ao.png");
-
-            shared_ptr<RHI_Texture2D> tex_roughness = make_shared<RHI_Texture2D>();
-            tex_roughness->LoadFromFile("project\\materials\\tile_black\\roughness.png");
-
-            shared_ptr<RHI_Texture2D> tex_metalness = make_shared<RHI_Texture2D>();
-            tex_metalness->LoadFromFile("project\\materials\\tile_black\\metallic.png");
-
-            shared_ptr<RHI_Texture2D> tex_height = make_shared<RHI_Texture2D>();
-            tex_height->LoadFromFile("project\\materials\\tile_black\\height.png");
-
-            // Create material
+            // create material
             shared_ptr<Material> material = make_shared<Material>();
-            material->SetTexture(MaterialTexture::Color, tex_albedo);
-            material->SetTexture(MaterialTexture::Normal, tex_normal);
-            material->SetTexture(MaterialTexture::Occlusion, tex_occlusion);
-            material->SetTexture(MaterialTexture::Roughness, tex_roughness);
-            material->SetTexture(MaterialTexture::Metalness, tex_metalness);
-            material->SetTexture(MaterialTexture::Height, tex_height);
-            material->SetProperty(MaterialProperty::UvTilingX, 10.0f);
-            material->SetProperty(MaterialProperty::UvTilingY, 10.0f);
+            material->SetTexture(MaterialTexture::Color,      "project\\materials\\tile_black\\albedo.png");
+            material->SetTexture(MaterialTexture::Normal,     "project\\materials\\tile_black\\normal.png");
+            material->SetTexture(MaterialTexture::Occlusion,  "project\\materials\\tile_black\\ao.png");
+            material->SetTexture(MaterialTexture::Roughness,  "project\\materials\\tile_black\\roughness.png");
+            material->SetTexture(MaterialTexture::Metalness,  "project\\materials\\tile_black\\metallic.png");
+            material->SetTexture(MaterialTexture::Height,     "project\\materials\\tile_black\\height.png");
+            material->SetProperty(MaterialProperty::UvTilingX, 100.0f);
+            material->SetProperty(MaterialProperty::UvTilingY, 100.0f);
 
-            // Create a file path for this material (required for the material to be able to be cached by the resource cache)
+            // create a file path for this material (required for the material to be able to be cached by the resource cache)
             const string file_path = "project\\materials\\tile_black" + string(EXTENSION_MATERIAL);
             material->SetResourceFilePath(file_path);
 
-            // Set material
+            // set material
             m_default_model_floor->GetComponent<Renderable>()->SetMaterial(material);
         }
 
@@ -618,7 +627,7 @@ namespace Spartan
 
             entity->GetTransform()->SetPosition(Vector3(0.0f, 0.07f, 0.0f));
             entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(90.0f, -4.8800f, -95.0582f));
-            entity->GetTransform()->SetScale(Vector3(0.0125f, 0.0125f, 0.0125f));
+            entity->GetTransform()->SetScale(Vector3(0.02f, 0.02f, 0.02f));
 
             // Break calipers have a wrong rotation, probably a bug with sketchfab auto converting to gltf
             entity->GetTransform()->GetDescendantPtrByName("FR_Caliper_BrakeCaliper_0")->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 75.0f, 0.0f));
@@ -626,28 +635,42 @@ namespace Spartan
 
             // body
             {
-                // metal - make it aluminum
-                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("CarBody_Primary_0")->GetComponent<Renderable>()->GetMaterial())
+                if (Entity* body = entity->GetTransform()->GetDescendantPtrByName("CarBody_Primary_0"))
                 {
-                    material->SetColor(Color::material_aluminum);
-                    material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.1f);
-                    material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.15f);
-                    material->SetProperty(MaterialProperty::Clearcoat,           1.0f);
-                    material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f);
+                    body->AddComponent<PhysicsBody>();
+
+                    if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetColor(Color::material_aluminum);
+                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.1f);
+                        material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.15f);
+                        material->SetProperty(MaterialProperty::Clearcoat,           1.0f);
+                        material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f);
+                    }
                 }
 
                 // plastic
                 {
-                    if (Material* material = entity->GetTransform()->GetDescendantPtrByName("CarBody_Secondary_0")->GetComponent<Renderable>()->GetMaterial())
+                    if (Entity* body = entity->GetTransform()->GetDescendantPtrByName("CarBody_Secondary_0"))
                     {
-                        material->SetColor(Color::material_tire);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
+                        body->AddComponent<PhysicsBody>();
+
+                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                        {
+                            material->SetColor(Color::material_tire);
+                            material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
+                        }
                     }
 
-                    if (Material* material = entity->GetTransform()->GetDescendantPtrByName("CarBody_Trim1_0")->GetComponent<Renderable>()->GetMaterial())
+                    if (Entity* body = entity->GetTransform()->GetDescendantPtrByName("CarBody_Trim1_0"))
                     {
-                        material->SetColor(Color::material_tire);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
+                        body->AddComponent<PhysicsBody>();
+
+                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                        {
+                            material->SetColor(Color::material_tire);
+                            material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
+                        }
                     }
                 }
             }
@@ -741,9 +764,10 @@ namespace Spartan
 
     void World::CreateDefaultWorldTerrain()
     {
-        Vector3 camera_position = Vector3(333.5016f, 57.5577f, 176.9949f);
-        Vector3 camera_rotation = Vector3(7.7930f, -126.5014f, 0.0f);
-        create_default_world_common(false, camera_position, camera_rotation);
+        Vector3 camera_position = Vector3(292.2528f, 18.0f, 96.5821f);
+        Vector3 camera_rotation = Vector3(1.7102f, -86.2713f, 0.0f);
+        bool shadows = false; // directional light shadows have some glitches and also tank the frame rate if you have thousands of trees
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\nature.mp3", shadows);
 
         // terrain
         {
@@ -752,18 +776,77 @@ namespace Spartan
 
             shared_ptr<Terrain> terrain = entity->AddComponent<Terrain>();
             terrain->SetHeightMap(ResourceCache::Load<RHI_Texture2D>("project\\terrain\\height.png", RHI_Texture_Srv));
-            terrain->GenerateAsync();
-        }
+            terrain->GenerateAsync([entity, terrain]()
+            {
+                // water
+                {
+                    shared_ptr<Entity> entity = CreateEntity();
+                    entity->SetObjectName("water");
+                    entity->GetTransform()->SetPosition(Vector3(0.0f, terrain->GetWaterLevel(), 0.0f));
+                    entity->GetTransform()->SetScale(Vector3(2000.0f, 1.0f, 2000.0f));
 
-        // start simulating (for the music to play)
-        Engine::AddFlag(EngineMode::Game);
+                    Renderable* renderable = entity->AddComponent<Renderable>().get();
+                    renderable->SetGeometry(Renderer_MeshType::Quad);
+
+                    // material
+                    {
+                        shared_ptr<Material> material = make_shared<Material>();
+                        material->SetObjectName("Water");
+                        material->SetColor(Color(0.0f, 48.0f / 255.0f, 75.0f / 255.0f));
+                        material->SetTexture(MaterialTexture::Normal, "project\\terrain\\water_normal.jpg");
+                        material->SetProperty(MaterialProperty::IsWater, 1.0f);
+                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.0f);
+                        material->SetProperty(MaterialProperty::UvTilingX, 500.0f);
+                        material->SetProperty(MaterialProperty::UvTilingY, 500.0f);
+
+                        // create a file path for this material (required for the material to be able to be cached by the resource cache)
+                        const string file_path = "project\\terrain\\water_material" + string(EXTENSION_MATERIAL);
+                        material->SetResourceFilePath(file_path);
+
+                        renderable->SetMaterial(material);
+                    }
+                }
+
+                // tree
+                if (shared_ptr<Mesh> tree = ResourceCache::Load<Mesh>("project\\models\\tree\\tree.fbx"))
+                {
+                    Entity* entity = tree->GetRootEntity();
+                    entity->GetTransform()->SetPosition(Vector3(132.4801f, 68.9992f, 28.2217f));
+                    entity->GetTransform()->SetScale(Vector3(0.01f, 0.01f, 0.01f));
+
+                    if (Entity* body = entity->GetTransform()->GetDescendantPtrByName("Mobile_Tree_1_1"))
+                    {
+                        body->GetComponent<Renderable>()->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\tree\\bark.png");
+
+                    }
+
+                    if (Entity* leafes = entity->GetTransform()->GetDescendantPtrByName("Mobile_Tree_1_2"))
+                    {
+                        leafes->GetComponent<Renderable>()->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\tree\\leaf.png");
+                    }
+
+                    // clone the tree to make a forest, todo: draw them instanced
+                    for (const Vector3& tree_position : terrain->GetTreePositions())
+                    {
+                        entity->Clone()->GetTransform()->SetPosition(tree_position);
+                    }
+                }
+
+                // add physics so we can walk on it
+                PhysicsBody* rigid_body = entity->AddComponent<PhysicsBody>().get();
+                rigid_body->SetFriction(1.0f);
+
+                // start simulating (for the music to play)
+                Engine::AddFlag(EngineMode::Game);
+            });
+        }
     }
 
     void World::CreateDefaultWorldSponza()
     {
-        Vector3 camera_position = Vector3(-10.0f, 2.0f, 0.1385f);
-        Vector3 camera_rotation = Vector3(0.0f, 90.0f, 0.0f);
-        create_default_world_common(false, camera_position, camera_rotation, LightIntensity::black_hole, "project\\music\\jake_chudnow_olive.mp3");
+        Vector3 camera_position = Vector3(-27.405f, 2.0f, -0.07f);
+        Vector3 camera_rotation = Vector3(-8.5f, 90.0f, 0.0f);
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::black_hole, "project\\music\\jake_chudnow_olive.mp3");
 
         // Point light
         {
@@ -774,7 +857,7 @@ namespace Spartan
             shared_ptr<Light> light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
             light->SetColor(Color::light_light_bulb);
-            light->SetRange(14.960f);
+            light->SetRange(39.66f);
             light->SetIntensity(LightIntensity::bulb_500_watt);
         }
 
@@ -783,8 +866,8 @@ namespace Spartan
         {
             Entity* entity = m_default_model_sponza->GetRootEntity();
             entity->SetObjectName("sponza");
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.06f, 0.0f));
-            entity->GetTransform()->SetScale(Vector3::One);
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.15f, 0.0f));
+            entity->GetTransform()->SetScale(Vector3(2.0f, 2.0f, 2.0f)); // I actually walked in Sponza, it's that big
 
             // Make the lamp frame not cast shadows, so we can place a light within it
             if (shared_ptr<Renderable> renderable = entity->GetTransform()->GetDescendantPtrByName("lamp_1stfloor_entrance_1")->GetComponent<Renderable>())
@@ -803,8 +886,8 @@ namespace Spartan
             {
                 Entity* entity = m_default_model_sponza_curtains->GetRootEntity();
                 entity->SetObjectName("sponza_curtains");
-                entity->GetTransform()->SetPosition(Vector3(0.0f, 0.06f, 0.0f));
-                entity->GetTransform()->SetScale(Vector3::One);
+                entity->GetTransform()->SetPosition(Vector3(0.0f, 0.15f, 0.0f));
+                entity->GetTransform()->SetScale(Vector3(2.0f, 2.0f, 2.0f)); // I actually walked in Sponza, it's that big
             }
         }
 
@@ -816,14 +899,14 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(-134.9146f, 11.6170f, -31.7093f);
         Vector3 camera_rotation = Vector3(0.0f, 90.0f, 0.0f);
-        create_default_world_common(true, camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\doom_e1m1.mp3", false);
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\doom_e1m1.mp3", false);
 
         // doom level
         if (m_default_model_helmet_flight = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
         {
             Entity* entity = m_default_model_helmet_flight->GetRootEntity();
             entity->SetObjectName("doom_e1m1");
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 9.0f, -355.5300f));
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 1.8f, -355.5300f));
             entity->GetTransform()->SetScale(Vector3(0.1f, 0.1f, 0.1f));
         }
 

@@ -151,13 +151,16 @@ namespace Spartan
             uint32_t width  = Window::GetWidth();
             uint32_t height = Window::GetHeight();
 
-            // The resolution of the actual rendering
-            SetResolutionRender(width, height, false);
+            if (!Settings::HasLoadedUserSettingsFromFile())
+            {
+                // the resolution of the output frame (we can upscale to that linearly or with FSR 2)
+                SetResolutionOutput(width, height, false);
 
-            // The resolution of the output frame *we can upscale to that linearly or with FSR 2)
-            SetResolutionOutput(width, height, false);
+                // the resolution of the actual rendering
+                SetResolutionRender(width, height, false);
+            }
 
-            // The resolution/size of the editor's viewport. This is overridden by the editor based on the actual viewport size
+            // the resolution/size of the editor's viewport. This is overridden by the editor based on the actual viewport size
             SetViewport(static_cast<float>(width), static_cast<float>(height));
 
             // Note: If the editor is active, it will set the render and viewport resolution to what the actual viewport is
@@ -434,34 +437,38 @@ namespace Spartan
 
     void Renderer::SetResolutionRender(uint32_t width, uint32_t height, bool recreate_resources /*= true*/)
     {
-        // Early exit if the resolution is invalid
         if (!RHI_Device::IsValidResolution(width, height))
         {
-            SP_LOG_WARNING("%dx%d is an invalid resolution", width, height);
+            SP_LOG_WARNING("Can't set %dx% as it's an invalid resolution", width, height);
             return;
         }
 
-        // Early exit if the resolution is already set
+        if (width > m_resolution_output.x || height > m_resolution_output.y)
+        {
+            SP_LOG_WARNING("Can't set %dx%d as it's larger then the output resolution %dx%d", width, height, m_resolution_output.x, m_resolution_output.y);
+            return;
+        }
+
         if (m_resolution_render.x == width && m_resolution_render.y == height)
             return;
 
-        // Set resolution
+        // set resolution
         m_resolution_render.x = static_cast<float>(width);
         m_resolution_render.y = static_cast<float>(height);
 
         if (recreate_resources)
         {
-            // Re-create render textures
+            // re-create render textures
             CreateRenderTextures(true, false, false, true);
 
-            // Re-create samplers
+            // re-create samplers
             CreateSamplers(true);
         }
 
-        // Register this resolution as a display mode so it shows up in the editor's render options (it won't happen if already registered)
+        // register this resolution as a display mode so it shows up in the editor's render options (it won't happen if already registered)
         Display::RegisterDisplayMode(static_cast<uint32_t>(width), static_cast<uint32_t>(height), Display::GetRefreshRate(), Display::GetIndex());
 
-        // Log
+        // log
         SP_LOG_INFO("Render resolution has been set to %dx%d", width, height);
     }
 
@@ -577,6 +584,7 @@ namespace Spartan
         m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Emission)                          ? (1U << 7) : 0;
         m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Occlusion)                         ? (1U << 8) : 0;
         m_cb_material_cpu.properties          |= material->GetProperty(MaterialProperty::IsTerrain)                       ? (1U << 9) : 0;
+        m_cb_material_cpu.properties          |= material->GetProperty(MaterialProperty::IsWater)                         ? (1U << 10) : 0;
 
         // Update
         GetConstantBuffer(Renderer_ConstantBuffer::Material)->Update(&m_cb_material_cpu);
@@ -856,8 +864,13 @@ namespace Spartan
     
     void Renderer::Present()
     {
-        SP_ASSERT_MSG(!Window::IsMinimised(), "Don't call present if the window is minimized");
         SP_ASSERT(swap_chain->GetLayout() == RHI_Image_Layout::Present_Src);
+
+        if (Window::IsMinimised())
+        {
+            SP_LOG_WARNING("Ignoring call, don't call present if the window is minimized");
+            return;
+        }
 
         swap_chain->Present();
 

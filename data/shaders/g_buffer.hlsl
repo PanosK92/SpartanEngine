@@ -94,8 +94,10 @@ PixelOutputType mainPS(PixelInputType input)
     float3 normal = input.normal_world.xyz;
     if (has_texture_normal())
     {
+        float2 animated_uv = uv + float(buffer_frame.frame * 0.001f) * material_is_water();
+        
         // Get tangent space normal and apply the user defined intensity. Then transform it to world space.
-        float3 tangent_normal      = normalize(unpack(tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], uv).rgb));
+        float3 tangent_normal      = normalize(unpack(tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], animated_uv).rgb));
         float normal_intensity     = clamp(buffer_material.normal, 0.012f, buffer_material.normal);
         tangent_normal.xy         *= saturate(normal_intensity);
         float3x3 tangent_to_world  = make_tangent_to_world_matrix(input.normal_world, input.tangent_world);

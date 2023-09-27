@@ -55,14 +55,13 @@ namespace Spartan
         static btSoftBodyWorldInfo* m_world_info                          = nullptr;
         static PhysicsDebugDraw* m_debug_draw                             = nullptr;
 
-        // World properties
+        // world properties
         static int m_max_sub_steps        = 1;
         static int m_max_solve_iterations = 256;
         static float m_internal_fps       = 60.0f;
         static Math::Vector3 m_gravity    = Math::Vector3(0.0f, -9.81f, 0.0f);
-        static bool m_simulating          = false;
 
-        // Picking
+        // picking
         static btRigidBody* m_picked_body                = nullptr;
         static btTypedConstraint* m_picked_constraint    = nullptr;
         static int m_activation_state                    = 0;
@@ -80,12 +79,12 @@ namespace Spartan
 
         if (m_soft_body_support)
         {
-            // Create
+            // create
             m_collision_configuration = new btSoftBodyRigidBodyCollisionConfiguration();
             m_collision_dispatcher    = new btCollisionDispatcher(m_collision_configuration);
             m_world                   = new btSoftRigidDynamicsWorld(m_collision_dispatcher, m_broadphase, m_constraint_solver, m_collision_configuration);
 
-            // Setup         
+            // setup         
             m_world_info = new btSoftBodyWorldInfo();
             m_world_info->m_sparsesdf.Initialize();
             m_world->getDispatchInfo().m_enableSPU = true;
@@ -100,24 +99,24 @@ namespace Spartan
         }
         else
         {
-            // Create
+            // create
             m_collision_configuration = new btDefaultCollisionConfiguration();
             m_collision_dispatcher    = new btCollisionDispatcher(m_collision_configuration);
             m_world                   = new btDiscreteDynamicsWorld(m_collision_dispatcher, m_broadphase, m_constraint_solver, m_collision_configuration);
         }
 
-        // Setup
+        // setup
         m_world->setGravity(ToBtVector3(m_gravity));
         m_world->getDispatchInfo().m_useContinuous = true;
         m_world->getSolverInfo().m_splitImpulse    = false;
         m_world->getSolverInfo().m_numIterations   = m_max_solve_iterations;
 
-        // Get version
+        // get version
         const string major = to_string(btGetVersion() / 100);
         const string minor = to_string(btGetVersion()).erase(0, 1);
         Settings::RegisterThirdPartyLib("Bullet", major + "." + minor, "https://github.com/bulletphysics/bullet3");
 
-        // Enabled debug drawing
+        // enabled debug drawing
         {
             m_debug_draw = new PhysicsDebugDraw();
 
@@ -143,18 +142,18 @@ namespace Spartan
     {
         if (!m_world)
             return;
-        
-        // Debug draw
+
+        SP_PROFILE_FUNCTION();
+
+        // debug draw
         if (Renderer::GetOption<bool>(Renderer_Option::Debug_Physics))
         {
             m_world->debugDrawWorld();
         }
 
-        // Don't simulate physics if they are turned off or we are not in game mode
+        // don't simulate physics if they are turned off or we are not in game mode
         if (!Engine::IsFlagSet(EngineMode::Physics) || !Engine::IsFlagSet(EngineMode::Game))
             return;
-
-        SP_PROFILE_FUNCTION();
 
         // Picking
         {
@@ -170,26 +169,47 @@ namespace Spartan
             MovePickedBody();
         }
 
-        // This equation must be met: timeStep < maxSubSteps * fixedTimeStep
+        // this equation must be met: timeStep < maxSubSteps * fixedTimeStep
         auto internal_time_step = 1.0f / m_internal_fps;
         auto max_substeps       = static_cast<int>(Timer::GetDeltaTimeSec() * m_internal_fps) + 1;
         if (m_max_sub_steps < 0)
         {
-            internal_time_step  = static_cast<float>(Timer::GetDeltaTimeSec());
-            max_substeps        = 1;
+            internal_time_step = static_cast<float>(Timer::GetDeltaTimeSec());
+            max_substeps       = 1;
         }
         else if (m_max_sub_steps > 0)
         {
             max_substeps = Helper::Min(max_substeps, m_max_sub_steps);
         }
 
-        // Step the physics world. 
-        m_simulating = true;
+        // step the physics world
         m_world->stepSimulation(static_cast<float>(Timer::GetDeltaTimeSec()), max_substeps, internal_time_step);
-        m_simulating = false;
     }
 
-    void Physics::AddBody(btRigidBody* body)
+    vector<btRigidBody*> Physics::RayCast(Vector3 start, Vector3 end)
+    {
+        btVector3 bt_start = ToBtVector3(start);
+        btVector3 bt_end   = ToBtVector3(end);
+
+        btCollisionWorld::AllHitsRayResultCallback ray_callback(bt_start, bt_end);
+        m_world->rayTest(bt_start, bt_end, ray_callback);
+
+        vector<btRigidBody*> hit_bodies;
+        if (ray_callback.hasHit())
+        {
+            for (int i = 0; i < ray_callback.m_collisionObjects.size(); ++i)
+            {
+                if (const btRigidBody* body = btRigidBody::upcast(ray_callback.m_collisionObjects[i]))
+                {
+                    hit_bodies.push_back(const_cast<btRigidBody*>(body));
+                }
+            }
+        }
+
+        return hit_bodies;
+    }
+
+	void Physics::AddBody(btRigidBody* body)
     {
         if (!m_world)
             return;
@@ -261,11 +281,6 @@ namespace Spartan
     auto Physics::GetPhysicsDebugDraw()
     {
         return m_debug_draw;
-    }
-
-    bool Physics::IsSimulating()
-    {
-        return m_simulating;
     }
 
     void Physics::PickBody()

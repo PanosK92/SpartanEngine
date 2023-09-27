@@ -68,6 +68,7 @@ namespace Spartan
         SingleTextureRoughnessMetalness,
         CanBeEdited,
         IsTerrain,
+        IsWater,
         Undefined
     };
 
@@ -103,6 +104,6 @@ namespace Spartan
  
     private:
         std::array<std::shared_ptr<RHI_Texture>, 10> m_textures;
-        std::array<float, 22> m_properties;
+        std::array<float, 23> m_properties;
     };
 }

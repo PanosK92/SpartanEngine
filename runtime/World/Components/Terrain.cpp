@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Terrain.h"
 #include "Renderable.h"
-#include "PhysicsBody.h"
 #include "../Entity.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../IO/FileStream.h"
@@ -249,6 +248,55 @@ namespace Spartan
         ThreadPool::ParallelLoop(compute_vertex_normals_tangents, vertex_count);
     }
 
+    vector<Vector3> generate_tree_positions(uint32_t tree_count, const vector<RHI_Vertex_PosTexNorTan>& vertices, const vector<uint32_t>& indices, float max_slope_radians, float water_level)
+    {
+        vector<Vector3> positions;
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dis(0, indices.size() / 3 - 1);
+
+        for (uint32_t i = 0; i < tree_count; ++i)
+        {
+            // randomly select a triangle from the mesh
+            uint32_t triangle_index = dis(gen) * 3;
+
+            // get the vertices of the triangle
+            Vector3 v0 = Vector3(vertices[indices[triangle_index]].pos[0], vertices[indices[triangle_index]].pos[1], vertices[indices[triangle_index]].pos[2]);
+            Vector3 v1 = Vector3(vertices[indices[triangle_index + 1]].pos[0], vertices[indices[triangle_index + 1]].pos[1], vertices[indices[triangle_index + 1]].pos[2]);
+            Vector3 v2 = Vector3(vertices[indices[triangle_index + 2]].pos[0], vertices[indices[triangle_index + 2]].pos[1], vertices[indices[triangle_index + 2]].pos[2]);
+
+            // compute the slope of the triangle
+            Vector3 normal = Vector3::Cross(v1 - v0, v2 - v0).Normalized();
+            float slope_radians = acos(Vector3::Dot(normal, Vector3::Up));
+
+            bool is_relatively_flat = slope_radians <= max_slope_radians;
+            bool is_above_water     = ((v0.y + v1.y + v2.y) / 3.0f) > water_level + 0.5f;
+            if (is_relatively_flat && is_above_water)
+            {
+                // generate barycentric coordinates
+                float u = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+                float v = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+
+                if (u + v > 1.0f)
+                {
+                    u = 1.0f - u;
+                    v = 1.0f - v;
+                }
+
+                // compute the position using barycentric coordinates
+                Vector3 position = v0 + u * (v1 - v0) + v * (v2 - v0);
+                positions.push_back(position);
+            }
+            else
+            {
+                // if the slope is too steep, try again
+                --i;
+            }
+        }
+
+        return positions;
+    }
+
     Terrain::Terrain(weak_ptr<Entity> entity) : Component(entity)
     {
 
@@ -284,7 +332,7 @@ namespace Spartan
         m_height_texture = height_map;
     }
 
-    void Terrain::GenerateAsync()
+    void Terrain::GenerateAsync(std::function<void()> on_complete)
     {
         if (m_is_generating)
         {
@@ -306,7 +354,7 @@ namespace Spartan
             return;
         }
 
-        ThreadPool::AddTask([this]()
+        ThreadPool::AddTask([this, on_complete]()
         {
             m_is_generating = true;
 
@@ -330,10 +378,10 @@ namespace Spartan
                 m_vertex_count + // 3. generate_normals_and_tangents()
                 1;               // 4. create mesh
 
-            // Star progress tracking
+            // star progress tracking
             ProgressTracker::GetProgress(ProgressType::Terrain).Start(job_count, "Generating terrain...");
 
-            // Pre-allocate memory for the calculations that follow
+            // pre-allocate memory for the calculations that follow
             vector<Vector3> positions(m_height_samples);
             positions.reserve(m_height_samples);
             vector<RHI_Vertex_PosTexNorTan> vertices(m_vertex_count);
@@ -341,28 +389,35 @@ namespace Spartan
             vector<uint32_t> indices(m_index_count);
             indices.reserve(m_index_count);
 
-            // 1. Generate positions by reading the height map
+            // 1. generate positions by reading the height map
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating positions...");
             generate_positions(positions, m_height_data, width, height);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
-            // 2. Compute vertices and indices
+            // 2. compute vertices and indices
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating vertices and indices...");
             generate_vertices_and_indices(vertices, indices, positions, width, height);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
-            // 3. Compute normals and tangents
+            // 3. compute normals and tangents
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating normals and tangents...");
             generate_normals_and_tangents(indices, vertices);
-            // Jobs done are tracked internally here because this is the most expensive function
+            // jobs done are tracked internally here because this is the most expensive function
 
-            // 4. Create mesh
+            // 4. create mesh
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Creating mesh...");
             UpdateFromVertices(indices, vertices);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
-            // Add physics so we can walk on it
-            m_entity_ptr->AddComponent<PhysicsBody>();
+            // compute tree positions
+            uint32_t tree_count     = 5000;
+            float max_slope_radians = 30.0f * Math::Helper::DEG_TO_RAD;
+            m_trees = generate_tree_positions(tree_count, vertices, indices, max_slope_radians, m_water_level);
+
+            if (on_complete)
+            {
+                on_complete();
+            }
 
             m_is_generating = false;
         });

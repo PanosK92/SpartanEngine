@@ -101,8 +101,8 @@ namespace Spartan
         // tick
         Window::Tick();
         Input::Tick();
-        Physics::Tick();
         Audio::Tick();
+        Physics::Tick();
         World::Tick();
         Renderer::Tick();
 
