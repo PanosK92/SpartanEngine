@@ -51,6 +51,7 @@ namespace Spartan
             uint32_t index_offset  = 0, uint32_t index_count  = 0,
             uint32_t vertex_offset = 0, uint32_t vertex_count = 0
         );
+        void SetGeometry(const Renderer_MeshType mesh_type);
         void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
 
         // Properties
