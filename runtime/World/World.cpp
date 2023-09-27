@@ -764,18 +764,19 @@ namespace Spartan
 
     void World::CreateDefaultWorldTerrain()
     {
-        Vector3 camera_position = Vector3(148.2399f, 69.0f, 18.2958f);
-        Vector3 camera_rotation = Vector3(-2.4108f, -81.4733f, 0.0f);
-        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\nature.mp3");
+        Vector3 camera_position = Vector3(188.3249f, 68.3447f, 26.8369f);
+        Vector3 camera_rotation = Vector3(3.5112f, -105.0692f, 0.0f);
+        bool shadows = false; // directional light shadows have some glitches and also tank the frame rate if you have thousands of trees
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\nature.mp3", shadows);
 
         shared_ptr<Entity> entity = CreateEntity();
         entity->SetObjectName("terrain");
 
         shared_ptr<Terrain> terrain = entity->AddComponent<Terrain>();
         terrain->SetHeightMap(ResourceCache::Load<RHI_Texture2D>("project\\terrain\\height.png", RHI_Texture_Srv));
-        terrain->GenerateAsync([entity]()
+        terrain->GenerateAsync([entity, terrain]()
         {
-            // load a tree (todo, draw instanced and make a forest)
+            // load a tree
             if (shared_ptr<Mesh> tree = ResourceCache::Load<Mesh>("project\\models\\tree\\tree.fbx"))
             {
                 Entity* entity = tree->GetRootEntity();
@@ -785,12 +786,19 @@ namespace Spartan
                 if (Entity* body = entity->GetTransform()->GetDescendantPtrByName("Mobile_Tree_1_1"))
                 {
                     body->GetComponent<Renderable>()->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\tree\\bark.png");
-                    body->AddComponent<PhysicsBody>();
+
                 }
 
                 if (Entity* leafes = entity->GetTransform()->GetDescendantPtrByName("Mobile_Tree_1_2"))
                 {
                     leafes->GetComponent<Renderable>()->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\tree\\leaf.png");
+                }
+
+                // make a forest, todo: draw them instanced
+                for (const Vector3& tree : terrain->GetTrees())
+                {
+                    Entity* clone = entity->Clone();
+                    clone->GetTransform()->SetPosition(tree);
                 }
             }
 
