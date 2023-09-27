@@ -59,7 +59,8 @@ namespace Spartan
         uint32_t GetIndexCount()                     const { return m_index_count; }
         uint64_t GetHeightSampleCount()              const { return m_height_samples; }
         float* GetHeightData()                             { return &m_height_data[0]; }
-        const std::vector<Math::Vector3>& GetTrees() const { return m_trees; }
+        const std::vector<Math::Vector3>& GetTreePositions() const { return m_trees; }
+        float GetWaterLevel()                        const { return m_water_level; }
 
         void GenerateAsync(std::function<void()> on_complete = nullptr);
 
@@ -69,6 +70,7 @@ namespace Spartan
 
         float m_min_y                     = 0.0f;
         float m_max_y                     = 100.0f;
+        float m_water_level               = 10.0f;
         float m_vertex_density            = 1.0f;
         std::atomic<bool> m_is_generating = false;
         uint32_t m_height_samples         = 0;

@@ -248,10 +248,7 @@ namespace Spartan
         ThreadPool::ParallelLoop(compute_vertex_normals_tangents, vertex_count);
     }
 
-#include <cmath> // for std::cos, std::sin, std::acos
-#include <random> // for random engine and distribution
-
-    vector<Vector3> generate_tree_positions(uint32_t tree_count, const vector<RHI_Vertex_PosTexNorTan>& vertices, const vector<uint32_t>& indices, float max_slope_radians)
+    vector<Vector3> generate_tree_positions(uint32_t tree_count, const vector<RHI_Vertex_PosTexNorTan>& vertices, const vector<uint32_t>& indices, float max_slope_radians, float water_level)
     {
         vector<Vector3> positions;
         std::random_device rd;
@@ -268,15 +265,13 @@ namespace Spartan
             Vector3 v1 = Vector3(vertices[indices[triangle_index + 1]].pos[0], vertices[indices[triangle_index + 1]].pos[1], vertices[indices[triangle_index + 1]].pos[2]);
             Vector3 v2 = Vector3(vertices[indices[triangle_index + 2]].pos[0], vertices[indices[triangle_index + 2]].pos[1], vertices[indices[triangle_index + 2]].pos[2]);
 
-            // compute the normal of the triangle
-            Vector3 normal = Vector3::Cross(v1 - v0, v2 - v0);
-            normal.Normalize();
+            // compute the slope of the triangle
+            Vector3 normal = Vector3::Cross(v1 - v0, v2 - v0).Normalized();
+            float slope_radians = acos(Vector3::Dot(normal, Vector3::Up));
 
-            // check the slope constraint
-            float dot_product = Vector3::Dot(normal, Vector3::Up);
-            float angle       = std::acos(dot_product);
-
-            if (angle <= max_slope_radians)
+            bool is_relatively_flat = slope_radians <= max_slope_radians;
+            bool is_above_water     = ((v0.y + v1.y + v2.y) / 3.0f) > water_level + 0.5f;
+            if (is_relatively_flat && is_above_water)
             {
                 // generate barycentric coordinates
                 float u = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
@@ -417,7 +412,7 @@ namespace Spartan
             // compute tree positions
             uint32_t tree_count     = 5000;
             float max_slope_radians = 30.0f * Math::Helper::DEG_TO_RAD;
-            m_trees = generate_tree_positions(tree_count, vertices, indices, max_slope_radians);
+            m_trees = generate_tree_positions(tree_count, vertices, indices, max_slope_radians, m_water_level);
 
             if (on_complete)
             {
