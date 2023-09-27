@@ -633,28 +633,42 @@ namespace Spartan
 
             // body
             {
-                // metal - make it aluminum
-                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("CarBody_Primary_0")->GetComponent<Renderable>()->GetMaterial())
+                if (Entity* body = entity->GetTransform()->GetDescendantPtrByName("CarBody_Primary_0"))
                 {
-                    material->SetColor(Color::material_aluminum);
-                    material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.1f);
-                    material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.15f);
-                    material->SetProperty(MaterialProperty::Clearcoat,           1.0f);
-                    material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f);
+                    body->AddComponent<PhysicsBody>();
+
+                    if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetColor(Color::material_aluminum);
+                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.1f);
+                        material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.15f);
+                        material->SetProperty(MaterialProperty::Clearcoat,           1.0f);
+                        material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f);
+                    }
                 }
 
                 // plastic
                 {
-                    if (Material* material = entity->GetTransform()->GetDescendantPtrByName("CarBody_Secondary_0")->GetComponent<Renderable>()->GetMaterial())
+                    if (Entity* body = entity->GetTransform()->GetDescendantPtrByName("CarBody_Secondary_0"))
                     {
-                        material->SetColor(Color::material_tire);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
+                        body->AddComponent<PhysicsBody>();
+
+                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                        {
+                            material->SetColor(Color::material_tire);
+                            material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
+                        }
                     }
 
-                    if (Material* material = entity->GetTransform()->GetDescendantPtrByName("CarBody_Trim1_0")->GetComponent<Renderable>()->GetMaterial())
+                    if (Entity* body = entity->GetTransform()->GetDescendantPtrByName("CarBody_Trim1_0"))
                     {
-                        material->SetColor(Color::material_tire);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
+                        body->AddComponent<PhysicsBody>();
+
+                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                        {
+                            material->SetColor(Color::material_tire);
+                            material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
+                        }
                     }
                 }
             }
