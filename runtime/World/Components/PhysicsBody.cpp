@@ -161,20 +161,23 @@ namespace Spartan
     void PhysicsBody::OnTick()
     {
         // when the rigid body is inactive or we are in editor mode, allow the user to move/rotate it
-        if (!static_cast<btRigidBody*>(m_rigid_body)->isActive() || !Engine::IsFlagSet(EngineMode::Game))
+        if (!Engine::IsFlagSet(EngineMode::Game))
         {
-            if (GetPosition() != GetTransform()->GetPosition())
+            if (!static_cast<btRigidBody*>(m_rigid_body)->isActive())
             {
-                SetPosition(GetTransform()->GetPosition(), false);
-                SetLinearVelocity(Vector3::Zero, false);
-                SetAngularVelocity(Vector3::Zero, false);
-            }
+                if (GetPosition() != GetTransform()->GetPosition())
+                {
+                    SetPosition(GetTransform()->GetPosition(), false);
+                    SetLinearVelocity(Vector3::Zero, false);
+                    SetAngularVelocity(Vector3::Zero, false);
+                }
 
-            if (GetRotation() != GetTransform()->GetRotation())
-            {
-                SetRotation(GetTransform()->GetRotation(), false);
-                SetLinearVelocity(Vector3::Zero, false);
-                SetAngularVelocity(Vector3::Zero, false);
+                if (GetRotation() != GetTransform()->GetRotation())
+                {
+                    SetRotation(GetTransform()->GetRotation(), false);
+                    SetLinearVelocity(Vector3::Zero, false);
+                    SetAngularVelocity(Vector3::Zero, false);
+                }
             }
         }
     }

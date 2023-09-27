@@ -248,6 +248,60 @@ namespace Spartan
         ThreadPool::ParallelLoop(compute_vertex_normals_tangents, vertex_count);
     }
 
+#include <cmath> // for std::cos, std::sin, std::acos
+#include <random> // for random engine and distribution
+
+    vector<Vector3> generate_tree_positions(uint32_t tree_count, const vector<RHI_Vertex_PosTexNorTan>& vertices, const vector<uint32_t>& indices, float max_slope_radians)
+    {
+        vector<Vector3> positions;
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dis(0, indices.size() / 3 - 1);
+
+        for (uint32_t i = 0; i < tree_count; ++i)
+        {
+            // randomly select a triangle from the mesh
+            uint32_t triangle_index = dis(gen) * 3;
+
+            // get the vertices of the triangle
+            Vector3 v0 = Vector3(vertices[indices[triangle_index]].pos[0], vertices[indices[triangle_index]].pos[1], vertices[indices[triangle_index]].pos[2]);
+            Vector3 v1 = Vector3(vertices[indices[triangle_index + 1]].pos[0], vertices[indices[triangle_index + 1]].pos[1], vertices[indices[triangle_index + 1]].pos[2]);
+            Vector3 v2 = Vector3(vertices[indices[triangle_index + 2]].pos[0], vertices[indices[triangle_index + 2]].pos[1], vertices[indices[triangle_index + 2]].pos[2]);
+
+            // compute the normal of the triangle
+            Vector3 normal = Vector3::Cross(v1 - v0, v2 - v0);
+            normal.Normalize();
+
+            // check the slope constraint
+            float dot_product = Vector3::Dot(normal, Vector3::Up);
+            float angle       = std::acos(dot_product);
+
+            if (angle <= max_slope_radians)
+            {
+                // generate barycentric coordinates
+                float u = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+                float v = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+
+                if (u + v > 1.0f)
+                {
+                    u = 1.0f - u;
+                    v = 1.0f - v;
+                }
+
+                // compute the position using barycentric coordinates
+                Vector3 position = v0 + u * (v1 - v0) + v * (v2 - v0);
+                positions.push_back(position);
+            }
+            else
+            {
+                // if the slope is too steep, try again
+                --i;
+            }
+        }
+
+        return positions;
+    }
+
     Terrain::Terrain(weak_ptr<Entity> entity) : Component(entity)
     {
 
@@ -329,10 +383,10 @@ namespace Spartan
                 m_vertex_count + // 3. generate_normals_and_tangents()
                 1;               // 4. create mesh
 
-            // Star progress tracking
+            // star progress tracking
             ProgressTracker::GetProgress(ProgressType::Terrain).Start(job_count, "Generating terrain...");
 
-            // Pre-allocate memory for the calculations that follow
+            // pre-allocate memory for the calculations that follow
             vector<Vector3> positions(m_height_samples);
             positions.reserve(m_height_samples);
             vector<RHI_Vertex_PosTexNorTan> vertices(m_vertex_count);
@@ -340,25 +394,30 @@ namespace Spartan
             vector<uint32_t> indices(m_index_count);
             indices.reserve(m_index_count);
 
-            // 1. Generate positions by reading the height map
+            // 1. generate positions by reading the height map
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating positions...");
             generate_positions(positions, m_height_data, width, height);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
-            // 2. Compute vertices and indices
+            // 2. compute vertices and indices
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating vertices and indices...");
             generate_vertices_and_indices(vertices, indices, positions, width, height);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
-            // 3. Compute normals and tangents
+            // 3. compute normals and tangents
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating normals and tangents...");
             generate_normals_and_tangents(indices, vertices);
-            // Jobs done are tracked internally here because this is the most expensive function
+            // jobs done are tracked internally here because this is the most expensive function
 
-            // 4. Create mesh
+            // 4. create mesh
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Creating mesh...");
             UpdateFromVertices(indices, vertices);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+
+            // compute tree positions
+            uint32_t tree_count     = 5000;
+            float max_slope_radians = 30.0f * Math::Helper::DEG_TO_RAD;
+            m_trees = generate_tree_positions(tree_count, vertices, indices, max_slope_radians);
 
             if (on_complete)
             {

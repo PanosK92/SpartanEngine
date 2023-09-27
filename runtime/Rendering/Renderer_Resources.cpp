@@ -77,7 +77,7 @@ namespace Spartan
         constant_buffer(Renderer_ConstantBuffer::Light)->Create<Cb_Light>(1600 * m_frames_in_flight);
 
         constant_buffer(Renderer_ConstantBuffer::Material) = make_shared<RHI_ConstantBuffer>(string("material"));
-        constant_buffer(Renderer_ConstantBuffer::Material)->Create<Cb_Material>(3000 * m_frames_in_flight);
+        constant_buffer(Renderer_ConstantBuffer::Material)->Create<Cb_Material>(30000 * m_frames_in_flight);
     }
 
     void Renderer::CreateStructuredBuffers()
