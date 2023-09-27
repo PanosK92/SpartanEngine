@@ -144,13 +144,13 @@ namespace Spartan
         if (!m_world)
             return;
         
-        // Debug draw
+        // debug draw
         if (Renderer::GetOption<bool>(Renderer_Option::Debug_Physics))
         {
             m_world->debugDrawWorld();
         }
 
-        // Don't simulate physics if they are turned off or we are not in game mode
+        // don't simulate physics if they are turned off or we are not in game mode
         if (!Engine::IsFlagSet(EngineMode::Physics) || !Engine::IsFlagSet(EngineMode::Game))
             return;
 
@@ -170,7 +170,7 @@ namespace Spartan
             MovePickedBody();
         }
 
-        // This equation must be met: timeStep < maxSubSteps * fixedTimeStep
+        // this equation must be met: timeStep < maxSubSteps * fixedTimeStep
         auto internal_time_step = 1.0f / m_internal_fps;
         auto max_substeps       = static_cast<int>(Timer::GetDeltaTimeSec() * m_internal_fps) + 1;
         if (m_max_sub_steps < 0)
@@ -183,13 +183,36 @@ namespace Spartan
             max_substeps = Helper::Min(max_substeps, m_max_sub_steps);
         }
 
-        // Step the physics world. 
+        // step the physics world
         m_simulating = true;
         m_world->stepSimulation(static_cast<float>(Timer::GetDeltaTimeSec()), max_substeps, internal_time_step);
         m_simulating = false;
     }
 
-    void Physics::AddBody(btRigidBody* body)
+    vector<btRigidBody*> Physics::RayCast(Vector3 start, Vector3 end)
+    {
+        btVector3 bt_start = ToBtVector3(start);
+        btVector3 bt_end   = ToBtVector3(end);
+
+        btCollisionWorld::AllHitsRayResultCallback ray_callback(bt_start, bt_end);
+        m_world->rayTest(bt_start, bt_end, ray_callback);
+
+        vector<btRigidBody*> hit_bodies;
+        if (ray_callback.hasHit())
+        {
+            for (int i = 0; i < ray_callback.m_collisionObjects.size(); ++i)
+            {
+                if (const btRigidBody* body = btRigidBody::upcast(ray_callback.m_collisionObjects[i]))
+                {
+                    hit_bodies.push_back(const_cast<btRigidBody*>(body));
+                }
+            }
+        }
+
+        return hit_bodies;
+    }
+
+	void Physics::AddBody(btRigidBody* body)
     {
         if (!m_world)
             return;

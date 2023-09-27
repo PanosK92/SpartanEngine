@@ -684,6 +684,35 @@ namespace Spartan
         UpdateShape();
     }
 
+    bool PhysicsBody::IsGrounded() const
+    {
+        btRigidBody* this_body  = static_cast<btRigidBody*>(m_rigid_body);
+        btCollisionShape* shape = this_body->getCollisionShape();
+
+        // get the lowest point of the AABB
+        btVector3 aabb_min, aabb_max;
+        shape->getAabb(this_body->getWorldTransform(), aabb_min, aabb_max);
+        float min_y = aabb_min.y();
+
+        // get the lowest point of the body
+        Vector3 ray_start = ToVector3(this_body->getWorldTransform().getOrigin());
+        ray_start.y       = min_y + 0.1f; // the 0.1f is to avoid being inside another body, say a height field
+
+        // perform the ray cast a little bit below the lowest point
+        vector<btRigidBody*> hit_bodies = Physics::RayCast(ray_start, ray_start - Vector3(0.0f, 0.2f, 0.0f));
+
+        for (btRigidBody* hit_body : hit_bodies)
+        {
+            // ensure we are not hitting ourselves
+            if (hit_body != this_body)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void PhysicsBody::UpdateShape()
     {
         // delete old shape
