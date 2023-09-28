@@ -346,7 +346,7 @@ namespace Spartan
 
             ResourceCache::Remove(m_mesh);
             m_mesh = nullptr;
-            if (shared_ptr<Renderable> renderable = m_entity_ptr->AddComponent<Renderable>())
+            if (shared_ptr<Renderable> renderable = m_entity_ptr->GetComponent<Renderable>())
             {
                 renderable->SetGeometry(nullptr);
             }
@@ -425,7 +425,7 @@ namespace Spartan
 
     void Terrain::UpdateFromMesh(const shared_ptr<Mesh> mesh) const
     {
-        if (shared_ptr<Renderable> renderable = m_entity_ptr->AddComponent<Renderable>())
+        if (shared_ptr<Renderable> renderable = m_entity_ptr->GetComponent<Renderable>())
         {
             renderable->SetGeometry(
                 mesh.get(),
@@ -435,16 +435,10 @@ namespace Spartan
                 0,                     // vertex offset
                 mesh->GetVertexCount() // vertex count
             );
-
-            shared_ptr<Material> material = make_shared<Material>();
-            material->SetResourceFilePath(string("project\\terrain\\material_terrain") + string(EXTENSION_MATERIAL));
-            material->SetTexture(MaterialTexture::Color, "project\\terrain\\grass.jpg");
-            material->SetTexture(MaterialTexture::Color2, "project\\terrain\\rock.jpg");
-            material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
-            material->SetProperty(MaterialProperty::UvTilingX, 100.0f);
-            material->SetProperty(MaterialProperty::UvTilingY, 100.0f);
-
-            m_entity_ptr->GetComponent<Renderable>()->SetMaterial(material);
+        }
+        else
+        {
+            SP_LOG_ERROR("Failed to update, there is no Renderable component");
         }
     }
 
