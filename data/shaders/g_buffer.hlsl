@@ -60,17 +60,57 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
     return output;
 }
 
+float compute_slope(float3 normal)
+{
+    float bias = -0.2f; // increase the bias to favour the slope/rock texture
+    float slope = saturate(dot(normal, float3(0.0f, 1.0f, 0.0f)) - bias);
+    slope = pow(slope, 16.0f);  // increase the exponent to sharpen the transition
+
+    return slope;
+}
+
+float4 sample_albedo(float2 uv, float slope)
+{
+    float4 albedo = tex_material_albedo.Sample(samplers[sampler_anisotropic_wrap], uv);
+    
+    if (material_is_terrain()) // in case of a terrain we do a slope based texture blend
+    {
+        // blend based on slope
+        float4 tex_flat  = albedo;
+        float4 tex_slope = tex_material_albedo_2.Sample(samplers[sampler_anisotropic_wrap], uv);
+        albedo           = lerp(tex_slope, tex_flat, slope);
+    }
+
+    return albedo;
+}
+
+float3 smaple_normal(float2 uv, float slope)
+{
+    float3 normal = tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], uv);
+
+    if (material_is_terrain()) // in case of a terrain we do a slope based texture blend
+    {
+        // blend based on slope
+        float3 tex_flat  = normal;
+        float3 tex_slope = tex_material_normal2.Sample(samplers[sampler_anisotropic_wrap], uv);
+        normal           = lerp(tex_slope, tex_flat, slope);
+    }
+
+    return normal;
+}
+
 PixelOutputType mainPS(PixelInputType input)
 {
-    // Velocity
+    // velocity
     float2 position_uv_current  = ndc_to_uv((input.position_ss_current.xy / input.position_ss_current.w) - buffer_frame.taa_jitter_current);
     float2 position_uv_previous = ndc_to_uv((input.position_ss_previous.xy / input.position_ss_previous.w) - buffer_frame.taa_jitter_previous);
     float2 velocity_uv          = position_uv_current - position_uv_previous;
 
-    // UV
-    float2 uv = input.uv;
-    uv = float2(uv.x * buffer_material.tiling.x + buffer_material.offset.x, uv.y * buffer_material.tiling.y + buffer_material.offset.y);
-
+    // uv
+    float2 uv  = input.uv;
+    uv         = float2(uv.x * buffer_material.tiling.x + buffer_material.offset.x, uv.y * buffer_material.tiling.y + buffer_material.offset.y);
+    uv        += float(buffer_frame.frame * 0.001f) * material_is_water();
+    
     // parallax mapping
     if (has_texture_height())
     {
@@ -92,12 +132,11 @@ PixelOutputType mainPS(PixelInputType input)
 
     // normal
     float3 normal = input.normal_world.xyz;
+    float slope   = compute_slope(normal);
     if (has_texture_normal())
     {
-        float2 animated_uv = uv + float(buffer_frame.frame * 0.001f) * material_is_water();
-        
-        // Get tangent space normal and apply the user defined intensity. Then transform it to world space.
-        float3 tangent_normal      = normalize(unpack(tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], animated_uv).rgb));
+        // get tangent space normal and apply the user defined intensity. Then transform it to world space.
+        float3 tangent_normal      = normalize(unpack(smaple_normal(uv, slope)));
         float normal_intensity     = clamp(buffer_material.normal, 0.012f, buffer_material.normal);
         tangent_normal.xy         *= saturate(normal_intensity);
         float3x3 tangent_to_world  = make_tangent_to_world_matrix(input.normal_world, input.tangent_world);
@@ -108,27 +147,14 @@ PixelOutputType mainPS(PixelInputType input)
     float4 albedo = buffer_material.color;
     if (has_texture_albedo())
     {
-        if (material_is_terrain()) // in case of a terrain we do a slope based texture blend
-        {
-            // sample textures
-            float4 tex_flat  = tex_material_albedo.Sample(samplers[sampler_anisotropic_wrap], uv);
-            float4 tex_slope = tex_material_albedo_2.Sample(samplers[sampler_anisotropic_wrap], uv);
+        float4 albedo_sample = sample_albedo(uv, slope);
 
-            // blend based on slope
-            float slope = saturate(dot(normal, float3(0.0f, 1.0f, 0.0f)));
-            albedo = lerp(tex_slope, tex_flat, pow(slope, 4.0f));
-        }
-        else
-        {
-            float4 albedo_sample = tex_material_albedo.Sample(samplers[sampler_anisotropic_wrap], uv);
-
-            // read albedo's alpha channel as an alpha mask as well.
-            alpha_mask      = min(alpha_mask, albedo_sample.a);
-            albedo_sample.a = 1.0f;
-
-            albedo_sample.rgb  = degamma(albedo_sample.rgb);
-            albedo            *= albedo_sample;
-        }
+        // read albedo's alpha channel as an alpha mask as well.
+        alpha_mask      = min(alpha_mask, albedo_sample.a);
+        albedo_sample.a = 1.0f;
+        
+        albedo_sample.rgb  = degamma(albedo_sample.rgb);
+        albedo            *= albedo_sample;
     }
 
     // discard masked pixels
