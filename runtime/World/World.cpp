@@ -778,6 +778,10 @@ namespace Spartan
             terrain->SetHeightMap(ResourceCache::Load<RHI_Texture2D>("project\\terrain\\height.png", RHI_Texture_Srv));
             terrain->GenerateAsync([entity, terrain]()
             {
+                // add physics so we can walk on it
+                PhysicsBody* rigid_body = entity->AddComponent<PhysicsBody>().get();
+                rigid_body->SetFriction(1.0f);
+
                 // water
                 {
                     shared_ptr<Entity> entity = CreateEntity();
@@ -831,10 +835,6 @@ namespace Spartan
                         entity->Clone()->GetTransform()->SetPosition(tree_position);
                     }
                 }
-
-                // add physics so we can walk on it
-                PhysicsBody* rigid_body = entity->AddComponent<PhysicsBody>().get();
-                rigid_body->SetFriction(1.0f);
 
                 // start simulating (for the music to play)
                 Engine::AddFlag(EngineMode::Game);
