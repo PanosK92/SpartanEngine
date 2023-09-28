@@ -185,6 +185,7 @@ namespace Spartan
 
         // options
         m_options.clear();
+        SetOption(Renderer_Option::DepthPrepass,             1.0f); // As a world becomes bigger and more complex, this almost becomes a requirement
         SetOption(Renderer_Option::Hdr,                      swap_chain->IsHdr() ? 1.0f : 0.0f);                 // HDR is enabled by default if the swapchain is HDR
         SetOption(Renderer_Option::Bloom,                    0.05f);                                             // non-zero values activate it and define the blend factor.
         SetOption(Renderer_Option::MotionBlur,               1.0f);
@@ -202,7 +203,6 @@ namespace Spartan
         SetOption(Renderer_Option::Upsampling,               static_cast<float>(Renderer_Upsampling::FSR2));
         SetOption(Renderer_Option::UpsamplingSharpness,      1.0f);
         SetOption(Renderer_Option::Vsync,                    0.0f);
-        SetOption(Renderer_Option::DepthPrepass,             0.0f);                                               // depth prepass is not always faster, so by default, it's disabled.
         SetOption(Renderer_Option::Debanding,                0.0f);
         SetOption(Renderer_Option::Debug_TransformHandle,    1.0f);
         SetOption(Renderer_Option::Debug_SelectionOutline,   1.0f);
