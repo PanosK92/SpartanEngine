@@ -766,8 +766,8 @@ namespace Spartan
 
     void World::CreateDefaultWorldTerrain()
     {
-        Vector3 camera_position = Vector3(292.2528f, 18.0f, 96.5821f);
-        Vector3 camera_rotation = Vector3(1.7102f, -86.2713f, 0.0f);
+        Vector3 camera_position = Vector3(250.5134f, 13.8523f, 137.7860f);
+        Vector3 camera_rotation = Vector3(-2.8907f, -103.4572f, 0.0f);
         bool shadows = false; // directional light shadows have some glitches and also tank the frame rate if you have thousands of trees
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\nature.mp3", shadows, false);
 
@@ -817,9 +817,10 @@ namespace Spartan
                         shared_ptr<Material> material = make_shared<Material>();
                         material->SetObjectName("Water");
                         material->SetColor(Color(0.0f, 48.0f / 255.0f, 75.0f / 255.0f));
-                        material->SetTexture(MaterialTexture::Normal, "project\\terrain\\water_normal.jpg");
+                        material->SetTexture(MaterialTexture::Normal, "project\\terrain\\water_normal_2.jpeg");
                         material->SetProperty(MaterialProperty::IsWater, 1.0f);
                         material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.0f);
+                        material->SetProperty(MaterialProperty::NormalMultiplier, 0.13f);
                         material->SetProperty(MaterialProperty::UvTilingX, 500.0f);
                         material->SetProperty(MaterialProperty::UvTilingY, 500.0f);
 

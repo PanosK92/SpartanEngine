@@ -62,9 +62,9 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
 
 float compute_slope(float3 normal)
 {
-    float bias = -0.2f; // increase the bias to favour the slope/rock texture
+    float bias  = -0.2f; // increase the bias to favour the slope/rock texture
     float slope = saturate(dot(normal, float3(0.0f, 1.0f, 0.0f)) - bias);
-    slope = pow(slope, 16.0f);  // increase the exponent to sharpen the transition
+    slope       = pow(slope, 16.0f);  // increase the exponent to sharpen the transition
 
     return slope;
 }
@@ -73,11 +73,11 @@ float4 sample_albedo(float2 uv, float slope)
 {
     float4 albedo = tex_material_albedo.Sample(samplers[sampler_anisotropic_wrap], uv);
     
-    if (material_is_terrain()) // in case of a terrain we do a slope based texture blend
+    if (material_is_terrain())
     {
         // blend based on slope
         float4 tex_flat  = albedo;
-        float4 tex_slope = tex_material_albedo_2.Sample(samplers[sampler_anisotropic_wrap], uv);
+        float4 tex_slope = tex_material_albedo_2.Sample(samplers[sampler_anisotropic_wrap], uv * 0.3f);
         albedo           = lerp(tex_slope, tex_flat, slope);
     }
 
@@ -88,11 +88,11 @@ float3 smaple_normal(float2 uv, float slope)
 {
     float3 normal = tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], uv);
 
-    if (material_is_terrain()) // in case of a terrain we do a slope based texture blend
+    if (material_is_terrain())
     {
         // blend based on slope
         float3 tex_flat  = normal;
-        float3 tex_slope = tex_material_normal2.Sample(samplers[sampler_anisotropic_wrap], uv);
+        float3 tex_slope = tex_material_normal2.Sample(samplers[sampler_anisotropic_wrap], uv * 0.3f);
         normal           = lerp(tex_slope, tex_flat, slope);
     }
 
