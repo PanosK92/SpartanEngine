@@ -684,12 +684,18 @@ void Properties::ShowMaterial(Material* material) const
                         auto setter = [&material, &mat_tex](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(mat_tex, texture); };
                         ImGuiSp::image_slot(material->GetTexture_PtrShared(mat_tex), setter);
 
-                        // 2nd texture, used for blending by the terrain
+                        // 2nd textures, used for blending by the terrain
                         if (mat_tex == MaterialTexture::Color)
                         {
                             auto setter = [&material](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(MaterialTexture::Color2, texture); };
                             ImGui::SameLine();
                             ImGuiSp::image_slot(material->GetTexture_PtrShared(MaterialTexture::Color2), setter);
+                        }
+                        else if (mat_tex == MaterialTexture::Normal)
+                        {
+                            auto setter = [&material](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(MaterialTexture::Normal2, texture); };
+                            ImGui::SameLine();
+                            ImGuiSp::image_slot(material->GetTexture_PtrShared(MaterialTexture::Normal2), setter);
                         }
 
                         if (show_modifier)
