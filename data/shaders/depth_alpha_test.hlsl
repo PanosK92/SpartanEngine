@@ -27,11 +27,12 @@ void mainPS(Pixel_PosUv input)
 {
     const float3 f3_value     = pass_get_f3_value();
     const bool has_alpha_mask = f3_value.x == 1.0f;
-    const float alpha         = f3_value.y;
+    const bool has_albedo     = f3_value.y == 1.0f;
+    const float alpha         = f3_value.z;
     
     if (has_alpha_mask && tex_material_mask.Sample(samplers[sampler_anisotropic_wrap], input.uv).r <= ALPHA_THRESHOLD)
         discard;
 
-    if (alpha == 1.0f && tex_material_albedo.Sample(samplers[sampler_anisotropic_wrap], input.uv).a <= ALPHA_THRESHOLD)
+    if (alpha == 1.0f && has_albedo && tex_material_albedo.Sample(samplers[sampler_anisotropic_wrap], input.uv).a <= ALPHA_THRESHOLD)
         discard;
 }
