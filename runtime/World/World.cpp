@@ -82,7 +82,8 @@ namespace Spartan
             const Math::Vector3& camera_rotation = Vector3(0.0f, 0.0f, 0.0f),
             const LightIntensity sun_intensity   = LightIntensity::sky_sunlight_noon,
             const char* soundtrack_file_path     = "project\\music\\jake_chudnow_shona.mp3",
-            const bool shadows_enabled           = true
+            const bool shadows_enabled           = true,
+            const bool load_floor                = true
         )
         {
             // environment
@@ -143,6 +144,7 @@ namespace Spartan
             }
 
             // floor
+            if (load_floor)
             {
                 m_default_model_floor = World::CreateEntity();
                 m_default_model_floor->SetObjectName("floor");
@@ -767,7 +769,7 @@ namespace Spartan
         Vector3 camera_position = Vector3(292.2528f, 18.0f, 96.5821f);
         Vector3 camera_rotation = Vector3(1.7102f, -86.2713f, 0.0f);
         bool shadows = false; // directional light shadows have some glitches and also tank the frame rate if you have thousands of trees
-        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\nature.mp3", shadows);
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\nature.mp3", shadows, false);
 
         // terrain
         {
@@ -780,13 +782,13 @@ namespace Spartan
                 entity->AddComponent<Renderable>();
                 shared_ptr<Material> material = make_shared<Material>();
                 material->SetResourceFilePath(string("project\\terrain\\material_terrain") + string(EXTENSION_MATERIAL));
-                material->SetTexture(MaterialTexture::Color, "project\\terrain\\grass\\albedo.png");
-                material->SetTexture(MaterialTexture::Normal, "project\\terrain\\grass\\normal.png");
-                material->SetTexture(MaterialTexture::Color2, "project\\terrain\\rock\\albedo.png");
-                material->SetTexture(MaterialTexture::Normal2, "project\\terrain\\rock\\normal.png");
+                material->SetTexture(MaterialTexture::Color, "project\\terrain\\grass2\\albedo.png");
+                material->SetTexture(MaterialTexture::Normal, "project\\terrain\\grass2\\normal.png");
+                material->SetTexture(MaterialTexture::Color2, "project\\terrain\\rock_cliff\\albedo.png");
+                material->SetTexture(MaterialTexture::Normal2, "project\\terrain\\rock_cliff\\normal.png");
                 material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
-                material->SetProperty(MaterialProperty::UvTilingX, 100.0f);
-                material->SetProperty(MaterialProperty::UvTilingY, 100.0f);
+                material->SetProperty(MaterialProperty::UvTilingX, 1000.0f);
+                material->SetProperty(MaterialProperty::UvTilingY, 1000.0f);
 
                 entity->GetComponent<Renderable>()->SetMaterial(material);
             }
