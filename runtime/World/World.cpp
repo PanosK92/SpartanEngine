@@ -771,9 +771,27 @@ namespace Spartan
 
         // terrain
         {
+            // create
             shared_ptr<Entity> entity = CreateEntity();
             entity->SetObjectName("terrain");
 
+            // add renderable component with a material
+            {
+                entity->AddComponent<Renderable>();
+                shared_ptr<Material> material = make_shared<Material>();
+                material->SetResourceFilePath(string("project\\terrain\\material_terrain") + string(EXTENSION_MATERIAL));
+                material->SetTexture(MaterialTexture::Color, "project\\terrain\\grass\\albedo.png");
+                material->SetTexture(MaterialTexture::Normal, "project\\terrain\\grass\\normal.png");
+                material->SetTexture(MaterialTexture::Color2, "project\\terrain\\rock\\albedo.png");
+                material->SetTexture(MaterialTexture::Normal2, "project\\terrain\\rock\\normal.png");
+                material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
+                material->SetProperty(MaterialProperty::UvTilingX, 100.0f);
+                material->SetProperty(MaterialProperty::UvTilingY, 100.0f);
+
+                entity->GetComponent<Renderable>()->SetMaterial(material);
+            }
+            
+            // generate a height field
             shared_ptr<Terrain> terrain = entity->AddComponent<Terrain>();
             terrain->SetHeightMap(ResourceCache::Load<RHI_Texture2D>("project\\terrain\\height.png", RHI_Texture_Srv));
             terrain->GenerateAsync([entity, terrain]()

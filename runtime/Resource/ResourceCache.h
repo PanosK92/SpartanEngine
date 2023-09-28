@@ -94,8 +94,8 @@ namespace Spartan
             }
 
             // Ensure that this resource is not already cached
-            if (IsCached(resource->GetObjectName(), resource->GetResourceType()))
-                return GetByName<T>(resource->GetObjectName());
+            if (IsCached(resource->GetResourceFilePathNative(), resource->GetResourceType()))
+                return GetByPath<T>(resource->GetResourceFilePathNative());
 
             std::lock_guard<std::mutex> guard(GetMutex());
 
