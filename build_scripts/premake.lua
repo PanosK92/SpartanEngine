@@ -114,7 +114,11 @@ function solution_configuration()
 
         -- "Debug"
         filter "configurations:debug"
-            defines { "DEBUG", "SPARTAN_RUNTIME_STATIC=0", "SPARTAN_RUNTIME_SHARED=1" }
+            if os.target() == "windows" then
+                defines { "DEBUG", "SPARTAN_RUNTIME_STATIC=1", "SPARTAN_RUNTIME_SHARED=0" }
+            else
+                defines { "DEBUG", "SPARTAN_RUNTIME_STATIC=0", "SPARTAN_RUNTIME_SHARED=1" }
+            end
             flags { "MultiProcessorCompile" }
             optimize "Off"
             symbols "On"
@@ -122,7 +126,11 @@ function solution_configuration()
 
         -- "Release"
         filter "configurations:release"
-            defines { "NDEBUG", "SPARTAN_RUNTIME_STATIC=0", "SPARTAN_RUNTIME_SHARED=1" }
+            if os.target() == "windows" then
+                defines { "DEBUG", "SPARTAN_RUNTIME_STATIC=1", "SPARTAN_RUNTIME_SHARED=0" }
+            else
+                defines { "DEBUG", "SPARTAN_RUNTIME_STATIC=0", "SPARTAN_RUNTIME_SHARED=1" }
+            end
             flags { "MultiProcessorCompile", "LinkTimeOptimization" }
             optimize "Speed"
             symbols "Off"
