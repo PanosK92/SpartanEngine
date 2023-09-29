@@ -133,7 +133,11 @@ function runtime_project_configuration()
         location (RUNTIME_DIR)
         objdir (OBJ_DIR)
         cppdialect (CPP_VERSION)
-        kind "SharedLib"
+        if os.target() == "windows" then
+            kind "StaticLib"
+        else
+            kind "SharedLib"
+        end
         staticruntime "On"
         defines{ "SPARTAN_RUNTIME", API_CPP_DEFINE  }
         if os.target() == "windows" then
