@@ -71,7 +71,7 @@ Toolbar::Toolbar(Editor* editor) : Widget(editor)
 
     m_widgets[IconType::Button_Profiler]        = m_editor->GetWidget<Profiler>();
     m_widgets[IconType::Button_ResourceCache]   = m_editor->GetWidget<ResourceViewer>();
-    m_widgets[IconType::Component_Script]       = m_editor->GetWidget<ShaderEditor>();
+    m_widgets[IconType::Component_Material]     = m_editor->GetWidget<ShaderEditor>();
     m_widgets[IconType::Component_Options]      = m_editor->GetWidget<RenderOptions>();
     m_widgets[IconType::Directory_File_Texture] = m_editor->GetWidget<TextureViewer>();
 
@@ -80,7 +80,14 @@ Toolbar::Toolbar(Editor* editor) : Widget(editor)
 
 void Toolbar::OnTick()
 {
-    // Expose widgets as buttons 
+    // play
+    toolbar_button(
+        IconType::Button_Play, "Play",
+        []() { return Spartan::Engine::IsFlagSet(Spartan::EngineMode::Game); },
+        []() { return Spartan::Engine::ToggleFlag(Spartan::EngineMode::Game); }
+    );
+
+    //  widgets as buttons 
     for (auto& widget_it : m_widgets)
     {
         Widget* widget             = widget_it.second;
@@ -89,29 +96,26 @@ void Toolbar::OnTick()
         toolbar_button(widget_icon, widget->GetTitle(), [this, &widget](){ return widget->GetVisible(); }, [this, &widget]() { widget->SetVisible(true); });
     }
 
-    // Expose functionality as buttons
-    {
-        // Play
-        toolbar_button(
-            IconType::Button_Play, "Play",
-            []() { return Spartan::Engine::IsFlagSet(Spartan::EngineMode::Game); },
-            []() { return Spartan::Engine::ToggleFlag(Spartan::EngineMode::Game); }
-        );
+    // RenderDoc
+    toolbar_button(
+        IconType::Button_RenderDoc, "Captures the next frame and then launches RenderDoc",
+        []() { return false; },
+        []() {
+            if (Spartan::RenderDoc::IsEnabled())
+            {
+                Spartan::RenderDoc::FrameCapture();
+            }
+            else
+            {
+                SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"RHI_Implemenation.cpp\", and set \"renderdoc\" to \"true\"");
+            }
+        }
+    );
 
-        // RenderDoc
-        toolbar_button(
-            IconType::Button_RenderDoc, "Captures the next frame and then launches RenderDoc",
-            []() { return false; },
-            []() {
-                    if (Spartan::RenderDoc::IsEnabled())
-                    {
-                        Spartan::RenderDoc::FrameCapture();
-                    }
-                    else
-                    {
-                        SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"RHI_Implemenation.cpp\", and set \"renderdoc\" to \"true\"");
-                    }
-                }
-        );
-    }
+    // screenshot
+    //toolbar_button(
+    //    IconType::Screenshot, "Screenshot",
+    //    []() { return false; },
+    //    []() { return Spartan::Renderer::Screenshot("screenshot.png"); }
+    //);
 }

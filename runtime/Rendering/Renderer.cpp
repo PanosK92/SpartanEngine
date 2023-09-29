@@ -48,7 +48,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
+    unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
     Cb_Frame Renderer::m_cb_frame_cpu;
     Pcb_Pass Renderer::m_cb_pass_cpu;
     Cb_Light Renderer::m_cb_light_cpu;
@@ -66,10 +66,6 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
 
     namespace
     {
-        // states
-        atomic<bool> is_rendering_allowed  = true;
-        bool dirty_orthographic_projection = true;
-
         // resolution & viewport
         Math::Vector2 m_resolution_render = Math::Vector2::Zero;
         Math::Vector2 m_resolution_output = Math::Vector2::Zero;
@@ -91,7 +87,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
         RHI_CommandList* cmd_current = nullptr;
 
         // misc
-        array<float, 34> m_options;
+        unordered_map<Renderer_Option, float> m_options;
         mutex mutex_entity_addition;
         vector<shared_ptr<Entity>> m_entities_to_add;
         uint64_t frame_num                       = 0;
@@ -100,6 +96,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
         float near_plane                         = 0.0f;
         float far_plane                          = 1.0f;
         uint32_t buffers_frames_since_last_reset = 0;
+        bool dirty_orthographic_projection       = true;
 
         void sort_renderables(Camera* camera, vector<shared_ptr<Entity>>* renderables, const bool are_transparent)
         {
@@ -153,13 +150,16 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
             uint32_t width  = Window::GetWidth();
             uint32_t height = Window::GetHeight();
 
-            // The resolution of the actual rendering
-            SetResolutionRender(width, height, false);
+            if (!Settings::HasLoadedUserSettingsFromFile())
+            {
+                // the resolution of the output frame (we can upscale to that linearly or with FSR 2)
+                SetResolutionOutput(width, height, false);
 
-            // The resolution of the output frame *we can upscale to that linearly or with FSR 2)
-            SetResolutionOutput(width, height, false);
+                // the resolution of the actual rendering
+                SetResolutionRender(width, height, false);
+            }
 
-            // The resolution/size of the editor's viewport. This is overridden by the editor based on the actual viewport size
+            // the resolution/size of the editor's viewport. This is overridden by the editor based on the actual viewport size
             SetViewport(static_cast<float>(width), static_cast<float>(height));
 
             // Note: If the editor is active, it will set the render and viewport resolution to what the actual viewport is
@@ -184,7 +184,8 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
         RHI_AMD_FidelityFX::Initialize();
 
         // options
-        m_options.fill(0.0f);
+        m_options.clear();
+        SetOption(Renderer_Option::DepthPrepass,             1.0f); // As a world becomes bigger and more complex, this almost becomes a requirement
         SetOption(Renderer_Option::Hdr,                      swap_chain->IsHdr() ? 1.0f : 0.0f);                 // HDR is enabled by default if the swapchain is HDR
         SetOption(Renderer_Option::Bloom,                    0.05f);                                             // non-zero values activate it and define the blend factor.
         SetOption(Renderer_Option::MotionBlur,               1.0f);
@@ -202,7 +203,6 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
         SetOption(Renderer_Option::Upsampling,               static_cast<float>(Renderer_Upsampling::FSR2));
         SetOption(Renderer_Option::UpsamplingSharpness,      1.0f);
         SetOption(Renderer_Option::Vsync,                    0.0f);
-        SetOption(Renderer_Option::DepthPrepass,             0.0f);                                               // depth prepass is not always faster, so by default, it's disabled.
         SetOption(Renderer_Option::Debanding,                0.0f);
         SetOption(Renderer_Option::Debug_TransformHandle,    1.0f);
         SetOption(Renderer_Option::Debug_SelectionOutline,   1.0f);
@@ -232,9 +232,9 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
         // events
         {
             // subscribe
-            SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,                   SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
-            SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,                      SP_EVENT_HANDLER_STATIC(OnClear));
-            SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullscreenWindowedToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
+            SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,           SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
+            SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,              SP_EVENT_HANDLER_STATIC(OnClear));
+            SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
 
             // fire
             SP_FIRE_EVENT(EventType::RendererOnInitialized);
@@ -283,9 +283,6 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
             SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
         }
 
-        if (!is_rendering_allowed)
-            return;
-
         // delete any RHI resources that have accumulated
         if (RHI_Device::DeletionQueueNeedsToParse())
         {
@@ -321,7 +318,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
 
         // update frame buffer
         {
-            // Matrices
+            // matrices
             {
                 if (m_camera)
                 {
@@ -379,7 +376,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
             m_cb_frame_cpu.gamma               = GetOption<float>(Renderer_Option::Gamma);
             m_cb_frame_cpu.frame               = static_cast<uint32_t>(frame_num);
 
-            // These must match what Common_Buffer.hlsl is reading
+            // these must match what Common_Buffer.hlsl is reading
             m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections), 1 << 0);
             m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Ssgi),                   1 << 1);
             m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::VolumetricFog),          1 << 2);
@@ -389,7 +386,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
         Pass_Frame(cmd_current);
 
         // blit to back buffer when in full screen
-        if (Window::IsFullScreen())
+        if (!Engine::IsFlagSet(EngineMode::Editor))
         {
             cmd_current->BeginMarker("copy_to_back_buffer");
             cmd_current->Blit(GetRenderTarget(Renderer_RenderTexture::frame_output).get(), swap_chain.get());
@@ -404,6 +401,14 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
 
         // track frame
         frame_num++;
+    }
+
+    void Renderer::PostTick()
+    {
+        if (!Engine::IsFlagSet(EngineMode::Editor))
+        {
+            Present();
+        }
     }
 
     const RHI_Viewport& Renderer::GetViewport()
@@ -431,34 +436,38 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
 
     void Renderer::SetResolutionRender(uint32_t width, uint32_t height, bool recreate_resources /*= true*/)
     {
-        // Early exit if the resolution is invalid
         if (!RHI_Device::IsValidResolution(width, height))
         {
-            SP_LOG_WARNING("%dx%d is an invalid resolution", width, height);
+            SP_LOG_WARNING("Can't set %dx% as it's an invalid resolution", width, height);
             return;
         }
 
-        // Early exit if the resolution is already set
+        if (width > m_resolution_output.x || height > m_resolution_output.y)
+        {
+            SP_LOG_WARNING("Can't set %dx%d as it's larger then the output resolution %dx%d", width, height, m_resolution_output.x, m_resolution_output.y);
+            return;
+        }
+
         if (m_resolution_render.x == width && m_resolution_render.y == height)
             return;
 
-        // Set resolution
+        // set resolution
         m_resolution_render.x = static_cast<float>(width);
         m_resolution_render.y = static_cast<float>(height);
 
         if (recreate_resources)
         {
-            // Re-create render textures
+            // re-create render textures
             CreateRenderTextures(true, false, false, true);
 
-            // Re-create samplers
+            // re-create samplers
             CreateSamplers(true);
         }
 
-        // Register this resolution as a display mode so it shows up in the editor's render options (it won't happen if already registered)
+        // register this resolution as a display mode so it shows up in the editor's render options (it won't happen if already registered)
         Display::RegisterDisplayMode(static_cast<uint32_t>(width), static_cast<uint32_t>(height), Display::GetRefreshRate(), Display::GetIndex());
 
-        // Log
+        // log
         SP_LOG_INFO("Render resolution has been set to %dx%d", width, height);
     }
 
@@ -574,6 +583,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
         m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Emission)                          ? (1U << 7) : 0;
         m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Occlusion)                         ? (1U << 8) : 0;
         m_cb_material_cpu.properties          |= material->GetProperty(MaterialProperty::IsTerrain)                       ? (1U << 9) : 0;
+        m_cb_material_cpu.properties          |= material->GetProperty(MaterialProperty::IsWater)                         ? (1U << 10) : 0;
 
         // Update
         GetConstantBuffer(Renderer_ConstantBuffer::Material)->Update(&m_cb_material_cpu);
@@ -740,8 +750,8 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
             }
         }
 
-        // Early exit if the value is already set
-        if (m_options[static_cast<uint32_t>(option)] == value)
+        // early exit if the value is already set
+        if ((m_options.find(option) != m_options.end()) && m_options[option] == value)
             return;
 
         // Reject changes (if needed)
@@ -757,7 +767,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
         }
 
         // Set new value
-        m_options[static_cast<uint32_t>(option)] = value;
+        m_options[option] = value;
 
         // Handle cascading changes
         {
@@ -772,7 +782,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
                     // Implicitly enable FSR since it's doing TAA.
                     if (!fsr_enabled)
                     {
-                        m_options[static_cast<uint32_t>(Renderer_Option::Upsampling)] = static_cast<float>(Renderer_Upsampling::FSR2);
+                        m_options[Renderer_Option::Upsampling] = static_cast<float>(Renderer_Upsampling::FSR2);
                         RHI_AMD_FidelityFX::FSR2_ResetHistory();
                         SP_LOG_INFO("Enabled FSR 2.0 since it's used for TAA.");
                     }
@@ -782,7 +792,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
                     // Implicitly disable FSR since it's doing TAA
                     if (fsr_enabled)
                     {
-                        m_options[static_cast<uint32_t>(Renderer_Option::Upsampling)] = static_cast<float>(Renderer_Upsampling::Linear);
+                        m_options[Renderer_Option::Upsampling] = static_cast<float>(Renderer_Upsampling::Linear);
                         SP_LOG_INFO("Disabed FSR 2.0 since it's used for TAA.");
                     }
                 }
@@ -797,7 +807,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
                     // Implicitly disable TAA since FSR 2.0 is doing it
                     if (taa_enabled)
                     {
-                        m_options[static_cast<uint32_t>(Renderer_Option::Antialiasing)] = static_cast<float>(Renderer_Antialiasing::Disabled);
+                        m_options[Renderer_Option::Antialiasing] = static_cast<float>(Renderer_Antialiasing::Disabled);
                         SP_LOG_INFO("Disabled TAA since it's done by FSR 2.0.");
                     }
                 }
@@ -806,7 +816,7 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
                     // Implicitly enable TAA since FSR 2.0 is doing it
                     if (!taa_enabled)
                     {
-                        m_options[static_cast<uint32_t>(Renderer_Option::Antialiasing)] = static_cast<float>(Renderer_Antialiasing::Taa);
+                        m_options[Renderer_Option::Antialiasing] = static_cast<float>(Renderer_Antialiasing::Taa);
                         RHI_AMD_FidelityFX::FSR2_ResetHistory();
                         SP_LOG_INFO("Enabled TAA since FSR 2.0 does it.");
                     }
@@ -836,12 +846,12 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
         }
     }
 
-    array<float, 34>& Renderer::GetOptions()
+    unordered_map<Renderer_Option, float>& Renderer::GetOptions()
     {
         return m_options;
     }
 
-    void Renderer::SetOptions(array<float, 34> options)
+    void Renderer::SetOptions(const std::unordered_map<Renderer_Option, float>& options)
     {
         m_options = options;
     }
@@ -853,11 +863,13 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
     
     void Renderer::Present()
     {
-        if (!is_rendering_allowed)
-            return;
-
-        SP_ASSERT_MSG(!Window::IsMinimised(), "Don't call present if the window is minimized");
         SP_ASSERT(swap_chain->GetLayout() == RHI_Image_Layout::Present_Src);
+
+        if (Window::IsMinimised())
+        {
+            SP_LOG_WARNING("Ignoring call, don't call present if the window is minimized");
+            return;
+        }
 
         swap_chain->Present();
 
@@ -918,9 +930,15 @@ unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderabl
         cmd_list->SetTexture(Renderer_BindingsSrv::material_roughness, material->GetTexture(MaterialTexture::Roughness));
         cmd_list->SetTexture(Renderer_BindingsSrv::material_metallic,  material->GetTexture(MaterialTexture::Metalness));
         cmd_list->SetTexture(Renderer_BindingsSrv::material_normal,    material->GetTexture(MaterialTexture::Normal));
+        cmd_list->SetTexture(Renderer_BindingsSrv::material_normal2,   material->GetTexture(MaterialTexture::Normal2));
         cmd_list->SetTexture(Renderer_BindingsSrv::material_height,    material->GetTexture(MaterialTexture::Height));
         cmd_list->SetTexture(Renderer_BindingsSrv::material_occlusion, material->GetTexture(MaterialTexture::Occlusion));
         cmd_list->SetTexture(Renderer_BindingsSrv::material_emission,  material->GetTexture(MaterialTexture::Emission));
         cmd_list->SetTexture(Renderer_BindingsSrv::material_mask,      material->GetTexture(MaterialTexture::AlphaMask));
+    }
+
+    void Renderer::Screenshot(const string& file_path)
+    {
+        GetFrameTexture()->SaveAsImage(file_path);
     }
 }

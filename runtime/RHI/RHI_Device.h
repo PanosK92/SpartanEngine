@@ -78,10 +78,10 @@ namespace Spartan
         static void* MemoryGetMappedDataFromBuffer(void* resource);
         static void MemoryBufferCreate(void*& resource, const uint64_t size, uint32_t usage, uint32_t memory_property_flags, const void* data_initial, const char* name);
         static void MemoryBufferDestroy(void*& resource);
-        static void MemoryTextureCreate(void* vk_image_creat_info, void*& resource, const char* name);
+        static void MemoryTextureCreate(RHI_Texture* texture);
         static void MemoryTextureDestroy(void*& resource);
         static void MemoryMap(void* resource, void*& mapped_data);
-        static void MemoryUnmap(void* resource, void*& mapped_data);
+        static void MemoryUnmap(void* resource);
         static uint32_t MemoryGetUsageMb();
         static uint32_t MemoryGetBudgetMb();
 

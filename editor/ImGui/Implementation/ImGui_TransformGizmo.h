@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Entity.h"
 #include "Rendering/Renderer.h"
 #include "Input/Input.h"
+#include "Engine.h"
 //======================================
 
 namespace ImGui::TransformGizmo
@@ -47,6 +48,9 @@ namespace ImGui::TransformGizmo
 
     static void tick()
     {
+        if (Spartan::Engine::IsFlagSet(Spartan::EngineMode::Game))
+            return;
+
         std::shared_ptr<Spartan::Camera> camera = Spartan::Renderer::GetCamera();
         if (!camera)
             return;
@@ -61,7 +65,7 @@ namespace ImGui::TransformGizmo
 
         // Switch between position, rotation and scale operations, with W, E and R respectively
         static ImGuizmo::OPERATION transform_operation = ImGuizmo::TRANSLATE;
-        if (!camera->IsControledInFirstPerson())
+        if (!camera->IsActivelyControlled())
         {
             if (Spartan::Input::GetKeyDown(Spartan::KeyCode::W))
             {

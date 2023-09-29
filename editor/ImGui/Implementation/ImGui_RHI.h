@@ -423,6 +423,14 @@ namespace ImGui::RHI
         cmd_list->EndTimeblock();
         cmd_list->End();
         cmd_list->Submit();
+
+        if (!is_child_window)
+        {
+            if (!Spartan::Window::IsMinimised())
+            {
+                Spartan::Renderer::Present();
+            }
+        }
     }
 
     static void window_create(ImGuiViewport* viewport)

@@ -79,9 +79,9 @@ bool FileDialog::Show(bool* is_visible, Editor* editor, string* directory /*= nu
     m_is_hovering_item   = false;
     m_is_hovering_window = false;
     
-    ShowTop(is_visible, editor); // Top menu
-    ShowMiddle();                // Contents of the current directory
-    ShowBottom(is_visible);      // Bottom menu
+    ShowTop(is_visible, editor); // top menu
+    ShowMiddle();                // contents of the current directory
+    ShowBottom(is_visible);      // bottom menu
 
     if (m_is_window)
     {

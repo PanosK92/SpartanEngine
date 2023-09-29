@@ -66,9 +66,9 @@ namespace Spartan
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,     SP_EVENT_HANDLER_STATIC(Shutdown));
     }
 
-    bool ResourceCache::IsCached(const string& resource_name, const ResourceType resource_type)
+    bool ResourceCache::IsCached(const string& resource_file_path_native, const ResourceType resource_type)
     {
-        SP_ASSERT(!resource_name.empty());
+        SP_ASSERT(!resource_file_path_native.empty());
 
         lock_guard<mutex> guard(m_mutex);
 
@@ -77,7 +77,7 @@ namespace Spartan
             if (resource->GetResourceType() != resource_type)
                 continue;
 
-            if (resource_name == resource->GetObjectName())
+            if (resource_file_path_native == resource->GetResourceFilePathNative())
                 return true;
         }
 

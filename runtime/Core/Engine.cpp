@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================================
+//= INCLUDES ========================================
 #include "pch.h"
 #include "Window.h"
 #include "ThreadPool.h"
@@ -32,8 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceCache.h"
 #include "../Resource/Import/FontImporter.h"
 #include "../Resource/Import/ModelImporter.h"
-#include "../Resource/Import/ImageImporter.h"
-//===========================================
+#include "../Resource/Import/ImageImporterExporter.h"
+//===================================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -49,6 +49,7 @@ namespace Spartan
 
     void Engine::Initialize()
     {
+        AddFlag(EngineMode::Editor);
         AddFlag(EngineMode::Physics);
         AddFlag(EngineMode::Game);
 
@@ -56,7 +57,7 @@ namespace Spartan
         Stopwatch timer_initialize;
         {
             FontImporter::Initialize();
-            ImageImporter::Initialize();
+            ImageImporterExporter::Initialize();
             ModelImporter::Initialize();
             Window::Initialize();
             Input::Initialize();
@@ -86,7 +87,7 @@ namespace Spartan
         Audio::Shutdown();
         Profiler::Shutdown();
         Window::Shutdown();
-        ImageImporter::Shutdown();
+        ImageImporterExporter::Shutdown();
         FontImporter::Shutdown();
         Settings::Shutdown();
     }
@@ -100,8 +101,8 @@ namespace Spartan
         // tick
         Window::Tick();
         Input::Tick();
-        Physics::Tick();
         Audio::Tick();
+        Physics::Tick();
         World::Tick();
         Renderer::Tick();
 
@@ -109,6 +110,7 @@ namespace Spartan
         Input::PostTick();
         Timer::PostTick();
         Profiler::PostTick();
+        Renderer::PostTick();
     }
 
     void Engine::AddFlag(const EngineMode flag)

@@ -39,6 +39,7 @@ namespace Spartan
     class Entity;
     class Renderable;
     class Renderer;
+    class PhysicsBody;
 
     enum ProjectionType
     {
@@ -101,8 +102,6 @@ namespace Spartan
         // Exposure
         float GetEv100()    const { return std::log2(m_aperture / m_shutter_speed * 100.0f / m_iso); }
         float GetExposure() const { return 1.0f / (std::pow(2.0f, GetEv100())); }
-
-
         // Planes/projection
         void SetNearPlane(float near_plane);
         void SetFarPlane(float far_plane);
@@ -130,9 +129,10 @@ namespace Spartan
         void SetClearColor(const Color& color)                { m_clear_color = color; }
 
         // First person control
-        bool GetFirstPersonControlEnabled()            const  { return m_first_person_control_enabled; }
-        void SetFirstPersonControlEnabled(const bool enabled) { m_first_person_control_enabled = enabled; }
-        bool IsControledInFirstPerson() const;
+        bool GetIsControlEnabled()             const { return m_first_person_control_enabled; }
+        void SetIsControlEnalbed(const bool enabled) { m_first_person_control_enabled = enabled; }
+        bool IsActivelyControlled()            const { return m_is_controlled_by_keyboard_mouse; }
+        void SetPhysicsBodyToControl(PhysicsBody* physics_body);
 
         // Misc
         void MakeDirty() { m_is_dirty = true; }
@@ -182,6 +182,7 @@ namespace Spartan
         float m_lerp_to_target_distance            = 0.0f;
         Math::Vector3 m_lerp_to_target_position    = Math::Vector3::Zero;
         Math::Quaternion m_lerp_to_target_rotation = Math::Quaternion::Identity;
+        PhysicsBody* m_physics_body_to_control     = nullptr;
         RHI_Viewport m_last_known_viewport;
         Math::Ray m_ray;
         Math::Frustum m_frustum;

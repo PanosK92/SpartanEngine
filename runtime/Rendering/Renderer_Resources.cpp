@@ -77,7 +77,7 @@ namespace Spartan
         constant_buffer(Renderer_ConstantBuffer::Light)->Create<Cb_Light>(1600 * m_frames_in_flight);
 
         constant_buffer(Renderer_ConstantBuffer::Material) = make_shared<RHI_ConstantBuffer>(string("material"));
-        constant_buffer(Renderer_ConstantBuffer::Material)->Create<Cb_Material>(3000 * m_frames_in_flight);
+        constant_buffer(Renderer_ConstantBuffer::Material)->Create<Cb_Material>(30000 * m_frames_in_flight);
     }
 
     void Renderer::CreateStructuredBuffers()
@@ -156,11 +156,11 @@ namespace Spartan
 
     void Renderer::CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic)
     {
-        // Get render resolution
+        // get render resolution
         uint32_t width_render  = static_cast<uint32_t>(GetResolutionRender().x);
         uint32_t height_render = static_cast<uint32_t>(GetResolutionRender().y);
 
-        // Get output resolution
+        // get output resolution
         uint32_t width_output  = static_cast<uint32_t>(GetResolutionOutput().x);
         uint32_t height_output = static_cast<uint32_t>(GetResolutionOutput().y);
 
@@ -183,7 +183,7 @@ namespace Spartan
         // Render resolution
         if (create_render)
         {
-            // Frame (HDR) - Mips are used to emulate roughness when blending with transparent surfaces
+            // Frame - Mips are used to emulate roughness when blending with transparent surfaces
             render_target(Renderer_RenderTexture::frame_render)   = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_RenderTarget | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ClearOrBlit, "rt_frame_render");
             render_target(Renderer_RenderTexture::frame_render_2) = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_RenderTarget | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ClearOrBlit, "rt_frame_render_2");
 
@@ -225,7 +225,7 @@ namespace Spartan
         // Output resolution
         if (create_output)
         {
-            // Frame (LDR)
+            // Frame
             render_target(Renderer_RenderTexture::frame_output)   = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_RenderTarget | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_frame_output");
             render_target(Renderer_RenderTexture::frame_output_2) = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_RenderTarget | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_frame_output_2");
 
@@ -283,13 +283,8 @@ namespace Spartan
         }
 
         // Depth prepass
-        {
-            shader(Renderer_Shader::depth_prepass_v) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::depth_prepass_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_prepass.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-
-            shader(Renderer_Shader::depth_prepass_p) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::depth_prepass_p)->Compile(RHI_Shader_Pixel, shader_dir + "depth_prepass.hlsl", async);
-        }
+        shader(Renderer_Shader::depth_prepass_v) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::depth_prepass_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_prepass.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
 
         // Depth light
         {
@@ -299,6 +294,10 @@ namespace Spartan
             shader(Renderer_Shader::depth_light_p) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::depth_light_p)->Compile(RHI_Shader_Pixel, shader_dir + "depth_light.hlsl", async);
         }
+
+        // Depth alpha testing (used for the depth prepass as well as the light depth pass)
+        shader(Renderer_Shader::depth_alpha_test_p) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::depth_alpha_test_p)->Compile(RHI_Shader_Pixel, shader_dir + "depth_alpha_test.hlsl", async);
 
         // Font
         shader(Renderer_Shader::font_v) = make_shared<RHI_Shader>();

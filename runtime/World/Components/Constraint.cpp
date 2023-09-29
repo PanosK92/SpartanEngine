@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======================================================
 #include "pch.h"
 #include "Constraint.h"
-#include "RigidBody.h"
+#include "PhysicsBody.h"
 #include "Transform.h"
 #include "../Entity.h"
 #include "../World.h"
@@ -205,8 +205,8 @@ namespace Spartan
     {
         if (m_constraint)
         {
-            shared_ptr<RigidBody> rigid_body_own   = m_entity_ptr->GetComponent<RigidBody>();
-            shared_ptr<RigidBody> rigid_body_other = !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>() : nullptr;
+            shared_ptr<PhysicsBody> rigid_body_own   = m_entity_ptr->GetComponent<PhysicsBody>();
+            shared_ptr<PhysicsBody> rigid_body_other = !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<PhysicsBody>() : nullptr;
 
             // Make both bodies aware of the removal of this constraint
             if (rigid_body_own)   rigid_body_own->RemoveConstraint(this);
@@ -221,10 +221,10 @@ namespace Spartan
         if (!m_constraint || m_bodyOther.expired())
             return;
 
-        shared_ptr<RigidBody> rigid_body_own   = m_entity_ptr->GetComponent<RigidBody>();
-        shared_ptr<RigidBody> rigid_body_other = !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>() : nullptr;
-        btRigidBody* bt_own_body               = rigid_body_own ? rigid_body_own->GetBtRigidBody() : nullptr;
-        btRigidBody* bt_other_body             = rigid_body_other ? rigid_body_other->GetBtRigidBody() : nullptr;
+        shared_ptr<PhysicsBody> rigid_body_own   = m_entity_ptr->GetComponent<PhysicsBody>();
+        shared_ptr<PhysicsBody> rigid_body_other = !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<PhysicsBody>() : nullptr;
+        btRigidBody* bt_own_body                 = rigid_body_own ? static_cast<btRigidBody*>(rigid_body_own->GetBtRigidBody()) : nullptr;
+        btRigidBody* bt_other_body               = rigid_body_other ? static_cast<btRigidBody*>(rigid_body_other->GetBtRigidBody()) : nullptr;
 
         Vector3 own_body_scaled_position    = m_position * GetTransform()->GetScale() - rigid_body_own->GetCenterOfMass();
         Vector3 other_body_scaled_position  = !m_bodyOther.expired() ? m_positionOther * rigid_body_other->GetTransform()->GetScale() - rigid_body_other->GetCenterOfMass() : m_positionOther;
@@ -279,8 +279,8 @@ namespace Spartan
         ReleaseConstraint();
 
         // Make sure we have two bodies
-        shared_ptr<RigidBody> rigid_body_own   = m_entity_ptr->GetComponent<RigidBody>();
-        shared_ptr<RigidBody> rigid_body_other = !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>() : nullptr;
+        shared_ptr<PhysicsBody> rigid_body_own   = m_entity_ptr->GetComponent<PhysicsBody>();
+        shared_ptr<PhysicsBody> rigid_body_other = !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<PhysicsBody>() : nullptr;
         if (!rigid_body_own || !rigid_body_other)
         {
             SP_LOG_INFO("A RigidBody component is still initializing, deferring construction...");
@@ -293,8 +293,8 @@ namespace Spartan
             m_deferredConstruction = false;
         }
 
-        btRigidBody* bt_own_body    = rigid_body_own ? rigid_body_own->GetBtRigidBody() : nullptr;
-        btRigidBody* bt_other_body    = rigid_body_other ? rigid_body_other->GetBtRigidBody() : nullptr;
+        btRigidBody* bt_own_body   = static_cast<btRigidBody*>(rigid_body_own ? rigid_body_own->GetBtRigidBody() : nullptr);
+        btRigidBody* bt_other_body = static_cast<btRigidBody*>(rigid_body_other ? rigid_body_other->GetBtRigidBody() : nullptr);
 
         if (!bt_own_body)
             return;

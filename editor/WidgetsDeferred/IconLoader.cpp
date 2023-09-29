@@ -105,15 +105,13 @@ void IconLoader::Initialize()
         IconLoader::LoadFromFile(data_dir + "Icons\\component_audioSource.png", IconType::Component_AudioSource);
         IconLoader::LoadFromFile(data_dir + "Icons\\component_reflectionProbe.png", IconType::Component_ReflectionProbe);
         IconLoader::LoadFromFile(data_dir + "Icons\\component_camera.png", IconType::Component_Camera);
-        IconLoader::LoadFromFile(data_dir + "Icons\\component_collider.png", IconType::Component_Collider);
         IconLoader::LoadFromFile(data_dir + "Icons\\component_light.png", IconType::Component_Light);
         IconLoader::LoadFromFile(data_dir + "Icons\\component_material.png", IconType::Component_Material);
         IconLoader::LoadFromFile(data_dir + "Icons\\component_material_removeTexture.png", IconType::Component_Material_RemoveTexture);
         IconLoader::LoadFromFile(data_dir + "Icons\\component_meshCollider.png", IconType::Component_MeshCollider);
         IconLoader::LoadFromFile(data_dir + "Icons\\component_renderable.png", IconType::Component_Renderable);
-        IconLoader::LoadFromFile(data_dir + "Icons\\component_rigidBody.png", IconType::Component_RigidBody);
+        IconLoader::LoadFromFile(data_dir + "Icons\\component_rigidBody.png", IconType::Component_PhysicsBody);
         IconLoader::LoadFromFile(data_dir + "Icons\\component_softBody.png", IconType::Component_SoftBody);
-        IconLoader::LoadFromFile(data_dir + "Icons\\component_script.png", IconType::Component_Script);
         IconLoader::LoadFromFile(data_dir + "Icons\\component_transform.png", IconType::Component_Transform);
         IconLoader::LoadFromFile(data_dir + "Icons\\component_terrain.png", IconType::Component_Terrain);
         IconLoader::LoadFromFile(data_dir + "Icons\\component_environment.png", IconType::Component_Environment);
@@ -138,6 +136,7 @@ void IconLoader::Initialize()
         IconLoader::LoadFromFile(data_dir + "Icons\\exe.png", IconType::Directory_File_Exe);
         IconLoader::LoadFromFile(data_dir + "Icons\\font.png", IconType::Directory_File_Font);
         IconLoader::LoadFromFile(data_dir + "Icons\\texture.png", IconType::Directory_File_Texture);
+        IconLoader::LoadFromFile(data_dir + "Icons\\screenshot.png", IconType::Screenshot);
     });
 }
 

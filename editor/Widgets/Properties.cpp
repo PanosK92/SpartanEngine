@@ -30,9 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Entity.h"
 #include "World/Components/Transform.h"
 #include "World/Components/Renderable.h"
-#include "World/Components/RigidBody.h"
-#include "World/Components/SoftBody.h"
-#include "World/Components/Collider.h"
+#include "World/Components/PhysicsBody.h"
 #include "World/Components/Constraint.h"
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
@@ -166,9 +164,7 @@ void Properties::OnTickVisible()
         ShowReflectionProbe(entity_ptr->GetComponent<ReflectionProbe>());
         ShowRenderable(renderable);
         ShowMaterial(material);
-        ShowRigidBody(entity_ptr->GetComponent<RigidBody>());
-        ShowSoftBody(entity_ptr->GetComponent<SoftBody>());
-        ShowCollider(entity_ptr->GetComponent<Collider>());
+        ShowPhysicsBody(entity_ptr->GetComponent<PhysicsBody>());
         ShowConstraint(entity_ptr->GetComponent<Constraint>());
 
         ShowAddComponentButton();
@@ -405,169 +401,131 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
     component_end();
 }
 
-void Properties::ShowRigidBody(shared_ptr<RigidBody> rigid_body) const
+void Properties::ShowPhysicsBody(shared_ptr<PhysicsBody> body) const
 {
-    if (!rigid_body)
+    if (!body)
         return;
 
-    if (component_begin("RigidBody", IconType::Component_RigidBody, rigid_body))
-    {
-        //= REFLECT ===============================================================
-        auto mass             = rigid_body->GetMass();
-        auto friction         = rigid_body->GetFriction();
-        auto friction_rolling = rigid_body->GetFrictionRolling();
-        auto restitution      = rigid_body->GetRestitution();
-        auto use_gravity      = rigid_body->GetUseGravity();
-        auto is_kinematic     = rigid_body->GetIsKinematic();
-        auto freeze_pos_x     = static_cast<bool>(rigid_body->GetPositionLock().x);
-        auto freeze_pos_y     = static_cast<bool>(rigid_body->GetPositionLock().y);
-        auto freeze_pos_z     = static_cast<bool>(rigid_body->GetPositionLock().z);
-        auto freeze_rot_x     = static_cast<bool>(rigid_body->GetRotationLock().x);
-        auto freeze_rot_y     = static_cast<bool>(rigid_body->GetRotationLock().y);
-        auto freeze_rot_z     = static_cast<bool>(rigid_body->GetRotationLock().z);
-        //=========================================================================
+    const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
+    const auto step             = 0.1f;
+    const auto step_fast        = 0.1f;
+    const auto precision        = "%.3f";
 
-        const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
-        const auto step             = 0.1f;
-        const auto step_fast        = 0.1f;
-        const auto precision        = "%.3f";
+    if (component_begin("PhysicsBody", IconType::Component_PhysicsBody, body))
+    {
+        //= REFLECT ==========================================================
+        float mass             = body->GetMass();
+        float friction         = body->GetFriction();
+        float friction_rolling = body->GetFrictionRolling();
+        float restitution      = body->GetRestitution();
+        bool use_gravity       = body->GetUseGravity();
+        bool is_kinematic      = body->GetIsKinematic();
+        bool freeze_pos_x      = static_cast<bool>(body->GetPositionLock().x);
+        bool freeze_pos_y      = static_cast<bool>(body->GetPositionLock().y);
+        bool freeze_pos_z      = static_cast<bool>(body->GetPositionLock().z);
+        bool freeze_rot_x      = static_cast<bool>(body->GetRotationLock().x);
+        bool freeze_rot_y      = static_cast<bool>(body->GetRotationLock().y);
+        bool freeze_rot_z      = static_cast<bool>(body->GetRotationLock().z);
+        Vector3 center_of_mass = body->GetCenterOfMass();
+        Vector3 bounding_box   = body->GetBoundingBox();
+        //====================================================================
 
         // Mass
         ImGui::Text("Mass");
-        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##RigidBodyMass", &mass, step, step_fast, precision, input_text_flags);
+        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##PhysicsBodyMass", &mass, step, step_fast, precision, input_text_flags);
 
         // Friction
         ImGui::Text("Friction");
-        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##RigidBodyFriction", &friction, step, step_fast, precision, input_text_flags);
+        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##PhysicsBodyFriction", &friction, step, step_fast, precision, input_text_flags);
 
         // Rolling Friction
         ImGui::Text("Rolling Friction");
-        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##RigidBodyRollingFriction", &friction_rolling, step, step_fast, precision, input_text_flags);
+        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##PhysicsBodyRollingFriction", &friction_rolling, step, step_fast, precision, input_text_flags);
 
         // Restitution
         ImGui::Text("Restitution");
-        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##RigidBodyRestitution", &restitution, step, step_fast, precision, input_text_flags);
+        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##PhysicsBodyRestitution", &restitution, step, step_fast, precision, input_text_flags);
 
         // Use Gravity
         ImGui::Text("Use Gravity");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##RigidBodyUseGravity", &use_gravity);
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##PhysicsBodyUseGravity", &use_gravity);
 
         // Is Kinematic
         ImGui::Text("Is Kinematic");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##RigidBodyKinematic", &is_kinematic);
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##PhysicsBodyKinematic", &is_kinematic);
 
         // Freeze Position
         ImGui::Text("Freeze Position");
         ImGui::SameLine(column_pos_x); ImGui::Text("X");
-        ImGui::SameLine(); ImGui::Checkbox("##RigidFreezePosX", &freeze_pos_x);
+        ImGui::SameLine(); ImGui::Checkbox("##PhysicsBodyPosX", &freeze_pos_x);
         ImGui::SameLine(); ImGui::Text("Y");
-        ImGui::SameLine(); ImGui::Checkbox("##RigidFreezePosY", &freeze_pos_y);
+        ImGui::SameLine(); ImGui::Checkbox("##PhysicsBodyPosY", &freeze_pos_y);
         ImGui::SameLine(); ImGui::Text("Z");
-        ImGui::SameLine(); ImGui::Checkbox("##RigidFreezePosZ", &freeze_pos_z);
+        ImGui::SameLine(); ImGui::Checkbox("##PhysicsBodyPosZ", &freeze_pos_z);
 
         // Freeze Rotation
         ImGui::Text("Freeze Rotation");
         ImGui::SameLine(column_pos_x); ImGui::Text("X");
-        ImGui::SameLine(); ImGui::Checkbox("##RigidFreezeRotX", &freeze_rot_x);
+        ImGui::SameLine(); ImGui::Checkbox("##PhysicsBodyRotX", &freeze_rot_x);
         ImGui::SameLine(); ImGui::Text("Y");
-        ImGui::SameLine(); ImGui::Checkbox("##RigidFreezeRotY", &freeze_rot_y);
+        ImGui::SameLine(); ImGui::Checkbox("##PhysicsBodyRotY", &freeze_rot_y);
         ImGui::SameLine(); ImGui::Text("Z");
-        ImGui::SameLine(); ImGui::Checkbox("##RigidFreezeRotZ", &freeze_rot_z);
+        ImGui::SameLine(); ImGui::Checkbox("##PhysicsBodyRotZ", &freeze_rot_z);
 
-        //= MAP ===========================================================================================================================================================================================================
-        if (mass != rigid_body->GetMass())                                      rigid_body->SetMass(mass);
-        if (friction != rigid_body->GetFriction())                              rigid_body->SetFriction(friction);
-        if (friction_rolling != rigid_body->GetFrictionRolling())               rigid_body->SetFrictionRolling(friction_rolling);
-        if (restitution != rigid_body->GetRestitution())                        rigid_body->SetRestitution(restitution);
-        if (use_gravity != rigid_body->GetUseGravity())                         rigid_body->SetUseGravity(use_gravity);
-        if (is_kinematic != rigid_body->GetIsKinematic())                       rigid_body->SetIsKinematic(is_kinematic);
-        if (freeze_pos_x != static_cast<bool>(rigid_body->GetPositionLock().x)) rigid_body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
-        if (freeze_pos_y != static_cast<bool>(rigid_body->GetPositionLock().y)) rigid_body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
-        if (freeze_pos_z != static_cast<bool>(rigid_body->GetPositionLock().z)) rigid_body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
-        if (freeze_rot_x != static_cast<bool>(rigid_body->GetRotationLock().x)) rigid_body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
-        if (freeze_rot_y != static_cast<bool>(rigid_body->GetRotationLock().y)) rigid_body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
-        if (freeze_rot_z != static_cast<bool>(rigid_body->GetRotationLock().z)) rigid_body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
-        //=================================================================================================================================================================================================================
-    }
-    component_end();
-}
+        ImGui::Separator();
 
-void Properties::ShowSoftBody(shared_ptr<SoftBody> soft_body) const
-{
-    if (!soft_body)
-        return;
-
-    if (component_begin("SoftBody", IconType::Component_SoftBody, soft_body))
-    {
-        //= REFLECT ===============================================================
-        //=========================================================================
-
-        //= MAP ===================================================================
-        //=========================================================================
-    }
-    component_end();
-}
-
-void Properties::ShowCollider(shared_ptr<Collider> collider) const
-{
-    if (!collider)
-        return;
-
-    if (component_begin("Collider", IconType::Component_Collider, collider))
-    {
-        //= REFLECT =================================================
-        static vector<string> shape_types = {
-            "Box",
-            "Sphere",
-            "Static Plane",
-            "Cylinder",
-            "Capsule",
-            "Cone",
-            "Mesh"
-        };
-        bool optimize                   = collider->GetOptimize();
-        Vector3 collider_center         = collider->GetCenter();
-        Vector3 collider_bounding_box   = collider->GetBoundingBox();
-        //===========================================================
-
-        const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
-        const auto step             = 0.1f;
-        const auto step_fast        = 0.1f;
-        const auto precision        = "%.3f";
-
-        // Type
-        ImGui::Text("Type");
-        ImGui::SameLine(column_pos_x);
-        uint32_t selection_index = static_cast<uint32_t>(collider->GetShapeType());
-        if (ImGuiSp::combo_box("##colliderType", shape_types, &selection_index))
+        // collision shape
         {
-            collider->SetShapeType(static_cast<ColliderShape>(selection_index));
+            static vector<string> shape_types =
+            {
+                "Box",
+                "Sphere",
+                "Static Plane",
+                "Cylinder",
+                "Capsule",
+                "Cone",
+                "Terrain",
+                "Mesh Convex Hull (Cheap)",
+                "Mesh (Expensive)"
+            };
+
+            ImGui::Text("Shape Type");
+            ImGui::SameLine(column_pos_x);
+            uint32_t selection_index = static_cast<uint32_t>(body->GetShapeType());
+            if (ImGuiSp::combo_box("##PhysicsBodyCollisionShape", shape_types, &selection_index))
+            {
+                body->SetShapeType(static_cast<PhysicsShape>(selection_index));
+            }
         }
+        
+        // center
+        ImGui::Text("Shape Center");
+        ImGui::SameLine(column_pos_x); ImGui::PushID("PhysicsBodyColCenterX"); ImGui::InputFloat("X", &center_of_mass.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();             ImGui::PushID("PhysicsBodyColCenterY"); ImGui::InputFloat("Y", &center_of_mass.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();             ImGui::PushID("PhysicsBodyColCenterZ"); ImGui::InputFloat("Z", &center_of_mass.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        
+        // size
+        ImGui::Text("Shape Size");
+        ImGui::SameLine(column_pos_x); ImGui::PushID("PhysicsBodyColSizeX"); ImGui::InputFloat("X", &bounding_box.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();             ImGui::PushID("PhysicsBodyColSizeY"); ImGui::InputFloat("Y", &bounding_box.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();             ImGui::PushID("PhysicsBodyColSizeZ"); ImGui::InputFloat("Z", &bounding_box.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
 
-        // Center
-        ImGui::Text("Center");
-        ImGui::SameLine(column_pos_x); ImGui::PushID("colCenterX"); ImGui::InputFloat("X", &collider_center.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();             ImGui::PushID("colCenterY"); ImGui::InputFloat("Y", &collider_center.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();             ImGui::PushID("colCenterZ"); ImGui::InputFloat("Z", &collider_center.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
-
-        // Size
-        ImGui::Text("Size");
-        ImGui::SameLine(column_pos_x); ImGui::PushID("colSizeX"); ImGui::InputFloat("X", &collider_bounding_box.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();             ImGui::PushID("colSizeY"); ImGui::InputFloat("Y", &collider_bounding_box.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();             ImGui::PushID("colSizeZ"); ImGui::InputFloat("Z", &collider_bounding_box.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
-
-        // Optimize
-        if (collider->GetShapeType() == ColliderShape::Mesh)
-        {
-            ImGui::Text("Optimize");
-            ImGui::SameLine(column_pos_x); ImGui::Checkbox("##colliderOptimize", &optimize);
-        }
-
-        //= MAP =================================================================================================
-        if (collider_center != collider->GetCenter())            collider->SetCenter(collider_center);
-        if (collider_bounding_box != collider->GetBoundingBox()) collider->SetBoundingBox(collider_bounding_box);
-        if (optimize != collider->GetOptimize())                 collider->SetOptimize(optimize);
-        //=======================================================================================================
+        //= MAP ===============================================================================================================================================================================================
+        if (mass != body->GetMass())                                      body->SetMass(mass);
+        if (friction != body->GetFriction())                              body->SetFriction(friction);
+        if (friction_rolling != body->GetFrictionRolling())               body->SetFrictionRolling(friction_rolling);
+        if (restitution != body->GetRestitution())                        body->SetRestitution(restitution);
+        if (use_gravity != body->GetUseGravity())                         body->SetUseGravity(use_gravity);
+        if (is_kinematic != body->GetIsKinematic())                       body->SetIsKinematic(is_kinematic);
+        if (freeze_pos_x != static_cast<bool>(body->GetPositionLock().x)) body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
+        if (freeze_pos_y != static_cast<bool>(body->GetPositionLock().y)) body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
+        if (freeze_pos_z != static_cast<bool>(body->GetPositionLock().z)) body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
+        if (freeze_rot_x != static_cast<bool>(body->GetRotationLock().x)) body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
+        if (freeze_rot_y != static_cast<bool>(body->GetRotationLock().y)) body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
+        if (freeze_rot_z != static_cast<bool>(body->GetRotationLock().z)) body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
+        if (center_of_mass != body->GetCenterOfMass())                    body->SetCenterOfMass(center_of_mass);
+        if (bounding_box != body->GetBoundingBox())                       body->SetBoundingBox(bounding_box);
+        //=====================================================================================================================================================================================================
     }
     component_end();
 }
@@ -726,6 +684,20 @@ void Properties::ShowMaterial(Material* material) const
                         auto setter = [&material, &mat_tex](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(mat_tex, texture); };
                         ImGuiSp::image_slot(material->GetTexture_PtrShared(mat_tex), setter);
 
+                        // 2nd textures, used for blending by the terrain
+                        if (mat_tex == MaterialTexture::Color)
+                        {
+                            auto setter = [&material](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(MaterialTexture::Color2, texture); };
+                            ImGui::SameLine();
+                            ImGuiSp::image_slot(material->GetTexture_PtrShared(MaterialTexture::Color2), setter);
+                        }
+                        else if (mat_tex == MaterialTexture::Normal)
+                        {
+                            auto setter = [&material](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(MaterialTexture::Normal2, texture); };
+                            ImGui::SameLine();
+                            ImGuiSp::image_slot(material->GetTexture_PtrShared(MaterialTexture::Normal2), setter);
+                        }
+
                         if (show_modifier)
                         {
                             ImGui::SameLine();
@@ -767,7 +739,7 @@ void Properties::ShowMaterial(Material* material) const
                 show_property("Anisotropic rotation", "Rotates the direction of anisotropy, with 1.0 going full circle",                   MaterialTexture::Undefined,  MaterialProperty::AnisotropicRotation);
                 show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTexture::Undefined,  MaterialProperty::Sheen);
                 show_property("Sheen tint",           "Mix between white and using base color for sheen reflection",                       MaterialTexture::Undefined,  MaterialProperty::SheenTint);
-                show_property("Color",                "Diffuse or metal surface color",                                                    MaterialTexture::Color,      MaterialProperty::ColorTint);
+                show_property("Color",                "Surface color",                                                                     MaterialTexture::Color,      MaterialProperty::ColorTint);
                 show_property("Roughness",            "Specifies microfacet roughness of the surface for diffuse and specular reflection", MaterialTexture::Roughness,  MaterialProperty::RoughnessMultiplier);
                 show_property("Metalness",            "Blends between a non-metallic and metallic material model",                         MaterialTexture::Metalness,  MaterialProperty::MetalnessMultiplier);
                 show_property("Normal",               "Controls the normals of the base layers",                                           MaterialTexture::Normal,     MaterialProperty::NormalMultiplier);
@@ -829,7 +801,7 @@ void Properties::ShowCamera(shared_ptr<Camera> camera) const
         float fov                              = camera->GetFovHorizontalDeg();
         float near_plane                       = camera->GetNearPlane();
         float far_plane                        = camera->GetFarPlane();
-        bool first_person_control_enabled      = camera->GetFirstPersonControlEnabled();
+        bool first_person_control_enabled      = camera->GetIsControlEnabled();
         m_colorPicker_camera->SetColor(camera->GetClearColor());
         //==============================================================================
 
@@ -884,7 +856,7 @@ void Properties::ShowCamera(shared_ptr<Camera> camera) const
         if (fov != camera->GetFovHorizontalDeg())                                   camera->SetFovHorizontalDeg(fov);
         if (near_plane != camera->GetNearPlane())                                   camera->SetNearPlane(near_plane);
         if (far_plane != camera->GetFarPlane())                                     camera->SetFarPlane(far_plane);
-        if (first_person_control_enabled != camera->GetFirstPersonControlEnabled()) camera->SetFirstPersonControlEnabled(first_person_control_enabled);
+        if (first_person_control_enabled != camera->GetIsControlEnabled()) camera->SetIsControlEnalbed(first_person_control_enabled);
         if (m_colorPicker_camera->GetColor() != camera->GetClearColor())            camera->SetClearColor(m_colorPicker_camera->GetColor());
         //=============================================================================================================================================
     }
@@ -948,7 +920,7 @@ void Properties::ShowTerrain(shared_ptr<Terrain> terrain) const
         // Stats
         ImGui::BeginGroup();
         {
-            ImGui::Text("Height samples: %d", terrain->GetHeightsamples());
+            ImGui::Text("Height samples: %d", terrain->GetHeightSampleCount());
             ImGui::Text("Vertices: %d",  terrain->GetVertexCount());
             ImGui::Text("Indices:  %d ", terrain->GetIndexCount());
         }
@@ -1156,17 +1128,9 @@ void Properties::ComponentContextMenu_Add() const
             // PHYSICS
             if (ImGui::BeginMenu("Physics"))
             {
-                if (ImGui::MenuItem("Rigid Body"))
+                if (ImGui::MenuItem("Physics Body"))
                 {
-                    entity->AddComponent<RigidBody>();
-                }
-                else if (ImGui::MenuItem("Soft Body"))
-                {
-                    entity->AddComponent<SoftBody>();
-                }
-                else if (ImGui::MenuItem("Collider"))
-                {
-                    entity->AddComponent<Collider>();
+                    entity->AddComponent<PhysicsBody>();
                 }
                 else if (ImGui::MenuItem("Constraint"))
                 {

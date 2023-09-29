@@ -19,16 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================================
+//= INCLUDES ===========================================
 #include "pch.h"
 #include "Environment.h"
 #include "../../IO/FileStream.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../RHI/RHI_TextureCube.h"
 #include "../../Resource/ResourceCache.h"
-#include "../../Resource/Import/ImageImporter.h"
+#include "../../Resource/Import/ImageImporterExporter.h"
 #include "../../Rendering/Renderer.h"
-//==============================================
+//======================================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -115,7 +115,7 @@ namespace Spartan
         shared_ptr<RHI_Texture> texture = make_shared<RHI_TextureCube>();
         for (uint32_t slice_index = 0; static_cast<uint32_t>(file_paths.size()); slice_index++)
         {
-            ImageImporter::Load(file_paths[slice_index], slice_index, static_cast<RHI_Texture*>(texture.get()));
+            ImageImporterExporter::Load(file_paths[slice_index], slice_index, static_cast<RHI_Texture*>(texture.get()));
         }
 
         // Set resource file path
