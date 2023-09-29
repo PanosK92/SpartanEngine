@@ -44,7 +44,7 @@ namespace Spartan
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
 
-        // Geometry/Mesh
+        // geometry/mesh
         void SetGeometry(
             Mesh* mesh,
             const Math::BoundingBox aabb = Math::BoundingBox::Undefined,
@@ -54,7 +54,7 @@ namespace Spartan
         void SetGeometry(const Renderer_MeshType mesh_type);
         void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
 
-        // Properties
+        // properties
         uint32_t GetIndexOffset()                 const { return m_geometry_index_offset; }
         uint32_t GetIndexCount()                  const { return m_geometry_index_count; }
         uint32_t GetVertexOffset()                const { return m_geometry_vertex_offset; }
@@ -76,9 +76,12 @@ namespace Spartan
         auto HasMaterial()            const { return m_material != nullptr; }
         //===============================================================================
 
-        // Shadows
+        // shadows
         void SetCastShadows(const bool cast_shadows) { m_cast_shadows = cast_shadows; }
         auto GetCastShadows() const                  { return m_cast_shadows; }
+
+        // instancing
+        void AddInstance(const Math::Vector3& position);
 
     private:
         // geometry/mesh
@@ -97,6 +100,6 @@ namespace Spartan
         // misc
         Math::Matrix m_last_transform = Math::Matrix::Identity;
         bool m_cast_shadows           = true;
-
+        std::vector<Math::Vector3> m_instance_positions;
     };
 }

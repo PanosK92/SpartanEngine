@@ -38,7 +38,9 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static bool load_and_normalize_height_data(vector<float>& height_data_out, shared_ptr<RHI_Texture> height_texture, float min_y, float max_y)
+    namespace
+    { 
+        static bool load_and_normalize_height_data(vector<float>& height_data_out, shared_ptr<RHI_Texture> height_texture, float min_y, float max_y)
     {
         vector<std::byte> height_data = height_texture->GetMip(0, 0).bytes;
 
@@ -71,7 +73,7 @@ namespace Spartan
         return true;
     }
 
-    static void generate_positions(vector<Vector3>& positions, const vector<float>& height_map, const uint32_t width, const uint32_t height)
+        static void generate_positions(vector<Vector3>& positions, const vector<float>& height_map, const uint32_t width, const uint32_t height)
     {
         SP_ASSERT_MSG(!height_map.empty(), "Height map is empty");
 
@@ -93,208 +95,209 @@ namespace Spartan
         }
     }
 
-    static void generate_vertices_and_indices(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const vector<Vector3>& positions, const uint32_t width, const uint32_t height)
-    {
-        SP_ASSERT_MSG(!positions.empty(), "Positions are empty");
-
-        Vector3 offset = Vector3::Zero;
+        static void generate_vertices_and_indices(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const vector<Vector3>& positions, const uint32_t width, const uint32_t height)
         {
-            // calculate offsets to center the terrain
-            float offset_x   = -static_cast<float>(width) * 0.5f;
-            float offset_z   = -static_cast<float>(height) * 0.5f;
-            float min_height = FLT_MAX;
+            SP_ASSERT_MSG(!positions.empty(), "Positions are empty");
 
-            // find the minimum height to align the lower part of the terrain at y = 0
-            for (const Vector3& pos : positions)
+            Vector3 offset = Vector3::Zero;
             {
-                if (pos.y < min_height)
+                // calculate offsets to center the terrain
+                float offset_x   = -static_cast<float>(width) * 0.5f;
+                float offset_z   = -static_cast<float>(height) * 0.5f;
+                float min_height = FLT_MAX;
+
+                // find the minimum height to align the lower part of the terrain at y = 0
+                for (const Vector3& pos : positions)
                 {
-                    min_height = pos.y;
+                    if (pos.y < min_height)
+                    {
+                        min_height = pos.y;
+                    }
+                }
+
+                offset = Vector3(offset_x, -min_height, offset_z);
+            }
+
+            uint32_t index = 0;
+            uint32_t k     = 0;
+            for (uint32_t y = 0; y < height - 1; y++)
+            {
+                for (uint32_t x = 0; x < width - 1; x++)
+                {
+                    Vector3 position = positions[index] + offset;
+
+                    float u = static_cast<float>(x) / static_cast<float>(width - 1);
+                    float v = static_cast<float>(y) / static_cast<float>(height - 1);
+
+                    const uint32_t index_bottom_left  = y * width + x;
+                    const uint32_t index_bottom_right = y * width + x + 1;
+                    const uint32_t index_top_left     = (y + 1) * width + x;
+                    const uint32_t index_top_right    = (y + 1) * width + x + 1;
+
+                    // Bottom right of quad
+                    index           = index_bottom_right;
+                    indices[k]      = index;
+                    vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v + 1.0f / (height - 1)));
+
+                    // Bottom left of quad
+                    index = index_bottom_left;
+                    indices[k + 1] = index;
+                    vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v + 1.0f / (height - 1)));
+
+                    // Top left of quad
+                    index = index_top_left;
+                    indices[k + 2] = index;
+                    vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v));
+
+                    // Bottom right of quad
+                    index = index_bottom_right;
+                    indices[k + 3] = index;
+                    vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v + 1.0f / (height - 1)));
+
+                    // Top left of quad
+                    index = index_top_left;
+                    indices[k + 4] = index;
+                    vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v));
+
+                    // Top right of quad
+                    index           = index_top_right;
+                    indices[k + 5]  = index;
+                    vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v));
+
+                    k += 6; // next quad
+                }
+            }
+        }
+
+        static void generate_normals_and_tangents(const vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
+        {
+            SP_ASSERT_MSG(!indices.empty(), "Indices are empty");
+            SP_ASSERT_MSG(!vertices.empty(), "Vertices are empty");
+
+            uint32_t triangle_count = static_cast<uint32_t>(indices.size()) / 3;
+            vector<Vector3> face_normals(triangle_count);
+            vector<Vector3> face_tangents(triangle_count);
+            Vector3 edge_a, edge_b;
+
+            unordered_map<uint32_t, vector<uint32_t>> vertex_to_triangle_map;
+
+            for (uint32_t i = 0; i < triangle_count; ++i)
+            {
+                uint32_t index_a = indices[i * 3];
+                uint32_t index_b = indices[i * 3 + 1];
+                uint32_t index_c = indices[i * 3 + 2];
+
+                vertex_to_triangle_map[index_a].push_back(i);
+                vertex_to_triangle_map[index_b].push_back(i);
+                vertex_to_triangle_map[index_c].push_back(i);
+
+                edge_a.x = vertices[index_a].pos[0] - vertices[index_b].pos[0];
+                edge_a.y = vertices[index_a].pos[1] - vertices[index_b].pos[1];
+                edge_a.z = vertices[index_a].pos[2] - vertices[index_b].pos[2];
+
+                edge_b.x = vertices[index_b].pos[0] - vertices[index_c].pos[0];
+                edge_b.y = vertices[index_b].pos[1] - vertices[index_c].pos[1];
+                edge_b.z = vertices[index_b].pos[2] - vertices[index_c].pos[2];
+
+                face_normals[i] = Vector3::Cross(edge_a, edge_b);
+
+                const float tc_u1 = vertices[index_a].tex[0] - vertices[index_b].tex[0];
+                const float tc_v1 = vertices[index_a].tex[1] - vertices[index_b].tex[1];
+                const float tc_u2 = vertices[index_b].tex[0] - vertices[index_c].tex[0];
+                const float tc_v2 = vertices[index_b].tex[1] - vertices[index_c].tex[1];
+
+                float coef = 1.0f / (tc_u1 * tc_v2 - tc_u2 * tc_v1);
+
+                face_tangents[i].x = (tc_v1 * edge_a.x - tc_v2 * edge_b.x) * coef;
+                face_tangents[i].y = (tc_v1 * edge_a.y - tc_v2 * edge_b.y) * coef;
+                face_tangents[i].z = (tc_v1 * edge_a.z - tc_v2 * edge_b.z) * coef;
+            }
+
+            const auto compute_vertex_normals_tangents = [&vertices, &vertex_to_triangle_map, &face_normals, &face_tangents](uint32_t start_index, uint32_t range)
+            {
+                for (uint32_t i = start_index; i < range; i++)
+                {
+                    Vector3 normal_average = Vector3::Zero;
+                    Vector3 tangent_average = Vector3::Zero;
+                    float face_usage_count = 0;
+
+                    for (uint32_t j : vertex_to_triangle_map[i])
+                    {
+                        normal_average += face_normals[j];
+                        tangent_average += face_tangents[j];
+                        face_usage_count++;
+                    }
+
+                    normal_average /= face_usage_count;
+                    tangent_average /= face_usage_count;
+
+                    normal_average.Normalize();
+                    tangent_average.Normalize();
+
+                    vertices[i].nor[0] = normal_average.x;
+                    vertices[i].nor[1] = normal_average.y;
+                    vertices[i].nor[2] = normal_average.z;
+
+                    vertices[i].tan[0] = tangent_average.x;
+                    vertices[i].tan[1] = tangent_average.y;
+                    vertices[i].tan[2] = tangent_average.z;
+
+                    ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+                }
+            };
+
+            uint32_t vertex_count = static_cast<uint32_t>(vertices.size());
+            ThreadPool::ParallelLoop(compute_vertex_normals_tangents, vertex_count);
+        }
+
+        vector<Vector3> generate_tree_positions(const vector<RHI_Vertex_PosTexNorTan>& vertices, const vector<uint32_t>& indices, uint32_t tree_count, float max_slope_radians, float water_level)
+        {
+            vector<Vector3> positions;
+            random_device rd;
+            mt19937 gen(rd());
+            uniform_int_distribution<> dis(0, indices.size() / 3 - 1);
+
+            for (uint32_t i = 0; i < tree_count; ++i)
+            {
+                // randomly select a triangle from the mesh
+                uint32_t triangle_index = dis(gen) * 3;
+
+                // get the vertices of the triangle
+                Vector3 v0 = Vector3(vertices[indices[triangle_index]].pos[0],     vertices[indices[triangle_index]].pos[1],     vertices[indices[triangle_index]].pos[2]);
+                Vector3 v1 = Vector3(vertices[indices[triangle_index + 1]].pos[0], vertices[indices[triangle_index + 1]].pos[1], vertices[indices[triangle_index + 1]].pos[2]);
+                Vector3 v2 = Vector3(vertices[indices[triangle_index + 2]].pos[0], vertices[indices[triangle_index + 2]].pos[1], vertices[indices[triangle_index + 2]].pos[2]);
+
+                // compute the slope of the triangle
+                Vector3 normal = Vector3::Cross(v1 - v0, v2 - v0).Normalized();
+                float slope_radians = acos(Vector3::Dot(normal, Vector3::Up));
+
+                bool is_relatively_flat = slope_radians <= max_slope_radians;
+                bool is_above_water     = ((v0.y + v1.y + v2.y) / 3.0f) > water_level + 0.5f;
+                if (is_relatively_flat && is_above_water)
+                {
+                    // generate barycentric coordinates
+                    float u = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+                    float v = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+
+                    if (u + v > 1.0f)
+                    {
+                        u = 1.0f - u;
+                        v = 1.0f - v;
+                    }
+
+                    // compute the position using barycentric coordinates
+                    Vector3 position = v0 + u * (v1 - v0) + v * (v2 - v0);
+                    positions.push_back(position);
+                }
+                else
+                {
+                    // if the slope is too steep, try again
+                    --i;
                 }
             }
 
-            offset = Vector3(offset_x, -min_height, offset_z);
+            return positions;
         }
-
-        uint32_t index = 0;
-        uint32_t k     = 0;
-        for (uint32_t y = 0; y < height - 1; y++)
-        {
-            for (uint32_t x = 0; x < width - 1; x++)
-            {
-                Vector3 position = positions[index] + offset;
-
-                float u = static_cast<float>(x) / static_cast<float>(width - 1);
-                float v = static_cast<float>(y) / static_cast<float>(height - 1);
-
-                const uint32_t index_bottom_left  = y * width + x;
-                const uint32_t index_bottom_right = y * width + x + 1;
-                const uint32_t index_top_left     = (y + 1) * width + x;
-                const uint32_t index_top_right    = (y + 1) * width + x + 1;
-
-                // Bottom right of quad
-                index           = index_bottom_right;
-                indices[k]      = index;
-                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v + 1.0f / (height - 1)));
-
-                // Bottom left of quad
-                index = index_bottom_left;
-                indices[k + 1] = index;
-                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v + 1.0f / (height - 1)));
-
-                // Top left of quad
-                index = index_top_left;
-                indices[k + 2] = index;
-                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v));
-
-                // Bottom right of quad
-                index = index_bottom_right;
-                indices[k + 3] = index;
-                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v + 1.0f / (height - 1)));
-
-                // Top left of quad
-                index = index_top_left;
-                indices[k + 4] = index;
-                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v));
-
-                // Top right of quad
-                index           = index_top_right;
-                indices[k + 5]  = index;
-                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v));
-
-                k += 6; // next quad
-            }
-        }
-    }
-
-    static void generate_normals_and_tangents(const vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
-    {
-        SP_ASSERT_MSG(!indices.empty(), "Indices are empty");
-        SP_ASSERT_MSG(!vertices.empty(), "Vertices are empty");
-
-        uint32_t triangle_count = static_cast<uint32_t>(indices.size()) / 3;
-        vector<Vector3> face_normals(triangle_count);
-        vector<Vector3> face_tangents(triangle_count);
-        Vector3 edge_a, edge_b;
-
-        unordered_map<uint32_t, vector<uint32_t>> vertex_to_triangle_map;
-
-        for (uint32_t i = 0; i < triangle_count; ++i)
-        {
-            uint32_t index_a = indices[i * 3];
-            uint32_t index_b = indices[i * 3 + 1];
-            uint32_t index_c = indices[i * 3 + 2];
-
-            vertex_to_triangle_map[index_a].push_back(i);
-            vertex_to_triangle_map[index_b].push_back(i);
-            vertex_to_triangle_map[index_c].push_back(i);
-
-            edge_a.x = vertices[index_a].pos[0] - vertices[index_b].pos[0];
-            edge_a.y = vertices[index_a].pos[1] - vertices[index_b].pos[1];
-            edge_a.z = vertices[index_a].pos[2] - vertices[index_b].pos[2];
-
-            edge_b.x = vertices[index_b].pos[0] - vertices[index_c].pos[0];
-            edge_b.y = vertices[index_b].pos[1] - vertices[index_c].pos[1];
-            edge_b.z = vertices[index_b].pos[2] - vertices[index_c].pos[2];
-
-            face_normals[i] = Vector3::Cross(edge_a, edge_b);
-
-            const float tc_u1 = vertices[index_a].tex[0] - vertices[index_b].tex[0];
-            const float tc_v1 = vertices[index_a].tex[1] - vertices[index_b].tex[1];
-            const float tc_u2 = vertices[index_b].tex[0] - vertices[index_c].tex[0];
-            const float tc_v2 = vertices[index_b].tex[1] - vertices[index_c].tex[1];
-
-            float coef = 1.0f / (tc_u1 * tc_v2 - tc_u2 * tc_v1);
-
-            face_tangents[i].x = (tc_v1 * edge_a.x - tc_v2 * edge_b.x) * coef;
-            face_tangents[i].y = (tc_v1 * edge_a.y - tc_v2 * edge_b.y) * coef;
-            face_tangents[i].z = (tc_v1 * edge_a.z - tc_v2 * edge_b.z) * coef;
-        }
-
-        const auto compute_vertex_normals_tangents = [&vertices, &vertex_to_triangle_map, &face_normals, &face_tangents](uint32_t start_index, uint32_t range)
-        {
-            for (uint32_t i = start_index; i < range; i++)
-            {
-                Vector3 normal_average = Vector3::Zero;
-                Vector3 tangent_average = Vector3::Zero;
-                float face_usage_count = 0;
-
-                for (uint32_t j : vertex_to_triangle_map[i])
-                {
-                    normal_average += face_normals[j];
-                    tangent_average += face_tangents[j];
-                    face_usage_count++;
-                }
-
-                normal_average /= face_usage_count;
-                tangent_average /= face_usage_count;
-
-                normal_average.Normalize();
-                tangent_average.Normalize();
-
-                vertices[i].nor[0] = normal_average.x;
-                vertices[i].nor[1] = normal_average.y;
-                vertices[i].nor[2] = normal_average.z;
-
-                vertices[i].tan[0] = tangent_average.x;
-                vertices[i].tan[1] = tangent_average.y;
-                vertices[i].tan[2] = tangent_average.z;
-
-                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-            }
-        };
-
-        uint32_t vertex_count = static_cast<uint32_t>(vertices.size());
-        ThreadPool::ParallelLoop(compute_vertex_normals_tangents, vertex_count);
-    }
-
-    vector<Vector3> generate_tree_positions(uint32_t tree_count, const vector<RHI_Vertex_PosTexNorTan>& vertices, const vector<uint32_t>& indices, float max_slope_radians, float water_level)
-    {
-        vector<Vector3> positions;
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<> dis(0, indices.size() / 3 - 1);
-
-        for (uint32_t i = 0; i < tree_count; ++i)
-        {
-            // randomly select a triangle from the mesh
-            uint32_t triangle_index = dis(gen) * 3;
-
-            // get the vertices of the triangle
-            Vector3 v0 = Vector3(vertices[indices[triangle_index]].pos[0], vertices[indices[triangle_index]].pos[1], vertices[indices[triangle_index]].pos[2]);
-            Vector3 v1 = Vector3(vertices[indices[triangle_index + 1]].pos[0], vertices[indices[triangle_index + 1]].pos[1], vertices[indices[triangle_index + 1]].pos[2]);
-            Vector3 v2 = Vector3(vertices[indices[triangle_index + 2]].pos[0], vertices[indices[triangle_index + 2]].pos[1], vertices[indices[triangle_index + 2]].pos[2]);
-
-            // compute the slope of the triangle
-            Vector3 normal = Vector3::Cross(v1 - v0, v2 - v0).Normalized();
-            float slope_radians = acos(Vector3::Dot(normal, Vector3::Up));
-
-            bool is_relatively_flat = slope_radians <= max_slope_radians;
-            bool is_above_water     = ((v0.y + v1.y + v2.y) / 3.0f) > water_level + 0.5f;
-            if (is_relatively_flat && is_above_water)
-            {
-                // generate barycentric coordinates
-                float u = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-                float v = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-
-                if (u + v > 1.0f)
-                {
-                    u = 1.0f - u;
-                    v = 1.0f - v;
-                }
-
-                // compute the position using barycentric coordinates
-                Vector3 position = v0 + u * (v1 - v0) + v * (v2 - v0);
-                positions.push_back(position);
-            }
-            else
-            {
-                // if the slope is too steep, try again
-                --i;
-            }
-        }
-
-        return positions;
     }
 
     Terrain::Terrain(weak_ptr<Entity> entity) : Component(entity)
@@ -412,7 +415,7 @@ namespace Spartan
             // compute tree positions
             uint32_t tree_count     = 5000;
             float max_slope_radians = 30.0f * Math::Helper::DEG_TO_RAD;
-            m_trees = generate_tree_positions(tree_count, vertices, indices, max_slope_radians, m_water_level);
+            m_trees = generate_tree_positions(vertices, indices, tree_count, max_slope_radians, m_water_level);
 
             if (on_complete)
             {

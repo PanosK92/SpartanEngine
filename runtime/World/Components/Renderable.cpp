@@ -217,4 +217,9 @@ namespace Spartan
     {
         return m_material ? m_material->GetObjectName() : "";
     }
+
+    void Renderable::AddInstance(const Vector3& position)
+    {
+        m_instance_positions.emplace_back(position);
+    }
 }
