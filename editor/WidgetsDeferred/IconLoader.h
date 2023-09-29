@@ -36,15 +36,13 @@ enum class IconType
     Component_AudioSource,
     Component_ReflectionProbe,
     Component_Camera,
-    Component_Collider,
     Component_Light,
     Component_Material,
     Component_Material_RemoveTexture,
     Component_MeshCollider,
     Component_Renderable,
-    Component_RigidBody,
+    Component_PhysicsBody,
     Component_SoftBody,
-    Component_Script,
     Component_Terrain,
     Component_Environment,
     Component_Transform,
@@ -69,6 +67,7 @@ enum class IconType
     Directory_File_Exe,
     Directory_File_Font,
     Directory_File_Texture,
+    Screenshot,
     Undefined
 };
 

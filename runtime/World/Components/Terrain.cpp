@@ -38,27 +38,57 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static void generate_positions(vector<Vector3>& positions, const vector<std::byte>& height_map, const uint32_t width, const uint32_t height, float min_x, float max_y)
+    static bool load_and_normalize_height_data(vector<float>& height_data_out, shared_ptr<RHI_Texture> height_texture, float min_y, float max_y)
+    {
+        vector<std::byte> height_data = height_texture->GetMip(0, 0).bytes;
+
+        // if the data is not there, load it
+        if (height_data.empty())
+        {
+            if (height_texture->LoadFromFile(height_texture->GetResourceFilePath()))
+            {
+                height_data = height_texture->GetMip(0, 0).bytes;
+
+                if (height_data.empty())
+                {
+                    SP_LOG_ERROR("Failed to load height map");
+                    return false;
+                }
+            }
+        }
+
+        // bytes per pixel
+        uint32_t bytes_per_pixel = (height_texture->GetChannelCount() * height_texture->GetBitsPerChannel()) / 8;
+
+        // normalize and scale height data
+        height_data_out.resize(height_data.size() / bytes_per_pixel);
+        for (uint32_t i = 0; i < height_data.size(); i += bytes_per_pixel)
+        {
+            // assuming the height is stored in the red channel (first channel)
+            height_data_out[i / bytes_per_pixel] = min_y + (static_cast<float>(height_data[i]) / 255.0f) * (max_y - min_y);
+        }
+
+        return true;
+    }
+
+    static void generate_positions(vector<Vector3>& positions, const vector<float>& height_map, const uint32_t width, const uint32_t height)
     {
         SP_ASSERT_MSG(!height_map.empty(), "Height map is empty");
-
-        uint32_t index = 0;
-        uint32_t k = 0;
 
         for (uint32_t y = 0; y < height; y++)
         {
             for (uint32_t x = 0; x < width; x++)
             {
-                // Read height and scale it to a [0, 1] range
-                const float height = (static_cast<float>(height_map[k]) / 255.0f);
+                uint32_t index = y * width + x;
 
-                // Construct position
-                const uint32_t index = y * width + x;
-                positions[index].x = static_cast<float>(x) - width * 0.5f;  // center on the X axis
-                positions[index].z = static_cast<float>(y) - height * 0.5f; // center on the Z axis
-                positions[index].y = Helper::Lerp(min_x, max_y, height);
+                // center on the X and Z axis
+                float centered_x = static_cast<float>(x) - width * 0.5f;
+                float centered_z = static_cast<float>(y) - height * 0.5f;
 
-                k += 4;
+                // get height from height_map
+                float height_value = height_map[index]; 
+
+                positions[index] = Vector3(centered_x, height_value, centered_z);
             }
         }
     }
@@ -67,24 +97,44 @@ namespace Spartan
     {
         SP_ASSERT_MSG(!positions.empty(), "Positions are empty");
 
-        uint32_t index = 0;
-        uint32_t k = 0;
+        Vector3 offset = Vector3::Zero;
+        {
+            // calculate offsets to center the terrain
+            float offset_x   = -static_cast<float>(width) * 0.5f;
+            float offset_z   = -static_cast<float>(height) * 0.5f;
+            float min_height = FLT_MAX;
 
+            // find the minimum height to align the lower part of the terrain at y = 0
+            for (const Vector3& pos : positions)
+            {
+                if (pos.y < min_height)
+                {
+                    min_height = pos.y;
+                }
+            }
+
+            offset = Vector3(offset_x, -min_height, offset_z);
+        }
+
+        uint32_t index = 0;
+        uint32_t k     = 0;
         for (uint32_t y = 0; y < height - 1; y++)
         {
             for (uint32_t x = 0; x < width - 1; x++)
             {
+                Vector3 position = positions[index] + offset;
+
                 float u = static_cast<float>(x) / static_cast<float>(width - 1);
                 float v = static_cast<float>(y) / static_cast<float>(height - 1);
 
-                const uint32_t index_bottom_left = y * width + x;
+                const uint32_t index_bottom_left  = y * width + x;
                 const uint32_t index_bottom_right = y * width + x + 1;
-                const uint32_t index_top_left = (y + 1) * width + x;
-                const uint32_t index_top_right = (y + 1) * width + x + 1;
+                const uint32_t index_top_left     = (y + 1) * width + x;
+                const uint32_t index_top_right    = (y + 1) * width + x + 1;
 
                 // Bottom right of quad
-                index = index_bottom_right;
-                indices[k] = index;
+                index           = index_bottom_right;
+                indices[k]      = index;
                 vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v + 1.0f / (height - 1)));
 
                 // Bottom left of quad
@@ -108,8 +158,8 @@ namespace Spartan
                 vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v));
 
                 // Top right of quad
-                index = index_top_right;
-                indices[k + 5] = index;
+                index           = index_top_right;
+                indices[k + 5]  = index;
                 vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v));
 
                 k += 6; // next quad
@@ -198,6 +248,55 @@ namespace Spartan
         ThreadPool::ParallelLoop(compute_vertex_normals_tangents, vertex_count);
     }
 
+    vector<Vector3> generate_tree_positions(uint32_t tree_count, const vector<RHI_Vertex_PosTexNorTan>& vertices, const vector<uint32_t>& indices, float max_slope_radians, float water_level)
+    {
+        vector<Vector3> positions;
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dis(0, indices.size() / 3 - 1);
+
+        for (uint32_t i = 0; i < tree_count; ++i)
+        {
+            // randomly select a triangle from the mesh
+            uint32_t triangle_index = dis(gen) * 3;
+
+            // get the vertices of the triangle
+            Vector3 v0 = Vector3(vertices[indices[triangle_index]].pos[0], vertices[indices[triangle_index]].pos[1], vertices[indices[triangle_index]].pos[2]);
+            Vector3 v1 = Vector3(vertices[indices[triangle_index + 1]].pos[0], vertices[indices[triangle_index + 1]].pos[1], vertices[indices[triangle_index + 1]].pos[2]);
+            Vector3 v2 = Vector3(vertices[indices[triangle_index + 2]].pos[0], vertices[indices[triangle_index + 2]].pos[1], vertices[indices[triangle_index + 2]].pos[2]);
+
+            // compute the slope of the triangle
+            Vector3 normal = Vector3::Cross(v1 - v0, v2 - v0).Normalized();
+            float slope_radians = acos(Vector3::Dot(normal, Vector3::Up));
+
+            bool is_relatively_flat = slope_radians <= max_slope_radians;
+            bool is_above_water     = ((v0.y + v1.y + v2.y) / 3.0f) > water_level + 0.5f;
+            if (is_relatively_flat && is_above_water)
+            {
+                // generate barycentric coordinates
+                float u = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+                float v = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+
+                if (u + v > 1.0f)
+                {
+                    u = 1.0f - u;
+                    v = 1.0f - v;
+                }
+
+                // compute the position using barycentric coordinates
+                Vector3 position = v0 + u * (v1 - v0) + v * (v2 - v0);
+                positions.push_back(position);
+            }
+            else
+            {
+                // if the slope is too steep, try again
+                --i;
+            }
+        }
+
+        return positions;
+    }
+
     Terrain::Terrain(weak_ptr<Entity> entity) : Component(entity)
     {
 
@@ -205,14 +304,14 @@ namespace Spartan
 
     Terrain::~Terrain()
     {
-        m_height_map = nullptr;
+        m_height_texture = nullptr;
     }
 
     void Terrain::Serialize(FileStream* stream)
     {
         const string no_path;
 
-        stream->Write(m_height_map ? m_height_map->GetResourceFilePathNative() : no_path);
+        stream->Write(m_height_texture ? m_height_texture->GetResourceFilePathNative() : no_path);
         stream->Write(m_mesh ? m_mesh->GetObjectName() : no_path);
         stream->Write(m_min_y);
         stream->Write(m_max_y);
@@ -220,8 +319,8 @@ namespace Spartan
 
     void Terrain::Deserialize(FileStream* stream)
     {
-        m_height_map = ResourceCache::GetByPath<RHI_Texture2D>(stream->ReadAs<string>());
-        m_mesh = ResourceCache::GetByName<Mesh>(stream->ReadAs<string>());
+        m_height_texture = ResourceCache::GetByPath<RHI_Texture2D>(stream->ReadAs<string>());
+        m_mesh       = ResourceCache::GetByName<Mesh>(stream->ReadAs<string>());
         stream->Read(&m_min_y);
         stream->Read(&m_max_y);
 
@@ -230,10 +329,10 @@ namespace Spartan
 
     void Terrain::SetHeightMap(const shared_ptr<RHI_Texture>& height_map)
     {
-        m_height_map = ResourceCache::Cache<RHI_Texture>(height_map);
+        m_height_texture = height_map;
     }
 
-    void Terrain::GenerateAsync()
+    void Terrain::GenerateAsync(std::function<void()> on_complete)
     {
         if (m_is_generating)
         {
@@ -241,13 +340,13 @@ namespace Spartan
             return;
         }
 
-        if (!m_height_map)
+        if (!m_height_texture)
         {
             SP_LOG_WARNING("You need to assign a height map before trying to generate a terrain");
 
             ResourceCache::Remove(m_mesh);
             m_mesh = nullptr;
-            if (shared_ptr<Renderable> renderable = m_entity_ptr->AddComponent<Renderable>())
+            if (shared_ptr<Renderable> renderable = m_entity_ptr->GetComponent<Renderable>())
             {
                 renderable->SetGeometry(nullptr);
             }
@@ -255,35 +354,19 @@ namespace Spartan
             return;
         }
 
-        ThreadPool::AddTask([this]()
+        ThreadPool::AddTask([this, on_complete]()
         {
             m_is_generating = true;
 
-            // Get height map data
-            vector<std::byte> height_data;
+            if (!load_and_normalize_height_data(m_height_data, m_height_texture, m_min_y, m_max_y))
             {
-                height_data = m_height_map->GetMip(0, 0).bytes;
-
-                // If not the data is not there, load it
-                if (height_data.empty())
-                {
-                    if (m_height_map->LoadFromFile(m_height_map->GetResourceFilePath()))
-                    {
-                        height_data = m_height_map->GetMip(0, 0).bytes;
-
-                        if (height_data.empty())
-                        {
-                            SP_LOG_ERROR("Failed to load height map");
-                            m_is_generating = false;
-                            return;
-                        }
-                    }
-                }
+                m_is_generating = false;
+                return;
             }
 
             // deduce some stuff
-            uint32_t width   = m_height_map->GetWidth();
-            uint32_t height  = m_height_map->GetHeight();
+            uint32_t width   = m_height_texture->GetWidth();
+            uint32_t height  = m_height_texture->GetHeight();
             m_height_samples = width * height;
             m_vertex_count   = m_height_samples;
             m_index_count    = m_vertex_count * 6;
@@ -295,10 +378,10 @@ namespace Spartan
                 m_vertex_count + // 3. generate_normals_and_tangents()
                 1;               // 4. create mesh
 
-            // Star progress tracking
+            // star progress tracking
             ProgressTracker::GetProgress(ProgressType::Terrain).Start(job_count, "Generating terrain...");
 
-            // Pre-allocate memory for the calculations that follow
+            // pre-allocate memory for the calculations that follow
             vector<Vector3> positions(m_height_samples);
             positions.reserve(m_height_samples);
             vector<RHI_Vertex_PosTexNorTan> vertices(m_vertex_count);
@@ -306,25 +389,35 @@ namespace Spartan
             vector<uint32_t> indices(m_index_count);
             indices.reserve(m_index_count);
 
-            // 1. Generate positions by reading the height map
+            // 1. generate positions by reading the height map
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating positions...");
-            generate_positions(positions, height_data, width, height, m_min_y, m_max_y);
+            generate_positions(positions, m_height_data, width, height);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
-            // 2. Compute vertices and indices
+            // 2. compute vertices and indices
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating vertices and indices...");
             generate_vertices_and_indices(vertices, indices, positions, width, height);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
-            // 3. Compute normals and tangents
+            // 3. compute normals and tangents
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating normals and tangents...");
             generate_normals_and_tangents(indices, vertices);
-            // Jobs done are tracked internally here because this is the most expensive function
+            // jobs done are tracked internally here because this is the most expensive function
 
-            // 4. Create mesh
+            // 4. create mesh
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Creating mesh...");
             UpdateFromVertices(indices, vertices);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+
+            // compute tree positions
+            uint32_t tree_count     = 5000;
+            float max_slope_radians = 30.0f * Math::Helper::DEG_TO_RAD;
+            m_trees = generate_tree_positions(tree_count, vertices, indices, max_slope_radians, m_water_level);
+
+            if (on_complete)
+            {
+                on_complete();
+            }
 
             m_is_generating = false;
         });
@@ -332,7 +425,7 @@ namespace Spartan
 
     void Terrain::UpdateFromMesh(const shared_ptr<Mesh> mesh) const
     {
-        if (shared_ptr<Renderable> renderable = m_entity_ptr->AddComponent<Renderable>())
+        if (shared_ptr<Renderable> renderable = m_entity_ptr->GetComponent<Renderable>())
         {
             renderable->SetGeometry(
                 mesh.get(),
@@ -342,16 +435,10 @@ namespace Spartan
                 0,                     // vertex offset
                 mesh->GetVertexCount() // vertex count
             );
-
-            shared_ptr<Material> material = make_shared<Material>();
-            material->SetResourceFilePath(string("project\\terrain\\material_terrain") + string(EXTENSION_MATERIAL));
-            material->SetTexture(MaterialTexture::Color, "project\\terrain\\grass.jpg");
-            material->SetTexture(MaterialTexture::Color2, "project\\terrain\\rock.jpg");
-            material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
-            material->SetProperty(MaterialProperty::UvTilingX, 100.0f);
-            material->SetProperty(MaterialProperty::UvTilingY, 100.0f);
-
-            m_entity_ptr->GetComponent<Renderable>()->SetMaterial(material);
+        }
+        else
+        {
+            SP_LOG_ERROR("Failed to update, there is no Renderable component");
         }
     }
 
@@ -371,7 +458,7 @@ namespace Spartan
             m_mesh->ComputeNormalizedScale();
             m_mesh->ComputeAabb();
 
-            // Set a file path so the model can be used by the resource cache
+            // set a file path so the model can be used by the resource cache
             m_mesh->SetResourceFilePath(ResourceCache::GetProjectDirectory() + m_entity_ptr->GetObjectName() + "_terrain_" + to_string(m_object_id) + string(EXTENSION_MODEL));
             m_mesh = ResourceCache::Cache(m_mesh);
         }

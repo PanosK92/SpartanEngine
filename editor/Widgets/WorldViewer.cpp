@@ -29,9 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
 #include "World/Components/AudioListener.h"
-#include "World/Components/RigidBody.h"
-#include "World/Components/SoftBody.h"
-#include "World/Components/Collider.h"
+#include "World/Components/PhysicsBody.h"
 #include "World/Components/Constraint.h"
 #include "World/Components/Environment.h"
 #include "World/Components/Terrain.h"
@@ -44,8 +42,8 @@ using namespace std;
 
 namespace
 {
-    static bool popup_rename_entity        = false;
-    static Spartan::Entity* entity_copied  = nullptr;
+    static bool popup_rename_entity       = false;
+    static Spartan::Entity* entity_copied = nullptr;
     static weak_ptr <Spartan::Entity> entity_clicked;
     static weak_ptr <Spartan::Entity> entity_hovered;
     static ImGuiSp::DragDropPayload g_payload;
@@ -73,7 +71,7 @@ namespace
                     "6. The Sponza building found in Dubrovnik",
                     "7. Doom E1M1"
                 };
-                static int item_index = 2;
+                static int item_index = 4;
                 static int item_count = IM_ARRAYSIZE(items);
                 ImGui::PushItemWidth(450.0f * Spartan::Window::GetDpiScale());
                 ImGui::ListBox("##list_box", &item_index, items, item_count, item_count);
@@ -86,7 +84,7 @@ namespace
                     {
                         Spartan::ThreadPool::AddTask([]()
                         {
-                            Spartan::World::CreateDefaultWorldPickablePhysicsCube();
+                            Spartan::World::CreateDefaultWorldCube();
                         });
                     }
                     else if (item_index == 2)
@@ -485,17 +483,9 @@ void WorldViewer::PopupContextMenu() const
     // PHYSICS
     if (ImGui::BeginMenu("Physics"))
     {
-        if (ImGui::MenuItem("Rigid Body"))
+        if (ImGui::MenuItem("Physics Body"))
         {
-            ActionEntityCreateRigidBody();
-        }
-        else if (ImGui::MenuItem("Soft Body"))
-        {
-            ActionEntityCreateSoftBody();
-        }
-        else if (ImGui::MenuItem("Collider"))
-        {
-            ActionEntityCreateCollider();
+            ActionEntityCreatePhysicsBody();
         }
         else if (ImGui::MenuItem("Constraint"))
         {
@@ -637,7 +627,7 @@ void WorldViewer::ActionEntityCreateCube()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::Renderer::GetStandardMesh(Spartan::Renderer_MeshType::Cube).get());
+    renderable->SetGeometry(Spartan::Renderer_MeshType::Cube);
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Cube");
 }
@@ -646,7 +636,7 @@ void WorldViewer::ActionEntityCreateQuad()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::Renderer::GetStandardMesh(Spartan::Renderer_MeshType::Quad).get());
+    renderable->SetGeometry(Spartan::Renderer_MeshType::Quad);
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Quad");
 }
@@ -655,7 +645,7 @@ void WorldViewer::ActionEntityCreateSphere()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::Renderer::GetStandardMesh(Spartan::Renderer_MeshType::Sphere).get());
+    renderable->SetGeometry(Spartan::Renderer_MeshType::Sphere);
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Sphere");
 }
@@ -664,7 +654,7 @@ void WorldViewer::ActionEntityCreateCylinder()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::Renderer::GetStandardMesh(Spartan::Renderer_MeshType::Cylinder).get());
+    renderable->SetGeometry(Spartan::Renderer_MeshType::Cylinder);
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Cylinder");
 }
@@ -673,7 +663,7 @@ void WorldViewer::ActionEntityCreateCone()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::Renderer::GetStandardMesh(Spartan::Renderer_MeshType::Cone).get());
+    renderable->SetGeometry(Spartan::Renderer_MeshType::Cone);
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Cone");
 }
@@ -719,25 +709,11 @@ void WorldViewer::ActionEntityCreateLightSpot()
     light->SetIntensity(Spartan::LightIntensity::bulb_150_watt);
 }
 
-void WorldViewer::ActionEntityCreateRigidBody()
+void WorldViewer::ActionEntityCreatePhysicsBody()
 {
     auto entity = ActionEntityCreateEmpty();
-    entity->AddComponent<Spartan::RigidBody>();
-    entity->SetObjectName("RigidBody");
-}
-
-void WorldViewer::ActionEntityCreateSoftBody()
-{
-    auto entity = ActionEntityCreateEmpty();
-    entity->AddComponent<Spartan::SoftBody>();
-    entity->SetObjectName("SoftBody");
-}
-
-void WorldViewer::ActionEntityCreateCollider()
-{
-    auto entity = ActionEntityCreateEmpty();
-    entity->AddComponent<Spartan::Collider>();
-    entity->SetObjectName("Collider");
+    entity->AddComponent<Spartan::PhysicsBody>();
+    entity->SetObjectName("PhysicsBody");
 }
 
 void WorldViewer::ActionEntityCreateConstraint()

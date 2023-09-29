@@ -135,6 +135,11 @@ namespace Spartan
         SP_ASSERT(m_bounding_box          != BoundingBox::Undefined);
     }
 
+    void Renderable::SetGeometry(const Renderer_MeshType mesh_type)
+    {
+        SetGeometry(Spartan::Renderer::GetStandardMesh(Spartan::Renderer_MeshType::Cube).get());
+    }
+    
     void Renderable::GetGeometry(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
     {
         SP_ASSERT_MSG(m_mesh != nullptr, "Invalid mesh");

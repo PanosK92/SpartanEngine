@@ -29,19 +29,18 @@ namespace Spartan
 {
     enum class EngineMode : uint32_t
     {
-        Physics = 1 << 0,
-        Game    = 1 << 1
+        Editor  = 1 << 0,
+        Physics = 1 << 1,
+        Game    = 1 << 2
     };
 
     class SP_CLASS Engine
     {
     public:
-        // Main
         static void Initialize();
         static void Shutdown();
         static void Tick();
 
-        // Flags
         static void AddFlag(const EngineMode flag);
         static void RemoveFlag(const EngineMode flag);
         static bool IsFlagSet(const EngineMode flag);

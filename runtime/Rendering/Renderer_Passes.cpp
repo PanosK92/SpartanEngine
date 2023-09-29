@@ -171,47 +171,48 @@ namespace Spartan
         // Opaque objects write their depth information to a depth buffer, using just a vertex shader.
         // Transparent objects read the opaque depth but don't write their own, instead, they write their color information using a pixel shader.
 
-        // Acquire shaders
-        RHI_Shader* shader_v = GetShader(Renderer_Shader::depth_light_V).get();
-        RHI_Shader* shader_p = GetShader(Renderer_Shader::depth_light_p).get();
-        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
+        // acquire shaders
+        RHI_Shader* shader_v               = GetShader(Renderer_Shader::depth_light_V).get();
+        RHI_Shader* shader_p_transparent   = GetShader(Renderer_Shader::depth_light_p).get();
+        RHI_Shader* shader_p_alpha_testing = GetShader(Renderer_Shader::depth_alpha_test_p).get();
+        if (!shader_v->IsCompiled() || !shader_p_transparent->IsCompiled() || !shader_p_alpha_testing->IsCompiled())
             return;
 
-        // Get entities
+        // get entities
         vector<shared_ptr<Entity>>& entities = m_renderables[is_transparent_pass ? Renderer_Entity::GeometryTransparent : Renderer_Entity::Geometry];
         if (entities.empty())
             return;
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_color" : "shadow_maps_depth");
 
-        // Go through all of the lights
+        // go through all of the lights
         const auto& entities_light = GetEntities()[Renderer_Entity::Light];
         for (uint32_t light_index = 0; light_index < entities_light.size(); light_index++)
         {
             shared_ptr<Light> light = entities_light[light_index]->GetComponent<Light>();
 
-            // Can happen when loading a new scene and the lights get deleted
+            // can happen when loading a new scene and the lights get deleted
             if (!light)
                 continue;
 
-            // Skip lights which don't cast shadows or have an intensity of zero
+            // skip lights which don't cast shadows or have an intensity of zero
             if (!light->GetShadowsEnabled() || light->GetIntensityWatt(GetCamera().get()) == 0.0f)
                 continue;
 
-            // Skip lights that don't cast transparent shadows (if this is a transparent pass)
+            // skip lights that don't cast transparent shadows (if this is a transparent pass)
             if (is_transparent_pass && !light->GetShadowsTransparentEnabled())
                 continue;
 
-            // Acquire light's shadow maps
+            // acquire light's shadow maps
             RHI_Texture* tex_depth = light->GetDepthTexture();
             RHI_Texture* tex_color = light->GetColorTexture();
             if (!tex_depth)
                 continue;
 
-            // Define pipeline state
+            // define pipeline state
             static RHI_PipelineState pso;
             pso.shader_vertex                   = shader_v;
-            pso.shader_pixel                    = is_transparent_pass ? shader_p : nullptr;
+            pso.shader_pixel                    = is_transparent_pass ? shader_p_transparent : shader_p_alpha_testing;
             pso.blend_state                     = is_transparent_pass ? GetBlendState(Renderer_BlendState::Alpha).get() : GetBlendState(Renderer_BlendState::Disabled).get();
             pso.depth_stencil_state             = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
             pso.render_target_color_textures[0] = tex_color; // always bind so we can clear to white (in case there are no transparent objects)
@@ -221,17 +222,17 @@ namespace Spartan
 
             for (uint32_t array_index = 0; array_index < tex_depth->GetArrayLength(); array_index++)
             {
-                // Set render target texture array index
+                // set render target texture array index
                 pso.render_target_color_texture_array_index         = array_index;
                 pso.render_target_depth_stencil_texture_array_index = array_index;
 
-                // Set clear values
+                // set clear values
                 pso.clear_color[0] = Color::standard_white;
                 pso.clear_depth    = is_transparent_pass ? rhi_depth_load : 0.0f; // reverse-z
 
                 const Matrix& view_projection = light->GetViewMatrix(array_index) * light->GetProjectionMatrix(array_index);
 
-                // Set appropriate rasterizer state
+                // set appropriate rasterizer state
                 if (light->GetLightType() == LightType::Directional)
                 {
                     // "Pancaking" - https://www.gamedev.net/forums/topic/639036-shadow-mapping-and-high-up-objects/
@@ -244,34 +245,34 @@ namespace Spartan
                     pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Light_point_spot).get();
                 }
 
-                // Set pipeline state
+                // set pipeline state
                 cmd_list->SetPipelineState(pso);
 
-                // State tracking
+                // state tracking
                 bool render_pass_active    = false;
 
                 for (shared_ptr<Entity> entity : entities)
                 {
-                    // Acquire renderable component
+                    // acquire renderable component
                     shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
                     if (!renderable)
                         continue;
 
-                    // Skip meshes that don't cast shadows
+                    // skip meshes that don't cast shadows
                     if (!renderable->GetCastShadows())
                         continue;
 
-                    // Acquire geometry
+                    // acquire geometry
                     Mesh* mesh = renderable->GetMesh();
                     if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
                         continue;
 
-                    // Acquire material
+                    // acquire material
                     Material* material = renderable->GetMaterial();
                     if (!material)
                         continue;
 
-                    // Skip objects outside of the view frustum
+                    // skip objects outside of the view frustum
                     if (!light->IsInViewFrustum(renderable, array_index))
                         continue;
 
@@ -281,23 +282,19 @@ namespace Spartan
                         render_pass_active = true;
                     }
 
-                    // Bind material (only for transparents)
-                    if (is_transparent_pass)
-                    {
-                        // Bind material textures
-                        RHI_Texture* tex_albedo = material->GetTexture(MaterialTexture::Color);
-                        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_albedo ? tex_albedo : GetStandardTexture(Renderer_StandardTexture::White).get());
+                    // bind material
+                    BindTexturesMaterial(cmd_list, material);
+                    UpdateConstantBufferMaterial(cmd_list, material);
 
-                        // Set pass constants with material properties
-                        UpdateConstantBufferMaterial(cmd_list, material);
-                    }
-
-                    // Bind geometry
+                    // bind geometry
                     cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
                     cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
 
                     // Set pass constants with cascade transform
                     m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
+                    PushPassConstants(cmd_list);
+
+                    m_cb_pass_cpu.set_f3_value(material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f, material->GetProperty(MaterialProperty::ColorA), 0.0f);
                     PushPassConstants(cmd_list);
 
                     cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
@@ -440,7 +437,7 @@ namespace Spartan
 
         // acquire shaders
         RHI_Shader* shader_v = GetShader(Renderer_Shader::depth_prepass_v).get();
-        RHI_Shader* shader_p = GetShader(Renderer_Shader::depth_prepass_p).get();
+        RHI_Shader* shader_p = GetShader(Renderer_Shader::depth_alpha_test_p).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
@@ -487,7 +484,7 @@ namespace Spartan
                 if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
                     continue;
 
-                // Get transform
+                // get transform
                 shared_ptr<Transform> transform = entity->GetTransform();
                 if (!transform)
                     continue;
@@ -507,9 +504,13 @@ namespace Spartan
                 // set alpha testing textures
                 BindTexturesMaterial(cmd_list, material);
 
-                // Set pass constants
+                // set pass constants
                 m_cb_pass_cpu.transform = transform->GetMatrix();
-                m_cb_pass_cpu.set_f3_value(material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f, material->GetProperty(MaterialProperty::ColorA), 0.0f);
+                m_cb_pass_cpu.set_f3_value(
+                    material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
+                    material->HasTexture(MaterialTexture::Color) ? 1.0f : 0.0f,
+                    material->GetProperty(MaterialProperty::ColorA)
+                );
                 PushPassConstants(cmd_list);
             
                 // draw
@@ -1712,16 +1713,16 @@ namespace Spartan
 
     void Renderer::Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        if (!GetOption<bool>(Renderer_Option::Debug_Lights))
+        if (!GetOption<bool>(Renderer_Option::Debug_Lights) || Engine::IsFlagSet(EngineMode::Game))
             return;
 
-        // Acquire shaders
+        // acquire shaders
         RHI_Shader* shader_v = GetShader(Renderer_Shader::quad_v).get();
         RHI_Shader* shader_p = GetShader(Renderer_Shader::quad_p).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        // Acquire entities
+        // acquire entities
         auto& lights        = m_renderables[Renderer_Entity::Light];
         auto& audio_sources = m_renderables[Renderer_Entity::AudioSource];
         if ((lights.empty() && audio_sources.empty()) || !GetCamera())
@@ -1729,7 +1730,7 @@ namespace Spartan
 
         cmd_list->BeginTimeblock("icons");
 
-        // Define pipeline state
+        // define pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
         pso.shader_pixel                    = shader_p;
@@ -1739,7 +1740,7 @@ namespace Spartan
         pso.render_target_color_textures[0] = tex_out;
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
-        // Set pipeline state
+        // set pipeline state
         cmd_list->SetPipelineState(pso);
 
         bool render_pass_started = false;
@@ -1750,7 +1751,7 @@ namespace Spartan
             const Vector3 camera_to_light  = (pos_world - pos_world_camera).Normalized();
             const float v_dot_l            = Vector3::Dot(GetCamera()->GetTransform()->GetForward(), camera_to_light);
 
-            // Only draw if it's inside our view
+            // only draw if it's inside our view
             if (v_dot_l > 0.5f)
             {
                 if (!render_pass_started)
@@ -1759,7 +1760,7 @@ namespace Spartan
                     render_pass_started = true;
                 }
 
-                // Compute transform
+                // compute transform
                 {
                     // Use the distance from the camera to scale the icon, this will
                     // cancel out perspective scaling, hence keeping the icon scale constant.
@@ -1773,12 +1774,12 @@ namespace Spartan
 
                     Matrix transform = Matrix(pos_world, rotation_camera_billboard * rotation_reorient_quad, scale);
 
-                    // Update transform
+                    // update transform
                     m_cb_pass_cpu.transform = transform * m_cb_frame_cpu.view_projection;
                     PushPassConstants(cmd_list);
                 }
 
-                // Draw rectangle
+                // draw rectangle
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
                 cmd_list->SetBufferVertex(GetStandardMesh(Renderer_MeshType::Quad)->GetVertexBuffer());
                 cmd_list->SetBufferIndex(GetStandardMesh(Renderer_MeshType::Quad)->GetIndexBuffer());
@@ -1786,21 +1787,21 @@ namespace Spartan
             }
         };
 
-        // Draw audio source icons
+        // draw audio source icons
         for (shared_ptr<Entity> entity : audio_sources)
         {
             draw_icon(entity->GetTransform().get(), GetStandardTexture(Renderer_StandardTexture::Gizmo_audio_source).get());
         }
 
-        // Draw light icons
+        // draw light icons
         for (shared_ptr<Entity> entity : lights)
         {
             RHI_Texture* texture = nullptr;
 
-            // Light can be null if it just got removed and our buffer doesn't update till the next frame
+            // light can be null if it just got removed and our buffer doesn't update till the next frame
             if (shared_ptr<Light> light = entity->GetComponent<Light>())
             {
-                // Get the texture
+                // get the texture
                 if (light->GetLightType() == LightType::Directional) texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_directional).get();
                 else if (light->GetLightType() == LightType::Point)  texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_point).get();
                 else if (light->GetLightType() == LightType::Spot)   texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_spot).get();
@@ -1993,7 +1994,7 @@ namespace Spartan
 
     void Renderer::Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        if (!GetOption<bool>(Renderer_Option::Debug_SelectionOutline))
+        if (!GetOption<bool>(Renderer_Option::Debug_SelectionOutline) || Engine::IsFlagSet(EngineMode::Game))
             return;
 
         // Acquire shaders

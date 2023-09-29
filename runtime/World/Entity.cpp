@@ -24,13 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Entity.h"
 #include "World.h"
 #include "Components/Camera.h"
-#include "Components/Collider.h"
 #include "Components/Transform.h"
 #include "Components/Constraint.h"
 #include "Components/Light.h"
 #include "Components/Renderable.h"
-#include "Components/RigidBody.h"
-#include "Components/SoftBody.h"
+#include "Components/PhysicsBody.h"
 #include "Components/Environment.h"
 #include "Components/AudioSource.h"
 #include "Components/AudioListener.h"
@@ -61,7 +59,7 @@ namespace Spartan
             // clone all the components
             for (shared_ptr<Component> component_original : entity->GetAllComponents())
             {
-                if (component_original !=nullptr)
+                if (component_original != nullptr)
                 {
                     // component
                     shared_ptr<Component> component_clone = clone->AddComponent(component_original->GetType());
@@ -108,9 +106,9 @@ namespace Spartan
         AddComponent<Transform>();
     }
 
-    void Entity::Clone()
+    Entity* Entity::Clone()
     {
-        clone_entity_and_descendants(this);
+        return clone_entity_and_descendants(this);
     }
 
     void Entity::OnStart()
@@ -145,7 +143,7 @@ namespace Spartan
         if (!m_is_active)
             return;
 
-        for (shared_ptr<Component> component : m_components)
+        for (shared_ptr<Component>& component : m_components)
         {
             if (component)
             {
@@ -307,12 +305,10 @@ namespace Spartan
             case ComponentType::AudioListener:   component = static_pointer_cast<Component>(AddComponent<AudioListener>());   break;
             case ComponentType::AudioSource:     component = static_pointer_cast<Component>(AddComponent<AudioSource>());     break;
             case ComponentType::Camera:          component = static_pointer_cast<Component>(AddComponent<Camera>());          break;
-            case ComponentType::Collider:        component = static_pointer_cast<Component>(AddComponent<Collider>());        break;
             case ComponentType::Constraint:      component = static_pointer_cast<Component>(AddComponent<Constraint>());      break;
             case ComponentType::Light:           component = static_pointer_cast<Component>(AddComponent<Light>());           break;
             case ComponentType::Renderable:      component = static_pointer_cast<Component>(AddComponent<Renderable>());      break;
-            case ComponentType::RigidBody:       component = static_pointer_cast<Component>(AddComponent<RigidBody>());       break;
-            case ComponentType::SoftBody:        component = static_pointer_cast<Component>(AddComponent<SoftBody>());        break;
+            case ComponentType::PhysicsBody:     component = static_pointer_cast<Component>(AddComponent<PhysicsBody>());     break;
             case ComponentType::Environment:     component = static_pointer_cast<Component>(AddComponent<Environment>());     break;
             case ComponentType::Transform:       component = static_pointer_cast<Component>(AddComponent<Transform>());       break;
             case ComponentType::Terrain:         component = static_pointer_cast<Component>(AddComponent<Terrain>());         break;
