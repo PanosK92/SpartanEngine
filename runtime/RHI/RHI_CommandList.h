@@ -146,6 +146,7 @@ namespace Spartan
         // Misc
         RHI_Semaphore* GetSemaphoreProccessed() { return m_proccessed_semaphore.get(); }
         void* GetRhiResource() const { return m_rhi_resource; }
+        bool IsRenderPassActive() const { return m_is_rendering; }
 
     private:
         void OnDraw();

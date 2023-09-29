@@ -172,24 +172,23 @@ namespace Spartan
         // Transparent objects read the opaque depth but don't write their own, instead, they write their color information using a pixel shader.
 
         // acquire shaders
-        RHI_Shader* shader_v               = GetShader(Renderer_Shader::depth_light_V).get();
-        RHI_Shader* shader_p_transparent   = GetShader(Renderer_Shader::depth_light_p).get();
-        RHI_Shader* shader_p_alpha_testing = GetShader(Renderer_Shader::depth_alpha_test_p).get();
-        if (!shader_v->IsCompiled() || !shader_p_transparent->IsCompiled() || !shader_p_alpha_testing->IsCompiled())
+        RHI_Shader* shader_v = GetShader(Renderer_Shader::depth_light_V).get();
+        RHI_Shader* shader_p = is_transparent_pass ? GetShader(Renderer_Shader::depth_light_p).get() : GetShader(Renderer_Shader::depth_alpha_test_p).get();
+        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
         // get entities
-        vector<shared_ptr<Entity>>& entities = m_renderables[is_transparent_pass ? Renderer_Entity::GeometryTransparent : Renderer_Entity::Geometry];
-        if (entities.empty())
+        const auto& entities_lights = GetEntities()[Renderer_Entity::Light];
+        vector<shared_ptr<Entity>>& entities_geometry = m_renderables[is_transparent_pass ? Renderer_Entity::GeometryTransparent : Renderer_Entity::Geometry];
+        if (entities_geometry.empty() || entities_lights.empty())
             return;
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_color" : "shadow_maps_depth");
 
         // go through all of the lights
-        const auto& entities_light = GetEntities()[Renderer_Entity::Light];
-        for (uint32_t light_index = 0; light_index < entities_light.size(); light_index++)
+        for (uint32_t light_index = 0; light_index < entities_lights.size(); light_index++)
         {
-            shared_ptr<Light> light = entities_light[light_index]->GetComponent<Light>();
+            shared_ptr<Light> light = entities_lights[light_index]->GetComponent<Light>();
 
             // can happen when loading a new scene and the lights get deleted
             if (!light)
@@ -212,7 +211,7 @@ namespace Spartan
             // define pipeline state
             static RHI_PipelineState pso;
             pso.shader_vertex                   = shader_v;
-            pso.shader_pixel                    = is_transparent_pass ? shader_p_transparent : shader_p_alpha_testing;
+            pso.shader_pixel                    = shader_p;
             pso.blend_state                     = is_transparent_pass ? GetBlendState(Renderer_BlendState::Alpha).get() : GetBlendState(Renderer_BlendState::Disabled).get();
             pso.depth_stencil_state             = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
             pso.render_target_color_textures[0] = tex_color; // always bind so we can clear to white (in case there are no transparent objects)
@@ -248,10 +247,12 @@ namespace Spartan
                 // set pipeline state
                 cmd_list->SetPipelineState(pso);
 
-                // state tracking
-                bool render_pass_active    = false;
+                if (!cmd_list->IsRenderPassActive())
+                {
+                    cmd_list->BeginRenderPass();
+                }
 
-                for (shared_ptr<Entity> entity : entities)
+                for (shared_ptr<Entity> entity : entities_geometry)
                 {
                     // acquire renderable component
                     shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
@@ -276,12 +277,6 @@ namespace Spartan
                     if (!light->IsInViewFrustum(renderable, array_index))
                         continue;
 
-                    if (!render_pass_active)
-                    {
-                        cmd_list->BeginRenderPass();
-                        render_pass_active = true;
-                    }
-
                     // bind material
                     BindTexturesMaterial(cmd_list, material);
                     UpdateConstantBufferMaterial(cmd_list, material);
@@ -290,23 +285,24 @@ namespace Spartan
                     cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
                     cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
 
-                    // Set pass constants with cascade transform
+                    // set pass constants
                     m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
-                    PushPassConstants(cmd_list);
-
-                    m_cb_pass_cpu.set_f3_value(material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f, material->GetProperty(MaterialProperty::ColorA), 0.0f);
+                    m_cb_pass_cpu.set_f3_value(
+                        material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
+                        material->HasTexture(MaterialTexture::Color)    ? 1.0f  : 0.0f,
+                        material->GetProperty(MaterialProperty::ColorA)
+                    );
                     PushPassConstants(cmd_list);
 
                     cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
                 }
 
-                if (render_pass_active)
+                if (cmd_list->IsRenderPassActive())
                 {
                     cmd_list->EndRenderPass();
                 }
             }
         }
-
         cmd_list->EndTimeblock();
     }
 
@@ -508,7 +504,7 @@ namespace Spartan
                 m_cb_pass_cpu.transform = transform->GetMatrix();
                 m_cb_pass_cpu.set_f3_value(
                     material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
-                    material->HasTexture(MaterialTexture::Color) ? 1.0f : 0.0f,
+                    material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
                     material->GetProperty(MaterialProperty::ColorA)
                 );
                 PushPassConstants(cmd_list);

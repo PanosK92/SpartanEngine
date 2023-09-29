@@ -766,9 +766,9 @@ namespace Spartan
 
     void World::CreateDefaultWorldTerrain()
     {
-        Vector3 camera_position = Vector3(250.5134f, 13.8523f, 137.7860f);
-        Vector3 camera_rotation = Vector3(-2.8907f, -103.4572f, 0.0f);
-        bool shadows = false; // directional light shadows have some glitches and also tank the frame rate if you have thousands of trees
+        Vector3 camera_position = Vector3(6.9900f, 25.0f, 332.4628f);
+        Vector3 camera_rotation = Vector3(0.0f, 180.0f, 0.0f);
+        bool shadows = false; // directional light shadows have some glitches and also tank the frame rate if you have 5000 trees
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\nature.mp3", shadows, false);
 
         // terrain
@@ -819,7 +819,7 @@ namespace Spartan
                         material->SetColor(Color(0.0f, 48.0f / 255.0f, 75.0f / 255.0f));
                         material->SetTexture(MaterialTexture::Normal, "project\\terrain\\water_normal_2.jpeg");
                         material->SetProperty(MaterialProperty::IsWater, 1.0f);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.0f);
+                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.15f); // just a bit of roughness to diffuse the sun a little
                         material->SetProperty(MaterialProperty::NormalMultiplier, 0.13f);
                         material->SetProperty(MaterialProperty::UvTilingX, 500.0f);
                         material->SetProperty(MaterialProperty::UvTilingY, 500.0f);
@@ -839,15 +839,15 @@ namespace Spartan
                     entity->GetTransform()->SetPosition(Vector3(132.4801f, 68.9992f, 28.2217f));
                     entity->GetTransform()->SetScale(Vector3(0.01f, 0.01f, 0.01f));
 
-                    if (Entity* body = entity->GetTransform()->GetDescendantPtrByName("Mobile_Tree_1_1"))
+                    if (Entity* bark = entity->GetTransform()->GetDescendantPtrByName("Mobile_Tree_1_1"))
                     {
-                        body->GetComponent<Renderable>()->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\tree\\bark.png");
+                        bark->GetComponent<Renderable>()->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\tree\\bark.png");
 
                     }
 
-                    if (Entity* leafes = entity->GetTransform()->GetDescendantPtrByName("Mobile_Tree_1_2"))
+                    if (Entity* leafs = entity->GetTransform()->GetDescendantPtrByName("Mobile_Tree_1_2"))
                     {
-                        leafes->GetComponent<Renderable>()->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\tree\\leaf.png");
+                        leafs->GetComponent<Renderable>()->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\tree\\leaf.png");
                     }
 
                     // clone the tree to make a forest, todo: draw them instanced
