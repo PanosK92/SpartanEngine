@@ -27,9 +27,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Definitions.h"
 #include "../Rendering/Renderer.h"
 #include "../Logging/Log.h"
-#include "renderdoc/app/renderdoc_app.h"
 #if defined(_MSC_VER) // Windows
+#include "renderdoc/app/renderdoc_app.h"
 #include <windows.h>
+#else
+#include "renderdoc_app.h"
 #endif
 //======================================
 
