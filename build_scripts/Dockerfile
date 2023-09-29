@@ -3,7 +3,7 @@ FROM ubuntu:22.04
 
 # Get all the necessary dependencies from the package manager
 RUN apt update -y &&\
-    apt install -y build-essential libassimp-dev libfreeimage-dev libfreetype-dev libbullet-dev libsdl2-dev libspirv-cross-c-shared-dev git python3 libvulkan-dev pkg-config cmake wget &&\
+    apt install -y build-essential libassimp-dev librenderdoc-dev libfreeimage-dev libfreetype-dev libbullet-dev libsdl2-dev libspirv-cross-c-shared-dev git python3 libvulkan-dev pkg-config cmake wget &&\
     mkdir /deps
 
 # Download and install premake5
