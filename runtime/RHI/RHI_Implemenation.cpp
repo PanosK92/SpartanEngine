@@ -74,7 +74,7 @@ namespace Spartan
             validation    = true;
             gpu_markers   = true;
             gpu_profiling = true;
-            renderdoc     = true;
+            renderdoc     = false;
         #else
             validation    = false;
             gpu_markers   = false;

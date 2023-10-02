@@ -68,7 +68,6 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
     return output;
 }
 
-
 float compute_slope(float3 normal)
 {
     float bias  = -0.1f; // increase the bias to favour the slope/rock texture
