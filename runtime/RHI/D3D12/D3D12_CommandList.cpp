@@ -171,7 +171,7 @@ namespace Spartan
         Profiler::m_rhi_draw++;
     }
     
-    void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
+    void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset, const uint32_t instance_count)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
@@ -263,7 +263,7 @@ namespace Spartan
         static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->RSSetScissorRects(1, &d3d12_rectangle);
     }
     
-    void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
+    void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint32_t binding /*= 0*/)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);

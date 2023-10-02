@@ -501,7 +501,7 @@ namespace Spartan
             // on shift, double the translation
             if (Input::GetKey(KeyCode::Shift_Left))
             {
-                translation *= 2.0f;
+                translation *= 3.0f;
             }
 
             // accelerate
