@@ -522,9 +522,10 @@ namespace Spartan
     void Renderer::Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // acquire shaders
-        RHI_Shader* shader_v = GetShader(Renderer_Shader::gbuffer_v).get();
-        RHI_Shader* shader_p = GetShader(Renderer_Shader::gbuffer_p).get();
-        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
+        RHI_Shader* shader_v           = GetShader(Renderer_Shader::gbuffer_v).get();
+        RHI_Shader* shader_v_instanced = GetShader(Renderer_Shader::gbuffer_instanced_v).get();
+        RHI_Shader* shader_p           = GetShader(Renderer_Shader::gbuffer_p).get();
+        if (!shader_v->IsCompiled() || !shader_v_instanced->IsCompiled() || !shader_p->IsCompiled())
             return;
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
@@ -534,13 +535,9 @@ namespace Spartan
         RHI_Texture* tex_normal            = GetRenderTarget(Renderer_RenderTexture::gbuffer_normal).get();
         RHI_Texture* tex_material          = GetRenderTarget(Renderer_RenderTexture::gbuffer_material).get();
         RHI_Texture* tex_material_2        = GetRenderTarget(Renderer_RenderTexture::gbuffer_material_2).get();
-        RHI_Texture* tex_velocity          = GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity).get();
-        RHI_Texture* tex_velocity_previous = GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity_previous).get();
+        RHI_Texture* tex_velocity          = GetRenderTarget((GetFrameNum() % 2 == 0) ? Renderer_RenderTexture::gbuffer_velocity : Renderer_RenderTexture::gbuffer_velocity_previous).get();
         RHI_Texture* tex_depth             = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
         RHI_Texture* tex_fsr2_transparency = GetRenderTarget(Renderer_RenderTexture::fsr2_mask_transparency).get();
-
-        // copy velocity to previous velocity
-        cmd_list->Blit(tex_velocity, tex_velocity_previous, false);
 
         bool depth_prepass = GetOption<bool>(Renderer_Option::DepthPrepass);
         bool wireframe     = GetOption<bool>(Renderer_Option::Debug_Wireframe);
@@ -553,43 +550,46 @@ namespace Spartan
         RHI_DepthStencilState* depth_stencil_state = depth_prepass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
         depth_stencil_state                        = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : depth_stencil_state;
 
-        // clearing to zero, this will draw the sky
-        static Color clear_color = Color(0.0f, 0.0f, 0.0f, 0.0f);
-
-        // define pipeline state
-        RHI_PipelineState pso;
-        pso.name                            = "g_buffer";
-        pso.shader_vertex                   = shader_v;
-        pso.shader_pixel                    = shader_p;
-        pso.blend_state                     = GetBlendState(Renderer_BlendState::Disabled).get();
-        pso.rasterizer_state                = rasterizer_state;
-        pso.depth_stencil_state             = depth_stencil_state;
-        pso.render_target_color_textures[0] = tex_albedo;
-        pso.clear_color[0]                  = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
-        pso.render_target_color_textures[1] = tex_normal;
-        pso.clear_color[1]                  = pso.clear_color[0];
-        pso.render_target_color_textures[2] = tex_material;
-        pso.clear_color[2]                  = pso.clear_color[0];
-        pso.render_target_color_textures[3] = tex_material_2;
-        pso.clear_color[3]                  = pso.clear_color[0];
-        pso.render_target_color_textures[4] = tex_velocity;
-        pso.clear_color[4]                  = pso.clear_color[0];
-        pso.render_target_color_textures[5] = tex_fsr2_transparency;
-        pso.clear_color[5]                  = pso.clear_color[0];
-        pso.render_target_depth_texture     = tex_depth;
-        pso.clear_depth                     = (is_transparent_pass || depth_prepass) ? rhi_depth_load : 0.0f; // reverse-z
-        pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
-
-        // set pipeline state
-        cmd_list->SetPipelineState(pso);
-
-        auto& entities = m_renderables[is_transparent_pass ? Renderer_Entity::GeometryTransparent : Renderer_Entity::Geometry];
-
-        // render
-        cmd_list->BeginRenderPass();
+        uint32_t start_index = !is_transparent_pass ? 0 : 2;
+        uint32_t end_index   = !is_transparent_pass ? 2 : 4;
+        bool is_first_pass   = true;
+        for (uint32_t i = start_index; i < end_index; i++)
         {
-            uint64_t bound_material_id = 0;
+            // acquire entities
+            auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
+            if (entities.empty())
+                continue;
 
+            // define pipeline state
+            RHI_PipelineState pso;
+            pso.name                            = is_transparent_pass ? "g_buffer_transparent" : "g_buffer";
+            pso.instancing                      = i == 1 || i == 3;
+            pso.shader_pixel                    = shader_p;
+            pso.shader_vertex                   = pso.instancing ? shader_v_instanced : shader_v;
+            pso.blend_state                     = GetBlendState(Renderer_BlendState::Disabled).get();
+            pso.rasterizer_state                = rasterizer_state;
+            pso.depth_stencil_state             = depth_stencil_state;
+            pso.render_target_color_textures[0] = tex_albedo;
+            pso.clear_color[0]                  = (!is_first_pass || pso.instancing) ? rhi_color_load : Color::standard_transparent;
+            pso.render_target_color_textures[1] = tex_normal;
+            pso.clear_color[1]                  = pso.clear_color[0];
+            pso.render_target_color_textures[2] = tex_material;
+            pso.clear_color[2]                  = pso.clear_color[0];
+            pso.render_target_color_textures[3] = tex_material_2;
+            pso.clear_color[3]                  = pso.clear_color[0];
+            pso.render_target_color_textures[4] = tex_velocity;
+            pso.clear_color[4]                  = pso.clear_color[0];
+            pso.render_target_color_textures[5] = tex_fsr2_transparency;
+            pso.clear_color[5]                  = pso.clear_color[0];
+            pso.render_target_depth_texture     = tex_depth;
+            pso.clear_depth                     = (!is_first_pass || depth_prepass) ? rhi_depth_load : 0.0f; // reverse-z
+            pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
+
+            // begin render pass
+            cmd_list->SetPipelineState(pso);
+            cmd_list->BeginRenderPass();
+
+            uint64_t bound_material_id = 0;
             for (shared_ptr<Entity> entity : entities)
             {
                 // get renderable
@@ -597,30 +597,37 @@ namespace Spartan
                 if (!renderable)
                     continue;
 
-                // get material
-                Material* material = renderable->GetMaterial();
-                if (!material)
-                    continue;
-
-                // Get geometry
-                Mesh* mesh = renderable->GetMesh();
-                if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
-                    continue;
-
                 // skip objects outside of the view frustum
                 if (!GetCamera()->IsInViewFrustum(renderable))
                     continue;
 
-                // set geometry (will only happen if not already set)
-                cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
-                cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
+                // set vertex, index and instance buffers
+                if (Mesh* mesh = renderable->GetMesh())
+                {
+                    if (RHI_VertexBuffer* vertex_buffer = mesh->GetVertexBuffer())
+                    {
+                        cmd_list->SetBufferVertex(vertex_buffer);
+                        if (pso.instancing)
+                        {
+                            cmd_list->SetBufferVertex(renderable->GetInstanceBuffer(), 1);
+                        }
+                    }
+
+                    if (mesh->GetIndexBuffer())
+                    {
+                        cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
+                    }
+                }
 
                 // set material
-                if (bound_material_id != material->GetObjectId())
+                if (Material* material = renderable->GetMaterial())
                 {
-                    BindTexturesMaterial(cmd_list, material);
-                    UpdateConstantBufferMaterial(cmd_list, material);
-                    bound_material_id = material->GetObjectId();
+                    if (bound_material_id != material->GetObjectId())
+                    {
+                        BindTexturesMaterial(cmd_list, material);
+                        UpdateConstantBufferMaterial(cmd_list, material);
+                        bound_material_id = material->GetObjectId();
+                    }
                 }
 
                 // push pass constants
@@ -631,6 +638,7 @@ namespace Spartan
                     if (shared_ptr<Transform> transform = entity->GetTransform())
                     {
                         m_cb_pass_cpu.transform = transform->GetMatrix();
+                        m_cb_pass_cpu.set_f3_value(pso.instancing ? 1.0f : 0.0f, 0.0f, 0.0f);
                         m_cb_pass_cpu.set_transform_previous(transform->GetMatrixPrevious());
 
                         // save matrix for velocity computation
@@ -641,7 +649,14 @@ namespace Spartan
                 }
 
                 // draw
-                cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
+                cmd_list->DrawIndexed(
+                    renderable->GetIndexCount(),
+                    renderable->GetIndexOffset(),
+                    renderable->GetVertexOffset(),
+                    pso.instancing ? renderable->GetInstanceCount() : 1
+                );
+
+                is_first_pass = false;
                 Profiler::m_renderer_meshes_rendered++;
             }
 
@@ -922,7 +937,7 @@ namespace Spartan
         pso.render_target_color_textures[0] = tex_out;
         pso.clear_color[0]                  = rhi_color_load;
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
-        pso.can_use_vertex_index_buffers    = false;
+        pso.is_fullscreen_triangle          = true;
 
         // set pipeline state
         cmd_list->SetPipelineState(pso);

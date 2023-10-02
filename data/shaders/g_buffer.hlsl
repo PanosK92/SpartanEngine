@@ -46,25 +46,34 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
     PixelInputType output;
 
     // position computation has to be an exact match to depth_prepass.hlsl
-    input.position.w      = 1.0f;
-    output.position_world = mul(input.position, buffer_pass.transform);
-    output.position       = mul(output.position_world, buffer_frame.view_projection);
-
-    output.position_ss_current  = output.position;
-    output.position_ss_previous = mul(input.position, pass_get_transform_previous());
-    output.position_ss_previous = mul(output.position_ss_previous, buffer_frame.view_projection_previous);
-    output.normal_world         = normalize(mul(input.normal, (float3x3)buffer_pass.transform)).xyz;
-    output.tangent_world        = normalize(mul(input.tangent, (float3x3)buffer_pass.transform)).xyz;
-    output.uv                   = input.uv;
+    input.position.w             = 1.0f;
+    output.position_world        = mul(input.position, buffer_pass.transform);
+    #if INSTANCED               
+    output.position_world.xyz   += input.instance_data.instance_position;
+    #endif
+    output.position              = mul(output.position_world, buffer_frame.view_projection);
+    output.position_ss_current   = output.position;
+    
+    // update this part to use the adjusted position_world for the previous frame as well
+    float4 position_world_previous = mul(input.position, pass_get_transform_previous());
+    #if INSTANCED
+    position_world_previous.xyz  += input.instance_data.instance_position;
+    #endif
+    output.position_ss_previous  = mul(position_world_previous, buffer_frame.view_projection_previous);
+    
+    output.normal_world          = normalize(mul(input.normal, (float3x3)buffer_pass.transform)).xyz;
+    output.tangent_world         = normalize(mul(input.tangent, (float3x3)buffer_pass.transform)).xyz;
+    output.uv                    = input.uv;
     
     return output;
 }
 
+
 float compute_slope(float3 normal)
 {
-    float bias  = -0.2f; // increase the bias to favour the slope/rock texture
+    float bias  = -0.1f; // increase the bias to favour the slope/rock texture
     float slope = saturate(dot(normal, float3(0.0f, 1.0f, 0.0f)) - bias);
-    slope       = pow(slope, 16.0f);  // increase the exponent to sharpen the transition
+    slope       = pow(slope, 16.0f); // increase the exponent to sharpen the transition
 
     return slope;
 }

@@ -683,7 +683,7 @@ namespace Spartan
         }
     }
 
-    void RHI_CommandList::Draw(const uint32_t vertex_count, uint32_t vertex_start_index /*= 0*/)
+    void RHI_CommandList::Draw(const uint32_t vertex_count, const uint32_t vertex_start_index /*= 0*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         OnDraw();
@@ -702,7 +702,7 @@ namespace Spartan
         }
     }
 
-    void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
+    void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset, const uint32_t instance_count)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         OnDraw();
@@ -710,7 +710,7 @@ namespace Spartan
         vkCmdDrawIndexed(
             static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
             index_count,                                  // indexCount
-            1,                                            // instanceCount
+            instance_count,                               // instanceCount
             index_offset,                                 // firstIndex
             vertex_offset,                                // vertexOffset
             0                                             // firstInstance
@@ -1005,11 +1005,11 @@ namespace Spartan
         );
     }
 
-    void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
+    void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint32_t binding /*= 0*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        SP_ASSERT(buffer != nullptr);
 
-        // Skip if already set
         if (m_vertex_buffer_id == buffer->GetObjectId())
             return;
 
@@ -1018,20 +1018,20 @@ namespace Spartan
 
         vkCmdBindVertexBuffers(
             static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
-            0,                                            // firstBinding
+            binding,                                      // firstBinding
             1,                                            // bindingCount
             vertex_buffers,                               // pBuffers
             offsets                                       // pOffsets
         );
 
         m_vertex_buffer_id = buffer->GetObjectId();
-
         Profiler::m_rhi_bindings_buffer_vertex++;
     }
 
     void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        SP_ASSERT(buffer != nullptr);
 
         if (m_index_buffer_id == buffer->GetObjectId())
             return;
@@ -1044,7 +1044,6 @@ namespace Spartan
         );
 
         m_index_buffer_id = buffer->GetObjectId();
-
         Profiler::m_rhi_bindings_buffer_index++;
     }
 
