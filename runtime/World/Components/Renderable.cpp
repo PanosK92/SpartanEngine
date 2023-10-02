@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Renderable.h"
 #include "../Rendering/Renderer.h"
+#include "../RHI/RHI_VertexBuffer.h"
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
 //=======================================
@@ -44,7 +45,7 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_offset, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_count,  uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,                   Mesh*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,           BoundingBox);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box_local,     BoundingBox);
     }
 
     Renderable::~Renderable()
@@ -59,7 +60,7 @@ namespace Spartan
         stream->Write(m_geometry_index_count);
         stream->Write(m_geometry_vertex_offset);
         stream->Write(m_geometry_vertex_count);
-        stream->Write(m_bounding_box);
+        stream->Write(m_bounding_box_local);
         stream->Write(m_mesh ? m_mesh->GetObjectName() : "");
 
         // material
@@ -78,7 +79,7 @@ namespace Spartan
         m_geometry_index_count   = stream->ReadAs<uint32_t>();
         m_geometry_vertex_offset = stream->ReadAs<uint32_t>();
         m_geometry_vertex_count  = stream->ReadAs<uint32_t>();
-        stream->Read(&m_bounding_box);
+        stream->Read(&m_bounding_box_local);
         string model_name;
         stream->Read(&model_name);
         m_mesh = ResourceCache::GetByName<Mesh>(model_name).get();
@@ -106,7 +107,7 @@ namespace Spartan
     )
     {
         m_mesh                   = mesh;
-        m_bounding_box           = aabb;
+        m_bounding_box_local     = aabb;
         m_geometry_index_offset  = index_offset;
         m_geometry_index_count   = index_count;
         m_geometry_vertex_offset = vertex_offset;
@@ -125,19 +126,19 @@ namespace Spartan
             m_geometry_vertex_count = m_mesh->GetVertexCount();
         }
 
-        if (m_bounding_box == BoundingBox::Undefined)
+        if (m_bounding_box_local == BoundingBox::Undefined)
         {
-            m_bounding_box = m_mesh->GetAabb();
+            m_bounding_box_local = m_mesh->GetAabb();
         }
 
         SP_ASSERT(m_geometry_index_count  != 0);
         SP_ASSERT(m_geometry_vertex_count != 0);
-        SP_ASSERT(m_bounding_box          != BoundingBox::Undefined);
+        SP_ASSERT(m_bounding_box_local    != BoundingBox::Undefined);
     }
 
     void Renderable::SetGeometry(const Renderer_MeshType mesh_type)
     {
-        SetGeometry(Spartan::Renderer::GetStandardMesh(Spartan::Renderer_MeshType::Cube).get());
+        SetGeometry(Renderer::GetStandardMesh(mesh_type).get());
     }
     
     void Renderable::GetGeometry(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
@@ -148,17 +149,25 @@ namespace Spartan
 
     const BoundingBox& Renderable::GetAabb()
     {
-        // update if dirty
-        if (m_last_transform != GetTransform()->GetMatrix() || m_bounding_box_transformed == BoundingBox::Undefined)
+        // either the bounding box is dirty, or the transform has changed, or the instances have changed
+        if (m_bounding_box_dirty || m_last_transform != GetTransform()->GetMatrix())
         {
-            m_bounding_box_transformed = m_bounding_box.Transform(GetTransform()->GetMatrix());
-            m_last_transform = GetTransform()->GetMatrix();
+            m_bounding_box = m_bounding_box_local.Transform(GetTransform()->GetMatrix());
+
+            // loop through each instance and expand the bounding box
+            for (const Vector3& instance_position : m_instances)
+            {
+                m_bounding_box.Merge(m_bounding_box_local.Transform(Matrix::CreateTranslation(instance_position)));
+            }
+
+            m_last_transform     = GetTransform()->GetMatrix();
+            m_bounding_box_dirty = false;
         }
 
-        return m_bounding_box_transformed;
+        return m_bounding_box;
     }
 
-    // all functions (set/load) resolve to this
+
     shared_ptr<Material> Renderable::SetMaterial(const shared_ptr<Material>& material)
     {
         SP_ASSERT(material != nullptr);
@@ -218,8 +227,12 @@ namespace Spartan
         return m_material ? m_material->GetObjectName() : "";
     }
 
-    void Renderable::AddInstance(const Vector3& position)
+    void Renderable::SetInstances(const vector<Vector3>& instances)
     {
-        m_instance_positions.emplace_back(position);
+        m_instance_buffer = make_shared<RHI_VertexBuffer>(false, "instance_buffer");
+        m_instance_buffer->Create<Vector3>(instances);
+
+        m_instances          = instances;
+        m_bounding_box_dirty = true;
     }
 }

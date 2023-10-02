@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ================
 #include <vector>
 #include "../Core/SpObject.h"
-//=============================
+//===========================
 
 namespace Spartan
 {
@@ -81,8 +81,6 @@ namespace Spartan
         bool m_is_mappable       = false;
         uint32_t m_stride        = 0;
         uint32_t m_vertex_count  = 0;
-
-        // RHI Resources
-        void* m_rhi_resource = nullptr;
+        void* m_rhi_resource     = nullptr;
     };
 }

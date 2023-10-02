@@ -165,6 +165,7 @@ namespace Spartan
     enum class Renderer_Shader : uint8_t
     {
         gbuffer_v,
+        gbuffer_instanced_v,
         gbuffer_p,
         depth_prepass_v,
         depth_light_V,
@@ -246,7 +247,9 @@ namespace Spartan
     enum class Renderer_Entity
     {
         Geometry,
+        GeometryInstanced,
         GeometryTransparent,
+        GeometryTransparentInstanced,
         Light,
         Camera,
         ReflectionProbe,

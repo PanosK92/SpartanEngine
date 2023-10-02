@@ -73,8 +73,8 @@ namespace Spartan
         );
 
         // Draw
-        void Draw(uint32_t vertex_count, uint32_t vertex_start_index = 0);
-        void DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0);
+        void Draw(const uint32_t vertex_count, const uint32_t vertex_start_index = 0);
+        void DrawIndexed(const uint32_t index_count, const uint32_t index_offset = 0, const uint32_t vertex_offset = 0, const uint32_t instance_count = 1);
 
         // Dispatch
         void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1, bool async = false);
@@ -94,7 +94,7 @@ namespace Spartan
         void SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const;
         
         // Vertex buffer
-        void SetBufferVertex(const RHI_VertexBuffer* buffer);
+        void SetBufferVertex(const RHI_VertexBuffer* buffer, const uint32_t binding = 0);
         
         // Index buffer
         void SetBufferIndex(const RHI_IndexBuffer* buffer);

@@ -672,7 +672,14 @@ namespace Spartan
 
                     if (is_visible)
                     {
-                        m_renderables[is_transparent ? Renderer_Entity::GeometryTransparent : Renderer_Entity::Geometry].emplace_back(entity);
+                        if (is_transparent)
+                        {
+                            m_renderables[renderable->HasInstancing() ? Renderer_Entity::GeometryTransparentInstanced : Renderer_Entity::GeometryTransparent].emplace_back(entity);
+                        }
+                        else
+                        {
+                            m_renderables[renderable->HasInstancing() ? Renderer_Entity::GeometryInstanced : Renderer_Entity::Geometry].emplace_back(entity);
+                        }
                     }
                 }
 

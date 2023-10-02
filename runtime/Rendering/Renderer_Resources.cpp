@@ -56,7 +56,7 @@ namespace Spartan
 
         // renderer resources
         array<shared_ptr<RHI_Texture>, 28>       m_render_targets;
-        array<shared_ptr<RHI_Shader>, 45>        m_shaders;
+        array<shared_ptr<RHI_Shader>, 46>        m_shaders;
         array<shared_ptr<RHI_Sampler>, 7>        m_samplers;
         array<shared_ptr<RHI_ConstantBuffer>, 3> m_constant_buffers;
         shared_ptr<RHI_StructuredBuffer>         m_structured_buffer;
@@ -263,6 +263,9 @@ namespace Spartan
         // G-Buffer
         shader(Renderer_Shader::gbuffer_v) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::gbuffer_v)->Compile(RHI_Shader_Vertex, shader_dir + "g_buffer.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+        shader(Renderer_Shader::gbuffer_instanced_v) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::gbuffer_instanced_v)->AddDefine("INSTANCED");
+        shader(Renderer_Shader::gbuffer_instanced_v)->Compile(RHI_Shader_Vertex, shader_dir + "g_buffer.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
         shader(Renderer_Shader::gbuffer_p) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::gbuffer_p)->Compile(RHI_Shader_Pixel, shader_dir + "g_buffer.hlsl", async);
 
@@ -569,7 +572,7 @@ namespace Spartan
         return m_render_targets;
     }
 
-    array<shared_ptr<RHI_Shader>, 45>& Renderer::GetShaders()
+    array<shared_ptr<RHI_Shader>, 46>& Renderer::GetShaders()
     {
         return m_shaders;
     }

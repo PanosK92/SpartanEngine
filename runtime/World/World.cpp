@@ -817,12 +817,12 @@ namespace Spartan
                         shared_ptr<Material> material = make_shared<Material>();
                         material->SetObjectName("Water");
                         material->SetColor(Color(0.0f, 48.0f / 255.0f, 75.0f / 255.0f));
-                        material->SetTexture(MaterialTexture::Normal, "project\\terrain\\water_normal_2.jpeg");
-                        material->SetProperty(MaterialProperty::IsWater, 1.0f);
+                        material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\water_normal_2.jpeg");
+                        material->SetProperty(MaterialProperty::IsWater,             1.0f);
                         material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.15f); // just a bit of roughness to diffuse the sun a little
-                        material->SetProperty(MaterialProperty::NormalMultiplier, 0.13f);
-                        material->SetProperty(MaterialProperty::UvTilingX, 500.0f);
-                        material->SetProperty(MaterialProperty::UvTilingY, 500.0f);
+                        material->SetProperty(MaterialProperty::NormalMultiplier,    0.13f);
+                        material->SetProperty(MaterialProperty::UvTilingX,           500.0f);
+                        material->SetProperty(MaterialProperty::UvTilingY,           500.0f);
 
                         // create a file path for this material (required for the material to be able to be cached by the resource cache)
                         const string file_path = "project\\terrain\\water_material" + string(EXTENSION_MATERIAL);
@@ -836,25 +836,25 @@ namespace Spartan
                 if (shared_ptr<Mesh> tree = ResourceCache::Load<Mesh>("project\\models\\tree\\tree.fbx"))
                 {
                     Entity* entity = tree->GetRootEntity();
-                    entity->GetTransform()->SetPosition(Vector3(132.4801f, 68.9992f, 28.2217f));
                     entity->GetTransform()->SetScale(Vector3(0.01f, 0.01f, 0.01f));
 
                     if (Entity* bark = entity->GetTransform()->GetDescendantPtrByName("Mobile_Tree_1_1"))
                     {
-                        bark->GetComponent<Renderable>()->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\tree\\bark.png");
+                        Renderable* renderable = bark->GetComponent<Renderable>().get();
+                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\tree\\bark.png");
+                        renderable->SetInstances(terrain->GetTreePositions());
 
                     }
 
                     if (Entity* leafs = entity->GetTransform()->GetDescendantPtrByName("Mobile_Tree_1_2"))
                     {
-                        leafs->GetComponent<Renderable>()->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\tree\\leaf.png");
+                        Renderable* renderable = leafs->GetComponent<Renderable>().get();
+                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\tree\\leaf.png");
+                        renderable->SetInstances(terrain->GetTreePositions());
                     }
 
-                    // clone the tree to make a forest, todo: draw them instanced
-                    for (const Vector3& tree_position : terrain->GetTreePositions())
-                    {
-                        entity->Clone()->GetTransform()->SetPosition(tree_position);
-                    }
+                    // because this is loading in a different thread, we need to resolve the world after we enable instancing
+                    World::Resolve();
                 }
 
                 // start simulating (for the music to play)

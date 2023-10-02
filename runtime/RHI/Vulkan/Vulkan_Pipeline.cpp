@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Device.h"
 #include "../RHI_Texture.h"
+#include "../Math/Vector3.h"
 //=====================================
 
 //= NAMESPACES =====
@@ -65,28 +66,28 @@ namespace Spartan
             for (const RHI_Descriptor& descriptor : descriptor_set_layout->GetDescriptors())
             {
                 if (descriptor.type == RHI_Descriptor_Type::PushConstantBuffer)
-                { 
+                {
                     SP_ASSERT(descriptor.struct_size <= RHI_Device::PropertyGetMaxPushConstantSize());
 
-                    VkPushConstantRange push_constant_range  = {};
-                    push_constant_range.offset               = 0;
-                    push_constant_range.size                 = descriptor.struct_size;
-                    push_constant_range.stageFlags           = (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Vertex)  ? VK_SHADER_STAGE_VERTEX_BIT   : 0;
-                    push_constant_range.stageFlags          |= (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Pixel)   ? VK_SHADER_STAGE_FRAGMENT_BIT : 0;
-                    push_constant_range.stageFlags          |= (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Compute) ? VK_SHADER_STAGE_COMPUTE_BIT  : 0;
+                    VkPushConstantRange push_constant_range = {};
+                    push_constant_range.offset = 0;
+                    push_constant_range.size = descriptor.struct_size;
+                    push_constant_range.stageFlags = (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Vertex) ? VK_SHADER_STAGE_VERTEX_BIT : 0;
+                    push_constant_range.stageFlags |= (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Pixel) ? VK_SHADER_STAGE_FRAGMENT_BIT : 0;
+                    push_constant_range.stageFlags |= (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Compute) ? VK_SHADER_STAGE_COMPUTE_BIT : 0;
 
                     push_constant_ranges.emplace_back(push_constant_range);
                 }
             }
-         
+
             // pipeline layout
             VkPipelineLayoutCreateInfo pipeline_layout_info = {};
-            pipeline_layout_info.sType                      = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipeline_layout_info.pushConstantRangeCount     = 0;
-            pipeline_layout_info.setLayoutCount             = static_cast<uint32_t>(layouts.size());
-            pipeline_layout_info.pSetLayouts                = reinterpret_cast<VkDescriptorSetLayout*>(layouts.data());
-            pipeline_layout_info.pushConstantRangeCount     = static_cast<uint32_t>(push_constant_ranges.size());
-            pipeline_layout_info.pPushConstantRanges        = push_constant_ranges.data();
+            pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            pipeline_layout_info.pushConstantRangeCount = 0;
+            pipeline_layout_info.setLayoutCount = static_cast<uint32_t>(layouts.size());
+            pipeline_layout_info.pSetLayouts = reinterpret_cast<VkDescriptorSetLayout*>(layouts.data());
+            pipeline_layout_info.pushConstantRangeCount = static_cast<uint32_t>(push_constant_ranges.size());
+            pipeline_layout_info.pPushConstantRanges = push_constant_ranges.data();
 
             // create
             SP_VK_ASSERT_MSG(vkCreatePipelineLayout(RHI_Context::device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_resource_pipeline_layout)),
@@ -97,10 +98,10 @@ namespace Spartan
         }
 
         // viewport & scissor
-        vector<VkDynamicState> dynamic_states            = {};
-        VkPipelineDynamicStateCreateInfo dynamic_state   = {};
-        VkViewport vkViewport                            = {};
-        VkRect2D scissor                                 = {};
+        vector<VkDynamicState> dynamic_states = {};
+        VkPipelineDynamicStateCreateInfo dynamic_state = {};
+        VkViewport vkViewport = {};
+        VkRect2D scissor = {};
         VkPipelineViewportStateCreateInfo viewport_state = {};
         {
             // always allow dynamic viewport
@@ -119,7 +120,7 @@ namespace Spartan
             dynamic_state.flags             = 0;
             dynamic_state.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
             dynamic_state.pDynamicStates    = dynamic_states.data();
-        
+
             // viewport
             vkViewport.x        = 0;
             vkViewport.y        = 0;
@@ -127,13 +128,13 @@ namespace Spartan
             vkViewport.height   = static_cast<float>(m_state.GetHeight());
             vkViewport.minDepth = 0.0f;
             vkViewport.maxDepth = 1.0f;
-        
+
             // scissor
             scissor.offset.x      = 0;
             scissor.offset.y      = 0;
             scissor.extent.width  = static_cast<uint32_t>(vkViewport.width);
             scissor.extent.height = static_cast<uint32_t>(vkViewport.height);
-        
+
             // viewport state
             viewport_state.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
             viewport_state.viewportCount = 1;
@@ -141,11 +142,11 @@ namespace Spartan
             viewport_state.scissorCount  = 1;
             viewport_state.pScissors     = &scissor;
         }
-        
+
         // shader stages
         vector<VkPipelineShaderStageCreateInfo> shader_stages;
-        
-        // Shader - Vertex
+
+        // shader - vertex
         if (m_state.shader_vertex)
         {
             VkPipelineShaderStageCreateInfo shader_stage_info = {};
@@ -160,8 +161,8 @@ namespace Spartan
 
             shader_stages.push_back(shader_stage_info);
         }
-        
-        // Shader - Pixel
+
+        // shader - pixel
         if (m_state.shader_pixel)
         {
             VkPipelineShaderStageCreateInfo shader_stage_info = {};
@@ -170,14 +171,14 @@ namespace Spartan
             shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_pixel->GetRhiResource());
             shader_stage_info.pName                           = m_state.shader_pixel->GetEntryPoint();
 
-            // Validate shader stage
+            // validate shader stage
             SP_ASSERT(shader_stage_info.module != nullptr);
             SP_ASSERT(shader_stage_info.pName != nullptr);
 
             shader_stages.push_back(shader_stage_info);
         }
 
-        // Shader - Compute
+        // shader - compute
         if (m_state.shader_compute)
         {
             VkPipelineShaderStageCreateInfo shader_stage_info = {};
@@ -186,23 +187,36 @@ namespace Spartan
             shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_compute->GetRhiResource());
             shader_stage_info.pName                           = m_state.shader_compute->GetEntryPoint();
 
-            // Validate shader stage
+            // validate shader stage
             SP_ASSERT(shader_stage_info.module != nullptr);
             SP_ASSERT(shader_stage_info.pName != nullptr);
 
             shader_stages.push_back(shader_stage_info);
         }
-        
-        // Binding description
-        VkVertexInputBindingDescription binding_description = {};
-        binding_description.binding                         = 0;
-        binding_description.inputRate                       = VK_VERTEX_INPUT_RATE_VERTEX;
-        binding_description.stride                          = m_state.shader_vertex ? m_state.shader_vertex->GetVertexSize() : 0;
-        
-        // Vertex attributes description
+
+        // binding and vertex attribute descriptions
+        vector<VkVertexInputBindingDescription> vertex_input_binding_descs;
         vector<VkVertexInputAttributeDescription> vertex_attribute_descs;
-        if (m_state.shader_vertex)
+        if (m_state.shader_vertex && !m_state.is_fullscreen_triangle)
         {
+            vertex_input_binding_descs.push_back
+            ({
+                0,
+                m_state.shader_vertex ? m_state.shader_vertex->GetVertexSize() : 0,
+                VK_VERTEX_INPUT_RATE_VERTEX
+            });
+
+            if (m_state.instancing)
+            {
+                // hardcoded for now
+                vertex_input_binding_descs.push_back
+                ({
+                    1,                            // binding
+                    sizeof(Math::Vector3),        // stride
+                    VK_VERTEX_INPUT_RATE_INSTANCE // inputRate
+                });
+            }
+
             if (RHI_InputLayout* input_layout = m_state.shader_vertex->GetInputLayout().get())
             {
                 vertex_attribute_descs.reserve(input_layout->GetAttributeDescriptions().size());
@@ -214,22 +228,34 @@ namespace Spartan
                         desc.binding,                                    // binding
                         vulkan_format[rhi_format_to_index(desc.format)], // format
                         desc.offset                                      // offset
-                        });
+                    });
                 }
+            }
+
+            if (m_state.instancing)
+            {
+                vertex_attribute_descs.push_back
+                ({
+                    // hardcoded for now
+                    static_cast<uint32_t>(vertex_attribute_descs.size()), // location, assuming the next available location
+                    1,                                                    // binding
+                    VK_FORMAT_R32G32B32_SFLOAT,                           // format
+                    0                                                     // offset
+                });
             }
         }
 
-        // Vertex input state
+        // vertex input state
         VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
         {
             vertex_input_state.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-            vertex_input_state.vertexBindingDescriptionCount   = m_state.can_use_vertex_index_buffers ? 1 : 0;
-            vertex_input_state.pVertexBindingDescriptions      = m_state.can_use_vertex_index_buffers ? &binding_description : nullptr;
+            vertex_input_state.vertexBindingDescriptionCount   = static_cast<uint32_t>(vertex_input_binding_descs.size());
+            vertex_input_state.pVertexBindingDescriptions      = vertex_input_binding_descs.data();
             vertex_input_state.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertex_attribute_descs.size());
             vertex_input_state.pVertexAttributeDescriptions    = vertex_attribute_descs.data();
         }
         
-        // Input assembly
+        // input assembly
         VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {};
         {
             input_assembly_state.sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -237,7 +263,7 @@ namespace Spartan
             input_assembly_state.primitiveRestartEnable = VK_FALSE;
         }
         
-        // Rasterizer state
+        // rasterizer state
         VkPipelineRasterizationStateCreateInfo rasterizer_state             = {};
         VkPipelineRasterizationDepthClipStateCreateInfoEXT depth_clip_state = {};
         if (m_state.rasterizer_state)
@@ -260,7 +286,7 @@ namespace Spartan
             rasterizer_state.depthBiasSlopeFactor    = m_state.rasterizer_state->GetDepthBiasSlopeScaled();
         }
         
-        // Mutlisampling
+        // mutlisampling
         VkPipelineMultisampleStateCreateInfo multisampling_state = {};
         {
             multisampling_state.sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
@@ -272,9 +298,9 @@ namespace Spartan
         vector<VkPipelineColorBlendAttachmentState> blend_state_attachments;
         if (m_state.blend_state)
         {
-            // Blend state attachments
+            // blend state attachments
             {
-                // Same blend state for all
+                // same blend state for all
                 VkPipelineColorBlendAttachmentState blend_state_attachment = {};
                 blend_state_attachment.colorWriteMask                      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
                 blend_state_attachment.blendEnable                         = m_state.blend_state->GetBlendEnabled() ? VK_TRUE : VK_FALSE;
@@ -285,13 +311,13 @@ namespace Spartan
                 blend_state_attachment.dstAlphaBlendFactor                 = vulkan_blend_factor[static_cast<uint32_t>(m_state.blend_state->GetDestBlendAlpha())];
                 blend_state_attachment.alphaBlendOp                        = vulkan_blend_operation[static_cast<uint32_t>(m_state.blend_state->GetBlendOpAlpha())];
 
-                // Swapchain
+                // swapchain
                 if (m_state.render_target_swapchain)
                 {
                     blend_state_attachments.push_back(blend_state_attachment);
                 }
 
-                // Render target(s)
+                // render target(s)
                 for (uint8_t i = 0; i < rhi_max_render_target_count; i++)
                 {
                     if (m_state.render_target_color_textures[i] != nullptr)
@@ -312,7 +338,7 @@ namespace Spartan
             color_blend_state.blendConstants[3] = m_state.blend_state->GetBlendFactor();
         }
         
-        // Depth-stencil state
+        // depth-stencil state
         VkPipelineDepthStencilStateCreateInfo depth_stencil_state = {};
         if (m_state.depth_stencil_state)
         {
@@ -331,25 +357,25 @@ namespace Spartan
             depth_stencil_state.back              = depth_stencil_state.front;
         }
 
-        // Pipeline
+        // pipeline
         {
             VkPipeline* pipeline = reinterpret_cast<VkPipeline*>(&m_resource_pipeline);
 
             if (pipeline_state.IsGraphics())
             {
-                // Enable dynamic rendering - VK_KHR_dynamic_rendering.
-                // This means no render passes and no frame buffer objects.
+                // enable dynamic rendering - VK_KHR_dynamic_rendering
+                // this means no render passes and no frame buffer objects
                 VkPipelineRenderingCreateInfoKHR pipeline_rendering_create_info = {};
                 vector<VkFormat> attachment_formats_color;
                 VkFormat attachment_format_depth   = VK_FORMAT_UNDEFINED;
                 VkFormat attachment_format_stencil = VK_FORMAT_UNDEFINED;
                 {
-                    // Swapchain buffer as a render target
+                    // swapchain buffer as a render target
                     if (m_state.render_target_swapchain)
                     {
                         attachment_formats_color.push_back(vulkan_format[rhi_format_to_index(m_state.render_target_swapchain->GetFormat())]);
                     }
-                    else // Regular render target(s)
+                    else // regular render target(s)
                     {
                         for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
                         {
@@ -361,7 +387,7 @@ namespace Spartan
                         }
                     }
 
-                    // Depth
+                    // depth
                     if (m_state.render_target_depth_texture)
                     {
                         RHI_Texture* tex_depth    = m_state.render_target_depth_texture;
@@ -376,7 +402,7 @@ namespace Spartan
                     pipeline_rendering_create_info.stencilAttachmentFormat = attachment_format_stencil;
                 }
 
-                // Describe
+                // describe
                 VkGraphicsPipelineCreateInfo pipeline_info = {};
                 pipeline_info.pNext                        = &pipeline_rendering_create_info;
                 pipeline_info.sType                        = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -397,22 +423,22 @@ namespace Spartan
                 SP_VK_ASSERT_MSG(vkCreateGraphicsPipelines(RHI_Context::device, nullptr, 1, &pipeline_info, nullptr, pipeline),
                     "Failed to create graphics pipeline");
 
-                // Disable naming until I can come up with a more meaningful name
+                // disable naming until I can come up with a more meaningful name
                 // vulkan_utility::debug::set_name(*pipeline, m_state.pass_name);
             }
             else if (pipeline_state.IsCompute())
             {
-                // Describe
+                // describe
                 VkComputePipelineCreateInfo pipeline_info = {};
                 pipeline_info.sType                       = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
                 pipeline_info.layout                      = static_cast<VkPipelineLayout>(m_resource_pipeline_layout);
                 pipeline_info.stage                       = shader_stages[0];
 
-                // Create
+                // create
                 SP_VK_ASSERT_MSG(vkCreateComputePipelines(RHI_Context::device, nullptr, 1, &pipeline_info, nullptr, pipeline),
                     "Failed to create compute pipeline");
 
-                // Name
+                // name
                 RHI_Device::SetResourceName(static_cast<void*>(*pipeline), RHI_Resource_Type::Pipeline, pipeline_state.name);
             }
         }
