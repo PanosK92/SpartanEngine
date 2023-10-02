@@ -205,11 +205,11 @@ namespace Spartan
     {
         if (!HasParent())
         {
-            SetRotationLocal((m_rotation_local * delta).Normalized());
+            SetRotationLocal((delta * m_rotation_local).Normalized());
         }
         else
         {
-            SetRotationLocal(m_rotation_local * GetRotation().Inverse() * delta * GetRotation());
+            SetRotationLocal(delta * m_rotation_local * GetRotation().Inverse() * delta * GetRotation());
         }
     }
 
