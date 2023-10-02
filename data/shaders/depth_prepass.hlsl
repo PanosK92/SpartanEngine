@@ -23,14 +23,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-Pixel_PosUv mainVS(Vertex_PosUv input)
+Pixel_PosUv mainVS(Vertex_PosUvNorTan input)
 {
     Pixel_PosUv output;
 
     // position computation has to be an exact match to gbuffer.hlsl
-    input.position.w = 1.0f; 
-    output.position  = mul(input.position, buffer_pass.transform);
-    output.position  = mul(output.position, buffer_frame.view_projection);
+    input.position.w     = 1.0f; 
+    output.position      = mul(input.position, buffer_pass.transform);
+    #if INSTANCED               
+    output.position.xyz += input.instance_data.instance_position;
+    #endif
+    output.position      = mul(output.position, buffer_frame.view_projection);
 
     output.uv = input.uv;
 

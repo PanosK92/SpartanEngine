@@ -119,7 +119,7 @@ namespace Spartan
 
         // Get all
         static std::array<std::shared_ptr<RHI_Texture>, 28>& GetRenderTargets();
-        static std::array<std::shared_ptr<RHI_Shader>, 46>& GetShaders();
+        static std::array<std::shared_ptr<RHI_Shader>, 47>& GetShaders();
         static std::array<std::shared_ptr<RHI_ConstantBuffer>, 3>& GetConstantBuffers();
 
         // Get individual

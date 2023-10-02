@@ -56,7 +56,7 @@ namespace Spartan
 
         // renderer resources
         array<shared_ptr<RHI_Texture>, 28>       m_render_targets;
-        array<shared_ptr<RHI_Shader>, 46>        m_shaders;
+        array<shared_ptr<RHI_Shader>, 47>        m_shaders;
         array<shared_ptr<RHI_Sampler>, 7>        m_samplers;
         array<shared_ptr<RHI_ConstantBuffer>, 3> m_constant_buffers;
         shared_ptr<RHI_StructuredBuffer>         m_structured_buffer;
@@ -260,20 +260,34 @@ namespace Spartan
         const string shader_dir = ResourceCache::GetResourceDirectory(ResourceDirectory::Shaders) + "\\";
         #define shader(x) m_shaders[static_cast<uint8_t>(x)]
 
-        // G-Buffer
-        shader(Renderer_Shader::gbuffer_v) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::gbuffer_v)->Compile(RHI_Shader_Vertex, shader_dir + "g_buffer.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-        shader(Renderer_Shader::gbuffer_instanced_v) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::gbuffer_instanced_v)->AddDefine("INSTANCED");
-        shader(Renderer_Shader::gbuffer_instanced_v)->Compile(RHI_Shader_Vertex, shader_dir + "g_buffer.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-        shader(Renderer_Shader::gbuffer_p) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::gbuffer_p)->Compile(RHI_Shader_Pixel, shader_dir + "g_buffer.hlsl", async);
+        // depth prepass
+        {
+            shader(Renderer_Shader::depth_prepass_v) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::depth_prepass_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_prepass.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
 
-        // Light
+            shader(Renderer_Shader::depth_prepass_instanced_v) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::depth_prepass_instanced_v)->AddDefine("INSTANCED");
+            shader(Renderer_Shader::depth_prepass_instanced_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_prepass.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+        }
+
+        // g-buffer
+        {
+            shader(Renderer_Shader::gbuffer_v) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::gbuffer_v)->Compile(RHI_Shader_Vertex, shader_dir + "g_buffer.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+
+            shader(Renderer_Shader::gbuffer_instanced_v) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::gbuffer_instanced_v)->AddDefine("INSTANCED");
+            shader(Renderer_Shader::gbuffer_instanced_v)->Compile(RHI_Shader_Vertex, shader_dir + "g_buffer.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+
+            shader(Renderer_Shader::gbuffer_p) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::gbuffer_p)->Compile(RHI_Shader_Pixel, shader_dir + "g_buffer.hlsl", async);
+        }
+
+        // light
         shader(Renderer_Shader::light_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::light_c)->Compile(RHI_Shader_Compute, shader_dir + "light.hlsl", async);
 
-        // Triangle & Quad
+        // triangle & quad
         {
             shader(Renderer_Shader::fullscreen_triangle_v) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::fullscreen_triangle_v)->Compile(RHI_Shader_Vertex, shader_dir + "fullscreen_triangle.hlsl", async, RHI_Vertex_Type::Undefined);
@@ -285,11 +299,7 @@ namespace Spartan
             shader(Renderer_Shader::quad_p)->Compile(RHI_Shader_Pixel, shader_dir + "quad.hlsl", async);
         }
 
-        // Depth prepass
-        shader(Renderer_Shader::depth_prepass_v) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::depth_prepass_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_prepass.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-
-        // Depth light
+        // light depth
         {
             shader(Renderer_Shader::depth_light_V) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::depth_light_V)->Compile(RHI_Shader_Vertex, shader_dir + "depth_light.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
@@ -572,7 +582,7 @@ namespace Spartan
         return m_render_targets;
     }
 
-    array<shared_ptr<RHI_Shader>, 46>& Renderer::GetShaders()
+    array<shared_ptr<RHI_Shader>, 47>& Renderer::GetShaders()
     {
         return m_shaders;
     }

@@ -168,6 +168,7 @@ namespace Spartan
         gbuffer_instanced_v,
         gbuffer_p,
         depth_prepass_v,
+        depth_prepass_instanced_v,
         depth_light_V,
         depth_light_p,
         depth_alpha_test_p,
