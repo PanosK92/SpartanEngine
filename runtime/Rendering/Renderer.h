@@ -119,7 +119,7 @@ namespace Spartan
 
         // Get all
         static std::array<std::shared_ptr<RHI_Texture>, 28>& GetRenderTargets();
-        static std::array<std::shared_ptr<RHI_Shader>, 47>& GetShaders();
+        static std::array<std::shared_ptr<RHI_Shader>, 48>& GetShaders();
         static std::array<std::shared_ptr<RHI_ConstantBuffer>, 3>& GetConstantBuffers();
 
         // Get individual
@@ -139,7 +139,7 @@ namespace Spartan
         // Constant buffers
         static void UpdateConstantBufferFrame(RHI_CommandList* cmd_list);
         static void PushPassConstants(RHI_CommandList* cmd_list);
-        static void UpdateConstantBufferLight(RHI_CommandList* cmd_list, const std::shared_ptr<Light> light);
+        static void UpdateConstantBufferLight(RHI_CommandList* cmd_list, const std::shared_ptr<Light> light, const int array_index = -1);
         static void UpdateConstantBufferMaterial(RHI_CommandList* cmd_list, Material* material);
 
         // Resource creation

@@ -768,8 +768,7 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(6.9900f, 25.0f, 332.4628f);
         Vector3 camera_rotation = Vector3(0.0f, 180.0f, 0.0f);
-        bool shadows = false; // directional light shadows have some glitches and also tank the frame rate if you have 5000 trees
-        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\nature.mp3", shadows, false);
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\nature.mp3", true, false);
 
         // terrain
         {

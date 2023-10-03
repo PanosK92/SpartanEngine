@@ -519,11 +519,18 @@ namespace Spartan
         cmd_list->PushConstants(0, sizeof(Pcb_Pass), &m_cb_pass_cpu);
     }
 
-    void Renderer::UpdateConstantBufferLight(RHI_CommandList* cmd_list, shared_ptr<Light> light)
+    void Renderer::UpdateConstantBufferLight(RHI_CommandList* cmd_list, shared_ptr<Light> light, const int array_index)
     {
-        for (uint32_t i = 0; i < light->GetShadowArraySize(); i++)
+        if (array_index == -1)
         {
-            m_cb_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
+            for (uint32_t i = 0; i < light->GetShadowArraySize(); i++)
+            {
+                m_cb_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
+            }
+        }
+        else
+        {
+            m_cb_light_cpu.view_projection[0] = light->GetViewMatrix(array_index) * light->GetProjectionMatrix(array_index);
         }
 
         m_cb_light_cpu.intensity_range_angle_bias = Vector4
@@ -547,7 +554,7 @@ namespace Spartan
 
         GetConstantBuffer(Renderer_ConstantBuffer::Light)->Update(&m_cb_light_cpu);
 
-        // Bind because the offset just changed
+        // bind because the offset just changed
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::light, GetConstantBuffer(Renderer_ConstantBuffer::Light));
     }
 
