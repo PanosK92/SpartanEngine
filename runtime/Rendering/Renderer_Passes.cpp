@@ -483,8 +483,12 @@ namespace Spartan
                 if (!GetCamera()->IsInViewFrustum(renderable))
                     continue;
 
+                // can happen during async loading
+                Mesh* mesh = renderable->GetMesh();
+                if (!mesh)
+                    continue;
+
                 // set vertex, index and instance buffers
-                if (Mesh* mesh = renderable->GetMesh())
                 {
                     if (RHI_VertexBuffer* vertex_buffer = mesh->GetVertexBuffer())
                     {
@@ -614,8 +618,12 @@ namespace Spartan
                 if (!GetCamera()->IsInViewFrustum(renderable))
                     continue;
 
+                // can happen during async loading
+                Mesh* mesh = renderable->GetMesh();
+                if (!mesh)
+                    continue;
+
                 // set vertex, index and instance buffers
-                if (Mesh* mesh = renderable->GetMesh())
                 {
                     if (RHI_VertexBuffer* vertex_buffer = mesh->GetVertexBuffer())
                     {
