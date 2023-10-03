@@ -843,7 +843,6 @@ namespace Spartan
                         Renderable* renderable = bark->GetComponent<Renderable>().get();
                         renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\tree\\bark.png");
                         renderable->SetInstances(terrain->GetTreePositions());
-
                     }
 
                     if (Entity* leafs = entity->GetTransform()->GetDescendantPtrByName("Mobile_Tree_1_2"))
@@ -852,10 +851,27 @@ namespace Spartan
                         renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\tree\\leaf.png");
                         renderable->SetInstances(terrain->GetTreePositions());
                     }
-
-                    // because this is loading in a different thread, we need to resolve the world after we enable instancing
-                    World::Resolve();
                 }
+
+                // plant
+                if (shared_ptr<Mesh> plant = ResourceCache::Load<Mesh>("project\\models\\bush\\ormbunke.obj"))
+                {
+                    Entity* entity = plant->GetRootEntity();
+                    entity->GetTransform()->SetScale(Vector3(1.0f, 1.0f, 1.0f));
+
+                    if (Entity* child = entity->GetTransform()->GetDescendantPtrByName("Plane.010"))
+                    {
+                        Renderable* renderable = child->GetComponent<Renderable>().get();
+                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\bush\\ormbunke.png");
+                        renderable->GetMaterial()->SetProperty(MaterialProperty::ColorR, 1.0f);
+                        renderable->GetMaterial()->SetProperty(MaterialProperty::ColorG, 1.0f);
+                        renderable->GetMaterial()->SetProperty(MaterialProperty::ColorB, 1.0f);
+                        renderable->SetInstances(terrain->GetPlantPositions());
+                    }
+                }
+
+                // because this is loading in a different thread, we need to resolve the world after we enable instancing
+                World::Resolve();
 
                 // start simulating (for the music to play)
                 Engine::AddFlag(EngineMode::Game);

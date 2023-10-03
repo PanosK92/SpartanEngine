@@ -250,7 +250,7 @@ namespace Spartan
             ThreadPool::ParallelLoop(compute_vertex_normals_tangents, vertex_count);
         }
 
-        vector<Vector3> generate_tree_positions(const vector<RHI_Vertex_PosTexNorTan>& vertices, const vector<uint32_t>& indices, uint32_t tree_count, float max_slope_radians, float water_level)
+        vector<Vector3> generate_positions(const vector<RHI_Vertex_PosTexNorTan>& vertices, const vector<uint32_t>& indices, uint32_t tree_count, float max_slope_radians, float water_level)
         {
             vector<Vector3> positions;
             random_device rd;
@@ -286,7 +286,8 @@ namespace Spartan
                     }
 
                     // compute the position using barycentric coordinates
-                    Vector3 position = v0 + u * (v1 - v0) + v * (v2 - v0);
+                    float height_bias = -0.1f; // push the tree down a bit so it doesn't float above the terrain
+                    Vector3 position = v0 + (u * (v1 - v0) + height_bias) + v * (v2 - v0);
                     positions.push_back(position);
                 }
                 else
@@ -415,7 +416,12 @@ namespace Spartan
             // compute tree positions
             uint32_t tree_count     = 5000;
             float max_slope_radians = 30.0f * Math::Helper::DEG_TO_RAD;
-            m_trees = generate_tree_positions(vertices, indices, tree_count, max_slope_radians, m_water_level);
+            m_trees                 = generate_positions(vertices, indices, tree_count, max_slope_radians, m_water_level);
+
+            // compute plant positions
+            uint32_t plant_count = 20000;
+            max_slope_radians    = 40.0f * Math::Helper::DEG_TO_RAD;
+            m_plants             = generate_positions(vertices, indices, plant_count, max_slope_radians, m_water_level);
 
             if (on_complete)
             {
