@@ -28,7 +28,7 @@ Livestreams [![Image1](https://raw.githubusercontent.com/PanosK92/SpartanEngine/
 
 # Features
 #### Rendering
-- 128-byte push constant buffer for lightning fast GPU data transfer.
+- 128-byte push constant buffer for lightning fast CPU to GPU data transfer.
 - AMD FidelityFX suite for enhanced visuals and performance.
 - Bloom effect inspired by Resident Evil 2's RE Engine.
 - Unified deferred rendering with transparency (BSDF with same render path and shaders).
