@@ -19,24 +19,20 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============================
+//= INCLUDES ==============
 #include "MenuBar.h"
-#include "Toolbar.h"
 #include "Core/Settings.h"
-#include "../WidgetsDeferred/FileDialog.h"
 #include "Profiler.h"
-#include "../Editor.h"
 #include "ShaderEditor.h"
 #include "RenderOptions.h"
 #include "TextureViewer.h"
 #include "ResourceViewer.h"
-#include "Rendering/Mesh.h"
 #include "AssetBrowser.h"
 #include "Console.h"
 #include "Properties.h"
 #include "Viewport.h"
 #include "WorldViewer.h"
-//========================================
+//=========================
 
 //= NAMESPACES =====
 using namespace std;
@@ -63,7 +59,7 @@ namespace
         "Nick Polyderopoulos, Greece,         LinkedIn, https://www.linkedin.com/in/nick-polyderopoulos-21742397, UX improvements,            N/A"
     };
 
-    vector<string> parse_contributors(const vector<string>& contributors)
+    vector<string> comma_seperate_contributors(const vector<string>& contributors)
     {
         vector<string> result;
 
@@ -105,7 +101,7 @@ namespace
         if (!show_contributors_window)
             return;
 
-        vector<string> contributor_data = parse_contributors(contributors);
+        vector<string> comma_seperated_contributors = comma_seperate_contributors(contributors);
 
         ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
         ImGui::SetNextWindowFocus();
@@ -113,13 +109,11 @@ namespace
         {
             ImGui::Text("In alphabetical order");
 
-            static ImGuiTableFlags flags =
-                ImGuiTableFlags_Borders |
-                ImGuiTableFlags_RowBg   |
-                ImGuiTableFlags_SizingFixedFit;
+            static ImGuiTableFlags flags = ImGuiTableFlags_Borders        |
+                                           ImGuiTableFlags_RowBg          |
+                                           ImGuiTableFlags_SizingFixedFit;
 
-            static ImVec2 size = ImVec2(-1.0f);
-            if (ImGui::BeginTable("##contributors_table", 5, flags, size))
+            if (ImGui::BeginTable("##contributors_table", 5, flags, ImVec2(-1.0f)))
             {
                 // headers
                 ImGui::TableSetupColumn("Name");
@@ -141,18 +135,18 @@ namespace
                     // name
                     ImGui::TableSetColumnIndex(0);
                     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
-                    ImGui::Text(contributor_data[index++].c_str());
+                    ImGui::Text(comma_seperated_contributors[index++].c_str());
 
                     // country
                     ImGui::TableSetColumnIndex(1);
                     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
-                    ImGui::Text(contributor_data[index++].c_str());
+                    ImGui::Text(comma_seperated_contributors[index++].c_str());
 
                     // button (URL)
                     ImGui::TableSetColumnIndex(2);
-                    string button_text = contributor_data[index++];
-                    string button_url  = contributor_data[index++];
-                    if (ImGuiSp::button(button_text.c_str()))
+                    string button_text = comma_seperated_contributors[index++];
+                    string button_url  = comma_seperated_contributors[index++];
+                    if (ImGui::Button(button_text.c_str()))
                     {
                         Spartan::FileSystem::OpenUrl(button_url);
                     }
@@ -160,12 +154,12 @@ namespace
                     // contribution
                     ImGui::TableSetColumnIndex(3);
                     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
-                    ImGui::Text(contributor_data[index++].c_str());
+                    ImGui::Text(comma_seperated_contributors[index++].c_str());
 
                     // steam key award
                     ImGui::TableSetColumnIndex(4);
                     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
-                    ImGui::Text(contributor_data[index++].c_str());
+                    ImGui::Text(comma_seperated_contributors[index++].c_str());
                 }
 
                 ImGui::EndTable();
@@ -437,6 +431,11 @@ void MenuBar::EntryHelp()
         if (ImGui::MenuItem("How to contribute", nullptr, nullptr))
         {
             Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/wiki/How-to-contribute");
+        }
+
+        if (ImGui::MenuItem("Perks of a contributor", nullptr, nullptr))
+        {
+            Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor");
         }
 
         if (ImGui::MenuItem("Join the Discord server", nullptr, nullptr))
