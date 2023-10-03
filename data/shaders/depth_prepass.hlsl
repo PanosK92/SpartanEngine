@@ -30,7 +30,7 @@ Pixel_PosUv mainVS(Vertex_PosUvNorTan input)
     // position computation has to be an exact match to gbuffer.hlsl
     input.position.w     = 1.0f; 
     output.position      = mul(input.position, buffer_pass.transform);
-    #if INSTANCED               
+    #if INSTANCED
     output.position.xyz += input.instance_data.instance_position;
     #endif
     output.position      = mul(output.position, buffer_frame.view_projection);
