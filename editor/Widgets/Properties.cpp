@@ -369,19 +369,29 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
 
     if (component_begin("Renderable", IconType::Component_Renderable, renderable))
     {
-        //= REFLECT ========================================================
-        Mesh* mesh           = renderable->GetMesh();
-        Material* material   = renderable->GetMaterial();
-        string name_mesh     = mesh ? mesh->GetObjectName() : "N/A";
-        string name_material = material ? material->GetObjectName() : "N/A";
-        bool cast_shadows    = renderable->GetCastShadows();
-        //==================================================================
+        //= REFLECT ===========================================================
+        Mesh* mesh              = renderable->GetMesh();
+        Material* material      = renderable->GetMaterial();
+        uint32_t instance_count = renderable->GetInstanceCount();
+        string name_mesh        = mesh ? mesh->GetObjectName() : "N/A";
+        string name_material    = material ? material->GetObjectName() : "N/A";
+        bool cast_shadows       = renderable->GetCastShadows();
+        //=====================================================================
 
+        // mesh
         ImGui::Text("Mesh");
         ImGui::SameLine(column_pos_x);
         ImGui::InputText("##renderable_mesh", &name_mesh, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
 
-        // Material
+        // instancing
+        if (instance_count != 0)
+        {
+            ImGui::Text("Instances");
+            ImGui::SameLine(column_pos_x);
+            ImGui::LabelText("##renderable_mesh", to_string(instance_count).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
+        }
+
+        // material
         ImGui::Text("Material");
         ImGui::SameLine(column_pos_x);
         ImGui::InputText("##renderable_material", &name_material, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
@@ -390,7 +400,7 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
             renderable->SetMaterial(std::get<const char*>(payload->data));
         }
 
-        // Cast shadows
+        // cast shadows
         ImGui::Text("Cast Shadows");
         ImGui::SameLine(column_pos_x); ImGui::Checkbox("##RenderableCastShadows", &cast_shadows);
 
@@ -923,6 +933,8 @@ void Properties::ShowTerrain(shared_ptr<Terrain> terrain) const
             ImGui::Text("Height samples: %d", terrain->GetHeightSampleCount());
             ImGui::Text("Vertices: %d",  terrain->GetVertexCount());
             ImGui::Text("Indices:  %d ", terrain->GetIndexCount());
+            ImGui::Text("Trees:  %d ", terrain->GetTreePositions().size());
+            ImGui::Text("Plants:  %d ", terrain->GetPlantPositions().size());
         }
         ImGui::EndGroup();
 
