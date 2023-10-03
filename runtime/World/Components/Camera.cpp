@@ -413,20 +413,20 @@ namespace Spartan
                     }
                 }
 
-                // get camera rotation.
+                // get camera rotation
                 m_first_person_rotation.x = GetTransform()->GetRotation().Yaw();
                 m_first_person_rotation.y = GetTransform()->GetRotation().Pitch();
 
-                // get mouse delta.
+                // get mouse delta
                 const Vector2 mouse_delta = Input::GetMouseDelta() * m_mouse_sensitivity;
 
-                // lerp to it.
+                // lerp to it
                 m_mouse_smoothed = Helper::Lerp(m_mouse_smoothed, mouse_delta, Helper::Saturate(1.0f - m_mouse_smoothing));
 
-                // accumulate rotation.
+                // accumulate rotation
                 m_first_person_rotation += m_mouse_smoothed;
 
-                // clamp rotation along the x-axis (but not exactly at 90 degrees, this is to avoid a gimbal lock).
+                // clamp rotation along the x-axis (but not exactly at 90 degrees, this is to avoid a gimbal lock)
                 m_first_person_rotation.y = Helper::Clamp(m_first_person_rotation.y, -80.0f, 80.0f);
 
                 // compute rotation.
@@ -456,8 +456,8 @@ namespace Spartan
                 m_movement_scroll_accumulator += Input::GetMouseWheelDelta().y * 0.1f;
 
                 // Clamp
-                float min = -movement_acceleration + 0.1f; // prevent it from negating or zeroing the acceleration, see translation calculation.
-                float max = movement_acceleration * 2.0f;  // an empirically chosen max.
+                float min = -movement_acceleration + 0.1f; // prevent it from negating or zeroing the acceleration, see translation calculation
+                float max = movement_acceleration * 2.0f;  // an empirically chosen max
                 m_movement_scroll_accumulator = Helper::Clamp(m_movement_scroll_accumulator, min, max);
             }
         }
