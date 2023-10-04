@@ -781,13 +781,13 @@ namespace Spartan
                 entity->AddComponent<Renderable>();
                 shared_ptr<Material> material = make_shared<Material>();
                 material->SetResourceFilePath(string("project\\terrain\\material_terrain") + string(EXTENSION_MATERIAL));
-                material->SetTexture(MaterialTexture::Color, "project\\terrain\\grass2\\albedo.png");
-                material->SetTexture(MaterialTexture::Normal, "project\\terrain\\grass2\\normal.png");
-                material->SetTexture(MaterialTexture::Color2, "project\\terrain\\rock_cliff\\albedo.png");
-                material->SetTexture(MaterialTexture::Normal2, "project\\terrain\\rock_cliff\\normal.png");
+                material->SetTexture(MaterialTexture::Color, "project\\terrain\\florest_floor\\albedo.png");
+                material->SetTexture(MaterialTexture::Normal, "project\\terrain\\florest_floor\\normal.png");
+                material->SetTexture(MaterialTexture::Color2, "project\\terrain\\slate_cliff_rock\\albedo.png");
+                material->SetTexture(MaterialTexture::Normal2, "project\\terrain\\slate_cliff_rock\\normal.png");
                 material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
-                material->SetProperty(MaterialProperty::UvTilingX, 1000.0f);
-                material->SetProperty(MaterialProperty::UvTilingY, 1000.0f);
+                material->SetProperty(MaterialProperty::UvTilingX, 300.0f);
+                material->SetProperty(MaterialProperty::UvTilingY, 300.0f);
 
                 entity->GetComponent<Renderable>()->SetMaterial(material);
             }
