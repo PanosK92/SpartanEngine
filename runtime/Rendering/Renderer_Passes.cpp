@@ -237,7 +237,7 @@ namespace Spartan
                         // of course we also have to make sure that the light doesn't cull them in the first place (this is done automatically by the light)
                         pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Light_directional).get();
 
-                        // don't do alpha testing for far away cascades, you can't see them and they tank performance
+                        // don't do alpha testing for far away cascades, as it's not noticeable and it's a performance hit
                         pso.shader_pixel = array_index > 1 ? nullptr : pso.shader_pixel;
                     }
                     else

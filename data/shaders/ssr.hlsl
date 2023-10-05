@@ -126,22 +126,11 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
+    // initialize to zero, it means no hit
+    tex_uav[thread_id.xy] = float4(0.0f, 0.0f, 0.0f, 0.0f);
+ 
     Surface surface;
     surface.Build(thread_id.xy, true, false, false);
-
-    float alpha  = 0.0f;
-    float3 color = 0.0f;
-
-    bool early_exit_1 = !surface.is_opaque();
-    bool early_exit_2 = surface.roughness >= g_ssr_roughness_threshold;
-    if (early_exit_1 || early_exit_2)
-    {
-        tex_uav[thread_id.xy] = float4(color, alpha);
-        return;
-    }
-
-    // skip pixels which are fully rough
-    float2 hit_uv = -1.0f;
 
     // compute reflection direction in view space
     float3 normal          = world_to_view(surface.normal, false);
@@ -150,18 +139,22 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float3 reflection      = normalize(reflect(camera_to_pixel, normal));
     float v_dot_r          = dot(-camera_to_pixel, reflection);
 
-    // Don't trace rays which are facing the camera
-    if (v_dot_r < 0.0f)
-    { 
-        hit_uv = trace_ray(thread_id.xy, position, reflection);
-        alpha  = compute_alpha(thread_id.xy, hit_uv, v_dot_r);
-    }
+    // compute early exit cases
+    bool early_exit_1 = !surface.is_opaque();                           // don't trace rays which are transparent
+    bool early_exit_2 = surface.roughness >= g_ssr_roughness_threshold; // don't trace very rough surfaces
+    bool early_exit_3 = v_dot_r < 0.0f;                                 // don't trace rays which are facing the camera
+    if (early_exit_1 || early_exit_2 || early_exit_3)
+        return;
 
-    // Sample scene color
+    // treace
+    float2 hit_uv = trace_ray(thread_id.xy, position, reflection);
+    float alpha   = compute_alpha(thread_id.xy, hit_uv, v_dot_r);
+
+    // sample scene color
     hit_uv          -= tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], hit_uv, 0).xy; // reproject
     bool valid_uv    = hit_uv.x != - 1.0f;
     bool valid_alpha = alpha != 0.0f;
-    color            = (valid_uv && valid_alpha) ? tex.SampleLevel(samplers[sampler_bilinear_clamp], hit_uv, 0).rgb : 0.0f;
+    float3 color     = (valid_uv && valid_alpha) ? tex.SampleLevel(samplers[sampler_bilinear_clamp], hit_uv, 0).rgb : 0.0f;
 
     tex_uav[thread_id.xy] = float4(color, alpha);
 }
