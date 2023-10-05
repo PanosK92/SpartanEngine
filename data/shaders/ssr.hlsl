@@ -142,7 +142,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // compute early exit cases
     bool early_exit_1 = !surface.is_opaque();                           // don't trace rays which are transparent
     bool early_exit_2 = surface.roughness >= g_ssr_roughness_threshold; // don't trace very rough surfaces
-    bool early_exit_3 = v_dot_r < 0.0f;                                 // don't trace rays which are facing the camera
+    bool early_exit_3 = v_dot_r >= 0.0f;                                // don't trace rays which are facing the camera
     if (early_exit_1 || early_exit_2 || early_exit_3)
         return;
 
