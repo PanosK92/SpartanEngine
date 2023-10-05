@@ -81,39 +81,39 @@ namespace Spartan
 
     namespace
     {
-        // Profiling options
+        // profiling options
         static const uint32_t initial_capacity     = 256;
         static bool profile                        = false;
         static bool profile_cpu                    = true;
         static bool profile_gpu                    = true;
-        static float profiling_interval_sec        = 0.05f;
+        static float profiling_interval_sec        = 0.25f;
         static float time_since_profiling_sec      = profiling_interval_sec;
 
         static const uint32_t frames_to_accumulate = 30;
         static const float weight_delta            = 1.0f / static_cast<float>(frames_to_accumulate);
         static const float weight_history          = (1.0f - weight_delta);
 
-        // Time blocks (double buffered)
+        // time blocks (double buffered)
         static int m_time_block_index = -1;
         static vector<TimeBlock> m_time_blocks_write;
         static vector<TimeBlock> m_time_blocks_read;
 
-        // FPS
+        // fps
         static float m_fps = 0.0f;
 
-        // Hardware - GPU
+        // gpu
         static string gpu_name               = "N/A";
         static string gpu_driver             = "N/A";
         static string gpu_api                = "N/A";
         static uint32_t gpu_memory_available = 0;
         static uint32_t gpu_memory_used      = 0;
 
-        // Stutter detection
+        // stutter detection
         static float stutter_delta_ms = 1.0f;
         static bool is_stuttering_cpu = false;
         static bool is_stuttering_gpu = false;
 
-        // Misc
+        // misc
         static bool poll                 = false;
         static bool increase_capacity    = false;
         static bool allow_time_block_end = true;
