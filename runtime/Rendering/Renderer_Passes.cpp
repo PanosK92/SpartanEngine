@@ -233,9 +233,12 @@ namespace Spartan
                     if (light->GetLightType() == LightType::Directional)
                     {
                         // "Pancaking" - https://www.gamedev.net/forums/topic/639036-shadow-mapping-and-high-up-objects/
-                        // It's basically a way to capture the silhouettes of potential shadow casters behind the light's view point.
-                        // Of course we also have to make sure that the light doesn't cull them in the first place (this is done automatically by the light)
+                        // it's basically a way to capture the silhouettes of potential shadow casters behind the light's view point.
+                        // of course we also have to make sure that the light doesn't cull them in the first place (this is done automatically by the light)
                         pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Light_directional).get();
+
+                        // don't do alpha testing for far away cascades, you can't see them and they tank performance
+                        pso.shader_pixel = array_index > 1 ? nullptr : pso.shader_pixel;
                     }
                     else
                     {

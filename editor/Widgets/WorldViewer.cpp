@@ -64,11 +64,11 @@ namespace
                 static const char* items[] =
                 {
                     "1. Empty",
-                    "2. Pickable physics cube",
-                    "3. Set of helmets",
-                    "4. Rotating car on top of a quad",
-                    "5. Height map generated terrain",
-                    "6. The Sponza building found in Dubrovnik",
+                    "2. Cube",
+                    "3. Helmets",
+                    "4. Car",
+                    "5. Forest",
+                    "6. Sponza",
                     "7. Doom E1M1"
                 };
                 static int item_index = 4;
