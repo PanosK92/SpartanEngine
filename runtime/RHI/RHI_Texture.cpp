@@ -357,6 +357,9 @@ namespace Spartan
                 // set resource file path so it can be used by the resource cache.
                 SetResourceFilePath(file_path);
 
+                // name this texture (for debugging)
+                m_object_name = "texture_" + FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+
                 // compress texture
                 if (m_flags & RHI_Texture_Compressed)
                 {

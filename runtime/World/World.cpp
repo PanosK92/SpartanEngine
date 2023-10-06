@@ -51,8 +51,12 @@ namespace Spartan
         static vector<shared_ptr<Entity>> m_entities;
         static string m_name;
         static string m_file_path;
-        static bool m_resolve                                   = false;
-        static bool m_was_in_editor_mode                        = false;
+        static mutex m_entity_access_mutex;
+        static bool m_resolve            = false;
+        static bool m_was_in_editor_mode = false;
+
+        // default worlds resources
+        static shared_ptr<Entity> m_default_terrain             = nullptr;
         static shared_ptr<Entity> m_default_cube                = nullptr;
         static shared_ptr<Entity> m_default_physics_body_camera = nullptr;
         static shared_ptr<Entity> m_default_environment         = nullptr;
@@ -62,7 +66,6 @@ namespace Spartan
         static shared_ptr<Mesh> m_default_model_car             = nullptr;
         static shared_ptr<Mesh> m_default_model_helmet_flight   = nullptr;
         static shared_ptr<Mesh> m_default_model_helmet_damaged  = nullptr;
-        static mutex m_entity_access_mutex;
 
         static void update_default_scene()
         {
@@ -214,7 +217,8 @@ namespace Spartan
 
     void World::Shutdown()
     {
-        m_entities.clear();
+        Clear();
+
         m_default_environment           = nullptr;
         m_default_model_floor           = nullptr;
         m_default_model_sponza          = nullptr;
@@ -224,6 +228,7 @@ namespace Spartan
         m_default_model_helmet_damaged  = nullptr;
         m_default_cube                  = nullptr;
         m_default_physics_body_camera   = nullptr;
+        m_default_terrain               = nullptr;
     }
 
     void World::PreTick()
@@ -773,42 +778,43 @@ namespace Spartan
         // terrain
         {
             // create
-            shared_ptr<Entity> entity = CreateEntity();
-            entity->SetObjectName("terrain");
+            m_default_terrain = CreateEntity();
+            m_default_terrain->SetObjectName("terrain");
 
             // add renderable component with a material
             {
-                entity->AddComponent<Renderable>();
+                m_default_terrain->AddComponent<Renderable>();
+
                 shared_ptr<Material> material = make_shared<Material>();
                 material->SetResourceFilePath(string("project\\terrain\\material_terrain") + string(EXTENSION_MATERIAL));
-                material->SetTexture(MaterialTexture::Color, "project\\terrain\\florest_floor\\albedo.png");
-                material->SetTexture(MaterialTexture::Normal, "project\\terrain\\florest_floor\\normal.png");
-                material->SetTexture(MaterialTexture::Color2, "project\\terrain\\slate_cliff_rock\\albedo.png");
-                material->SetTexture(MaterialTexture::Normal2, "project\\terrain\\slate_cliff_rock\\normal.png");
+                material->SetTexture(MaterialTexture::Color,       "project\\terrain\\florest_floor\\albedo.png");
+                material->SetTexture(MaterialTexture::Normal,      "project\\terrain\\florest_floor\\normal.png");
+                material->SetTexture(MaterialTexture::Color2,      "project\\terrain\\slate_cliff_rock\\albedo.png");
+                material->SetTexture(MaterialTexture::Normal2,     "project\\terrain\\slate_cliff_rock\\normal.png");
                 material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
                 material->SetProperty(MaterialProperty::UvTilingX, 300.0f);
                 material->SetProperty(MaterialProperty::UvTilingY, 300.0f);
 
-                entity->GetComponent<Renderable>()->SetMaterial(material);
+                m_default_terrain->GetComponent<Renderable>()->SetMaterial(material);
             }
             
             // generate a height field
-            shared_ptr<Terrain> terrain = entity->AddComponent<Terrain>();
+            shared_ptr<Terrain> terrain = m_default_terrain->AddComponent<Terrain>();
             terrain->SetHeightMap(ResourceCache::Load<RHI_Texture2D>("project\\terrain\\height.png", RHI_Texture_Srv));
-            terrain->GenerateAsync([entity, terrain]()
+            terrain->GenerateAsync([terrain]()
             {
                 // add physics so we can walk on it
-                PhysicsBody* rigid_body = entity->AddComponent<PhysicsBody>().get();
+                PhysicsBody* rigid_body = m_default_terrain->AddComponent<PhysicsBody>().get();
                 rigid_body->SetFriction(1.0f);
 
                 // water
                 {
-                    shared_ptr<Entity> entity = CreateEntity();
-                    entity->SetObjectName("water");
-                    entity->GetTransform()->SetPosition(Vector3(0.0f, terrain->GetWaterLevel(), 0.0f));
-                    entity->GetTransform()->SetScale(Vector3(2000.0f, 1.0f, 2000.0f));
+                    shared_ptr<Entity> water = CreateEntity();
+                    water->SetObjectName("water");
+                    water->GetTransform()->SetPosition(Vector3(0.0f, terrain->GetWaterLevel(), 0.0f));
+                    water->GetTransform()->SetScale(Vector3(2000.0f, 1.0f, 2000.0f));
 
-                    Renderable* renderable = entity->AddComponent<Renderable>().get();
+                    Renderable* renderable = water->AddComponent<Renderable>().get();
                     renderable->SetGeometry(Renderer_MeshType::Quad);
 
                     // material
@@ -861,7 +867,7 @@ namespace Spartan
                     if (Entity* child = entity->GetTransform()->GetDescendantPtrByName("Plane.010"))
                     {
                         Renderable* renderable = child->GetComponent<Renderable>().get();
-                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\bush\\ormbunke.png");
+                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color,    "project\\models\\bush\\ormbunke.png");
                         renderable->GetMaterial()->SetProperty(MaterialProperty::ColorR, 1.0f);
                         renderable->GetMaterial()->SetProperty(MaterialProperty::ColorG, 1.0f);
                         renderable->GetMaterial()->SetProperty(MaterialProperty::ColorB, 1.0f);
