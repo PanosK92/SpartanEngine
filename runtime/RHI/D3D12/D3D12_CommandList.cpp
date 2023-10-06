@@ -214,7 +214,7 @@ namespace Spartan
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_SwapChain* destination)
     {
-        SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearOrBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
+        SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
         SP_ASSERT_MSG(source->GetWidth() <= destination->GetWidth() && source->GetHeight() <= destination->GetHeight(),
             "The source texture dimension(s) are larger than the those of the destination texture");
     }
@@ -226,7 +226,7 @@ namespace Spartan
 
     void RHI_CommandList::Copy(RHI_Texture* source, RHI_SwapChain* destination)
     {
-        SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearOrBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
+        SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
         SP_ASSERT(source->GetWidth() == destination->GetWidth());
         SP_ASSERT(source->GetHeight() == destination->GetHeight());
     }
