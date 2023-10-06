@@ -31,7 +31,7 @@ using namespace std;
 namespace Spartan
 {
     // API specific
-#   if defined(API_GRAPHICS_D3D12)
+    #if defined(API_GRAPHICS_D3D12)
         ID3D12Device* RHI_Context::device;
     #elif defined(API_GRAPHICS_VULKAN)
         VkInstance RHI_Context::instance;
