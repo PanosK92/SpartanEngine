@@ -201,7 +201,7 @@ namespace Spartan
             regions.resize(region_count);
             regions.reserve(region_count);
 
-            // Fill out VkBufferImageCopy structs describing the array and the mip levels
+            // fill out VkBufferImageCopy structs describing the array and the mip levels
             VkDeviceSize buffer_offset = 0;
             for (uint32_t array_index = 0; array_index < array_length; array_index++)
             {
@@ -210,6 +210,8 @@ namespace Spartan
                     uint32_t region_index   = mip_index + array_index * mip_count;
                     uint32_t mip_width      = width >> mip_index;
                     uint32_t mip_height     = height >> mip_index;
+
+                    SP_ASSERT(mip_width != 0 && mip_height != 0);
 
                     regions[region_index].bufferOffset                    = buffer_offset;
                     regions[region_index].bufferRowLength                 = 0;
@@ -221,15 +223,15 @@ namespace Spartan
                     regions[region_index].imageOffset                     = { 0, 0, 0 };
                     regions[region_index].imageExtent                     = { mip_width, mip_height, 1 };
 
-                    // Update staging buffer memory requirement (in bytes)
+                    // update staging buffer memory requirement (in bytes)
                     buffer_offset += static_cast<uint64_t>(mip_width) * static_cast<uint64_t>(mip_height) * static_cast<uint64_t>(bytes_per_pixel);
                 }
             }
 
-            // Create staging buffer
+            // create staging buffer
             RHI_Device::MemoryBufferCreate(staging_buffer, buffer_offset, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr, "staging_buffer_texture");
 
-            // Copy array and mip level data to the staging buffer
+            // copy array and mip level data to the staging buffer
             void* mapped_data = nullptr;
             buffer_offset = 0;
             RHI_Device::MemoryMap(staging_buffer, mapped_data);
@@ -239,7 +241,12 @@ namespace Spartan
                     for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
                     {
                         uint64_t buffer_size = static_cast<uint64_t>(width >> mip_index) * static_cast<uint64_t>(height >> mip_index) * static_cast<uint64_t>(bytes_per_pixel);
-                        memcpy(static_cast<std::byte*>(mapped_data) + buffer_offset, texture->GetMip(array_index, mip_index).bytes.data(), buffer_size);
+
+                        if (texture->GetMip(array_index, mip_index).bytes.size() != 0)
+                        {
+                            memcpy(static_cast<std::byte*>(mapped_data) + buffer_offset, texture->GetMip(array_index, mip_index).bytes.data(), buffer_size);
+                        }
+
                         buffer_offset += buffer_size;
                     }
                 }

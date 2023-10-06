@@ -99,8 +99,8 @@ namespace Spartan
         // Data
         uint32_t GetArrayLength()                          const { return m_array_length; }
         uint32_t GetMipCount()                             const { return m_mip_count; }
-        bool HasData()                                     const { return !m_data.empty() && !m_data[0].mips.empty() && !m_data[0].mips[0].bytes.empty(); };
-        std::vector<RHI_Texture_Slice>& GetData()                { return m_data; }
+        bool HasData()                                     const { return !m_slices.empty() && !m_slices[0].mips.empty() && !m_slices[0].mips[0].bytes.empty(); };
+        std::vector<RHI_Texture_Slice>& GetData()                { return m_slices; }
         RHI_Texture_Mip& CreateMip(const uint32_t array_index);
         RHI_Texture_Mip& GetMip(const uint32_t array_index, const uint32_t mip_index);
         RHI_Texture_Slice& GetSlice(const uint32_t array_index);
@@ -154,7 +154,7 @@ namespace Spartan
         uint32_t m_mip_count        = 1;
         RHI_Format m_format         = RHI_Format::Undefined;
         RHI_Viewport m_viewport;
-        std::vector<RHI_Texture_Slice> m_data;
+        std::vector<RHI_Texture_Slice> m_slices;
         std::array<RHI_Image_Layout, rhi_max_mip_count> m_layout;
 
         // API resources

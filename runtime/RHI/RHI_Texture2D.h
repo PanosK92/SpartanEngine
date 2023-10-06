@@ -31,7 +31,7 @@ namespace Spartan
     class SP_CLASS RHI_Texture2D : public RHI_Texture
     {
     public:
-        // Creates a texture without data (intended for manual loading)
+        // creates a texture without data (intended for manual loading)
         RHI_Texture2D(const uint32_t flags = RHI_Texture_Srv, const char* name = nullptr)
         {
             m_resource_type = ResourceType::Texture2d;
@@ -43,7 +43,7 @@ namespace Spartan
             }
         }
 
-        // Creates a texture from data (intended for sampling)
+        // creates a texture from data (intended for sampling)
         RHI_Texture2D(const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t flags, const std::vector<RHI_Texture_Slice>& data, const char* name = nullptr)
         {
             m_resource_type    = ResourceType::Texture2d;
@@ -51,7 +51,7 @@ namespace Spartan
             m_height           = height;
             m_viewport         = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
             m_format           = format;
-            m_data             = data;
+            m_slices           = data;
             m_mip_count        = GetSlice(0).GetMipCount();
             m_flags            = flags;
             m_channel_count    = rhi_to_format_channel_count(m_format);
@@ -66,7 +66,7 @@ namespace Spartan
             m_is_ready_for_use = true;
         }
 
-        // Creates a texture without any data (intended for usage as a render target)
+        // creates a texture without any data (intended for usage as a render target)
         RHI_Texture2D(const uint32_t width, const uint32_t height, const uint32_t mip_count, const RHI_Format format, const uint32_t flags, const char* name = nullptr)
         {
             m_resource_type    = ResourceType::Texture2d;
