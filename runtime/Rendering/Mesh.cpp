@@ -299,7 +299,7 @@ namespace Spartan
         else // If we didn't get a texture, it's not cached, hence we have to load it and cache it now
         {
             // Load texture
-            texture = ResourceCache::Load<RHI_Texture2D>(file_path, RHI_Texture_Srv | RHI_Texture_Mips | RHI_Texture_PerMipViews | RHI_Texture_Compressed);
+            texture = ResourceCache::Load<RHI_Texture2D>(file_path, RHI_Texture_Srv | RHI_Texture_Mips | RHI_Texture_Compressed);
 
             // Set the texture to the provided material
             material->SetTexture(texture_type, texture);
