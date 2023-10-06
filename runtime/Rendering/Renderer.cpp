@@ -199,7 +199,7 @@ namespace Spartan
         SetOption(Renderer_Option::Exposure,                 1.0f);
         SetOption(Renderer_Option::Sharpness,                0.5f);
         SetOption(Renderer_Option::FogDensity,               0.0f);
-        SetOption(Renderer_Option::Antialiasing,             static_cast<float>(Renderer_Antialiasing::TaaFxaa)); // this is using FSR 2 for TAA
+        SetOption(Renderer_Option::Antialiasing,             static_cast<float>(Renderer_Antialiasing::Taa)); // this is using FSR 2 for TAA
         SetOption(Renderer_Option::Upsampling,               static_cast<float>(Renderer_Upsampling::FSR2));
         SetOption(Renderer_Option::UpsamplingSharpness,      1.0f);
         SetOption(Renderer_Option::Vsync,                    0.0f);
@@ -506,12 +506,15 @@ namespace Spartan
         SP_LOG_INFO("Output resolution output has been set to %dx%d", width, height);
     }
 
-    void Renderer::UpdateConstantBufferFrame(RHI_CommandList* cmd_list)
+    void Renderer::UpdateConstantBufferFrame(RHI_CommandList* cmd_list, const bool set /*= true*/)
     {
         GetConstantBuffer(Renderer_ConstantBuffer::Frame)->Update(&m_cb_frame_cpu);
 
-        // Bind because the offset just changed
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetConstantBuffer(Renderer_ConstantBuffer::Frame));
+        // set by default as the offset has changed
+        if (set)
+        {
+            cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetConstantBuffer(Renderer_ConstantBuffer::Frame));
+        }
     }
 
     void Renderer::PushPassConstants(RHI_CommandList* cmd_list)
@@ -750,14 +753,14 @@ namespace Spartan
 
     void Renderer::SetOption(Renderer_Option option, float value)
     {
-        // Clamp value
+        // clamp value
         {
-            // Anisotropy
+            // anisotropy
             if (option == Renderer_Option::Anisotropy)
             {
                 value = Helper::Clamp(value, 0.0f, 16.0f);
             }
-            // Shadow resolution
+            // shadow resolution
             else if (option == Renderer_Option::ShadowResolution)
             {
                 value = Helper::Clamp(value, static_cast<float>(resolution_shadow_min), static_cast<float>(RHI_Device::PropertyGetMaxTexture2dDimension()));
@@ -768,7 +771,7 @@ namespace Spartan
         if ((m_options.find(option) != m_options.end()) && m_options[option] == value)
             return;
 
-        // Reject changes (if needed)
+        // reject changes (if needed)
         {
             if (option == Renderer_Option::Hdr)
             {
@@ -780,12 +783,12 @@ namespace Spartan
             }
         }
 
-        // Set new value
+        // set new value
         m_options[option] = value;
 
-        // Handle cascading changes
+        // handle cascading changes
         {
-            // Antialiasing
+            // aAntialiasing
             if (option == Renderer_Option::Antialiasing)
             {
                 bool taa_enabled = value == static_cast<float>(Renderer_Antialiasing::Taa) || value == static_cast<float>(Renderer_Antialiasing::TaaFxaa);
@@ -793,7 +796,7 @@ namespace Spartan
 
                 if (taa_enabled)
                 {
-                    // Implicitly enable FSR since it's doing TAA.
+                    // implicitly enable FSR since it's doing TAA.
                     if (!fsr_enabled)
                     {
                         m_options[Renderer_Option::Upsampling] = static_cast<float>(Renderer_Upsampling::FSR2);

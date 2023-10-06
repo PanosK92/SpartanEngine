@@ -72,8 +72,7 @@ namespace Spartan
         RHI_Texture* rt2       = GetRenderTarget(Renderer_RenderTexture::frame_render_2).get();
         RHI_Texture* rt_output = GetRenderTarget(Renderer_RenderTexture::frame_output).get();
 
-        // update frame constant buffer
-        UpdateConstantBufferFrame(cmd_list);
+        UpdateConstantBufferFrame(cmd_list, false);
 
         if (shared_ptr<Camera> camera = GetCamera())
         { 
@@ -2123,7 +2122,7 @@ namespace Spartan
 
     void Renderer::Pass_PeformanceMetrics(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        // Early exit cases
+        // early exit cases
         const bool draw      = GetOption<bool>(Renderer_Option::Debug_PerformanceMetrics);
         const bool empty     = Profiler::GetMetrics().empty();
         const auto& shader_v = GetShader(Renderer_Shader::font_v);
@@ -2131,20 +2130,20 @@ namespace Spartan
         if (!draw || empty || !shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        // If the performance metrics are being drawn, the profiler has to be enabled.
+        // if the performance metrics are being drawn, the profiler has to be enabled.
         if (!Profiler::GetEnabled())
         {
             Profiler::SetEnabled(true);
         }
 
-        // Update text
+        // update text
         const Vector2 text_pos = Vector2(-GetViewport().width * 0.5f + 5.0f, GetViewport().height * 0.5f - m_font->GetSize() - 2.0f);
         m_font->SetText(Profiler::GetMetrics(), text_pos);
 
         cmd_list->BeginMarker("performance_metrics");
         cmd_list->BeginTimeblock("outline");
 
-        // Define pipeline state
+        // define pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v.get();
         pso.shader_pixel                    = shader_p.get();
@@ -2155,13 +2154,13 @@ namespace Spartan
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.name                            = "Pass_PeformanceMetrics";
 
-        // Draw outline
+        // draw outline
         if (m_font->GetOutline() != Font_Outline_None && m_font->GetOutlineSize() != 0)
         {
             cmd_list->SetPipelineState(pso);
             cmd_list->BeginRenderPass();
             {
-                // Set pass constants
+                // set pass constants
                 m_cb_pass_cpu.set_resolution_out(tex_out);
                 m_cb_pass_cpu.set_f4_value(m_font->GetColorOutline());
                 PushPassConstants(cmd_list);
@@ -2177,11 +2176,11 @@ namespace Spartan
         cmd_list->EndTimeblock();
         cmd_list->BeginTimeblock("inline");
 
-        // Draw
+        // draw
         cmd_list->SetPipelineState(pso);
         cmd_list->BeginRenderPass();
         {
-            // Set pass constants
+            // set pass constants
             m_cb_pass_cpu.set_resolution_out(tex_out);
             m_cb_pass_cpu.set_f4_value(m_font->GetColor());
             PushPassConstants(cmd_list);

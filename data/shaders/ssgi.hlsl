@@ -101,7 +101,7 @@ void compute_ssgi(uint2 pos, inout float visibility, inout float3 diffuse_bounce
     }
 
     visibility      = 1.0f - saturate(occlusion * ao_samples_rcp * g_ao_intensity);
-    diffuse_bounce *= ao_samples_rcp * g_ao_intensity;
+    diffuse_bounce *= ao_samples_rcp * g_ao_intensity * 3.0f; // 3.0f - this is what looks right
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]

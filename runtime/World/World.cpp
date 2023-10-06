@@ -820,7 +820,7 @@ namespace Spartan
                     // material
                     {
                         shared_ptr<Material> material = make_shared<Material>();
-                        material->SetObjectName("Water");
+                        material->SetObjectName("material_water");
                         material->SetColor(Color(0.0f, 48.0f / 255.0f, 75.0f / 255.0f));
                         material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\water_normal_2.jpeg");
                         material->SetProperty(MaterialProperty::IsWater,             1.0f);

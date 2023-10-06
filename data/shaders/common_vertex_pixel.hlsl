@@ -46,7 +46,7 @@ struct Vertex_Pos2dUvColor
 
 struct InstanceData
 {
-    float3 instance_position : INSTANCE_POSITION;
+    float3 instance_position;
 };
 
 struct Vertex_PosUvNorTan
@@ -56,7 +56,7 @@ struct Vertex_PosUvNorTan
     float3 normal              : NORMAL0;
     float3 tangent             : TANGENT0;
     #if INSTANCED
-    InstanceData instance_data : TEXCOORD1;
+    InstanceData instance_data : INSTANCE_POSITION0;
     #endif
 };
 

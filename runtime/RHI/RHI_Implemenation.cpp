@@ -66,7 +66,7 @@ namespace Spartan
             device              = nullptr;
             extensions_instance = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_swapchain_colorspace" };
             validation_layers   = { "VK_LAYER_KHRONOS_validation" };
-            extensions_device   = { "VK_KHR_swapchain", "VK_EXT_memory_budget", "VK_EXT_depth_clip_enable" };
+            extensions_device   = { "VK_KHR_swapchain", "VK_EXT_memory_budget" };
             // hardware capability viewer: https://vulkan.gpuinfo.org/
         #endif
         

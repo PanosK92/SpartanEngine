@@ -75,12 +75,8 @@ float shadow_compare_depth(float3 uv, float compare)
         // float3 -> uv, 0
         return tex_light_spot_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv.xy, compare).r;
     }
-    else
-    {
-        // Return within an else statement in order to avoid a warning.
-        // Warning X4000: use of potentially uninitialized variable.
-        return 0.0f;
-    }
+    
+    return 0.0f;
 }
 
 float shadow_sample_depth(float3 uv)
@@ -100,12 +96,8 @@ float shadow_sample_depth(float3 uv)
         // float3 -> uv, 0
         return tex_light_spot_depth.SampleLevel(samplers[sampler_point_clamp], uv.xy, 0).r;
     }
-    else
-    {
-        // Return within an else statement in order to avoid a warning.
-        // Warning X4000: use of potentially uninitialized variable.
-        return 0.0f;
-    }
+    
+    return 0.0f;
 }
 
 float3 shadow_sample_color(float3 uv)
@@ -125,12 +117,8 @@ float3 shadow_sample_color(float3 uv)
         // float3 -> uv, 0
         return tex_light_spot_color.SampleLevel(samplers[sampler_point_clamp], uv.xy, 0).rgb;
     }
-    else
-    {
-        // Return within an else statement in order to avoid a warning.
-        // Warning X4000: use of potentially uninitialized variable.
-        return 0.0f;
-    }
+    
+    return 0.0f;
 }
 
 /*------------------------------------------------------------------------------
@@ -138,13 +126,13 @@ float3 shadow_sample_color(float3 uv)
 ------------------------------------------------------------------------------*/
 float2 vogel_disk_sample(uint sample_index, uint sample_count, float angle)
 {
-  const float golden_angle = 2.399963f; // radians
-  float r                  = sqrt(sample_index + 0.5f) / sqrt(sample_count);
-  float theta              = sample_index * golden_angle + angle;
-  float sine, cosine;
-  sincos(theta, sine, cosine);
-  
-  return float2(cosine, sine) * r;
+    const float golden_angle = 2.399963f; // radians
+    float r                  = sqrt(sample_index + 0.5f) / sqrt(sample_count);
+    float theta              = sample_index * golden_angle + angle;
+    float sine, cosine;
+    sincos(theta, sine, cosine);
+    
+    return float2(cosine, sine) * r;
 }
 
 float compute_penumbra(float vogel_angle, float3 uv, float compare)

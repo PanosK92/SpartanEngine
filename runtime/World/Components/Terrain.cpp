@@ -255,7 +255,7 @@ namespace Spartan
             vector<Vector3> positions;
             random_device rd;
             mt19937 gen(rd());
-            uniform_int_distribution<> dis(0, indices.size() / 3 - 1);
+            uniform_int_distribution<> dis(0, static_cast<int>(indices.size() / 3 - 1));
 
             for (uint32_t i = 0; i < tree_count; ++i)
             {
