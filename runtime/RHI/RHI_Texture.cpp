@@ -39,7 +39,7 @@ namespace Spartan
 {
     namespace amd_compressonator
     {
-        static CMP_FORMAT rhi_format_to_compressonator_format(const RHI_Format format)
+        CMP_FORMAT rhi_format_to_compressonator_format(const RHI_Format format)
         {
             if (format == RHI_Format::R8_Unorm)
                 return CMP_FORMAT::CMP_FORMAT_R_8;
@@ -87,7 +87,7 @@ namespace Spartan
             return CMP_FORMAT::CMP_FORMAT_Unknown;
         }
 
-        static void generate_mips(RHI_Texture* texture)
+        void generate_mips(RHI_Texture* texture)
         {
             /*
             for (uint32_t index_array = 0; index_array < texture->GetArrayLength(); index_array++)
@@ -133,7 +133,7 @@ namespace Spartan
             */
         }
 
-        static void compress(RHI_Texture* texture)
+        void compress(RHI_Texture* texture)
         {
             /*
             KernelOptions options;
@@ -286,10 +286,8 @@ namespace Spartan
         m_slices.shrink_to_fit();
 
         // load from drive
-        bool is_native_format  = FileSystem::IsEngineTextureFile(file_path);
-        bool is_foreign_format = FileSystem::IsSupportedImageFile(file_path);
         {
-            if (is_native_format)
+            if (FileSystem::IsEngineTextureFile(file_path))
             {
                 auto file = make_unique<FileStream>(file_path, FileStream_Read);
                 if (!file->IsOpen())
@@ -324,7 +322,7 @@ namespace Spartan
                 SetObjectId(file->ReadAs<uint64_t>());
                 SetResourceFilePath(file->ReadAs<string>());
             }
-            else if (is_foreign_format) // foreign format (most known image formats)
+            else if (FileSystem::IsSupportedImageFile(file_path))
             {
                 vector<string> file_paths = { file_path };
 
@@ -357,9 +355,6 @@ namespace Spartan
                 // set resource file path so it can be used by the resource cache.
                 SetResourceFilePath(file_path);
 
-                // name this texture (for debugging)
-                m_object_name = "texture_" + FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-
                 // compress texture
                 if (m_flags & RHI_Texture_Compressed)
                 {
@@ -368,7 +363,7 @@ namespace Spartan
             }
         }
 
-        m_mip_count = (m_flags & RHI_Texture_Mips) ? static_cast<uint32_t>(log2(max(m_width, m_height))) : 1;
+        m_mip_count = (m_flags & RHI_Texture_Mips) ? static_cast<uint32_t>(log2(Math::Helper::Min<uint32_t>(m_width, m_height))) : 1;
 
         // add appropriate flags
         if (m_mip_count > 1)
@@ -381,6 +376,7 @@ namespace Spartan
 
         // create gpu resource
         SP_ASSERT_MSG(RHI_CreateResource(), "Failed to create GPU resource");
+        m_is_ready_for_use = true;
 
         // gpu based mip generation
         if (m_mip_count > 1)
@@ -389,8 +385,8 @@ namespace Spartan
         }
 
         // if this was a native texture (means the data is already saved) and the GPU resource
-        // has been created, then clear the data as we don't need them anymore.
-        if (is_native_format)
+        // has been created, then clear the data as we don't need it anymore
+        if (FileSystem::IsEngineTextureFile(file_path))
         {
             m_slices.clear();
             m_slices.shrink_to_fit();
@@ -398,25 +394,23 @@ namespace Spartan
 
         ComputeMemoryUsage();
 
-        m_is_ready_for_use = true;
-
         return true;
     }
 
     RHI_Texture_Mip& RHI_Texture::CreateMip(const uint32_t array_index)
     {
-        // Grow data if needed
+        // grow data if needed
         while (array_index >= m_slices.size())
         {
             m_slices.emplace_back();
         }
 
-        // Create mip
+        // create mip
         RHI_Texture_Mip& mip = m_slices[array_index].mips.emplace_back();
 
-        // Allocate memory even if there are no initial data.
-        // This is to prevent APIs from failing to create a texture with mips that don't point to any mip memory.
-        // This memory will be either overwritten from initial data or cleared after the mips are generated on the GPU.
+        // allocate memory even if there are no initial data.
+        // this is to prevent APIs from failing to create a texture with mips that don't point to any mip memory.
+        // this memory will be either overwritten from initial data or cleared after the mips are generated on the GPU.
         uint32_t mip_index      = m_slices[array_index].GetMipCount() - 1;
         uint32_t width          = m_width >> mip_index;
         uint32_t height         = m_height >> mip_index;
@@ -424,7 +418,7 @@ namespace Spartan
         mip.bytes.resize(size_bytes);
         mip.bytes.reserve(mip.bytes.size());
 
-        // Update array index and mip count
+        // update array index and mip count
         if (!m_slices.empty())
         {
             m_array_length = static_cast<uint32_t>(m_slices.size());

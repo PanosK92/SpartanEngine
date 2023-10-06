@@ -355,6 +355,8 @@ namespace Spartan
             depth_stencil_state.front.writeMask   = m_state.depth_stencil_state->GetStencilWriteMask();
             depth_stencil_state.front.reference   = 1;
             depth_stencil_state.back              = depth_stencil_state.front;
+            depth_stencil_state.minDepthBounds    = 1.0f; // functionality of DirectX with reverse-z
+            depth_stencil_state.maxDepthBounds    = 0.0f; // functionality of DirectX with reverse-z
         }
 
         // pipeline

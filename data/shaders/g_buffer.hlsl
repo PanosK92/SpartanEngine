@@ -94,13 +94,13 @@ float4 sample_albedo(float2 uv, float slope)
 
 float3 smaple_normal(float2 uv, float slope)
 {
-    float3 normal = tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], uv);
+    float3 normal = tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], uv).xyz;
 
     if (material_is_terrain())
     {
         // blend based on slope
         float3 tex_flat  = normal;
-        float3 tex_slope = tex_material_normal2.Sample(samplers[sampler_anisotropic_wrap], uv * 0.3f);
+        float3 tex_slope = tex_material_normal2.Sample(samplers[sampler_anisotropic_wrap], uv * 0.3f).rgb;
         normal           = lerp(tex_slope, tex_flat, slope);
     }
 
