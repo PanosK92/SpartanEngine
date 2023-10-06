@@ -152,7 +152,7 @@ namespace Spartan
 
             // If the texture has data, it will be staged, so it needs transfer bits.
             // If the texture participates in clear or blit operations, it needs transfer bits.
-            if (texture->HasData() || (texture->GetFlags() & RHI_Texture_ClearOrBlit) != 0)
+            if (texture->HasData() || (texture->GetFlags() & RHI_Texture_ClearBlit) != 0)
             {
                 flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT; // source of a transfer command.
                 flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; // destination of a transfer command

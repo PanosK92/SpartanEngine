@@ -35,8 +35,8 @@ namespace Spartan
     {
         RHI_Texture_Srv          = 1U << 0,
         RHI_Texture_Uav          = 1U << 1,
-        RHI_Texture_RenderTarget = 1U << 2,
-        RHI_Texture_ClearOrBlit  = 1U << 3,
+        RHI_Texture_Rtv          = 1U << 2,
+        RHI_Texture_ClearBlit    = 1U << 3,
         RHI_Texture_PerMipViews  = 1U << 4,
         RHI_Texture_Greyscale    = 1U << 5,
         RHI_Texture_Transparent  = 1U << 6,
@@ -108,7 +108,7 @@ namespace Spartan
         // Flags
         bool IsSrv()                      const { return m_flags & RHI_Texture_Srv; }
         bool IsUav()                      const { return m_flags & RHI_Texture_Uav; }
-        bool IsRenderTarget()             const { return m_flags & RHI_Texture_RenderTarget; }
+        bool IsRenderTarget()             const { return m_flags & RHI_Texture_Rtv; }
         bool IsRenderTargetDepthStencil() const { return IsRenderTarget() && IsDepthStencilFormat(); }
         bool IsRenderTargetColor()        const { return IsRenderTarget() && IsColorFormat(); }
         bool HasPerMipViews()             const { return m_flags & RHI_Texture_PerMipViews; }
