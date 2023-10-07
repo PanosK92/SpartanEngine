@@ -267,20 +267,20 @@ void RenderOptions::OnTickVisible()
                     "FSR 2"
                 };
 
-                bool upsampling_allowed = resolution_render.x <= resolution_output.x && resolution_render.y <= resolution_output.y;
-                ImGui::BeginDisabled(!upsampling_allowed);
-
-                uint32_t upsampling_mode = Renderer::GetOption<uint32_t>(Renderer_Option::Upsampling);
-                if (option_combo_box("Upsampling", upsampling_modes, upsampling_mode))
+                bool is_upsampling = resolution_render.x < resolution_output.x || resolution_render.y < resolution_output.y;
+                ImGui::BeginDisabled(!is_upsampling);
                 {
-                    Renderer::SetOption(Renderer_Option::Upsampling, static_cast<float>(upsampling_mode));
+                    uint32_t upsampling_mode = Renderer::GetOption<uint32_t>(Renderer_Option::Upsampling);
+                    if (option_combo_box("Upsampling", upsampling_modes, upsampling_mode))
+                    {
+                        Renderer::SetOption(Renderer_Option::Upsampling, static_cast<float>(upsampling_mode));
+                    }
                 }
-
-                ImGui::BeginDisabled(upsampling_mode != 1);
-                option_value("Upsampling sharpness (RCAS)", Renderer_Option::UpsamplingSharpness, "AMD FidelityFX Robust Contrast Adaptive Sharpening (RCAS)", 0.1f, 0.0f, 1.0f);
                 ImGui::EndDisabled();
 
-                ImGui::EndDisabled();
+                string label   = is_upsampling ? "Upsampling sharpness (RCAS)" : "Sharpness (CAS)";
+                string tooltip = is_upsampling ? "AMD FidelityFX Robust Contrast Adaptive Sharpening (RCAS)" : "AMD FidelityFX Contrast Adaptive Sharpening (CAS)";
+                option_value(label.c_str(), Renderer_Option::Sharpness, tooltip.c_str(), 0.1f, 0.0f, 1.0f);
             }
         }
 
@@ -358,7 +358,6 @@ void RenderOptions::OnTickVisible()
         if (option("Misc"))
         {
             option_value("Fog",             Renderer_Option::Fog, "Controls the density of the fog", 0.1f);
-            option_value("Sharpness (CAS)", Renderer_Option::Sharpness, "AMD FidelityFX Contrast Adaptive Sharpening (CAS)", 0.1f, 0.0f, 1.0f);
             option_value("Gamma",           Renderer_Option::Gamma);
             option_value("Exposure",        Renderer_Option::Exposure);
 

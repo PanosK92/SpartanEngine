@@ -61,7 +61,6 @@ namespace Spartan
         Antialiasing,
         Tonemapping,
         Upsampling,
-        UpsamplingSharpness,
         Sharpness,
         Hdr,
         Vsync,

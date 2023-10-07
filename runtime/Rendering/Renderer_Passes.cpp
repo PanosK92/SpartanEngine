@@ -1139,8 +1139,8 @@ namespace Spartan
 
         // Determine antialiasing modes
         Renderer_Antialiasing antialiasing = GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing);
-        bool taa_enabled              = antialiasing == Renderer_Antialiasing::Taa  || antialiasing == Renderer_Antialiasing::TaaFxaa;
-        bool fxaa_enabled             = antialiasing == Renderer_Antialiasing::Fxaa || antialiasing == Renderer_Antialiasing::TaaFxaa;
+        bool taa_enabled                   = antialiasing == Renderer_Antialiasing::Taa  || antialiasing == Renderer_Antialiasing::TaaFxaa;
+        bool fxaa_enabled                  = antialiasing == Renderer_Antialiasing::Fxaa || antialiasing == Renderer_Antialiasing::TaaFxaa;
 
         // Get upsampling mode
         Renderer_Upsampling upsampling_mode = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling);
@@ -1163,53 +1163,53 @@ namespace Spartan
 
         // OUTPUT RESOLUTION
         {
-            // Motion Blur
+            // motion Blur
             if (GetOption<bool>(Renderer_Option::MotionBlur))
             {
                 swap_output = !swap_output;
                 Pass_MotionBlur(cmd_list, get_output_in, get_output_out);
             }
 
-            // Bloom
+            // bloom
             if (GetOption<bool>(Renderer_Option::Bloom))
             {
                 swap_output = !swap_output;
                 Pass_Bloom(cmd_list, get_output_in, get_output_out);
             }
 
-            // Tone-Mapping & Gamma Correction
+            // tone-mapping & gamma correction
             swap_output = !swap_output;
             Pass_ToneMappingGammaCorrection(cmd_list, get_output_in, get_output_out);
 
-            // Sharpening
+            // sharpening
             if (GetOption<bool>(Renderer_Option::Sharpness))
             {
                 swap_output = !swap_output;
                 Pass_Ffx_Cas(cmd_list, get_output_in, get_output_out);
             }
 
-            // Debanding
+            // debanding
             if (GetOption<bool>(Renderer_Option::Debanding))
             {
                 swap_output = !swap_output;
                 Pass_Debanding(cmd_list, get_output_in, get_output_out);
             }
 
-            // FXAA
+            // fxaa
             if (fxaa_enabled)
             {
                 swap_output = !swap_output;
                 Pass_Fxaa(cmd_list, get_output_in, get_output_out);
             }
 
-            // Chromatic aberration
+            // chromatic aberration
             if (GetOption<bool>(Renderer_Option::ChromaticAberration))
             {
                 swap_output = !swap_output;
                 Pass_ChromaticAberration(cmd_list, get_output_in, get_output_out);
             }
 
-            // Film grain
+            // film grain
             if (GetOption<bool>(Renderer_Option::FilmGrain))
             {
                 swap_output = !swap_output;
@@ -1217,7 +1217,7 @@ namespace Spartan
             }
         }
 
-        // If the last written texture is not the output one, then make sure it is.
+        // if the last written texture is not the output one, then make sure it is.
         if (!swap_output)
         {
             cmd_list->Copy(rt_frame_output_scratch, rt_frame_output, false);
@@ -1726,6 +1726,9 @@ namespace Spartan
     {
         cmd_list->BeginTimeblock("amd_ffx_fsr2");
 
+        bool is_upsampling = GetResolutionRender().x < GetResolutionOutput().x || GetResolutionRender().y < GetResolutionOutput().y;
+        float sharpness    = is_upsampling ? GetOption<float>(Renderer_Option::Sharpness) : 0.0f; // if not upsampling we do Pass_Ffx_Cas()
+
         RHI_AMD_FidelityFX::FSR2_Dispatch(
             cmd_list,
             tex_in,
@@ -1736,7 +1739,7 @@ namespace Spartan
             tex_out,
             GetCamera().get(),
             m_cb_frame_cpu.delta_time,
-            GetOption<float>(Renderer_Option::UpsamplingSharpness)
+            sharpness
         );
 
         cmd_list->EndTimeblock();
