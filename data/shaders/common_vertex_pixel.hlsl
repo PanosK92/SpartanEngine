@@ -44,19 +44,14 @@ struct Vertex_Pos2dUvColor
     float4 color    : COLOR0;
 };
 
-struct InstanceData
-{
-    float3 instance_position;
-};
-
 struct Vertex_PosUvNorTan
 {
-    float4 position            : POSITION0;
-    float2 uv                  : TEXCOORD0;
-    float3 normal              : NORMAL0;
-    float3 tangent             : TANGENT0;
+    float4 position           : POSITION0;
+    float2 uv                 : TEXCOORD0;
+    float3 normal             : NORMAL0;
+    float3 tangent            : TANGENT0;
     #if INSTANCED
-    InstanceData instance_data : INSTANCE_POSITION0;
+    matrix instance_transform : INSTANCE_TRANSFORM0;
     #endif
 };
 

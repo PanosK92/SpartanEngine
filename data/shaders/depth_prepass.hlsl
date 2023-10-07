@@ -31,7 +31,7 @@ Pixel_PosUv mainVS(Vertex_PosUvNorTan input)
     input.position.w     = 1.0f; 
     output.position      = mul(input.position, buffer_pass.transform);
     #if INSTANCED
-    output.position.xyz += input.instance_data.instance_position;
+    output.position      = mul(output.position, input.instance_transform);
     #endif
     output.position      = mul(output.position, buffer_frame.view_projection);
 

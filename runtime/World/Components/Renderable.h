@@ -85,7 +85,7 @@ namespace Spartan
         bool HasInstancing()                  const { return !m_instances.empty(); }
         RHI_VertexBuffer* GetInstanceBuffer() const { return m_instance_buffer.get(); }
         uint32_t GetInstanceCount()           const { return static_cast<uint32_t>(m_instances.size()); }
-        void SetInstances(const std::vector<Math::Vector3>& instances);
+        void SetInstances(const std::vector<Math::Matrix>& instances);
 
     private:
         // geometry/mesh
@@ -103,7 +103,7 @@ namespace Spartan
         Material* m_material    = nullptr;
 
         // instancing
-        std::vector<Math::Vector3> m_instances;
+        std::vector<Math::Matrix> m_instances;
         std::shared_ptr<RHI_VertexBuffer> m_instance_buffer;
 
         // misc

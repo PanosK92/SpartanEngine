@@ -74,26 +74,26 @@ namespace Spartan
     }
 
         static void generate_positions(vector<Vector3>& positions, const vector<float>& height_map, const uint32_t width, const uint32_t height)
-    {
-        SP_ASSERT_MSG(!height_map.empty(), "Height map is empty");
-
-        for (uint32_t y = 0; y < height; y++)
         {
-            for (uint32_t x = 0; x < width; x++)
+            SP_ASSERT_MSG(!height_map.empty(), "Height map is empty");
+
+            for (uint32_t y = 0; y < height; y++)
             {
-                uint32_t index = y * width + x;
+                for (uint32_t x = 0; x < width; x++)
+                {
+                    uint32_t index = y * width + x;
 
-                // center on the X and Z axis
-                float centered_x = static_cast<float>(x) - width * 0.5f;
-                float centered_z = static_cast<float>(y) - height * 0.5f;
+                    // center on the X and Z axis
+                    float centered_x = static_cast<float>(x) - width * 0.5f;
+                    float centered_z = static_cast<float>(y) - height * 0.5f;
 
-                // get height from height_map
-                float height_value = height_map[index]; 
+                    // get height from height_map
+                    float height_value = height_map[index]; 
 
-                positions[index] = Vector3(centered_x, height_value, centered_z);
+                    positions[index] = Vector3(centered_x, height_value, centered_z);
+                }
             }
         }
-    }
 
         static void generate_vertices_and_indices(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const vector<Vector3>& positions, const uint32_t width, const uint32_t height)
         {
@@ -250,17 +250,33 @@ namespace Spartan
             ThreadPool::ParallelLoop(compute_vertex_normals_tangents, vertex_count);
         }
 
-        vector<Vector3> generate_positions(const vector<RHI_Vertex_PosTexNorTan>& vertices, const vector<uint32_t>& indices, uint32_t tree_count, float max_slope_radians, float water_level, float terrain_offset)
+        float get_random_float(float x, float y)
         {
-            vector<Vector3> positions;
-            random_device rd;
-            mt19937 gen(rd());
-            uniform_int_distribution<> dis(0, static_cast<int>(indices.size() / 3 - 1));
+            random_device rd;  // obtain a random number from hardware
+            mt19937 gen(rd()); // seed the generator
+            uniform_real_distribution<> distr(x, y); // define the distribution
+
+            return static_cast<float>(distr(gen));
+        }
+
+        vector<Matrix> generate_transforms(
+            const vector<RHI_Vertex_PosTexNorTan>& vertices,
+            const vector<uint32_t>& indices,
+            uint32_t tree_count,
+            float max_slope_radians,
+            float water_level,
+            float terrain_offset
+        )
+        {
+            vector<Matrix> transforms;
+            random_device seed;
+            mt19937 generator(seed());
+            uniform_int_distribution<> distribution(0, static_cast<int>(indices.size() / 3 - 1));
 
             for (uint32_t i = 0; i < tree_count; ++i)
             {
                 // randomly select a triangle from the mesh
-                uint32_t triangle_index = dis(gen) * 3;
+                uint32_t triangle_index = distribution(generator) * 3;
 
                 // get the vertices of the triangle
                 Vector3 v0 = Vector3(vertices[indices[triangle_index]].pos[0],     vertices[indices[triangle_index]].pos[1],     vertices[indices[triangle_index]].pos[2]);
@@ -285,10 +301,13 @@ namespace Spartan
                         v = 1.0f - v;
                     }
 
-                    // compute the position using barycentric coordinates
-                    float height_bias = terrain_offset; // push the tree down a bit so it doesn't float above the terrain
-                    Vector3 position = v0 + (u * (v1 - v0) + height_bias) + v * (v2 - v0);
-                    positions.push_back(position);
+                    Vector3 position    = v0 + (u * (v1 - v0) + terrain_offset) + v * (v2 - v0);
+                    Quaternion rotation = Quaternion::FromEulerAngles(0.0f, get_random_float(0.0f, 360.0f), 0.0f);
+                    Vector3 scale       = Vector3(get_random_float(0.5f, 1.5f));
+
+                    // we are mapping 4 vector4 (c++ side, see vulka_pipeline.cpp) to 1 matrix (HLSL side), and the matrix
+                    // memory layout is column-major, so we need to transpose to get it as row-major
+                    transforms.push_back(Matrix(position, rotation, scale).Transposed());
                 }
                 else
                 {
@@ -297,7 +316,7 @@ namespace Spartan
                 }
             }
 
-            return positions;
+            return transforms;
         }
     }
 
@@ -417,13 +436,13 @@ namespace Spartan
             uint32_t tree_count     = 5000;
             float max_slope         = 30.0f * Math::Helper::DEG_TO_RAD;
             float terrain_offset    = -0.2f;
-            m_trees                 = generate_positions(vertices, indices, tree_count, max_slope, m_water_level, terrain_offset);
+            m_trees                 = generate_transforms(vertices, indices, tree_count, max_slope, m_water_level, terrain_offset);
 
             // compute plant positions
             uint32_t plant_count = 20000;
             max_slope            = 40.0f * Math::Helper::DEG_TO_RAD;
             terrain_offset       = 0.0f;
-            m_plants             = generate_positions(vertices, indices, plant_count, max_slope, m_water_level, terrain_offset);
+            m_plants             = generate_transforms(vertices, indices, plant_count, max_slope, m_water_level, terrain_offset);
 
             if (on_complete)
             {
