@@ -198,7 +198,7 @@ namespace Spartan
         SetOption(Renderer_Option::Gamma,                    2.2f);
         SetOption(Renderer_Option::Exposure,                 1.0f);
         SetOption(Renderer_Option::Sharpness,                0.5f);
-        SetOption(Renderer_Option::FogDensity,               0.0f);
+        SetOption(Renderer_Option::Fog,                      1.5f);
         SetOption(Renderer_Option::Antialiasing,             static_cast<float>(Renderer_Antialiasing::Taa)); // this is using FSR 2 for TAA
         SetOption(Renderer_Option::Upsampling,               static_cast<float>(Renderer_Upsampling::FSR2));
         SetOption(Renderer_Option::UpsamplingSharpness,      1.0f);
@@ -376,11 +376,12 @@ namespace Spartan
             m_cb_frame_cpu.gamma               = GetOption<float>(Renderer_Option::Gamma);
             m_cb_frame_cpu.frame               = static_cast<uint32_t>(frame_num);
 
-            // these must match what Common_Buffer.hlsl is reading
+            // these must match what common_buffer.hlsl is reading
             m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections), 1 << 0);
             m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Ssgi),                   1 << 1);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::VolumetricFog),          1 << 2);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceShadows),     1 << 3);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceShadows),     1 << 2);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Fog),                    1 << 3);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::FogVolumetric),          1 << 4);
         }
 
         Pass_Frame(cmd_current);

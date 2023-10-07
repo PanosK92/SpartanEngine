@@ -121,8 +121,9 @@ bool light_is_volumetric()            { return buffer_light.options & uint(1U <<
 bool is_taa_enabled()                  { return any(buffer_frame.taa_jitter_current); }
 bool is_ssr_enabled()                  { return buffer_frame.options & uint(1U << 0); }
 bool is_ssgi_enabled()                 { return buffer_frame.options & uint(1U << 1); }
-bool is_volumetric_fog_enabled()       { return buffer_frame.options & uint(1U << 2); }
-bool is_screen_space_shadows_enabled() { return buffer_frame.options & uint(1U << 3); }
+bool is_screen_space_shadows_enabled() { return buffer_frame.options & uint(1U << 2); }
+bool is_fog_enabled()                  { return buffer_frame.options & uint(1U << 3); }
+bool is_fog_volumetric_enabled()       { return buffer_frame.options & uint(1U << 4); }
 
 // pass properties
 matrix pass_get_transform_previous()      { return buffer_pass.m_value; }

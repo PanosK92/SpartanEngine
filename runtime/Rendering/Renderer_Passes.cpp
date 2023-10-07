@@ -874,7 +874,7 @@ namespace Spartan
                 // push pass constants
                 m_cb_pass_cpu.set_resolution_out(tex_diffuse);
                 m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
-                m_cb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::FogDensity), GetOption<float>(Renderer_Option::ShadowResolution), 0.0f);
+                m_cb_pass_cpu.set_f3_value(0.0f, GetOption<float>(Renderer_Option::ShadowResolution), 0.0f);
                 PushPassConstants(cmd_list);
                 
                 cmd_list->Dispatch(thread_group_count_x(tex_diffuse), thread_group_count_y(tex_diffuse));
@@ -982,7 +982,7 @@ namespace Spartan
         // set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_out);
         m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
-        m_cb_pass_cpu.set_f4_value(!probes.empty() ? 1.0f : 0.0f, static_cast<float>(GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount()), 0.0f, 0.0f); // reflection probe available
+        m_cb_pass_cpu.set_f4_value(!probes.empty() ? 1.0f : 0.0f, static_cast<float>(GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount()), GetOption<float>(Renderer_Option::Fog), 0.0f); // reflection probe available
         PushPassConstants(cmd_list);
 
         // update light buffer with the directional light
