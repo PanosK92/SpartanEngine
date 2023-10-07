@@ -169,7 +169,7 @@ namespace Spartan
             }
         }
 
-        static void generate_normals_and_tangents(const vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
+        static void generate_normals(const vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
         {
             SP_ASSERT_MSG(!indices.empty(), "Indices are empty");
             SP_ASSERT_MSG(!vertices.empty(), "Vertices are empty");
@@ -177,9 +177,8 @@ namespace Spartan
             uint32_t triangle_count = static_cast<uint32_t>(indices.size()) / 3;
             vector<Vector3> face_normals(triangle_count);
             vector<Vector3> face_tangents(triangle_count);
+            vector<vector<uint32_t>> vertex_to_triangle_map(vertices.size());
             Vector3 edge_a, edge_b;
-
-            unordered_map<uint32_t, vector<uint32_t>> vertex_to_triangle_map;
 
             for (uint32_t i = 0; i < triangle_count; ++i)
             {
@@ -207,42 +206,42 @@ namespace Spartan
                 const float tc_v2 = vertices[index_b].tex[1] - vertices[index_c].tex[1];
 
                 float coef = 1.0f / (tc_u1 * tc_v2 - tc_u2 * tc_v1);
-
-                face_tangents[i].x = (tc_v1 * edge_a.x - tc_v2 * edge_b.x) * coef;
-                face_tangents[i].y = (tc_v1 * edge_a.y - tc_v2 * edge_b.y) * coef;
-                face_tangents[i].z = (tc_v1 * edge_a.z - tc_v2 * edge_b.z) * coef;
+                face_tangents[i] = coef * (tc_v2 * edge_a - tc_v1 * edge_b);
             }
 
-            const auto compute_vertex_normals_tangents = [&vertices, &vertex_to_triangle_map, &face_normals, &face_tangents](uint32_t start_index, uint32_t range)
+            auto compute_vertex_normals_tangents = [&vertices, &vertex_to_triangle_map, &face_normals, &face_tangents](uint32_t start_index, uint32_t end_index)
             {
-                for (uint32_t i = start_index; i < range; i++)
+                for (uint32_t i = start_index; i < end_index; i++)
                 {
-                    Vector3 normal_average = Vector3::Zero;
+                    Vector3 normal_average  = Vector3::Zero;
                     Vector3 tangent_average = Vector3::Zero;
-                    float face_usage_count = 0;
+                    float face_usage_count  = 0;
 
                     for (uint32_t j : vertex_to_triangle_map[i])
                     {
-                        normal_average += face_normals[j];
+                        normal_average  += face_normals[j];
                         tangent_average += face_tangents[j];
                         face_usage_count++;
                     }
 
-                    normal_average /= face_usage_count;
-                    tangent_average /= face_usage_count;
+                    if (face_usage_count > 0)
+                    {
+                        normal_average  /= face_usage_count;
+                        tangent_average /= face_usage_count;
 
-                    normal_average.Normalize();
-                    tangent_average.Normalize();
+                        normal_average.Normalize();
+                        tangent_average.Normalize();
 
-                    vertices[i].nor[0] = normal_average.x;
-                    vertices[i].nor[1] = normal_average.y;
-                    vertices[i].nor[2] = normal_average.z;
+                        vertices[i].nor[0] = normal_average.x;
+                        vertices[i].nor[1] = normal_average.y;
+                        vertices[i].nor[2] = normal_average.z;
 
-                    vertices[i].tan[0] = tangent_average.x;
-                    vertices[i].tan[1] = tangent_average.y;
-                    vertices[i].tan[2] = tangent_average.z;
+                        vertices[i].tan[0] = tangent_average.x;
+                        vertices[i].tan[1] = tangent_average.y;
+                        vertices[i].tan[2] = tangent_average.z;
 
-                    ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+                        ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+                    }
                 }
             };
 
@@ -252,8 +251,8 @@ namespace Spartan
 
         float get_random_float(float x, float y)
         {
-            random_device rd;  // obtain a random number from hardware
-            mt19937 gen(rd()); // seed the generator
+            random_device rd;                        // obtain a random number from hardware
+            mt19937 gen(rd());                       // seed the generator
             uniform_real_distribution<> distr(x, y); // define the distribution
 
             return static_cast<float>(distr(gen));
@@ -423,8 +422,8 @@ namespace Spartan
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
             // 3. compute normals and tangents
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating normals and tangents...");
-            generate_normals_and_tangents(indices, vertices);
+            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating normals...");
+            generate_normals(indices, vertices);
             // jobs done are tracked internally here because this is the most expensive function
 
             // 4. create mesh
