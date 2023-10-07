@@ -438,11 +438,14 @@ namespace Spartan
             float terrain_offset    = -0.2f;
             m_trees                 = generate_transforms(vertices, indices, tree_count, max_slope, m_water_level, terrain_offset);
 
-            // compute plant positions
+            // compute plant 1 positions
             uint32_t plant_count = 20000;
             max_slope            = 40.0f * Math::Helper::DEG_TO_RAD;
             terrain_offset       = 0.0f;
-            m_plants             = generate_transforms(vertices, indices, plant_count, max_slope, m_water_level, terrain_offset);
+            m_plants_1           = generate_transforms(vertices, indices, plant_count, max_slope, m_water_level, terrain_offset);
+
+            // compute plant 2 positions
+            m_plants_2 = generate_transforms(vertices, indices, plant_count, max_slope, m_water_level, terrain_offset);
 
             if (on_complete)
             {
