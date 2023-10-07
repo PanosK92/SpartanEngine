@@ -155,9 +155,11 @@ namespace Spartan
             m_bounding_box = m_bounding_box_local.Transform(GetTransform()->GetMatrix());
 
             // loop through each instance and expand the bounding box
-            for (const Vector3& instance_position : m_instances)
+            for (const Matrix& instance_transform : m_instances)
             {
-                m_bounding_box.Merge(m_bounding_box_local.Transform(Matrix::CreateTranslation(instance_position)));
+                // the instance transforms are transposed (see terrain.cpp), so we need to transpose them back
+                Matrix transposed = instance_transform.Transposed();
+                m_bounding_box.Merge(m_bounding_box_local.Transform(Matrix::CreateTranslation(transposed.GetTranslation())));
             }
 
             m_last_transform     = GetTransform()->GetMatrix();
@@ -227,10 +229,10 @@ namespace Spartan
         return m_material ? m_material->GetObjectName() : "";
     }
 
-    void Renderable::SetInstances(const vector<Vector3>& instances)
+    void Renderable::SetInstances(const vector<Matrix>& instances)
     {
         m_instance_buffer = make_shared<RHI_VertexBuffer>(false, "instance_buffer");
-        m_instance_buffer->Create<Vector3>(instances);
+        m_instance_buffer->Create<Matrix>(instances);
 
         m_instances          = instances;
         m_bounding_box_dirty = true;

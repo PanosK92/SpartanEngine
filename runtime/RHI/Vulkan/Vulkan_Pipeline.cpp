@@ -212,7 +212,7 @@ namespace Spartan
                 vertex_input_binding_descs.push_back
                 ({
                     1,                            // binding
-                    sizeof(Math::Vector3),        // stride
+                    sizeof(Math::Matrix),         // stride
                     VK_VERTEX_INPUT_RATE_INSTANCE // inputRate
                 });
             }
@@ -234,14 +234,18 @@ namespace Spartan
 
             if (m_state.instancing)
             {
-                vertex_attribute_descs.push_back
-                ({
-                    // hardcoded for now
-                    static_cast<uint32_t>(vertex_attribute_descs.size()), // location, assuming the next available location
-                    1,                                                    // binding
-                    VK_FORMAT_R32G32B32_SFLOAT,                           // format
-                    0                                                     // offset
-                });
+                // update the attribute descriptions to pass the entire matrix
+                // each row of the matrix is treated as a separate attribute
+                for (uint32_t i = 0; i < 4; ++i)
+                {
+                    vertex_attribute_descs.push_back
+                    ({
+                        static_cast<uint32_t>(vertex_attribute_descs.size()), // location, assuming the next available location
+                        1,                                                    // binding
+                        VK_FORMAT_R32G32B32A32_SFLOAT,                        // format, assuming 32-bit float components
+                        i * sizeof(Math::Vector4)                             // offset, assuming Math::Vector4 is the type of each row
+                    });
+                }
             }
         }
 

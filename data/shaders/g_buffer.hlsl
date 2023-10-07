@@ -48,8 +48,8 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
     // position computation has to be an exact match to depth_prepass.hlsl
     input.position.w             = 1.0f;
     output.position_world        = mul(input.position, buffer_pass.transform);
-    #if INSTANCED               
-    output.position_world.xyz   += input.instance_data.instance_position;
+    #if INSTANCED
+    output.position_world        = mul(output.position_world, input.instance_transform);
     #endif
     output.position              = mul(output.position_world, buffer_frame.view_projection);
     output.position_ss_current   = output.position;
@@ -57,13 +57,13 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
     // update this part to use the adjusted position_world for the previous frame as well
     float4 position_world_previous = mul(input.position, pass_get_transform_previous());
     #if INSTANCED
-    position_world_previous.xyz  += input.instance_data.instance_position;
+    position_world_previous        = mul(position_world_previous, input.instance_transform);
     #endif
-    output.position_ss_previous  = mul(position_world_previous, buffer_frame.view_projection_previous);
-    
-    output.normal_world          = normalize(mul(input.normal, (float3x3)buffer_pass.transform)).xyz;
-    output.tangent_world         = normalize(mul(input.tangent, (float3x3)buffer_pass.transform)).xyz;
-    output.uv                    = input.uv;
+    output.position_ss_previous    = mul(position_world_previous, buffer_frame.view_projection_previous);
+                                   
+    output.normal_world            = normalize(mul(input.normal, (float3x3)buffer_pass.transform)).xyz;
+    output.tangent_world           = normalize(mul(input.tangent, (float3x3)buffer_pass.transform)).xyz;
+    output.uv                      = input.uv;
     
     return output;
 }

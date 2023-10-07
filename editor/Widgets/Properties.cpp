@@ -933,8 +933,8 @@ void Properties::ShowTerrain(shared_ptr<Terrain> terrain) const
             ImGui::Text("Height samples: %d", terrain->GetHeightSampleCount());
             ImGui::Text("Vertices: %d",  terrain->GetVertexCount());
             ImGui::Text("Indices:  %d ", terrain->GetIndexCount());
-            ImGui::Text("Trees:  %d ", terrain->GetTreePositions().size());
-            ImGui::Text("Plants:  %d ", terrain->GetPlantPositions().size());
+            ImGui::Text("Trees:  %d ", terrain->GetTransformsTree().size());
+            ImGui::Text("Plants:  %d ", terrain->GetTransformsPlant().size());
         }
         ImGui::EndGroup();
 

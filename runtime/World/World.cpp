@@ -847,14 +847,14 @@ namespace Spartan
                     {
                         Renderable* renderable = bark->GetComponent<Renderable>().get();
                         renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\tree\\bark.png");
-                        renderable->SetInstances(terrain->GetTreePositions());
+                        renderable->SetInstances(terrain->GetTransformsTree());
                     }
 
                     if (Entity* leafs = entity->GetTransform()->GetDescendantPtrByName("Mobile_Tree_1_2"))
                     {
                         Renderable* renderable = leafs->GetComponent<Renderable>().get();
                         renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\tree\\leaf.png");
-                        renderable->SetInstances(terrain->GetTreePositions());
+                        renderable->SetInstances(terrain->GetTransformsTree());
                     }
                 }
 
@@ -871,7 +871,7 @@ namespace Spartan
                         renderable->GetMaterial()->SetProperty(MaterialProperty::ColorR, 1.0f);
                         renderable->GetMaterial()->SetProperty(MaterialProperty::ColorG, 1.0f);
                         renderable->GetMaterial()->SetProperty(MaterialProperty::ColorB, 1.0f);
-                        renderable->SetInstances(terrain->GetPlantPositions());
+                        renderable->SetInstances(terrain->GetTransformsPlant());
                     }
                 }
 
