@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // = INCLUDES ======
 #include "brdf.hlsl"
+#include "fog.hlsl"
 //==================
 
 // From Sebastien Lagarde Moving Frostbite to PBR page 69
@@ -78,7 +79,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     const uint2 pos = input.uv * pass_get_resolution_out();
     
-    // Construct surface
+    // construct surface
     Surface surface;
     bool use_ssgi = pass_is_opaque(); // we don't do ssgi for transparents.
     surface.Build(pos, true, use_ssgi, false);
@@ -89,13 +90,13 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     if (early_exit_1 || early_exit_2 || early_exit_3)
         discard;
 
-    // Try to compute some sort of ambient light that makes sense
+    // try to compute some sort of ambient light that makes sense
     float3 light_ambient = 1.0f;
     {
         light_ambient = buffer_light.intensity_range_angle_bias.x * 0.2f * surface.occlusion;
     }
     
-    // Compute specular energy
+    // compute specular energy
     const float n_dot_v          = saturate(dot(-surface.camera_to_pixel, surface.normal));
     const float3 F               = F_Schlick_Roughness(surface.F0, n_dot_v, surface.roughness);
     const float2 envBRDF         = tex_lut_ibl.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, surface.roughness), 0.0f).xy;
@@ -112,21 +113,21 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float mip_level                    = lerp(0, ENVIRONMENT_MAX_MIP, surface.roughness);
     float3 ibl_specular_environment    = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level) * light_ambient;
     
-    // Get ssr color
+    // get ssr color
     float ssr_mip_count     = pass_get_f4_value().y;
     mip_level               = lerp(0, ssr_mip_count, surface.roughness);
     const float4 ssr_sample = (is_ssr_enabled() && pass_is_opaque() && surface.is_opaque()) ? tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level) : 0.0f;
     const float3 color_ssr  = ssr_sample.rgb;
     float ssr_alpha         = ssr_sample.a;
 
-    // Remap alpha above a certain roughness threshold in order to hide blocky reflections (from very small mips)
+    // remap alpha above a certain roughness threshold in order to hide blocky reflections (from very small mips)
     static const float ssr_roughness_threshold = 0.8f;
     if (surface.roughness > ssr_roughness_threshold)
     {
         ssr_alpha = lerp(ssr_alpha, 0.0f, (surface.roughness - ssr_roughness_threshold) / (1.0f - ssr_roughness_threshold));
     }
 
-    // Sample reflection probe
+    // sample reflection probe
     float3 ibl_specular_probe = 0.0f;
     float probe_alpha         = 0.0f;
     if (pass_is_reflection_probe_available())
@@ -145,16 +146,16 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         }
     }
 
-    // Assume specular from SSR
+    // assume specular from SSR
     float3 ibl_specular = color_ssr;
 
-    // If there are no SSR data, fallback to to the reflection probe.
+    // if there are no SSR data, fallback to to the reflection probe.
     ibl_specular = lerp(ibl_specular_probe, ibl_specular, ssr_alpha);
 
-    // If there are no reflection probe data, fallback to the environment texture
+    // if there are no reflection probe data, fallback to the environment texture
     ibl_specular = lerp(ibl_specular_environment, ibl_specular, max(ssr_alpha, probe_alpha));
 
-    // Modulate outcoming energy
+    // modulate outcoming energy
     ibl_specular *= specular_energy;
 
     float3 ibl = ibl_diffuse + ibl_specular;
@@ -165,6 +166,10 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         ibl *= surface.occlusion;
     }
 
+    // fog
+    float3 fog = get_fog_factor(surface.position, buffer_frame.camera_position.xyz);
+    ibl += fog;
+    
     // Perfection achieved
     return float4(ibl, 0.0f);
 }

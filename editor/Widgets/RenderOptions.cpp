@@ -211,7 +211,7 @@ void RenderOptions::OnTickVisible()
 {
     // Reflect options from engine
     bool do_dof                  = Renderer::GetOption<bool>(Renderer_Option::DepthOfField);
-    bool do_volumetric_fog       = Renderer::GetOption<bool>(Renderer_Option::VolumetricFog);
+    bool do_volumetric_fog       = Renderer::GetOption<bool>(Renderer_Option::FogVolumetric);
     bool do_ssgi                 = Renderer::GetOption<bool>(Renderer_Option::Ssgi);
     bool do_sss                  = Renderer::GetOption<bool>(Renderer_Option::ScreenSpaceShadows);
     bool do_ssr                  = Renderer::GetOption<bool>(Renderer_Option::ScreenSpaceReflections);
@@ -300,7 +300,7 @@ void RenderOptions::OnTickVisible()
 
             // TAA
             bool taa_enabled = antialiasing == Renderer_Antialiasing::Taa || antialiasing == Renderer_Antialiasing::TaaFxaa;
-            option_check_box("TAA - Temporal anti-aliasing", taa_enabled, "Used to improve many stochastic effects, you want this to always be enabled.");
+            option_check_box("TAA - Temporal anti-aliasing", taa_enabled, "Used to improve many stochastic effects, you want this to always be enabled");
 
             // FXAA
             bool fxaa_enabled = antialiasing == Renderer_Antialiasing::Fxaa || antialiasing == Renderer_Antialiasing::TaaFxaa;
@@ -328,7 +328,7 @@ void RenderOptions::OnTickVisible()
         if (option("Camera"))
         {
             // Bloom
-            option_value("Bloom", Renderer_Option::Bloom, "Controls the blend factor. If zero, then bloom is disabled.", 0.01f);
+            option_value("Bloom", Renderer_Option::Bloom, "Controls the blend factor. If zero, then bloom is disabled", 0.01f);
 
             // Motion blur
             option_check_box("Motion blur (controlled by the camera's shutter speed)", do_motion_blur);
@@ -337,7 +337,7 @@ void RenderOptions::OnTickVisible()
             option_check_box("Depth of field (controlled by the camera's aperture)", do_dof);
 
             // Chromatic aberration
-            option_check_box("Chromatic aberration (controlled by the camera's aperture)", do_chromatic_aberration, "Emulates the inability of old cameras to focus all colors in the same focal point.");
+            option_check_box("Chromatic aberration (controlled by the camera's aperture)", do_chromatic_aberration, "Emulates the inability of old cameras to focus all colors in the same focal point");
 
             // Film grain
             option_check_box("Film grain", do_film_grain);
@@ -346,13 +346,7 @@ void RenderOptions::OnTickVisible()
         if (option("Lights"))
         {
             // Volumetric fog
-            option_check_box("Volumetric fog", do_volumetric_fog, "Requires a light with shadows enabled.");
-            {
-                // Density
-                ImGui::BeginDisabled(!do_volumetric_fog);
-                option_value("Volumetric fog density", Renderer_Option::FogDensity, "", 0.01f, 0.0f, 16.0f, "%.2f");
-                ImGui::EndDisabled();
-            }
+            option_check_box("Volumetric fog", do_volumetric_fog, "Requires a light with shadows enabled");
 
             // Screen space shadows
             option_check_box("Screen space shadows", do_sss);
@@ -363,6 +357,7 @@ void RenderOptions::OnTickVisible()
 
         if (option("Misc"))
         {
+            option_value("Fog",             Renderer_Option::Fog, "Controls the density of the fog", 0.1f);
             option_value("Sharpness (CAS)", Renderer_Option::Sharpness, "AMD FidelityFX Contrast Adaptive Sharpening (CAS)", 0.1f, 0.0f, 1.0f);
             option_value("Gamma",           Renderer_Option::Gamma);
             option_value("Exposure",        Renderer_Option::Exposure);
@@ -438,7 +433,7 @@ void RenderOptions::OnTickVisible()
     // Map options to engine
     Renderer::SetOption(Renderer_Option::ShadowResolution,         static_cast<float>(resolution_shadow));
     Renderer::SetOption(Renderer_Option::DepthOfField,             do_dof);
-    Renderer::SetOption(Renderer_Option::VolumetricFog,            do_volumetric_fog);
+    Renderer::SetOption(Renderer_Option::FogVolumetric,            do_volumetric_fog);
     Renderer::SetOption(Renderer_Option::Ssgi,                     do_ssgi);
     Renderer::SetOption(Renderer_Option::ScreenSpaceShadows,       do_sss);
     Renderer::SetOption(Renderer_Option::ScreenSpaceReflections,   do_ssr);
