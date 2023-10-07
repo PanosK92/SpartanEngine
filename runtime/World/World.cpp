@@ -838,42 +838,62 @@ namespace Spartan
                 }
 
                 // tree
-                if (shared_ptr<Mesh> tree = ResourceCache::Load<Mesh>("project\\models\\tree\\tree.fbx"))
+                if (shared_ptr<Mesh> tree = ResourceCache::Load<Mesh>("project\\models\\vegetation_tree_1\\tree.fbx"))
                 {
                     Entity* entity = tree->GetRootEntity();
+                    entity->SetObjectName("tree_1");
                     entity->GetTransform()->SetScale(Vector3(0.01f, 0.01f, 0.01f));
 
                     if (Entity* bark = entity->GetTransform()->GetDescendantPtrByName("Mobile_Tree_1_1"))
                     {
                         Renderable* renderable = bark->GetComponent<Renderable>().get();
-                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\tree\\bark.png");
+                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\vegetation_tree_1\\bark.png");
                         renderable->SetInstances(terrain->GetTransformsTree());
                     }
 
                     if (Entity* leafs = entity->GetTransform()->GetDescendantPtrByName("Mobile_Tree_1_2"))
                     {
                         Renderable* renderable = leafs->GetComponent<Renderable>().get();
-                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\tree\\leaf.png");
+                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\vegetation_tree_1\\leaf.png");
                         renderable->SetInstances(terrain->GetTransformsTree());
                     }
                 }
 
-                // plant
-                if (shared_ptr<Mesh> plant = ResourceCache::Load<Mesh>("project\\models\\bush\\ormbunke.obj"))
+                // plant_1
+                if (shared_ptr<Mesh> plant = ResourceCache::Load<Mesh>("project\\models\\vegetation_plant_1\\ormbunke.obj"))
                 {
                     Entity* entity = plant->GetRootEntity();
+                    entity->SetObjectName("plant_1");
                     entity->GetTransform()->SetScale(Vector3(1.0f, 1.0f, 1.0f));
 
                     if (Entity* child = entity->GetTransform()->GetDescendantPtrByName("Plane.010"))
                     {
                         Renderable* renderable = child->GetComponent<Renderable>().get();
-                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color,    "project\\models\\bush\\ormbunke.png");
+                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color,    "project\\models\\vegetation_plant_1\\ormbunke.png");
                         renderable->GetMaterial()->SetProperty(MaterialProperty::ColorR, 1.0f);
                         renderable->GetMaterial()->SetProperty(MaterialProperty::ColorG, 1.0f);
                         renderable->GetMaterial()->SetProperty(MaterialProperty::ColorB, 1.0f);
-                        renderable->SetInstances(terrain->GetTransformsPlant());
+                        renderable->SetInstances(terrain->GetTransformsPlant1());
                     }
                 }
+
+                // plant_2
+                //if (shared_ptr<Mesh> plant = ResourceCache::Load<Mesh>("project\\models\\vegetation_plant_2\\Grass.fbx"))
+                //{
+                //    Entity* entity = plant->GetRootEntity();
+                //    entity->SetObjectName("plant_2");
+                //    entity->GetTransform()->SetScale(Vector3(0.01f, 0.01f, 0.01f));
+
+                //    if (Entity* child = entity->GetTransform()->GetDescendantPtrByName("Plane.003"))
+                //    {
+                //        Renderable* renderable = child->GetComponent<Renderable>().get();
+                //        renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\vegetation_plant_2\\albedo.png");
+                //        renderable->GetMaterial()->SetProperty(MaterialProperty::ColorR, 1.0f);
+                //        renderable->GetMaterial()->SetProperty(MaterialProperty::ColorG, 1.0f);
+                //        renderable->GetMaterial()->SetProperty(MaterialProperty::ColorB, 1.0f);
+                //        renderable->SetInstances(terrain->GetTransformsPlant2());
+                //    }
+                //}
 
                 // because this is loading in a different thread, we need to resolve the world after we enable instancing
                 World::Resolve();
