@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Vertex.h"
 #include "../RHI/RHI_Texture.h"
 #include "../Entity.h"
+#include "../Input/Input.h"
 #include "../../Physics/Physics.h"
 #include "../../Physics/BulletPhysicsHelper.h"
 #include "../../IO/FileStream.h"
@@ -170,22 +171,59 @@ namespace Spartan
         // when the rigid body is inactive or we are in editor mode, allow the user to move/rotate it
         if (!Engine::IsFlagSet(EngineMode::Game))
         {
-            if (!rigid_body->isActive())
+            if (GetPosition() != GetTransform()->GetPosition())
             {
-                if (GetPosition() != GetTransform()->GetPosition())
-                {
-                    SetPosition(GetTransform()->GetPosition(), false);
-                    SetLinearVelocity(Vector3::Zero, false);
-                    SetAngularVelocity(Vector3::Zero, false);
-                }
-
-                if (GetRotation() != GetTransform()->GetRotation())
-                {
-                    SetRotation(GetTransform()->GetRotation(), false);
-                    SetLinearVelocity(Vector3::Zero, false);
-                    SetAngularVelocity(Vector3::Zero, false);
-                }
+                SetPosition(GetTransform()->GetPosition(), false);
+                SetLinearVelocity(Vector3::Zero, false);
+                SetAngularVelocity(Vector3::Zero, false);
             }
+
+            if (GetRotation() != GetTransform()->GetRotation())
+            {
+                SetRotation(GetTransform()->GetRotation(), false);
+                SetLinearVelocity(Vector3::Zero, false);
+                SetAngularVelocity(Vector3::Zero, false);
+            }
+        }
+
+        // vehicle control
+        if (vehicle)
+        {
+            // compute torque
+            if (Input::GetKey(KeyCode::Arrow_Up))
+            {
+                m_torque_newtons = 10.0f;
+            }
+            else if(Input::GetKey(KeyCode::Arrow_Down))
+            {
+                m_torque_newtons = -10.0f;
+            }
+            else
+            {
+                m_torque_newtons = 0.0f;
+            }
+
+            // compute steering angle
+            if (Input::GetKey(KeyCode::Arrow_Left))
+            {
+                m_steering_angle_radians = -0.1f;
+            }
+            else if (Input::GetKey(KeyCode::Arrow_Right))
+            {
+                m_steering_angle_radians = 0.1f;
+            }
+            else
+            {
+                m_steering_angle_radians = 0.0f;
+            }
+
+            // apply torque
+            vehicle->applyEngineForce(m_torque_newtons, 0); // wheel front-left
+            vehicle->applyEngineForce(m_torque_newtons, 1); // wheel front-right
+
+            // apply steering angle
+            vehicle->setSteeringValue(m_steering_angle_radians, 0); // wheel front-left
+            vehicle->setSteeringValue(m_steering_angle_radians, 1); // wheel front-left
         }
     }
 
@@ -618,10 +656,6 @@ namespace Spartan
                     );
                 }
             }
-
-            // Apply vehicle controls here. For example:
-            //vehicle->applyEngineForce(1000, 0);  // 1000 Newtons on the front-left wheel
-            //vehicle->setSteeringValue(0.3, 0);  // 0.3 radians on the front-left wheel
         }
 
         // set flags
