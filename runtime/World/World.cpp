@@ -667,7 +667,7 @@ namespace Spartan
 
             // add physics body
             {
-                entity_root->GetTransform()->SetPosition(Vector3(0.0f, 2.0f, 0.0f));
+                entity_root->GetTransform()->SetPosition(Vector3(0.0f, 1.0f, 0.0f));
                 PhysicsBody* physics_body = entity_root->AddComponent<PhysicsBody>().get();
                 physics_body->SetBodyType(PhysicsBodyType::Vehicle);
                 physics_body->SetCenterOfMass(Vector3(0.0f, 1.1f, 0.0f));
