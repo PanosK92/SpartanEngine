@@ -178,6 +178,8 @@ namespace Spartan
         void* m_shape                  = nullptr;
         void* m_rigid_body             = nullptr;
         void* m_vehicle                = nullptr;
+        float m_torque_newtons         = 0.0f;
+        float m_steering_angle_radians = 0.0f;
         std::vector<Constraint*> m_constraints;
     };
 }

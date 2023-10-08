@@ -67,19 +67,6 @@ namespace Spartan
         static shared_ptr<Mesh> m_default_model_helmet_flight   = nullptr;
         static shared_ptr<Mesh> m_default_model_helmet_damaged  = nullptr;
 
-        static void update_default_scene()
-        {
-            if (m_default_model_car)
-            {
-                if (Entity* entity = m_default_model_car->GetRootEntity()) // can be true when the entity is deleted
-                {
-                    // Rotate the car
-                    float rotation_delta = -10.0f * static_cast<float>(Timer::GetDeltaTimeSmoothedSec()) * Helper::DEG_TO_RAD;
-                    entity->GetTransform()->Rotate(Quaternion::FromAngleAxis(rotation_delta, Vector3::Up));
-                }
-            }
-        }
-
         static void create_default_world_common(
             const Math::Vector3& camera_position = Vector3(0.0f, 1.0f, -10.0f),
             const Math::Vector3& camera_rotation = Vector3(0.0f, 0.0f, 0.0f),
@@ -282,11 +269,6 @@ namespace Spartan
         {
             SP_FIRE_EVENT_DATA(EventType::WorldResolved, m_entities);
             m_resolve = false;
-        }
-
-        if (Engine::IsFlagSet(EngineMode::Game))
-        {
-            update_default_scene();
         }
     }
 
@@ -629,23 +611,30 @@ namespace Spartan
 
         if (m_default_model_car = ResourceCache::Load<Mesh>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
         {
-            Entity* entity = m_default_model_car->GetRootEntity();
-            entity->SetObjectName("car");
+            Entity* entity_car = m_default_model_car->GetRootEntity();
+            entity_car->SetObjectName("geometry");
 
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.07f, 0.0f));
-            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(90.0f, -4.8800f, -95.0582f));
-            entity->GetTransform()->SetScale(Vector3(0.02f, 0.02f, 0.02f));
+            entity_car->GetTransform()->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+            entity_car->GetTransform()->SetRotation(Quaternion::FromEulerAngles(90.0f, 0.0f, -180.0f));
+            entity_car->GetTransform()->SetScale(Vector3(0.02f, 0.02f, 0.02f));
 
-            // Break calipers have a wrong rotation, probably a bug with sketchfab auto converting to gltf
-            entity->GetTransform()->GetDescendantPtrByName("FR_Caliper_BrakeCaliper_0")->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 75.0f, 0.0f));
-            entity->GetTransform()->GetDescendantPtrByName("RR_Caliper_BrakeCaliper_0")->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 75.0f, 0.0f));
+            // the car is defined with a weird rotation (probably a bug with sketchfab auto converting to gltf)
+            // so we create a root which has no rotation and we parent the car to it, then attach the physics body to the root
+            Entity* entity_root = CreateEntity().get();
+            entity_root->SetObjectName("toyota_ae86_sprinter");
+            entity_root->GetTransform()->SetPosition(Vector3(0.0f, 2.0f, 0.0f));
+            entity_car->GetTransform()->SetParent(entity_root->GetTransform());
+            PhysicsBody* physics_body = entity_root->AddComponent<PhysicsBody>().get();
+            physics_body->SetBodyType(PhysicsBodyType::Vehicle);
+
+            // Break calipers have a wrong rotation (probably a bug with sketchfab auto converting to gltf)
+            entity_car->GetTransform()->GetDescendantPtrByName("FR_Caliper_BrakeCaliper_0")->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 75.0f, 0.0f));
+            entity_car->GetTransform()->GetDescendantPtrByName("RR_Caliper_BrakeCaliper_0")->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 75.0f, 0.0f));
 
             // body
             {
-                if (Entity* body = entity->GetTransform()->GetDescendantPtrByName("CarBody_Primary_0"))
+                if (Entity* body = entity_car->GetTransform()->GetDescendantPtrByName("CarBody_Primary_0"))
                 {
-                    body->AddComponent<PhysicsBody>();
-
                     if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetColor(Color::material_aluminum);
@@ -658,10 +647,8 @@ namespace Spartan
 
                 // plastic
                 {
-                    if (Entity* body = entity->GetTransform()->GetDescendantPtrByName("CarBody_Secondary_0"))
+                    if (Entity* body = entity_car->GetTransform()->GetDescendantPtrByName("CarBody_Secondary_0"))
                     {
-                        body->AddComponent<PhysicsBody>();
-
                         if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
                         {
                             material->SetColor(Color::material_tire);
@@ -669,10 +656,8 @@ namespace Spartan
                         }
                     }
 
-                    if (Entity* body = entity->GetTransform()->GetDescendantPtrByName("CarBody_Trim1_0"))
+                    if (Entity* body = entity_car->GetTransform()->GetDescendantPtrByName("CarBody_Trim1_0"))
                     {
-                        body->AddComponent<PhysicsBody>();
-
                         if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
                         {
                             material->SetColor(Color::material_tire);
@@ -684,7 +669,7 @@ namespace Spartan
 
             // interior
             {
-                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("Interior_InteriorPlastic_0")->GetComponent<Renderable>()->GetMaterial())
+                if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("Interior_InteriorPlastic_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetColor(Color::material_tire);
                     material->SetTexture(MaterialTexture::Roughness, nullptr);
@@ -692,7 +677,7 @@ namespace Spartan
                     material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.0f);
                 }
 
-                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("Interior_InteriorPlastic2_0")->GetComponent<Renderable>()->GetMaterial())
+                if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("Interior_InteriorPlastic2_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetColor(Color::material_tire);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.8f);
@@ -703,7 +688,7 @@ namespace Spartan
 
             // lights
             {
-                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("CarBody_LampCovers_0")->GetComponent<Renderable>()->GetMaterial())
+                if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("CarBody_LampCovers_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetColor(Color::material_glass);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.2f);
@@ -711,7 +696,7 @@ namespace Spartan
                 }
 
                 // plastic covers
-                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("Headlights_Trim2_0")->GetComponent<Renderable>()->GetMaterial())
+                if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("Headlights_Trim2_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
                     material->SetColor(Color::material_tire);
@@ -721,7 +706,7 @@ namespace Spartan
             // wheels
             {
                 // brake caliper
-                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FR_Caliper_BrakeCaliper_0")->GetComponent<Renderable>()->GetMaterial())
+                if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("FR_Caliper_BrakeCaliper_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetTexture(MaterialTexture::Roughness, nullptr);
                     material->SetTexture(MaterialTexture::Metalness, nullptr);
@@ -733,7 +718,7 @@ namespace Spartan
                 }
 
                 // brake disc
-                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FL_Wheel_Brake Disc_0")->GetComponent<Renderable>()->GetMaterial())
+                if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("FL_Wheel_Brake Disc_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetTexture(MaterialTexture::Roughness, nullptr);
                     material->SetTexture(MaterialTexture::Metalness, nullptr);
@@ -745,7 +730,7 @@ namespace Spartan
                 }
 
                 // tires
-                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FL_Wheel_TireMaterial_0")->GetComponent<Renderable>()->GetMaterial())
+                if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("FL_Wheel_TireMaterial_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetColor(Color::material_tire);
                     material->SetTexture(MaterialTexture::Roughness, nullptr);
@@ -754,7 +739,7 @@ namespace Spartan
                 }
 
                 // rims
-                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FR_Wheel_RimMaterial_0")->GetComponent<Renderable>()->GetMaterial())
+                if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("FR_Wheel_RimMaterial_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetTexture(MaterialTexture::Roughness, nullptr);
                     material->SetTexture(MaterialTexture::Metalness, nullptr);
@@ -765,8 +750,8 @@ namespace Spartan
             }
         }
 
-        // Start simulating (for the physics and the music to work)
         Engine::AddFlag(EngineMode::Game);
+        SP_LOG_INFO("Use the arrow keys to drive the car!");
     }
 
     void World::CreateDefaultWorldTerrain()
