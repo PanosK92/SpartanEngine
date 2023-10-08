@@ -21,15 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========================
+//= INCLUDES ==============================
 #include "../Math/Vector3.h"
 #include "../Math/Vector4.h"
 #include "../Math/Quaternion.h"
-// Hide warnings which belong to Bullet
 SP_WARNINGS_OFF
-#include "LinearMath/btQuaternion.h"
+#include "bullet/LinearMath/btQuaternion.h"
 SP_WARNINGS_ON
-//=====================================
+//=========================================
 
 inline Spartan::Math::Vector3 ToVector3(const btVector3& vector)
 {

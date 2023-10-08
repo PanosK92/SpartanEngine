@@ -32,10 +32,14 @@ using namespace std;
 
 namespace Spartan
 {
+    namespace
+    {
+        uint32_t debug_mode = 0;
+    }
 
     PhysicsDebugDraw::PhysicsDebugDraw()
     {
-        m_debugMode = DBG_DrawWireframe | DBG_DrawContactPoints | DBG_DrawConstraints | DBG_DrawConstraintLimits;
+        debug_mode = DBG_DrawWireframe | DBG_DrawContactPoints | DBG_DrawConstraints | DBG_DrawConstraintLimits;
     }
 
     void PhysicsDebugDraw::drawLine(const btVector3& from, const btVector3& to, const btVector3& fromColor, const btVector3& toColor)
@@ -53,5 +57,15 @@ namespace Spartan
     void PhysicsDebugDraw::reportErrorWarning(const char* error_warning)
     {
         SP_LOG_WARNING("%s", error_warning);
+    }
+
+    void PhysicsDebugDraw::setDebugMode(const int debugMode)
+    {
+        debug_mode = debugMode;
+    }
+
+    int PhysicsDebugDraw::getDebugMode() const
+    {
+        return debug_mode;
     }
 }
