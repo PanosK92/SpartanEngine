@@ -247,10 +247,13 @@ namespace Spartan
                     // set the bullet transform to the wheel transform
                     transform->SetPosition(ToVector3(transform_bt.getOrigin()));
 
-                    // ToQuaternion() doesn't work as expected with the wheels so we use the following
+                    // ToQuaternion() works with everything but the wheels, so we do the following
                     btQuaternion rotation_bt = transform_bt.getRotation();
-                    Quaternion rotation = Quaternion(rotation_bt.x(), rotation_bt.y(), -rotation_bt.z(), rotation_bt.w());
-                    transform->SetRotation(rotation);
+                    float x, y, z;
+                    rotation_bt.getEulerZYX(x, y, z);
+                    float steering_angle = vehicle->getSteeringValue(wheel_index);
+                    Quaternion rotation = Quaternion::FromEulerAngles(z * Math::Helper::RAD_TO_DEG, steering_angle * Math::Helper::RAD_TO_DEG, 0.0f);
+                    transform->SetRotationLocal(rotation);
                 }
             }
         }
