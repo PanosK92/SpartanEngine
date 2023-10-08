@@ -703,12 +703,12 @@ namespace Spartan
                 entity_root->GetTransform()->SetPosition(Vector3(0.0f, 2.0f, 0.0f));
                 PhysicsBody* physics_body = entity_root->AddComponent<PhysicsBody>().get();
                 physics_body->SetBodyType(PhysicsBodyType::Vehicle);
-                physics_body->SetCenterOfMass(Vector3(0.0f, 0.7f, 0.0f));
-                physics_body->SetBoundingBox(Vector3(3.0f, 1.5f, 8.4f));
+                physics_body->SetCenterOfMass(Vector3(0.0f, 1.1f, 0.0f));
+                physics_body->SetBoundingBox(Vector3(3.0f, 1.3f, 8.4f));
                 physics_body->SetFriction(1.0f);
                 physics_body->SetFrictionRolling(1.0f);
                 physics_body->SetMass(1000.0f);             // 900 – 1,045 kg -> https://en.wikipedia.org/wiki/Toyota_AE86
-                physics_body->SetTorqueMaxNewtons(5000.0f); // 149 Nm ->         https://en.wikipedia.org/wiki/Toyota_AE86, however it's too weak for bullet for some reason
+                physics_body->SetTorqueMaxNewtons(2500.0f); // 149 Nm ->         https://en.wikipedia.org/wiki/Toyota_AE86, however it's too weak for bullet for some reason
 
                 // remove all the wheels since they have weird rotations, we will add our own
                 {
@@ -758,23 +758,25 @@ namespace Spartan
 
                     // add the wheels to the body
                     {
+                        // if I make the wheels children of the body, rotation accumulation is bugged, it warps the mesh, need to fix
+
                         Entity* wheel = entity_wheel_root;
                         wheel->SetObjectName("wheel_fl");
-                        wheel->GetTransform()->SetParent(entity_root->GetTransform());
+                        //wheel->GetTransform()->SetParent(entity_root->GetTransform());
                         physics_body->SetWheelTransform(wheel->GetTransform().get(), 0);
 
                         wheel = entity_wheel_root->Clone();
-                        wheel->SetObjectName("wheel_fr");
+                        //wheel->SetObjectName("wheel_fr");
                         wheel->GetTransform()->SetParent(entity_root->GetTransform());
                         physics_body->SetWheelTransform(wheel->GetTransform().get(), 1);
 
                         wheel = entity_wheel_root->Clone();
-                        wheel->SetObjectName("wheel_rl");
+                        //wheel->SetObjectName("wheel_rl");
                         wheel->GetTransform()->SetParent(entity_root->GetTransform());
                         physics_body->SetWheelTransform(wheel->GetTransform().get(), 2);
 
                         wheel = entity_wheel_root->Clone();
-                        wheel->SetObjectName("wheel_rr");
+                        //wheel->SetObjectName("wheel_rr");
                         wheel->GetTransform()->SetParent(entity_root->GetTransform());
                         physics_body->SetWheelTransform(wheel->GetTransform().get(), 3);
                     }
