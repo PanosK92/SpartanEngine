@@ -569,8 +569,8 @@ namespace Spartan
 
     void World::CreateDefaultWorldCar()
     {
-        Vector3 camera_position = Vector3(0.0f, 1.0f, -10.0f);
-        Vector3 camera_rotation = Vector3(0.0f, 0.0f, 0.0f);
+        Vector3 camera_position = Vector3(8.7844f, 1.5f, -4.1412);
+        Vector3 camera_rotation = Vector3(7.4f, -65.5f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, "project\\music\\riders_on_the_storm_fredwreck_remix.mp3");
 
         // environment
@@ -703,10 +703,8 @@ namespace Spartan
                 // load our own wheel
                 if (m_default_model_wheel = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend"))
                 {
-                    float scale = 0.38f;
-
                     Entity* entity_wheel_root = m_default_model_wheel->GetRootEntity();
-                    entity_wheel_root->GetTransform()->SetScale(Vector3(scale));
+                    entity_wheel_root->GetTransform()->SetScale(Vector3(0.38f));
 
                     if (Entity* entity_wheel = entity_wheel_root->GetTransform()->GetDescendantPtrByName("wheel Low"))
                     {
@@ -735,7 +733,7 @@ namespace Spartan
                         wheel = entity_wheel_root->Clone();
                         wheel->SetObjectName("wheel_fr");
                         wheel->GetTransform()->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
-                        wheel->GetTransform()->GetChildByIndex(0)->SetPosition(Vector3(scale, 0.0f, 0.0f));
+                        wheel->GetTransform()->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
                         wheel->GetTransform()->SetParent(entity_root->GetTransform());
                         physics_body->SetWheelTransform(wheel->GetTransform().get(), 1);
 
@@ -747,7 +745,7 @@ namespace Spartan
                         wheel = entity_wheel_root->Clone();
                         wheel->SetObjectName("wheel_rr");
                         wheel->GetTransform()->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
-                        wheel->GetTransform()->GetChildByIndex(0)->SetPosition(Vector3(scale, 0.0f, 0.0f));
+                        wheel->GetTransform()->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
                         wheel->GetTransform()->SetParent(entity_root->GetTransform());
                         physics_body->SetWheelTransform(wheel->GetTransform().get(), 3);
                     }
