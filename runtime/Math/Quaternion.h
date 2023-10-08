@@ -223,7 +223,6 @@ namespace Spartan::Math
             }
         }
 
-        // Returns a normalized version of the quaternion
         Quaternion Normalized() const
         {
             const auto length_squared = LengthSquared();
@@ -238,7 +237,6 @@ namespace Spartan::Math
             }
         }
 
-        // Returns the inverse
         Quaternion Inverse() const 
         {
             const float length_squared = LengthSquared();
