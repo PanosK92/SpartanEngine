@@ -246,7 +246,11 @@ namespace Spartan
 
                     // set the bullet transform to the wheel transform
                     transform->SetPosition(ToVector3(transform_bt.getOrigin()));
-                    transform->SetRotation(ToQuaternion(transform_bt.getRotation()));
+
+                    // ToQuaternion() doesn't work as expected with the wheels so we use the following
+                    btQuaternion rotation_bt = transform_bt.getRotation();
+                    Quaternion rotation = Quaternion(rotation_bt.x(), rotation_bt.y(), -rotation_bt.z(), rotation_bt.w());
+                    transform->SetRotation(rotation);
                 }
             }
         }
