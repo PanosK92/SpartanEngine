@@ -200,11 +200,11 @@ namespace Spartan
             // control
             {
                 // compute torque
-                if (Input::GetKey(KeyCode::Arrow_Up))
+                if (Input::GetKey(KeyCode::Arrow_Up) || Input::GetControllerTriggerRight() != 0.0f)
                 {
                     m_torque_newtons = m_torque_max_newtons;
                 }
-                else if (Input::GetKey(KeyCode::Arrow_Down))
+                else if (Input::GetKey(KeyCode::Arrow_Down) || Input::GetControllerTriggerLeft() != 0.0f)
                 {
                     m_torque_newtons = -m_torque_max_newtons;
                 }
@@ -215,11 +215,11 @@ namespace Spartan
 
                 // compute steering angle
                 float steering_angle_target = 0.0f;
-                if (Input::GetKey(KeyCode::Arrow_Left))
+                if (Input::GetKey(KeyCode::Arrow_Left) || Input::GetControllerThumbStickLeft().x < 0.0f)
                 {
                     steering_angle_target = -45.0f * Math::Helper::DEG_TO_RAD;
                 }
-                else if (Input::GetKey(KeyCode::Arrow_Right))
+                else if (Input::GetKey(KeyCode::Arrow_Right) || Input::GetControllerThumbStickLeft().x > 0.0f)
                 {
                     steering_angle_target = 45.0f * Math::Helper::DEG_TO_RAD;
                 }
@@ -247,7 +247,8 @@ namespace Spartan
                     // set the bullet transform to the wheel transform
                     transform->SetPosition(ToVector3(transform_bt.getOrigin()));
 
-                    // ToQuaternion() works with everything but the wheels, so we do the following
+                    // ToQuaternion() works with everything but the wheels, I suspect that this is because bullet uses a different
+                    // rotation order since it's using a right-handed coordinate system, hence a simple quaternion conversion won't work
                     btQuaternion rotation_bt = transform_bt.getRotation();
                     float x, y, z;
                     rotation_bt.getEulerZYX(x, y, z);
