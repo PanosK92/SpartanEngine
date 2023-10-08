@@ -150,6 +150,9 @@ namespace Spartan
         float GetTorqueMaxNewtons() const              { return m_torque_max_newtons; }
         void SetTorqueMaxNewtons(float torque_newtons) { m_torque_max_newtons = torque_newtons; }
 
+        // Wheels
+        void SetWheelTransform(Transform* transform, uint32_t wheel_index);
+
         // Misc
         bool IsGrounded() const;
         void ClearForces() const;
@@ -185,6 +188,7 @@ namespace Spartan
         float m_torque_newtons         = 0.0f;
         float m_torque_max_newtons     = 0.0f;
         float m_steering_angle_radians = 0.0f;
+        std::array<Transform*, 4> m_wheel_transforms;
         std::vector<Constraint*> m_constraints;
     };
 }
