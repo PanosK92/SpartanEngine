@@ -59,11 +59,11 @@ namespace Spartan
 {
     namespace
     {
-        constexpr float k_default_deactivation_time           = 2000;
-        constexpr float k_default_mass                        = 1.0f;
-        constexpr float k_default_restitution                 = 0.0f;
-        constexpr float k_default_friction                    = 0.5f;
-        constexpr float k_default_friction_rolling            = 0.5f;
+        constexpr float k_default_deactivation_time = 2000;
+        constexpr float k_default_mass              = 1.0f;
+        constexpr float k_default_restitution       = 0.0f;
+        constexpr float k_default_friction          = 0.5f;
+        constexpr float k_default_friction_rolling  = 0.5f;
 
         constexpr float k_default_vehicle_torque                   = 1000.0f;
         constexpr float k_default_vehicle_suspension_stiffness     = 30.0f;
@@ -73,37 +73,37 @@ namespace Spartan
         constexpr float k_default_vehicle_max_suspension_travel_cm = 500.0f;
     }
 
+    #define shape static_cast<btCollisionShape*>(m_shape)
+    #define rigid_body static_cast<btRigidBody*>(m_rigid_body)
+    #define vehicle static_cast<btRaycastVehicle*>(m_vehicle)
+
     class MotionState : public btMotionState
     {
     public:
         MotionState(PhysicsBody* rigidBody) { m_rigidBody = rigidBody; }
 
-        // update from engine, ENGINE -> BULLET
+        // engine -> bullet
         void getWorldTransform(btTransform& worldTrans) const override
         {
-            const Vector3 lastPos    = m_rigidBody->GetTransform()->GetPosition();
-            const Quaternion lastRot = m_rigidBody->GetTransform()->GetRotation();
+            const Vector3 last_position    = m_rigidBody->GetTransform()->GetPosition();
+            const Quaternion last_rotation = m_rigidBody->GetTransform()->GetRotation();
 
-            worldTrans.setOrigin(ToBtVector3(lastPos + lastRot * m_rigidBody->GetCenterOfMass()));
-            worldTrans.setRotation(ToBtQuaternion(lastRot));
+            worldTrans.setOrigin(ToBtVector3(last_position + last_rotation * m_rigidBody->GetCenterOfMass()));
+            worldTrans.setRotation(ToBtQuaternion(last_rotation));
         }
 
-        // update from bullet, BULLET -> ENGINE
+        // bullet -> engine
         void setWorldTransform(const btTransform& worldTrans) override
         {
-            const Quaternion newWorldRot = ToQuaternion(worldTrans.getRotation());
-            const Vector3 newWorldPos    = ToVector3(worldTrans.getOrigin()) - newWorldRot * m_rigidBody->GetCenterOfMass();
+            const Quaternion new_rotation = ToQuaternion(worldTrans.getRotation());
+            const Vector3 new_position    = ToVector3(worldTrans.getOrigin()) - new_rotation * m_rigidBody->GetCenterOfMass();
 
-            m_rigidBody->GetTransform()->SetPosition(newWorldPos);
-            m_rigidBody->GetTransform()->SetRotation(newWorldRot);
+            m_rigidBody->GetTransform()->SetPosition(new_position);
+            m_rigidBody->GetTransform()->SetRotation(new_rotation);
         }
     private:
         PhysicsBody* m_rigidBody;
     };
-
-    #define shape static_cast<btCollisionShape*>(m_shape)
-    #define rigid_body static_cast<btRigidBody*>(m_rigid_body)
-    #define vehicle static_cast<btRaycastVehicle*>(m_vehicle)
 
     PhysicsBody::PhysicsBody(weak_ptr<Entity> entity) : Component(entity)
     {
@@ -236,17 +236,17 @@ namespace Spartan
             }
 
             // update wheel transforms
-            for (int i = 0; i < vehicle->getNumWheels(); ++i)
+            for (int wheel_index = 0; wheel_index < vehicle->getNumWheels(); wheel_index++)
             {
-                if (Transform* wheel_transform = m_wheel_transforms[i])
+                if (Transform* transform = m_wheel_transforms[wheel_index])
                 {
-                    // get the bt transform of wheel i
-                    vehicle->updateWheelTransform(i, true);
-                    btTransform& wheel_transform_bt = vehicle->getWheelInfo(i).m_worldTransform;
+                    // update and get the wheel transform from bullet
+                    vehicle->updateWheelTransform(wheel_index, true);
+                    btTransform& transform_bt = vehicle->getWheelInfo(wheel_index).m_worldTransform;
 
-                    // set the bt transform to the wheel transform
-                    wheel_transform->SetPosition(ToVector3(wheel_transform_bt.getOrigin()));
-                    wheel_transform->SetRotation(ToQuaternion(wheel_transform_bt.getRotation()));
+                    // set the bullet transform to the wheel transform
+                    transform->SetPosition(ToVector3(transform_bt.getOrigin()));
+                    transform->SetRotation(ToQuaternion(transform_bt.getRotation()));
                 }
             }
         }
@@ -599,7 +599,7 @@ namespace Spartan
         // a vehicle with a mass of zero or less will cause crash
         if (m_body_type == PhysicsBodyType::Vehicle && m_mass <= 0.0f)
         {
-            m_mass = k_default_mass;
+            m_mass = 0.01f;
         }
 
         // compute local inertia so that we can transfer it to the new body
@@ -659,11 +659,6 @@ namespace Spartan
 
             // add wheels
             {
-                btVector3 wheel_direction    = btVector3(0, -1, 0);
-                btVector3 wheel_axle         = btVector3(-1, 0, 0);
-                float suspension_rest_length = 0.3f;
-                float wheel_radius           = 0.6f;
-
                 const float extent_forward   = 2.5f;
                 const float extent_sideways  = 1.5f;
                 const float height_offset    = -0.4f;
@@ -675,10 +670,13 @@ namespace Spartan
                     btVector3(extent_sideways,  height_offset, -extent_forward + 0.15f)  // rear-right
                 };
 
-                bool is_front_wheel = true;
+                btVector3 wheel_direction    = btVector3(0, -1, 0);
+                btVector3 wheel_axle         = btVector3(-1, 0, 0);
+                float suspension_rest_length = 0.3f;
+                float wheel_radius           = 0.6f;
                 for (uint32_t i = 0; i < 4; i++)
                 {
-                    is_front_wheel = i < 2;
+                    bool is_front_wheel = i < 2;
 
                     vehicle->addWheel
                     (
