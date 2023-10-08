@@ -64,7 +64,7 @@ namespace Spartan
         constexpr float k_default_restitution       = 0.0f;
         constexpr float k_default_friction          = 0.5f;
         constexpr float k_default_friction_rolling  = 0.5f;
-        constexpr float k_default_vehicle_torque    = 149.0f;
+        constexpr float k_default_vehicle_torque    = 1000.0f;
     }
 
     class MotionState : public btMotionState
@@ -117,6 +117,7 @@ namespace Spartan
         m_center_of_mass   = Vector3::Zero;
         m_size             = Vector3::One;
         m_shape            = nullptr;
+        m_wheel_transforms.fill(nullptr);
 
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mass, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction, float);
@@ -188,44 +189,61 @@ namespace Spartan
             }
         }
 
-        // vehicle control
         if (vehicle)
         {
-            // compute torque
-            if (Input::GetKey(KeyCode::Arrow_Up))
+            // control
             {
-                m_torque_newtons = m_torque_max_newtons;
-            }
-            else if(Input::GetKey(KeyCode::Arrow_Down))
-            {
-                m_torque_newtons = -m_torque_max_newtons;
-            }
-            else
-            {
-                m_torque_newtons = 0.0f;
+                // compute torque
+                if (Input::GetKey(KeyCode::Arrow_Up))
+                {
+                    m_torque_newtons = m_torque_max_newtons;
+                }
+                else if (Input::GetKey(KeyCode::Arrow_Down))
+                {
+                    m_torque_newtons = -m_torque_max_newtons;
+                }
+                else
+                {
+                    m_torque_newtons = 0.0f;
+                }
+
+                // compute steering angle
+                if (Input::GetKey(KeyCode::Arrow_Left))
+                {
+                    m_steering_angle_radians = -0.3f;
+                }
+                else if (Input::GetKey(KeyCode::Arrow_Right))
+                {
+                    m_steering_angle_radians = 0.3f;
+                }
+                else
+                {
+                    m_steering_angle_radians = 0.0f;
+                }
+
+                // apply torque
+                vehicle->applyEngineForce(m_torque_newtons, 0); // wheel front-left
+                vehicle->applyEngineForce(m_torque_newtons, 1); // wheel front-right
+
+                // apply steering angle
+                vehicle->setSteeringValue(m_steering_angle_radians, 0); // wheel front-left
+                vehicle->setSteeringValue(m_steering_angle_radians, 1); // wheel front-left
             }
 
-            // compute steering angle
-            if (Input::GetKey(KeyCode::Arrow_Left))
+            // update wheel transforms
+            for (int i = 0; i < vehicle->getNumWheels(); ++i)
             {
-                m_steering_angle_radians = -0.3f;
-            }
-            else if (Input::GetKey(KeyCode::Arrow_Right))
-            {
-                m_steering_angle_radians = 0.3f;
-            }
-            else
-            {
-                m_steering_angle_radians = 0.0f;
-            }
+                if (Transform* wheel_transform = m_wheel_transforms[i])
+                {
+                    // get the bt transform of wheel i
+                    vehicle->updateWheelTransform(i, true);
+                    btTransform& wheel_transform_bt = vehicle->getWheelInfo(i).m_worldTransform;
 
-            // apply torque
-            vehicle->applyEngineForce(m_torque_newtons, 0); // wheel front-left
-            vehicle->applyEngineForce(m_torque_newtons, 1); // wheel front-right
-
-            // apply steering angle
-            vehicle->setSteeringValue(m_steering_angle_radians, 0); // wheel front-left
-            vehicle->setSteeringValue(m_steering_angle_radians, 1); // wheel front-left
+                    // set the bt transform to the wheel transform
+                    wheel_transform->SetPosition(ToVector3(wheel_transform_bt.getOrigin()));
+                    wheel_transform->SetRotation(ToQuaternion(wheel_transform_bt.getRotation()));
+                }
+            }
         }
     }
 
@@ -628,13 +646,13 @@ namespace Spartan
 
             // add wheels
             {
-                btVector3 wheel_direction       = btVector3(0, -1, 0);
-                btVector3 wheel_axle            = btVector3(-1, 0, 0);
-                btScalar suspension_rest_length = 0.6f;
-                btScalar wheel_radius           = 0.5;
+                btVector3 wheel_direction    = btVector3(0, -1, 0);
+                btVector3 wheel_axle         = btVector3(-1, 0, 0);
+                float suspension_rest_length = 0.6f;
+                float wheel_radius           = 0.6;
 
-                const float extent_forward  = 2.5f;
-                const float extent_sideways = 1.2f;
+                const float extent_forward   = 2.5f;
+                const float extent_sideways  = 1.2f;
                 btVector3 wheel_positions[4] =
                 {
                     btVector3(-extent_sideways, 0,  extent_forward), // front-left
@@ -798,6 +816,11 @@ namespace Spartan
         AddBodyToWorld();
     }
     
+    void PhysicsBody::SetWheelTransform(Transform* transform, uint32_t wheel_index)
+    {
+        m_wheel_transforms[wheel_index] = transform;
+    }
+
     bool PhysicsBody::IsGrounded() const
     {
         // get the lowest point of the AABB
