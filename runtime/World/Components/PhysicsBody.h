@@ -34,6 +34,12 @@ namespace Spartan
     class Physics;
     namespace Math { class Quaternion; }
 
+    enum class PhysicsBodyType
+    {
+        RigidBody,
+        Vehicle,
+    };
+
     enum class PhysicsForce
     {
         Constant,
@@ -136,6 +142,10 @@ namespace Spartan
         PhysicsShape GetShapeType() const { return m_shape_type; }
         void SetShapeType(PhysicsShape type);
 
+        // Body type
+        PhysicsBodyType GetBodyType() const { return m_body_type; }
+        void SetBodyType(const PhysicsBodyType type);
+
         // Misc
         bool IsGrounded() const;
         void ClearForces() const;
@@ -161,11 +171,13 @@ namespace Spartan
         Math::Vector3 m_center_of_mass = Math::Vector3::Zero;
         Math::Vector3 m_size           = Math::Vector3::One;
         PhysicsShape m_shape_type      = PhysicsShape::Box;
+        PhysicsBodyType m_body_type    = PhysicsBodyType::RigidBody;
         uint32_t terrain_width         = 0;
         uint32_t terrain_length        = 0;
         bool m_in_world                = false;
         void* m_shape                  = nullptr;
         void* m_rigid_body             = nullptr;
+        void* m_vehicle                = nullptr;
         std::vector<Constraint*> m_constraints;
     };
 }

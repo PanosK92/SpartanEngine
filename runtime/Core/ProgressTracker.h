@@ -42,13 +42,13 @@ namespace Spartan
     public:
         void Start(const uint32_t job_count, const std::string& text);
 
-        float GetFraction();
+        float GetFraction() const;
         void JobDone();
 
         const std::string& GetText();
         void SetText(const std::string& text);
 
-        bool IsProgressing();
+        bool IsProgressing() const;
 
     private:
         std::atomic<uint32_t> m_jobs_done = 0;
@@ -60,5 +60,6 @@ namespace Spartan
     {
     public:
         static Progress& GetProgress(const ProgressType progress_type);
+        static bool IsLoading();
     };
 }

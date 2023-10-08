@@ -29,12 +29,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Input/Input.h"
 #include "../World/Components/Camera.h"
 SP_WARNINGS_OFF
-#include "BulletCollision/BroadphaseCollision/btDbvtBroadphase.h"
-#include "BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h"
-#include "BulletSoftBody/btSoftBodyRigidBodyCollisionConfiguration.h"
-#include "BulletCollision/NarrowPhaseCollision/btRaycastCallback.h"
-#include "BulletSoftBody/btSoftRigidDynamicsWorld.h"
-#include "BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h"
+#include <btBulletDynamicsCommon.h>
+#include <BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h>
+#include <BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h>
+#include <BulletCollision/BroadphaseCollision/btDbvtBroadphase.h>
+#include <BulletCollision/NarrowPhaseCollision/btRaycastCallback.h>
+#include <BulletSoftBody/btSoftBodyRigidBodyCollisionConfiguration.h>
+#include <BulletSoftBody/btSoftRigidDynamicsWorld.h>
 SP_WARNINGS_ON
 //==============================================================================
 
@@ -140,50 +141,50 @@ namespace Spartan
 
     void Physics::Tick()
     {
-        if (!m_world)
-            return;
-
         SP_PROFILE_FUNCTION();
 
-        // debug draw
-        if (Renderer::GetOption<bool>(Renderer_Option::Debug_Physics))
+        bool is_in_editor_mode = !Engine::IsFlagSet(EngineMode::Game);
+        bool physics_enabled   = Engine::IsFlagSet(EngineMode::Physics);
+        bool debug_draw        = Renderer::GetOption<bool>(Renderer_Option::Debug_Physics);
+        bool simulate_physics  = physics_enabled && !is_in_editor_mode;
+
+        if (debug_draw)
         {
             m_world->debugDrawWorld();
         }
 
-        // don't simulate physics if they are turned off or we are not in game mode
-        if (!Engine::IsFlagSet(EngineMode::Physics) || !Engine::IsFlagSet(EngineMode::Game))
-            return;
-
-        // Picking
+        if (simulate_physics)
         {
-            if (Input::GetKeyDown(KeyCode::Click_Left) && Input::GetMouseIsInViewport())
+            // Picking
             {
-                PickBody();
+                if (Input::GetKeyDown(KeyCode::Click_Left) && Input::GetMouseIsInViewport())
+                {
+                    PickBody();
+                }
+                else if (Input::GetKeyUp(KeyCode::Click_Left))
+                {
+                    UnpickBody();
+                }
+
+                MovePickedBody();
             }
-            else if (Input::GetKeyUp(KeyCode::Click_Left))
+
+            // this equation must be met: timeStep < maxSubSteps * fixedTimeStep
+            auto internal_time_step = 1.0f / m_internal_fps;
+            auto max_substeps = static_cast<int>(Timer::GetDeltaTimeSec() * m_internal_fps) + 1;
+            if (m_max_sub_steps < 0)
             {
-                UnpickBody();
+                internal_time_step = static_cast<float>(Timer::GetDeltaTimeSec());
+                max_substeps = 1;
+            }
+            else if (m_max_sub_steps > 0)
+            {
+                max_substeps = Helper::Min(max_substeps, m_max_sub_steps);
             }
 
-            MovePickedBody();
+            // step the physics world
+            m_world->stepSimulation(static_cast<float>(Timer::GetDeltaTimeSec()), max_substeps, internal_time_step);
         }
-
-        // this equation must be met: timeStep < maxSubSteps * fixedTimeStep
-        auto internal_time_step = 1.0f / m_internal_fps;
-        auto max_substeps       = static_cast<int>(Timer::GetDeltaTimeSec() * m_internal_fps) + 1;
-        if (m_max_sub_steps < 0)
-        {
-            internal_time_step = static_cast<float>(Timer::GetDeltaTimeSec());
-            max_substeps       = 1;
-        }
-        else if (m_max_sub_steps > 0)
-        {
-            max_substeps = Helper::Min(max_substeps, m_max_sub_steps);
-        }
-
-        // step the physics world
-        m_world->stepSimulation(static_cast<float>(Timer::GetDeltaTimeSec()), max_substeps, internal_time_step);
     }
 
     vector<btRigidBody*> Physics::RayCast(Vector3 start, Vector3 end)
@@ -211,42 +212,37 @@ namespace Spartan
 
 	void Physics::AddBody(btRigidBody* body)
     {
-        if (!m_world)
-            return;
-
         m_world->addRigidBody(body);
     }
 
     void Physics::RemoveBody(btRigidBody*& body)
     {
-        if (!m_world)
-            return;
-
         m_world->removeRigidBody(body);
+    }
+
+    void Physics::AddBody(btRaycastVehicle* body)
+    {
+        m_world->addVehicle(body);
+    }
+
+    void Physics::RemoveBody(btRaycastVehicle*& body)
+    {
+        m_world->removeVehicle(body);
     }
 
     void Physics::AddConstraint(btTypedConstraint* constraint, bool collision_with_linked_body /*= true*/)
     {
-        if (!m_world)
-            return;
-
         m_world->addConstraint(constraint, !collision_with_linked_body);
     }
 
     void Physics::RemoveConstraint(btTypedConstraint*& constraint)
     {
-        if (!m_world)
-            return;
-
         m_world->removeConstraint(constraint);
         delete constraint;
     }
 
     void Physics::AddBody(btSoftBody* body)
     {
-        if (!m_world)
-            return;
-
         if (btSoftRigidDynamicsWorld* world = static_cast<btSoftRigidDynamicsWorld*>(m_world))
         {
             world->addSoftBody(body);
@@ -264,13 +260,7 @@ namespace Spartan
 
     Vector3 Physics::GetGravity()
     {
-        auto gravity = m_world->getGravity();
-        if (!gravity)
-        {
-            SP_LOG_ERROR("Unable to get gravity, ensure physics are properly initialized.");
-            return Vector3::Zero;
-        }
-        return gravity ? ToVector3(gravity) : Vector3::Zero;
+        return ToVector3(m_world->getGravity());
     }
 
     btSoftBodyWorldInfo& Physics::GetSoftWorldInfo()
@@ -278,9 +268,14 @@ namespace Spartan
         return *m_world_info;
     }
 
-    auto Physics::GetPhysicsDebugDraw()
+    void* Physics::GetPhysicsDebugDraw()
     {
-        return m_debug_draw;
+        return static_cast<void*>(m_debug_draw);
+    }
+
+    void* Physics::GetWorld()
+    {
+        return static_cast<void*>(m_world);
     }
 
     void Physics::PickBody()
@@ -318,13 +313,12 @@ namespace Spartan
                             btPoint2PointConstraint* p2p  = new btPoint2PointConstraint(*body, localPivot);
                             m_world->addConstraint(p2p, true);
                             m_picked_constraint           = p2p;
-                            btScalar mousePickClamping    = 30.f;
-                            p2p->m_setting.m_impulseClamp = mousePickClamping;
+                            btScalar mouse_pick_clamping  = 30.0f;
+                            p2p->m_setting.m_impulseClamp = mouse_pick_clamping;
                             p2p->m_setting.m_tau          = 0.001f; // very weak constraint for picking
                         }
                     }
 
-                    m_picking_position_previous = ray_end;
                     m_hit_position              = ToVector3(pick_position);
                     m_picking_distance_previous = (m_hit_position - ray_start).Length();
                 }

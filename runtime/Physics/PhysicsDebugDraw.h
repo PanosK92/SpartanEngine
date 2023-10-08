@@ -21,12 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========================
-// Hide warnings which belong to Bullet
-#pragma warning(push, 0)   
+//= INCLUDES =======================
+SP_WARNINGS_OFF
 #include <LinearMath/btIDebugDraw.h>
-#pragma warning(pop)
-//=====================================
+SP_WARNINGS_ON
+//==================================
 
 namespace Spartan
 {
@@ -36,17 +35,12 @@ namespace Spartan
         PhysicsDebugDraw();
         ~PhysicsDebugDraw() = default;
 
-        //= btIDebugDraw ==============================================================================================================================
         void drawLine(const btVector3& from, const btVector3& to, const btVector3& fromColor, const btVector3& toColor) override;
         void drawLine(const btVector3& from, const btVector3& to, const btVector3& color) override { drawLine(from, to, color, color); }
         void drawContactPoint(const btVector3& PointOnB, const btVector3& normalOnB, btScalar distance, int lifeTime, const btVector3& color) override;
         void reportErrorWarning(const char* warningString) override;
         void draw3dText(const btVector3& location, const char* textString) override {}
-        void setDebugMode(const int debugMode) override                             { m_debugMode = debugMode; }
-        int getDebugMode() const override                                           { return m_debugMode; }
-        //=============================================================================================================================================
-
-    private:
-        int m_debugMode;
+        void setDebugMode(const int debugMode) override;
+        int getDebugMode() const override;
     };
 }

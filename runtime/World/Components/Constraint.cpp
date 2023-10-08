@@ -30,10 +30,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Physics/Physics.h"
 #include "../../Physics/BulletPhysicsHelper.h"
 SP_WARNINGS_OFF
-#include "BulletDynamics/ConstraintSolver/btConeTwistConstraint.h"
-#include "BulletDynamics/ConstraintSolver/btSliderConstraint.h"
-#include "BulletDynamics/ConstraintSolver/btHingeConstraint.h"
-#include "BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h"
+#include <BulletDynamics/ConstraintSolver/btConeTwistConstraint.h>
+#include <BulletDynamics/ConstraintSolver/btSliderConstraint.h>
+#include <BulletDynamics/ConstraintSolver/btHingeConstraint.h>
+#include <BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h>
 SP_WARNINGS_ON
 //==================================================================
 
