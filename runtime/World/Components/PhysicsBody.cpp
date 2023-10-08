@@ -64,6 +64,7 @@ namespace Spartan
         constexpr float k_default_restitution       = 0.0f;
         constexpr float k_default_friction          = 0.5f;
         constexpr float k_default_friction_rolling  = 0.5f;
+        constexpr float k_default_vehicle_torque    = 149.0f;
     }
 
     class MotionState : public btMotionState
@@ -105,6 +106,7 @@ namespace Spartan
         m_restitution      = k_default_restitution;
         m_friction         = k_default_friction;
         m_friction_rolling = k_default_friction_rolling;
+        m_torque_newtons   = k_default_vehicle_torque;
         m_use_gravity      = true;
         m_gravity          = Physics::GetGravity();
         m_is_kinematic     = false;
@@ -192,11 +194,11 @@ namespace Spartan
             // compute torque
             if (Input::GetKey(KeyCode::Arrow_Up))
             {
-                m_torque_newtons = 10.0f;
+                m_torque_newtons = m_torque_max_newtons;
             }
             else if(Input::GetKey(KeyCode::Arrow_Down))
             {
-                m_torque_newtons = -10.0f;
+                m_torque_newtons = -m_torque_max_newtons;
             }
             else
             {
@@ -206,11 +208,11 @@ namespace Spartan
             // compute steering angle
             if (Input::GetKey(KeyCode::Arrow_Left))
             {
-                m_steering_angle_radians = -0.1f;
+                m_steering_angle_radians = -0.3f;
             }
             else if (Input::GetKey(KeyCode::Arrow_Right))
             {
-                m_steering_angle_radians = 0.1f;
+                m_steering_angle_radians = 0.3f;
             }
             else
             {
@@ -631,12 +633,14 @@ namespace Spartan
                 btScalar suspension_rest_length = 0.6f;
                 btScalar wheel_radius           = 0.5;
 
+                const float extent_forward  = 2.5f;
+                const float extent_sideways = 1.2f;
                 btVector3 wheel_positions[4] =
                 {
-                    btVector3(-1, 0, 2),  // front-left
-                    btVector3(1, 0, 2),   // front-right
-                    btVector3(-1, 0, -2), // rear-left
-                    btVector3(1, 0, -2)   // rear-right
+                    btVector3(-extent_sideways, 0,  extent_forward), // front-left
+                    btVector3(extent_sideways,  0,  extent_forward), // front-right
+                    btVector3(-extent_sideways, 0, -extent_forward), // rear-left
+                    btVector3(extent_sideways,  0, -extent_forward)  // rear-right
                 };
 
                 bool is_front_wheel = true;
@@ -674,7 +678,7 @@ namespace Spartan
                 }
 
                 rigid_body->setCollisionFlags(flags);
-                rigid_body->forceActivationState(m_is_kinematic ? DISABLE_DEACTIVATION : ISLAND_SLEEPING);
+                rigid_body->forceActivationState((m_is_kinematic || m_body_type == PhysicsBodyType::Vehicle) ? DISABLE_DEACTIVATION : ISLAND_SLEEPING);
                 rigid_body->setDeactivationTime(k_default_deactivation_time);
             }
 

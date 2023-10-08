@@ -614,22 +614,15 @@ namespace Spartan
             Entity* entity_car = m_default_model_car->GetRootEntity();
             entity_car->SetObjectName("geometry");
 
-            entity_car->GetTransform()->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+            entity_car->GetTransform()->SetPosition(Vector3(0.0f, -0.75f, 0.0f));
             entity_car->GetTransform()->SetRotation(Quaternion::FromEulerAngles(90.0f, 0.0f, -180.0f));
             entity_car->GetTransform()->SetScale(Vector3(0.02f, 0.02f, 0.02f));
 
             // the car is defined with a weird rotation (probably a bug with sketchfab auto converting to gltf)
             // so we create a root which has no rotation and we parent the car to it, then attach the physics body to the root
             Entity* entity_root = CreateEntity().get();
-            entity_root->SetObjectName("toyota_ae86_sprinter");
-            entity_root->GetTransform()->SetPosition(Vector3(0.0f, 2.0f, 0.0f));
+            entity_root->SetObjectName("toyota_ae86_sprinter_trueno");
             entity_car->GetTransform()->SetParent(entity_root->GetTransform());
-            PhysicsBody* physics_body = entity_root->AddComponent<PhysicsBody>().get();
-            physics_body->SetBodyType(PhysicsBodyType::Vehicle);
-
-            // Break calipers have a wrong rotation (probably a bug with sketchfab auto converting to gltf)
-            entity_car->GetTransform()->GetDescendantPtrByName("FR_Caliper_BrakeCaliper_0")->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 75.0f, 0.0f));
-            entity_car->GetTransform()->GetDescendantPtrByName("RR_Caliper_BrakeCaliper_0")->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 75.0f, 0.0f));
 
             // body
             {
@@ -703,50 +696,40 @@ namespace Spartan
                 }
             }
 
-            // wheels
+            // add physics body
             {
-                // brake caliper
-                if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("FR_Caliper_BrakeCaliper_0")->GetComponent<Renderable>()->GetMaterial())
+                // remove all the wheels since they have weird rotations, we will add our own
                 {
-                    material->SetTexture(MaterialTexture::Roughness, nullptr);
-                    material->SetTexture(MaterialTexture::Metalness, nullptr);
-                    material->SetColor(Color::material_aluminum);
-                    material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
-                    material->SetProperty(MaterialProperty::MetalnessMultiplier, 1.0f);
-                    material->SetProperty(MaterialProperty::Anisotropic, 1.0f);
-                    material->SetProperty(MaterialProperty::AnisotropicRotation, 0.5f);
+                    RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("FL_Wheel_RimMaterial_0").lock());
+                    RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("FL_Wheel_Brake Disc_0").lock());
+                    RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("FL_Wheel_TireMaterial_0").lock());
+                    RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("FL_Caliper_BrakeCaliper_0").lock());
+
+                    RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("FR_Wheel_RimMaterial_0").lock());
+                    RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("FR_Wheel_Brake Disc_0").lock());
+                    RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("FR_Wheel_TireMaterial_0").lock());
+                    RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("FR_Caliper_BrakeCaliper_0").lock());
+
+                    RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("RL_Wheel_RimMaterial_0").lock());
+                    RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("RL_Wheel_Brake Disc_0").lock());
+                    RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("RL_Wheel_TireMaterial_0").lock());
+                    RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("RL_Caliper_BrakeCaliper_0").lock());
+
+                    RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("RR_Wheel_RimMaterial_0").lock());
+                    RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("RR_Wheel_Brake Disc_0").lock());
+                    RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("RR_Wheel_TireMaterial_0").lock());
+                    RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("RR_Caliper_BrakeCaliper_0").lock());
                 }
 
-                // brake disc
-                if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("FL_Wheel_Brake Disc_0")->GetComponent<Renderable>()->GetMaterial())
-                {
-                    material->SetTexture(MaterialTexture::Roughness, nullptr);
-                    material->SetTexture(MaterialTexture::Metalness, nullptr);
-                    material->SetColor(Color::material_aluminum);
-                    material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
-                    material->SetProperty(MaterialProperty::MetalnessMultiplier, 1.0f);
-                    material->SetProperty(MaterialProperty::Anisotropic, 1.0f);
-                    material->SetProperty(MaterialProperty::AnisotropicRotation, 0.5f);
-                }
-
-                // tires
-                if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("FL_Wheel_TireMaterial_0")->GetComponent<Renderable>()->GetMaterial())
-                {
-                    material->SetColor(Color::material_tire);
-                    material->SetTexture(MaterialTexture::Roughness, nullptr);
-                    material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
-                    material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.0f);
-                }
-
-                // rims
-                if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("FR_Wheel_RimMaterial_0")->GetComponent<Renderable>()->GetMaterial())
-                {
-                    material->SetTexture(MaterialTexture::Roughness, nullptr);
-                    material->SetTexture(MaterialTexture::Metalness, nullptr);
-                    material->SetColor(Color::material_aluminum);
-                    material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.2f);
-                    material->SetProperty(MaterialProperty::MetalnessMultiplier, 1.0f);
-                }
+                entity_root->GetTransform()->SetPosition(Vector3(0.0f, 2.0f, 0.0f));
+                PhysicsBody* physics_body = entity_root->AddComponent<PhysicsBody>().get();
+                physics_body->SetBodyType(PhysicsBodyType::Vehicle);
+                physics_body->SetCenterOfMass(Vector3(0.0f, 0.7f, 0.0f));
+                physics_body->SetBoundingBox(Vector3(3.0f, 1.5f, 8.4f));
+                physics_body->SetFriction(1.0f);
+                physics_body->SetFrictionRolling(1.0f);
+                physics_body->SetMass(1000.0f);             // 900 – 1,045 kg -> https://en.wikipedia.org/wiki/Toyota_AE86
+                physics_body->SetTorqueMaxNewtons(5000.0f); // 149 Nm ->         https://en.wikipedia.org/wiki/Toyota_AE86, however it's too weak for bullet for some reason
             }
         }
 

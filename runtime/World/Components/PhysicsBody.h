@@ -84,7 +84,7 @@ namespace Spartan
 
         // Angular friction
         float GetFrictionRolling() const { return m_friction_rolling; }
-        void SetFrictionRolling(float frictionRolling);
+        void SetFrictionRolling(float friction_rolling);
 
         // Restitution
         float GetRestitution() const { return m_restitution; }
@@ -146,6 +146,10 @@ namespace Spartan
         PhysicsBodyType GetBodyType() const { return m_body_type; }
         void SetBodyType(const PhysicsBodyType type);
 
+        // Torque
+        float GetTorqueMaxNewtons() const              { return m_torque_max_newtons; }
+        void SetTorqueMaxNewtons(float torque_newtons) { m_torque_max_newtons = torque_newtons; }
+
         // Misc
         bool IsGrounded() const;
         void ClearForces() const;
@@ -179,6 +183,7 @@ namespace Spartan
         void* m_rigid_body             = nullptr;
         void* m_vehicle                = nullptr;
         float m_torque_newtons         = 0.0f;
+        float m_torque_max_newtons     = 0.0f;
         float m_steering_angle_radians = 0.0f;
         std::vector<Constraint*> m_constraints;
     };
