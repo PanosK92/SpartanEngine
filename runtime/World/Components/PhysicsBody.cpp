@@ -59,12 +59,18 @@ namespace Spartan
 {
     namespace
     {
-        constexpr float k_default_deactivation_time = 2000;
-        constexpr float k_default_mass              = 1.0f;
-        constexpr float k_default_restitution       = 0.0f;
-        constexpr float k_default_friction          = 0.5f;
-        constexpr float k_default_friction_rolling  = 0.5f;
-        constexpr float k_default_vehicle_torque    = 1000.0f;
+        constexpr float k_default_deactivation_time           = 2000;
+        constexpr float k_default_mass                        = 1.0f;
+        constexpr float k_default_restitution                 = 0.0f;
+        constexpr float k_default_friction                    = 0.5f;
+        constexpr float k_default_friction_rolling            = 0.5f;
+
+        constexpr float k_default_vehicle_torque                   = 1000.0f;
+        constexpr float k_default_vehicle_suspension_stiffness     = 50.0f;
+        constexpr float k_default_vehicle_suspension_compression   = 0.83f;
+        constexpr float k_default_vehicle_suspension_damping       = 1.0f;
+        constexpr float k_default_vehicle_max_suspension_force     = 6000.0f;
+        constexpr float k_default_vehicle_max_suspension_travel_cm = 500.0f;
     }
 
     class MotionState : public btMotionState
@@ -210,11 +216,11 @@ namespace Spartan
                 // compute steering angle
                 if (Input::GetKey(KeyCode::Arrow_Left))
                 {
-                    m_steering_angle_radians = -0.3f;
+                    m_steering_angle_radians = -45.0f * Math::Helper::DEG_TO_RAD;
                 }
                 else if (Input::GetKey(KeyCode::Arrow_Right))
                 {
-                    m_steering_angle_radians = 0.3f;
+                    m_steering_angle_radians = 45.0f * Math::Helper::DEG_TO_RAD;
                 }
                 else
                 {
@@ -639,6 +645,12 @@ namespace Spartan
             // create vehicle
             btRaycastVehicle::btVehicleTuning tuning;
             {
+                tuning.m_suspensionStiffness   = k_default_vehicle_suspension_stiffness;
+                tuning.m_suspensionCompression = k_default_vehicle_suspension_compression;
+                tuning.m_suspensionDamping     = k_default_vehicle_suspension_damping;
+                tuning.m_maxSuspensionForce    = k_default_vehicle_max_suspension_force;
+                tuning.m_maxSuspensionTravelCm = k_default_vehicle_max_suspension_travel_cm;
+
                 btVehicleRaycaster* vehicle_ray_caster = new btDefaultVehicleRaycaster(static_cast<btDynamicsWorld*>(Physics::GetWorld()));
                 m_vehicle = new btRaycastVehicle(tuning, rigid_body, vehicle_ray_caster);
                 Physics::AddBody(vehicle);
@@ -648,23 +660,24 @@ namespace Spartan
             {
                 btVector3 wheel_direction    = btVector3(0, -1, 0);
                 btVector3 wheel_axle         = btVector3(-1, 0, 0);
-                float suspension_rest_length = 0.6f;
-                float wheel_radius           = 0.6;
+                float suspension_rest_length = 0.3f;
+                float wheel_radius           = 0.6f;
 
                 const float extent_forward   = 2.5f;
                 const float extent_sideways  = 1.2f;
+                const float height_offset    = -0.5f;
                 btVector3 wheel_positions[4] =
                 {
-                    btVector3(-extent_sideways, 0,  extent_forward), // front-left
-                    btVector3(extent_sideways,  0,  extent_forward), // front-right
-                    btVector3(-extent_sideways, 0, -extent_forward), // rear-left
-                    btVector3(extent_sideways,  0, -extent_forward)  // rear-right
+                    btVector3(-extent_sideways, height_offset,  extent_forward), // front-left
+                    btVector3(extent_sideways,  height_offset,  extent_forward), // front-right
+                    btVector3(-extent_sideways, height_offset, -extent_forward), // rear-left
+                    btVector3(extent_sideways,  height_offset, -extent_forward)  // rear-right
                 };
 
                 bool is_front_wheel = true;
-                for (int i = 0; i < 4; ++i)
+                for (uint32_t i = 0; i < 4; i++)
                 {
-                    is_front_wheel = i >= 2;
+                    is_front_wheel = i < 2;
 
                     vehicle->addWheel
                     (
