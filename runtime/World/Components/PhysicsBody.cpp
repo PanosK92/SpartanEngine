@@ -66,7 +66,7 @@ namespace Spartan
         constexpr float k_default_friction_rolling            = 0.5f;
 
         constexpr float k_default_vehicle_torque                   = 1000.0f;
-        constexpr float k_default_vehicle_suspension_stiffness     = 50.0f;
+        constexpr float k_default_vehicle_suspension_stiffness     = 30.0f;
         constexpr float k_default_vehicle_suspension_compression   = 0.83f;
         constexpr float k_default_vehicle_suspension_damping       = 1.0f;
         constexpr float k_default_vehicle_max_suspension_force     = 6000.0f;
@@ -214,18 +214,17 @@ namespace Spartan
                 }
 
                 // compute steering angle
+                float steering_angle_target = 0.0f;
                 if (Input::GetKey(KeyCode::Arrow_Left))
                 {
-                    m_steering_angle_radians = -45.0f * Math::Helper::DEG_TO_RAD;
+                    steering_angle_target = -45.0f * Math::Helper::DEG_TO_RAD;
                 }
                 else if (Input::GetKey(KeyCode::Arrow_Right))
                 {
-                    m_steering_angle_radians = 45.0f * Math::Helper::DEG_TO_RAD;
+                    steering_angle_target = 45.0f * Math::Helper::DEG_TO_RAD;
                 }
-                else
-                {
-                    m_steering_angle_radians = 0.0f;
-                }
+                const float return_speed = 5.0f;
+                m_steering_angle_radians = Math::Helper::Lerp<float>(m_steering_angle_radians, steering_angle_target, return_speed * Timer::GetDeltaTimeSec());
 
                 // apply torque
                 vehicle->applyEngineForce(m_torque_newtons, 0); // wheel front-left
@@ -653,6 +652,8 @@ namespace Spartan
 
                 btVehicleRaycaster* vehicle_ray_caster = new btDefaultVehicleRaycaster(static_cast<btDynamicsWorld*>(Physics::GetWorld()));
                 m_vehicle = new btRaycastVehicle(tuning, rigid_body, vehicle_ray_caster);
+                vehicle->setCoordinateSystem(0, 1, 2); // this is needed
+
                 Physics::AddBody(vehicle);
             }
 
@@ -664,14 +665,14 @@ namespace Spartan
                 float wheel_radius           = 0.6f;
 
                 const float extent_forward   = 2.5f;
-                const float extent_sideways  = 1.2f;
-                const float height_offset    = -0.5f;
+                const float extent_sideways  = 1.5f;
+                const float height_offset    = -0.4f;
                 btVector3 wheel_positions[4] =
                 {
-                    btVector3(-extent_sideways, height_offset,  extent_forward), // front-left
-                    btVector3(extent_sideways,  height_offset,  extent_forward), // front-right
-                    btVector3(-extent_sideways, height_offset, -extent_forward), // rear-left
-                    btVector3(extent_sideways,  height_offset, -extent_forward)  // rear-right
+                    btVector3(-extent_sideways, height_offset,  extent_forward - 0.05f), // front-left
+                    btVector3(extent_sideways,  height_offset,  extent_forward - 0.05f), // front-right
+                    btVector3(-extent_sideways, height_offset, -extent_forward + 0.15f), // rear-left
+                    btVector3(extent_sideways,  height_offset, -extent_forward + 0.15f)  // rear-right
                 };
 
                 bool is_front_wheel = true;

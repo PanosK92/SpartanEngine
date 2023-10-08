@@ -571,44 +571,11 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(0.0f, 1.0f, -10.0f);
         Vector3 camera_rotation = Vector3(0.0f, 0.0f, 0.0f);
-        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_twilight, "project\\music\\riders_on_the_storm_fredwreck_remix.mp3");
-
-        // point light - side of car
-        {
-            shared_ptr<Entity> entity = CreateEntity();
-            entity->SetObjectName("light_point_side");
-            entity->GetTransform()->SetPosition(Vector3(4.0f, 2.5, -5.41f));
-
-            shared_ptr<Light> light = entity->AddComponent<Light>();
-            light->SetLightType(LightType::Point);
-            light->SetColor(Color::light_photo_flash);
-            light->SetIntensity(LightIntensity::bulb_500_watt);
-        }
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, "project\\music\\riders_on_the_storm_fredwreck_remix.mp3");
 
         // environment
         {
             m_default_environment->GetComponent<Environment>()->SetFromTextureSphere("project\\environment\\kloppenheim_05_4k.hdr");
-        }
-
-        // load floor material
-        {
-            // create material
-            shared_ptr<Material> material = make_shared<Material>();
-            material->SetTexture(MaterialTexture::Color,      "project\\materials\\tile_black\\albedo.png");
-            material->SetTexture(MaterialTexture::Normal,     "project\\materials\\tile_black\\normal.png");
-            material->SetTexture(MaterialTexture::Occlusion,  "project\\materials\\tile_black\\ao.png");
-            material->SetTexture(MaterialTexture::Roughness,  "project\\materials\\tile_black\\roughness.png");
-            material->SetTexture(MaterialTexture::Metalness,  "project\\materials\\tile_black\\metallic.png");
-            material->SetTexture(MaterialTexture::Height,     "project\\materials\\tile_black\\height.png");
-            material->SetProperty(MaterialProperty::UvTilingX, 100.0f);
-            material->SetProperty(MaterialProperty::UvTilingY, 100.0f);
-
-            // create a file path for this material (required for the material to be able to be cached by the resource cache)
-            const string file_path = "project\\materials\\tile_black" + string(EXTENSION_MATERIAL);
-            material->SetResourceFilePath(file_path);
-
-            // set material
-            m_default_model_floor->GetComponent<Renderable>()->SetMaterial(material);
         }
 
         if (m_default_model_car = ResourceCache::Load<Mesh>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
@@ -736,8 +703,10 @@ namespace Spartan
                 // load our own wheel
                 if (m_default_model_wheel = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend"))
                 {
+                    float scale = 0.38f;
+
                     Entity* entity_wheel_root = m_default_model_wheel->GetRootEntity();
-                    entity_wheel_root->GetTransform()->SetScale(Vector3(0.35f));
+                    entity_wheel_root->GetTransform()->SetScale(Vector3(scale));
 
                     if (Entity* entity_wheel = entity_wheel_root->GetTransform()->GetDescendantPtrByName("wheel Low"))
                     {
@@ -758,25 +727,27 @@ namespace Spartan
 
                     // add the wheels to the body
                     {
-                        // if I make the wheels children of the body, rotation accumulation is bugged, it warps the mesh, need to fix
-
                         Entity* wheel = entity_wheel_root;
                         wheel->SetObjectName("wheel_fl");
-                        //wheel->GetTransform()->SetParent(entity_root->GetTransform());
+                        wheel->GetTransform()->SetParent(entity_root->GetTransform());
                         physics_body->SetWheelTransform(wheel->GetTransform().get(), 0);
 
                         wheel = entity_wheel_root->Clone();
-                        //wheel->SetObjectName("wheel_fr");
+                        wheel->SetObjectName("wheel_fr");
+                        wheel->GetTransform()->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
+                        wheel->GetTransform()->GetChildByIndex(0)->SetPosition(Vector3(scale, 0.0f, 0.0f));
                         wheel->GetTransform()->SetParent(entity_root->GetTransform());
                         physics_body->SetWheelTransform(wheel->GetTransform().get(), 1);
 
                         wheel = entity_wheel_root->Clone();
-                        //wheel->SetObjectName("wheel_rl");
+                        wheel->SetObjectName("wheel_rl");
                         wheel->GetTransform()->SetParent(entity_root->GetTransform());
                         physics_body->SetWheelTransform(wheel->GetTransform().get(), 2);
 
                         wheel = entity_wheel_root->Clone();
-                        //wheel->SetObjectName("wheel_rr");
+                        wheel->SetObjectName("wheel_rr");
+                        wheel->GetTransform()->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
+                        wheel->GetTransform()->GetChildByIndex(0)->SetPosition(Vector3(scale, 0.0f, 0.0f));
                         wheel->GetTransform()->SetParent(entity_root->GetTransform());
                         physics_body->SetWheelTransform(wheel->GetTransform().get(), 3);
                     }
