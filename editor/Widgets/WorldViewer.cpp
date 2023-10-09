@@ -71,7 +71,7 @@ namespace
                     "6. Sponza",
                     "7. Doom E1M1"
                 };
-                static int item_index = 4;
+                static int item_index = 3; // car
                 static int item_count = IM_ARRAYSIZE(items);
                 ImGui::PushItemWidth(450.0f * Spartan::Window::GetDpiScale());
                 ImGui::ListBox("##list_box", &item_index, items, item_count, item_count);
