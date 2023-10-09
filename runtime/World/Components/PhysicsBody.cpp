@@ -26,18 +26,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Constraint.h"
 #include "Renderable.h"
 #include "Terrain.h"
+#include "../Entity.h"
 #include "../RHI/RHI_Vertex.h"
 #include "../RHI/RHI_Texture.h"
-#include "../Entity.h"
-#include "../Input/Input.h"
+#include "../../IO/FileStream.h"
+#include "../Physics/Car.h"
 #include "../../Physics/Physics.h"
 #include "../../Physics/BulletPhysicsHelper.h"
-#include "../../IO/FileStream.h"
 SP_WARNINGS_OFF
-#include <LinearMath/btDefaultMotionState.h>
 #include <BulletDynamics/Dynamics/btRigidBody.h>
-#include "BulletDynamics/Vehicle/btRaycastVehicle.h"
-#include <BulletDynamics/Vehicle/btVehicleRaycaster.h>
 #include <BulletCollision/CollisionShapes/btSphereShape.h>
 #include <BulletCollision/CollisionShapes/btStaticPlaneShape.h>
 #include <BulletCollision/CollisionShapes/btCylinderShape.h>
@@ -47,6 +44,7 @@ SP_WARNINGS_OFF
 #include <BulletCollision/CollisionShapes/btTriangleMesh.h>
 #include <BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h>
 #include <BulletCollision/CollisionShapes/btConvexHullShape.h>
+
 SP_WARNINGS_ON
 //====================================================================
 
@@ -64,13 +62,6 @@ namespace Spartan
         constexpr float k_default_restitution       = 0.0f;
         constexpr float k_default_friction          = 0.5f;
         constexpr float k_default_friction_rolling  = 0.5f;
-
-        constexpr float k_default_vehicle_torque                   = 1000.0f;
-        constexpr float k_default_vehicle_suspension_stiffness     = 30.0f;
-        constexpr float k_default_vehicle_suspension_compression   = 0.83f;
-        constexpr float k_default_vehicle_suspension_damping       = 1.0f;
-        constexpr float k_default_vehicle_max_suspension_force     = 6000.0f;
-        constexpr float k_default_vehicle_max_suspension_travel_cm = 500.0f;
     }
 
     #define shape static_cast<btCollisionShape*>(m_shape)
@@ -112,7 +103,6 @@ namespace Spartan
         m_restitution      = k_default_restitution;
         m_friction         = k_default_friction;
         m_friction_rolling = k_default_friction_rolling;
-        m_torque_newtons   = k_default_vehicle_torque;
         m_use_gravity      = true;
         m_gravity          = Physics::GetGravity();
         m_is_kinematic     = false;
@@ -123,7 +113,7 @@ namespace Spartan
         m_center_of_mass   = Vector3::Zero;
         m_size             = Vector3::One;
         m_shape            = nullptr;
-        m_vehicle_wheel_transforms.fill(nullptr);
+        m_car              = make_shared<Car>();
 
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mass, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction, float);
@@ -195,77 +185,7 @@ namespace Spartan
             }
         }
 
-        if (vehicle)
-        {
-            // control
-            {
-                // compute torque
-                if (Input::GetKey(KeyCode::Arrow_Up) || Input::GetControllerTriggerRight() != 0.0f)
-                {
-                    m_torque_newtons = m_torque_max_newtons;
-                }
-                else if (Input::GetKey(KeyCode::Arrow_Down) || Input::GetControllerTriggerLeft() != 0.0f)
-                {
-                    m_torque_newtons = -m_torque_max_newtons;
-                }
-                else
-                {
-                    m_torque_newtons = 0.0f;
-                }
-
-                // compute steering angle
-                float steering_angle_target = 0.0f;
-                if (Input::GetKey(KeyCode::Arrow_Left) || Input::GetControllerThumbStickLeft().x < 0.0f)
-                {
-                    steering_angle_target = -45.0f * Math::Helper::DEG_TO_RAD;
-                }
-                else if (Input::GetKey(KeyCode::Arrow_Right) || Input::GetControllerThumbStickLeft().x > 0.0f)
-                {
-                    steering_angle_target = 45.0f * Math::Helper::DEG_TO_RAD;
-                }
-                const float return_speed = 5.0f;
-                m_steering_angle_radians = Math::Helper::Lerp<float>(m_steering_angle_radians, steering_angle_target, return_speed * Timer::GetDeltaTimeSec());
-
-                // apply torque
-                vehicle->applyEngineForce(m_torque_newtons, 0); // wheel front-left
-                vehicle->applyEngineForce(m_torque_newtons, 1); // wheel front-right
-
-                // apply steering angle
-                vehicle->setSteeringValue(m_steering_angle_radians, 0); // wheel front-left
-                vehicle->setSteeringValue(m_steering_angle_radians, 1); // wheel front-left
-            }
-
-            // update transforms
-            {
-                // steering wheel
-                if (m_vehicle_steering_wheel_transform)
-                {
-                    m_vehicle_steering_wheel_transform->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 0.0f, -m_steering_angle_radians * Math::Helper::RAD_TO_DEG));
-                }
-
-                // wheels
-                for (uint32_t wheel_index = 0; wheel_index < static_cast<uint32_t>(m_vehicle_wheel_transforms.size()); wheel_index++)
-                {
-                    if (Transform* transform = m_vehicle_wheel_transforms[wheel_index])
-                    {
-                        // update and get the wheel transform from bullet
-                        vehicle->updateWheelTransform(wheel_index, true);
-                        btTransform& transform_bt = vehicle->getWheelInfo(wheel_index).m_worldTransform;
-
-                        // set the bullet transform to the wheel transform
-                        transform->SetPosition(ToVector3(transform_bt.getOrigin()));
-
-                        // ToQuaternion() works with everything but the wheels, I suspect that this is because bullet uses a different
-                        // rotation order since it's using a right-handed coordinate system, hence a simple quaternion conversion won't work
-                        float x, y, z;
-                        transform_bt.getRotation().getEulerZYX(x, y, z);
-                        float steering_angle_rad  = vehicle->getSteeringValue(wheel_index);
-                        Quaternion rotation       = Quaternion::FromEulerAngles(z * Math::Helper::RAD_TO_DEG, steering_angle_rad * Math::Helper::RAD_TO_DEG, 0.0f);
-                        transform->SetRotationLocal(rotation);
-                    }
-                }
-            }
-        }
+        m_car->Tick();
     }
 
     void PhysicsBody::Serialize(FileStream* stream)
@@ -657,55 +577,7 @@ namespace Spartan
 
         if (m_body_type == PhysicsBodyType::Vehicle)
         {
-            // create vehicle
-            btRaycastVehicle::btVehicleTuning tuning;
-            {
-                tuning.m_suspensionStiffness   = k_default_vehicle_suspension_stiffness;
-                tuning.m_suspensionCompression = k_default_vehicle_suspension_compression;
-                tuning.m_suspensionDamping     = k_default_vehicle_suspension_damping;
-                tuning.m_maxSuspensionForce    = k_default_vehicle_max_suspension_force;
-                tuning.m_maxSuspensionTravelCm = k_default_vehicle_max_suspension_travel_cm;
-
-                btVehicleRaycaster* vehicle_ray_caster = new btDefaultVehicleRaycaster(static_cast<btDynamicsWorld*>(Physics::GetWorld()));
-                m_vehicle = new btRaycastVehicle(tuning, rigid_body, vehicle_ray_caster);
-                vehicle->setCoordinateSystem(0, 1, 2); // this is needed
-
-                Physics::AddBody(vehicle);
-            }
-
-            // add wheels
-            {
-                const float extent_forward   = 2.5f;
-                const float extent_sideways  = 1.5f;
-                const float height_offset    = -0.4f;
-                btVector3 wheel_positions[4] =
-                {
-                    btVector3(-extent_sideways, height_offset,  extent_forward - 0.05f), // front-left
-                    btVector3(extent_sideways,  height_offset,  extent_forward - 0.05f), // front-right
-                    btVector3(-extent_sideways, height_offset, -extent_forward + 0.15f), // rear-left
-                    btVector3(extent_sideways,  height_offset, -extent_forward + 0.15f)  // rear-right
-                };
-
-                btVector3 wheel_direction    = btVector3(0, -1, 0);
-                btVector3 wheel_axle         = btVector3(-1, 0, 0);
-                float suspension_rest_length = 0.3f;
-                float wheel_radius           = 0.6f;
-                for (uint32_t i = 0; i < 4; i++)
-                {
-                    bool is_front_wheel = i < 2;
-
-                    vehicle->addWheel
-                    (
-                        wheel_positions[i],
-                        wheel_direction,
-                        wheel_axle,
-                        suspension_rest_length,
-                        wheel_radius,
-                        tuning,
-                        is_front_wheel
-                    );
-                }
-            }
+            m_car->Create(rigid_body);
         }
 
         // set flags
@@ -783,13 +655,6 @@ namespace Spartan
             constraint->ReleaseConstraint();
         }
 
-        if (m_vehicle)
-        {
-            Physics::RemoveBody(reinterpret_cast<btRaycastVehicle*&>(m_vehicle));
-            delete vehicle;
-            m_vehicle = nullptr;
-        }
-
         if (m_rigid_body)
         {
             if (m_in_world)
@@ -844,11 +709,6 @@ namespace Spartan
         AddBodyToWorld();
     }
     
-    void PhysicsBody::SetWheelTransform(Transform* transform, uint32_t wheel_index)
-    {
-        m_vehicle_wheel_transforms[wheel_index] = transform;
-    }
-
     bool PhysicsBody::IsGrounded() const
     {
         // get the lowest point of the AABB
