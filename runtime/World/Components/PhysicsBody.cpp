@@ -123,7 +123,7 @@ namespace Spartan
         m_center_of_mass   = Vector3::Zero;
         m_size             = Vector3::One;
         m_shape            = nullptr;
-        m_wheel_transforms.fill(nullptr);
+        m_vehicle_wheel_transforms.fill(nullptr);
 
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mass, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction, float);
@@ -235,26 +235,34 @@ namespace Spartan
                 vehicle->setSteeringValue(m_steering_angle_radians, 1); // wheel front-left
             }
 
-            // update wheel transforms
-            for (int wheel_index = 0; wheel_index < vehicle->getNumWheels(); wheel_index++)
+            // update transforms
             {
-                if (Transform* transform = m_wheel_transforms[wheel_index])
+                // steering wheel
+                if (m_vehicle_steering_wheel_transform)
                 {
-                    // update and get the wheel transform from bullet
-                    vehicle->updateWheelTransform(wheel_index, true);
-                    btTransform& transform_bt = vehicle->getWheelInfo(wheel_index).m_worldTransform;
+                    m_vehicle_steering_wheel_transform->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 0.0f, -m_steering_angle_radians * Math::Helper::RAD_TO_DEG));
+                }
 
-                    // set the bullet transform to the wheel transform
-                    transform->SetPosition(ToVector3(transform_bt.getOrigin()));
+                // wheels
+                for (uint32_t wheel_index = 0; wheel_index < static_cast<uint32_t>(m_vehicle_wheel_transforms.size()); wheel_index++)
+                {
+                    if (Transform* transform = m_vehicle_wheel_transforms[wheel_index])
+                    {
+                        // update and get the wheel transform from bullet
+                        vehicle->updateWheelTransform(wheel_index, true);
+                        btTransform& transform_bt = vehicle->getWheelInfo(wheel_index).m_worldTransform;
 
-                    // ToQuaternion() works with everything but the wheels, I suspect that this is because bullet uses a different
-                    // rotation order since it's using a right-handed coordinate system, hence a simple quaternion conversion won't work
-                    btQuaternion rotation_bt = transform_bt.getRotation();
-                    float x, y, z;
-                    rotation_bt.getEulerZYX(x, y, z);
-                    float steering_angle = vehicle->getSteeringValue(wheel_index);
-                    Quaternion rotation = Quaternion::FromEulerAngles(z * Math::Helper::RAD_TO_DEG, steering_angle * Math::Helper::RAD_TO_DEG, 0.0f);
-                    transform->SetRotationLocal(rotation);
+                        // set the bullet transform to the wheel transform
+                        transform->SetPosition(ToVector3(transform_bt.getOrigin()));
+
+                        // ToQuaternion() works with everything but the wheels, I suspect that this is because bullet uses a different
+                        // rotation order since it's using a right-handed coordinate system, hence a simple quaternion conversion won't work
+                        float x, y, z;
+                        transform_bt.getRotation().getEulerZYX(x, y, z);
+                        float steering_angle_rad  = vehicle->getSteeringValue(wheel_index);
+                        Quaternion rotation       = Quaternion::FromEulerAngles(z * Math::Helper::RAD_TO_DEG, steering_angle_rad * Math::Helper::RAD_TO_DEG, 0.0f);
+                        transform->SetRotationLocal(rotation);
+                    }
                 }
             }
         }
@@ -838,7 +846,7 @@ namespace Spartan
     
     void PhysicsBody::SetWheelTransform(Transform* transform, uint32_t wheel_index)
     {
-        m_wheel_transforms[wheel_index] = transform;
+        m_vehicle_wheel_transforms[wheel_index] = transform;
     }
 
     bool PhysicsBody::IsGrounded() const

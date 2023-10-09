@@ -569,7 +569,7 @@ namespace Spartan
 
     void World::CreateDefaultWorldCar()
     {
-        Vector3 camera_position = Vector3(8.7844f, 1.5f, -4.1412);
+        Vector3 camera_position = Vector3(8.7844f, 1.5f, -4.1412f);
         Vector3 camera_rotation = Vector3(7.4f, -65.5f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, "project\\music\\riders_on_the_storm_fredwreck_remix.mp3");
 
@@ -748,6 +748,12 @@ namespace Spartan
                         wheel->GetTransform()->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
                         wheel->GetTransform()->SetParent(entity_root->GetTransform());
                         physics_body->SetWheelTransform(wheel->GetTransform().get(), 3);
+                    }
+
+                    // set the steering wheel to the physics body so that it can rotate it
+                    if (Entity* entity_steering_wheel = entity_car->GetTransform()->GetDescendantPtrByName("SteeringWheel_SteeringWheel_0"))
+                    {
+                        physics_body->SetSteeringWheelTransform(entity_steering_wheel->GetTransform().get());
                     }
                 }
             }
