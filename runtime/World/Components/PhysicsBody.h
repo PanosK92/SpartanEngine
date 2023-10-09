@@ -32,6 +32,7 @@ namespace Spartan
     class Entity;
     class Constraint;
     class Physics;
+    class Car;
     namespace Math { class Quaternion; }
 
     enum class PhysicsBodyType
@@ -65,42 +66,41 @@ namespace Spartan
         PhysicsBody(std::weak_ptr<Entity> entity);
         ~PhysicsBody();
 
-        //= ICOMPONENT ===============================
+        // component
         void OnInitialize() override;
         void OnRemove() override;
         void OnStart() override;
         void OnTick() override;
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
-        //============================================
 
-        // Mass
+        // mass
         float GetMass() const { return m_mass; }
         void SetMass(float mass);
 
-        // Friction
+        // friction
         float GetFriction() const { return m_friction; }
         void SetFriction(float friction);
 
-        // Angular friction
+        // angular friction
         float GetFrictionRolling() const { return m_friction_rolling; }
         void SetFrictionRolling(float friction_rolling);
 
-        // Restitution
+        // restitution
         float GetRestitution() const { return m_restitution; }
         void SetRestitution(float restitution);
 
-        // Gravity
+        // gravity
         void SetUseGravity(bool gravity);
         bool GetUseGravity() const { return m_use_gravity; };
         Math::Vector3 GetGravity() const { return m_gravity; }
         void SetGravity(const Math::Vector3& acceleration);
 
-        // Kinematic
+        // kinematic
         void SetIsKinematic(bool kinematic);
         bool GetIsKinematic() const { return m_is_kinematic; }
 
-        // Forces
+        // forces
         void SetLinearVelocity(const Math::Vector3& velocity, const bool activate = true) const;
         Math::Vector3 GetLinearVelocity() const;
         void SetAngularVelocity(const Math::Vector3& velocity, const bool activate = true) const;
@@ -108,89 +108,77 @@ namespace Spartan
         void ApplyForceAtPosition(const Math::Vector3& force, const Math::Vector3& position, PhysicsForce mode) const;
         void ApplyTorque(const Math::Vector3& torque, PhysicsForce mode) const;
 
-        // Position lock
+        // position lock
         void SetPositionLock(bool lock);
         void SetPositionLock(const Math::Vector3& lock);
         Math::Vector3 GetPositionLock() const { return m_position_lock; }
 
-        // Rotation lock
+        // rotation lock
         void SetRotationLock(bool lock);
         void SetRotationLock(const Math::Vector3& lock);
         Math::Vector3 GetRotationLock() const { return m_rotation_lock; }
 
-        // Center of mass
+        // center of mass
         void SetCenterOfMass(const Math::Vector3& center_of_mass);
         const Math::Vector3& GetCenterOfMass() const { return m_center_of_mass; }
 
-        // Position
+        // position
         Math::Vector3 GetPosition() const;
         void SetPosition(const Math::Vector3& position, const bool activate = true) const;
 
-        // Rotation
+        // rotation
         Math::Quaternion GetRotation() const;
         void SetRotation(const Math::Quaternion& rotation, const bool activate = true) const;
 
-        // Constraint
+        // constraint
         void AddConstraint(Constraint* constraint);
         void RemoveConstraint(Constraint* constraint);
 
-        // Bounding box
+        // bounding box
         const Math::Vector3& GetBoundingBox() const { return m_size; }
         void SetBoundingBox(const Math::Vector3& boundingBox);
 
-        // Shape type
+        // shape type
         PhysicsShape GetShapeType() const { return m_shape_type; }
         void SetShapeType(PhysicsShape type);
 
-        // Body type
+        // body type
         PhysicsBodyType GetBodyType() const { return m_body_type; }
         void SetBodyType(const PhysicsBodyType type);
 
-        // Vehicle torque
-        float GetTorqueMaxNewtons() const              { return m_torque_max_newtons; }
-        void SetTorqueMaxNewtons(float torque_newtons) { m_torque_max_newtons = torque_newtons; }
-
-        // VEHICLE transforms
-        void SetWheelTransform(Transform* transform, uint32_t wheel_index);
-        void SetSteeringWheelTransform(Transform* transform) { m_vehicle_steering_wheel_transform = transform; }
- 
-        // Misc
+        // misc
         bool IsGrounded() const;
         void ClearForces() const;
         void Activate() const;
         void Deactivate() const;
         bool IsInWorld()       const { return m_in_world; }
         void* GetBtRigidBody() const { return m_rigid_body; }
+        std::shared_ptr<Car> GetCar() { return m_car; }
 
     private:
         void AddBodyToWorld();
         void RemoveBodyFromWorld();
         void UpdateShape();
 
-        float m_mass                                  = 0.0f;
-        float m_friction                              = 0.0f;
-        float m_friction_rolling                      = 0.0f;
-        float m_restitution                           = 0.0f;
-        bool m_use_gravity                            = false;
-        bool m_is_kinematic                           = false;
-        Math::Vector3 m_gravity                       = Math::Vector3::Zero;
-        Math::Vector3 m_position_lock                 = Math::Vector3::Zero;
-        Math::Vector3 m_rotation_lock                 = Math::Vector3::Zero;
-        Math::Vector3 m_center_of_mass                = Math::Vector3::Zero;
-        Math::Vector3 m_size                          = Math::Vector3::One;
-        PhysicsShape m_shape_type                     = PhysicsShape::Box;
-        PhysicsBodyType m_body_type                   = PhysicsBodyType::RigidBody;
-        uint32_t terrain_width                        = 0;
-        uint32_t terrain_length                       = 0;
-        bool m_in_world                               = false;
-        void* m_shape                                 = nullptr;
-        void* m_rigid_body                            = nullptr;
-        void* m_vehicle                               = nullptr;
-        float m_torque_newtons                        = 0.0f;
-        float m_torque_max_newtons                    = 0.0f;
-        float m_steering_angle_radians                = 0.0f;
-        Transform* m_vehicle_steering_wheel_transform = nullptr;
-        std::array<Transform*, 4> m_vehicle_wheel_transforms;
+        float m_mass                   = 0.0f;
+        float m_friction               = 0.0f;
+        float m_friction_rolling       = 0.0f;
+        float m_restitution            = 0.0f;
+        bool m_use_gravity             = false;
+        bool m_is_kinematic            = false;
+        Math::Vector3 m_gravity        = Math::Vector3::Zero;
+        Math::Vector3 m_position_lock  = Math::Vector3::Zero;
+        Math::Vector3 m_rotation_lock  = Math::Vector3::Zero;
+        Math::Vector3 m_center_of_mass = Math::Vector3::Zero;
+        Math::Vector3 m_size           = Math::Vector3::One;
+        PhysicsShape m_shape_type      = PhysicsShape::Box;
+        PhysicsBodyType m_body_type    = PhysicsBodyType::RigidBody;
+        uint32_t terrain_width         = 0;
+        uint32_t terrain_length        = 0;
+        bool m_in_world                = false;
+        void* m_shape                  = nullptr;
+        void* m_rigid_body             = nullptr;
+        std::shared_ptr<Car> m_car     = nullptr;
         std::vector<Constraint*> m_constraints;
     };
 }

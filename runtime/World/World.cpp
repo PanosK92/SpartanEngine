@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceCache.h"
 #include "../IO/FileStream.h"
 #include "../Profiling/Profiler.h"
+#include "../Physics/Car.h"
 #include "../RHI/RHI_Texture2D.h"
 #include "../Rendering/Mesh.h"
 #include "../Rendering/Renderer.h"
@@ -152,8 +153,8 @@ namespace Spartan
                 // add physics components
                 shared_ptr<PhysicsBody> rigid_body = m_default_model_floor->AddComponent<PhysicsBody>();
                 rigid_body->SetMass(0.0f); // static
-                rigid_body->SetFriction(0.5f);
-                rigid_body->SetRestitution(0.2f);
+                rigid_body->SetFriction(0.9f);
+                rigid_body->SetRestitution(0.1f);
                 rigid_body->SetShapeType(PhysicsShape::StaticPlane);
             }
         }
@@ -292,13 +293,12 @@ namespace Spartan
                     physics_body->SetBoundingBox(Vector3(3.0f, 1.3f, 8.4f));
                     physics_body->SetFriction(1.0f);
                     physics_body->SetFrictionRolling(1.0f);
-                    physics_body->SetMass(1000.0f);             // 900 – 1,045 kg -> https://en.wikipedia.org/wiki/Toyota_AE86
-                    physics_body->SetTorqueMaxNewtons(2500.0f); // 149 Nm ->         https://en.wikipedia.org/wiki/Toyota_AE86, however it's too weak for bullet for some reason
+                    physics_body->SetMass(1000.0f); // 900 – 1,045 kg -> https://en.wikipedia.org/wiki/Toyota_AE86
 
                     // set the steering wheel to the physics body so that it can rotate it
                     if (Entity* entity_steering_wheel = entity_car->GetTransform()->GetDescendantPtrByName("SteeringWheel_SteeringWheel_0"))
                     {
-                        physics_body->SetSteeringWheelTransform(entity_steering_wheel->GetTransform().get());
+                        physics_body->GetCar()->SetSteeringWheelTransform(entity_steering_wheel->GetTransform().get());
                     }
 
                     // remove all the wheels since they have weird rotations, we will add our own
@@ -352,26 +352,26 @@ namespace Spartan
                             Entity* wheel = entity_wheel_root;
                             wheel->SetObjectName("wheel_fl");
                             wheel->GetTransform()->SetParent(entity_root->GetTransform());
-                            physics_body->SetWheelTransform(wheel->GetTransform().get(), 0);
+                            physics_body->GetCar()->SetWheelTransform(wheel->GetTransform().get(), 0);
 
                             wheel = entity_wheel_root->Clone();
                             wheel->SetObjectName("wheel_fr");
                             wheel->GetTransform()->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
                             wheel->GetTransform()->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
                             wheel->GetTransform()->SetParent(entity_root->GetTransform());
-                            physics_body->SetWheelTransform(wheel->GetTransform().get(), 1);
+                            physics_body->GetCar()->SetWheelTransform(wheel->GetTransform().get(), 1);
 
                             wheel = entity_wheel_root->Clone();
                             wheel->SetObjectName("wheel_rl");
                             wheel->GetTransform()->SetParent(entity_root->GetTransform());
-                            physics_body->SetWheelTransform(wheel->GetTransform().get(), 2);
+                            physics_body->GetCar()->SetWheelTransform(wheel->GetTransform().get(), 2);
 
                             wheel = entity_wheel_root->Clone();
                             wheel->SetObjectName("wheel_rr");
                             wheel->GetTransform()->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
                             wheel->GetTransform()->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
                             wheel->GetTransform()->SetParent(entity_root->GetTransform());
-                            physics_body->SetWheelTransform(wheel->GetTransform().get(), 3);
+                            physics_body->GetCar()->SetWheelTransform(wheel->GetTransform().get(), 3);
                         }
                     }
                 }
@@ -879,7 +879,7 @@ namespace Spartan
                 }
 
                 // add a car
-                //create_default_car(camera_position + Vector3(0.0f, 0.0f, 5.0f));
+                create_default_car(camera_position + Vector3(0.0f, 0.0f, 5.0f));
 
                 // because this is loading in a different thread, we need to resolve the world after we enable instancing
                 World::Resolve();
