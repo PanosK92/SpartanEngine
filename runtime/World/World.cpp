@@ -291,9 +291,9 @@ namespace Spartan
                     physics_body->SetBodyType(PhysicsBodyType::Vehicle);
                     physics_body->SetCenterOfMass(Vector3(0.0f, 1.1f, 0.0f));
                     physics_body->SetBoundingBox(Vector3(3.0f, 1.3f, 8.4f));
-                    physics_body->SetRestitution(0.0f);
-                    physics_body->SetFriction(0.8f);
-                    physics_body->SetFrictionRolling(0.8f);
+                    physics_body->SetRestitution(0.1f);
+                    physics_body->SetFriction(0.6f);
+                    physics_body->SetFrictionRolling(0.01);
                     physics_body->SetMass(1000.0f); // 900 – 1,045 kg -> https://en.wikipedia.org/wiki/Toyota_AE86
 
                     // set the steering wheel to the physics body so that it can rotate it

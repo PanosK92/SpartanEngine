@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Input/Input.h"
 #include "../World/Components/Transform.h"
 SP_WARNINGS_OFF
-#include "BulletDynamics/Vehicle/btRaycastVehicle.h"
+#include <BulletDynamics/Vehicle/btRaycastVehicle.h>
 SP_WARNINGS_ON
 //==================================================
 
@@ -42,8 +42,8 @@ namespace Spartan
     {
         // 1. units are expressed in SI units (meters, newtons etc.)
 
-        constexpr float torque_max             = 8000.0f;                  // maximum torque applied to wheels in newtons
-        constexpr float tire_friction          = 0.9999f;                  // coefficient of friction for tires, near 1 for high friction
+        constexpr float torque_max             = 20000.0f;                 // maximum torque applied to wheels in newtons
+        constexpr float tire_friction          = 0.99f;                    // coefficient of friction for tires, near 1 for high friction
         constexpr float wheel_radius           = 0.6f;                     // radius of the wheel
         constexpr float brake_force_max        = 2000.0f;                  // maximum brake force applied to wheels in newtons
         constexpr float brake_ramp_speed       = 100.0f;                   // rate at which brake force increases
@@ -146,7 +146,7 @@ namespace Spartan
 
             // coefficients from the pacejka '94 model
             // reference: https://www.edy.es/dev/docs/pacejka-94-parameters-explained-a-comprehensive-guide/
-            float coef_scale = 0.08f; // this is empirically chosen as the coefficients I found, while correct, must be a couple of orders of magnitude different than what bullet expects
+            float coef_scale = 0.09f; // this is empirically chosen as the coefficients I found, while correct, they must be a couple of orders of magnitude different than what bullet expects
             float b0 = 1.5f * coef_scale, b1 = 0.0f * coef_scale, b2 = 1.1f * coef_scale,  b3 = 0.0f * coef_scale, b4  = 3.0f * coef_scale, b5  = 0.0f * coef_scale;
             float b6 = 0.0f * coef_scale, b7 = 0.0f * coef_scale, b8 = -2.0f * coef_scale, b9 = 0.0f * coef_scale, b10 = 0.0f * coef_scale, b11 = 0.0f * coef_scale, b12 = 0.0f * coef_scale, b13 = 0.0f * coef_scale;
 
