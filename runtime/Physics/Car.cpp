@@ -151,14 +151,14 @@ namespace Spartan
             float b6 = 0.0f * coef_scale, b7 = 0.0f * coef_scale, b8 = -2.0f * coef_scale, b9 = 0.0f * coef_scale, b10 = 0.0f * coef_scale, b11 = 0.0f * coef_scale, b12 = 0.0f * coef_scale, b13 = 0.0f * coef_scale;
 
             // compute the parameters for the Pacejka ’94 formula
-            float Fz = normal_load;
-            float C = b0;
-            float D = Fz * (b1 * Fz + b2);
+            float Fz  = normal_load;
+            float C   = b0;
+            float D   = Fz * (b1 * Fz + b2);
             float BCD = (b3 * Fz * Fz + b4 * Fz) * exp(-b5 * Fz);
-            float B = BCD / (C * D);
-            float E = (b6 * Fz * Fz + b7 * Fz + b8) * (1 - b13 * Math::Helper::Sign(slip + (b9 * Fz + b10)));
-            float H = b9 * Fz + b10;
-            float V = b11 * Fz + b12;
+            float B   = BCD / (C * D);
+            float E   = (b6 * Fz * Fz + b7 * Fz + b8) * (1 - b13 * Math::Helper::Sign(slip + (b9 * Fz + b10)));
+            float H   = b9 * Fz + b10;
+            float V   = b11 * Fz + b12;
             float Bx1 = B * (slip + H);
 
             // pacejka ’94 longitudinal formula
