@@ -59,7 +59,7 @@ namespace Spartan
         // world properties
         static int m_max_sub_steps        = 1;
         static int m_max_solve_iterations = 256;
-        static float m_internal_fps       = 60.0f;
+        static float m_internal_hz        = 200.0f; // almost mandatory for advanced car physics
         static Math::Vector3 m_gravity    = Math::Vector3(0.0f, -9.81f, 0.0f);
 
         // picking
@@ -169,21 +169,17 @@ namespace Spartan
                 MovePickedBody();
             }
 
-            // this equation must be met: timeStep < maxSubSteps * fixedTimeStep
-            auto internal_time_step = 1.0f / m_internal_fps;
-            auto max_substeps = static_cast<int>(Timer::GetDeltaTimeSec() * m_internal_fps) + 1;
-            if (m_max_sub_steps < 0)
-            {
-                internal_time_step = static_cast<float>(Timer::GetDeltaTimeSec());
-                max_substeps = 1;
-            }
-            else if (m_max_sub_steps > 0)
-            {
-                max_substeps = Helper::Min(max_substeps, m_max_sub_steps);
-            }
+            // determine the internal time step and max sub-steps based on the internal frequency
+            float real_world_elapsed_time = static_cast<float>(Timer::GetDeltaTimeSec());
+            float internal_time_step      = 1.0f / m_internal_hz;
+            uint32_t max_substeps         = static_cast<uint32_t>(real_world_elapsed_time / internal_time_step);
+
+            // if max_substeps is zero, it means the internal frequency is too high for the elapsed real-world time.
+            // in this case, set max_substeps to 1 to ensure the simulation advances.
+            max_substeps = max_substeps > 0 ? max_substeps : 1;
 
             // step the physics world
-            m_world->stepSimulation(static_cast<float>(Timer::GetDeltaTimeSec()), max_substeps, internal_time_step);
+            m_world->stepSimulation(real_world_elapsed_time, max_substeps, internal_time_step);
         }
     }
 
