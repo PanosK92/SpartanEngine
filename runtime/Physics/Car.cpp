@@ -89,26 +89,25 @@ namespace Spartan
             return btVector3(velocity_total.x(), 0.0f, velocity_total.z());
         }
 
-        float compute_slip_ratio(btWheelInfo* wheel_info, const btVector3& wheel_forward, const btVector3& vehicle_velocity)
+        float compute_slip_ratio(btWheelInfo* wheel_info, const btVector3& wheel_forward, const btVector3& wheel_velocity, const btVector3& vehicle_velocity)
         {
+            // slip ratio as defined by Springer Handbook of Robotics
             // slip ratio value meaning
             // 0:                tire is rolling perfectly without any slip
             // 0 to 1 (-1 to 0): tire is beginning to slip, positive under acceleration, negative under braking
             // 1 (-1):           full throttle (brake) lock, tire spinning freely (sliding) without providing forward traction
 
-            float velocity_forward          = vehicle_velocity.dot(wheel_forward);
-            float velocity_angular          = (wheel_info->m_deltaRotation) / static_cast<float>(Timer::GetDeltaTimeSec()) / wheel_info->m_wheelsRadius;
-            float velocity_forward_absolute = Math::Helper::Abs<float>(velocity_forward);
-            float velocity_angular_absolute = Math::Helper::Abs<float>(velocity_angular);
-
-            // check for tiny fuzzy values to avoid erratic slip ratios
-            if (velocity_forward_absolute < fuzzy_threshold && velocity_angular_absolute < fuzzy_threshold)
+            if (vehicle_velocity.fuzzyZero())
                 return 0.0f;
 
-            float denominator = Math::Helper::Max<float>(velocity_forward_absolute, velocity_angular_absolute);
-            float slip_ratio  = (velocity_forward - velocity_angular) / (denominator + Math::Helper::EPSILON);
+            float velocity_forward = vehicle_velocity.dot(wheel_forward);
+            float velocity_wheel   = wheel_velocity.dot(wheel_forward);
 
-            return slip_ratio;
+            // check for tiny fuzzy values to avoid erratic slip ratios
+            if (Math::Helper::Abs<float>(velocity_forward) < fuzzy_threshold || Math::Helper::Abs<float>(velocity_wheel) < fuzzy_threshold)
+                return 0.0f;
+
+            return (velocity_wheel - velocity_forward) / (velocity_forward + Math::Helper::EPSILON);
         }
 
         float compute_slip_angle(btWheelInfo* wheel_info, const btVector3& wheel_forward, const btVector3& wheel_side, const btVector3& vehicle_velocity)
@@ -117,6 +116,9 @@ namespace Spartan
             // 0:                  the direction of the wheel is aligned perfectly with the direction of the travel
             // 0 to 90 (-90 to 0): the wheel is starting to turn away from the direction of travel
             // 90 (-90):           the wheel is perpendicular to the direction of the travel, maximum lateral sliding
+
+            if (vehicle_velocity.fuzzyZero())
+                return 0.0f;
 
             btVector3 vehicle_velocity_normalized = vehicle_velocity.normalized();
             float vehicle_dot_wheel_forward       = vehicle_velocity_normalized.dot(wheel_forward);
@@ -133,22 +135,39 @@ namespace Spartan
             return atan2(vehicle_dot_wheel_side, vehicle_dot_wheel_forward);
         }
     
-        float compute_pacejka_force(float slip_angle, float normal_load)
+        float compute_pacejka_force(float slip, float normal_load)
         {
-            // coefficients come from https://en.wikipedia.org/wiki/Hans_B._Pacejka
-            float B  = 0.714f; // stiffness - controls the stiffness of the tire, affecting how quickly the tire reaches its maximum force as slip increases
-            float C  = 1.4f;   // shape     - affects the shape of the curve, controlling how rounded the curve is at the peak
-            float D0 = 1.0f;   // peak      - sets the maximum value of the curve, representing the maximum force the tire can generate
-            float E  = -0.2f;  // curvature - controls the curvature of the curve, particularly at the peak, affecting how sharply the force drops off as slip continues to increase beyond the peak
-            float X  = slip_angle * Math::Helper::RAD_TO_DEG; // most literature uses slip value in degrees
-    
-            // assume a linear relationship between normal load and peak force
-            float D = D0 * normal_load;
-    
-            // the Pacejka formula
-            return D * sin(C * atan(B * X - E * (B * X - atan(B * X))));
+            // convert to kilonewtons
+            normal_load /= 1000.0f;
+
+            // formula doesn't handle zero loads (NaN)
+            if (normal_load == 0.0f)
+                return 0.0f;
+
+            // coefficients from the pacejka '94 model
+            // reference: https://www.edy.es/dev/docs/pacejka-94-parameters-explained-a-comprehensive-guide/
+            float coef_scale = 0.08f; // this is empirically chosen as the coefficients I found, while correct, must be a couple of orders of magnitude different than what bullet expects
+            float b0 = 1.5f * coef_scale, b1 = 0.0f * coef_scale, b2 = 1.1f * coef_scale,  b3 = 0.0f * coef_scale, b4  = 3.0f * coef_scale, b5  = 0.0f * coef_scale;
+            float b6 = 0.0f * coef_scale, b7 = 0.0f * coef_scale, b8 = -2.0f * coef_scale, b9 = 0.0f * coef_scale, b10 = 0.0f * coef_scale, b11 = 0.0f * coef_scale, b12 = 0.0f * coef_scale, b13 = 0.0f * coef_scale;
+
+            // compute the parameters for the Pacejka ’94 formula
+            float Fz = normal_load;
+            float C = b0;
+            float D = Fz * (b1 * Fz + b2);
+            float BCD = (b3 * Fz * Fz + b4 * Fz) * exp(-b5 * Fz);
+            float B = BCD / (C * D);
+            float E = (b6 * Fz * Fz + b7 * Fz + b8) * (1 - b13 * Math::Helper::Sign(slip + (b9 * Fz + b10)));
+            float H = b9 * Fz + b10;
+            float V = b11 * Fz + b12;
+            float Bx1 = B * (slip + H);
+
+            // pacejka ’94 longitudinal formula
+            float force = D * sin(C * atan(Bx1 - E * (Bx1 - atan(Bx1)))) + V;
+
+            // convert back to newtons
+            return force * 1000.0f;
         }
-    
+
         void compute_tire_force(btWheelInfo* wheel_info, const btVector3& wheel_velocity, const btVector3& vehicle_velocity, btVector3* force, btVector3* force_position)
         {
             // compute wheel directions
@@ -156,18 +175,17 @@ namespace Spartan
             btVector3 wheel_right_dir   = compute_wheel_direction_right(wheel_info);
 
             // a measure of how much a wheel is slipping along the direction of the vehicle travel, and it's typically concerned with the longitudinal axis of the vehicle
-            float slip_ratio        = compute_slip_ratio(wheel_info, wheel_forward_dir, vehicle_velocity);
+            float slip_ratio        = compute_slip_ratio(wheel_info, wheel_forward_dir, wheel_velocity, vehicle_velocity);
             // the angle between the direction in which a wheel is pointed and the direction in which the vehicle is actually traveling
             float slip_angle         = compute_slip_angle(wheel_info, wheel_forward_dir, wheel_right_dir, vehicle_velocity);
             // the force that the tire can exert parallel to its direction of travel
             float slip_force_forward = compute_pacejka_force(slip_ratio, wheel_info->m_wheelsSuspensionForce);
             // the force that the tire can exert perpendicular to its direction of travel
             float slip_force_side    = compute_pacejka_force(slip_angle, wheel_info->m_wheelsSuspensionForce);
+            // compute the total force
+            btVector3 wheel_force    = (slip_force_forward * wheel_forward_dir) + (slip_force_side * wheel_right_dir);
 
-            //SP_LOG_INFO("slip_ratio: %.2f, slip_angle: %.2f, pacejka forward: %.2f, pacejka side: %.2f", slip_ratio, slip_angle, slip_force_forward, slip_force_side);
-            btVector3 wheel_force = (0.0f * wheel_forward_dir) + (0.0f * wheel_right_dir);
-
-            *force          = btVector3(wheel_force.x(), 0.0f, wheel_force.z()) * 0.1f;
+            *force          = btVector3(wheel_force.x(), 0.0f, wheel_force.z());
             *force_position = wheel_info->m_raycastInfo.m_contactPointWS;
         }
     }
@@ -360,15 +378,11 @@ namespace Spartan
                 btVector3 velocity_wheel   = tire_friction_model::compute_wheel_velocity(wheel_info, m_vehicle_chassis);
                 btVector3 velocity_vehicle = btVector3(m_vehicle_chassis->getLinearVelocity().x(), 0.0f, m_vehicle_chassis->getLinearVelocity().z());
 
-                // only process wheels which are moving, this prevents the normalized wheel velocity from being a fuzzy zero vector
-                if (velocity_wheel.length2() > tire_friction_model::fuzzy_threshold * tire_friction_model::fuzzy_threshold)
-                {
-                    // compute the tire force exerted onto the body
-                    tire_friction_model::compute_tire_force(wheel_info, velocity_wheel, velocity_vehicle, &force, &force_position);
+                // compute the tire force exerted onto the body
+                tire_friction_model::compute_tire_force(wheel_info, velocity_wheel, velocity_vehicle, &force, &force_position);
 
-                    // apply that force to the chassis at the correct position
-                    m_vehicle_chassis->applyForce(force, force_position);
-                }
+                // apply that force to the chassis at the correct position
+                m_vehicle_chassis->applyForce(force, force_position);
             }
         }
     }
