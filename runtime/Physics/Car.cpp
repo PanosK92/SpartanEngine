@@ -42,7 +42,7 @@ namespace Spartan
     {
         // 1. units are expressed in SI units (meters, newtons etc.)
 
-        constexpr float torque_max             = 20000.0f;                 // maximum torque applied to wheels in newtons
+        constexpr float torque_max             = 10000.0f;                 // maximum torque applied to wheels in newtons
         constexpr float tire_friction          = 0.99f;                    // coefficient of friction for tires, near 1 for high friction
         constexpr float wheel_radius           = 0.6f;                     // radius of the wheel
         constexpr float brake_force_max        = 2000.0f;                  // maximum brake force applied to wheels in newtons
@@ -54,6 +54,7 @@ namespace Spartan
         constexpr float suspension_length      = 0.35f;                    // spring length
         constexpr float suspension_rest_length = suspension_length * 0.8f; // spring length at equilibrium
         constexpr float suspension_travel_max  = suspension_length * 0.5f; // maximum travel of the suspension
+        constexpr float aerodynamic_downforce  = 0.5f;
     }
 
     namespace tire_friction_model
@@ -146,7 +147,7 @@ namespace Spartan
 
             // coefficients from the pacejka '94 model
             // reference: https://www.edy.es/dev/docs/pacejka-94-parameters-explained-a-comprehensive-guide/
-            float coef_scale = 0.09f; // this is empirically chosen as the coefficients I found, while correct, they must be a couple of orders of magnitude different than what bullet expects
+            float coef_scale = 0.08f; // this is empirically chosen as the coefficients I found, while correct, they must be a couple of orders of magnitude different than what bullet expects
             float b0 = 1.5f * coef_scale, b1 = 0.0f * coef_scale, b2 = 1.1f * coef_scale,  b3 = 0.0f * coef_scale, b4  = 3.0f * coef_scale, b5  = 0.0f * coef_scale;
             float b6 = 0.0f * coef_scale, b7 = 0.0f * coef_scale, b8 = -2.0f * coef_scale, b9 = 0.0f * coef_scale, b10 = 0.0f * coef_scale, b11 = 0.0f * coef_scale, b12 = 0.0f * coef_scale, b13 = 0.0f * coef_scale;
 
@@ -228,10 +229,10 @@ namespace Spartan
                 const float extent_forward  = 2.5f;
                 const float extent_sideways = 1.5f;
 
-                wheel_positions[0] = btVector3(-extent_sideways, -tuning::suspension_length, extent_forward - 0.05f);  // front-left
-                wheel_positions[1] = btVector3(extent_sideways, -tuning::suspension_length, extent_forward - 0.05f);   // front-right
+                wheel_positions[0] = btVector3(-extent_sideways, -tuning::suspension_length,  extent_forward - 0.05f); // front-left
+                wheel_positions[1] = btVector3( extent_sideways, -tuning::suspension_length,  extent_forward - 0.05f); // front-right
                 wheel_positions[2] = btVector3(-extent_sideways, -tuning::suspension_length, -extent_forward + 0.15f); // rear-left
-                wheel_positions[3] = btVector3(extent_sideways, -tuning::suspension_length, -extent_forward + 0.15f);  // rear-right
+                wheel_positions[3] = btVector3( extent_sideways, -tuning::suspension_length, -extent_forward + 0.15f); // rear-right
             }
 
             // add the wheels to the vehicle
@@ -332,6 +333,13 @@ namespace Spartan
 
         // apply forces
         {
+            // aerodynamic downforce (important for the wheels to deliverer the correct amount of torque)
+            float speed_kmh = GetSpeedKmHour();
+            float speed_mps = speed_kmh * (1000.0f / 3600.0f);
+            float downforce = tuning::aerodynamic_downforce * speed_mps * speed_mps;
+            btVector3 downforce_vector(0, -downforce, 0); // assuming Y-axis is up
+            m_vehicle_chassis->applyCentralForce(downforce_vector);
+
             if (m_wants_to_reverse)
             {
                 // ramp up breaking force
