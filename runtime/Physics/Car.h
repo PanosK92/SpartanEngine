@@ -51,13 +51,14 @@ namespace Spartan
 
     private:
         void Control();
-        void ApplyTireForcesToChassis();
+        void ApplyTireForces();
         void UpdateTransforms();
 
         float m_torque_newtons                        = 0.0f;
         float m_steering_angle_radians                = 0.0f;
         float m_break_force                           = 0.0f;
         bool m_wants_to_reverse                       = false;
+        bool m_is_at_rest                            = true;
         btRaycastVehicle* m_vehicle                   = nullptr;
         Transform* m_vehicle_steering_wheel_transform = nullptr;
         btRigidBody* m_vehicle_chassis                = nullptr;
