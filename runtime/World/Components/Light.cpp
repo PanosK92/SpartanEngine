@@ -207,7 +207,6 @@ namespace Spartan
             m_temperature_kelvin = 5500.0f;
     }
 
-
     void Light::SetIntensity(const LightIntensity intensity)
     {
         m_intensity = intensity;
@@ -292,7 +291,6 @@ namespace Spartan
         // watts can be multiplied by the camera's exposure to get the final intensity
         return power_watts * camera->GetExposure();
     }
-
 
     void Light::SetShadowsEnabled(bool cast_shadows)
     {
@@ -409,7 +407,7 @@ namespace Spartan
         if (m_shadow_map.slices.empty())
             return;
 
-        // Can happen during the first frame, don't log error
+        // can happen during the first frame, don't log error
         if (!Renderer::GetCamera())
             return;
 
