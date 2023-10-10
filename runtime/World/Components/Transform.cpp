@@ -215,32 +215,32 @@ namespace Spartan
 
     Vector3 Transform::GetUp() const
     {
-        return GetRotationLocal() * Vector3::Up;
+        return GetRotation() * Vector3::Up;
     }
 
     Vector3 Transform::GetDown() const
     {
-        return GetRotationLocal() * Vector3::Down;
+        return GetRotation() * Vector3::Down;
     }
 
     Vector3 Transform::GetForward() const
     {
-        return GetRotationLocal() * Vector3::Forward;
+        return GetRotation() * Vector3::Forward;
     }
 
     Vector3 Transform::GetBackward() const
     {
-        return GetRotationLocal() * Vector3::Backward;
+        return GetRotation() * Vector3::Backward;
     }
 
     Vector3 Transform::GetRight() const
     {
-        return GetRotationLocal() * Vector3::Right;
+        return GetRotation() * Vector3::Right;
     }
 
     Vector3 Transform::GetLeft() const
     {
-        return GetRotationLocal() * Vector3::Left;
+        return GetRotation() * Vector3::Left;
     }
 
     Transform* Transform::GetChildByIndex(const uint32_t index)
