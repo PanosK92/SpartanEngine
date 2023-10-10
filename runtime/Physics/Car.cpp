@@ -42,7 +42,9 @@ namespace Spartan
     {
         // 1. units are expressed in SI units (meters, newtons etc.)
 
-        constexpr float torque_max             = 10000.0f;                 // maximum torque applied to wheels in newtons
+        constexpr float torque                 = 10000.0f;                 // direct torque until we simulate a gearbox with a nice torque curve
+        constexpr float top_speed_kmh          = 60.0f;                    // a hard limit to keep the direct torque in check
+        constexpr float aerodynamic_downforce  = 0.5f;                     // the faster the vehicle, the more the tires will grip the road
         constexpr float tire_friction          = 0.99f;                    // coefficient of friction for tires, near 1 for high friction
         constexpr float wheel_radius           = 0.6f;                     // radius of the wheel
         constexpr float brake_force_max        = 2000.0f;                  // maximum brake force applied to wheels in newtons
@@ -54,7 +56,6 @@ namespace Spartan
         constexpr float suspension_length      = 0.35f;                    // spring length
         constexpr float suspension_rest_length = suspension_length * 0.8f; // spring length at equilibrium
         constexpr float suspension_travel_max  = suspension_length * 0.5f; // maximum travel of the suspension
-        constexpr float aerodynamic_downforce  = 0.5f;
     }
 
     namespace tire_friction_model
@@ -290,29 +291,37 @@ namespace Spartan
     {
         float delta_time_sec = static_cast<float>(Timer::GetDeltaTimeSec());
         bool handbrake       = Input::GetKey(KeyCode::Space);
+        float speed_kmh      = GetSpeedKmHour();
 
         // compute torque
-        if (Input::GetKey(KeyCode::Arrow_Up) || Input::GetControllerTriggerRight() != 0.0f)
+        if (speed_kmh >= tuning::top_speed_kmh)
         {
-            m_torque_newtons   = -tuning::torque_max;
-            m_wants_to_reverse = false;
-        }
-        else if ((Input::GetKey(KeyCode::Arrow_Down) || Input::GetControllerTriggerLeft() != 0.0f))
-        {
-            if (GetSpeedKmHour() > 1.0f)
-            {
-                m_wants_to_reverse = true;
-            }
-            else
-            {
-                m_torque_newtons   = tuning::torque_max;
-                m_wants_to_reverse = false;
-            }
+            m_torque_newtons = 0.0f;
         }
         else
         {
-            m_torque_newtons   = 0.0f;
-            m_wants_to_reverse = false;
+            if (Input::GetKey(KeyCode::Arrow_Up) || Input::GetControllerTriggerRight() != 0.0f)
+            {
+                m_torque_newtons   = -tuning::torque;
+                m_wants_to_reverse = false;
+            }
+            else if ((Input::GetKey(KeyCode::Arrow_Down) || Input::GetControllerTriggerLeft() != 0.0f))
+            {
+                if (GetSpeedKmHour() > 1.0f)
+                {
+                    m_wants_to_reverse = true;
+                }
+                else
+                {
+                    m_torque_newtons   = tuning::torque;
+                    m_wants_to_reverse = false;
+                }
+            }
+            else
+            {
+                m_torque_newtons  = 0.0f;
+                m_wants_to_reverse = false;
+            }
         }
 
         // compute steering angle
@@ -333,7 +342,7 @@ namespace Spartan
 
         // apply forces
         {
-            // aerodynamic downforce (important for the wheels to deliverer the correct amount of torque)
+            // aerodynamic downforce
             float speed_kmh = GetSpeedKmHour();
             float speed_mps = speed_kmh * (1000.0f / 3600.0f);
             float downforce = tuning::aerodynamic_downforce * speed_mps * speed_mps;
@@ -355,6 +364,8 @@ namespace Spartan
                 // torque
                 m_vehicle->applyEngineForce(m_torque_newtons, 0);
                 m_vehicle->applyEngineForce(m_torque_newtons, 1);
+                //m_vehicle->applyEngineForce(m_torque_newtons, 2);
+                //m_vehicle->applyEngineForce(m_torque_newtons, 3);
 
                 // ramp down breaking force
                 m_break_force = Math::Helper::Max<float>(m_break_force - tuning::brake_ramp_speed * delta_time_sec, 0.0f);
