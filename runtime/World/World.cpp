@@ -766,7 +766,7 @@ namespace Spartan
         create_default_car();
 
         Engine::AddFlag(EngineMode::Game);
-        SP_LOG_INFO("Use the arrow keys to drive the car and space to break!");
+        SP_LOG_INFO("Use the arrow keys to drive the car and space for handbreak!");
     }
 
     void World::CreateDefaultWorldTerrain()

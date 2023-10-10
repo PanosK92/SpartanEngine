@@ -42,7 +42,7 @@ namespace Spartan
     {
         // 1. units are expressed in SI units (meters, newtons etc.)
 
-        constexpr float torque                 = 10000.0f;                 // direct torque until we simulate a gearbox with a nice torque curve
+        constexpr float torque                 = 5000.0f;                 // direct torque until we simulate a gearbox with a nice torque curve
         constexpr float top_speed_kmh          = 60.0f;                    // a hard limit to keep the direct torque in check
         constexpr float aerodynamic_downforce  = 0.5f;                     // the faster the vehicle, the more the tires will grip the road
         constexpr float tire_friction          = 0.99f;                    // coefficient of friction for tires, near 1 for high friction
@@ -148,7 +148,7 @@ namespace Spartan
 
             // coefficients from the pacejka '94 model
             // reference: https://www.edy.es/dev/docs/pacejka-94-parameters-explained-a-comprehensive-guide/
-            float coef_scale = 0.08f; // this is empirically chosen as the coefficients I found, while correct, they must be a couple of orders of magnitude different than what bullet expects
+            float coef_scale = 0.07f; // this is empirically chosen as the coefficients I found, while correct, they must be a couple of orders of magnitude different than what bullet expects
             float b0 = 1.5f * coef_scale, b1 = 0.0f * coef_scale, b2 = 1.1f * coef_scale,  b3 = 0.0f * coef_scale, b4  = 3.0f * coef_scale, b5  = 0.0f * coef_scale;
             float b6 = 0.0f * coef_scale, b7 = 0.0f * coef_scale, b8 = -2.0f * coef_scale, b9 = 0.0f * coef_scale, b10 = 0.0f * coef_scale, b11 = 0.0f * coef_scale, b12 = 0.0f * coef_scale, b13 = 0.0f * coef_scale;
 
@@ -364,8 +364,8 @@ namespace Spartan
                 // torque
                 m_vehicle->applyEngineForce(m_torque_newtons, 0);
                 m_vehicle->applyEngineForce(m_torque_newtons, 1);
-                //m_vehicle->applyEngineForce(m_torque_newtons, 2);
-                //m_vehicle->applyEngineForce(m_torque_newtons, 3);
+                m_vehicle->applyEngineForce(m_torque_newtons, 2);
+                m_vehicle->applyEngineForce(m_torque_newtons, 3);
 
                 // ramp down breaking force
                 m_break_force = Math::Helper::Max<float>(m_break_force - tuning::brake_ramp_speed * delta_time_sec, 0.0f);
