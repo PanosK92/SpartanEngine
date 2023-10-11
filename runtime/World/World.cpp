@@ -871,7 +871,7 @@ namespace Spartan
                         material->SetProperty(MaterialProperty::IsWater,             1.0f);
                         material->SetProperty(MaterialProperty::ColorA,              70.0f / 255.0f);
                         material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.2f); // just a bit of roughness to diffuse the sun a little
-                        material->SetProperty(MaterialProperty::NormalMultiplier,    1.0f);
+                        material->SetProperty(MaterialProperty::NormalMultiplier,    0.3f);
                         material->SetProperty(MaterialProperty::UvTilingX,           500.0f);
                         material->SetProperty(MaterialProperty::UvTilingY,           500.0f);
 

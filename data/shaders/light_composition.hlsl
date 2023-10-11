@@ -56,7 +56,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     float4 color = float4(0.0f, 0.0f, 0.0f, 1.0f);
 
-    // draw the sky
+    // sky
     if (surface.is_sky()) 
     {
         color.rgb += tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(surface.camera_to_pixel), 0).rgb;
@@ -64,27 +64,28 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     }
     else // everything else
     {
-        // light - diffuse and Specular
+        // diffuse and specular
         float3 light_diffuse  = tex_light_diffuse[thread_id.xy].rgb;
         float3 light_specular = tex_light_specular[thread_id.xy].rgb;
 
-        // light - refraction
+        // refraction
         float3 light_refraction = 0.0f;
         if (surface.is_transparent())
         {
             float ior        = 1.33; // water
-            float scale      = 1.0f;
+            float scale      = 0.1f;
             float depth_bias = 0.02f;
-            light_refraction = refraction(surface, ior, scale, 0.02f); 
+            light_refraction = refraction(surface, ior, scale, depth_bias); 
         }
         
-        // compose everything
+        // compose
         float3 light_ds = (light_diffuse + surface.gi) * surface.albedo + light_specular;
         color.rgb       += lerp(light_ds, light_refraction, 1.0f - surface.alpha);
     }
 
-    // add volumetric fog
+    // volumetric fog
     color.rgb += tex_light_volumetric[thread_id.xy].rgb;
 
     tex_uav[thread_id.xy] = saturate_16(color);
 }
+
