@@ -64,6 +64,7 @@ namespace Spartan
         // asset resources
         array<shared_ptr<RHI_Texture>, 10> m_standard_textures;
         array<shared_ptr<Mesh>, 6>         m_standard_meshes;
+        array<shared_ptr<Font>, 5> m_fonts; // as many as m_resources_frame_lifetime
     }
 
     void Renderer::CreateConstantBuffers()
@@ -71,13 +72,13 @@ namespace Spartan
         #define constant_buffer(x) m_constant_buffers[static_cast<uint8_t>(x)]
 
         constant_buffer(Renderer_ConstantBuffer::Frame) = make_shared<RHI_ConstantBuffer>(string("frame"));
-        constant_buffer(Renderer_ConstantBuffer::Frame)->Create<Cb_Frame>(m_frames_in_flight);
+        constant_buffer(Renderer_ConstantBuffer::Frame)->Create<Cb_Frame>(m_resources_frame_lifetime);
 
         constant_buffer(Renderer_ConstantBuffer::Light) = make_shared<RHI_ConstantBuffer>(string("light"));
-        constant_buffer(Renderer_ConstantBuffer::Light)->Create<Cb_Light>(1600 * m_frames_in_flight);
+        constant_buffer(Renderer_ConstantBuffer::Light)->Create<Cb_Light>(1600 * m_resources_frame_lifetime);
 
         constant_buffer(Renderer_ConstantBuffer::Material) = make_shared<RHI_ConstantBuffer>(string("material"));
-        constant_buffer(Renderer_ConstantBuffer::Material)->Create<Cb_Material>(30000 * m_frames_in_flight);
+        constant_buffer(Renderer_ConstantBuffer::Material)->Create<Cb_Material>(30000 * m_resources_frame_lifetime);
     }
 
     void Renderer::CreateStructuredBuffers()
@@ -463,11 +464,15 @@ namespace Spartan
 
     void Renderer::CreateFonts()
     {
-        // Get standard font directory
+        // get standard font directory
         const string dir_font = ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts) + "\\";
 
-        // Load a font (used for performance metrics)
-        m_font = make_unique<Font>(dir_font + "CalibriBold.ttf", static_cast<uint32_t>(13 * Window::GetDpiScale()), Vector4(0.8f, 0.8f, 0.8f, 1.0f));
+        // load a font
+        for (uint32_t i = 0; i < 5; i++) // as many as m_resources_frame_lifetime
+        {
+            // ResourceCache will ensure that the font resource is only loaded once
+            m_fonts[i] = make_shared<Font>(dir_font + "CalibriBold.ttf", static_cast<uint32_t>(13 * Window::GetDpiScale()), Vector4(0.8f, 0.8f, 0.8f, 1.0f));
+        }
     }
 
     void Renderer::CreateStandardMeshes()
@@ -579,6 +584,7 @@ namespace Spartan
         m_standard_meshes.fill(nullptr);
         m_constant_buffers.fill(nullptr);
         m_structured_buffer = nullptr;
+        m_fonts.fill(nullptr);
     }
 
     array<shared_ptr<RHI_Texture>, 28>& Renderer::GetRenderTargets()
@@ -644,5 +650,10 @@ namespace Spartan
     shared_ptr<Mesh> Renderer::GetStandardMesh(const Renderer_MeshType type)
     {
         return m_standard_meshes[static_cast<uint8_t>(type)];
+    }
+
+    shared_ptr<Font> Renderer::GetFont()
+    {
+        return m_fonts[m_resource_index];
     }
 }

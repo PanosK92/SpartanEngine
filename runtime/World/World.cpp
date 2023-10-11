@@ -811,7 +811,7 @@ namespace Spartan
         SP_LOG_INFO("Use the arrow keys to steer the car and space for handbreak!");
     }
 
-    void World::CreateDefaultWorldTerrain()
+    void World::CreateDefaultWorldForest()
     {
         Vector3 camera_position = Vector3(6.9900f, 25.0f, 332.4628f);
         Vector3 camera_rotation = Vector3(0.0f, 180.0f, 0.0f);
@@ -869,6 +869,7 @@ namespace Spartan
                         material->SetColor(Color(0.0f, 48.0f / 255.0f, 75.0f / 255.0f));
                         material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\water_normal_2.jpeg");
                         material->SetProperty(MaterialProperty::IsWater,             1.0f);
+                        material->SetProperty(MaterialProperty::ColorA,              60.0f / 255.0f);
                         material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.15f); // just a bit of roughness to diffuse the sun a little
                         material->SetProperty(MaterialProperty::NormalMultiplier,    0.13f);
                         material->SetProperty(MaterialProperty::UvTilingX,           500.0f);

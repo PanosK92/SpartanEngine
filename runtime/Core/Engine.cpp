@@ -56,6 +56,7 @@ namespace Spartan
         // initialize systems
         Stopwatch timer_initialize;
         {
+            Log::Initialize();
             FontImporter::Initialize();
             ImageImporterExporter::Initialize();
             ModelImporter::Initialize();

@@ -54,7 +54,6 @@ namespace Spartan
     Cb_Light Renderer::m_cb_light_cpu;
     Cb_Material Renderer::m_cb_material_cpu;
     shared_ptr<RHI_VertexBuffer> Renderer::m_vertex_buffer_lines;
-    unique_ptr<Font> Renderer::m_font;
     unique_ptr<Grid> Renderer::m_world_grid;
     vector<RHI_Vertex_PosCol> Renderer::m_line_vertices;
     vector<float> Renderer::m_lines_duration;
@@ -63,7 +62,7 @@ namespace Spartan
     bool Renderer::m_brdf_specular_lut_rendered;
     RHI_CommandPool* Renderer::m_cmd_pool = nullptr;
     shared_ptr<Camera> Renderer::m_camera = nullptr;
-    vector<pair<string, Math::Vector2>> Renderer::m_texts;
+    uint32_t Renderer::m_resource_index = 0;
 
     namespace
     {
@@ -96,7 +95,6 @@ namespace Spartan
         const uint32_t resolution_shadow_min     = 128;
         float near_plane                         = 0.0f;
         float far_plane                          = 1.0f;
-        uint32_t buffers_frames_since_last_reset = 0;
         bool dirty_orthographic_projection       = true;
 
         void sort_renderables(Camera* camera, vector<shared_ptr<Entity>>* renderables, const bool are_transparent)
@@ -136,8 +134,6 @@ namespace Spartan
 
         // RHI initialization
         {
-            RHI_Context::Initialize();
-
             if (RHI_Context::renderdoc)
             {
                 RenderDoc::OnPreDeviceCreation();
@@ -243,10 +239,6 @@ namespace Spartan
 
     void Renderer::Shutdown()
     {
-        // console doesn't render anymore, log to file
-        Log::SetLogToFile(true);
-
-        // Fire event
         SP_FIRE_EVENT(EventType::RendererOnShutdown);
 
         // Manually invoke the deconstructors so that ParseDeletionQueue(), releases their RHI resources.
@@ -256,7 +248,6 @@ namespace Spartan
             m_entities_to_add.clear();
             m_renderables.clear();
             m_world_grid.reset();
-            m_font.reset();
             swap_chain            = nullptr;
             m_vertex_buffer_lines = nullptr;
             environment_texture   = nullptr;
@@ -275,11 +266,8 @@ namespace Spartan
         if (Window::IsMinimised())
             return;
 
-        // after the first frame has completed, we know the renderer is working
-        // we stop logging to a file and we start logging to the on-screen console
         if (frame_num == 1)
         {
-            Log::SetLogToFile(false);
             SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
         }
 
@@ -293,18 +281,18 @@ namespace Spartan
 
         // reset buffer offsets
         {
-            if (buffers_frames_since_last_reset == m_frames_in_flight)
+            m_resource_index++;
+
+            if (m_resource_index == m_resources_frame_lifetime)
             {
+                m_resource_index = 0;
+
                 for (shared_ptr<RHI_ConstantBuffer> constant_buffer : GetConstantBuffers())
                 {
                     constant_buffer->ResetOffset();
                 }
                 GetStructuredBuffer()->ResetOffset();
-
-                buffers_frames_since_last_reset = true;
             }
-
-            buffers_frames_since_last_reset++;
         }
 
         RHI_Device::Tick(frame_num);
@@ -738,7 +726,6 @@ namespace Spartan
 
     void Renderer::OnFrameEnd(RHI_CommandList* cmd_list)
     {
-        m_texts.clear();
         Lines_OnFrameEnd();
     }
 
@@ -753,9 +740,9 @@ namespace Spartan
         environment_texture = environment->GetTexture();
     }
 
-	void Renderer::DrawString(const string& text, const Vector2& position_screen)
+	void Renderer::DrawString(const string& text, const Vector2& position_screen_percentage)
 	{
-        m_texts.push_back(make_pair(text, position_screen));
+        GetFont()->AddText(text, position_screen_percentage);
 	}
 
 	void Renderer::SetOption(Renderer_Option option, float value)
@@ -936,7 +923,7 @@ namespace Spartan
         return m_renderables;
     }
 
-    void Renderer::BindTexturesGfbuffer(RHI_CommandList* cmd_list)
+	void Renderer::BindTexturesGfbuffer(RHI_CommandList* cmd_list)
     {
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,            GetRenderTarget(Renderer_RenderTexture::gbuffer_albedo));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,            GetRenderTarget(Renderer_RenderTexture::gbuffer_normal));

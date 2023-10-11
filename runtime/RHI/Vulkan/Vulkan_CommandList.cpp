@@ -1009,6 +1009,7 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(buffer != nullptr);
+        SP_ASSERT(buffer->GetRhiResource() != nullptr);
 
         if (m_vertex_buffer_id == buffer->GetObjectId())
             return;
@@ -1032,6 +1033,7 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(buffer != nullptr);
+        SP_ASSERT(buffer->GetRhiResource() != nullptr);
 
         if (m_index_buffer_id == buffer->GetObjectId())
             return;
