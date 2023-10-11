@@ -16,15 +16,12 @@
 [![Discord](https://img.shields.io/discord/677302405263785986?label=Discord)](https://discord.gg/TG5r2BS)
 
 # Media
-#### Videos
-Livestream of FSR 2 integration | A demonstration of the engine's capabilities (old)
-:-: | :-:
-[![Image1](https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/readme_1.4.jpg)](https://www.youtube.com/watch?v=QhyMal6RY7M)| [![Image2](https://i.imgur.com/j6zIEI9.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
 
-#### Screenshots
-Bistro | Minecraft
-:-: | :-:
-<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/readme_1.1.jpg"/> | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/readme_1.2.jpg"/>
+| Video: Livestream of FSR 2 integration | Video: A demonstration of the engine's capabilities (old) |
+|:-:|:-:|
+| [![Image1](https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/readme_1.4.jpg)](https://www.youtube.com/watch?v=QhyMal6RY7M) | [![Image2](https://i.imgur.com/j6zIEI9.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo) |
+| Screenshot: Bistro | Screenshot: Minecraft |
+| <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/readme_1.1.jpg"/> | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/readme_1.2.jpg"/> |
 
 # Worlds
 <img align="left" width="450" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_selection.png"/>
