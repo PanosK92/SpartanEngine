@@ -289,8 +289,8 @@ namespace Spartan
                 {
                     PhysicsBody* physics_body = entity_root->AddComponent<PhysicsBody>().get();
                     physics_body->SetBodyType(PhysicsBodyType::Vehicle);
-                    physics_body->SetCenterOfMass(Vector3(0.0f, 1.1f, 0.0f));
-                    physics_body->SetBoundingBox(Vector3(3.0f, 1.3f, 8.4f));
+                    physics_body->SetCenterOfMass(Vector3(0.0f, 1.1f, -0.1f));
+                    physics_body->SetBoundingBox(Vector3(3.0f, 1.4f, 8.0f));
                     physics_body->SetRestitution(0.1f);
                     physics_body->SetFriction(0.6f);
                     physics_body->SetFrictionRolling(0.01f);
@@ -808,7 +808,7 @@ namespace Spartan
         create_default_car();
 
         Engine::AddFlag(EngineMode::Game);
-        SP_LOG_INFO("Use the arrow keys to drive the car and space for handbreak!");
+        SP_LOG_INFO("Use the arrow keys to steer the car and space for handbreak!");
     }
 
     void World::CreateDefaultWorldTerrain()
