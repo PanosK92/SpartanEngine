@@ -42,16 +42,16 @@ namespace Spartan
     {
         // 1. units are expressed in SI units (meters, newtons etc.)
 
-        constexpr float torque                 = 5000.0f;                 // direct torque until we simulate a gearbox with a nice torque curve
-        constexpr float top_speed_kmh          = 60.0f;                    // a hard limit to keep the direct torque in check
+        constexpr float torque                 = 4000.0f;                  // direct torque until we simulate a gearbox with a nice torque curve
+        constexpr float top_speed_kmh          = 120.0f;                   // a hard limit to keep the direct torque in check
         constexpr float aerodynamic_downforce  = 0.5f;                     // the faster the vehicle, the more the tires will grip the road
-        constexpr float tire_friction          = 0.99f;                    // coefficient of friction for tires, near 1 for high friction
+        constexpr float tire_friction          = 4.0f;                     // coefficient of friction for tires
         constexpr float wheel_radius           = 0.6f;                     // radius of the wheel
         constexpr float brake_force_max        = 2000.0f;                  // maximum brake force applied to wheels in newtons
         constexpr float brake_ramp_speed       = 100.0f;                   // rate at which brake force increases
-        constexpr float suspension_stiffness   = 30.0f;                    // stiffness of suspension springs in N/m
-        constexpr float suspension_damping     = 1.0f;                     // damping coefficient to dissipate energy
-        constexpr float suspension_compression = 0.83f;                    // compression damping coefficient
+        constexpr float suspension_stiffness   = 50.0f;                    // stiffness of suspension springs in N/m
+        constexpr float suspension_damping     = 2.0f;                     // damping coefficient to dissipate energy
+        constexpr float suspension_compression = 1.0f;                     // compression damping coefficient
         constexpr float suspension_force_max   = 10000.0f;                 // maximum force suspension can exert in newtons
         constexpr float suspension_length      = 0.35f;                    // spring length
         constexpr float suspension_rest_length = suspension_length * 0.8f; // spring length at equilibrium
@@ -148,7 +148,7 @@ namespace Spartan
 
             // coefficients from the pacejka '94 model
             // reference: https://www.edy.es/dev/docs/pacejka-94-parameters-explained-a-comprehensive-guide/
-            float coef_scale = 0.07f; // this is empirically chosen as the coefficients I found, while correct, they must be a couple of orders of magnitude different than what bullet expects
+            float coef_scale = 0.25f; // this is empirically chosen as the coefficients I found, while correct, they must be a couple of orders of magnitude different than what bullet expects
             float b0 = 1.5f * coef_scale, b1 = 0.0f * coef_scale, b2 = 1.1f * coef_scale,  b3 = 0.0f * coef_scale, b4  = 3.0f * coef_scale, b5  = 0.0f * coef_scale;
             float b6 = 0.0f * coef_scale, b7 = 0.0f * coef_scale, b8 = -2.0f * coef_scale, b9 = 0.0f * coef_scale, b10 = 0.0f * coef_scale, b11 = 0.0f * coef_scale, b12 = 0.0f * coef_scale, b13 = 0.0f * coef_scale;
 
@@ -329,11 +329,11 @@ namespace Spartan
         {
             if (Input::GetKey(KeyCode::Arrow_Left) || Input::GetControllerThumbStickLeft().x < 0.0f)
             {
-                steering_angle_target = -45.0f * Math::Helper::DEG_TO_RAD;
+                steering_angle_target = -40.0f * Math::Helper::DEG_TO_RAD;
             }
             else if (Input::GetKey(KeyCode::Arrow_Right) || Input::GetControllerThumbStickLeft().x > 0.0f)
             {
-                steering_angle_target = 45.0f * Math::Helper::DEG_TO_RAD;
+                steering_angle_target = 40.0f * Math::Helper::DEG_TO_RAD;
             }
 
             const float return_speed = 5.0f;
@@ -361,11 +361,9 @@ namespace Spartan
             }
             else
             {
-                // torque
-                m_vehicle->applyEngineForce(m_torque_newtons, 0);
-                m_vehicle->applyEngineForce(m_torque_newtons, 1);
-                m_vehicle->applyEngineForce(m_torque_newtons, 2);
-                m_vehicle->applyEngineForce(m_torque_newtons, 3);
+                // torque (front-wheel drive)
+                m_vehicle->applyEngineForce(m_torque_newtons, 0); // front-left
+                m_vehicle->applyEngineForce(m_torque_newtons, 1); // front-right
 
                 // ramp down breaking force
                 m_break_force = Math::Helper::Max<float>(m_break_force - tuning::brake_ramp_speed * delta_time_sec, 0.0f);
