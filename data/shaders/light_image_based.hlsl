@@ -105,7 +105,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     // IBL - Diffuse
     float3 diffuse_energy = compute_diffuse_energy(specular_energy, surface.metallic); // Used to town down diffuse such as that only non metals have it
     float3 ibl_diffuse    = sample_environment(direction_sphere_uv(surface.normal), ENVIRONMENT_MAX_MIP) * surface.albedo.rgb * light_ambient * diffuse_energy;
-    ibl_diffuse           *= surface.alpha; // Fade out for transparents
 
     // IBL - Specular
     const float3 reflection            = reflect(surface.camera_to_pixel, surface.normal);
@@ -166,6 +165,9 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         ibl *= surface.occlusion;
     }
 
+    // fade out for transparents
+    ibl *= surface.alpha;
+    
     // fog
     float3 fog = get_fog_factor(surface.position, buffer_frame.camera_position.xyz);
     ibl += fog;
