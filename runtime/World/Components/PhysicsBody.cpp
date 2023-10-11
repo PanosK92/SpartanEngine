@@ -61,7 +61,7 @@ namespace Spartan
         constexpr float k_default_mass              = 1.0f;
         constexpr float k_default_restitution       = 0.0f;
         constexpr float k_default_friction          = 0.5f;
-        constexpr float k_default_friction_rolling  = 0.5f;
+        constexpr float k_default_friction_rolling  = 0.0f;
     }
 
     #define shape static_cast<btCollisionShape*>(m_shape)

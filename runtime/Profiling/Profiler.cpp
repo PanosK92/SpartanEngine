@@ -37,7 +37,7 @@ using namespace std;
 
 namespace Spartan
 {
-    // metrics - rhiI
+    // metrics - rhi
     uint32_t Profiler::m_rhi_draw                       = 0;
     uint32_t Profiler::m_rhi_dispatch                   = 0;
     uint32_t Profiler::m_rhi_bindings_buffer_index      = 0;
@@ -82,42 +82,42 @@ namespace Spartan
     namespace
     {
         // profiling options
-        static const uint32_t initial_capacity     = 256;
-        static bool profiling_enabled              = false;
-        static bool profile_cpu                    = true;
-        static bool profile_gpu                    = true;
-        static float profiling_interval_sec        = 0.25f;
-        static float time_since_profiling_sec      = profiling_interval_sec;
+        const uint32_t initial_capacity     = 256;
+        bool profiling_enabled              = false;
+        bool profile_cpu                    = true;
+        bool profile_gpu                    = true;
+        float profiling_interval_sec        = 0.25f;
+        float time_since_profiling_sec      = profiling_interval_sec;
 
-        static const uint32_t frames_to_accumulate = 30;
-        static const float weight_delta            = 1.0f / static_cast<float>(frames_to_accumulate);
-        static const float weight_history          = (1.0f - weight_delta);
+        const uint32_t frames_to_accumulate = 30;
+        const float weight_delta            = 1.0f / static_cast<float>(frames_to_accumulate);
+        const float weight_history          = (1.0f - weight_delta);
 
         // time blocks (double buffered)
-        static int m_time_block_index = -1;
-        static vector<TimeBlock> m_time_blocks_write;
-        static vector<TimeBlock> m_time_blocks_read;
+        int m_time_block_index = -1;
+        vector<TimeBlock> m_time_blocks_write;
+        vector<TimeBlock> m_time_blocks_read;
 
         // fps
-        static float m_fps = 0.0f;
+        float m_fps = 0.0f;
 
         // gpu
-        static string gpu_name               = "N/A";
-        static string gpu_driver             = "N/A";
-        static string gpu_api                = "N/A";
-        static uint32_t gpu_memory_available = 0;
-        static uint32_t gpu_memory_used      = 0;
+        string gpu_name               = "N/A";
+        string gpu_driver             = "N/A";
+        string gpu_api                = "N/A";
+        uint32_t gpu_memory_available = 0;
+        uint32_t gpu_memory_used      = 0;
 
         // stutter detection
-        static float stutter_delta_ms = 1.0f;
-        static bool is_stuttering_cpu = false;
-        static bool is_stuttering_gpu = false;
+        float stutter_delta_ms = 1.0f;
+        bool is_stuttering_cpu = false;
+        bool is_stuttering_gpu = false;
 
         // misc
-        static bool poll                 = false;
-        static bool increase_capacity    = false;
-        static bool allow_time_block_end = true;
-        static ostringstream oss_metrics;
+        bool poll                 = false;
+        bool increase_capacity    = false;
+        bool allow_time_block_end = true;
+        ostringstream oss_metrics;
     }
   
     void Profiler::Initialize()
@@ -126,6 +126,8 @@ namespace Spartan
         m_time_blocks_read.resize(initial_capacity);
         m_time_blocks_write.reserve(initial_capacity);
         m_time_blocks_write.resize(initial_capacity);
+
+        profiling_enabled = RHI_Context::gpu_profiling;
     }
 
     void Profiler::Shutdown()
@@ -135,15 +137,14 @@ namespace Spartan
 
     void Profiler::PreTick()
     {
-        if (!RHI_Context::gpu_profiling)
+        if (!profiling_enabled)
             return;
 
-        // increase time block capacity (if needed)
         if (increase_capacity)
         {
             SwapBuffers();
 
-            // Double the size
+            // double the size
             const uint32_t size_old = static_cast<uint32_t>(m_time_blocks_write.size());
             const uint32_t size_new = size_old << 1;
 
@@ -519,6 +520,6 @@ namespace Spartan
             << "Descriptor set capacity:\t" << m_descriptor_set_count << "/" << m_descriptor_set_capacity;
 
         // draw at the top-left of the screen
-        Renderer::DrawString(oss_metrics.str(), Math::Vector2(5.0f, -22.0f));
+        Renderer::DrawString(oss_metrics.str(), Math::Vector2(0.01f, 0.01f));
     }
 }

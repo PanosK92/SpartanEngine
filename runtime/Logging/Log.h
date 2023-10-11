@@ -72,10 +72,12 @@ namespace Spartan
     public:
         Log() = default;
 
-        // Set an ILogger object to handle writing logs
+        // misc
+        static void Initialize();
         static void SetLogger(ILogger* logger);
+        static void SetLogToFile(const bool log_to_file);
 
-        // Alpha
+        // alpha
         static void Write(const char* text, const LogType type);
         static void WriteFInfo(const char* text, ...);
         static void WriteFWarning(const char* text, ...);
@@ -85,7 +87,7 @@ namespace Spartan
         static void WriteFWarning(const std::string text, ...);
         static void WriteFError(const std::string text, ...);
 
-        // Numeric
+        // numeric
         template <class T, class = typename std::enable_if<
             std::is_same<T, int>::value ||
             std::is_same<T, long>::value ||
@@ -102,21 +104,18 @@ namespace Spartan
             Write(to_string(value), type);
         }
 
-        // Math
+        // nath
         static void Write(const Math::Vector2& value, LogType type);
         static void Write(const Math::Vector3& value, LogType type);
         static void Write(const Math::Vector4& value, LogType type);
         static void Write(const Math::Quaternion& value, LogType type);
         static void Write(const Math::Matrix& value, LogType type);
 
-        // Manually handled types
+        // manually handled types
         static void Write(const bool value, const LogType type)                            { Write(value ? "True" : "False", type); }
         template<typename T> static void Write(std::weak_ptr<T> ptr, const LogType type)   { Write(ptr.expired() ? "Expired" : typeid(ptr).name(), type); }
         template<typename T> static void Write(std::shared_ptr<T> ptr, const LogType type) { Write(ptr ? typeid(ptr).name() : "Null", type); }
         static void Write(const std::weak_ptr<Entity>& entity, LogType type);
         static void Write(const std::shared_ptr<Entity>& entity, LogType type);
-
-        // Misc
-        static void SetLogToFile(const bool log_to_file);
     };
 }

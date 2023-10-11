@@ -34,7 +34,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Font/Font.h"
 #include "Grid.h"
 #include <unordered_map>
-#include <utility>
 //===================================
 
 namespace Spartan
@@ -68,7 +67,7 @@ namespace Spartan
         static void DrawSphere(const Math::Vector3& center, float radius, uint32_t segment_count, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
         static void DrawDirectionalArrow(const Math::Vector3& start, const Math::Vector3& end, float arrow_size, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
         static void DrawPlane(const Math::Plane& plane, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
-        static void DrawString(const std::string& text, const Math::Vector2& position_screen);
+        static void DrawString(const std::string& text, const Math::Vector2& position_screen_percentage);
 
         // options
         template<typename T>
@@ -135,6 +134,7 @@ namespace Spartan
         static std::shared_ptr<RHI_StructuredBuffer> GetStructuredBuffer();
         static std::shared_ptr<RHI_Texture> GetStandardTexture(const Renderer_StandardTexture type);
         static std::shared_ptr<Mesh> GetStandardMesh(const Renderer_MeshType type);
+        static std::shared_ptr<Font> GetFont();
         //=======================================================================================================
 
     private:
@@ -219,7 +219,6 @@ namespace Spartan
         static Cb_Light m_cb_light_cpu;
         static Cb_Material m_cb_material_cpu;
         static std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
-        static std::unique_ptr<Font> m_font;
         static std::unique_ptr<Grid> m_world_grid;
         static bool m_brdf_specular_lut_rendered;
         static std::vector<RHI_Vertex_PosCol> m_line_vertices;
@@ -228,7 +227,7 @@ namespace Spartan
         static uint32_t m_lines_index_depth_on;
         static RHI_CommandPool* m_cmd_pool;
         static std::shared_ptr<Camera> m_camera;
-        static const uint32_t m_frames_in_flight = 5;
-        static std::vector<std::pair<std::string, Math::Vector2>> m_texts;
+        static const uint32_t m_resources_frame_lifetime = 5;
+        static uint32_t m_resource_index;
     };
 }

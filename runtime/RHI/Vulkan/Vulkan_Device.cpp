@@ -1456,7 +1456,6 @@ namespace Spartan
         {
             // Create a new pipeline
             it = descriptors::pipelines.emplace(make_pair(hash, make_shared<RHI_Pipeline>(pso, descriptor_set_layout))).first;
-            SP_LOG_INFO("A new pipeline has been created.");
         }
 
         pipeline = it->second.get();

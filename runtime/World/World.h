@@ -51,7 +51,7 @@ namespace Spartan
         static void CreateDefaultWorldCube();
         static void CreateDefaultWorldHelmets();
         static void CreateDefaultWorldCar();
-        static void CreateDefaultWorldTerrain();
+        static void CreateDefaultWorldForest();
         static void CreateDefaultWorldSponza();
         static void CreateDefaultWorldDoomE1M1();
 

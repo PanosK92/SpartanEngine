@@ -394,9 +394,7 @@ namespace Spartan
     class SP_CLASS RHI_Context
     {
     public:
-        static void Initialize();
-
-        // API specific
+        // api specific
 #       if defined(API_GRAPHICS_D3D12)
             static ID3D12Device* device;
         #elif defined(API_GRAPHICS_VULKAN)
@@ -409,7 +407,7 @@ namespace Spartan
             static std::vector<const char*> extensions_device;
         #endif
 
-        // API agnostic
+        // api agnostic
         static std::string api_version_str;
         static std::string api_type_str;
         static RHI_Api_Type api_type;

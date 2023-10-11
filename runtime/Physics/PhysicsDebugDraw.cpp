@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //================================
 #include "pch.h"
 #include "PhysicsDebugDraw.h"
+#include "ProgressTracker.h"
 #include "BulletPhysicsHelper.h"
 #include "../Rendering/Renderer.h"
 //================================
@@ -49,7 +50,11 @@ namespace Spartan
 
     void PhysicsDebugDraw::drawLine(const btVector3& from, const btVector3& to, const btVector3& fromColor, const btVector3& toColor)
     {
-        Renderer::DrawLine(ToVector3(from), ToVector3(to), ToVector4(fromColor), ToVector4(toColor), 0.0f, true);
+        // draw only if not loading, this is to avoid draw physics objects while they are being created in other threads
+        if (!ProgressTracker::IsLoading())
+        {
+            Renderer::DrawLine(ToVector3(from), ToVector3(to), ToVector4(fromColor), ToVector4(toColor), 0.0f, true);
+        }
     }
 
     void PhysicsDebugDraw::drawContactPoint(const btVector3& PointOnB, const btVector3& normalOnB, btScalar distance, int lifeTime, const btVector3& color)

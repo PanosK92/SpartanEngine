@@ -107,7 +107,7 @@ namespace
                     {
                         Spartan::ThreadPool::AddTask([]()
                         {
-                            Spartan::World::CreateDefaultWorldTerrain();
+                            Spartan::World::CreateDefaultWorldForest();
                         });
     
                     }

@@ -383,15 +383,15 @@ namespace Spartan
 
     void FontImporter::Initialize()
     {
-        // Initialize library
+        // initialize library
         if (!ft_helper::handle_error(FT_Init_FreeType(&library)))
             return;
 
-        // Initialize stroker
+        // initialize stroker
         if (!ft_helper::handle_error(FT_Stroker_New(library, &stroker)))
             return;
 
-        // Get version
+        // get version
         FT_Int major;
         FT_Int minor;
         FT_Int rev;
@@ -407,7 +407,7 @@ namespace Spartan
 
     bool FontImporter::LoadFromFile(Font* font, const string& file_path)
     {
-        // Load font (called face)
+        // load font (called face)
         FT_Face ft_font = nullptr;
         if (!ft_helper::handle_error(FT_New_Face(library, file_path.c_str(), 0, &ft_font)))
         {
@@ -415,7 +415,7 @@ namespace Spartan
             return false;
         }
 
-        // Set font size
+        // set font size
         if (!ft_helper::handle_error(FT_Set_Char_Size(
             ft_font,              // handle to face object
             0,                    // char_width in 1/64th of points 
@@ -427,7 +427,7 @@ namespace Spartan
             return false;
         }
 
-        // Set outline size
+        // set outline size
         const uint32_t outline_size   = (font->GetOutline() != Font_Outline_None) ? font->GetOutlineSize() : 0;
         const bool outline            = outline_size != 0;
         if (outline)
@@ -437,20 +437,20 @@ namespace Spartan
 
         g_glyph_load_flags = ft_helper::get_load_flags(font);
 
-        // Get the size of the font atlas texture (if an outline is requested, it accounts for a big enough atlas)
-        uint32_t atlas_width        = 0;
-        uint32_t atlas_height       = 0;
-        uint32_t atlas_cell_width   = 0;
-        uint32_t atlas_cell_height  = 0;
+        // get the size of the font atlas texture (if an outline is requested, it accounts for a big enough atlas)
+        uint32_t atlas_width       = 0;
+        uint32_t atlas_height      = 0;
+        uint32_t atlas_cell_width  = 0;
+        uint32_t atlas_cell_height = 0;
         ft_helper::get_texture_atlas_dimensions(&atlas_width, &atlas_height, &atlas_cell_width, &atlas_cell_height, ft_font, outline_size);
 
-        // Atlas for text
+        // atlas for text
         vector<RHI_Texture_Slice> texture_data_atlas;
         vector<std::byte>& mip_atlas = texture_data_atlas.emplace_back().mips.emplace_back().bytes;
         mip_atlas.resize(atlas_width * atlas_height);
         mip_atlas.reserve(mip_atlas.size());
 
-        // Atlas for outline (if needed)
+        // atlas for outline (if needed)
         vector<RHI_Texture_Slice> texture_data_atlas_outline;
         vector<std::byte>& mip_atlas_outline = texture_data_atlas_outline.emplace_back().mips.emplace_back().bytes;
         if (outline_size != 0)
@@ -459,30 +459,30 @@ namespace Spartan
             mip_atlas_outline.reserve(mip_atlas.size());
         }
 
-        // Go through each glyph
+        // go through each glyph
         Vector2 pen = 0.0f;
         bool writting_started = false;
         for (uint32_t char_code = GLYPH_START; char_code < GLYPH_END; char_code++)
         {
-            // Load text bitmap
+            // load text bitmap
             ft_helper::ft_bitmap bitmap_text;
             ft_helper::get_bitmap(&bitmap_text, font, nullptr, ft_font, char_code);
 
-            // Load glyph bitmap (if needeD)
+            // load glyph bitmap (if needeD)
             ft_helper::ft_bitmap bitmap_outline;
             if (outline)
             {
                 ft_helper::get_bitmap(&bitmap_outline, font, stroker, ft_font, char_code);
             }
 
-            // Advance pen
-            // Whitespace characters don't have a buffer and don't write on the atlas, hence no need to advance the pen in these cases.
+            // advance pen
+            // whitespace characters don't have a buffer and don't write on the atlas, hence no need to advance the pen in these cases.
             if (bitmap_text.buffer && writting_started)
             {
-                // Advance column
+                // advance column
                 pen.x += atlas_cell_width;
 
-                // Advance row
+                // advance row
                 if (pen.x + atlas_cell_width > atlas_width)
                 {
                     pen.x = 0;
@@ -490,7 +490,7 @@ namespace Spartan
                 }
             }
 
-            // Copy to atlas buffers
+            // copy to atlas buffers
             if (bitmap_text.buffer)
             {
                 ft_helper::copy_to_atlas(mip_atlas, bitmap_text, pen, atlas_width, outline_size);
@@ -503,14 +503,14 @@ namespace Spartan
                 writting_started = true;
             }
 
-            // Get glyph
+            // set glyph
             font->SetGlyph(char_code, ft_helper::get_glyph(ft_font, char_code, pen, atlas_width, atlas_height, outline_size));
         }
 
-        // Free face
+        // free face
         ft_helper::handle_error(FT_Done_Face(ft_font));
 
-        // Create a texture with of font atlas and a texture of the font outline atlas
+        // create a texture with of font atlas and a texture of the font outline atlas
         {
             font->SetAtlas(move(static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2D>(atlas_width, atlas_height, RHI_Format::R8_Unorm, RHI_Texture_Srv, texture_data_atlas, "font_atlas"))));
 

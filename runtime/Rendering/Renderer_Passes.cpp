@@ -148,15 +148,14 @@ namespace Spartan
 
             // editor related stuff - passes that render on top of each other
             Pass_DebugMeshes(cmd_list, rt_output);
-            Pass_Icons(cmd_list, rt_output);
-            Pass_Text(cmd_list, rt_output);
+            Pass_Icons(cmd_list, rt_output);         
         }
         else
         {
-            // if there is no camera, clear to black and and render the performance metrics
             GetCmdList()->ClearRenderTarget(rt_output, 0, 0, false, Color::standard_black);
-            Pass_Text(cmd_list, rt_output);
         }
+
+        Pass_Text(cmd_list, rt_output);
 
         // transition the render target to a readable state so it can be rendered
         // within the viewport or copied to the swap chain back buffer
@@ -2126,10 +2125,11 @@ namespace Spartan
     void Renderer::Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
         // early exit cases
-        const bool draw      = GetOption<bool>(Renderer_Option::Debug_PerformanceMetrics);
-        const auto& shader_v = GetShader(Renderer_Shader::font_v);
-        const auto& shader_p = GetShader(Renderer_Shader::font_p);
-        if (!draw || !shader_v->IsCompiled() || !shader_p->IsCompiled())
+        const bool draw       = GetOption<bool>(Renderer_Option::Debug_PerformanceMetrics);
+        const auto& shader_v  = GetShader(Renderer_Shader::font_v);
+        const auto& shader_p  = GetShader(Renderer_Shader::font_p);
+        shared_ptr<Font> font = GetFont();
+        if (!shader_v->IsCompiled() || !shader_p->IsCompiled() || !draw || !font->HasText())
             return;
 
         // if the performance metrics are being drawn, the profiler has to be enabled.
@@ -2137,6 +2137,8 @@ namespace Spartan
         {
             Profiler::SetEnabled(true);
         }
+
+        cmd_list->BeginMarker("text");
 
         // define pipeline state
         static RHI_PipelineState pso;
@@ -2146,63 +2148,51 @@ namespace Spartan
         pso.blend_state                     = GetBlendState(Renderer_BlendState::Alpha).get();
         pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
         pso.render_target_color_textures[0] = tex_out;
+        pso.clear_color[0]                  = rhi_color_load;
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.name                            = "Pass_Text";
 
-        cmd_list->BeginMarker("text");
+        font->UpdateVertexAndIndexBuffers();
 
-        for (auto& text_pair : m_texts)
+        // outline
+        if (font->GetOutline() != Font_Outline_None && font->GetOutlineSize() != 0)
         {
-            // get text
+            cmd_list->BeginTimeblock("outline");
+            cmd_list->SetPipelineState(pso);
+            cmd_list->BeginRenderPass();
             {
-                // adjust the position coordinates from a center-origin to a top-left-origin coordinate system,
-                // where (0,0) corresponds to the top-left corner of the viewport
-                Vector2 position = text_pair.second;
-                position.x += -GetViewport().width * 0.5f;
-                position.y += GetViewport().height * 0.5f;
+                // set pass constants
+                m_cb_pass_cpu.set_resolution_out(tex_out);
+                m_cb_pass_cpu.set_f4_value(font->GetColorOutline());
+                PushPassConstants(cmd_list);
 
-                m_font->SetText(text_pair.first, position);
+                cmd_list->SetBufferVertex(font->GetVertexBuffer());
+                cmd_list->SetBufferIndex(font->GetIndexBuffer());
+                cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlasOutline());
+                cmd_list->DrawIndexed(font->GetIndexCount());
             }
+            cmd_list->EndRenderPass();
+            cmd_list->EndTimeblock();
+        }
 
-            // outline
-            if (m_font->GetOutline() != Font_Outline_None && m_font->GetOutlineSize() != 0)
-            {
-                cmd_list->BeginTimeblock("outline");
-                cmd_list->SetPipelineState(pso);
-                cmd_list->BeginRenderPass();
-                {
-                    // set pass constants
-                    m_cb_pass_cpu.set_resolution_out(tex_out);
-                    m_cb_pass_cpu.set_f4_value(m_font->GetColorOutline());
-                    PushPassConstants(cmd_list);
-
-                    cmd_list->SetBufferIndex(m_font->GetIndexBuffer());
-                    cmd_list->SetBufferVertex(m_font->GetVertexBuffer());
-                    cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, m_font->GetAtlasOutline());
-                    cmd_list->DrawIndexed(m_font->GetIndexCount());
-                    cmd_list->EndRenderPass();
-                }
-                cmd_list->EndTimeblock();
-            }
-
-            // inline
+        // inline
+        {
             cmd_list->BeginTimeblock("inline");
             cmd_list->SetPipelineState(pso);
             cmd_list->BeginRenderPass();
             {
                 // set pass constants
                 m_cb_pass_cpu.set_resolution_out(tex_out);
-                m_cb_pass_cpu.set_f4_value(m_font->GetColor());
+                m_cb_pass_cpu.set_f4_value(font->GetColor());
                 PushPassConstants(cmd_list);
 
-                cmd_list->SetBufferIndex(m_font->GetIndexBuffer());
-                cmd_list->SetBufferVertex(m_font->GetVertexBuffer());
-                cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, m_font->GetAtlas());
-                cmd_list->DrawIndexed(m_font->GetIndexCount());
+                cmd_list->SetBufferVertex(font->GetVertexBuffer());
+                cmd_list->SetBufferIndex(font->GetIndexBuffer());
+                cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlas());
+                cmd_list->DrawIndexed(font->GetIndexCount());
                 cmd_list->EndRenderPass();
             }
             cmd_list->EndTimeblock();
-            
         }
 
         cmd_list->EndMarker();

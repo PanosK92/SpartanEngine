@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Car.h"
 #include "Physics.h"
 #include "BulletPhysicsHelper.h"
+#include "../Rendering/Renderer.h"
 #include "../Input/Input.h"
 #include "../World/Components/Transform.h"
 SP_WARNINGS_OFF
@@ -55,7 +56,7 @@ namespace Spartan
         // general
         constexpr float torque_max            = 350;   // maximum torque output of the engine
         constexpr float wheel_radius          = 0.6f;  // radius of the wheel
-        constexpr float tire_friction         = 3.0f;  // coefficient of friction for tires
+        constexpr float tire_friction         = 2.5f;  // coefficient of friction for tires
         constexpr float aerodynamic_downforce = 0.25f; // the faster the vehicle, the more the tires will grip the road
 
         // suspension
@@ -181,7 +182,7 @@ namespace Spartan
 
         float compute_pacejka_force(float slip, float normal_load)
         {
-            // if you are interested about this formula, you can start by reading this: https://en.wikipedia.org/wiki/Hans_B._Pacejka
+            // https://en.wikipedia.org/wiki/Hans_B._Pacejka
 
             // convert to kilonewtons
             normal_load /= 1000.0f;
@@ -192,7 +193,7 @@ namespace Spartan
 
             // coefficients from the pacejka '94 model
             // reference: https://www.edy.es/dev/docs/pacejka-94-parameters-explained-a-comprehensive-guide/
-            float coef_scale = 0.2f; // this is empirically chosen as the coefficients I found, while correct, they must be a couple of orders of magnitude different than what bullet expects
+            float coef_scale = 0.18f; // this is empirically chosen as the coefficients I found, while correct, they must be a couple of orders of magnitude different than what bullet expects
             float b0 = 1.5f * coef_scale, b1 = 0.0f * coef_scale, b2 = 1.1f * coef_scale,  b3 = 0.0f * coef_scale, b4  = 3.0f * coef_scale, b5 = 0.0f * coef_scale;
             float b6 = 0.0f * coef_scale, b7 = 0.0f * coef_scale, b8 = -2.0f * coef_scale, b9 = 0.0f * coef_scale, b10 = 0.0f * coef_scale, b11 = 0.0f * coef_scale, b12 = 0.0f * coef_scale, b13 = 0.0f * coef_scale;
 
@@ -314,6 +315,45 @@ namespace Spartan
         }
     }
 
+    namespace debug
+    {
+        constexpr bool draw = false;
+        ostringstream oss;
+
+        string wheel_to_string(btWheelInfo* wheel_info)
+        {
+            // clear
+            oss.str("");
+            oss.clear();
+
+            // set fixed-point notation with 2 decimal places
+            oss << std::fixed << std::setprecision(2);
+
+            // gather wheel metrics
+            const auto& raycast_info = wheel_info->m_raycastInfo;
+            float suspension_length  = raycast_info.m_suspensionLength;
+            bool is_in_contact       = raycast_info.m_isInContact;
+            btVector3 contact_point  = raycast_info.m_contactPointWS;
+            btVector3 contact_normal = raycast_info.m_contactNormalWS;
+
+            // formatting and outputting wheel metrics to the oss_metrics stream
+            oss << "Wheel Information:\n";
+            oss << "Suspension Length: " << suspension_length << " m\n";
+            oss << "Contact with Ground: " << (is_in_contact ? "Yes" : "No") << "\n";
+            oss << "Contact Point: (" << contact_point.x() << ", " << contact_point.y() << ", " << contact_point.z() << ")\n";
+            oss << "Contact Normal: (" << contact_normal.x() << ", " << contact_normal.y() << ", " << contact_normal.z() << ")\n";
+
+            return oss.str();
+        }
+
+        void draw_wheel_info(btRaycastVehicle* vehicle)
+        {
+            btWheelInfo* wheel_info  = &vehicle->getWheelInfo(0);
+            string wheel_info_string = wheel_to_string(wheel_info);
+            Renderer::DrawString(wheel_info_string, Vector2(0.2f, 0.05f));
+        }
+    }
+
     void Car::Create(btRigidBody* chassis)
     {
         m_vehicle_chassis = chassis;
@@ -391,6 +431,11 @@ namespace Spartan
         Control();
         ApplyTireForces();
         UpdateTransforms();
+
+        if (debug::draw)
+        {
+            debug::draw_wheel_info(m_vehicle);
+        }
     }
 
     void Car::SetWheelTransform(Transform* transform, uint32_t wheel_index)
