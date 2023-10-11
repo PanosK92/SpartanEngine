@@ -29,7 +29,7 @@ Bistro | Minecraft
 # Worlds
 <img align="left" width="450" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_selection.png"/>
 
-Upon launching the engine, you'll be greeted with a selection of default worlds to load. Each world is physics-enabled, allowing you to walk around, interact with objects using your mouse, and drive a car. These worlds are designed to offer a diverse and enjoyable experience.  
+Upon launching the engine, you'll be greeted with a selection of default worlds to load. Each world is physics-enabled, allowing you to walk around, pick objects using your mouse, and even drive a car. These worlds are designed to offer a diverse and enjoyable experience.  
 <br clear="left"/>
 
 Sponza | Forest | Car
