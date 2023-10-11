@@ -53,11 +53,11 @@ namespace Spartan
         // 2. these values simulate a mid size car and need to be adjusted according to the simulated car's specifications
 
         // general
-        constexpr float max_torque            = 350;   // maximum torque output of the engine
+        constexpr float torque_max            = 350;   // maximum torque output of the engine
         constexpr float wheel_radius          = 0.6f;  // radius of the wheel
         constexpr float tire_friction         = 3.0f;  // coefficient of friction for tires
         constexpr float aerodynamic_downforce = 0.25f; // the faster the vehicle, the more the tires will grip the road
-        
+
         // suspension
         constexpr float suspension_stiffness   = 50.0f;                    // stiffness of suspension springs in N/m
         constexpr float suspension_damping     = 2.0f;                     // damping coefficient to dissipate energy
@@ -68,17 +68,28 @@ namespace Spartan
         constexpr float suspension_travel_max  = suspension_length * 0.5f; // maximum travel of the suspension
         
         // anti-roll bar
-        constexpr float anti_roll_bar_stiffness = 500.0f;  // stiffness of the anti-roll bar affecting body roll during cornering
-        
+        constexpr float anti_roll_bar_stiffness_front = 500.0f; // higher front stiffness reduces oversteer, lower increases it
+        constexpr float anti_roll_bar_stiffness_rear  = 500.0f; // higher rear stiffness reduces understeer, lower increases it
+
         // breaks
         constexpr float brake_force_max  = 2000.0f; // maximum brake force applied to wheels in newtons
         constexpr float brake_ramp_speed = 100.0f;  // rate at which brake force increases
+
+        // steering
+        constexpr float steering_angle_max    = 40.0f * Math::Helper::DEG_TO_RAD; // the maximum steering angle of the front wheels
+        constexpr float steering_return_speed = 5.0f;                             // the speed at which the steering wheel returns to center
         
         // gearbox
         constexpr float engine_max_rpm    = 6500.0f;                                   // maximum engine RPM
         constexpr float engine_idle_rpm   = 800.0f;                                    // idle engine RPM
         constexpr float gear_ratios[]     = { 3.5f, 2.25f, 1.6f, 1.15f, 0.9f, 0.75f }; // gear ratios for each gear
         constexpr float final_drive_ratio = 3.5f;                                      // final drive ratio
+
+        // wheel indices (used for bullet physics)
+        constexpr uint8_t wheel_fl = 0;
+        constexpr uint8_t wheel_fr = 1;
+        constexpr uint8_t wheel_rl = 2;
+        constexpr uint8_t wheel_rr = 3;
     }
 
     namespace tire_friction_model
@@ -170,6 +181,8 @@ namespace Spartan
 
         float compute_pacejka_force(float slip, float normal_load)
         {
+            // if you are interested about this formula, you can start by reading this: https://en.wikipedia.org/wiki/Hans_B._Pacejka
+
             // convert to kilonewtons
             normal_load /= 1000.0f;
 
@@ -231,7 +244,7 @@ namespace Spartan
         // it counters the roll of the vehicle on its longitudinal axis, improving the ride stability and handling
         // the function computes and applies the anti-roll force based on the difference in suspension compression between a pair of wheels
 
-        void apply(btRaycastVehicle* vehicle, btRigidBody* chassis, int wheel_index_1, int wheel_index_2)
+        void apply(btRaycastVehicle* vehicle, btRigidBody* chassis, int wheel_index_1, int wheel_index_2, float force)
         {
             // get the wheel suspension forces and positions
             btWheelInfo& wheel_info1 = vehicle->getWheelInfo(wheel_index_1);
@@ -242,15 +255,15 @@ namespace Spartan
             if (wheel_info1.m_raycastInfo.m_isInContact && wheel_info2.m_raycastInfo.m_isInContact)
             {
                 float suspension_difference = wheel_info1.m_raycastInfo.m_suspensionLength - wheel_info2.m_raycastInfo.m_suspensionLength;
-                anti_roll_force = suspension_difference * tuning::anti_roll_bar_stiffness;
+                anti_roll_force = suspension_difference * force;
             }
             else if (!wheel_info1.m_raycastInfo.m_isInContact)
             {
-                anti_roll_force = -tuning::anti_roll_bar_stiffness;
+                anti_roll_force = -force;
             }
             else if (!wheel_info2.m_raycastInfo.m_isInContact)
             {
-                anti_roll_force = tuning::anti_roll_bar_stiffness;
+                anti_roll_force = force;
             }
 
             // apply the anti-roll forces to the wheels
@@ -297,7 +310,7 @@ namespace Spartan
 
         float get_torque(float throttle_input)
         {
-            return tuning::max_torque * throttle_input * (tuning::gear_ratios[current_gear - 1] * tuning::final_drive_ratio);
+            return tuning::torque_max * throttle_input * (tuning::gear_ratios[current_gear - 1] * tuning::final_drive_ratio);
         }
     }
 
@@ -340,10 +353,10 @@ namespace Spartan
                 const float extent_forward  = 2.5f;
                 const float extent_sideways = 1.5f;
 
-                wheel_positions[0] = btVector3(-extent_sideways, -tuning::suspension_length,  extent_forward + 0.05f); // front-left
-                wheel_positions[1] = btVector3( extent_sideways, -tuning::suspension_length,  extent_forward + 0.05f); // front-right
-                wheel_positions[2] = btVector3(-extent_sideways, -tuning::suspension_length, -extent_forward + 0.25f); // rear-left
-                wheel_positions[3] = btVector3( extent_sideways, -tuning::suspension_length, -extent_forward + 0.25f); // rear-right
+                wheel_positions[tuning::wheel_fl] = btVector3(-extent_sideways, -tuning::suspension_length,  extent_forward + 0.05f);
+                wheel_positions[tuning::wheel_fr] = btVector3( extent_sideways, -tuning::suspension_length,  extent_forward + 0.05f);
+                wheel_positions[tuning::wheel_rl] = btVector3(-extent_sideways, -tuning::suspension_length, -extent_forward + 0.25f);
+                wheel_positions[tuning::wheel_rr] = btVector3( extent_sideways, -tuning::suspension_length, -extent_forward + 0.25f);
             }
 
             // add the wheels to the vehicle
@@ -420,27 +433,33 @@ namespace Spartan
             m_torque_newtons = gearbox::get_torque(throttle_input);
         }
 
-        // compute steering angle
-        float steering_angle_target = 0.0f;
+        // steer the front wheels
         {
+            float steering_angle_target = 0.0f;
+
             if (Input::GetKey(KeyCode::Arrow_Left) || Input::GetControllerThumbStickLeft().x < 0.0f)
             {
-                steering_angle_target = -40.0f * Math::Helper::DEG_TO_RAD;
+                steering_angle_target = -tuning::steering_angle_max;
             }
             else if (Input::GetKey(KeyCode::Arrow_Right) || Input::GetControllerThumbStickLeft().x > 0.0f)
             {
-                steering_angle_target = 40.0f * Math::Helper::DEG_TO_RAD;
+                steering_angle_target = tuning::steering_angle_max;
             }
 
-            const float return_speed = 5.0f;
-            m_steering_angle_radians = Math::Helper::Lerp<float>(m_steering_angle_radians, steering_angle_target, return_speed * delta_time_sec);
+            // lerp to new steering angle (real life vehicles don't snap their wheels to the target angle)
+
+            m_steering_angle_radians = Math::Helper::Lerp<float>(m_steering_angle_radians, steering_angle_target, tuning::steering_return_speed * delta_time_sec);
+
+            // set the steering angle
+            m_vehicle->setSteeringValue(m_steering_angle_radians, tuning::wheel_fl);
+            m_vehicle->setSteeringValue(m_steering_angle_radians, tuning::wheel_fr);
         }
 
         // apply forces
         {
-            // aerodynamic downforce
+            // aerodynamic downforce (this can be split into front and rear, front bumper and rear wing)
             float downforce = tuning::aerodynamic_downforce * speed_mps * speed_mps;
-            btVector3 downforce_vector(0, -downforce, 0); // assuming Y-axis is up
+            btVector3 downforce_vector(0, -downforce, 0); // Y-axis is up
             m_vehicle_chassis->applyCentralForce(downforce_vector);
 
             if (m_wants_to_reverse)
@@ -455,21 +474,17 @@ namespace Spartan
             }
             else
             {
-                // torque (front-wheel drive)
-                m_vehicle->applyEngineForce(-m_torque_newtons, 0); // front-left
-                m_vehicle->applyEngineForce(-m_torque_newtons, 1); // front-right
+                // apply engine torque (front-wheel drive)
+                m_vehicle->applyEngineForce(-m_torque_newtons, tuning::wheel_fl);
+                m_vehicle->applyEngineForce(-m_torque_newtons, tuning::wheel_fr);
 
                 // ramp down breaking force
                 m_break_force = Math::Helper::Max<float>(m_break_force - tuning::brake_ramp_speed * delta_time_sec, 0.0f);
-                m_vehicle->setBrake(m_break_force, 0);
-                m_vehicle->setBrake(m_break_force, 1);
-                m_vehicle->setBrake(handbrake ? numeric_limits<float>::max() : m_break_force, 2);
-                m_vehicle->setBrake(handbrake ? numeric_limits<float>::max() : m_break_force, 3);
+                m_vehicle->setBrake(m_break_force, tuning::wheel_fl);
+                m_vehicle->setBrake(m_break_force, tuning::wheel_fr);
+                m_vehicle->setBrake(handbrake ? numeric_limits<float>::max() : m_break_force, tuning::wheel_rl);
+                m_vehicle->setBrake(handbrake ? numeric_limits<float>::max() : m_break_force, tuning::wheel_rr);
             }
-
-            // steering angle
-            m_vehicle->setSteeringValue(m_steering_angle_radians, 0);
-            m_vehicle->setSteeringValue(m_steering_angle_radians, 1);
         }
     }
 
@@ -479,8 +494,8 @@ namespace Spartan
         btVector3 force_position;
 
         // anti-roll bar simulation
-        anti_roll_bar::apply(m_vehicle, m_vehicle_chassis, 0, 1); // front pair of wheels
-        anti_roll_bar::apply(m_vehicle, m_vehicle_chassis, 2, 3); // rear pair of wheels
+        anti_roll_bar::apply(m_vehicle, m_vehicle_chassis, tuning::wheel_fl, tuning::wheel_fr, tuning::anti_roll_bar_stiffness_front); // front wheels
+        anti_roll_bar::apply(m_vehicle, m_vehicle_chassis, tuning::wheel_rl, tuning::wheel_rr, tuning::anti_roll_bar_stiffness_rear);  // rear wheels
 
         for (int i = 0; i < m_vehicle->getNumWheels(); ++i)
         {
