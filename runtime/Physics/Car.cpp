@@ -350,7 +350,7 @@ namespace Spartan
         {
             btWheelInfo* wheel_info  = &vehicle->getWheelInfo(0);
             string wheel_info_string = wheel_to_string(wheel_info);
-            Renderer::DrawString(wheel_info_string, Vector2(0.2f, 0.05f));
+            Renderer::DrawString(wheel_info_string, Vector2(0.3f, 0.005f));
         }
     }
 

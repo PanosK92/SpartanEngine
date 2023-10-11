@@ -23,6 +23,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
+float3 refraction(Surface surface, float ior, float scale, float depth_bias)
+{
+    float distance_falloff      = clamp(1.0f / world_to_view(surface.position).z, -3.0f, 3.0f);
+    float2 refraction_normal    = world_to_view(surface.normal.xyz, false).xy ;
+    float2 refraction_uv_offset = refraction_normal * distance_falloff * scale * max(0.0f, ior - 1.0f);
+
+    float depth_surface           = get_linear_depth(surface.depth);
+    float depth_surface_refracted = get_linear_depth(surface.uv + refraction_uv_offset);
+    float is_behind               = step(depth_surface - depth_bias, depth_surface_refracted);
+
+    float frame_mip_count = pass_get_f3_value().x;
+    float mip_level       = lerp(0, frame_mip_count, surface.roughness_alpha);
+
+    return tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv + refraction_uv_offset * is_behind, mip_level).rgb;
+}
+
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -46,9 +62,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         color.rgb += tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(surface.camera_to_pixel), 0).rgb;
         color.rgb *= saturate(buffer_light.intensity_range_angle_bias.x); // modulate it's intensity in order to fake day/night.
     }
-    else // everything else.
+    else // everything else
     {
-        // light - diffuse and Specular.
+        // light - diffuse and Specular
         float3 light_diffuse  = tex_light_diffuse[thread_id.xy].rgb;
         float3 light_specular = tex_light_specular[thread_id.xy].rgb;
 
@@ -56,26 +72,13 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         float3 light_refraction = 0.0f;
         if (surface.is_transparent())
         {
-            // compute refraction UV offset.
-            float ior                   = 1.5; // glass
-            float scale                 = 0.03f;
-            float distance_falloff      = clamp(1.0f / world_to_view(surface.position).z, -3.0f, 3.0f);
-            float2 refraction_normal    = world_to_view(surface.normal.xyz, false).xy ;
-            float2 refraction_uv_offset = refraction_normal * distance_falloff * scale * max(0.0f, ior - 1.0f);
-
-            // only refract what's behind the surface.
-            float depth_surface           = get_linear_depth(surface.depth);
-            float depth_surface_refracted = get_linear_depth(surface.uv + refraction_uv_offset);
-            float is_behind               = step(depth_surface - 0.02f, depth_surface_refracted); // step does a >=, but when the depth is equal, we still want refract, so we use a bias of 0.02.
-
-            // refraction from ALDI.
-            float roughness2      = surface.roughness * surface.roughness;
-            float frame_mip_count = pass_get_f3_value().x;
-            float mip_level       = lerp(0, frame_mip_count, roughness2);
-            light_refraction      = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv + refraction_uv_offset * is_behind, mip_level).rgb;
+            float ior        = 1.33; // water
+            float scale      = 1.0f;
+            float depth_bias = 0.02f;
+            light_refraction = refraction(surface, ior, scale, 0.02f); 
         }
         
-        // compose everything.
+        // compose everything
         float3 light_ds = (light_diffuse + surface.gi) * surface.albedo + light_specular;
         color.rgb       += lerp(light_ds, light_refraction, 1.0f - surface.alpha);
     }

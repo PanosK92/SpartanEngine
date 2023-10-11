@@ -869,9 +869,9 @@ namespace Spartan
                         material->SetColor(Color(0.0f, 48.0f / 255.0f, 75.0f / 255.0f));
                         material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\water_normal_2.jpeg");
                         material->SetProperty(MaterialProperty::IsWater,             1.0f);
-                        material->SetProperty(MaterialProperty::ColorA,              60.0f / 255.0f);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.15f); // just a bit of roughness to diffuse the sun a little
-                        material->SetProperty(MaterialProperty::NormalMultiplier,    0.13f);
+                        material->SetProperty(MaterialProperty::ColorA,              70.0f / 255.0f);
+                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.2f); // just a bit of roughness to diffuse the sun a little
+                        material->SetProperty(MaterialProperty::NormalMultiplier,    1.0f);
                         material->SetProperty(MaterialProperty::UvTilingX,           500.0f);
                         material->SetProperty(MaterialProperty::UvTilingY,           500.0f);
 
@@ -922,9 +922,6 @@ namespace Spartan
                         renderable->SetInstances(terrain->GetTransformsPlant1());
                     }
                 }
-
-                // add a car
-                create_default_car(camera_position + Vector3(0.0f, 0.0f, 5.0f));
 
                 // because this is loading in a different thread, we need to resolve the world after we enable instancing
                 World::Resolve();
