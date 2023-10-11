@@ -42,10 +42,10 @@ namespace Spartan
     {
         // 1. units are expressed in SI units (meters, newtons etc.)
 
-        constexpr float torque                 = 4000.0f;                  // direct torque until we simulate a gearbox with a nice torque curve
+        constexpr float torque                 = 6000.0f;                  // direct torque until we simulate a gearbox with a nice torque curve
         constexpr float top_speed_kmh          = 120.0f;                   // a hard limit to keep the direct torque in check
         constexpr float aerodynamic_downforce  = 0.5f;                     // the faster the vehicle, the more the tires will grip the road
-        constexpr float tire_friction          = 4.0f;                     // coefficient of friction for tires
+        constexpr float tire_friction          = 3.0f;                     // coefficient of friction for tires
         constexpr float wheel_radius           = 0.6f;                     // radius of the wheel
         constexpr float brake_force_max        = 2000.0f;                  // maximum brake force applied to wheels in newtons
         constexpr float brake_ramp_speed       = 100.0f;                   // rate at which brake force increases
@@ -148,7 +148,7 @@ namespace Spartan
 
             // coefficients from the pacejka '94 model
             // reference: https://www.edy.es/dev/docs/pacejka-94-parameters-explained-a-comprehensive-guide/
-            float coef_scale = 0.25f; // this is empirically chosen as the coefficients I found, while correct, they must be a couple of orders of magnitude different than what bullet expects
+            float coef_scale = 0.2f; // this is empirically chosen as the coefficients I found, while correct, they must be a couple of orders of magnitude different than what bullet expects
             float b0 = 1.5f * coef_scale, b1 = 0.0f * coef_scale, b2 = 1.1f * coef_scale,  b3 = 0.0f * coef_scale, b4  = 3.0f * coef_scale, b5  = 0.0f * coef_scale;
             float b6 = 0.0f * coef_scale, b7 = 0.0f * coef_scale, b8 = -2.0f * coef_scale, b9 = 0.0f * coef_scale, b10 = 0.0f * coef_scale, b11 = 0.0f * coef_scale, b12 = 0.0f * coef_scale, b13 = 0.0f * coef_scale;
 
