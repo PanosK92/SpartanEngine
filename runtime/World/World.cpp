@@ -377,9 +377,9 @@ namespace Spartan
                     }
                 }
 
-                // headlights
+                // lights
                 {
-                    // Point light
+                    // headlights
                     {
                         shared_ptr<Entity> entity_light_left = World::CreateEntity();
                         entity_light_left->SetObjectName("light_left");
@@ -399,6 +399,23 @@ namespace Spartan
                         entity_light_right->SetObjectName("light_right");
                         entity_light_right->GetTransform()->SetParent(entity_car->GetTransform());
                         entity_light_right->GetTransform()->SetPositionLocal(Vector3(50.0f, -185.0f, -70.0f));
+                    }
+
+                    // taillights
+                    {
+                        shared_ptr<Entity> entity_light_left = World::CreateEntity();
+                        entity_light_left->SetObjectName("light_back");
+                        entity_light_left->GetTransform()->SetParent(entity_car->GetTransform());
+                        entity_light_left->GetTransform()->SetPositionLocal(Vector3(0.0f, 190.0f, -70.0f));
+                        entity_light_left->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(-70.0f, 0.0f, 0.0));
+
+                        shared_ptr<Light> light = entity_light_left->AddComponent<Light>();
+                        light->SetLightType(LightType::Spot);
+                        light->SetColor(Color(1.0f, 0.0f, 0.0f, 1.0f));
+                        light->SetIntensity(LightIntensity::bulb_500_watt);
+                        light->SetShadowsEnabled(false);
+                        light->SetRange(5.0f);
+                        light->SetAngle(145.0f * Math::Helper::DEG_TO_RAD);
                     }
                 }
             }
