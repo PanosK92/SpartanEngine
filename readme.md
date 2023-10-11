@@ -20,15 +20,23 @@
 Livestreams [![Image1](https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/readme_1.4.jpg)](https://www.youtube.com/watch?v=QhyMal6RY7M) | Features [![Image2](https://i.imgur.com/j6zIEI9.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo) 
 :- | :- 
 
-#### Gallery
-<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/screenshot-v0.3_preview5.jpg"/>
+<img align="center" width="450" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_selection.png"/>
+Upon launching the engine, you'll be greeted with a selection of default worlds to load. Each world is physics-enabled, allowing you to walk around, interact with objects using your mouse, and drive a car. These worlds are designed to offer a diverse and enjoyable experience.
 
-<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/readme_1.1.jpg"/> | <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/readme_1.2.jpg"/>
-:- | :-
+#### Screenshots
+Sponza | Forest | Car
+:-: | :-: | :-: 
+<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/screenshot-v0.3_preview5.jpg"/><br>The Sponza building, found in Dubrovnik, is showcased here with a true-to-life scale. | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_forest.jpg"/><br>A height map-generated forest featuring water bodies amidst tens of thousands of trees and plants, all set in a walkable terrain. | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_car.jpg"/><br>A drivable car implemented with a highly realistic tire friction formula, simulation of gearbox, anti-roll bar, and more.
+
+#### Misc
+The pictured worlds may or may not be part of the default worlds which are provided.
+Misc 1 | Misc 2
+:-: | :-:
+<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/readme_1.1.jpg"/> | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/readme_1.2.jpg"/>
 
 # Features
 #### Rendering
-- 128-byte push constant buffer for lightning fast CPU to GPU data transfer.
+- 128-byte push constant buffer for lightning fast GPU data transfer.
 - AMD FidelityFX suite for enhanced visuals and performance.
 - Bloom effect inspired by Resident Evil 2's RE Engine.
 - Unified deferred rendering with transparency (BSDF with same render path and shaders).
