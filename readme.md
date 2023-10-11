@@ -17,7 +17,7 @@
 
 # Media
 #### Videos
-Livestream of FSR 2 integration | A demonstration of the engine's capabilities (quite old)
+Livestream of FSR 2 integration | A demonstration of the engine's capabilities (old)
 :-: | :-:
 [![Image1](https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/readme_1.4.jpg)](https://www.youtube.com/watch?v=QhyMal6RY7M)| [![Image2](https://i.imgur.com/j6zIEI9.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
 
