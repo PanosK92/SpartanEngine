@@ -37,7 +37,7 @@ using namespace std;
 
 namespace Spartan
 {
-    // Metrics - RHI
+    // metrics - rhiI
     uint32_t Profiler::m_rhi_draw                       = 0;
     uint32_t Profiler::m_rhi_dispatch                   = 0;
     uint32_t Profiler::m_rhi_bindings_buffer_index      = 0;
@@ -56,10 +56,10 @@ namespace Spartan
     uint32_t Profiler::m_rhi_pipeline_barriers          = 0;
     uint32_t Profiler::m_rhi_timeblock_count            = 0;
 
-    // Metrics - Renderer
+    // metrics - renderer
     uint32_t Profiler::m_renderer_meshes_rendered = 0;
 
-    // Metrics - Time
+    // metrics - time
     float Profiler::m_time_frame_avg  = 0.0f;
     float Profiler::m_time_frame_min  = numeric_limits<float>::max();
     float Profiler::m_time_frame_max  = numeric_limits<float>::lowest();
@@ -73,7 +73,7 @@ namespace Spartan
     float Profiler::m_time_gpu_max    = numeric_limits<float>::lowest();
     float Profiler::m_time_gpu_last   = 0.0f;
 
-    // Memory
+    // memory
     uint32_t Profiler::m_descriptor_set_count    = 0;
     uint32_t Profiler::m_descriptor_set_capacity = 0;
 
@@ -83,7 +83,7 @@ namespace Spartan
     {
         // profiling options
         static const uint32_t initial_capacity     = 256;
-        static bool profile                        = false;
+        static bool profiling_enabled              = false;
         static bool profile_cpu                    = true;
         static bool profile_gpu                    = true;
         static float profiling_interval_sec        = 0.25f;
@@ -138,7 +138,7 @@ namespace Spartan
         if (!RHI_Context::gpu_profiling)
             return;
 
-        // Increase time block capacity (if needed)
+        // increase time block capacity (if needed)
         if (increase_capacity)
         {
             SwapBuffers();
@@ -163,7 +163,7 @@ namespace Spartan
 
     void Profiler::PostTick()
     {
-        // Compute timings
+        // compute timings
         {
             is_stuttering_cpu = m_time_cpu_last > (m_time_cpu_avg + stutter_delta_ms);
             is_stuttering_gpu = m_time_gpu_last > (m_time_gpu_avg + stutter_delta_ms);
@@ -186,27 +186,27 @@ namespace Spartan
                 }
             }
 
-            // CPU
+            // cpu
             m_time_cpu_avg = (m_time_cpu_avg * weight_history) + m_time_cpu_last * weight_delta;
             m_time_cpu_min = Math::Helper::Min(m_time_cpu_min, m_time_cpu_last);
             m_time_cpu_max = Math::Helper::Max(m_time_cpu_max, m_time_cpu_last);
 
-            // GPU
+            // gpu
             m_time_gpu_avg = (m_time_gpu_avg * weight_history) + m_time_gpu_last * weight_delta;
             m_time_gpu_min = Math::Helper::Min(m_time_gpu_min, m_time_gpu_last);
             m_time_gpu_max = Math::Helper::Max(m_time_gpu_max, m_time_gpu_last);
 
-            // Frame
+            // frame
             m_time_frame_last = static_cast<float>(Timer::GetDeltaTimeMs());
             m_time_frame_avg  = (m_time_frame_avg * weight_history) + m_time_frame_last * weight_delta;
             m_time_frame_min  = Math::Helper::Min(m_time_frame_min, m_time_frame_last);
             m_time_frame_max  = Math::Helper::Max(m_time_frame_max, m_time_frame_last);
 
-            // FPS  
+            // fps  
             m_fps = 1000.0f / m_time_frame_avg;
         }
 
-        // Check whether we should profile or not
+        // check whether we should profile or not
         time_since_profiling_sec += static_cast<float>(Timer::GetDeltaTimeSec());
         if (time_since_profiling_sec >= profiling_interval_sec)
         {
@@ -218,19 +218,18 @@ namespace Spartan
             poll = false;
         }
 
-        // Updating every m_profiling_interval_sec
+        // updating every m_profiling_interval_sec
         if (poll)
         {
             AcquireGpuData();
-
-            // Create a string version of the RHI metrics
-            if (Renderer::GetOption<bool>(Renderer_Option::Debug_PerformanceMetrics))
-            {
-                UpdateMetrics();
-            }
         }
 
-        if (profile && poll)
+        if (Renderer::GetOption<bool>(Renderer_Option::Debug_PerformanceMetrics) && profiling_enabled)
+        {
+            DrawPerformanceMetrics();
+        }
+
+        if (profiling_enabled && poll)
         {
             SwapBuffers();
         }
@@ -238,7 +237,7 @@ namespace Spartan
 
     void Profiler::SwapBuffers()
     {
-        // Copy completed time blocks write to time blocks read vector (double buffering)
+        // copy completed time blocks write to time blocks read vector (double buffering)
         {
             uint32_t pass_index_gpu = 0;
 
@@ -246,7 +245,7 @@ namespace Spartan
             {
                 TimeBlock& time_block = m_time_blocks_write[i];
 
-                // Compute time block duration
+                // compute time block duration
                 if (time_block.IsComplete())
                 {
                     if (time_block.GetType() == TimeBlockType::Gpu)
@@ -254,15 +253,15 @@ namespace Spartan
                         pass_index_gpu += 2;
                     }
                 }
-                else if (time_block.GetType() != TimeBlockType::Undefined) // If undefined, then it wasn't used this frame, nothing wrong with that.
+                else if (time_block.GetType() != TimeBlockType::Undefined) // if undefined, then it wasn't used this frame, nothing wrong with that.
                 {
                     SP_LOG_WARNING("TimeBlockEnd() was not called for time block \"%s\"", time_block.GetName());
                 }
 
-                // Copy over
+                // copy over
                 m_time_blocks_read[i] = time_block;
 
-                // Reset
+                // reset
                 time_block.Reset();
             }
         }
@@ -272,7 +271,7 @@ namespace Spartan
 
     void Profiler::TimeBlockStart(const char* func_name, TimeBlockType type, RHI_CommandList* cmd_list /*= nullptr*/)
     {
-        if (!profile || !poll)
+        if (!profiling_enabled || !poll)
             return;
 
         const bool can_profile_cpu = (type == TimeBlockType::Cpu) && profile_cpu;
@@ -281,7 +280,7 @@ namespace Spartan
         if (!can_profile_cpu && !can_profile_gpu)
             return;
 
-        // Last incomplete block of the same type, is the parent
+        // last incomplete block of the same type, is the parent
         TimeBlock* time_block_parent = GetLastIncompleteTimeBlock(type);
 
         if (TimeBlock* time_block = GetNewTimeBlock())
@@ -316,17 +315,12 @@ namespace Spartan
 
     bool Profiler::GetEnabled()
     {
-        return profile;
+        return profiling_enabled;
     }
 
     void Profiler::SetEnabled(const bool enabled)
     {
-        profile = enabled;
-    }
-
-    string Profiler::GetMetrics()
-    {
-        return oss_metrics.str();
+        profiling_enabled = enabled;
     }
 
     const vector<TimeBlock>& Profiler::GetTimeBlocks()
@@ -451,58 +445,58 @@ namespace Spartan
         return ss.str();
     }
 
-    void Profiler::UpdateMetrics()
+    void Profiler::DrawPerformanceMetrics()
     {
         const uint32_t texture_count  = ResourceCache::GetResourceCount(ResourceType::Texture) + ResourceCache::GetResourceCount(ResourceType::Texture2d) + ResourceCache::GetResourceCount(ResourceType::TextureCube);
         const uint32_t material_count = ResourceCache::GetResourceCount(ResourceType::Material);
         const uint32_t pipeline_count = RHI_Device::GetPipelineCount();
 
-        // Get the graphics driver vendor
+        // get the graphics driver vendor
         string api_vendor_name = "AMD";
         if (RHI_Device::GetPrimaryPhysicalDevice()->IsNvidia())
         {
             api_vendor_name = "NVIDIA";
         }
 
-        // Clear
+        // clear
         oss_metrics.str("");
         oss_metrics.clear();
 
-        // Set fixed-point notation with 2 decimal places
+        // set fixed-point notation with 2 decimal places
         oss_metrics << std::fixed << std::setprecision(2);
 
-        // Overview
+        // overview
         oss_metrics
             << "FPS:\t\t\t" << m_fps << endl
             << "Time:\t\t"  << m_time_frame_avg << " ms" << endl
             << "Frame:\t"   << Renderer::GetFrameNum() << endl;
 
-        // Detailed times
+        // detailed times
         oss_metrics
             << endl     << "\t" << "\t\tavg"                      << "\t" << "\tmin"                        << "\t" << "\tmax"                        << "\t" << "\tlast"                                 << endl
             << "Total:" << "\t" << format_float(m_time_frame_avg) << "\t" << format_float(m_time_frame_min) << "\t" << format_float(m_time_frame_max) << "\t" << format_float(m_time_frame_last) << " ms" << endl
             << "CPU:"   << "\t" << format_float(m_time_cpu_avg)   << "\t" << format_float(m_time_cpu_min)   << "\t" << format_float(m_time_cpu_max)   << "\t" << format_float(m_time_cpu_last)   << " ms" << endl
             << "GPU:"   << "\t" << format_float(m_time_gpu_avg)   << "\t" << format_float(m_time_gpu_min)   << "\t" << format_float(m_time_gpu_max)   << "\t" << format_float(m_time_gpu_last)   << " ms" << endl;
 
-        // GPU
+        // gpu
         oss_metrics << endl << "GPU" << endl
             << "Name:\t\t\t"   << gpu_name << endl
             << "Memory:\t"     << gpu_memory_used << "/" << gpu_memory_available << " MB" << endl
             << "API:\t\t\t\t"  << RHI_Context::api_type_str << "\t\t" << gpu_api << endl
             << "Driver:\t\t"   << RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName() << "\t\t" << gpu_driver << endl;
 
-        // Display
+        // display
         oss_metrics << "\nDisplay\n"
             << "Render:\t\t" << static_cast<uint32_t>(Renderer::GetResolutionRender().x) << "x" << static_cast<int>(Renderer::GetResolutionRender().y) << endl
             << "Output:\t\t" << static_cast<uint32_t>(Renderer::GetResolutionOutput().x) << "x" << static_cast<int>(Renderer::GetResolutionOutput().y) << endl
             << "Viewport:\t" << static_cast<uint32_t>(Renderer::GetViewport().width)     << "x" << static_cast<int>(Renderer::GetViewport().height)    << endl
             << "HDR:\t\t\t"  << (Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled") << endl;
 
-        // CPU
+        // cpu
         oss_metrics << endl << "CPU" << endl
             << "Worker threads: " << ThreadPool::GetWorkingThreadCount() << "/" << ThreadPool::GetThreadCount() << endl;
 
-        // API Calls
+        // api calls
         oss_metrics << "\nAPI calls" << endl;
         if (Profiler::m_granularity == ProfilerGranularity::Full)
         {
@@ -516,12 +510,15 @@ namespace Spartan
             << "Pipeline bindings:\t\t\t\t"  << m_rhi_bindings_pipeline       << endl
             << "Pipeline barriers:\t\t\t\t"  << m_rhi_pipeline_barriers       << endl;
 
-        // Resources
+        // resources
         oss_metrics << "\nResources\n"
             << "Meshes rendered:\t\t\t\t"   << m_renderer_meshes_rendered << endl
             << "Textures:\t\t\t\t\t\t\t"    << texture_count              << endl
             << "Materials:\t\t\t\t\t\t\t"   << material_count             << endl
             << "Pipelines:\t\t\t\t\t\t\t"   << pipeline_count             << endl
             << "Descriptor set capacity:\t" << m_descriptor_set_count << "/" << m_descriptor_set_capacity;
+
+        // draw at the top-left of the screen
+        Renderer::DrawString(oss_metrics.str(), Math::Vector2(5.0f, -22.0f));
     }
 }

@@ -63,6 +63,7 @@ namespace Spartan
     bool Renderer::m_brdf_specular_lut_rendered;
     RHI_CommandPool* Renderer::m_cmd_pool = nullptr;
     shared_ptr<Camera> Renderer::m_camera = nullptr;
+    vector<pair<string, Math::Vector2>> Renderer::m_texts;
 
     namespace
     {
@@ -737,6 +738,7 @@ namespace Spartan
 
     void Renderer::OnFrameEnd(RHI_CommandList* cmd_list)
     {
+        m_texts.clear();
         Lines_OnFrameEnd();
     }
 
@@ -751,7 +753,12 @@ namespace Spartan
         environment_texture = environment->GetTexture();
     }
 
-    void Renderer::SetOption(Renderer_Option option, float value)
+	void Renderer::DrawString(const string& text, const Vector2& position_screen)
+	{
+        m_texts.push_back(make_pair(text, position_screen));
+	}
+
+	void Renderer::SetOption(Renderer_Option option, float value)
     {
         // clamp value
         {
