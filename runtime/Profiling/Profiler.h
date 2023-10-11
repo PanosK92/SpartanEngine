@@ -52,10 +52,9 @@ namespace Spartan
         static void TimeBlockEnd();
         static void ClearMetrics();
         
-        // Properties
+        // properties
         static bool GetEnabled();
         static void SetEnabled(const bool enabled);
-        static std::string GetMetrics();
         static const std::vector<TimeBlock>& GetTimeBlocks();
         static float GetTimeCpuLast();
         static float GetTimeGpuLast();
@@ -69,7 +68,7 @@ namespace Spartan
         static bool IsCpuStuttering();
         static bool IsGpuStuttering();
         
-        // Metrics - RHI
+        // metrics - rhi
         static uint32_t m_rhi_draw;
         static uint32_t m_rhi_dispatch;
         static uint32_t m_rhi_bindings_buffer_index;
@@ -88,10 +87,10 @@ namespace Spartan
         static uint32_t m_rhi_pipeline_barriers;
         static uint32_t m_rhi_timeblock_count;
 
-        // Metrics - Renderer
+        // metrics - renderer
         static uint32_t m_renderer_meshes_rendered;
 
-        // Metrics - Time
+        // metrics - time
         static float m_time_frame_avg ;
         static float m_time_frame_min ;
         static float m_time_frame_max ;
@@ -105,11 +104,11 @@ namespace Spartan
         static float m_time_gpu_max;
         static float m_time_gpu_last;
 
-        // Memory
+        // memory
         static uint32_t m_descriptor_set_count;
         static uint32_t m_descriptor_set_capacity;
 
-        // Misc
+        // misc
         static ProfilerGranularity m_granularity;
 
     private:
@@ -139,7 +138,7 @@ namespace Spartan
 
         static TimeBlock* GetNewTimeBlock();
         static void AcquireGpuData();
-        static void UpdateMetrics();
+        static void DrawPerformanceMetrics();
         static TimeBlock* GetLastIncompleteTimeBlock(TimeBlockType type = TimeBlockType::Undefined);
     };
 

@@ -23,12 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Font.h"
 #include "../Renderer.h"
+#include "../../Core/Stopwatch.h"
+#include "../../Resource/ResourceCache.h"
+#include "../../Resource/Import/FontImporter.h"
 #include "../../RHI/RHI_Vertex.h"
 #include "../../RHI/RHI_VertexBuffer.h"
 #include "../../RHI/RHI_IndexBuffer.h"
-#include "../../Resource/ResourceCache.h"
-#include "../../Resource/Import/FontImporter.h"
-#include "../../Core/Stopwatch.h"
 //=============================================
 
 //= NAMESPACES ===============
@@ -36,9 +36,9 @@ using namespace std;
 using namespace Spartan::Math;
 //============================
 
-#define ASCII_TAB       9
-#define ASCII_NEW_LINE  10
-#define ASCII_SPACE     32
+#define ASCII_TAB      9
+#define ASCII_NEW_LINE 10
+#define ASCII_SPACE    32
 
 namespace Spartan
 {
@@ -63,14 +63,14 @@ namespace Spartan
     {
         const Stopwatch timer;
 
-        // Load
+        // load
         if (!FontImporter::LoadFromFile(this, file_path))
         {
             SP_LOG_ERROR("Failed to load font \"%s\"", file_path.c_str());
             return false;
         }
 
-        // Find max character height (todo, actually get spacing from FreeType)
+        // find max character height (todo, actually get spacing from FreeType)
         for (const auto& char_info : m_glyphs)
         {
             m_char_max_width    = Helper::Max<int>(char_info.second.width, m_char_max_width);
@@ -93,7 +93,7 @@ namespace Spartan
         m_current_text = text;
         m_vertices.clear();
 
-        // Draw each letter onto a quad.
+        // draw each letter onto a quad
         for (auto text_char : m_current_text)
         {
             Glyph& glyph = m_glyphs[text_char];
@@ -115,21 +115,21 @@ namespace Spartan
             }
             else if (text_char == ASCII_SPACE)
             {
-                // Advance
+                // advance
                 pen.x += glyph.horizontal_advance;
             }
-            else // Any other char
+            else // any other char
             {
-                // First triangle in quad.        
+                // first triangle in quad.    
                 m_vertices.emplace_back(pen.x + glyph.offset_x,                 pen.y + glyph.offset_y,                  0.0f, glyph.uv_x_left,  glyph.uv_y_top);       // top left
                 m_vertices.emplace_back(pen.x + glyph.offset_x  + glyph.width,  pen.y + glyph.offset_y - glyph.height,   0.0f, glyph.uv_x_right, glyph.uv_y_bottom);    // bottom right
                 m_vertices.emplace_back(pen.x + glyph.offset_x,                 pen.y + glyph.offset_y - glyph.height,   0.0f, glyph.uv_x_left,  glyph.uv_y_bottom);    // bottom left
-                // Second triangle in quad.
+                // fecond triangle in quad
                 m_vertices.emplace_back(pen.x + glyph.offset_x,                 pen.y + glyph.offset_y,                  0.0f, glyph.uv_x_left,  glyph.uv_y_top);       // top left
                 m_vertices.emplace_back(pen.x + glyph.offset_x  + glyph.width,  pen.y + glyph.offset_y,                  0.0f, glyph.uv_x_right, glyph.uv_y_top);       // top right
                 m_vertices.emplace_back(pen.x + glyph.offset_x  + glyph.width,  pen.y + glyph.offset_y - glyph.height,   0.0f, glyph.uv_x_right, glyph.uv_y_bottom);    // bottom right
 
-                // Advance
+                // advance
                 pen.x += glyph.horizontal_advance;
             }
         }
