@@ -450,7 +450,7 @@ namespace Spartan
         metrics_time_since_last_update += static_cast<float>(Timer::GetDeltaTimeSec());
         if (metrics_time_since_last_update < profiling_interval_sec)
         {
-            Renderer::DrawString(metrics_str, Vector2(0.01f, 0.01f));
+            Renderer::DrawString(metrics_str, Math::Vector2(0.01f, 0.01f));
             return;
         }
         metrics_time_since_last_update = 0.0f;
