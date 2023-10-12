@@ -107,8 +107,6 @@ namespace Spartan
         // 2. the y axis of certain vectors is zeroed out, this is because pacejka's formula is only concerned with forward and side slip (and to iron out any numerical imprecision)
         // 3. some vector swizzling happens, this is because the engine is using a left-handed coordinate system but bullet is using a right-handed coordinate system
         // 4. precision issues and fuzziness, in various math/vectors, can be reduced by increasing the physics simulation rate, we are doing 200hz
-        // 5. even at high simulation rates, some fuzziness remains (albeit considerably smaller), so we still need to avoid doing math with such values, hence the fuzzy_threshold below
-        constexpr float fuzzy_threshold = 0.01f; // this value should be as small as possible but larger than various fuzzy vectors/velocities at rest (vehicle, wheels etc.)
 
         btVector3 compute_wheel_direction_forward(btWheelInfo* wheel_info)
         {
@@ -155,27 +153,18 @@ namespace Spartan
 
         float compute_slip_angle(btWheelInfo* wheel_info, const btVector3& wheel_forward, const btVector3& wheel_side, const btVector3& vehicle_velocity)
         {
-            // slip angle value meaning (function returns radians but comments are in degrees)
+            // slip angle value meaning (the comments use degrees but this function returns a value from -1 to 1)
             // 0°:                     the direction of the wheel is aligned perfectly with the direction of the travel
             // 0° to 90° (-90° to 0°): the wheel is starting to turn away from the direction of travel
             // 90° (-90°):             the wheel is perpendicular to the direction of the travel, maximum lateral sliding
 
-            if (vehicle_velocity.fuzzyZero())
-                return 0.0f;
-
-            btVector3 vehicle_velocity_normalized = vehicle_velocity.normalized();
+            btVector3 vehicle_velocity_normalized = vehicle_velocity.fuzzyZero() ? btVector3(0.0f, 0.0f, 0.0f) : vehicle_velocity.normalized();
             float vehicle_dot_wheel_forward       = vehicle_velocity_normalized.dot(wheel_forward);
             float vehicle_dot_wheel_side          = vehicle_velocity_normalized.dot(wheel_side);
-            vehicle_dot_wheel_forward             = Math::Helper::Clamp<float>(vehicle_dot_wheel_forward, -1.0f, 1.0f); // clamp to avoid numerical imprecision
-            vehicle_dot_wheel_side                = Math::Helper::Clamp<float>(vehicle_dot_wheel_side, -1.0f, 1.0f);    // clamp to avoid numerical imprecision
+            float slip_angle                      = atan2(vehicle_dot_wheel_side + Math::Helper::SMALL_FLOAT, vehicle_dot_wheel_forward + Math::Helper::SMALL_FLOAT);
 
-            // check for tiny fuzzy values to avoid erratic slip angles
-            bool fuzzy_zero_a = Math::Helper::Abs<float>(vehicle_dot_wheel_forward) < fuzzy_threshold;
-            bool fuzzy_zero_b = Math::Helper::Abs<float>(vehicle_dot_wheel_side) < fuzzy_threshold;
-            if (fuzzy_zero_a || fuzzy_zero_b)
-                return 0.0f;
-
-            return atan2(vehicle_dot_wheel_side, vehicle_dot_wheel_forward);
+            // convert radians to -1 to 1 range 
+            return slip_angle / Math::Helper::PI;
         }
 
         float compute_pacejka_force(float slip_percentage, float normal_load)
@@ -239,11 +228,13 @@ namespace Spartan
             // compute the total force
             btVector3 wheel_force    = (slip_force_forward * wheel_forward_dir) + (slip_force_side * wheel_right_dir);
 
-            SP_LOG_INFO("slip ratio: %.4f, slip angle: %.4f, pacejka forward: %.4f N, pacejka side: %.4f N",
-                slip_ratio, slip_angle * Math::Helper::RAD_TO_DEG, slip_force_forward, slip_force_side);
+            //SP_LOG_INFO("slip ratio: %.4f (%.2f N), slip angle: %.4f (%.2f N)", slip_ratio, slip_force_forward, slip_angle, slip_force_side);
 
-            float magic_value = 50.0f; // force scale, have to figure out why it's needed
-            *force            = btVector3(wheel_force.x(), 0.0f, wheel_force.z()) * magic_value;
+            // i believe that because this is the contact point between all the external physics
+            // computations and bullet, there might by some differences in the simulation scale
+            float simulation_scale = 70.0f; // setting the scale to something that feels correct
+
+            *force            = btVector3(wheel_force.x(), 0.0f, wheel_force.z()) * simulation_scale;
             *force_position   = wheel_info->m_raycastInfo.m_contactPointWS;
         }
     }
