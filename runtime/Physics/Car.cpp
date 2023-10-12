@@ -54,41 +54,41 @@ namespace Spartan
         // 2. these values simulate a mid size car and need to be adjusted according to the simulated car's specifications
 
         // engine
-        constexpr float engine_torque_max = 350;     // maximum torque output of the engine
-        constexpr float engine_max_rpm    = 6500.0f; // maximum engine RPM
-        constexpr float engine_idle_rpm   = 800.0f;  // idle engine RPM
+        constexpr float engine_torque_max             = 350;                                        // maximum torque output of the engine
+        constexpr float engine_max_rpm                = 6500.0f;                                    // maximum engine RPM
+        constexpr float engine_idle_rpm               = 800.0f;                                     // idle engine RPM
 
         // gearbox
-        constexpr float gear_ratios[]           = { 3.5f, 2.25f, 1.6f, 1.15f, 0.9f, 0.75f }; // gear ratios for each gear
-        constexpr float final_drive_ratio       = 3.5f;                                      // final drive ratio
-        constexpr float transmission_efficiency = 0.95f;                                     // there is some loss of torque (due to the the clutch and flywheel)
-        constexpr float shift_delay             = 0.3f;                                      // gear shift delay in seconds
+        constexpr float gear_ratios[]                 = { 3.5f, 2.25f, 1.6f, 1.15f, 0.9f, 0.75f }; // gear ratios for each gear
+        constexpr float final_drive_ratio             = 3.5f;                                      // final drive ratio
+        constexpr float transmission_efficiency       = 0.95f;                                     // there is some loss of torque (due to the the clutch and flywheel)
+        constexpr float shift_delay                   = 0.3f;                                      // gear shift delay in seconds
 
         // suspension
-        constexpr float suspension_stiffness   = 50.0f;                    // stiffness of suspension springs in N/m
-        constexpr float suspension_damping     = 2.0f;                     // damping coefficient to dissipate energy
-        constexpr float suspension_compression = 1.0f;                     // compression damping coefficient
-        constexpr float suspension_force_max   = 5000.0f;                  // maximum force suspension can exert in newtons
-        constexpr float suspension_length      = 0.35f;                    // spring length
-        constexpr float suspension_rest_length = suspension_length * 0.8f; // spring length at equilibrium
-        constexpr float suspension_travel_max  = suspension_length * 0.5f; // maximum travel of the suspension
+        constexpr float suspension_stiffness          = 50.0f;                                     // stiffness of suspension springs in N/m
+        constexpr float suspension_damping            = 2.0f;                                      // damping coefficient to dissipate energy
+        constexpr float suspension_compression        = 1.0f;                                      // compression damping coefficient
+        constexpr float suspension_force_max          = 5000.0f;                                   // maximum force suspension can exert in newtons
+        constexpr float suspension_length             = 0.35f;                                     // spring length
+        constexpr float suspension_rest_length        = suspension_length * 0.8f;                  // spring length at equilibrium
+        constexpr float suspension_travel_max         = suspension_length * 0.5f;                  // maximum travel of the suspension
         
         // anti-roll bar
-        constexpr float anti_roll_bar_stiffness_front = 500.0f; // higher front stiffness reduces oversteer, lower increases it
-        constexpr float anti_roll_bar_stiffness_rear  = 500.0f; // higher rear stiffness reduces understeer, lower increases it
+        constexpr float anti_roll_bar_stiffness_front = 500.0f;                                    // higher front stiffness reduces oversteer, lower increases it
+        constexpr float anti_roll_bar_stiffness_rear  = 400.0f;                                    // higher rear stiffness reduces understeer, lower increases it
 
         // breaks
-        constexpr float brake_force_max  = 1000.0f; // maximum brake force applied to wheels in newtons
-        constexpr float brake_ramp_speed = 100.0f;  // rate at which brake force increases
+        constexpr float brake_force_max               = 1000.0f;                                   // maximum brake force applied to wheels in newtons
+        constexpr float brake_ramp_speed              = 100.0f;                                    // rate at which brake force increases
 
         // steering
-        constexpr float steering_angle_max    = 40.0f * Math::Helper::DEG_TO_RAD; // the maximum steering angle of the front wheels
-        constexpr float steering_return_speed = 5.0f;                             // the speed at which the steering wheel returns to center
+        constexpr float steering_angle_max            = 40.0f * Math::Helper::DEG_TO_RAD;          // the maximum steering angle of the front wheels
+        constexpr float steering_return_speed         = 5.0f;                                      // the speed at which the steering wheel returns to center
         
         // misc
-        constexpr float wheel_radius          = 0.6f;  // radius of the wheel
-        constexpr float tire_friction         = 2.5f;  // coefficient of friction for tires
-        constexpr float aerodynamic_downforce = 0.25f; // the faster the vehicle, the more the tires will grip the road
+        constexpr float wheel_radius                  = 0.6f;                                       // radius of the wheel
+        constexpr float tire_friction                 = 2.5f;                                       // coefficient of friction for tires
+        constexpr float aerodynamic_downforce         = 0.25f;                                      // the faster the vehicle, the more the tires will grip the road
 
         // wheel indices (used for bullet physics)
         constexpr uint8_t wheel_fl = 0;
@@ -108,9 +108,9 @@ namespace Spartan
 
         // notes:
         // 1. all computations are done in world space
-        // 2. the y axis of certain vectors is zeroed out, this is because pacejka's formula is only concerned with forward and side slip (and to iron out any numerical imprecision)
+        // 2. the y axis of certain vectors is zeroed out, this is because pacejka's formula is only concerned with forward and side slip
         // 3. some vector swizzling happens, this is because the engine is using a left-handed coordinate system but bullet is using a right-handed coordinate system
-        // 4. precision issues and fuzziness, in various math/vectors, can be reduced by increasing the physics simulation rate, we are doing 200hz
+        // 4. precision issues and fuzziness, in various math/vectors, can be reduced by increasing the physics simulation rate, we are doing 200hz (aided by clamping and small float additions)
 
         btVector3 compute_wheel_direction_forward(btWheelInfo* wheel_info)
         {
@@ -171,17 +171,17 @@ namespace Spartan
             return slip_angle / Math::Helper::PI;
         }
 
-        float compute_pacejka_force(float slip_percentage, float normal_load)
+        float compute_pacejka_force(float slip, float normal_load)
         {
-            // https://en.wikipedia.org/wiki/Hans_B._Pacejka
+            // general information: https://en.wikipedia.org/wiki/Hans_B._Pacejka
 
-            // formula doesn't handle zero loads (NaN)
-            if (normal_load == 0.0f)
-                return 0.0f;
+            // performance some unit conversions that the formula expects
+            slip        = slip * 100.0f;                                       // convert to percentage
+            normal_load = (normal_load + Math::Helper::SMALL_FLOAT) / 1000.0f; // convert to kilonewtons
 
             // coefficients from the pacejka '94 model
-            // reference: https://www.edy.es/dev/docs/pacejka-94-parameters-explained-a-comprehensive-guide/
             // b0, b2, b4, b8 are the most relevant parameters that define the curve’s shape
+            // reference: https://www.edy.es/dev/docs/pacejka-94-parameters-explained-a-comprehensive-guide/
             float b0  = 1.5f;
             float b1  = 0.0f;
             float b2  = 1.0f;
@@ -198,15 +198,15 @@ namespace Spartan
             float b13 = 0.0f;
 
             // compute the parameters for the Pacejka ’94 formula
-            float Fz  = normal_load / 1000.0f; // convert to kilonewtons
+            float Fz  = normal_load;
             float C   = b0;
             float D   = Fz * (b1 * Fz + b2);
             float BCD = (b3 * Fz * Fz + b4 * Fz) * exp(-b5 * Fz);
             float B   = BCD / (C * D);
-            float E   = (b6 * Fz * Fz + b7 * Fz + b8) * (1 - b13 * Math::Helper::Sign(slip_percentage + (b9 * Fz + b10)));
+            float E   = (b6 * Fz * Fz + b7 * Fz + b8) * (1 - b13 * Math::Helper::Sign(slip + (b9 * Fz + b10)));
             float H   = b9 * Fz + b10;
             float V   = b11 * Fz + b12;
-            float Bx1 = B * (slip_percentage + H);
+            float Bx1 = B * (slip + H);
 
             // pacejka ’94 longitudinal formula
             return D * sin(C * atan(Bx1 - E * (Bx1 - atan(Bx1)))) + V;
@@ -226,9 +226,9 @@ namespace Spartan
             // the angle between the direction in which a wheel is pointed and the direction in which the vehicle is actually traveling
             float slip_angle         = compute_slip_angle(wheel_info, wheel_forward_dir, wheel_right_dir, vehicle_velocity);
             // the force that the tire can exert parallel to its direction of travel
-            float slip_force_forward = compute_pacejka_force(slip_ratio * 100.0f, wheel_info->m_wheelsSuspensionForce);
+            float slip_force_forward = compute_pacejka_force(slip_ratio, wheel_info->m_wheelsSuspensionForce);
             // the force that the tire can exert perpendicular to its direction of travel
-            float slip_force_side    = compute_pacejka_force(slip_angle * 100.0f, wheel_info->m_wheelsSuspensionForce);
+            float slip_force_side    = compute_pacejka_force(slip_angle, wheel_info->m_wheelsSuspensionForce);
             // compute the total force
             btVector3 wheel_force    = (slip_force_forward * wheel_forward_dir) + (slip_force_side * wheel_right_dir);
 
