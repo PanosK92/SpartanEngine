@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BulletPhysicsHelper.h"
 #include "../Rendering/Renderer.h"
 #include "../Input/Input.h"
-#include "../World/Components/Transform.h"
 SP_WARNINGS_OFF
 #include <BulletDynamics/Vehicle/btRaycastVehicle.h>
 SP_WARNINGS_ON
@@ -54,9 +53,9 @@ namespace Spartan
         // 2. these values simulate a mid size car and need to be adjusted according to the simulated car's specifications
 
         // engine
-        constexpr float engine_torque_max             = 350;                                        // maximum torque output of the engine
-        constexpr float engine_max_rpm                = 6500.0f;                                    // maximum engine RPM
-        constexpr float engine_idle_rpm               = 800.0f;                                     // idle engine RPM
+        constexpr float engine_torque_max             = 350;                                       // maximum torque output of the engine
+        constexpr float engine_max_rpm                = 6500.0f;                                   // maximum engine RPM
+        constexpr float engine_idle_rpm               = 800.0f;                                    // idle engine RPM
 
         // gearbox
         constexpr float gear_ratios[]                 = { 3.5f, 2.25f, 1.6f, 1.15f, 0.9f, 0.75f }; // gear ratios for each gear
@@ -86,9 +85,9 @@ namespace Spartan
         constexpr float steering_return_speed         = 5.0f;                                      // the speed at which the steering wheel returns to center
         
         // misc
-        constexpr float wheel_radius                  = 0.6f;                                       // radius of the wheel
-        constexpr float tire_friction                 = 2.5f;                                       // coefficient of friction for tires
-        constexpr float aerodynamic_downforce         = 0.25f;                                      // the faster the vehicle, the more the tires will grip the road
+        constexpr float wheel_radius                  = 0.6f;                                      // radius of the wheel
+        constexpr float tire_friction                 = 2.3f;                                      // coefficient of friction for tires
+        constexpr float aerodynamic_downforce         = 0.25f;                                     // the faster the vehicle, the more the tires will grip the road
 
         // wheel indices (used for bullet physics)
         constexpr uint8_t wheel_fl = 0;
@@ -214,8 +213,8 @@ namespace Spartan
 
         void compute_tire_force(btWheelInfo* wheel_info, const btVector3& wheel_velocity, const btVector3& vehicle_velocity, btVector3* force, btVector3* force_position)
         {
-            // the slip ratio and slip angle have the most influence, it's crucial
-            // that their computation is accurate, otherwise the tire forces will be wrong and/or erratic
+            // the slip ratio and slip angle have the most influence, it's crucial that their
+            // computation is accurate, otherwise the tire forces will be wrong and/or erratic
 
             // compute wheel directions
             btVector3 wheel_forward_dir = compute_wheel_direction_forward(wheel_info);
@@ -234,9 +233,10 @@ namespace Spartan
 
             //SP_LOG_INFO("slip ratio: %.4f (%.2f N), slip angle: %.4f (%.2f N)", slip_ratio, slip_force_forward, slip_angle, slip_force_side);
 
-            // i believe that because this is the contact point between all the external physics
-            // computations and bullet, there might by some differences in the simulation scale
-            float simulation_scale = 50.0f; // setting the scale to something that feels correct
+            // this is the point where external physics calculations meet with the internal physics calculations (bullet)
+            // my suspicion is that the simulation scales are different, hence the multiplication by simulation_scale
+            // more investigation is needed on this so that the simulation is as accurate as possible
+            float simulation_scale = 30.0f;
 
             *force            = btVector3(wheel_force.x(), 0.0f, wheel_force.z()) * simulation_scale;
             *force_position   = wheel_info->m_raycastInfo.m_contactPointWS;
@@ -331,11 +331,20 @@ namespace Spartan
 
         float get_torque(const float engine_rpm, const uint32_t current_gear, const float throttle_input)
         {
+            // the revving down and up rate is a byproduct of piston weights, flywheel inertia, clutch etc
+            // we are simlating a this using a simple lerp rate, where revving down is faster than revving up
+
+            float delta_time_seconds             = static_cast<float>(Timer::GetDeltaTimeSec());
+            static float smoothed_throttle_input = 0.0f;
+            float lerp_rate                      = (smoothed_throttle_input > throttle_input) ? 3.0f : 1.0f; //  a typical ratio should be 2:1 or 3:1
+            smoothed_throttle_input              = Math::Helper::Lerp<float>(smoothed_throttle_input, throttle_input, lerp_rate * delta_time_seconds);
+
             float normalized_rpm     = (engine_rpm - tuning::engine_idle_rpm) / (tuning::engine_max_rpm - tuning::engine_idle_rpm);
             float torque_curve_value = torque_curve(normalized_rpm);
             float gear_ratio         = tuning::gear_ratios[current_gear - 1] * tuning::final_drive_ratio;
-            return tuning::engine_torque_max * throttle_input * gear_ratio * torque_curve_value * tuning::transmission_efficiency;
+            return tuning::engine_torque_max * smoothed_throttle_input * gear_ratio * torque_curve_value * tuning::transmission_efficiency;
         }
+
     }
 
     namespace debug
