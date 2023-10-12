@@ -135,32 +135,30 @@ namespace Spartan
         }
 
         float compute_slip_ratio(btWheelInfo* wheel_info, const btVector3& wheel_forward, const btVector3& wheel_velocity, const btVector3& vehicle_velocity)
-        {
+        {    
+            // value meanings
+            //  0:       tire is rolling perfectly without any slip
+            //  0 to  1: the tire is beginning to slip under acceleration
+            // -1 to  0: the tire is beginning to slip under braking
+            //  1 or -1: a full throttle lock or brake lock respectively, where the tire is spinning freely (or sliding) without providing traction
+
             // slip ratio as defined by Springer Handbook of Robotics
-            // slip ratio value meaning
-            // 0:                tire is rolling perfectly without any slip
-            // 0 to 1 (-1 to 0): tire is beginning to slip, positive under acceleration, negative under braking
-            // 1 (-1):           full throttle (brake) lock, tire spinning freely (sliding) without providing forward traction
-
-            if (vehicle_velocity.fuzzyZero())
-                return 0.0f;
-
             float velocity_forward = vehicle_velocity.dot(wheel_forward);
             float velocity_wheel   = wheel_velocity.dot(wheel_forward);
+            float nominator        = velocity_wheel - velocity_forward;
+            float denominator      = velocity_forward;
 
-            // check for tiny fuzzy values to avoid erratic slip ratios
-            if (Math::Helper::Abs<float>(velocity_forward) < fuzzy_threshold || Math::Helper::Abs<float>(velocity_wheel) < fuzzy_threshold)
-                return 0.0f;
-
-            return (velocity_wheel - velocity_forward) / (velocity_forward + Math::Helper::EPSILON);
+            // to avoid a division by zero, or computations with fuzzy zero values which can yield erratic slip ratios,
+            // we have to slightly deviate from the formula definition (additions and clamp), but the results are still accurate enough
+            return Math::Helper::Clamp<float>((nominator + Math::Helper::SMALL_FLOAT) / (denominator + Math::Helper::SMALL_FLOAT), -1.0f, 1.0f);
         }
 
         float compute_slip_angle(btWheelInfo* wheel_info, const btVector3& wheel_forward, const btVector3& wheel_side, const btVector3& vehicle_velocity)
         {
-            // slip angle value meaning (using degrees)
-            // 0:                  the direction of the wheel is aligned perfectly with the direction of the travel
-            // 0 to 90 (-90 to 0): the wheel is starting to turn away from the direction of travel
-            // 90 (-90):           the wheel is perpendicular to the direction of the travel, maximum lateral sliding
+            // slip angle value meaning (function returns radians but comments are in degrees)
+            // 0°:                     the direction of the wheel is aligned perfectly with the direction of the travel
+            // 0° to 90° (-90° to 0°): the wheel is starting to turn away from the direction of travel
+            // 90° (-90°):             the wheel is perpendicular to the direction of the travel, maximum lateral sliding
 
             if (vehicle_velocity.fuzzyZero())
                 return 0.0f;
@@ -217,6 +215,9 @@ namespace Spartan
 
         void compute_tire_force(btWheelInfo* wheel_info, const btVector3& wheel_velocity, const btVector3& vehicle_velocity, btVector3* force, btVector3* force_position)
         {
+            // the slip ratio and slip angle have the most influence, it's crucial
+            // that their computation is accurate, otherwise the tire forces will be wrong and/or erratic
+
             // compute wheel directions
             btVector3 wheel_forward_dir = compute_wheel_direction_forward(wheel_info);
             btVector3 wheel_right_dir   = compute_wheel_direction_right(wheel_info);
@@ -231,6 +232,8 @@ namespace Spartan
             float slip_force_side    = compute_pacejka_force(slip_angle, wheel_info->m_wheelsSuspensionForce);
             // compute the total force
             btVector3 wheel_force    = (slip_force_forward * wheel_forward_dir) + (slip_force_side * wheel_right_dir);
+
+            SP_LOG_INFO("slip ratio: %.4f, slip angle: %.4f", slip_ratio, slip_angle * Math::Helper::RAD_TO_DEG);
 
             *force = btVector3(wheel_force.x(), 0.0f, wheel_force.z());
             *force_position = wheel_info->m_raycastInfo.m_contactPointWS;
