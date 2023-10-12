@@ -435,8 +435,8 @@ namespace Spartan
         if (!m_vehicle)
             return;
 
-        Control();
-        ApplyTireForces();
+        HandleInput();
+        ApplyForces();
         UpdateTransforms();
 
         if (debug::draw)
@@ -455,22 +455,22 @@ namespace Spartan
         m_vehicle_wheel_transforms[wheel_index] = transform;
     }
 
-    float Car::GetSpeedKmHour() const
+    float Car::GetSpeedKilometersPerHour() const
     {
         return m_vehicle->getCurrentSpeedKmHour();
     }
 
-    void Car::Control()
+    float Car::GetSpeedMetersPerSecond() const
     {
-        float delta_time_sec = static_cast<float>(Timer::GetDeltaTimeSec());
-        bool handbrake       = Input::GetKey(KeyCode::Space);
-        float speed_kmh      = GetSpeedKmHour();
-        float speed_mps      = speed_kmh * (1000.0f / 3600.0f);
+        return GetSpeedKilometersPerHour() * (1000.0f / 3600.0f);
+    }
 
+    void Car::HandleInput()
+    {
         // compute engine torque
         m_torque_newtons = 0.0f;
         {
-            gearbox::update(speed_mps);
+            gearbox::update(GetSpeedMetersPerSecond());
 
             float throttle_input = 0.0f;
             if (Input::GetKey(KeyCode::Arrow_Up) || Input::GetControllerTriggerRight() != 0.0f)
@@ -498,25 +498,59 @@ namespace Spartan
                 steering_angle_target = tuning::steering_angle_max;
             }
 
-            // lerp to new steering angle (real life vehicles don't snap their wheels to the target angle)
-
-            m_steering_angle_radians = Math::Helper::Lerp<float>(m_steering_angle_radians, steering_angle_target, tuning::steering_return_speed * delta_time_sec);
+            // lerp to new steering angle - real life vehicles don't snap their wheels to the target angle
+            m_steering_angle_radians = Math::Helper::Lerp<float>(m_steering_angle_radians, steering_angle_target, tuning::steering_return_speed * static_cast<float>(Timer::GetDeltaTimeSec()));
 
             // set the steering angle
             m_vehicle->setSteeringValue(m_steering_angle_radians, tuning::wheel_fl);
             m_vehicle->setSteeringValue(m_steering_angle_radians, tuning::wheel_fr);
         }
+    }
 
-        // apply forces
+    void Car::ApplyForces()
+    {
+        float delta_time_sec          = static_cast<float>(Timer::GetDeltaTimeSec());
+        float speed_meters_per_second = GetSpeedMetersPerSecond();
+
+        // engine torque (front-wheel drive)
+        m_vehicle->applyEngineForce(-m_torque_newtons, tuning::wheel_fl);
+        m_vehicle->applyEngineForce(-m_torque_newtons, tuning::wheel_fr);
+
+        // aerodynamic downforce
         {
-            // aerodynamic downforce (this can be split into front and rear, front bumper and rear wing)
-            float downforce = tuning::aerodynamic_downforce * speed_mps * speed_mps;
+            float downforce = tuning::aerodynamic_downforce * speed_meters_per_second * speed_meters_per_second;
             btVector3 downforce_vector(0, -downforce, 0); // Y-axis is up
             m_vehicle_chassis->applyCentralForce(downforce_vector);
+        }
+
+        // anti-roll bar
+        anti_roll_bar::apply(m_vehicle, m_vehicle_chassis, tuning::wheel_fl, tuning::wheel_fr, tuning::anti_roll_bar_stiffness_front);
+        anti_roll_bar::apply(m_vehicle, m_vehicle_chassis, tuning::wheel_rl, tuning::wheel_rr, tuning::anti_roll_bar_stiffness_rear); 
+
+        // tire friction model - the main factor that defines handling
+        for (int i = 0; i < m_vehicle->getNumWheels(); ++i)
+        {
+            btWheelInfo* wheel_info = &m_vehicle->getWheelInfo(i);
+
+            if (wheel_info->m_raycastInfo.m_isInContact)
+            {
+                btVector3 velocity_wheel = tire_friction_model::compute_wheel_velocity(wheel_info, m_vehicle_chassis);
+                btVector3 velocity_vehicle = btVector3(m_vehicle_chassis->getLinearVelocity().x(), 0.0f, m_vehicle_chassis->getLinearVelocity().z());
+
+                btVector3 force;
+                btVector3 force_position;
+                tire_friction_model::compute_tire_force(wheel_info, velocity_wheel, velocity_vehicle, &force, &force_position);
+
+                m_vehicle_chassis->applyForce(force, force_position);
+            }
+        }
+
+        // breaking
+        {
+            bool handbrake = Input::GetKey(KeyCode::Space);
 
             if (m_wants_to_reverse)
             {
-                // ramp up breaking force
                 m_break_force = Math::Helper::Min<float>(m_break_force + tuning::brake_ramp_speed * delta_time_sec, tuning::brake_force_max);
 
                 for (int i = 0; i < m_vehicle->getNumWheels(); ++i)
@@ -526,45 +560,12 @@ namespace Spartan
             }
             else
             {
-                // apply engine torque (front-wheel drive)
-                m_vehicle->applyEngineForce(-m_torque_newtons, tuning::wheel_fl);
-                m_vehicle->applyEngineForce(-m_torque_newtons, tuning::wheel_fr);
-
-                // ramp down breaking force
                 m_break_force = Math::Helper::Max<float>(m_break_force - tuning::brake_ramp_speed * delta_time_sec, 0.0f);
                 m_vehicle->setBrake(m_break_force, tuning::wheel_fl);
                 m_vehicle->setBrake(m_break_force, tuning::wheel_fr);
+
                 m_vehicle->setBrake(handbrake ? numeric_limits<float>::max() : m_break_force, tuning::wheel_rl);
                 m_vehicle->setBrake(handbrake ? numeric_limits<float>::max() : m_break_force, tuning::wheel_rr);
-            }
-        }
-    }
-
-    void Car::ApplyTireForces()
-    {
-        btVector3 force;
-        btVector3 force_position;
-
-        // anti-roll bar simulation
-        anti_roll_bar::apply(m_vehicle, m_vehicle_chassis, tuning::wheel_fl, tuning::wheel_fr, tuning::anti_roll_bar_stiffness_front); // front wheels
-        anti_roll_bar::apply(m_vehicle, m_vehicle_chassis, tuning::wheel_rl, tuning::wheel_rr, tuning::anti_roll_bar_stiffness_rear);  // rear wheels
-
-        for (int i = 0; i < m_vehicle->getNumWheels(); ++i)
-        {
-            // get wheel
-            btWheelInfo* wheel_info = &m_vehicle->getWheelInfo(i);
-
-            // only process wheels which are touching the ground, this avoids an erratic slip angle and slip ratio
-            if (wheel_info->m_raycastInfo.m_isInContact)
-            {
-                btVector3 velocity_wheel   = tire_friction_model::compute_wheel_velocity(wheel_info, m_vehicle_chassis);
-                btVector3 velocity_vehicle = btVector3(m_vehicle_chassis->getLinearVelocity().x(), 0.0f, m_vehicle_chassis->getLinearVelocity().z());
-
-                // compute the tire force exerted onto the body
-                tire_friction_model::compute_tire_force(wheel_info, velocity_wheel, velocity_vehicle, &force, &force_position);
-
-                // apply that force to the chassis at the correct position
-                m_vehicle_chassis->applyForce(force, force_position);
             }
         }
     }
