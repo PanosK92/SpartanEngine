@@ -73,7 +73,7 @@ namespace Spartan
         constexpr float anti_roll_bar_stiffness_rear  = 500.0f; // higher rear stiffness reduces understeer, lower increases it
 
         // breaks
-        constexpr float brake_force_max  = 2000.0f; // maximum brake force applied to wheels in newtons
+        constexpr float brake_force_max  = 1000.0f; // maximum brake force applied to wheels in newtons
         constexpr float brake_ramp_speed = 100.0f;  // rate at which brake force increases
 
         // steering
@@ -317,40 +317,45 @@ namespace Spartan
 
     namespace debug
     {
-        constexpr bool draw = false;
+        constexpr bool draw = true;
         ostringstream oss;
 
-        string wheel_to_string(btWheelInfo* wheel_info)
+        string wheel_to_string(const btRaycastVehicle* vehicle, const uint8_t wheel_index)
         {
-            // clear
+            const btWheelInfo& wheel_info = vehicle->getWheelInfo(wheel_index);
+
+            string wheel_name;
+            switch (wheel_index)
+            {
+                case tuning::wheel_fl: wheel_name  = "FL";     break;
+                case tuning::wheel_fr: wheel_name  = "FR";     break;
+                case tuning::wheel_rl: wheel_name  = "RL";     break;
+                case tuning::wheel_rr: wheel_name  = "RR";     break;
+                default:               wheel_name = "Unknown"; break;
+            }
+
+            // setup ostringstream
             oss.str("");
             oss.clear();
+            oss << fixed << setprecision(2);
 
-            // set fixed-point notation with 2 decimal places
-            oss << std::fixed << std::setprecision(2);
-
-            // gather wheel metrics
-            const auto& raycast_info = wheel_info->m_raycastInfo;
-            float suspension_length  = raycast_info.m_suspensionLength;
-            bool is_in_contact       = raycast_info.m_isInContact;
-            btVector3 contact_point  = raycast_info.m_contactPointWS;
-            btVector3 contact_normal = raycast_info.m_contactNormalWS;
-
-            // formatting and outputting wheel metrics to the oss_metrics stream
-            oss << "Wheel Information:\n";
-            oss << "Suspension Length: " << suspension_length << " m\n";
-            oss << "Contact with Ground: " << (is_in_contact ? "Yes" : "No") << "\n";
-            oss << "Contact Point: (" << contact_point.x() << ", " << contact_point.y() << ", " << contact_point.z() << ")\n";
-            oss << "Contact Normal: (" << contact_normal.x() << ", " << contact_normal.y() << ", " << contact_normal.z() << ")\n";
+            oss << "Wheel: "             << wheel_name << "\n";
+            oss << "Steering: "          << static_cast<float>(wheel_info.m_steering) * Math::Helper::RAD_TO_DEG << " deg\n";
+            oss << "Angular velocity: "  << static_cast<float>(wheel_info.m_deltaRotation) / static_cast<float>(Timer::GetDeltaTimeSec()) << " rad/s\n";
+            oss << "Torque: "            << wheel_info.m_engineForce << " N\n";
+            //oss << "Brake force: "       << wheel_info.m_brake << " N\n";
+            oss << "Suspension length: " << wheel_info.m_raycastInfo.m_suspensionLength << " m\n";
+            //oss << "Is in contact: "     << (wheel_info.m_raycastInfo.m_isInContact ? "Yes" : "No");
 
             return oss.str();
         }
 
         void draw_wheel_info(btRaycastVehicle* vehicle)
         {
-            btWheelInfo* wheel_info  = &vehicle->getWheelInfo(0);
-            string wheel_info_string = wheel_to_string(wheel_info);
-            Renderer::DrawString(wheel_info_string, Vector2(0.3f, 0.005f));
+            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_fl), Vector2(0.35f, 0.005f));
+            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_fr), Vector2(0.6f,  0.005f));
+            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_rl), Vector2(0.85f,  0.005f));
+            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_rr), Vector2(1.1f,  0.005f));
         }
     }
 
