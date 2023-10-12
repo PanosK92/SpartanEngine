@@ -46,12 +46,13 @@ namespace Spartan
         void SetWheelTransform(Transform* transform, uint32_t wheel_index);
         void SetSteeringWheelTransform(Transform* transform) { m_vehicle_steering_wheel_transform = transform; }
 
-        // misc
-        float GetSpeedKmHour() const;
+        // speed
+        float GetSpeedKilometersPerHour() const;
+        float GetSpeedMetersPerSecond() const;
 
     private:
-        void Control();
-        void ApplyTireForces();
+        void HandleInput();
+        void ApplyForces();
         void UpdateTransforms();
 
         float m_torque_newtons                        = 0.0f;
