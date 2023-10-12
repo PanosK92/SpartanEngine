@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Input/Input.h"
 SP_WARNINGS_OFF
 #include <BulletDynamics/Vehicle/btRaycastVehicle.h>
+#include "LinearMath/btVector3.h"
 SP_WARNINGS_ON
 //==================================================
 
@@ -175,8 +176,8 @@ namespace Spartan
             // general information: https://en.wikipedia.org/wiki/Hans_B._Pacejka
 
             // performance some unit conversions that the formula expects
-            slip        = slip * 100.0f;                                       // convert to percentage
-            normal_load = (normal_load + Math::Helper::SMALL_FLOAT) / 1000.0f; // convert to kilonewtons
+            slip        = slip * 100.0f;                                      // convert to percentage
+            normal_load = (normal_load + Math::Helper::SMALL_FLOAT) * 0.001f; // convert to kilonewtons
 
             // coefficients from the pacejka '94 model
             // b0, b2, b4, b8 are the most relevant parameters that define the curve’s shape
@@ -208,7 +209,9 @@ namespace Spartan
             float Bx1 = B * (slip + H);
 
             // pacejka ’94 longitudinal formula
-            return D * sin(C * atan(Bx1 - E * (Bx1 - atan(Bx1)))) + V;
+            float force = D * sin(C * atan(Bx1 - E * (Bx1 - atan(Bx1)))) + V;
+
+            return force * tuning::tire_friction;
         }
 
         void compute_tire_force(btWheelInfo* wheel_info, const btVector3& wheel_velocity, const btVector3& vehicle_velocity, btVector3* force, btVector3* force_position)
@@ -231,7 +234,7 @@ namespace Spartan
             // compute the total force
             btVector3 wheel_force    = (slip_force_forward * wheel_forward_dir) + (slip_force_side * wheel_right_dir);
 
-            //SP_LOG_INFO("slip ratio: %.4f (%.2f N), slip angle: %.4f (%.2f N)", slip_ratio, slip_force_forward, slip_angle, slip_force_side);
+            SP_LOG_INFO("slip ratio: %.4f (%.2f N), slip angle: %.4f (%.2f N)", slip_ratio, slip_force_forward, slip_angle, slip_force_side);
 
             // this is the point where external physics calculations meet with the internal physics calculations (bullet)
             // my suspicion is that the simulation scales are different, hence the multiplication by simulation_scale
@@ -332,7 +335,7 @@ namespace Spartan
         float get_torque(const float engine_rpm, const uint32_t current_gear, const float throttle_input)
         {
             // the revving down and up rate is a byproduct of piston weights, flywheel inertia, clutch etc
-            // we are simlating a this using a simple lerp rate, where revving down is faster than revving up
+            // we are simulating a this using a simple lerp rate, where revving down is faster than revving up
 
             float delta_time_seconds             = static_cast<float>(Timer::GetDeltaTimeSec());
             static float smoothed_throttle_input = 0.0f;
@@ -344,12 +347,11 @@ namespace Spartan
             float gear_ratio         = tuning::gear_ratios[current_gear - 1] * tuning::final_drive_ratio;
             return tuning::engine_torque_max * smoothed_throttle_input * gear_ratio * torque_curve_value * tuning::transmission_efficiency;
         }
-
     }
 
     namespace debug
     {
-        constexpr bool draw = true;
+        constexpr bool enabled = true;
         ostringstream oss;
 
         string wheel_to_string(const btRaycastVehicle* vehicle, const uint8_t wheel_index)
@@ -380,12 +382,28 @@ namespace Spartan
             return oss.str();
         }
 
-        void draw_wheel_info(btRaycastVehicle* vehicle)
+        void draw_info_wheel(btRaycastVehicle* vehicle)
         {
-            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_fl), Vector2(0.35f, 0.005f));
-            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_fr), Vector2(0.6f,  0.005f));
-            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_rl), Vector2(0.85f,  0.005f));
-            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_rr), Vector2(1.1f,  0.005f));
+            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_fl), Vector2(0.6f,  0.005f));
+            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_fr), Vector2(0.85f, 0.005f));
+            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_rl), Vector2(1.1f,  0.005f));
+            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_rr), Vector2(1.4f,  0.005f));
+        }
+
+        void draw_info_general(const float speed, const float torque, const float rpm, const uint32_t gear, const float downforce)
+        {
+            // setup ostringstream
+            oss.str("");
+            oss.clear();
+            oss << fixed << setprecision(2);
+
+            oss << "Speed: "     << speed     << " Km/h\n"; // meters per second
+            oss << "Torque: "    << torque    << " N·m\n";  // Newton meters
+            oss << "RPM: "       << rpm       << " rpm\n";  // revolutions per minute, not an SI unit, but commonly used
+            oss << "Gear: "      << gear      << "\n";      // gear has no unit
+            oss << "Downforce: " << downforce << " N\n";    // Newtons
+
+            Renderer::DrawString(oss.str(), Vector2(0.35f, 0.005f));
         }
     }
 
@@ -467,9 +485,9 @@ namespace Spartan
         ApplyForces();
         UpdateTransforms();
 
-        if (debug::draw)
+        if (debug::enabled)
         {
-            debug::draw_wheel_info(m_vehicle);
+            debug::draw_info_wheel(m_vehicle);
         }
     }
 
@@ -498,7 +516,7 @@ namespace Spartan
         // compute engine torque
         m_engine_torque = 0.0f;
         {
-            gearbox::update(m_engine_rpm, m_current_gear, m_last_shift_time, m_is_shifting, GetSpeedMetersPerSecond());
+            gearbox::update(m_engine_rpm, m_gear, m_last_shift_time, m_is_shifting, GetSpeedMetersPerSecond());
 
             float throttle_input = 0.0f;
             if (Input::GetKey(KeyCode::Arrow_Up) || Input::GetControllerTriggerRight() != 0.0f)
@@ -510,7 +528,7 @@ namespace Spartan
                 throttle_input = -1.0f;
             }
 
-            m_engine_torque = gearbox::get_torque(m_engine_rpm, m_current_gear, throttle_input);
+            m_engine_torque = gearbox::get_torque(m_engine_rpm, m_gear, throttle_input);
         }
 
         // steer the front wheels
@@ -546,8 +564,8 @@ namespace Spartan
 
         // aerodynamic downforce
         {
-            float downforce = tuning::aerodynamic_downforce * speed_meters_per_second * speed_meters_per_second;
-            btVector3 downforce_vector(0, -downforce, 0); // Y-axis is up
+            m_downforce = tuning::aerodynamic_downforce * speed_meters_per_second * speed_meters_per_second;
+            btVector3 downforce_vector(0, -m_downforce, 0); // Y-axis is up
             m_vehicle_chassis->applyCentralForce(downforce_vector);
         }
 
@@ -595,6 +613,11 @@ namespace Spartan
                 m_vehicle->setBrake(handbrake ? numeric_limits<float>::max() : m_break_force, tuning::wheel_rl);
                 m_vehicle->setBrake(handbrake ? numeric_limits<float>::max() : m_break_force, tuning::wheel_rr);
             }
+        }
+
+        if (debug::enabled)
+        {
+            debug::draw_info_general(GetSpeedKilometersPerHour(), m_engine_torque, m_engine_rpm, m_gear, m_downforce);
         }
     }
 
