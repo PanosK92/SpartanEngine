@@ -178,12 +178,9 @@ namespace Spartan
             return atan2(vehicle_dot_wheel_side, vehicle_dot_wheel_forward);
         }
 
-        float compute_pacejka_force(float slip, float normal_load)
+        float compute_pacejka_force(float slip_percentage, float normal_load)
         {
             // https://en.wikipedia.org/wiki/Hans_B._Pacejka
-
-            // convert to kilonewtons
-            normal_load /= 1000.0f;
 
             // formula doesn't handle zero loads (NaN)
             if (normal_load == 0.0f)
@@ -191,26 +188,35 @@ namespace Spartan
 
             // coefficients from the pacejka '94 model
             // reference: https://www.edy.es/dev/docs/pacejka-94-parameters-explained-a-comprehensive-guide/
-            float coef_scale = 0.18f; // this is empirically chosen as the coefficients I found, while correct, they must be a couple of orders of magnitude different than what bullet expects
-            float b0 = 1.5f * coef_scale, b1 = 0.0f * coef_scale, b2 = 1.1f * coef_scale,  b3 = 0.0f * coef_scale, b4  = 3.0f * coef_scale, b5 = 0.0f * coef_scale;
-            float b6 = 0.0f * coef_scale, b7 = 0.0f * coef_scale, b8 = -2.0f * coef_scale, b9 = 0.0f * coef_scale, b10 = 0.0f * coef_scale, b11 = 0.0f * coef_scale, b12 = 0.0f * coef_scale, b13 = 0.0f * coef_scale;
+            // b0, b2, b4, b8 are the most relevant parameters that define the curve’s shape
+            float b0  = 1.5f;
+            float b1  = 0.0f;
+            float b2  = 1.0f;
+            float b3  = 0.0f;
+            float b4  = 300.0f;
+            float b5  = 0.0f;
+            float b6  = 0.0f;
+            float b7  = 0.0f;
+            float b8  = -2.0f;
+            float b9  = 0.0f;
+            float b10 = 0.0f;
+            float b11 = 0.0f;
+            float b12 = 0.0f;
+            float b13 = 0.0f;
 
             // compute the parameters for the Pacejka ’94 formula
-            float Fz  = normal_load;
+            float Fz  = normal_load / 1000.0f; // convert to kilonewtons
             float C   = b0;
             float D   = Fz * (b1 * Fz + b2);
             float BCD = (b3 * Fz * Fz + b4 * Fz) * exp(-b5 * Fz);
             float B   = BCD / (C * D);
-            float E   = (b6 * Fz * Fz + b7 * Fz + b8) * (1 - b13 * Math::Helper::Sign(slip + (b9 * Fz + b10)));
+            float E   = (b6 * Fz * Fz + b7 * Fz + b8) * (1 - b13 * Math::Helper::Sign(slip_percentage + (b9 * Fz + b10)));
             float H   = b9 * Fz + b10;
             float V   = b11 * Fz + b12;
-            float Bx1 = B * (slip + H);
+            float Bx1 = B * (slip_percentage + H);
 
             // pacejka ’94 longitudinal formula
-            float force = D * sin(C * atan(Bx1 - E * (Bx1 - atan(Bx1)))) + V;
-
-            // convert back to newtons
-            return force * 1000.0f;
+            return D * sin(C * atan(Bx1 - E * (Bx1 - atan(Bx1)))) + V;
         }
 
         void compute_tire_force(btWheelInfo* wheel_info, const btVector3& wheel_velocity, const btVector3& vehicle_velocity, btVector3* force, btVector3* force_position)
@@ -227,16 +233,18 @@ namespace Spartan
             // the angle between the direction in which a wheel is pointed and the direction in which the vehicle is actually traveling
             float slip_angle         = compute_slip_angle(wheel_info, wheel_forward_dir, wheel_right_dir, vehicle_velocity);
             // the force that the tire can exert parallel to its direction of travel
-            float slip_force_forward = compute_pacejka_force(slip_ratio, wheel_info->m_wheelsSuspensionForce);
+            float slip_force_forward = compute_pacejka_force(slip_ratio * 100.0f, wheel_info->m_wheelsSuspensionForce);
             // the force that the tire can exert perpendicular to its direction of travel
-            float slip_force_side    = compute_pacejka_force(slip_angle, wheel_info->m_wheelsSuspensionForce);
+            float slip_force_side    = compute_pacejka_force(slip_angle * 100.0f, wheel_info->m_wheelsSuspensionForce);
             // compute the total force
             btVector3 wheel_force    = (slip_force_forward * wheel_forward_dir) + (slip_force_side * wheel_right_dir);
 
-            SP_LOG_INFO("slip ratio: %.4f, slip angle: %.4f", slip_ratio, slip_angle * Math::Helper::RAD_TO_DEG);
+            SP_LOG_INFO("slip ratio: %.4f, slip angle: %.4f, pacejka forward: %.4f N, pacejka side: %.4f N",
+                slip_ratio, slip_angle * Math::Helper::RAD_TO_DEG, slip_force_forward, slip_force_side);
 
-            *force = btVector3(wheel_force.x(), 0.0f, wheel_force.z());
-            *force_position = wheel_info->m_raycastInfo.m_contactPointWS;
+            float magic_value = 50.0f; // force scale, have to figure out why it's needed
+            *force            = btVector3(wheel_force.x(), 0.0f, wheel_force.z()) * magic_value;
+            *force_position   = wheel_info->m_raycastInfo.m_contactPointWS;
         }
     }
 
