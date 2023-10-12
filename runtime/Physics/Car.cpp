@@ -50,14 +50,19 @@ namespace Spartan
         // adjusting these parameters will affect the vehicle's performance and handling characteristics
 
         // notes:
-        // 1. units are expressed in SI units (meters, newtons etc.)
+        // 1. units are expressed in SI units (meters, newtons, seconds etc)
         // 2. these values simulate a mid size car and need to be adjusted according to the simulated car's specifications
 
-        // general
-        constexpr float torque_max            = 350;   // maximum torque output of the engine
-        constexpr float wheel_radius          = 0.6f;  // radius of the wheel
-        constexpr float tire_friction         = 2.5f;  // coefficient of friction for tires
-        constexpr float aerodynamic_downforce = 0.25f; // the faster the vehicle, the more the tires will grip the road
+        // engine
+        constexpr float engine_torque_max = 350;     // maximum torque output of the engine
+        constexpr float engine_max_rpm    = 6500.0f; // maximum engine RPM
+        constexpr float engine_idle_rpm   = 800.0f;  // idle engine RPM
+
+        // gearbox
+        constexpr float gear_ratios[]           = { 3.5f, 2.25f, 1.6f, 1.15f, 0.9f, 0.75f }; // gear ratios for each gear
+        constexpr float final_drive_ratio       = 3.5f;                                      // final drive ratio
+        constexpr float transmission_efficiency = 0.95f;                                     // there is some loss of torque (due to the the clutch and flywheel)
+        constexpr float shift_delay             = 0.3f;                                      // gear shift delay in seconds
 
         // suspension
         constexpr float suspension_stiffness   = 50.0f;                    // stiffness of suspension springs in N/m
@@ -80,11 +85,10 @@ namespace Spartan
         constexpr float steering_angle_max    = 40.0f * Math::Helper::DEG_TO_RAD; // the maximum steering angle of the front wheels
         constexpr float steering_return_speed = 5.0f;                             // the speed at which the steering wheel returns to center
         
-        // gearbox
-        constexpr float engine_max_rpm    = 6500.0f;                                   // maximum engine RPM
-        constexpr float engine_idle_rpm   = 800.0f;                                    // idle engine RPM
-        constexpr float gear_ratios[]     = { 3.5f, 2.25f, 1.6f, 1.15f, 0.9f, 0.75f }; // gear ratios for each gear
-        constexpr float final_drive_ratio = 3.5f;                                      // final drive ratio
+        // misc
+        constexpr float wheel_radius          = 0.6f;  // radius of the wheel
+        constexpr float tire_friction         = 2.5f;  // coefficient of friction for tires
+        constexpr float aerodynamic_downforce = 0.25f; // the faster the vehicle, the more the tires will grip the road
 
         // wheel indices (used for bullet physics)
         constexpr uint8_t wheel_fl = 0;
@@ -232,7 +236,7 @@ namespace Spartan
 
             // i believe that because this is the contact point between all the external physics
             // computations and bullet, there might by some differences in the simulation scale
-            float simulation_scale = 70.0f; // setting the scale to something that feels correct
+            float simulation_scale = 50.0f; // setting the scale to something that feels correct
 
             *force            = btVector3(wheel_force.x(), 0.0f, wheel_force.z()) * simulation_scale;
             *force_position   = wheel_info->m_raycastInfo.m_contactPointWS;
@@ -292,28 +296,45 @@ namespace Spartan
         // it manages gear shifting and computes the torque output based on engine rpm and gear ratios
         // automatic gear shifting is implemented based on a simplistic rpm threshold logic
 
-        static int current_gear = 1;
-        static float engine_rpm = tuning::engine_idle_rpm;
-
-        void update(float speed_mps)
+        void update(float& engine_rpm, uint32_t& current_gear, float& last_shift_time, bool& is_shifting, const float speed_mps)
         {
             // compute engine rpm based on vehicle speed and current gear ratio
             engine_rpm = speed_mps * (tuning::gear_ratios[current_gear - 1] * tuning::final_drive_ratio) * (1 / (tuning::wheel_radius * Math::Helper::PI * 2)) * 60;
 
             // automatic gear shifting logic based on rpm thresholds
-            if (engine_rpm > tuning::engine_max_rpm && current_gear < (sizeof(tuning::gear_ratios) / sizeof(tuning::gear_ratios[0])))
+            float delta_time_seconds = static_cast<float>(Timer::GetDeltaTimeSec());
+            if (engine_rpm > tuning::engine_max_rpm && current_gear < (sizeof(tuning::gear_ratios) / sizeof(tuning::gear_ratios[0])) && !is_shifting)
             {
                 current_gear++;
+                last_shift_time = delta_time_seconds;
+                is_shifting     = true;
             }
-            else if (engine_rpm < tuning::engine_idle_rpm && current_gear > 1)
+            else if (engine_rpm < tuning::engine_idle_rpm && current_gear > 1 && !is_shifting)
             {
                 current_gear--;
+                last_shift_time = delta_time_seconds;
+                is_shifting     = true;
+            }
+
+            // reset is_shifting flag after the delay
+            if (is_shifting && (delta_time_seconds - last_shift_time) > tuning::shift_delay)
+            {
+                is_shifting = false;
             }
         }
 
-        float get_torque(float throttle_input)
+        float torque_curve(const float normalized_rpm)
         {
-            return tuning::torque_max * throttle_input * (tuning::gear_ratios[current_gear - 1] * tuning::final_drive_ratio);
+            // simplistic torque curve
+            return 1.0f - 0.5f * (normalized_rpm - 0.5f) * (normalized_rpm - 0.5f);
+        }
+
+        float get_torque(const float engine_rpm, const uint32_t current_gear, const float throttle_input)
+        {
+            float normalized_rpm     = (engine_rpm - tuning::engine_idle_rpm) / (tuning::engine_max_rpm - tuning::engine_idle_rpm);
+            float torque_curve_value = torque_curve(normalized_rpm);
+            float gear_ratio         = tuning::gear_ratios[current_gear - 1] * tuning::final_drive_ratio;
+            return tuning::engine_torque_max * throttle_input * gear_ratio * torque_curve_value * tuning::transmission_efficiency;
         }
     }
 
@@ -345,9 +366,7 @@ namespace Spartan
             oss << "Steering: "          << static_cast<float>(wheel_info.m_steering) * Math::Helper::RAD_TO_DEG << " deg\n";
             oss << "Angular velocity: "  << static_cast<float>(wheel_info.m_deltaRotation) / static_cast<float>(Timer::GetDeltaTimeSec()) << " rad/s\n";
             oss << "Torque: "            << wheel_info.m_engineForce << " N\n";
-            //oss << "Brake force: "       << wheel_info.m_brake << " N\n";
             oss << "Suspension length: " << wheel_info.m_raycastInfo.m_suspensionLength << " m\n";
-            //oss << "Is in contact: "     << (wheel_info.m_raycastInfo.m_isInContact ? "Yes" : "No");
 
             return oss.str();
         }
@@ -468,9 +487,9 @@ namespace Spartan
     void Car::HandleInput()
     {
         // compute engine torque
-        m_torque_newtons = 0.0f;
+        m_engine_torque = 0.0f;
         {
-            gearbox::update(GetSpeedMetersPerSecond());
+            gearbox::update(m_engine_rpm, m_current_gear, m_last_shift_time, m_is_shifting, GetSpeedMetersPerSecond());
 
             float throttle_input = 0.0f;
             if (Input::GetKey(KeyCode::Arrow_Up) || Input::GetControllerTriggerRight() != 0.0f)
@@ -482,7 +501,7 @@ namespace Spartan
                 throttle_input = -1.0f;
             }
 
-            m_torque_newtons = gearbox::get_torque(throttle_input);
+            m_engine_torque = gearbox::get_torque(m_engine_rpm, m_current_gear, throttle_input);
         }
 
         // steer the front wheels
@@ -499,11 +518,11 @@ namespace Spartan
             }
 
             // lerp to new steering angle - real life vehicles don't snap their wheels to the target angle
-            m_steering_angle_radians = Math::Helper::Lerp<float>(m_steering_angle_radians, steering_angle_target, tuning::steering_return_speed * static_cast<float>(Timer::GetDeltaTimeSec()));
+            m_sterring_angle = Math::Helper::Lerp<float>(m_sterring_angle, steering_angle_target, tuning::steering_return_speed * static_cast<float>(Timer::GetDeltaTimeSec()));
 
             // set the steering angle
-            m_vehicle->setSteeringValue(m_steering_angle_radians, tuning::wheel_fl);
-            m_vehicle->setSteeringValue(m_steering_angle_radians, tuning::wheel_fr);
+            m_vehicle->setSteeringValue(m_sterring_angle, tuning::wheel_fl);
+            m_vehicle->setSteeringValue(m_sterring_angle, tuning::wheel_fr);
         }
     }
 
@@ -513,8 +532,8 @@ namespace Spartan
         float speed_meters_per_second = GetSpeedMetersPerSecond();
 
         // engine torque (front-wheel drive)
-        m_vehicle->applyEngineForce(-m_torque_newtons, tuning::wheel_fl);
-        m_vehicle->applyEngineForce(-m_torque_newtons, tuning::wheel_fr);
+        m_vehicle->applyEngineForce(-m_engine_torque, tuning::wheel_fl);
+        m_vehicle->applyEngineForce(-m_engine_torque, tuning::wheel_fr);
 
         // aerodynamic downforce
         {
@@ -575,7 +594,7 @@ namespace Spartan
         // steering wheel
         if (m_vehicle_steering_wheel_transform)
         {
-            m_vehicle_steering_wheel_transform->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 0.0f, -m_steering_angle_radians * Math::Helper::RAD_TO_DEG));
+            m_vehicle_steering_wheel_transform->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 0.0f, -m_sterring_angle * Math::Helper::RAD_TO_DEG));
         }
 
         // wheels
