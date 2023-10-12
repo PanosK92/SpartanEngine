@@ -137,6 +137,11 @@ namespace Spartan
             logs.emplace_back(final_text, type);
             write_to_file(final_text, type);
         }
+
+        if (logger)
+        {
+            logger->Log(final_text, static_cast<uint32_t>(type));
+        }
     }
 
     void Log::WriteFInfo(const char* text, ...)
