@@ -82,14 +82,14 @@ namespace Spartan
     namespace
     {
         // profiling options
-        const uint32_t initial_capacity     = 256;
-        bool profiling_enabled              = false;
-        bool profile_cpu                    = true;
-        bool profile_gpu                    = true;
-        float profiling_interval_sec        = 0.25f;
-        float time_since_profiling_sec      = profiling_interval_sec;
+        const uint32_t initial_capacity = 256;
+        bool profiling_enabled          = false;
+        bool profile_cpu                = true;
+        bool profile_gpu                = true;
+        float profiling_interval_sec    = 0.25f;
+        float time_since_profiling_sec  = profiling_interval_sec;
 
-        const uint32_t frames_to_accumulate = 30;
+        const uint32_t frames_to_accumulate = static_cast<uint32_t>(7.5f / profiling_interval_sec);
         const float weight_delta            = 1.0f / static_cast<float>(frames_to_accumulate);
         const float weight_history          = (1.0f - weight_delta);
 
@@ -113,11 +113,15 @@ namespace Spartan
         bool is_stuttering_cpu = false;
         bool is_stuttering_gpu = false;
 
+        // metric drawing
+        ostringstream oss_metrics;
+        string metrics_str;
+        float metrics_time_since_last_update = profiling_interval_sec;
+
         // misc
         bool poll                 = false;
         bool increase_capacity    = false;
         bool allow_time_block_end = true;
-        ostringstream oss_metrics;
     }
   
     void Profiler::Initialize()
@@ -219,20 +223,15 @@ namespace Spartan
             poll = false;
         }
 
-        // updating every m_profiling_interval_sec
-        if (poll)
+        if (poll && profiling_enabled)
         {
             AcquireGpuData();
+            SwapBuffers();
         }
 
-        if (Renderer::GetOption<bool>(Renderer_Option::Debug_PerformanceMetrics) && profiling_enabled)
+        if (Renderer::GetOption<bool>(Renderer_Option::Debug_PerformanceMetrics))
         {
             DrawPerformanceMetrics();
-        }
-
-        if (profiling_enabled && poll)
-        {
-            SwapBuffers();
         }
     }
 
@@ -448,6 +447,14 @@ namespace Spartan
 
     void Profiler::DrawPerformanceMetrics()
     {
+        metrics_time_since_last_update += static_cast<float>(Timer::GetDeltaTimeSec());
+        if (metrics_time_since_last_update < profiling_interval_sec)
+        {
+            Renderer::DrawString(metrics_str, Vector2(0.01f, 0.01f));
+            return;
+        }
+        metrics_time_since_last_update = 0.0f;
+        
         const uint32_t texture_count  = ResourceCache::GetResourceCount(ResourceType::Texture) + ResourceCache::GetResourceCount(ResourceType::Texture2d) + ResourceCache::GetResourceCount(ResourceType::TextureCube);
         const uint32_t material_count = ResourceCache::GetResourceCount(ResourceType::Material);
         const uint32_t pipeline_count = RHI_Device::GetPipelineCount();
@@ -520,6 +527,7 @@ namespace Spartan
             << "Descriptor set capacity:\t" << m_descriptor_set_count << "/" << m_descriptor_set_capacity;
 
         // draw at the top-left of the screen
-        Renderer::DrawString(oss_metrics.str(), Math::Vector2(0.01f, 0.01f));
+        metrics_str = oss_metrics.str();
+        Renderer::DrawString(metrics_str, Math::Vector2(0.01f, 0.01f));
     }
 }
