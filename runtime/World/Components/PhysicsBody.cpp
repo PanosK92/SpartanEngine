@@ -675,9 +675,9 @@ namespace Spartan
             return;
 
         m_size   = bounding_box;
-        m_size.x = Helper::Clamp(m_size.x, Helper::EPSILON, INFINITY);
-        m_size.y = Helper::Clamp(m_size.y, Helper::EPSILON, INFINITY);
-        m_size.z = Helper::Clamp(m_size.z, Helper::EPSILON, INFINITY);
+        m_size.x = Helper::Clamp(m_size.x, Helper::SMALL_FLOAT, INFINITY);
+        m_size.y = Helper::Clamp(m_size.y, Helper::SMALL_FLOAT, INFINITY);
+        m_size.z = Helper::Clamp(m_size.z, Helper::SMALL_FLOAT, INFINITY);
 
         UpdateShape();
     }

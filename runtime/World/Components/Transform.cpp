@@ -180,9 +180,9 @@ namespace Spartan
         m_scale_local = scale;
 
         // A scale of 0 will cause a division by zero when decomposing the world transform matrix.
-        m_scale_local.x = (m_scale_local.x == 0.0f) ? Helper::EPSILON : m_scale_local.x;
-        m_scale_local.y = (m_scale_local.y == 0.0f) ? Helper::EPSILON : m_scale_local.y;
-        m_scale_local.z = (m_scale_local.z == 0.0f) ? Helper::EPSILON : m_scale_local.z;
+        m_scale_local.x = (m_scale_local.x == 0.0f) ? Helper::SMALL_FLOAT : m_scale_local.x;
+        m_scale_local.y = (m_scale_local.y == 0.0f) ? Helper::SMALL_FLOAT : m_scale_local.y;
+        m_scale_local.z = (m_scale_local.z == 0.0f) ? Helper::SMALL_FLOAT : m_scale_local.z;
 
         UpdateTransform();
 

@@ -150,7 +150,7 @@ namespace Spartan::Math
             const Vector3 forward = direction.Normalized();
 
             Vector3 v = forward.Cross(up_direction);
-            if (v.LengthSquared() >= Helper::EPSILON)
+            if (v.LengthSquared() >= Helper::SMALL_FLOAT)
             {
                 v.Normalize();
                 const Vector3 up    = v.Cross(forward);
@@ -244,7 +244,7 @@ namespace Spartan::Math
             {
                 return Conjugate();
             }
-            else if (length_squared >= Helper::EPSILON)
+            else if (length_squared >= Helper::SMALL_FLOAT)
             {
                 return Conjugate() * (1.0f / length_squared);
             }
