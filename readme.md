@@ -64,16 +64,15 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - Wide file format support: 10+ for fonts, 20+ for audio, 30+ for images, and 40+ for models.
 
 # Roadmap
-- Continue bug fixing until Vulkan is stable.
+- Keep an eye on Vulkan, it's stable but you never know.
 - Continue switching to bindless.
-- Create a startup/default world which is closer to a playable demo.
 - Continue work on D3D12 (on going and non blocking since Vulkan is there).
 - Skeletal Animation.
 - Atmospheric Scattering.
 - Eye Adaptation.
 - Subsurface scattering.
 - Ray traced reflections & shadows.
-- Dynamic resolution scaling.
+- Dynamic resolution scaling (and use FSR 2, to properly reconstuct).
 - Export on Windows.
 - Improved the editor style/theme.
 - Scripting.
