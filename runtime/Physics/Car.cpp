@@ -112,18 +112,15 @@ namespace Spartan
         // 3. some vector swizzling happens, this is because the engine is using a left-handed coordinate system but bullet is using a right-handed coordinate system
         // 4. precision issues and fuzziness, in various math/vectors, can be reduced by increasing the physics simulation rate, we are doing 200hz (aided by clamping and small float additions)
 
-        btVector3 compute_wheel_direction_forward(btWheelInfo* wheel_info)
+        btVector3 compute_wheel_direction_forward(const btWheelInfo* wheel_info)
         {
             btVector3 forward_right_handed = wheel_info->m_worldTransform.getBasis().getColumn(0).normalized();
-            btVector3 forward_left_handed  = btVector3(forward_right_handed.z(), forward_right_handed.y(), -forward_right_handed.x());
-
-            return btVector3(forward_left_handed.x(), 0.0f, forward_left_handed.z());
+            return btVector3(forward_right_handed.z(), 0.0f, -forward_right_handed.x());
         }
 
-        btVector3 compute_wheel_direction_right(btWheelInfo* wheel_info)
+        btVector3 compute_wheel_direction_right(const btWheelInfo* wheel_info)
         {
-            btVector3 side = compute_wheel_direction_forward(wheel_info).cross(btVector3(0, 1, 0));
-            return side.fuzzyZero() ? btVector3(1, 0, 0) : side.normalized();
+            return compute_wheel_direction_forward(wheel_info).cross(btVector3(0, 1, 0));
         }
 
         btVector3 compute_wheel_velocity(btWheelInfo* wheel_info, btRigidBody* m_vehicle_chassis)
@@ -209,9 +206,7 @@ namespace Spartan
             float Bx1 = B * (slip + H);
 
             // pacejka ’94 longitudinal formula
-            float force = D * sin(C * atan(Bx1 - E * (Bx1 - atan(Bx1)))) + V;
-
-            return force * tuning::tire_friction;
+            return D * sin(C * atan(Bx1 - E * (Bx1 - atan(Bx1)))) + V;
         }
 
         void compute_tire_force(btWheelInfo* wheel_info, const btVector3& wheel_velocity, const btVector3& vehicle_velocity, btVector3* force, btVector3* force_position)
@@ -222,17 +217,18 @@ namespace Spartan
             // compute wheel directions
             btVector3 wheel_forward_dir = compute_wheel_direction_forward(wheel_info);
             btVector3 wheel_right_dir   = compute_wheel_direction_right(wheel_info);
+            float normal_load           = wheel_info->m_wheelsSuspensionForce;
 
-            // a measure of how much a wheel is slipping along the direction of the vehicle travel, and it's typically concerned with the longitudinal axis of the vehicle
-            float slip_ratio         = compute_slip_ratio(wheel_info, wheel_forward_dir, wheel_velocity, vehicle_velocity);
+            // a measure of how much a wheel is slipping along the direction of the vehicle travel
+            float slip_ratio      = compute_slip_ratio(wheel_info, wheel_forward_dir, wheel_velocity, vehicle_velocity);
             // the angle between the direction in which a wheel is pointed and the direction in which the vehicle is actually traveling
-            float slip_angle         = compute_slip_angle(wheel_info, wheel_forward_dir, wheel_right_dir, vehicle_velocity);
+            float slip_angle      = compute_slip_angle(wheel_info, wheel_forward_dir, wheel_right_dir, vehicle_velocity);
             // the force that the tire can exert parallel to its direction of travel
-            float slip_force_forward = compute_pacejka_force(slip_ratio, wheel_info->m_wheelsSuspensionForce);
+            float fz              = compute_pacejka_force(slip_ratio, normal_load);
             // the force that the tire can exert perpendicular to its direction of travel
-            float slip_force_side    = compute_pacejka_force(slip_angle, wheel_info->m_wheelsSuspensionForce);
+            float fx              = compute_pacejka_force(slip_angle, normal_load);
             // compute the total force
-            btVector3 wheel_force    = (slip_force_forward * wheel_forward_dir) + (slip_force_side * wheel_right_dir);
+            btVector3 wheel_force = (fz * wheel_forward_dir) + (fx * wheel_right_dir) * tuning::tire_friction;
 
             //SP_LOG_INFO("slip ratio: %.4f (%.2f N), slip angle: %.4f (%.2f N)", slip_ratio, slip_force_forward, slip_angle, slip_force_side);
 
@@ -339,7 +335,7 @@ namespace Spartan
 
             float delta_time_seconds             = static_cast<float>(Timer::GetDeltaTimeSec());
             static float smoothed_throttle_input = 0.0f;
-            float lerp_rate                      = (smoothed_throttle_input > throttle_input) ? 3.0f : 1.0f; //  a typical ratio should be 2:1 or 3:1
+            float lerp_rate                      = (smoothed_throttle_input > throttle_input) ? 3.0f : 1.0f; // a typical ratio should be 2:1 or 3:1
             smoothed_throttle_input              = Math::Helper::Lerp<float>(smoothed_throttle_input, throttle_input, lerp_rate * delta_time_seconds);
 
             float normalized_rpm     = (engine_rpm - tuning::engine_idle_rpm) / (tuning::engine_max_rpm - tuning::engine_idle_rpm);
@@ -403,16 +399,18 @@ namespace Spartan
             oss << "Angular velocity: "  << static_cast<float>(wheel_info.m_deltaRotation) / static_cast<float>(Timer::GetDeltaTimeSec()) << " rad/s\n";
             oss << "Torque: "            << wheel_info.m_engineForce << " N\n";
             oss << "Suspension length: " << wheel_info.m_raycastInfo.m_suspensionLength << " m\n";
+            oss << "Forward: "           << ToVector3(tire_friction_model::compute_wheel_direction_forward(&wheel_info)).ToString() << "\n";
+            oss << "Right: "             << ToVector3(tire_friction_model::compute_wheel_direction_right(&wheel_info)).ToString() << "\n";
 
             return oss.str();
         }
 
         void draw_info_wheel(btRaycastVehicle* vehicle)
         {
-            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_fl), Vector2(0.6f,  0.005f));
-            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_fr), Vector2(0.85f, 0.005f));
-            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_rl), Vector2(1.1f,  0.005f));
-            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_rr), Vector2(1.35f, 0.005f));
+            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_fl), Vector2(0.6f, 0.005f));
+            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_fr), Vector2(1.0f, 0.005f));
+            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_rl), Vector2(1.4f, 0.005f));
+            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_rr), Vector2(1.8f, 0.005f));
         }
 
         void draw_info_general(const float speed, const float torque, const float rpm, const uint32_t gear, const float aerodynamics_downforce, const float aerodynamics_drag)
