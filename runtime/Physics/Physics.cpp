@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Physics.h"
 #include "PhysicsDebugDraw.h"
 #include "BulletPhysicsHelper.h"
+#include "ProgressTracker.h"
 #include "../Profiling/Profiler.h"
 #include "../Rendering/Renderer.h"
 #include "../Input/Input.h"
@@ -148,10 +149,9 @@ namespace Spartan
         bool debug_draw        = Renderer::GetOption<bool>(Renderer_Option::Debug_Physics);
         bool simulate_physics  = physics_enabled && !is_in_editor_mode;
 
-        if (debug_draw)
-        {
-            m_world->debugDrawWorld();
-        }
+        // don't simulate or debug draw when loading a world (a different thread could be creating physics objects)
+        if (ProgressTracker::IsLoading())
+            return;
 
         if (simulate_physics)
         {
@@ -180,6 +180,11 @@ namespace Spartan
 
             // step the physics world
             m_world->stepSimulation(real_world_elapsed_time, max_substeps, internal_time_step);
+        }
+
+        if (debug_draw)
+        {
+            m_world->debugDrawWorld();
         }
     }
 
