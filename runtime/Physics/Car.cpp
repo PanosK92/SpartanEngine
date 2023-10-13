@@ -349,6 +349,31 @@ namespace Spartan
         }
     }
 
+    namespace aerodynamics
+    {
+        // description:
+        // downforce increases the vehicle's stability and traction by generating a force directed downwards due to airflow
+        // it's calculated with the formula: F_downforce = C_df * v^2, where C_df is the downforce coefficient, and v is the vehicle's velocity
+        float compute_downforce(const float speed_meters_per_second)
+        {
+            return tuning::aerodynamic_downforce * speed_meters_per_second * speed_meters_per_second;
+        }
+
+        // description:
+        // drag is a resistive force acting opposite to the vehicle's motion, affecting top speed (and fuel efficiency)
+        // it's computed using the formula: F_drag = 0.5 * C_d * A * ρ * v^2, where C_d is the drag coefficient, A is
+        // // the frontal area, ρ is the air density, and v is the vehicle's velocity
+        float compute_drag(const float speed_meters_per_second)
+        {
+            float drag_coefficient     = 0.30f;  // typical value for a mid-sized car
+            float frontal_area         = 2.5f;   // square meters, common value for a mid-sized car
+            float air_density          = 1.225f; // kg/m^3, air density at sea level and 15°C
+            float drag_force_magnitude = 0.5f * drag_coefficient * frontal_area * air_density * speed_meters_per_second * speed_meters_per_second;
+  
+            return drag_force_magnitude;
+        }
+    }
+
     namespace debug
     {
         constexpr bool enabled = true;
@@ -387,21 +412,22 @@ namespace Spartan
             Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_fl), Vector2(0.6f,  0.005f));
             Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_fr), Vector2(0.85f, 0.005f));
             Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_rl), Vector2(1.1f,  0.005f));
-            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_rr), Vector2(1.4f,  0.005f));
+            Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_rr), Vector2(1.35f, 0.005f));
         }
 
-        void draw_info_general(const float speed, const float torque, const float rpm, const uint32_t gear, const float downforce)
+        void draw_info_general(const float speed, const float torque, const float rpm, const uint32_t gear, const float aerodynamics_downforce, const float aerodynamics_drag)
         {
             // setup ostringstream
             oss.str("");
             oss.clear();
             oss << fixed << setprecision(2);
 
-            oss << "Speed: "     << speed     << " Km/h\n"; // meters per second
-            oss << "Torque: "    << torque    << " N·m\n";  // Newton meters
-            oss << "RPM: "       << rpm       << " rpm\n";  // revolutions per minute, not an SI unit, but commonly used
-            oss << "Gear: "      << gear      << "\n";      // gear has no unit
-            oss << "Downforce: " << downforce << " N\n";    // Newtons
+            oss << "Speed: "     << speed                  << " Km/h\n"; // meters per second
+            oss << "Torque: "    << torque                 << " N·m\n";  // Newton meters
+            oss << "RPM: "       << rpm                    << " rpm\n";  // revolutions per minute, not an SI unit, but commonly used
+            oss << "Gear: "      << gear                   << "\n";      // gear has no unit
+            oss << "Downforce: " << aerodynamics_downforce << " N\n";    // Newtons
+            oss << "Drag: "      << aerodynamics_drag      << " N\n";    // Newtons
 
             Renderer::DrawString(oss.str(), Vector2(0.35f, 0.005f));
         }
@@ -562,19 +588,8 @@ namespace Spartan
         m_vehicle->applyEngineForce(-m_engine_torque, tuning::wheel_fl);
         m_vehicle->applyEngineForce(-m_engine_torque, tuning::wheel_fr);
 
-        // aerodynamic downforce
-        {
-            m_downforce = tuning::aerodynamic_downforce * speed_meters_per_second * speed_meters_per_second;
-            btVector3 downforce_vector(0, -m_downforce, 0); // Y-axis is up
-            m_vehicle_chassis->applyCentralForce(downforce_vector);
-        }
-
-        // anti-roll bar
-        anti_roll_bar::apply(m_vehicle, m_vehicle_chassis, tuning::wheel_fl, tuning::wheel_fr, tuning::anti_roll_bar_stiffness_front);
-        anti_roll_bar::apply(m_vehicle, m_vehicle_chassis, tuning::wheel_rl, tuning::wheel_rr, tuning::anti_roll_bar_stiffness_rear); 
-
         // tire friction model - the main factor that defines handling
-        for (int i = 0; i < m_vehicle->getNumWheels(); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_vehicle->getNumWheels()); i++)
         {
             btWheelInfo* wheel_info = &m_vehicle->getWheelInfo(i);
 
@@ -591,6 +606,21 @@ namespace Spartan
             }
         }
 
+        // anti-roll bar
+        anti_roll_bar::apply(m_vehicle, m_vehicle_chassis, tuning::wheel_fl, tuning::wheel_fr, tuning::anti_roll_bar_stiffness_front);
+        anti_roll_bar::apply(m_vehicle, m_vehicle_chassis, tuning::wheel_rl, tuning::wheel_rr, tuning::anti_roll_bar_stiffness_rear);
+
+        // aerodynamics
+        {
+            // downforce
+            m_aerodynamics_drag = aerodynamics::compute_downforce(GetSpeedMetersPerSecond());
+            m_vehicle_chassis->applyCentralForce(btVector3(0, -m_aerodynamics_drag, 0)); // Y is up
+
+            // drag
+            m_aerodynamics_drg = aerodynamics::compute_drag(GetSpeedMetersPerSecond());
+            m_vehicle_chassis->applyCentralForce(btVector3(0.0f, 0.0f, -m_aerodynamics_drg)); // Z is forward
+        }
+
         // breaking
         {
             bool handbrake = Input::GetKey(KeyCode::Space);
@@ -599,7 +629,7 @@ namespace Spartan
             {
                 m_break_force = Math::Helper::Min<float>(m_break_force + tuning::brake_ramp_speed * delta_time_sec, tuning::brake_force_max);
 
-                for (int i = 0; i < m_vehicle->getNumWheels(); ++i)
+                for (uint32_t i = 0; i < static_cast<uint32_t>(m_vehicle->getNumWheels()); i++)
                 {
                     m_vehicle->setBrake(m_break_force, i);
                 }
@@ -617,7 +647,7 @@ namespace Spartan
 
         if (debug::enabled)
         {
-            debug::draw_info_general(GetSpeedKilometersPerHour(), m_engine_torque, m_engine_rpm, m_gear, m_downforce);
+            debug::draw_info_general(GetSpeedKilometersPerHour(), m_engine_torque, m_engine_rpm, m_gear, m_aerodynamics_drag, m_aerodynamics_drg);
         }
     }
 
