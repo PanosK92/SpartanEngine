@@ -234,12 +234,12 @@ namespace Spartan
             // compute the total force
             btVector3 wheel_force    = (slip_force_forward * wheel_forward_dir) + (slip_force_side * wheel_right_dir);
 
-            SP_LOG_INFO("slip ratio: %.4f (%.2f N), slip angle: %.4f (%.2f N)", slip_ratio, slip_force_forward, slip_angle, slip_force_side);
+            //SP_LOG_INFO("slip ratio: %.4f (%.2f N), slip angle: %.4f (%.2f N)", slip_ratio, slip_force_forward, slip_angle, slip_force_side);
 
             // this is the point where external physics calculations meet with the internal physics calculations (bullet)
             // my suspicion is that the simulation scales are different, hence the multiplication by simulation_scale
             // more investigation is needed on this so that the simulation is as accurate as possible
-            float simulation_scale = 30.0f;
+            float simulation_scale = 10.0f;
 
             *force            = btVector3(wheel_force.x(), 0.0f, wheel_force.z()) * simulation_scale;
             *force_position   = wheel_info->m_raycastInfo.m_contactPointWS;
