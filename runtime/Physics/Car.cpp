@@ -41,6 +41,7 @@ namespace Spartan
 {
     // 1. this simulation relies on bullet physics but can be transfered elsewhere
     // 2. the definitive handling factor is the tire friction model, everything else is complementary and adds to the realism
+    // 3. all the values are based on the Toyota AE86 Sprinter Trueno, when literature was not available, values were approximated
 
     namespace tuning
     {
@@ -54,43 +55,53 @@ namespace Spartan
         // 2. these values simulate a mid size car and need to be adjusted according to the simulated car's specifications
 
         // engine
-        constexpr float engine_torque_max             = 350;                                       // maximum torque output of the engine
-        constexpr float engine_max_rpm                = 6500.0f;                                   // maximum engine rpm
-        constexpr float engine_idle_rpm               = 800.0f;                                    // idle engine rpm
+        constexpr float engine_torque_max             = 140.0f;                                     // maximum torque output of the engine
+        constexpr float engine_max_rpm                = 7600.0f;                                    // maximum engine rpm 
+        constexpr float engine_idle_rpm               = 900.0f;                                     // idle engine rpm
+        vector<pair<float, float>> engine_torque_map  =                                             /* an approximation of the engine's torque curve */
+        {
+             { 1000.0f, 0.2f  },
+             { 2000.0f, 0.4f  },
+             { 3000.0f, 0.65f },
+             { 4000.0f, 0.9f  },
+             { 5000.0f, 1.0f  }, // peak torque
+             { 6000.0f, 0.9f  },
+             { 7000.0f, 0.75f },
+        };
 
         // gearbox
-        constexpr float gear_ratios[]                 = { 3.0f, 2.0f, 1.5f, 1.0f, 0.5f, 0.8f };    // gear ratios of a typical mid-sized car
-        constexpr float final_drive_ratio             = 3.5f;                                      // final drive of a typical mid-sized car
-        constexpr float upshift_rpm                   = engine_max_rpm * 0.5f;                     // 50% of max rpm for upshifting
-        constexpr float downshift_rpm                 = engine_max_rpm * 0.25f;                    // 25% of max rpm for downshifting
-        constexpr float transmission_efficiency       = 0.95f;                                     // there is some loss of torque (due to the the clutch and flywheel)
-        constexpr float shift_delay                   = 0.3f;                                      // gear shift delay in seconds
+        constexpr float gear_ratios[]                 = { 3.166f, 1.904f, 1.392f, 1.031f, 0.815f }; // gear ratios
+        constexpr float final_drive_ratio             = 4.3f;                                       // final drive 
+        constexpr float upshift_rpm                   = engine_max_rpm * 0.9f;                      // 90% of max rpm for upshifting
+        constexpr float downshift_rpm                 = engine_max_rpm * 0.2f;                      // 20% of max rpm for downshifting
+        constexpr float transmission_efficiency       = 0.98f;                                      // there is some loss of torque (due to the the clutch and flywheel)
+        constexpr float shift_delay                   = 0.1f;                                       // gear shift delay in seconds
 
         // suspension
-        constexpr float suspension_stiffness          = 50.0f;                                     // stiffness of suspension springs in N/m
-        constexpr float suspension_damping            = 2.0f;                                      // damping coefficient to dissipate energy
-        constexpr float suspension_compression        = 1.0f;                                      // compression damping coefficient
-        constexpr float suspension_force_max          = 5000.0f;                                   // maximum force suspension can exert in newtons
-        constexpr float suspension_length             = 0.35f;                                     // spring length
-        constexpr float suspension_rest_length        = suspension_length * 0.8f;                  // spring length at equilibrium
-        constexpr float suspension_travel_max         = suspension_length * 0.5f;                  // maximum travel of the suspension
-        
-        // anti-roll bar
-        constexpr float anti_roll_bar_stiffness_front = 500.0f;                                    // higher front stiffness reduces oversteer, lower increases it
-        constexpr float anti_roll_bar_stiffness_rear  = 400.0f;                                    // higher rear stiffness reduces understeer, lower increases it
-
-        // breaks
-        constexpr float brake_force_max               = 1000.0f;                                   // maximum brake force applied to wheels in newtons
-        constexpr float brake_ramp_speed              = 100.0f;                                    // rate at which brake force increases
-
-        // steering
-        constexpr float steering_angle_max            = 40.0f * Math::Helper::DEG_TO_RAD;          // the maximum steering angle of the front wheels
-        constexpr float steering_return_speed         = 5.0f;                                      // the speed at which the steering wheel returns to center
-        
-        // misc
-        constexpr float wheel_radius                  = 0.25f;                                     // wheel radius of a typical mid-sized car - this affects the angular velocity
-        constexpr float tire_friction                 = 2.3f;                                      // coefficient of friction for tires
-        constexpr float aerodynamic_downforce         = 0.25f;                                     // the faster the vehicle, the more the tires will grip the road
+        constexpr float suspension_stiffness          = 100.0f;                                     // stiffness of suspension springs in N/m
+        constexpr float suspension_damping            = 2.0f;                                       // damping coefficient to dissipate energy
+        constexpr float suspension_compression        = 1.0f;                                       // compression damping coefficient
+        constexpr float suspension_force_max          = 5000.0f;                                    // maximum force suspension can exert in newtons
+        constexpr float suspension_length             = 0.35f;                                      // spring length
+        constexpr float suspension_rest_length        = suspension_length * 0.8f;                   // spring length at equilibrium
+        constexpr float suspension_travel_max         = suspension_length * 0.5f;                   // maximum travel of the suspension
+                                                                                                    
+        // anti-roll bar                                                                            
+        constexpr float anti_roll_bar_stiffness_front = 500.0f;                                     // higher front stiffness reduces oversteer, lower increases it
+        constexpr float anti_roll_bar_stiffness_rear  = 300.0f;                                     // higher rear stiffness reduces understeer, lower increases it
+                                                                                                    
+        // breaks                                                                                   
+        constexpr float brake_force_max               = 800.0f;                                    // maximum brake force applied to wheels in newtons
+        constexpr float brake_ramp_speed              = 100.0f;                                     // rate at which brake force increases
+                                                                                                    
+        // steering                                                                                 
+        constexpr float steering_angle_max            = 40.0f * Math::Helper::DEG_TO_RAD;           // the maximum steering angle of the front wheels
+        constexpr float steering_return_speed         = 5.0f;                                       // the speed at which the steering wheel returns to center
+                                                                                                    
+        // misc                                                                                     
+        constexpr float wheel_radius                  = 0.25f;                                      // wheel radius of a typical mid-sized car - this affects the angular velocity
+        constexpr float tire_friction                 = 2.3f;                                       // coefficient of friction for tires
+        constexpr float aerodynamic_downforce         = 0.2f;                                       // the faster the vehicle, the more the tires will grip the road
 
         // wheel indices (used for bullet physics)
         constexpr uint8_t wheel_fl = 0;
@@ -296,25 +307,31 @@ namespace Spartan
         // the gearbox of the vehicle
         // it manages gear shifting and computes the torque output based on engine rpm and gear ratios
         // automatic gear shifting is implemented based on a simplistic rpm threshold logic
-
-        void update(float& engine_rpm, uint32_t& current_gear, float& last_shift_time, bool& is_shifting, const float speed_mps)
+    
+        void compute_rpm_and_gear(float& engine_rpm, uint32_t& current_gear, float& last_shift_time, bool& is_shifting, const float speed_mps, const float throttle_input)
         {
+            float delta_time_seconds = static_cast<float>(Timer::GetDeltaTimeSec());
+
             // compute engine rpm based on vehicle speed and current gear ratio
-            engine_rpm = speed_mps * (tuning::gear_ratios[current_gear - 1] * tuning::final_drive_ratio) * (1 / (tuning::wheel_radius * Math::Helper::PI * 2)) * 60;
+            if (!is_shifting)
+            {
+                float gear_ratio       = (tuning::gear_ratios[current_gear - 1] * tuning::final_drive_ratio);
+                float angular_velocity = (1 / (tuning::wheel_radius * Math::Helper::PI * 2)) * 60;
+                engine_rpm             = Math::Helper::Clamp(tuning::engine_idle_rpm + speed_mps * gear_ratio * angular_velocity * throttle_input, tuning::engine_idle_rpm, tuning::engine_max_rpm);
+            }
 
             // automatic gear shifting logic based on rpm thresholds
-            float delta_time_seconds = static_cast<float>(Timer::GetDeltaTimeSec());
             if (engine_rpm > tuning::upshift_rpm && current_gear < (sizeof(tuning::gear_ratios) / sizeof(tuning::gear_ratios[0])) && !is_shifting)
             {
                 current_gear++;
                 last_shift_time = delta_time_seconds;
-                is_shifting     = true;
+                is_shifting = true;
             }
             else if (engine_rpm < tuning::downshift_rpm && current_gear > 1 && !is_shifting)
             {
                 current_gear--;
                 last_shift_time = delta_time_seconds;
-                is_shifting     = true;
+                is_shifting = true;
             }
 
             // reset is_shifting flag after the delay
@@ -324,28 +341,47 @@ namespace Spartan
             }
         }
 
-        float torque_curve(const float normalized_rpm)
+        float torque_curve(const float engine_rpm)
         {
-            // a simplistic torque curve
-            const float a = 4.0f;  // scaling factor to match the engine's peak torque
-            const float b = 0.5f;  // normalized RPM value where peak torque occurs (e.g., 50% of the engine's RPM range)
-            return a * (b - normalized_rpm) * (b - normalized_rpm);
+            if (engine_rpm <= tuning::engine_torque_map.front().first)
+            {
+                return tuning::engine_torque_map.front().second;
+            }
+
+            if (engine_rpm >= tuning::engine_torque_map.back().first)
+            {
+                return tuning::engine_torque_map.back().second;
+            }
+
+            for (size_t i = 1; i < tuning::engine_torque_map.size(); ++i)
+            {
+                float x1 = tuning::engine_torque_map[i - 1].first;
+                float y1 = tuning::engine_torque_map[i - 1].second;
+                float x2 = tuning::engine_torque_map[i].first;
+                float y2 = tuning::engine_torque_map[i].second;
+
+                if (engine_rpm >= x1 && engine_rpm <= x2)
+                {
+                    float t = (engine_rpm - x1) / (x2 - x1);
+                    return y1 + t * (y2 - y1);
+                }
+            }
+
+            // fallback, should never reach here if the RPM is within the range of the map
+            return 0.0f;
         }
 
-        float get_torque(const float engine_rpm, const uint32_t current_gear, const float throttle_input)
+        float get_torque(float& engine_rpm, uint32_t& current_gear, float& last_shift_time, bool& is_shifting, float speed_mps, float throttle_input)
         {
-            // the revving down and up rate is a byproduct of piston weights, flywheel inertia, clutch etc
-            // we are simulating a this using a simple lerp rate, where revving down is faster than revving up
+            throttle_input = Math::Helper::Abs(throttle_input);
+            speed_mps      = Math::Helper::Abs(speed_mps);
 
-            float delta_time_seconds             = static_cast<float>(Timer::GetDeltaTimeSec());
-            static float smoothed_throttle_input = 0.0f;
-            float lerp_rate                      = (smoothed_throttle_input > throttle_input) ? 3.0f : 1.0f; // a typical ratio should be 2:1 or 3:1
-            smoothed_throttle_input              = Math::Helper::Lerp<float>(smoothed_throttle_input, throttle_input, lerp_rate * delta_time_seconds);
+            compute_rpm_and_gear(engine_rpm, current_gear, last_shift_time, is_shifting, speed_mps, throttle_input);
 
-            float normalized_rpm     = (engine_rpm - tuning::engine_idle_rpm) / (tuning::engine_max_rpm - tuning::engine_idle_rpm);
-            float torque_curve_value = torque_curve(normalized_rpm);
+            float torque_curve_value = torque_curve(engine_rpm);
             float gear_ratio         = tuning::gear_ratios[current_gear - 1] * tuning::final_drive_ratio;
-            return tuning::engine_torque_max * smoothed_throttle_input * gear_ratio * torque_curve_value * tuning::transmission_efficiency;
+    
+            return tuning::engine_torque_max * throttle_input * gear_ratio * torque_curve_value * tuning::transmission_efficiency;
         }
     }
 
@@ -358,19 +394,18 @@ namespace Spartan
         {
             return tuning::aerodynamic_downforce * speed_meters_per_second * speed_meters_per_second;
         }
-
+    
         // description:
         // drag is a resistive force acting opposite to the vehicle's motion, affecting top speed (and fuel efficiency)
         // it's computed using the formula: F_drag = 0.5 * C_d * A * ρ * v^2, where C_d is the drag coefficient, A is
-        // // the frontal area, ρ is the air density, and v is the vehicle's velocity
+        // the frontal area, ρ is the air density, and v is the vehicle's velocity
         float compute_drag(const float speed_meters_per_second)
         {
-            float drag_coefficient     = 0.30f;  // typical value for a mid-sized car
-            float frontal_area         = 2.5f;   // square meters, common value for a mid-sized car
-            float air_density          = 1.225f; // kg/m^3, air density at sea level and 15°C
-            float drag_force_magnitude = 0.5f * drag_coefficient * frontal_area * air_density * speed_meters_per_second * speed_meters_per_second;
-  
-            return drag_force_magnitude;
+            constexpr float drag_coefficient = 0.34f;  // drag coefficient for AE86
+            constexpr float frontal_area     = 1.9f;   // frontal area for AE86 in square meters
+            constexpr float air_density      = 1.225f; // kg/m^3, air density at sea level and 15°C
+    
+            return 0.5f * drag_coefficient * frontal_area * air_density * speed_meters_per_second * speed_meters_per_second;
         }
     }
 
@@ -540,21 +575,16 @@ namespace Spartan
     void Car::HandleInput()
     {
         // compute engine torque
-        m_engine_torque = 0.0f;
         {
-            gearbox::update(m_engine_rpm, m_gear, m_last_shift_time, m_is_shifting, GetSpeedMetersPerSecond());
-
-            float throttle_input = 0.0f;
+            float throttle_input = 1.0f; // just assume instant input for now
             if (Input::GetKey(KeyCode::Arrow_Up) || Input::GetControllerTriggerRight() != 0.0f)
             {
-                throttle_input = 1.0f;
+                m_engine_torque = -gearbox::get_torque(m_engine_rpm, m_gear, m_last_shift_time, m_is_shifting, GetSpeedMetersPerSecond(), throttle_input);
             }
             else if (Input::GetKey(KeyCode::Arrow_Down) || Input::GetControllerTriggerLeft() != 0.0f)
             {
-                throttle_input = -1.0f;
+                m_engine_torque = gearbox::get_torque(m_engine_rpm, m_gear, m_last_shift_time, m_is_shifting, GetSpeedMetersPerSecond(), throttle_input);
             }
-
-            m_engine_torque = gearbox::get_torque(m_engine_rpm, m_gear, throttle_input);
         }
 
         // steer the front wheels
@@ -585,8 +615,8 @@ namespace Spartan
         float speed_meters_per_second = GetSpeedMetersPerSecond();
 
         // engine torque (front-wheel drive)
-        m_vehicle->applyEngineForce(-m_engine_torque, tuning::wheel_fl);
-        m_vehicle->applyEngineForce(-m_engine_torque, tuning::wheel_fr);
+        m_vehicle->applyEngineForce(m_engine_torque, tuning::wheel_fl);
+        m_vehicle->applyEngineForce(m_engine_torque, tuning::wheel_fr);
 
         // tire friction model - the main factor that defines handling
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_vehicle->getNumWheels()); i++)
@@ -623,26 +653,19 @@ namespace Spartan
 
         // breaking
         {
-            bool handbrake = Input::GetKey(KeyCode::Space);
-
             if (m_wants_to_reverse)
             {
                 m_break_force = Math::Helper::Min<float>(m_break_force + tuning::brake_ramp_speed * delta_time_sec, tuning::brake_force_max);
-
-                for (uint32_t i = 0; i < static_cast<uint32_t>(m_vehicle->getNumWheels()); i++)
-                {
-                    m_vehicle->setBrake(m_break_force, i);
-                }
             }
             else
             {
                 m_break_force = Math::Helper::Max<float>(m_break_force - tuning::brake_ramp_speed * delta_time_sec, 0.0f);
-                m_vehicle->setBrake(m_break_force, tuning::wheel_fl);
-                m_vehicle->setBrake(m_break_force, tuning::wheel_fr);
-
-                m_vehicle->setBrake(handbrake ? numeric_limits<float>::max() : m_break_force, tuning::wheel_rl);
-                m_vehicle->setBrake(handbrake ? numeric_limits<float>::max() : m_break_force, tuning::wheel_rr);
             }
+
+            m_vehicle->setBrake(m_break_force, tuning::wheel_fl);
+            m_vehicle->setBrake(m_break_force, tuning::wheel_fr);
+            m_vehicle->setBrake(m_break_force, tuning::wheel_rl);
+            m_vehicle->setBrake(m_break_force, tuning::wheel_rr);
         }
 
         if (debug::enabled)
