@@ -197,14 +197,17 @@ namespace Spartan
 
         static void create_default_car(const Math::Vector3& position = Vector3(0.0f, 1.0f, 0.0f))
         {
+            const float car_scale   = 0.009f;
+            const float wheel_scale = 0.16f;
+
             if (m_default_model_car = ResourceCache::Load<Mesh>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
             {
                 Entity* entity_car = m_default_model_car->GetRootEntity();
                 entity_car->SetObjectName("geometry");
 
-                entity_car->GetTransform()->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+                entity_car->GetTransform()->SetPosition(Vector3(0.0500, 0.0f, 0.0f)); // compensation for model offset
                 entity_car->GetTransform()->SetRotation(Quaternion::FromEulerAngles(90.0f, 0.0f, -180.0f));
-                entity_car->GetTransform()->SetScale(Vector3(0.02f, 0.02f, 0.02f));
+                entity_car->GetTransform()->SetScale(Vector3(car_scale));
 
                 // the car is defined with a weird rotation (probably a bug with sketchfab auto converting to gltf)
                 // so we create a root which has no rotation and we parent the car to it, then attach the physics body to the root
@@ -289,8 +292,8 @@ namespace Spartan
                 {
                     PhysicsBody* physics_body = entity_root->AddComponent<PhysicsBody>().get();
                     physics_body->SetBodyType(PhysicsBodyType::Vehicle);
-                    physics_body->SetCenterOfMass(Vector3(0.0f, 1.1f, -0.1f));
-                    physics_body->SetBoundingBox(Vector3(3.0f, 1.4f, 8.0f));
+                    physics_body->SetCenterOfMass(Vector3(0.0f, 0.8f, 0.0f));
+                    physics_body->SetBoundingBox(Vector3(1.5f, 0.9f, 4.1f));
                     physics_body->SetRestitution(0.1f);
                     physics_body->SetFriction(0.6f);
                     physics_body->SetFrictionRolling(0.01f);
@@ -329,7 +332,7 @@ namespace Spartan
                     if (m_default_model_wheel = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend"))
                     {
                         Entity* entity_wheel_root = m_default_model_wheel->GetRootEntity();
-                        entity_wheel_root->GetTransform()->SetScale(Vector3(0.38f));
+                        entity_wheel_root->GetTransform()->SetScale(Vector3(wheel_scale));
 
                         if (Entity* entity_wheel = entity_wheel_root->GetTransform()->GetDescendantPtrByName("wheel Low"))
                         {
