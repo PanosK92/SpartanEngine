@@ -142,7 +142,6 @@ struct Light
     float  far;
     float3 radiance;
     float  n_dot_l;
-    uint   array_size;
     float  attenuation;
 
     // attenuation functions are derived from Frostbite
@@ -222,7 +221,6 @@ struct Light
         to_pixel          = compute_direction(position, surface_position);
         n_dot_l           = saturate(dot(surface_normal, -to_pixel)); // Pre-compute n_dot_l since it's used in many places
         attenuation       = compute_attenuation(surface_position);
-        array_size        = light_is_directional() ? 3 : 1;
 
         // apply occlusion
         float occlusion_factor = is_ssgi_enabled() ? occlusion : 1.0;

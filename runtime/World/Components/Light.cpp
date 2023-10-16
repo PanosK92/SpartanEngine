@@ -64,6 +64,8 @@ namespace Spartan
         {
             SetIntensity(LightIntensity::bulb_flashlight);
         }
+
+        m_cascade_ends.fill(0.0f);
     }
 
     void Light::OnInitialize()
@@ -391,18 +393,22 @@ namespace Spartan
     const Matrix& Light::GetViewMatrix(uint32_t index /*= 0*/) const
     {
         SP_ASSERT(index < static_cast<uint32_t>(m_matrix_view.size()));
-
         return m_matrix_view[index];
     }
 
     const Matrix& Light::GetProjectionMatrix(uint32_t index /*= 0*/) const
     {
         SP_ASSERT(index < static_cast<uint32_t>(m_matrix_projection.size()));
-
         return m_matrix_projection[index];
     }
 
-    void Light::ComputeCascadeSplits()
+	float Light::GetCascadeEnd(uint32_t index /*= 0*/) const
+	{
+        SP_ASSERT(index < static_cast<uint32_t>(m_matrix_projection.size()));
+        return m_cascade_ends[index];
+	}
+
+	void Light::ComputeCascadeSplits()
     {
         if (m_shadow_map.slices.empty())
             return;
@@ -418,20 +424,19 @@ namespace Spartan
         const Matrix view_projection_inverted = Matrix::Invert(camera->GetViewMatrix() * projection);
 
         // Calculate split depths based on view camera frustum
-        const float split_lambda = 0.98f;
+        const float split_lambda = 0.95f;
         const float clip_range   = clip_far - clip_near;
         const float min_z        = clip_near;
         const float max_z        = clip_near + clip_range;
-        const float range        = max_z - min_z;
+        m_range                  = max_z - min_z;
         const float ratio        = max_z / min_z;
-        vector<float> splits(m_cascade_count);
         for (uint32_t i = 0; i < m_cascade_count; i++)
         {
             const float p       = (i + 1) / static_cast<float>(m_cascade_count);
             const float log     = min_z * Math::Helper::Pow(ratio, p);
-            const float uniform = min_z + range * p;
+            const float uniform = min_z + m_range * p;
             const float d       = split_lambda * (log - uniform) + uniform;
-            splits[i]           = (d - clip_near) / clip_range;
+            m_cascade_ends[i] = (d - clip_near) / clip_range;
         }
 
         float last_split_distance = 0.0f;
@@ -459,14 +464,14 @@ namespace Spartan
 
             // Compute split distance
             {
-                const float split_distance = splits[i];
+                const float split_distance = m_cascade_ends[i];
                 for (uint32_t i = 0; i < 4; i++)
                 {
                     Vector3 distance       = frustum_corners[i + 4] - frustum_corners[i];
                     frustum_corners[i + 4] = frustum_corners[i] + (distance * split_distance);
                     frustum_corners[i]     = frustum_corners[i] + (distance * last_split_distance);
                 }
-                last_split_distance = splits[i];
+                last_split_distance = m_cascade_ends[i];
             }
 
             // Compute frustum bounds

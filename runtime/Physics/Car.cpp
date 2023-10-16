@@ -55,12 +55,14 @@ namespace Spartan
 
         // engine
         constexpr float engine_torque_max             = 350;                                       // maximum torque output of the engine
-        constexpr float engine_max_rpm                = 6500.0f;                                   // maximum engine RPM
-        constexpr float engine_idle_rpm               = 800.0f;                                    // idle engine RPM
+        constexpr float engine_max_rpm                = 6500.0f;                                   // maximum engine rpm
+        constexpr float engine_idle_rpm               = 800.0f;                                    // idle engine rpm
 
         // gearbox
-        constexpr float gear_ratios[]                 = { 3.5f, 2.25f, 1.6f, 1.15f, 0.9f, 0.75f }; // gear ratios for each gear
-        constexpr float final_drive_ratio             = 3.5f;                                      // final drive ratio
+        constexpr float gear_ratios[]                 = { 3.0f, 2.0f, 1.5f, 1.0f, 0.5f, 0.8f };    // gear ratios of a typical mid-sized car
+        constexpr float final_drive_ratio             = 3.5f;                                      // final drive of a typical mid-sized car
+        constexpr float upshift_rpm                   = engine_max_rpm * 0.5f;                     // 50% of max rpm for upshifting
+        constexpr float downshift_rpm                 = engine_max_rpm * 0.25f;                    // 25% of max rpm for downshifting
         constexpr float transmission_efficiency       = 0.95f;                                     // there is some loss of torque (due to the the clutch and flywheel)
         constexpr float shift_delay                   = 0.3f;                                      // gear shift delay in seconds
 
@@ -86,7 +88,7 @@ namespace Spartan
         constexpr float steering_return_speed         = 5.0f;                                      // the speed at which the steering wheel returns to center
         
         // misc
-        constexpr float wheel_radius                  = 0.6f;                                      // radius of the wheel
+        constexpr float wheel_radius                  = 0.25f;                                     // wheel radius of a typical mid-sized car - this affects the angular velocity
         constexpr float tire_friction                 = 2.3f;                                      // coefficient of friction for tires
         constexpr float aerodynamic_downforce         = 0.25f;                                     // the faster the vehicle, the more the tires will grip the road
 
@@ -302,13 +304,13 @@ namespace Spartan
 
             // automatic gear shifting logic based on rpm thresholds
             float delta_time_seconds = static_cast<float>(Timer::GetDeltaTimeSec());
-            if (engine_rpm > tuning::engine_max_rpm && current_gear < (sizeof(tuning::gear_ratios) / sizeof(tuning::gear_ratios[0])) && !is_shifting)
+            if (engine_rpm > tuning::upshift_rpm && current_gear < (sizeof(tuning::gear_ratios) / sizeof(tuning::gear_ratios[0])) && !is_shifting)
             {
                 current_gear++;
                 last_shift_time = delta_time_seconds;
                 is_shifting     = true;
             }
-            else if (engine_rpm < tuning::engine_idle_rpm && current_gear > 1 && !is_shifting)
+            else if (engine_rpm < tuning::downshift_rpm && current_gear > 1 && !is_shifting)
             {
                 current_gear--;
                 last_shift_time = delta_time_seconds;
@@ -324,8 +326,10 @@ namespace Spartan
 
         float torque_curve(const float normalized_rpm)
         {
-            // simplistic torque curve
-            return 1.0f - 0.5f * (normalized_rpm - 0.5f) * (normalized_rpm - 0.5f);
+            // a simplistic torque curve
+            const float a = 4.0f;  // scaling factor to match the engine's peak torque
+            const float b = 0.5f;  // normalized RPM value where peak torque occurs (e.g., 50% of the engine's RPM range)
+            return a * (b - normalized_rpm) * (b - normalized_rpm);
         }
 
         float get_torque(const float engine_rpm, const uint32_t current_gear, const float throttle_input)
@@ -399,8 +403,6 @@ namespace Spartan
             oss << "Angular velocity: "  << static_cast<float>(wheel_info.m_deltaRotation) / static_cast<float>(Timer::GetDeltaTimeSec()) << " rad/s\n";
             oss << "Torque: "            << wheel_info.m_engineForce << " N\n";
             oss << "Suspension length: " << wheel_info.m_raycastInfo.m_suspensionLength << " m\n";
-            oss << "Forward: "           << ToVector3(tire_friction_model::compute_wheel_direction_forward(&wheel_info)).ToString() << "\n";
-            oss << "Right: "             << ToVector3(tire_friction_model::compute_wheel_direction_right(&wheel_info)).ToString() << "\n";
 
             return oss.str();
         }
@@ -467,11 +469,11 @@ namespace Spartan
 
             // position of the wheels relative to the chassis
             {
-                const float extent_forward  = 2.5f;
-                const float extent_sideways = 1.5f;
+                const float extent_forward  = 1.3f;
+                const float extent_sideways = 0.65f;
 
-                wheel_positions[tuning::wheel_fl] = btVector3(-extent_sideways, -tuning::suspension_length,  extent_forward + 0.05f);
-                wheel_positions[tuning::wheel_fr] = btVector3( extent_sideways, -tuning::suspension_length,  extent_forward + 0.05f);
+                wheel_positions[tuning::wheel_fl] = btVector3(-extent_sideways, -tuning::suspension_length,  extent_forward - 0.2f);
+                wheel_positions[tuning::wheel_fr] = btVector3( extent_sideways, -tuning::suspension_length,  extent_forward - 0.2f);
                 wheel_positions[tuning::wheel_rl] = btVector3(-extent_sideways, -tuning::suspension_length, -extent_forward + 0.25f);
                 wheel_positions[tuning::wheel_rr] = btVector3( extent_sideways, -tuning::suspension_length, -extent_forward + 0.25f);
             }

@@ -131,6 +131,7 @@ namespace Spartan
 
         const Math::Matrix& GetViewMatrix(uint32_t index = 0) const;
         const Math::Matrix& GetProjectionMatrix(uint32_t index = 0) const;
+        float GetCascadeEnd(uint32_t index = 0) const;
 
         RHI_Texture* GetDepthTexture() const { return m_shadow_map.texture_depth.get(); }
         RHI_Texture* GetColorTexture() const { return m_shadow_map.texture_color.get(); }
@@ -168,6 +169,7 @@ namespace Spartan
         bool m_initialized         = false;
         std::array<Math::Matrix, 6> m_matrix_view;
         std::array<Math::Matrix, 6> m_matrix_projection;
+        std::array<float, 3> m_cascade_ends;
 
         // Dirty checks
         bool m_is_dirty                     = true;

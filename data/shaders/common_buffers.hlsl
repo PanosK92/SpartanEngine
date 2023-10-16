@@ -58,6 +58,9 @@ struct LightBufferData
     float normal_bias;
     uint options;
     float2 padding;
+    
+    float3 cascade_ends;
+    float padding2;
 };
 
 struct MaterialBufferData
@@ -80,7 +83,7 @@ struct MaterialBufferData
     float anisotropic_rotation;
     float sheen;
     float sheen_tint;
-    float padding;
+    float padding3;
 };
 
 cbuffer BufferFrame    : register(b0) { FrameBufferData buffer_frame;       }; // low frequency    - updates once per frame
