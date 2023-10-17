@@ -59,7 +59,7 @@ namespace Spartan
         float m_engine_rpm                            = 0.0f;
         float m_aerodynamics_drag                     = 0.0f;
         float m_aerodynamics_drg                      = 0.0f;
-        float m_sterring_angle                        = 0.0f;
+        float m_steering_angle                        = 0.0f;
         float m_break_force                           = 0.0f;
         float m_throttle                              = 0.0f;
         uint32_t m_gear                               = 1;
