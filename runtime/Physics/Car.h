@@ -32,6 +32,13 @@ namespace Spartan
     class Transform;
     //========================
 
+    enum class CarMovementState : uint8_t
+    {
+        Forward,
+        Backward,
+        Stationary
+    };
+
     class SP_CLASS Car
     {
     public:
@@ -64,8 +71,9 @@ namespace Spartan
         float m_throttle                              = 0.0f;
         int32_t m_gear                                = 0;
         float m_last_shift_time                       = 0.0f;
-        bool m_break_until_reverse                    = false;
+        bool m_break_until_opposite_torque            = false;
         bool m_is_shifting                            = false;
+        CarMovementState m_movement_direction         = CarMovementState::Stationary;
         btRaycastVehicle* m_vehicle                   = nullptr;
         Transform* m_vehicle_steering_wheel_transform = nullptr;
         btRigidBody* m_vehicle_chassis                = nullptr;

@@ -590,6 +590,20 @@ namespace Spartan
         if (!m_vehicle)
             return;
 
+        // compute movement state
+        if (GetSpeedMetersPerSecond() > 0.1f)
+        {
+            m_movement_direction = CarMovementState::Forward;
+        }
+        else if (GetSpeedMetersPerSecond() < -0.1f)
+        {
+            m_movement_direction = CarMovementState::Backward;
+        }
+        else
+        {
+            m_movement_direction = CarMovementState::Stationary;
+        }
+
         HandleInput();
         ApplyForces();
         UpdateTransforms();
@@ -624,29 +638,39 @@ namespace Spartan
     {
         float delta_time_sec = static_cast<float>(Timer::GetDeltaTimeSec());
 
-        // compute engine torque
+        // compute engine torque and/or breaking force
         {
-            m_throttle = 0.0f;
+            // determine when to stop breaking
+            if (Math::Helper::Abs<float>(GetSpeedMetersPerSecond()) < 0.1f)
+            {
+                m_break_until_opposite_torque = false;
+            }
+
             if (Input::GetKey(KeyCode::Arrow_Up) || Input::GetControllerTriggerRight() != 0.0f)
             {
-                m_throttle = 1.0f;
-            }
-            else if (Input::GetKey(KeyCode::Arrow_Down) || Input::GetControllerTriggerLeft() != 0.0f)
-            {
-                // apply brakes instead of negative throttle when moving forward
-                if (GetSpeedMetersPerSecond() > 0.1f)
+                if (m_movement_direction == CarMovementState::Backward)
                 {
-                    m_break_until_reverse = true;
+                    m_break_until_opposite_torque = true;
                 }
                 else
                 {
-                    m_throttle            = -1.0f;
-                    m_break_until_reverse = false;
+                    m_throttle = 1.0f;
+                }
+            }
+            else if (Input::GetKey(KeyCode::Arrow_Down) || Input::GetControllerTriggerLeft() != 0.0f)
+            {
+                if (m_movement_direction == CarMovementState::Forward)
+                {
+                    m_break_until_opposite_torque = true;
+                }
+                else
+                {
+                    m_throttle = -1.0f;
                 }
             }
             else
             {
-                m_break_until_reverse = false;
+                m_break_until_opposite_torque = false;
             }
 
             btWheelInfo* wheel_info = &m_vehicle->getWheelInfo(0);
@@ -730,7 +754,7 @@ namespace Spartan
         // breaking
         {
             float breaking = Input::GetKey(KeyCode::Space) ? 1.0f : 0.0f;
-            breaking       = m_break_until_reverse ? 1.0f : breaking;
+            breaking       = m_break_until_opposite_torque ? 1.0f : breaking;
 
             if (breaking > 0.0f)
             {
