@@ -73,6 +73,7 @@ namespace Spartan
         float m_last_shift_time                       = 0.0f;
         bool m_break_until_opposite_torque            = false;
         bool m_is_shifting                            = false;
+        float m_gear_ratio                            = 0.0f;
         CarMovementState m_movement_direction         = CarMovementState::Stationary;
         btRaycastVehicle* m_vehicle                   = nullptr;
         Transform* m_vehicle_steering_wheel_transform = nullptr;
