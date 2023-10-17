@@ -62,7 +62,7 @@ namespace Spartan
         float m_steering_angle                        = 0.0f;
         float m_break_force                           = 0.0f;
         float m_throttle                              = 0.0f;
-        uint32_t m_gear                               = 1;
+        int32_t m_gear                                = 0;
         float m_last_shift_time                       = 0.0f;
         bool m_break_until_reverse                    = false;
         bool m_is_shifting                            = false;
