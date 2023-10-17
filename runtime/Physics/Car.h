@@ -61,9 +61,10 @@ namespace Spartan
         float m_aerodynamics_drg                      = 0.0f;
         float m_sterring_angle                        = 0.0f;
         float m_break_force                           = 0.0f;
-        bool m_wants_to_reverse                       = false;
+        float m_throttle                              = 0.0f;
         uint32_t m_gear                               = 1;
-        float m_last_shift_time                       = 0.0f; 
+        float m_last_shift_time                       = 0.0f;
+        bool m_break_until_reverse                    = false;
         bool m_is_shifting                            = false;
         btRaycastVehicle* m_vehicle                   = nullptr;
         Transform* m_vehicle_steering_wheel_transform = nullptr;

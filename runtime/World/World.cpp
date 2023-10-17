@@ -205,7 +205,7 @@ namespace Spartan
                 Entity* entity_car = m_default_model_car->GetRootEntity();
                 entity_car->SetObjectName("geometry");
 
-                entity_car->GetTransform()->SetPosition(Vector3(0.0500, 0.0f, 0.0f)); // compensation for model offset
+                entity_car->GetTransform()->SetPosition(Vector3(0.05f, 0.0f, 0.0f)); // compensation for model offset
                 entity_car->GetTransform()->SetRotation(Quaternion::FromEulerAngles(90.0f, 0.0f, -180.0f));
                 entity_car->GetTransform()->SetScale(Vector3(car_scale));
 
@@ -297,7 +297,7 @@ namespace Spartan
                     physics_body->SetRestitution(0.1f);
                     physics_body->SetFriction(0.6f);
                     physics_body->SetFrictionRolling(0.01f);
-                    physics_body->SetMass(1000.0f); // 900 – 1,045 kg -> https://en.wikipedia.org/wiki/Toyota_AE86
+                    physics_body->SetMass(960.0f); // http://www.j-garage.com/toyota/ae86.html
 
                     // set the steering wheel to the physics body so that it can rotate it
                     if (Entity* entity_steering_wheel = entity_car->GetTransform()->GetDescendantPtrByName("SteeringWheel_SteeringWheel_0"))
