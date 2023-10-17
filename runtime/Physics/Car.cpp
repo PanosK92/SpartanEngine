@@ -631,6 +631,7 @@ namespace Spartan
     {
         float delta_time_sec          = static_cast<float>(Timer::GetDeltaTimeSec());
         float speed_meters_per_second = GetSpeedMetersPerSecond();
+        btVector3 velocity_vehicle    = btVector3(m_vehicle_chassis->getLinearVelocity().x(), 0.0f, m_vehicle_chassis->getLinearVelocity().z());
 
         // engine torque (front-wheel drive)
         if (Math::Helper::Abs<float>(m_throttle) != 0.0f)
@@ -649,8 +650,7 @@ namespace Spartan
 
             if (wheel_info->m_raycastInfo.m_isInContact)
             {
-                btVector3 velocity_wheel   = tire_friction_model::compute_wheel_velocity(wheel_info, m_vehicle_chassis);
-                btVector3 velocity_vehicle = btVector3(m_vehicle_chassis->getLinearVelocity().x(), 0.0f, m_vehicle_chassis->getLinearVelocity().z());
+                btVector3 velocity_wheel = tire_friction_model::compute_wheel_velocity(wheel_info, m_vehicle_chassis);
 
                 btVector3 force;
                 btVector3 force_position;
@@ -666,13 +666,18 @@ namespace Spartan
 
         // aerodynamics
         {
-            // downforce
-            m_aerodynamics_drag = aerodynamics::compute_downforce(GetSpeedMetersPerSecond());
-            m_vehicle_chassis->applyCentralForce(btVector3(0, -m_aerodynamics_drag, 0)); // Y is up
+            // compute downforce and drag based on actual vehicle speed
+            m_aerodynamics_drag = aerodynamics::compute_downforce(speed_meters_per_second);
+            m_aerodynamics_drg  = aerodynamics::compute_drag(speed_meters_per_second);
 
-            // drag
-            m_aerodynamics_drg = aerodynamics::compute_drag(GetSpeedMetersPerSecond());
-            m_vehicle_chassis->applyCentralForce(btVector3(0.0f, 0.0f, -m_aerodynamics_drg)); // Z is forward
+            // transform the forces into bullet's right-handed coordinate system
+            btMatrix3x3 orientation    = m_vehicle_chassis->getWorldTransform().getBasis();
+            btVector3 downforce_bullet = orientation * btVector3(0, -m_aerodynamics_drag, 0);
+            btVector3 drag_bullet      = orientation * btVector3(0, 0, -m_aerodynamics_drg);
+
+            // apply the transformed forces
+            m_vehicle_chassis->applyCentralForce(downforce_bullet);
+            m_vehicle_chassis->applyCentralForce(drag_bullet);
         }
 
         // breaking
