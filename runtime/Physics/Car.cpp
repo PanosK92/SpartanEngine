@@ -106,7 +106,7 @@ namespace Spartan
                                                                                                        
         // misc                                                                                        
         constexpr float wheel_radius                      = 0.25f;                                     // wheel radius of a typical mid-sized car - this affects the angular velocity
-        constexpr float tire_friction                     = 2.3f;                                      // coefficient of friction for tires
+        constexpr float tire_friction                     = 2.5f;                                      // coefficient of friction for tires
         constexpr float aerodynamic_downforce             = 0.2f;                                      // the faster the vehicle, the more the tires will grip the road
 
         // wheel indices (used for bullet physics)
@@ -252,11 +252,10 @@ namespace Spartan
             //SP_LOG_INFO("slip ratio: %.4f (%.2f N), slip angle: %.4f (%.2f N)", slip_ratio, slip_force_forward, slip_angle, slip_force_side);
 
             // this is the point where external physics calculations meet with the internal physics calculations (bullet)
-            // my suspicion is that the simulation scales are different, hence the multiplication by simulation_scale
-            // more investigation is needed on this so that the simulation is as accurate as possible
-            float simulation_scale = 5.0f;
+            // bullet is not that good at simulating car friction, so we have to compensate here
+            float friction_compensation = 5.0f;
 
-            *force            = btVector3(wheel_force.x(), 0.0f, wheel_force.z()) * simulation_scale;
+            *force            = btVector3(wheel_force.x(), 0.0f, wheel_force.z()) * friction_compensation;
             *force_position   = wheel_info->m_raycastInfo.m_contactPointWS;
         }
     }
@@ -601,6 +600,10 @@ namespace Spartan
                     m_break_until_reverse = false;
                 }
             }
+            else
+            {
+                m_break_until_reverse = false;
+            }
 
             m_engine_torque = gearbox::compute_torque(m_engine_rpm, m_gear, m_last_shift_time, m_is_shifting, current_speed, m_throttle);
         }
@@ -619,11 +622,11 @@ namespace Spartan
             }
 
             // lerp to new steering angle - real life vehicles don't snap their wheels to the target angle
-            m_sterring_angle = Math::Helper::Lerp<float>(m_sterring_angle, steering_angle_target, tuning::steering_return_speed * delta_time_sec);
+            m_steering_angle = Math::Helper::Lerp<float>(m_steering_angle, steering_angle_target, tuning::steering_return_speed * delta_time_sec);
 
             // set the steering angle
-            m_vehicle->setSteeringValue(m_sterring_angle, tuning::wheel_fl);
-            m_vehicle->setSteeringValue(m_sterring_angle, tuning::wheel_fr);
+            m_vehicle->setSteeringValue(m_steering_angle, tuning::wheel_fl);
+            m_vehicle->setSteeringValue(m_steering_angle, tuning::wheel_fr);
         }
     }
 
@@ -634,10 +637,9 @@ namespace Spartan
         btVector3 velocity_vehicle    = btVector3(m_vehicle_chassis->getLinearVelocity().x(), 0.0f, m_vehicle_chassis->getLinearVelocity().z());
 
         // engine torque (front-wheel drive)
-        if (Math::Helper::Abs<float>(m_throttle) != 0.0f)
         {
-            float torque_sign = m_throttle > 0.0f ? -1.0f : 1.0f;
-            float torque      = m_engine_torque * torque_sign;
+            float torque_sign = m_throttle >= 0.0f ? -1.0f : 1.0f;
+            float torque      = m_throttle ? (m_engine_torque * torque_sign) : 0.0f;
 
             m_vehicle->applyEngineForce(torque, tuning::wheel_fl);
             m_vehicle->applyEngineForce(torque, tuning::wheel_fr);
@@ -666,7 +668,6 @@ namespace Spartan
 
         // aerodynamics
         {
-            // compute downforce and drag based on actual vehicle speed
             m_aerodynamics_drag = aerodynamics::compute_downforce(speed_meters_per_second);
             m_aerodynamics_drg  = aerodynamics::compute_drag(speed_meters_per_second);
 
@@ -694,10 +695,14 @@ namespace Spartan
                 m_break_force = Math::Helper::Max<float>(m_break_force - tuning::brake_ramp_speed * delta_time_sec, 0.0f);
             }
 
-            m_vehicle->setBrake(m_break_force, tuning::wheel_fl);
-            m_vehicle->setBrake(m_break_force, tuning::wheel_fr);
-            m_vehicle->setBrake(m_break_force, tuning::wheel_rl);
-            m_vehicle->setBrake(m_break_force, tuning::wheel_rr);
+            // apply a the force newtons will cause the car to break instantly and even flip over
+            // this is bullet just not being good at simulating car friction, so we have to compensate here
+            float bullet_innacuracy_fix = 0.01f;    
+            float bullet_break_force    = m_break_force * bullet_innacuracy_fix;
+            m_vehicle->setBrake(bullet_break_force, tuning::wheel_fl);
+            m_vehicle->setBrake(bullet_break_force, tuning::wheel_fr);
+            m_vehicle->setBrake(bullet_break_force, tuning::wheel_rl);
+            m_vehicle->setBrake(bullet_break_force, tuning::wheel_rr);
         }
 
         if (debug::enabled)
@@ -711,7 +716,7 @@ namespace Spartan
         // steering wheel
         if (m_vehicle_steering_wheel_transform)
         {
-            m_vehicle_steering_wheel_transform->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 0.0f, -m_sterring_angle * Math::Helper::RAD_TO_DEG));
+            m_vehicle_steering_wheel_transform->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 0.0f, -m_steering_angle * Math::Helper::RAD_TO_DEG));
         }
 
         // wheels
