@@ -27,5 +27,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    tex_av[thread_id.xy] = float4(float3(1,0,0), 0);
+    // create surface
+    Surface surface;
+    surface.Build(thread_id.xy, true, true, true);
+    // create light
+    Light light;
+    light.Build(surface);
+
+    float shadow = ScreenSpaceShadows(surface, light);
+    int ArraySliceIndex = pass_get_f3_value().z;
+
+    tex_uav4[int3(thread_id.xy, ArraySliceIndex)] = shadow;
 }
