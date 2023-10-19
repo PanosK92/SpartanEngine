@@ -207,7 +207,7 @@ namespace Spartan
             render_target(Renderer_RenderTexture::ssr) = make_shared<RHI_Texture2D>(width_render, height_render, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_ssr");
 
             // SSS
-            render_target(Renderer_RenderTexture::sss) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_sss");
+            render_target(Renderer_RenderTexture::sss) = make_shared<RHI_Texture2DArray>(width_render, height_render, RHI_Format::R16_Float, Renderer::GetMaxSSS(), RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_sss");
 
             // SSGI
             render_target(Renderer_RenderTexture::ssgi)          = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_ssgi");
@@ -529,7 +529,7 @@ namespace Spartan
             standard_texture(Renderer_StandardTexture::Noise_normal) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_noise_normal");
             standard_texture(Renderer_StandardTexture::Noise_normal)->LoadFromFile(dir_texture + "noise_normal.png");
 
-            standard_texture(Renderer_StandardTexture::Noise_blue) = static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2DArray>(RHI_Texture_Srv, "standard_noise_blue"));
+            standard_texture(Renderer_StandardTexture::Noise_blue) = make_shared<RHI_Texture2DArray>(RHI_Texture_Srv, "standard_noise_blue");
             standard_texture(Renderer_StandardTexture::Noise_blue)->LoadFromFile(dir_texture + "noise_blue_0.png");
         }
 
