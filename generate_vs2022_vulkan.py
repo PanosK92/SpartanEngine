@@ -5,7 +5,7 @@ from pathlib import Path
 
 def main():
     script_dir = Path(__file__).parent
-    os.system("dir")
+    os.chdir(script_dir)
 
     script = script_dir / "build_scripts" / "generate_project_files.py"
     subprocess.Popen([sys.executable, str(script), "vs2022", "vulkan"]).communicate()
