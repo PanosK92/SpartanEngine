@@ -134,18 +134,18 @@ namespace Spartan
         btVector3 compute_wheel_direction_forward(const btWheelInfo* wheel_info)
         {
             btVector3 forward_right_handed = wheel_info->m_worldTransform.getBasis().getColumn(0).normalized();
-            // right-handed to left-handed coordinate system
-            return btVector3(forward_right_handed.z(), -forward_right_handed.y(), -forward_right_handed.x());
+            return btVector3(forward_right_handed.z(), 0.0f, -forward_right_handed.x());
         }
 
         btVector3 compute_wheel_velocity(btWheelInfo* wheel_info, btRigidBody* m_vehicle_chassis)
         {
-            btVector3 velocity_angular_vehicle = m_vehicle_chassis->getAngularVelocity();
-            btVector3 velocity_angular         = velocity_angular_vehicle.cross(-wheel_info->m_raycastInfo.m_wheelAxleWS) * tuning::wheel_radius;
-            btVector3 velocity_linear          = m_vehicle_chassis->getVelocityInLocalPoint(wheel_info->m_raycastInfo.m_contactPointWS);
-            btVector3 velocity_total           = velocity_angular + velocity_linear;
+            float wheel_angular_velocity              = wheel_info->m_deltaRotation / static_cast<float>(Timer::GetDeltaTimeSec());
+            btVector3 wheel_rotation_axis             = wheel_info->m_raycastInfo.m_wheelAxleWS;
+            btVector3 wheel_linear_velocity_direction = wheel_rotation_axis.cross(wheel_info->m_raycastInfo.m_contactNormalWS).normalized();
+            btVector3 wheel_linear_velocity           = wheel_linear_velocity_direction * (tuning::wheel_radius * fabs(wheel_angular_velocity));
+            btVector3 vehicle_linear_velocity         = m_vehicle_chassis->getVelocityInLocalPoint(wheel_info->m_raycastInfo.m_contactPointWS);
 
-            return velocity_total;
+            return wheel_linear_velocity + vehicle_linear_velocity;
         }
 
         float compute_slip_ratio(const btVector3& wheel_forward, const btVector3& wheel_velocity, const btVector3& vehicle_velocity)
@@ -159,11 +159,9 @@ namespace Spartan
             // slip ratio as defined by Springer Handbook of Robotics
             float velocity_forward = vehicle_velocity.dot(wheel_forward);
             float velocity_wheel   = wheel_velocity.dot(wheel_forward);
+            float denominator      = Math::Helper::Abs(velocity_forward) + Math::Helper::SMALL_FLOAT;
             float nominator        = velocity_wheel - velocity_forward;
-            float denominator      = velocity_forward;
-
-            // add a small float to avoid fuzzy zeros which can result in devision by zero and erratic slip ratios
-            float slip_ratio = (nominator + Math::Helper::SMALL_FLOAT) / (denominator + Math::Helper::SMALL_FLOAT);
+            float slip_ratio       = nominator / denominator;
 
             return Math::Helper::Clamp<float>(slip_ratio, -1.0f, 1.0f);
         }
@@ -175,8 +173,7 @@ namespace Spartan
             // 0° to 90° (-90° to 0°): the wheel is starting to turn away from the direction of travel
             // 90° (-90°):             the wheel is perpendicular to the direction of the travel, maximum lateral sliding
 
-            btVector3 adjusted_velocity           = vehicle_velocity.fuzzyZero() ? btVector3(0.0f, 0.0f, 0.0f) : vehicle_velocity;
-            btVector3 vehicle_velocity_normalized = adjusted_velocity.normalized();
+            btVector3 vehicle_velocity_normalized = vehicle_velocity.fuzzyZero() ? btVector3(0.0f, 0.0f, 0.0f) : vehicle_velocity.normalized();
             float vehicle_dot_wheel_forward       = Math::Helper::Abs<float>(vehicle_velocity_normalized.dot(wheel_forward));
             float vehicle_dot_wheel_side          = vehicle_velocity_normalized.dot(wheel_side);
             float slip_angle                      = atan2(vehicle_dot_wheel_side + Math::Helper::SMALL_FLOAT, vehicle_dot_wheel_forward + Math::Helper::SMALL_FLOAT);
@@ -192,8 +189,8 @@ namespace Spartan
             // general information: https://en.wikipedia.org/wiki/Hans_B._Pacejka
 
             // performance some unit conversions that the formula expects
-            slip        = slip * 100.0f;                                      // convert to percentage
-            normal_load = (normal_load + Math::Helper::SMALL_FLOAT) * 0.001f; // convert to kilonewtons
+            slip        = slip * 100.0f;                                       // convert to percentage
+            normal_load = (normal_load  * 0.001f) + Math::Helper::SMALL_FLOAT; // convert to kilonewtons
 
             // coefficients from the pacejka '94 model
             // b0, b2, b4, b8 are the most relevant parameters that define the curve’s shape
@@ -224,11 +221,11 @@ namespace Spartan
             float V   = b11 * Fz + b12;
             float Bx1 = B * (slip + H);
 
-            // pacejka ’94 longitudinal formula
+            // pacejka ’94 longitudinal formula (output is in newtons)
             float force = D * sin(C * atan(Bx1 - E * (Bx1 - atan(Bx1)))) + V;
 
-            // convert to newtons
-            return force * 1000.0f;
+            // clamp to prevent outliers which lead to explosions
+            return Math::Helper::Clamp<float>(force, 0.0f, 3600.0f);
         }
 
         void compute_tire_force(CarParameters& parameters, const uint32_t wheel_index, const btVector3& vehicle_velocity, btVector3* force, btVector3* force_position)
@@ -266,7 +263,7 @@ namespace Spartan
             // compute the total force
             btVector3 wheel_force                      = (parameters.pacejka_fx[wheel_index] * wheel_forward_dir) + (parameters.pacejka_fz[wheel_index] * wheel_right_dir);
 
-            *force            = btVector3(wheel_force.x(), 0.0f, wheel_force.z()) * 0.0f;
+            *force            = btVector3(wheel_force.x(), 0.0f, wheel_force.z());
             *force_position   = wheel_info->m_raycastInfo.m_contactPointWS;
         }
     }
@@ -478,9 +475,10 @@ namespace Spartan
             oss << "Steering: "          << static_cast<float>(wheel_info.m_steering) * Math::Helper::RAD_TO_DEG                          << " deg\n";
             oss << "Angular velocity: "  << static_cast<float>(wheel_info.m_deltaRotation) / static_cast<float>(Timer::GetDeltaTimeSec()) << " rad/s\n";
             oss << "Torque: "            << wheel_info.m_engineForce                                                                      << " N\n";
-            oss << "Slip ratio: "        << parameters.pacejka_slip_ratio[wheel_index]                                                    << " \n";
-            oss << "Slip angle: "        << parameters.pacejka_slip_angle[wheel_index]                                                    << " \n";
             oss << "Suspension length: " << wheel_info.m_raycastInfo.m_suspensionLength                                                   << " m\n";
+            oss << "Slip ratio: "        << parameters.pacejka_slip_ratio[wheel_index] << " ( Fz: " << parameters.pacejka_fz[wheel_index] << " N ) \n";
+            oss << "Slip angle: "        << parameters.pacejka_slip_angle[wheel_index] << " ( Fx: " << parameters.pacejka_fx[wheel_index] << " N ) \n";
+
 
             return oss.str();
         }
@@ -717,7 +715,7 @@ namespace Spartan
             btVector3 force_position;
             tire_friction_model::compute_tire_force(m_parameters, i, velocity_vehicle, &force, &force_position);
 
-            //m_parameters.body->applyForce(force, force_position);
+            m_parameters.body->applyForce(force, force_position);
         }
 
         // anti-roll bar
