@@ -106,7 +106,7 @@ namespace Spartan
 
         // misc                                                                                              
         constexpr float wheel_radius                            = 0.25f;                                     // wheel radius of a typical mid-sized car - this affects the angular velocity
-        constexpr float tire_friction                           = 2.0f;                                      // bullet has a hard time simulating friction that's reliable enough for cars, so this is pretty arbitrary
+        constexpr float tire_friction                           = 1.6f;                                      // bullet has a hard time simulating friction that's reliable enough for cars, so this is pretty arbitrary
 
         // wheel indices (used for bullet physics)
         constexpr uint8_t wheel_fl = 0;
@@ -135,30 +135,22 @@ namespace Spartan
             return btVector3(forward_right_handed.z(), -forward_right_handed.y(), -forward_right_handed.x());
         }
 
-        btVector3 compute_wheel_velocity(btWheelInfo* wheel_info, btRigidBody* m_vehicle_chassis)
+        float compute_slip_ratio(const btWheelInfo* wheel_info, const btVector3& wheel_forward, const btVector3& vehicle_velocity)
         {
-            float wheel_angular_velocity              = Math::Helper::Abs(wheel_info->m_deltaRotation / static_cast<float>(Timer::GetDeltaTimeSec()));
-            btVector3 wheel_rotation_axis             = wheel_info->m_raycastInfo.m_wheelAxleWS;
-            btVector3 wheel_linear_velocity_direction = wheel_rotation_axis.cross(wheel_info->m_raycastInfo.m_contactNormalWS).normalized();
-            btVector3 wheel_linear_velocity           = wheel_linear_velocity_direction * tuning::wheel_radius * wheel_angular_velocity;
-            btVector3 vehicle_linear_velocity         = m_vehicle_chassis->getVelocityInLocalPoint(wheel_info->m_raycastInfo.m_contactPointWS);
+            // value meaning:
+            // a measure of tire deformation or how much slower/faster it's rotating compared to the vehicle speed
+            //  0:       the tire is rolling perfectly without any slip
+            //  0 to 1:  the tire is rotating slower than the speed of the vehicle, so there is traction/braking
+            //  0 to -1: the tire is rotating faster than the speed of the vehicle, so the car is sliding
 
-            return wheel_linear_velocity + vehicle_linear_velocity;
-        }
-
-        float compute_slip_ratio(const btVector3& wheel_forward, const btVector3& wheel_velocity, const btVector3& vehicle_velocity)
-        {
-            // value meanings
-            //  0:       tire is rolling perfectly without any slip
-            //  0 to  1: the tire is beginning to slip under acceleration
-            // -1 to  0: the tire is beginning to slip under braking
-            //  1 or -1: a full throttle lock or brake lock respectively, where the tire is spinning freely (or sliding) without providing traction
+            if (vehicle_velocity.length() < 0.05f)
+                return 0.0f;
 
             // slip ratio as defined by Springer Handbook of Robotics
-            float velocity_forward = vehicle_velocity.dot(wheel_forward);
-            float velocity_wheel   = wheel_velocity.dot(wheel_forward);
-            float denominator      = Math::Helper::Abs(velocity_forward) + Math::Helper::SMALL_FLOAT;
-            float numerator        = velocity_wheel - velocity_forward;
+            float velocity_wheel   = wheel_info->m_deltaRotation / static_cast<float>(Timer::GetDeltaTimeSec());
+            float velocity_vehicle = vehicle_velocity.dot(wheel_forward);
+            float denominator      = Math::Helper::Max(Math::Helper::Abs(velocity_vehicle), Math::Helper::SMALL_FLOAT);
+            float numerator        = velocity_wheel - velocity_vehicle;
             float slip_ratio       = numerator  / denominator;
 
             return Math::Helper::Clamp<float>(slip_ratio, -1.0f, 1.0f);
@@ -166,7 +158,7 @@ namespace Spartan
 
         float compute_slip_angle(const btVector3& wheel_forward, const btVector3& wheel_side, const btVector3& vehicle_velocity)
         {
-            // slip angle:
+            // value meaning:
             // a measure of the angle between the direction in which a wheel is pointed and the direction in which the tire is actually moving
             // 0°:         the direction of the wheel is aligned perfectly with the direction of the travel
             // 0° to 30° : understeer - the tire moving more straight ahead than where it's pointed
@@ -189,7 +181,7 @@ namespace Spartan
             // https://www.edy.es/dev/docs/pacejka-94-parameters-explained-a-comprehensive-guide/
 
             // performance some unit conversions that the formula expects
-            normal_load *= 0.001f + Math::Helper::SMALL_FLOAT; // to kilonewtons
+            normal_load *= 0.001f; // to kilonewtons
             if (is_slip_ratio)
             {
                 slip *= 100.0f; // to percentage
@@ -230,7 +222,13 @@ namespace Spartan
             // pacejka ’94 longitudinal formula (output is in newtons)
             float force = D * sin(C * atan(Bx1 - E * (Bx1 - atan(Bx1)))) + V;
 
+            // account for tire friction
+            force *= tuning::tire_friction;
+
+            force *= 5.0f;
+
             SP_ASSERT(!isnan(force));
+
             return force;
         }
 
@@ -253,23 +251,22 @@ namespace Spartan
             }
 
             // compute wheel information
-            btVector3 wheel_velocity    = compute_wheel_velocity(wheel_info, parameters.body);
             btVector3 wheel_forward_dir = compute_wheel_direction_forward(wheel_info);
             btVector3 wheel_right_dir   = wheel_forward_dir.cross(btVector3(0, 1, 0));
             float normal_load           = wheel_info->m_wheelsSuspensionForce;
 
             // a measure of how much a wheel is slipping along the direction of the vehicle travel
-            parameters.pacejka_slip_ratio[wheel_index] = compute_slip_ratio(wheel_forward_dir, wheel_velocity, vehicle_velocity);
+            parameters.pacejka_slip_ratio[wheel_index] = compute_slip_ratio(wheel_info, wheel_forward_dir, vehicle_velocity);
             // the angle between the direction in which a wheel is pointed and the direction in which the vehicle is actually traveling
             parameters.pacejka_slip_angle[wheel_index] = compute_slip_angle(wheel_forward_dir, wheel_right_dir, vehicle_velocity);
             // the force that the tire can exert parallel to its direction of travel
-            parameters.pacejka_fz[wheel_index]         = compute_pacejka_force(parameters.pacejka_slip_ratio[wheel_index], normal_load, true) * tuning::tire_friction;
+            parameters.pacejka_fz[wheel_index]         = compute_pacejka_force(parameters.pacejka_slip_ratio[wheel_index], normal_load, true);
             // the force that the tire can exert perpendicular to its direction of travel
-            parameters.pacejka_fx[wheel_index]         = compute_pacejka_force(parameters.pacejka_slip_angle[wheel_index], normal_load, false) * tuning::tire_friction;
+            parameters.pacejka_fx[wheel_index]         = compute_pacejka_force(parameters.pacejka_slip_angle[wheel_index], normal_load, false);
             // compute the total force
             btVector3 wheel_force                      = (parameters.pacejka_fx[wheel_index] * wheel_forward_dir) + (parameters.pacejka_fz[wheel_index] * wheel_right_dir);
 
-            *force          = btVector3(wheel_force.x(), 0.0f, wheel_force.z()) * 15.0f;
+            *force          = btVector3(wheel_force.x(), 0.0f, wheel_force.z());
             *force_position = wheel_info->m_raycastInfo.m_contactPointWS;
         }
     }
@@ -427,7 +424,7 @@ namespace Spartan
 
             float torque = torque_curve(parameters.engine_rpm);
 
-            return torque * tuning::transmission_efficiency * 25.0f;
+            return torque * tuning::transmission_efficiency * 50.0f;
         }
     }
 
