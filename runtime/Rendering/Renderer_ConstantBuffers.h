@@ -98,9 +98,13 @@ namespace Spartan
         Color color;
         Math::Vector4 position;
         Math::Vector4 direction;
+
         float normal_bias;
         uint32_t options;
         Math::Vector2 padding;
+
+        Math::Vector3 cascade_ends;
+        float padding2;
     
         bool operator==(const Cb_Light& rhs)
         {
@@ -112,6 +116,7 @@ namespace Spartan
                 view_projection[4]         == rhs.view_projection[4]         &&
                 view_projection[5]         == rhs.view_projection[5]         &&
                 intensity_range_angle_bias == rhs.intensity_range_angle_bias &&
+                cascade_ends               == rhs.cascade_ends               &&
                 normal_bias                == rhs.normal_bias                &&
                 color                      == rhs.color                      &&
                 position                   == rhs.position                   &&

@@ -33,6 +33,7 @@ namespace Spartan
 {
     class Mesh;
     class Material;
+    class RHI_VertexBuffer;
 
     class SP_CLASS Renderable : public Component
     {
@@ -44,7 +45,7 @@ namespace Spartan
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
 
-        // Geometry/Mesh
+        // geometry/mesh
         void SetGeometry(
             Mesh* mesh,
             const Math::BoundingBox aabb = Math::BoundingBox::Undefined,
@@ -54,13 +55,13 @@ namespace Spartan
         void SetGeometry(const Renderer_MeshType mesh_type);
         void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
 
-        // Properties
+        // properties
         uint32_t GetIndexOffset()                 const { return m_geometry_index_offset; }
         uint32_t GetIndexCount()                  const { return m_geometry_index_count; }
         uint32_t GetVertexOffset()                const { return m_geometry_vertex_offset; }
         uint32_t GetVertexCount()                 const { return m_geometry_vertex_count; }
         Mesh* GetMesh()                           const { return m_mesh; }
-        const Math::BoundingBox& GetBoundingBox() const { return m_bounding_box; }
+        const Math::BoundingBox& GetBoundingBox() const { return m_bounding_box_local; }
         const Math::BoundingBox& GetAabb();
 
         //= MATERIAL ====================================================================
@@ -76,9 +77,15 @@ namespace Spartan
         auto HasMaterial()            const { return m_material != nullptr; }
         //===============================================================================
 
-        // Shadows
+        // shadows
         void SetCastShadows(const bool cast_shadows) { m_cast_shadows = cast_shadows; }
         auto GetCastShadows() const                  { return m_cast_shadows; }
+
+        // instancing
+        bool HasInstancing()                  const { return !m_instances.empty(); }
+        RHI_VertexBuffer* GetInstanceBuffer() const { return m_instance_buffer.get(); }
+        uint32_t GetInstanceCount()           const { return static_cast<uint32_t>(m_instances.size()); }
+        void SetInstances(const std::vector<Math::Matrix>& instances);
 
     private:
         // geometry/mesh
@@ -87,16 +94,20 @@ namespace Spartan
         uint32_t m_geometry_vertex_offset = 0;
         uint32_t m_geometry_vertex_count  = 0;
         Mesh* m_mesh                      = nullptr;
+        bool m_bounding_box_dirty         = true;
+        Math::BoundingBox m_bounding_box_local;
         Math::BoundingBox m_bounding_box;
-        Math::BoundingBox m_bounding_box_transformed;
 
         // material
         bool m_material_default = false;
         Material* m_material    = nullptr;
 
+        // instancing
+        std::vector<Math::Matrix> m_instances;
+        std::shared_ptr<RHI_VertexBuffer> m_instance_buffer;
+
         // misc
         Math::Matrix m_last_transform = Math::Matrix::Identity;
         bool m_cast_shadows           = true;
-
     };
 }

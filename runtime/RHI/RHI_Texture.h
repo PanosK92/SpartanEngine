@@ -35,8 +35,8 @@ namespace Spartan
     {
         RHI_Texture_Srv          = 1U << 0,
         RHI_Texture_Uav          = 1U << 1,
-        RHI_Texture_RenderTarget = 1U << 2,
-        RHI_Texture_ClearOrBlit  = 1U << 3,
+        RHI_Texture_Rtv          = 1U << 2,
+        RHI_Texture_ClearBlit    = 1U << 3,
         RHI_Texture_PerMipViews  = 1U << 4,
         RHI_Texture_Greyscale    = 1U << 5,
         RHI_Texture_Transparent  = 1U << 6,
@@ -99,8 +99,8 @@ namespace Spartan
         // Data
         uint32_t GetArrayLength()                          const { return m_array_length; }
         uint32_t GetMipCount()                             const { return m_mip_count; }
-        bool HasData()                                     const { return !m_data.empty() && !m_data[0].mips.empty() && !m_data[0].mips[0].bytes.empty(); };
-        std::vector<RHI_Texture_Slice>& GetData()                { return m_data; }
+        bool HasData()                                     const { return !m_slices.empty() && !m_slices[0].mips.empty() && !m_slices[0].mips[0].bytes.empty(); };
+        std::vector<RHI_Texture_Slice>& GetData()                { return m_slices; }
         RHI_Texture_Mip& CreateMip(const uint32_t array_index);
         RHI_Texture_Mip& GetMip(const uint32_t array_index, const uint32_t mip_index);
         RHI_Texture_Slice& GetSlice(const uint32_t array_index);
@@ -108,7 +108,7 @@ namespace Spartan
         // Flags
         bool IsSrv()                      const { return m_flags & RHI_Texture_Srv; }
         bool IsUav()                      const { return m_flags & RHI_Texture_Uav; }
-        bool IsRenderTarget()             const { return m_flags & RHI_Texture_RenderTarget; }
+        bool IsRenderTarget()             const { return m_flags & RHI_Texture_Rtv; }
         bool IsRenderTargetDepthStencil() const { return IsRenderTarget() && IsDepthStencilFormat(); }
         bool IsRenderTargetColor()        const { return IsRenderTarget() && IsColorFormat(); }
         bool HasPerMipViews()             const { return m_flags & RHI_Texture_PerMipViews; }
@@ -154,7 +154,7 @@ namespace Spartan
         uint32_t m_mip_count        = 1;
         RHI_Format m_format         = RHI_Format::Undefined;
         RHI_Viewport m_viewport;
-        std::vector<RHI_Texture_Slice> m_data;
+        std::vector<RHI_Texture_Slice> m_slices;
         std::array<RHI_Image_Layout, rhi_max_mip_count> m_layout;
 
         // API resources

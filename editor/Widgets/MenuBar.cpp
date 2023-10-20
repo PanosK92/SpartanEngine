@@ -19,24 +19,20 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============================
+//= INCLUDES ==============
 #include "MenuBar.h"
-#include "Toolbar.h"
 #include "Core/Settings.h"
-#include "../WidgetsDeferred/FileDialog.h"
 #include "Profiler.h"
-#include "../Editor.h"
 #include "ShaderEditor.h"
 #include "RenderOptions.h"
 #include "TextureViewer.h"
 #include "ResourceViewer.h"
-#include "Rendering/Mesh.h"
 #include "AssetBrowser.h"
 #include "Console.h"
 #include "Properties.h"
 #include "Viewport.h"
 #include "WorldViewer.h"
-//========================================
+//=========================
 
 //= NAMESPACES =====
 using namespace std;
@@ -53,7 +49,126 @@ namespace
     bool show_imgui_demo_widow     = false;
     string file_dialog_selection_path;
 
-    static void window_about(Editor* editor)
+    vector<string> contributors =
+    {
+        // format: name,country,button text,button url,contribution
+        "Apostolos Bouzalas,  Greece,         LinkedIn, https://www.linkedin.com/in/apostolos-bouzalas,           ECS bug fixes,              N/A",
+        "Iker Galardi,        Basque Country, LinkedIn, https://www.linkedin.com/in/iker-galardi/,                Linux port,                 N/A",
+        "Jesse Guerrero,      US,             LinkedIn, https://www.linkedin.com/in/jguer,                        UX improvements,            N/A",
+        "Konstantinos Benos,  Greece,         Twitter,  https://twitter.com/deg3x,                                Transform handle bug fixes, N/A",
+        "Nick Polyderopoulos, Greece,         LinkedIn, https://www.linkedin.com/in/nick-polyderopoulos-21742397, UX improvements,            N/A"
+    };
+
+    vector<string> comma_seperate_contributors(const vector<string>& contributors)
+    {
+        vector<string> result;
+
+        for (const auto& entry : contributors)
+        {
+            string processed_entry;
+            bool space_allowed = true;
+            for (char c : entry)
+            {
+                if (c == ',')
+                {
+                    processed_entry.push_back(c);
+                    space_allowed = false;
+                }
+                else if (!space_allowed && c != ' ')
+                {
+                    space_allowed = true;
+                    processed_entry.push_back(c);
+                }
+                else if (space_allowed)
+                {
+                    processed_entry.push_back(c);
+                }
+            }
+
+            istringstream ss(processed_entry);
+            string item;
+            while (getline(ss, item, ','))
+            {
+                result.push_back(item);
+            }
+        }
+
+        return result;
+    }
+
+    void window_contributors(Editor* editor)
+    {
+        if (!show_contributors_window)
+            return;
+
+        vector<string> comma_seperated_contributors = comma_seperate_contributors(contributors);
+
+        ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowFocus();
+        ImGui::Begin("Spartans", &show_contributors_window, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
+        {
+            ImGui::Text("In alphabetical order");
+
+            static ImGuiTableFlags flags = ImGuiTableFlags_Borders        |
+                                           ImGuiTableFlags_RowBg          |
+                                           ImGuiTableFlags_SizingFixedFit;
+
+            if (ImGui::BeginTable("##contributors_table", 5, flags, ImVec2(-1.0f)))
+            {
+                // headers
+                ImGui::TableSetupColumn("Name");
+                ImGui::TableSetupColumn("Country");
+                ImGui::TableSetupColumn("URL");
+                ImGui::TableSetupColumn("Contribution");
+                ImGui::TableSetupColumn("Steam Key Award");
+                ImGui::TableHeadersRow();
+
+                uint32_t index = 0;
+                for (uint32_t i = 0; i < static_cast<uint32_t>(contributors.size()); i++)
+                {
+                    // switch row
+                    ImGui::TableNextRow();
+
+                    // shift text down so that it's on the same line with the button
+                    static const float y_shift = 6.0f;
+
+                    // name
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
+                    ImGui::Text(comma_seperated_contributors[index++].c_str());
+
+                    // country
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
+                    ImGui::Text(comma_seperated_contributors[index++].c_str());
+
+                    // button (URL)
+                    ImGui::TableSetColumnIndex(2);
+                    string button_text = comma_seperated_contributors[index++];
+                    string button_url  = comma_seperated_contributors[index++];
+                    if (ImGui::Button(button_text.c_str()))
+                    {
+                        Spartan::FileSystem::OpenUrl(button_url);
+                    }
+
+                    // contribution
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
+                    ImGui::Text(comma_seperated_contributors[index++].c_str());
+
+                    // steam key award
+                    ImGui::TableSetColumnIndex(4);
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
+                    ImGui::Text(comma_seperated_contributors[index++].c_str());
+                }
+
+                ImGui::EndTable();
+            }
+        }
+        ImGui::End();
+    }
+
+    void window_about(Editor* editor)
     {
         if (!show_about_window)
             return;
@@ -124,90 +239,7 @@ namespace
         ImGui::End();
     }
 
-    static void window_contributors(Editor* editor)
-    {
-        if (!show_contributors_window)
-            return;
-
-        // Contributor list (name, contribution, country, button text, button url)
-        static vector<string> contributors =
-        {
-             // format: name,contribution,country,button text,button url
-            "Apostolos Bouzalas,ECS bug fixes,Greece,LinkedIn,https://www.linkedin.com/in/apostolos-bouzalas",
-            "Iker Galardi,Linux port,Basque Country,LinkedIn,https://www.linkedin.com/in/iker-galardi/",
-            "Jesse Guerrero,UX improvements,US,LinkedIn,https://www.linkedin.com/in/jguer",
-            "Konstantinos Benos,Transform handle bug fixes,Greece,Twitter,https://twitter.com/deg3x",
-            "Nick Polyderopoulos,UX improvements,Greece,LinkedIn,https://www.linkedin.com/in/nick-polyderopoulos-21742397"
-        };
-
-        ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
-        ImGui::SetNextWindowFocus();
-        ImGui::Begin("Spartans", &show_contributors_window, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
-        {
-            ImGui::Text("In alphabetical order");
-
-            static ImGuiTableFlags flags =
-                ImGuiTableFlags_Borders |
-                ImGuiTableFlags_RowBg   |
-                ImGuiTableFlags_SizingFixedFit;
-
-            static ImVec2 size = ImVec2(-1.0f);
-            if (ImGui::BeginTable("##contributors_table", 4, flags, size))
-            {
-                // Headers
-                ImGui::TableSetupColumn("Name");
-                ImGui::TableSetupColumn("Contribution");
-                ImGui::TableSetupColumn("Country");
-                ImGui::TableSetupColumn("URL");
-                ImGui::TableHeadersRow();
-
-                for (string& contributor : contributors)
-                {
-                    // Split the contributor string using commas
-                    stringstream ss(contributor);
-                    string token;
-                    vector<string> contributor_parts;
-                    while (getline(ss, token, ','))
-                    {
-                        contributor_parts.push_back(token);
-                    }
-
-                    // Switch row
-                    ImGui::TableNextRow();
-
-                    // Shit text down so that it's on the same line with the button
-                    static const float y_shift = 6.0f;
-
-                    // Name
-                    ImGui::TableSetColumnIndex(0);
-                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
-                    ImGui::Text(contributor_parts[0].c_str());
-
-                    // Contribution
-                    ImGui::TableSetColumnIndex(1);
-                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
-                    ImGui::Text(contributor_parts[1].c_str());
-
-                    // Country
-                    ImGui::TableSetColumnIndex(2);
-                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
-                    ImGui::Text(contributor_parts[2].c_str());
-
-                    // Button (URL)
-                    ImGui::TableSetColumnIndex(3);
-                    if (ImGuiSp::button(contributor_parts[3].c_str()))
-                    {
-                        Spartan::FileSystem::OpenUrl(contributor_parts[4]);
-                    }
-                }
-
-                ImGui::EndTable();
-            }
-        }
-        ImGui::End();
-    }
-
-    static void window_shortcuts(Editor* editor)
+    void window_shortcuts(Editor* editor)
     {
         if (!show_shortcuts_window)
             return;
@@ -256,7 +288,7 @@ namespace
     }
 
     template <class T>
-    static void widget_menu_item(Editor* editor)
+    void widget_menu_item(Editor* editor)
     {
         T* widget = editor->GetWidget<T>();
 
@@ -399,6 +431,11 @@ void MenuBar::EntryHelp()
         if (ImGui::MenuItem("How to contribute", nullptr, nullptr))
         {
             Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/wiki/How-to-contribute");
+        }
+
+        if (ImGui::MenuItem("Perks of a contributor", nullptr, nullptr))
+        {
+            Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor");
         }
 
         if (ImGui::MenuItem("Join the Discord server", nullptr, nullptr))

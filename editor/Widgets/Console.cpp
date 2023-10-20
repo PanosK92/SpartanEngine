@@ -32,20 +32,23 @@ using namespace Spartan;
 using namespace Math;
 //======================
 
-static ImVec4 color_to_imvec4(const Color& color)
+namespace
 {
-    return { color.r, color.g, color.b, color.a };
+    static ImVec4 color_to_imvec4(const Color& color)
+    {
+        return { color.r, color.g, color.b, color.a };
+    }
 }
 
 Console::Console(Editor* editor) : Widget(editor)
 {
     m_title = "Console";
 
-    // Create an implementation of EngineLogger
+    // create an implementation of EngineLogger
     m_logger = make_shared<EngineLogger>();
     m_logger->SetCallback([this](const LogPackage& package) { AddLogPackage(package); });
 
-    // Set the logger implementation for the engine to use
+    // set the logger implementation for the engine to use
     Log::SetLogger(m_logger.get());
 }
 
@@ -56,10 +59,10 @@ Console::~Console()
 
 void Console::OnTickVisible()
 {
-    // Clear Button
+    // clear Button
     if (ImGuiSp::button("Clear")) { Clear();} ImGui::SameLine();
 
-    // Lambda for info, warning, error filter buttons
+    // lambda for info, warning, error filter buttons
     const auto button_log_type_visibility_toggle = [this](const IconType icon, uint32_t index)
     {
         bool& visibility = m_log_type_visibility[index];
@@ -74,21 +77,22 @@ void Console::OnTickVisible()
         ImGui::SameLine();
     };
 
-    // Log category visibility buttons
+    // log category visibility buttons
     button_log_type_visibility_toggle(IconType::Console_Info,    0);
     button_log_type_visibility_toggle(IconType::Console_Warning, 1);
     button_log_type_visibility_toggle(IconType::Console_Error,   2);
 
-    // Text filter
+    // text filter
     const float label_width = 37.0f * Spartan::Window::GetDpiScale();
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12);
     m_log_filter.Draw("Filter", ImGui::GetContentRegionAvail().x - label_width);
     ImGui::PopStyleVar();
     ImGui::Separator();
 
+    // safety first
     lock_guard lock(m_mutex);
 
-    // Content properties
+    // content properties
     static const ImGuiTableFlags table_flags =
         ImGuiTableFlags_RowBg        |
         ImGuiTableFlags_BordersOuter |
@@ -97,29 +101,29 @@ void Console::OnTickVisible()
 
     static const ImVec2 size = ImVec2(-1.0f);
 
-    // Content
+    // content
     if (ImGui::BeginTable("##widget_console_content", 1, table_flags, size))
     {
-        // Logs
+        // logs
         for (uint32_t row = 0; row < m_logs.size(); row++)
         {
             LogPackage& log = m_logs[row];
     
-            // Text and visibility filters
+            // text and visibility filters
             if (m_log_filter.PassFilter(log.text.c_str()) && m_log_type_visibility[log.error_level])
             {
-                // Switch row
+                // switch row
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
 
-                // Log
+                // log
                 ImGui::PushID(row);
                 {
                     ImGui::PushStyleColor(ImGuiCol_Text, color_to_imvec4(m_log_type_color[log.error_level]));
                     ImGui::TextUnformatted(log.text.c_str());
                     ImGui::PopStyleColor(1);
 
-                    // Context menu
+                    // context menu
                     if (ImGui::BeginPopupContextItem("##widget_console_contextMenu"))
                     {
                         if (ImGui::MenuItem("Copy"))
@@ -143,7 +147,7 @@ void Console::OnTickVisible()
             }
         }
 
-        // Scroll to bottom (if requested)
+        // scroll to bottom (if requested)
         if (m_scroll_to_bottom)
         {
             ImGui::SetScrollHereY();
@@ -165,10 +169,10 @@ void Console::AddLogPackage(const LogPackage& package)
         m_logs.pop_front();
     }
 
-    // Update count
+    // update count
     m_log_type_count[package.error_level]++;
 
-    // If the user is displaying this type of messages, scroll to bottom
+    // if the user is displaying this type of messages, scroll to bottom
     if (m_log_type_visibility[package.error_level])
     {
         m_scroll_to_bottom = true;

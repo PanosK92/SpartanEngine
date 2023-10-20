@@ -48,7 +48,6 @@ namespace Spartan
     namespace
     {
         mutex mutex_generate_mips;
-
         const float thread_group_count = 8.0f;
         #define thread_group_count_x(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetWidth())  / thread_group_count))
         #define thread_group_count_y(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetHeight()) / thread_group_count))
@@ -75,8 +74,7 @@ namespace Spartan
         RHI_Texture* rt2       = GetRenderTarget(Renderer_RenderTexture::frame_render_2).get();
         RHI_Texture* rt_output = GetRenderTarget(Renderer_RenderTexture::frame_output).get();
 
-        // update frame constant buffer
-        UpdateConstantBufferFrame(cmd_list);
+        UpdateConstantBufferFrame(cmd_list, false);
 
         if (shared_ptr<Camera> camera = GetCamera())
         { 
@@ -220,15 +218,14 @@ namespace Spartan
 
             // editor related stuff - passes that render on top of each other
             Pass_DebugMeshes(cmd_list, rt_output);
-            Pass_Icons(cmd_list, rt_output);
-            Pass_PeformanceMetrics(cmd_list, rt_output);
+            Pass_Icons(cmd_list, rt_output);         
         }
         else
         {
-            // if there is no camera, clear to black and and render the performance metrics
             GetCmdList()->ClearRenderTarget(rt_output, 0, 0, false, Color::standard_black);
-            Pass_PeformanceMetrics(cmd_list, rt_output);
         }
+
+        Pass_Text(cmd_list, rt_output);
 
         // transition the render target to a readable state so it can be rendered
         // within the viewport or copied to the swap chain back buffer
@@ -237,142 +234,157 @@ namespace Spartan
 
     void Renderer::Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
-        // All objects are rendered from the lights point of view.
-        // Opaque objects write their depth information to a depth buffer, using just a vertex shader.
+        // All entities are rendered from the lights point of view.
+        // Opaque entities write their depth information to a depth buffer, using just a vertex shader.
         // Transparent objects read the opaque depth but don't write their own, instead, they write their color information using a pixel shader.
 
         // acquire shaders
-        RHI_Shader* shader_v               = GetShader(Renderer_Shader::depth_light_V).get();
-        RHI_Shader* shader_p_transparent   = GetShader(Renderer_Shader::depth_light_p).get();
-        RHI_Shader* shader_p_alpha_testing = GetShader(Renderer_Shader::depth_alpha_test_p).get();
-        if (!shader_v->IsCompiled() || !shader_p_transparent->IsCompiled() || !shader_p_alpha_testing->IsCompiled())
-            return;
-
-        // get entities
-        vector<shared_ptr<Entity>>& entities = m_renderables[is_transparent_pass ? Renderer_Entity::GeometryTransparent : Renderer_Entity::Geometry];
-        if (entities.empty())
+        RHI_Shader* shader_v           = GetShader(Renderer_Shader::depth_light_v).get();
+        RHI_Shader* shader_instanced_v = GetShader(Renderer_Shader::depth_light_instanced_v).get();
+        RHI_Shader* shader_p           = is_transparent_pass ? GetShader(Renderer_Shader::depth_light_p).get() : GetShader(Renderer_Shader::depth_alpha_test_p).get();
+        if (!shader_v->IsCompiled() || !shader_instanced_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_color" : "shadow_maps_depth");
 
-        // go through all of the lights
-        const auto& entities_light = GetEntities()[Renderer_Entity::Light];
-        for (uint32_t light_index = 0; light_index < entities_light.size(); light_index++)
+        uint32_t start_index = !is_transparent_pass ? 0 : 2;
+        uint32_t end_index   = !is_transparent_pass ? 2 : 4;
+        for (uint32_t i = start_index; i < end_index; i++)
         {
-            shared_ptr<Light> light = entities_light[light_index]->GetComponent<Light>();
-
-            // can happen when loading a new scene and the lights get deleted
-            if (!light)
+            // acquire entities
+            auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
+            if (entities.empty())
                 continue;
 
-            // skip lights which don't cast shadows or have an intensity of zero
-            if (!light->GetShadowsEnabled() || light->GetIntensityWatt(GetCamera().get()) == 0.0f)
-                continue;
-
-            // skip lights that don't cast transparent shadows (if this is a transparent pass)
-            if (is_transparent_pass && !light->GetShadowsTransparentEnabled())
-                continue;
-
-            // acquire light's shadow maps
-            RHI_Texture* tex_depth = light->GetDepthTexture();
-            RHI_Texture* tex_color = light->GetColorTexture();
-            if (!tex_depth)
-                continue;
-
-            // define pipeline state
-            static RHI_PipelineState pso;
-            pso.shader_vertex                   = shader_v;
-            pso.shader_pixel                    = is_transparent_pass ? shader_p_transparent : shader_p_alpha_testing;
-            pso.blend_state                     = is_transparent_pass ? GetBlendState(Renderer_BlendState::Alpha).get() : GetBlendState(Renderer_BlendState::Disabled).get();
-            pso.depth_stencil_state             = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
-            pso.render_target_color_textures[0] = tex_color; // always bind so we can clear to white (in case there are no transparent objects)
-            pso.render_target_depth_texture     = tex_depth;
-            pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
-            pso.name                            = "Pass_ShadowMaps";
-
-            for (uint32_t array_index = 0; array_index < tex_depth->GetArrayLength(); array_index++)
+            // go through all of the lights
+            auto& lights = GetEntities()[Renderer_Entity::Light];
+            for (uint32_t light_index = 0; light_index < lights.size(); light_index++)
             {
-                // set render target texture array index
-                pso.render_target_color_texture_array_index         = array_index;
-                pso.render_target_depth_stencil_texture_array_index = array_index;
+                shared_ptr<Light> light = lights[light_index]->GetComponent<Light>();
 
-                // set clear values
-                pso.clear_color[0] = Color::standard_white;
-                pso.clear_depth    = is_transparent_pass ? rhi_depth_load : 0.0f; // reverse-z
+                // can happen when loading a new scene and the lights get deleted
+                if (!light)
+                    continue;
 
-                const Matrix& view_projection = light->GetViewMatrix(array_index) * light->GetProjectionMatrix(array_index);
+                // skip lights which don't cast shadows or have an intensity of zero
+                if (!light->GetShadowsEnabled() || light->GetIntensityWatt(GetCamera().get()) == 0.0f)
+                    continue;
 
-                // set appropriate rasterizer state
-                if (light->GetLightType() == LightType::Directional)
+                // skip lights that don't cast transparent shadows (if this is a transparent pass)
+                if (is_transparent_pass && !light->GetShadowsTransparentEnabled())
+                    continue;
+
+                // define pipeline state
+                static RHI_PipelineState pso;
+                pso.instancing                      = i == 1 || i == 3;
+                pso.shader_vertex                   = !pso.instancing ? shader_v : shader_instanced_v;
+                pso.shader_pixel                    = shader_p;
+                pso.blend_state                     = is_transparent_pass ? GetBlendState(Renderer_BlendState::Alpha).get() : GetBlendState(Renderer_BlendState::Disabled).get();
+                pso.depth_stencil_state             = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
+                pso.render_target_color_textures[0] = light->GetColorTexture(); // always bind so we can clear to white (in case there are no transparent objects)
+                pso.render_target_depth_texture     = light->GetDepthTexture();
+                pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
+                pso.name                            = "Pass_ShadowMaps";
+
+                // go through all of the cascades/faces
+                for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetArrayLength(); array_index++)
                 {
-                    // "Pancaking" - https://www.gamedev.net/forums/topic/639036-shadow-mapping-and-high-up-objects/
-                    // It's basically a way to capture the silhouettes of potential shadow casters behind the light's view point.
-                    // Of course we also have to make sure that the light doesn't cull them in the first place (this is done automatically by the light)
-                    pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Light_directional).get();
-                }
-                else
-                {
-                    pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Light_point_spot).get();
-                }
+                    // set render target texture array index
+                    pso.render_target_color_texture_array_index         = array_index;
+                    pso.render_target_depth_stencil_texture_array_index = array_index;
 
-                // set pipeline state
-                cmd_list->SetPipelineState(pso);
+                    // set clear values
+                    pso.clear_color[0] = Color::standard_white;
+                    pso.clear_depth    = (!pso.instancing && !is_transparent_pass) ? 0.0f : rhi_depth_load; // reverse-z
 
-                // state tracking
-                bool render_pass_active    = false;
-
-                for (shared_ptr<Entity> entity : entities)
-                {
-                    // acquire renderable component
-                    shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                    if (!renderable)
-                        continue;
-
-                    // skip meshes that don't cast shadows
-                    if (!renderable->GetCastShadows())
-                        continue;
-
-                    // acquire geometry
-                    Mesh* mesh = renderable->GetMesh();
-                    if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
-                        continue;
-
-                    // acquire material
-                    Material* material = renderable->GetMaterial();
-                    if (!material)
-                        continue;
-
-                    // skip objects outside of the view frustum
-                    if (!light->IsInViewFrustum(renderable, array_index))
-                        continue;
-
-                    if (!render_pass_active)
+                    // set appropriate rasterizer state
+                    if (light->GetLightType() == LightType::Directional)
                     {
-                        cmd_list->BeginRenderPass();
-                        render_pass_active = true;
+                        // "Pancaking" - https://www.gamedev.net/forums/topic/639036-shadow-mapping-and-high-up-objects/
+                        // it's basically a way to capture the silhouettes of potential shadow casters behind the light's view point.
+                        // of course we also have to make sure that the light doesn't cull them in the first place (this is done automatically by the light)
+                        pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Light_directional).get();
+
+                        // don't do alpha testing for far away cascades, as it's not noticeable and it's a performance hit
+                        pso.shader_pixel = array_index > 1 ? nullptr : pso.shader_pixel;
+                    }
+                    else
+                    {
+                        pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Light_point_spot).get();
                     }
 
-                    // bind material
-                    BindTexturesMaterial(cmd_list, material);
-                    UpdateConstantBufferMaterial(cmd_list, material);
+                    // start render pass
+                    cmd_list->SetPipelineState(pso);
+                    if (!cmd_list->IsRenderPassActive())
+                    {
+                        cmd_list->BeginRenderPass();
+                    }
 
-                    // bind geometry
-                    cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
-                    cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
+                    // set light
+                    UpdateConstantBufferLight(cmd_list, light, array_index);
 
-                    // Set pass constants with cascade transform
-                    m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
-                    PushPassConstants(cmd_list);
+                    // go through all of the entities
+                    for (shared_ptr<Entity> entity : entities)
+                    {
+                        // acquire renderable component
+                        shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                        if (!renderable)
+                            continue;
 
-                    m_cb_pass_cpu.set_f3_value(material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f, material->GetProperty(MaterialProperty::ColorA), 0.0f);
-                    PushPassConstants(cmd_list);
+                        // skip meshes that don't cast shadows
+                        if (!renderable->GetCastShadows())
+                            continue;
 
-                    cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
-                }
+                        // skip objects outside of the view frustum
+                        if (!light->IsInViewFrustum(renderable, array_index))
+                            continue;
 
-                if (render_pass_active)
-                {
-                    cmd_list->EndRenderPass();
+                        // mesh can be null when async loading
+                        Mesh* mesh = renderable->GetMesh();
+                        if (!mesh)
+                            continue;
+
+                        // set vertex, index and instance buffers
+                        {
+                            cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
+                            if (pso.instancing)
+                            {
+                                cmd_list->SetBufferVertex(renderable->GetInstanceBuffer(), 1);
+                            }
+
+                            cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
+                        }
+
+                        // set material
+                        if (Material* material = renderable->GetMaterial())
+                        {
+                            BindTexturesMaterial(cmd_list, material);
+                            UpdateConstantBufferMaterial(cmd_list, material);
+
+                            m_cb_pass_cpu.set_f3_value(
+                                material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
+                                material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
+                                material->GetProperty(MaterialProperty::ColorA)
+                            );
+                        }
+
+                        // set pass constants
+                        m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix();
+                        PushPassConstants(cmd_list);
+
+                        // draw
+                        cmd_list->DrawIndexed(
+                            renderable->GetIndexCount(),
+                            renderable->GetIndexOffset(),
+                            renderable->GetVertexOffset(),
+                            pso.instancing ? renderable->GetInstanceCount() : 1
+                        );
+                    }
+
+                    if (cmd_list->IsRenderPassActive())
+                    {
+                        cmd_list->EndRenderPass();
+                    }
                 }
             }
         }
@@ -506,37 +518,41 @@ namespace Spartan
             return;
 
         // acquire shaders
-        RHI_Shader* shader_v = GetShader(Renderer_Shader::depth_prepass_v).get();
-        RHI_Shader* shader_p = GetShader(Renderer_Shader::depth_alpha_test_p).get();
-        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
+        RHI_Shader* shader_v           = GetShader(Renderer_Shader::depth_prepass_v).get();
+        RHI_Shader* shader_instanced_v = GetShader(Renderer_Shader::depth_prepass_instanced_v).get();
+        RHI_Shader* shader_p           = GetShader(Renderer_Shader::depth_alpha_test_p).get();
+        if (!shader_v->IsCompiled() || !shader_instanced_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
         cmd_list->BeginTimeblock("depth_prepass");
 
-        RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
-        const vector<shared_ptr<Entity>> entities = m_renderables[Renderer_Entity::Geometry];
+        uint32_t start_index = 0;
+        uint32_t end_index   = 2;
+        for (uint32_t i = start_index; i < end_index; i++)
+        {
+            // acquire entities
+            auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
+            if (entities.empty())
+                continue;
 
-        // define pipeline state
-        static RHI_PipelineState pso;
-        pso.shader_vertex               = shader_v;
-        pso.shader_pixel                = shader_p; // alpha testing
-        pso.rasterizer_state            = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
-        pso.blend_state                 = GetBlendState(Renderer_BlendState::Disabled).get();
-        pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
-        pso.render_target_depth_texture = tex_depth;
-        pso.clear_depth                 = 0.0f; // reverse-z
-        pso.primitive_topology          = RHI_PrimitiveTopology_Mode::TriangleList;
+            // define pipeline state
+            static RHI_PipelineState pso;
+            pso.name                        = "depth_prepass";
+            pso.instancing                  = i == 1;
+            pso.shader_vertex               = !pso.instancing ? shader_v : shader_instanced_v;
+            pso.shader_pixel                = shader_p; // alpha testing
+            pso.rasterizer_state            = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
+            pso.blend_state                 = GetBlendState(Renderer_BlendState::Disabled).get();
+            pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
+            pso.render_target_depth_texture = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
+            pso.clear_depth                 = !pso.instancing ? 0.0f : rhi_depth_load; // reverse-z
+            pso.primitive_topology          = RHI_PrimitiveTopology_Mode::TriangleList;
 
-        // set pipeline state
-        cmd_list->SetPipelineState(pso);
+            // begin render pass
+            cmd_list->SetPipelineState(pso);
+            cmd_list->BeginRenderPass();
 
-        // render
-        cmd_list->BeginRenderPass();
-        { 
-            // variables that help reduce state changes
-            uint64_t currently_bound_geometry = 0;
-            
-            // draw opaque
+            uint64_t bound_material_id = 0;
             for (shared_ptr<Entity> entity : entities)
             {
                 // get renderable
@@ -549,38 +565,49 @@ namespace Spartan
                 if (!material)
                     continue;
 
-                // get geometry
-                Mesh* mesh = renderable->GetMesh();
-                if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
-                    continue;
-
-                // get transform
-                shared_ptr<Transform> transform = entity->GetTransform();
-                if (!transform)
-                    continue;
-
                 // skip objects outside of the view frustum
                 if (!GetCamera()->IsInViewFrustum(renderable))
                     continue;
-            
-                // bind geometry
-                if (currently_bound_geometry != mesh->GetObjectId())
+
+                // mesh can be null when async loading
+                Mesh* mesh = renderable->GetMesh();
+                if (!mesh)
+                    continue;
+
+                // set vertex, index and instance buffers
                 {
-                    cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
                     cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
-                    currently_bound_geometry = mesh->GetObjectId();
+                    if (pso.instancing)
+                    {
+                        cmd_list->SetBufferVertex(renderable->GetInstanceBuffer(), 1);
+                    }
+
+                    cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
                 }
 
                 // set alpha testing textures
-                BindTexturesMaterial(cmd_list, material);
+                if (bound_material_id != material->GetObjectId())
+                {
+                    BindTexturesMaterial(cmd_list, material);
+                    bound_material_id = material->GetObjectId();
+                }
 
                 // set pass constants
-                m_cb_pass_cpu.transform = transform->GetMatrix();
-                m_cb_pass_cpu.set_f3_value(material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f, material->GetProperty(MaterialProperty::ColorA), 0.0f);
+                m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix();
+                m_cb_pass_cpu.set_f3_value(
+                    material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
+                    material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
+                    material->GetProperty(MaterialProperty::ColorA)
+                );
                 PushPassConstants(cmd_list);
-            
+
                 // draw
-                cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
+                cmd_list->DrawIndexed(
+                    renderable->GetIndexCount(),
+                    renderable->GetIndexOffset(),
+                    renderable->GetVertexOffset(),
+                    pso.instancing ? renderable->GetInstanceCount() : 1
+                );
             }
 
             cmd_list->EndRenderPass();
@@ -592,9 +619,10 @@ namespace Spartan
     void Renderer::Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // acquire shaders
-        RHI_Shader* shader_v = GetShader(Renderer_Shader::gbuffer_v).get();
-        RHI_Shader* shader_p = GetShader(Renderer_Shader::gbuffer_p).get();
-        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
+        RHI_Shader* shader_v           = GetShader(Renderer_Shader::gbuffer_v).get();
+        RHI_Shader* shader_v_instanced = GetShader(Renderer_Shader::gbuffer_instanced_v).get();
+        RHI_Shader* shader_p           = GetShader(Renderer_Shader::gbuffer_p).get();
+        if (!shader_v->IsCompiled() || !shader_v_instanced->IsCompiled() || !shader_p->IsCompiled())
             return;
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
@@ -604,13 +632,9 @@ namespace Spartan
         RHI_Texture* tex_normal            = GetRenderTarget(Renderer_RenderTexture::gbuffer_normal).get();
         RHI_Texture* tex_material          = GetRenderTarget(Renderer_RenderTexture::gbuffer_material).get();
         RHI_Texture* tex_material_2        = GetRenderTarget(Renderer_RenderTexture::gbuffer_material_2).get();
-        RHI_Texture* tex_velocity          = GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity).get();
-        RHI_Texture* tex_velocity_previous = GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity_previous).get();
+        RHI_Texture* tex_velocity          = GetRenderTarget((GetFrameNum() % 2 == 0) ? Renderer_RenderTexture::gbuffer_velocity : Renderer_RenderTexture::gbuffer_velocity_previous).get();
         RHI_Texture* tex_depth             = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
         RHI_Texture* tex_fsr2_transparency = GetRenderTarget(Renderer_RenderTexture::fsr2_mask_transparency).get();
-
-        // copy velocity to previous velocity
-        cmd_list->Blit(tex_velocity, tex_velocity_previous, false);
 
         bool depth_prepass = GetOption<bool>(Renderer_Option::DepthPrepass);
         bool wireframe     = GetOption<bool>(Renderer_Option::Debug_Wireframe);
@@ -623,43 +647,46 @@ namespace Spartan
         RHI_DepthStencilState* depth_stencil_state = depth_prepass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
         depth_stencil_state                        = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : depth_stencil_state;
 
-        // clearing to zero, this will draw the sky
-        static Color clear_color = Color(0.0f, 0.0f, 0.0f, 0.0f);
-
-        // define pipeline state
-        RHI_PipelineState pso;
-        pso.name                            = "g_buffer";
-        pso.shader_vertex                   = shader_v;
-        pso.shader_pixel                    = shader_p;
-        pso.blend_state                     = GetBlendState(Renderer_BlendState::Disabled).get();
-        pso.rasterizer_state                = rasterizer_state;
-        pso.depth_stencil_state             = depth_stencil_state;
-        pso.render_target_color_textures[0] = tex_albedo;
-        pso.clear_color[0]                  = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
-        pso.render_target_color_textures[1] = tex_normal;
-        pso.clear_color[1]                  = pso.clear_color[0];
-        pso.render_target_color_textures[2] = tex_material;
-        pso.clear_color[2]                  = pso.clear_color[0];
-        pso.render_target_color_textures[3] = tex_material_2;
-        pso.clear_color[3]                  = pso.clear_color[0];
-        pso.render_target_color_textures[4] = tex_velocity;
-        pso.clear_color[4]                  = pso.clear_color[0];
-        pso.render_target_color_textures[5] = tex_fsr2_transparency;
-        pso.clear_color[5]                  = pso.clear_color[0];
-        pso.render_target_depth_texture     = tex_depth;
-        pso.clear_depth                     = (is_transparent_pass || depth_prepass) ? rhi_depth_load : 0.0f; // reverse-z
-        pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
-
-        // set pipeline state
-        cmd_list->SetPipelineState(pso);
-
-        auto& entities = m_renderables[is_transparent_pass ? Renderer_Entity::GeometryTransparent : Renderer_Entity::Geometry];
-
-        // render
-        cmd_list->BeginRenderPass();
+        uint32_t start_index = !is_transparent_pass ? 0 : 2;
+        uint32_t end_index   = !is_transparent_pass ? 2 : 4;
+        bool is_first_pass   = true;
+        for (uint32_t i = start_index; i < end_index; i++)
         {
-            uint64_t bound_material_id = 0;
+            // acquire entities
+            auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
+            if (entities.empty())
+                continue;
 
+            // define pipeline state
+            RHI_PipelineState pso;
+            pso.name                            = is_transparent_pass ? "g_buffer_transparent" : "g_buffer";
+            pso.instancing                      = i == 1 || i == 3;
+            pso.shader_pixel                    = shader_p;
+            pso.shader_vertex                   = pso.instancing ? shader_v_instanced : shader_v;
+            pso.blend_state                     = GetBlendState(Renderer_BlendState::Disabled).get();
+            pso.rasterizer_state                = rasterizer_state;
+            pso.depth_stencil_state             = depth_stencil_state;
+            pso.render_target_color_textures[0] = tex_albedo;
+            pso.clear_color[0]                  = (!is_first_pass || pso.instancing) ? rhi_color_load : Color::standard_transparent;
+            pso.render_target_color_textures[1] = tex_normal;
+            pso.clear_color[1]                  = pso.clear_color[0];
+            pso.render_target_color_textures[2] = tex_material;
+            pso.clear_color[2]                  = pso.clear_color[0];
+            pso.render_target_color_textures[3] = tex_material_2;
+            pso.clear_color[3]                  = pso.clear_color[0];
+            pso.render_target_color_textures[4] = tex_velocity;
+            pso.clear_color[4]                  = pso.clear_color[0];
+            pso.render_target_color_textures[5] = tex_fsr2_transparency;
+            pso.clear_color[5]                  = pso.clear_color[0];
+            pso.render_target_depth_texture     = tex_depth;
+            pso.clear_depth                     = (!is_first_pass || depth_prepass) ? rhi_depth_load : 0.0f; // reverse-z
+            pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
+
+            // begin render pass
+            cmd_list->SetPipelineState(pso);
+            cmd_list->BeginRenderPass();
+
+            uint64_t bound_material_id = 0;
             for (shared_ptr<Entity> entity : entities)
             {
                 // get renderable
@@ -667,30 +694,35 @@ namespace Spartan
                 if (!renderable)
                     continue;
 
-                // get material
-                Material* material = renderable->GetMaterial();
-                if (!material)
-                    continue;
-
-                // Get geometry
-                Mesh* mesh = renderable->GetMesh();
-                if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
-                    continue;
-
                 // skip objects outside of the view frustum
                 if (!GetCamera()->IsInViewFrustum(renderable))
                     continue;
 
-                // set geometry (will only happen if not already set)
-                cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
-                cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
+                // mesh can be null when async loading
+                Mesh* mesh = renderable->GetMesh();
+                if (!mesh)
+                    continue;
+
+                // set vertex, index and instance buffers
+                {
+                    cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
+                    if (pso.instancing)
+                    {
+                        cmd_list->SetBufferVertex(renderable->GetInstanceBuffer(), 1);
+                    }
+
+                    cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
+                }
 
                 // set material
-                if (bound_material_id != material->GetObjectId())
+                if (Material* material = renderable->GetMaterial())
                 {
-                    BindTexturesMaterial(cmd_list, material);
-                    UpdateConstantBufferMaterial(cmd_list, material);
-                    bound_material_id = material->GetObjectId();
+                    if (bound_material_id != material->GetObjectId())
+                    {
+                        BindTexturesMaterial(cmd_list, material);
+                        UpdateConstantBufferMaterial(cmd_list, material);
+                        bound_material_id = material->GetObjectId();
+                    }
                 }
 
                 // push pass constants
@@ -698,20 +730,22 @@ namespace Spartan
                     m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
 
                     // update transform
-                    if (shared_ptr<Transform> transform = entity->GetTransform())
-                    {
-                        m_cb_pass_cpu.transform = transform->GetMatrix();
-                        m_cb_pass_cpu.set_transform_previous(transform->GetMatrixPrevious());
-
-                        // save matrix for velocity computation
-                        transform->SetMatrixPrevious(m_cb_pass_cpu.transform);
-                    }
+                    m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix();
+                    m_cb_pass_cpu.set_transform_previous(entity->GetTransform()->GetMatrixPrevious());
+                    entity->GetTransform()->SetMatrixPrevious(m_cb_pass_cpu.transform);
 
                     PushPassConstants(cmd_list);
                 }
 
                 // draw
-                cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
+                cmd_list->DrawIndexed(
+                    renderable->GetIndexCount(),
+                    renderable->GetIndexOffset(),
+                    renderable->GetVertexOffset(),
+                    pso.instancing ? renderable->GetInstanceCount() : 1
+                );
+
+                is_first_pass = false;
                 Profiler::m_renderer_meshes_rendered++;
             }
 
@@ -1024,7 +1058,7 @@ namespace Spartan
                 // push pass constants
                 m_cb_pass_cpu.set_resolution_out(tex_diffuse);
                 m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
-                m_cb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::FogDensity), GetOption<float>(Renderer_Option::ShadowResolution), 0.0f);
+                m_cb_pass_cpu.set_f3_value(0.0f, GetOption<float>(Renderer_Option::ShadowResolution), 0.0f);
                 PushPassConstants(cmd_list);
                 
                 cmd_list->Dispatch(thread_group_count_x(tex_diffuse), thread_group_count_y(tex_diffuse));
@@ -1107,7 +1141,7 @@ namespace Spartan
         pso.render_target_color_textures[0] = tex_out;
         pso.clear_color[0]                  = rhi_color_load;
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
-        pso.can_use_vertex_index_buffers    = false;
+        pso.is_fullscreen_triangle          = true;
 
         // set pipeline state
         cmd_list->SetPipelineState(pso);
@@ -1133,7 +1167,7 @@ namespace Spartan
         // set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_out);
         m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
-        m_cb_pass_cpu.set_f4_value(!probes.empty() ? 1.0f : 0.0f, static_cast<float>(GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount()), 0.0f, 0.0f); // reflection probe available
+        m_cb_pass_cpu.set_f4_value(!probes.empty() ? 1.0f : 0.0f, static_cast<float>(GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount()), GetOption<float>(Renderer_Option::Fog), 0.0f); // reflection probe available
         PushPassConstants(cmd_list);
 
         // update light buffer with the directional light
@@ -1290,8 +1324,8 @@ namespace Spartan
 
         // Determine antialiasing modes
         Renderer_Antialiasing antialiasing = GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing);
-        bool taa_enabled              = antialiasing == Renderer_Antialiasing::Taa  || antialiasing == Renderer_Antialiasing::TaaFxaa;
-        bool fxaa_enabled             = antialiasing == Renderer_Antialiasing::Fxaa || antialiasing == Renderer_Antialiasing::TaaFxaa;
+        bool taa_enabled                   = antialiasing == Renderer_Antialiasing::Taa  || antialiasing == Renderer_Antialiasing::TaaFxaa;
+        bool fxaa_enabled                  = antialiasing == Renderer_Antialiasing::Fxaa || antialiasing == Renderer_Antialiasing::TaaFxaa;
 
         // Get upsampling mode
         Renderer_Upsampling upsampling_mode = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling);
@@ -1314,53 +1348,53 @@ namespace Spartan
 
         // OUTPUT RESOLUTION
         {
-            // Motion Blur
+            // motion Blur
             if (GetOption<bool>(Renderer_Option::MotionBlur))
             {
                 swap_output = !swap_output;
                 Pass_MotionBlur(cmd_list, get_output_in, get_output_out);
             }
 
-            // Bloom
+            // bloom
             if (GetOption<bool>(Renderer_Option::Bloom))
             {
                 swap_output = !swap_output;
                 Pass_Bloom(cmd_list, get_output_in, get_output_out);
             }
 
-            // Tone-Mapping & Gamma Correction
+            // tone-mapping & gamma correction
             swap_output = !swap_output;
             Pass_ToneMappingGammaCorrection(cmd_list, get_output_in, get_output_out);
 
-            // Sharpening
+            // sharpening
             if (GetOption<bool>(Renderer_Option::Sharpness))
             {
                 swap_output = !swap_output;
                 Pass_Ffx_Cas(cmd_list, get_output_in, get_output_out);
             }
 
-            // Debanding
+            // debanding
             if (GetOption<bool>(Renderer_Option::Debanding))
             {
                 swap_output = !swap_output;
                 Pass_Debanding(cmd_list, get_output_in, get_output_out);
             }
 
-            // FXAA
+            // fxaa
             if (fxaa_enabled)
             {
                 swap_output = !swap_output;
                 Pass_Fxaa(cmd_list, get_output_in, get_output_out);
             }
 
-            // Chromatic aberration
+            // chromatic aberration
             if (GetOption<bool>(Renderer_Option::ChromaticAberration))
             {
                 swap_output = !swap_output;
                 Pass_ChromaticAberration(cmd_list, get_output_in, get_output_out);
             }
 
-            // Film grain
+            // film grain
             if (GetOption<bool>(Renderer_Option::FilmGrain))
             {
                 swap_output = !swap_output;
@@ -1368,7 +1402,7 @@ namespace Spartan
             }
         }
 
-        // If the last written texture is not the output one, then make sure it is.
+        // if the last written texture is not the output one, then make sure it is.
         if (!swap_output)
         {
             cmd_list->Copy(rt_frame_output_scratch, rt_frame_output, false);
@@ -1877,6 +1911,9 @@ namespace Spartan
     {
         cmd_list->BeginTimeblock("amd_ffx_fsr2");
 
+        bool is_upsampling = GetResolutionRender().x < GetResolutionOutput().x || GetResolutionRender().y < GetResolutionOutput().y;
+        float sharpness    = is_upsampling ? GetOption<float>(Renderer_Option::Sharpness) : 0.0f; // if not upsampling we do Pass_Ffx_Cas()
+
         RHI_AMD_FidelityFX::FSR2_Dispatch(
             cmd_list,
             tex_in,
@@ -1887,7 +1924,7 @@ namespace Spartan
             tex_out,
             GetCamera().get(),
             m_cb_frame_cpu.delta_time,
-            GetOption<float>(Renderer_Option::UpsamplingSharpness)
+            sharpness
         );
 
         cmd_list->EndTimeblock();
@@ -2271,30 +2308,25 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_PeformanceMetrics(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
+    void Renderer::Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        // Early exit cases
-        const bool draw      = GetOption<bool>(Renderer_Option::Debug_PerformanceMetrics);
-        const bool empty     = Profiler::GetMetrics().empty();
-        const auto& shader_v = GetShader(Renderer_Shader::font_v);
-        const auto& shader_p = GetShader(Renderer_Shader::font_p);
-        if (!draw || empty || !shader_v->IsCompiled() || !shader_p->IsCompiled())
+        // early exit cases
+        const bool draw       = GetOption<bool>(Renderer_Option::Debug_PerformanceMetrics);
+        const auto& shader_v  = GetShader(Renderer_Shader::font_v);
+        const auto& shader_p  = GetShader(Renderer_Shader::font_p);
+        shared_ptr<Font> font = GetFont();
+        if (!shader_v->IsCompiled() || !shader_p->IsCompiled() || !draw || !font->HasText())
             return;
 
-        // If the performance metrics are being drawn, the profiler has to be enabled.
+        // if the performance metrics are being drawn, the profiler has to be enabled.
         if (!Profiler::GetEnabled())
         {
             Profiler::SetEnabled(true);
         }
 
-        // Update text
-        const Vector2 text_pos = Vector2(-GetViewport().width * 0.5f + 5.0f, GetViewport().height * 0.5f - m_font->GetSize() - 2.0f);
-        m_font->SetText(Profiler::GetMetrics(), text_pos);
+        cmd_list->BeginMarker("text");
 
-        cmd_list->BeginMarker("performance_metrics");
-        cmd_list->BeginTimeblock("outline");
-
-        // Define pipeline state
+        // define pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v.get();
         pso.shader_pixel                    = shader_p.get();
@@ -2302,48 +2334,53 @@ namespace Spartan
         pso.blend_state                     = GetBlendState(Renderer_BlendState::Alpha).get();
         pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
         pso.render_target_color_textures[0] = tex_out;
+        pso.clear_color[0]                  = rhi_color_load;
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
-        pso.name                            = "Pass_PeformanceMetrics";
+        pso.name                            = "Pass_Text";
 
-        // Draw outline
-        if (m_font->GetOutline() != Font_Outline_None && m_font->GetOutlineSize() != 0)
+        font->UpdateVertexAndIndexBuffers();
+
+        // outline
+        if (font->GetOutline() != Font_Outline_None && font->GetOutlineSize() != 0)
         {
+            cmd_list->BeginTimeblock("outline");
             cmd_list->SetPipelineState(pso);
             cmd_list->BeginRenderPass();
             {
-                // Set pass constants
+                // set pass constants
                 m_cb_pass_cpu.set_resolution_out(tex_out);
-                m_cb_pass_cpu.set_f4_value(m_font->GetColorOutline());
+                m_cb_pass_cpu.set_f4_value(font->GetColorOutline());
                 PushPassConstants(cmd_list);
 
-                cmd_list->SetBufferIndex(m_font->GetIndexBuffer());
-                cmd_list->SetBufferVertex(m_font->GetVertexBuffer());
-                cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, m_font->GetAtlasOutline());
-                cmd_list->DrawIndexed(m_font->GetIndexCount());
+                cmd_list->SetBufferVertex(font->GetVertexBuffer());
+                cmd_list->SetBufferIndex(font->GetIndexBuffer());
+                cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlasOutline());
+                cmd_list->DrawIndexed(font->GetIndexCount());
+            }
+            cmd_list->EndRenderPass();
+            cmd_list->EndTimeblock();
+        }
+
+        // inline
+        {
+            cmd_list->BeginTimeblock("inline");
+            cmd_list->SetPipelineState(pso);
+            cmd_list->BeginRenderPass();
+            {
+                // set pass constants
+                m_cb_pass_cpu.set_resolution_out(tex_out);
+                m_cb_pass_cpu.set_f4_value(font->GetColor());
+                PushPassConstants(cmd_list);
+
+                cmd_list->SetBufferVertex(font->GetVertexBuffer());
+                cmd_list->SetBufferIndex(font->GetIndexBuffer());
+                cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlas());
+                cmd_list->DrawIndexed(font->GetIndexCount());
                 cmd_list->EndRenderPass();
             }
+            cmd_list->EndTimeblock();
         }
 
-        cmd_list->EndTimeblock();
-        cmd_list->BeginTimeblock("inline");
-
-        // Draw
-        cmd_list->SetPipelineState(pso);
-        cmd_list->BeginRenderPass();
-        {
-            // Set pass constants
-            m_cb_pass_cpu.set_resolution_out(tex_out);
-            m_cb_pass_cpu.set_f4_value(m_font->GetColor());
-            PushPassConstants(cmd_list);
-
-            cmd_list->SetBufferIndex(m_font->GetIndexBuffer());
-            cmd_list->SetBufferVertex(m_font->GetVertexBuffer());
-            cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, m_font->GetAtlas());
-            cmd_list->DrawIndexed(m_font->GetIndexCount());
-            cmd_list->EndRenderPass();
-        }
-
-        cmd_list->EndTimeblock();
         cmd_list->EndMarker();
     }
 

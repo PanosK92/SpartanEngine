@@ -37,6 +37,7 @@ namespace Spartan
         Roughness, // Specifies microfacet roughness of the surface for diffuse and specular reflection
         Metalness, // Blends between a non-metallic and metallic material model
         Normal,
+        Normal2,   // A second normal for blending purposes
         Occlusion, // A texture that will be mixed with ssao.
         Emission,  // A texture that will cause a surface to be lit, works nice with bloom.
         Height,    // Perceived depth for parallax mapping.
@@ -103,7 +104,7 @@ namespace Spartan
         void SetColor(const Color& color);
  
     private:
-        std::array<std::shared_ptr<RHI_Texture>, 10> m_textures;
+        std::array<std::shared_ptr<RHI_Texture>, 11> m_textures;
         std::array<float, 23> m_properties;
     };
 }

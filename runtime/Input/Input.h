@@ -90,22 +90,22 @@ namespace Spartan
         static void Tick();
         static void PostTick();
 
-        // Polling driven input
+        // polling driven input
         static void PollMouse();
         static void PollKeyboard();
         static void PollController();
 
-        // Event driven input
+        // event driven input
         static void OnEvent(sp_variant data);
         static void OnEventMouse(void* event_mouse);
         static void OnEventController(void* event_controller);
 
-        // Keys
+        // keys
         static bool GetKey(const KeyCode key);     // Returns true while a button is held down
         static bool GetKeyDown(const KeyCode key); // Returns true during the frame the user pressed down the button
         static bool GetKeyUp(const KeyCode key);   // Returns true during the frame the user releases the button
 
-        // Mouse
+        // mouse
         static void SetMouseCursorVisible(const bool visible);
         static bool GetMouseCursorVisible();
         static void SetMouseIsInViewport(const bool is_in_viewport);
@@ -118,7 +118,7 @@ namespace Spartan
         static const Math::Vector2 GetMousePositionRelativeToWindow();
         static const Math::Vector2 GetMousePositionRelativeToEditorViewport();
 
-        // Controller
+        // controller
         static bool IsControllerConnected();
         static const Math::Vector2& GetControllerThumbStickLeft();
         static const Math::Vector2& GetControllerThumbStickRight();

@@ -369,19 +369,29 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
 
     if (component_begin("Renderable", IconType::Component_Renderable, renderable))
     {
-        //= REFLECT ========================================================
-        Mesh* mesh           = renderable->GetMesh();
-        Material* material   = renderable->GetMaterial();
-        string name_mesh     = mesh ? mesh->GetObjectName() : "N/A";
-        string name_material = material ? material->GetObjectName() : "N/A";
-        bool cast_shadows    = renderable->GetCastShadows();
-        //==================================================================
+        //= REFLECT ===========================================================
+        Mesh* mesh              = renderable->GetMesh();
+        Material* material      = renderable->GetMaterial();
+        uint32_t instance_count = renderable->GetInstanceCount();
+        string name_mesh        = mesh ? mesh->GetObjectName() : "N/A";
+        string name_material    = material ? material->GetObjectName() : "N/A";
+        bool cast_shadows       = renderable->GetCastShadows();
+        //=====================================================================
 
+        // mesh
         ImGui::Text("Mesh");
         ImGui::SameLine(column_pos_x);
         ImGui::InputText("##renderable_mesh", &name_mesh, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
 
-        // Material
+        // instancing
+        if (instance_count != 0)
+        {
+            ImGui::Text("Instances");
+            ImGui::SameLine(column_pos_x);
+            ImGui::LabelText("##renderable_mesh", to_string(instance_count).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
+        }
+
+        // material
         ImGui::Text("Material");
         ImGui::SameLine(column_pos_x);
         ImGui::InputText("##renderable_material", &name_material, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
@@ -390,7 +400,7 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
             renderable->SetMaterial(std::get<const char*>(payload->data));
         }
 
-        // Cast shadows
+        // cast shadows
         ImGui::Text("Cast Shadows");
         ImGui::SameLine(column_pos_x); ImGui::Checkbox("##RenderableCastShadows", &cast_shadows);
 
@@ -407,70 +417,87 @@ void Properties::ShowPhysicsBody(shared_ptr<PhysicsBody> body) const
         return;
 
     const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
-    const auto step             = 0.1f;
-    const auto step_fast        = 0.1f;
+    const float step            = 0.1f;
+    const float step_fast       = 0.1f;
     const auto precision        = "%.3f";
 
     if (component_begin("PhysicsBody", IconType::Component_PhysicsBody, body))
     {
-        //= REFLECT ==========================================================
-        float mass             = body->GetMass();
-        float friction         = body->GetFriction();
-        float friction_rolling = body->GetFrictionRolling();
-        float restitution      = body->GetRestitution();
-        bool use_gravity       = body->GetUseGravity();
-        bool is_kinematic      = body->GetIsKinematic();
-        bool freeze_pos_x      = static_cast<bool>(body->GetPositionLock().x);
-        bool freeze_pos_y      = static_cast<bool>(body->GetPositionLock().y);
-        bool freeze_pos_z      = static_cast<bool>(body->GetPositionLock().z);
-        bool freeze_rot_x      = static_cast<bool>(body->GetRotationLock().x);
-        bool freeze_rot_y      = static_cast<bool>(body->GetRotationLock().y);
-        bool freeze_rot_z      = static_cast<bool>(body->GetRotationLock().z);
-        Vector3 center_of_mass = body->GetCenterOfMass();
-        Vector3 bounding_box   = body->GetBoundingBox();
-        //====================================================================
+        //= REFLECT =============================================================
+        float mass                = body->GetMass();
+        float friction            = body->GetFriction();
+        float friction_rolling    = body->GetFrictionRolling();
+        float restitution         = body->GetRestitution();
+        bool use_gravity          = body->GetUseGravity();
+        bool is_kinematic         = body->GetIsKinematic();
+        bool freeze_pos_x         = static_cast<bool>(body->GetPositionLock().x);
+        bool freeze_pos_y         = static_cast<bool>(body->GetPositionLock().y);
+        bool freeze_pos_z         = static_cast<bool>(body->GetPositionLock().z);
+        bool freeze_rot_x         = static_cast<bool>(body->GetRotationLock().x);
+        bool freeze_rot_y         = static_cast<bool>(body->GetRotationLock().y);
+        bool freeze_rot_z         = static_cast<bool>(body->GetRotationLock().z);
+        Vector3 center_of_mass    = body->GetCenterOfMass();
+        Vector3 bounding_box      = body->GetBoundingBox();
+        //=======================================================================
 
-        // Mass
+        // body type
+        {
+            static vector<string> shape_types =
+            {
+                "Rigid Body",
+                "Vehicle"
+            };
+
+            ImGui::Text("Body Type");
+            ImGui::SameLine(column_pos_x);
+            uint32_t selection_index = static_cast<uint32_t>(body->GetBodyType());
+            if (ImGuiSp::combo_box("##physics_body_type", shape_types, &selection_index))
+            {
+                body->SetBodyType(static_cast<PhysicsBodyType>(selection_index));
+            }
+        }
+
+        // mass
         ImGui::Text("Mass");
-        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##PhysicsBodyMass", &mass, step, step_fast, precision, input_text_flags);
+        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##physics_body_mass", &mass, step, step_fast, precision, input_text_flags);
 
-        // Friction
+        // friction
         ImGui::Text("Friction");
-        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##PhysicsBodyFriction", &friction, step, step_fast, precision, input_text_flags);
+        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##physics_body_friction", &friction, step, step_fast, precision, input_text_flags);
 
-        // Rolling Friction
+        // rolling friction
         ImGui::Text("Rolling Friction");
-        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##PhysicsBodyRollingFriction", &friction_rolling, step, step_fast, precision, input_text_flags);
+        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##physics_body_rolling_friction", &friction_rolling, step, step_fast, precision, input_text_flags);
 
-        // Restitution
+        // restitution
         ImGui::Text("Restitution");
-        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##PhysicsBodyRestitution", &restitution, step, step_fast, precision, input_text_flags);
+        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##physics_body_restitution", &restitution, step, step_fast, precision, input_text_flags);
 
-        // Use Gravity
+        // use gravity
         ImGui::Text("Use Gravity");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##PhysicsBodyUseGravity", &use_gravity);
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##physics_body_use_gravity", &use_gravity);
 
-        // Is Kinematic
+        // is kinematic
         ImGui::Text("Is Kinematic");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##PhysicsBodyKinematic", &is_kinematic);
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##physics_body_is_kinematic", &is_kinematic);
 
-        // Freeze Position
+        // freeze position
         ImGui::Text("Freeze Position");
         ImGui::SameLine(column_pos_x); ImGui::Text("X");
-        ImGui::SameLine(); ImGui::Checkbox("##PhysicsBodyPosX", &freeze_pos_x);
+        ImGui::SameLine(); ImGui::Checkbox("##physics_body_pos_x", &freeze_pos_x);
         ImGui::SameLine(); ImGui::Text("Y");
-        ImGui::SameLine(); ImGui::Checkbox("##PhysicsBodyPosY", &freeze_pos_y);
+        ImGui::SameLine(); ImGui::Checkbox("##physics_body_pos_y", &freeze_pos_y);
         ImGui::SameLine(); ImGui::Text("Z");
-        ImGui::SameLine(); ImGui::Checkbox("##PhysicsBodyPosZ", &freeze_pos_z);
+        ImGui::SameLine(); ImGui::Checkbox("##physics_body_pos_z", &freeze_pos_z);
 
-        // Freeze Rotation
+        // freeze rotation
         ImGui::Text("Freeze Rotation");
         ImGui::SameLine(column_pos_x); ImGui::Text("X");
-        ImGui::SameLine(); ImGui::Checkbox("##PhysicsBodyRotX", &freeze_rot_x);
+        ImGui::SameLine(); ImGui::Checkbox("##physics_body_rot_x", &freeze_rot_x);
         ImGui::SameLine(); ImGui::Text("Y");
-        ImGui::SameLine(); ImGui::Checkbox("##PhysicsBodyRotY", &freeze_rot_y);
+        ImGui::SameLine(); ImGui::Checkbox("##physics_body_rot_y", &freeze_rot_y);
         ImGui::SameLine(); ImGui::Text("Z");
-        ImGui::SameLine(); ImGui::Checkbox("##PhysicsBodyRotZ", &freeze_rot_z);
+        ImGui::SameLine(); ImGui::Checkbox("##physics_body_rot_z", &freeze_rot_z);
 
         ImGui::Separator();
 
@@ -492,7 +519,7 @@ void Properties::ShowPhysicsBody(shared_ptr<PhysicsBody> body) const
             ImGui::Text("Shape Type");
             ImGui::SameLine(column_pos_x);
             uint32_t selection_index = static_cast<uint32_t>(body->GetShapeType());
-            if (ImGuiSp::combo_box("##PhysicsBodyCollisionShape", shape_types, &selection_index))
+            if (ImGuiSp::combo_box("##physics_body_shape", shape_types, &selection_index))
             {
                 body->SetShapeType(static_cast<PhysicsShape>(selection_index));
             }
@@ -500,15 +527,15 @@ void Properties::ShowPhysicsBody(shared_ptr<PhysicsBody> body) const
         
         // center
         ImGui::Text("Shape Center");
-        ImGui::SameLine(column_pos_x); ImGui::PushID("PhysicsBodyColCenterX"); ImGui::InputFloat("X", &center_of_mass.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();             ImGui::PushID("PhysicsBodyColCenterY"); ImGui::InputFloat("Y", &center_of_mass.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();             ImGui::PushID("PhysicsBodyColCenterZ"); ImGui::InputFloat("Z", &center_of_mass.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine(column_pos_x); ImGui::PushID("physics_body_shape_center_x"); ImGui::InputFloat("X", &center_of_mass.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();             ImGui::PushID("physics_body_shape_center_y"); ImGui::InputFloat("Y", &center_of_mass.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();             ImGui::PushID("physics_body_shape_center_z"); ImGui::InputFloat("Z", &center_of_mass.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
         
         // size
         ImGui::Text("Shape Size");
-        ImGui::SameLine(column_pos_x); ImGui::PushID("PhysicsBodyColSizeX"); ImGui::InputFloat("X", &bounding_box.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();             ImGui::PushID("PhysicsBodyColSizeY"); ImGui::InputFloat("Y", &bounding_box.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();             ImGui::PushID("PhysicsBodyColSizeZ"); ImGui::InputFloat("Z", &bounding_box.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine(column_pos_x); ImGui::PushID("physics_body_shape_size_x"); ImGui::InputFloat("X", &bounding_box.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();             ImGui::PushID("physics_body_shape_size_y"); ImGui::InputFloat("Y", &bounding_box.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();             ImGui::PushID("physics_body_shape_size_z"); ImGui::InputFloat("Z", &bounding_box.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
 
         //= MAP ===============================================================================================================================================================================================
         if (mass != body->GetMass())                                      body->SetMass(mass);
@@ -684,12 +711,18 @@ void Properties::ShowMaterial(Material* material) const
                         auto setter = [&material, &mat_tex](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(mat_tex, texture); };
                         ImGuiSp::image_slot(material->GetTexture_PtrShared(mat_tex), setter);
 
-                        // 2nd texture, used for blending by the terrain
+                        // 2nd textures, used for blending by the terrain
                         if (mat_tex == MaterialTexture::Color)
                         {
                             auto setter = [&material](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(MaterialTexture::Color2, texture); };
                             ImGui::SameLine();
                             ImGuiSp::image_slot(material->GetTexture_PtrShared(MaterialTexture::Color2), setter);
+                        }
+                        else if (mat_tex == MaterialTexture::Normal)
+                        {
+                            auto setter = [&material](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(MaterialTexture::Normal2, texture); };
+                            ImGui::SameLine();
+                            ImGuiSp::image_slot(material->GetTexture_PtrShared(MaterialTexture::Normal2), setter);
                         }
 
                         if (show_modifier)
@@ -917,6 +950,9 @@ void Properties::ShowTerrain(shared_ptr<Terrain> terrain) const
             ImGui::Text("Height samples: %d", terrain->GetHeightSampleCount());
             ImGui::Text("Vertices: %d",  terrain->GetVertexCount());
             ImGui::Text("Indices:  %d ", terrain->GetIndexCount());
+            ImGui::Text("Trees:  %d ", terrain->GetTransformsTree().size());
+            ImGui::Text("Plants 1:  %d ", terrain->GetTransformsPlant1().size());
+            ImGui::Text("Plants 2:  %d ", terrain->GetTransformsPlant2().size());
         }
         ImGui::EndGroup();
 

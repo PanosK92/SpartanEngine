@@ -51,21 +51,9 @@ void ProgressDialog::OnTick()
     progresses[static_cast<uint32_t>(ProgressType::Resource)]      = &ProgressTracker::GetProgress(ProgressType::Resource);
     progresses[static_cast<uint32_t>(ProgressType::Terrain)]       = &ProgressTracker::GetProgress(ProgressType::Terrain);
 
-    bool in_progress = false;
-    for (Progress* progress : progresses)
-    {
-        if (progress)
-        {
-            if (progress->IsProgressing())
-            {
-                in_progress = true;
-                break;
-            }
-        }
-    }
-
-    // Show only if an operation is in progress
-    SetVisible(in_progress);
+    // show only if an operation is in progress
+    bool visible = ProgressTracker::IsLoading();
+    SetVisible(visible);
 }
 
 void ProgressDialog::OnTickVisible()

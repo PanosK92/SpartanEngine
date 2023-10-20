@@ -46,7 +46,7 @@ namespace Spartan
         m_text      = text;
     }
 
-    float Progress::GetFraction()
+    float Progress::GetFraction() const
     {
         lock_guard lock(m_mutex_jobs);
 
@@ -56,7 +56,7 @@ namespace Spartan
         return static_cast<float>(m_jobs_done) / static_cast<float>(m_job_count);
     }
 
-    bool Progress::IsProgressing()
+    bool Progress::IsProgressing() const
     {
         return GetFraction() != 1.0f;
     }
@@ -83,5 +83,18 @@ namespace Spartan
     {
         lock_guard lock(m_mutex_progress_access);
         return m_progresses[static_cast<uint32_t>(progress_type)];
+    }
+
+    bool ProgressTracker::IsLoading()
+    {
+        lock_guard lock(m_mutex_progress_access);
+
+        for (const Progress& progress : m_progresses)
+        {
+            if (progress.IsProgressing())
+                return true;
+        }
+
+        return false;
     }
 }

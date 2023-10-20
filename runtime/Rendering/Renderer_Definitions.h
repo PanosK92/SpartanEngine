@@ -42,7 +42,8 @@ namespace Spartan
         Debug_Physics,
         Debug_Wireframe,
         Bloom,
-        VolumetricFog,
+        Fog,
+        FogVolumetric,
         Ssgi,
         ScreenSpaceShadows,
         ScreenSpaceReflections,
@@ -57,11 +58,9 @@ namespace Spartan
         Gamma,
         Exposure,
         PaperWhite,
-        FogDensity,
         Antialiasing,
         Tonemapping,
         Upsampling,
-        UpsamplingSharpness,
         Sharpness,
         Hdr,
         Vsync,
@@ -114,40 +113,42 @@ namespace Spartan
         material_roughness = 2,
         material_metallic  = 3,
         material_normal    = 4,
-        material_height    = 5,
-        material_occlusion = 6,
-        material_emission  = 7,
-        material_mask      = 8,
+        material_normal2   = 5,
+        material_height    = 6,
+        material_occlusion = 7,
+        material_emission  = 8,
+        material_mask      = 9,
     
         // G-buffer
-        gbuffer_albedo            = 9,
-        gbuffer_normal            = 10,
-        gbuffer_material          = 11,
-        gbuffer_material_2        = 12,
-        gbuffer_velocity          = 13,
-        gbuffer_velocity_previous = 14,
-        gbuffer_depth             = 15,
+        gbuffer_albedo            = 10,
+        gbuffer_normal            = 11,
+        gbuffer_material          = 12,
+        gbuffer_material_2        = 13,
+        gbuffer_velocity          = 14,
+        gbuffer_velocity_previous = 15,
+        gbuffer_depth             = 16,
     
         // Lighting
-        light_diffuse              = 16,
-        light_diffuse_transparent  = 17,
-        light_specular             = 18,
-        light_specular_transparent = 19,
-        light_volumetric           = 20,
+        light_diffuse              = 17,
+        light_diffuse_transparent  = 18,
+        light_specular             = 19,
+        light_specular_transparent = 20,
+        light_volumetric           = 21,
     
         // Light depth/color maps
-        light_directional_depth = 21,
-        light_directional_color = 22,
-        light_point_depth       = 23,
-        light_point_color       = 24,
-        light_spot_depth        = 25,
-        light_spot_color        = 26,
+        light_directional_depth = 22,
+        light_directional_color = 23,
+        light_point_depth       = 24,
+        light_point_color       = 25,
+        light_spot_depth        = 26,
+        light_spot_color        = 27,
     
         // Noise
-        noise_normal = 27,
-        noise_blue   = 28,
+        noise_normal = 28,
+        noise_blue   = 29,
     
         // Misc
+<<<<<<< HEAD
         lutIbl           = 29,
         environment      = 30,
         ssgi             = 31,
@@ -158,6 +159,17 @@ namespace Spartan
         font_atlas       = 36,
         reflection_probe = 37,
         sss              = 38,
+=======
+        lutIbl           = 30,
+        environment      = 31,
+        ssgi             = 32,
+        ssr              = 33,
+        frame            = 34,
+        tex              = 35,
+        tex2             = 36,
+        font_atlas       = 37,
+        reflection_probe = 38
+>>>>>>> 10bfdcf3f368129fbec948002f50877bd2caa4e2
     };
 
     enum class Renderer_BindingsUav
@@ -173,9 +185,12 @@ namespace Spartan
     enum class Renderer_Shader : uint8_t
     {
         gbuffer_v,
+        gbuffer_instanced_v,
         gbuffer_p,
         depth_prepass_v,
-        depth_light_V,
+        depth_prepass_instanced_v,
+        depth_light_v,
+        depth_light_instanced_v,
         depth_light_p,
         depth_alpha_test_p,
         fullscreen_triangle_v,
@@ -257,7 +272,9 @@ namespace Spartan
     enum class Renderer_Entity
     {
         Geometry,
+        GeometryInstanced,
         GeometryTransparent,
+        GeometryTransparentInstanced,
         Light,
         Camera,
         ReflectionProbe,

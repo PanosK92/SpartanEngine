@@ -52,8 +52,9 @@ namespace Spartan
         RHI_DepthStencilState* depth_stencil_state    = nullptr;
         RHI_SwapChain* render_target_swapchain        = nullptr;
         RHI_PrimitiveTopology_Mode primitive_topology = RHI_PrimitiveTopology_Mode::Undefined;
-        bool can_use_vertex_index_buffers             = true;
+        bool is_fullscreen_triangle                   = false;
         bool dynamic_scissor                          = false;
+        bool instancing                               = false;
 
         // RTs
         RHI_Texture* render_target_depth_texture = nullptr;

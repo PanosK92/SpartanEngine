@@ -37,14 +37,6 @@ struct Vertex_PosColor
     float4 color    : COLOR0;
 };
 
-struct Vertex_PosUvNorTan
-{
-    float4 position : POSITION0;
-    float2 uv       : TEXCOORD0;
-    float3 normal   : NORMAL0;
-    float3 tangent  : TANGENT0;
-};
-
 struct Vertex_Pos2dUvColor
 {
     float2 position : POSITION0;
@@ -52,6 +44,16 @@ struct Vertex_Pos2dUvColor
     float4 color    : COLOR0;
 };
 
+struct Vertex_PosUvNorTan
+{
+    float4 position           : POSITION0;
+    float2 uv                 : TEXCOORD0;
+    float3 normal             : NORMAL0;
+    float3 tangent            : TANGENT0;
+    #if INSTANCED
+    matrix instance_transform : INSTANCE_TRANSFORM0;
+    #endif
+};
 
 // Pixel
 struct Pixel_Pos
