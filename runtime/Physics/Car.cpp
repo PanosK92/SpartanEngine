@@ -115,6 +115,69 @@ namespace Spartan
         constexpr uint8_t wheel_rr = 3;
     }
 
+    namespace debug
+    {
+        constexpr bool enabled = true;
+        ostringstream oss;
+
+        string wheel_to_string(CarParameters& parameters, const uint8_t wheel_index)
+        {
+            const btWheelInfo& wheel_info = parameters.vehicle->getWheelInfo(wheel_index);
+
+            string wheel_name;
+            switch (wheel_index)
+            {
+            case tuning::wheel_fl: wheel_name = "FL";     break;
+            case tuning::wheel_fr: wheel_name = "FR";     break;
+            case tuning::wheel_rl: wheel_name = "RL";     break;
+            case tuning::wheel_rr: wheel_name = "RR";     break;
+            default:               wheel_name = "Unknown"; break;
+            }
+
+            // setup ostringstream
+            oss.str("");
+            oss.clear();
+            oss << fixed << setprecision(2);
+
+            oss << "Wheel: " << wheel_name << "\n";
+            oss << "Steering: " << static_cast<float>(wheel_info.m_steering) * Math::Helper::RAD_TO_DEG << " deg\n";
+            oss << "Angular velocity: " << static_cast<float>(wheel_info.m_deltaRotation) / static_cast<float>(Timer::GetDeltaTimeSec()) << " rad/s\n";
+            oss << "Torque: " << wheel_info.m_engineForce << " N\n";
+            oss << "Suspension length: " << wheel_info.m_raycastInfo.m_suspensionLength << " m\n";
+            oss << "Slip ratio: " << parameters.pacejka_slip_ratio[wheel_index] << " ( Fz: " << parameters.pacejka_fz[wheel_index] << " N ) \n";
+            oss << "Slip angle: " << parameters.pacejka_slip_angle[wheel_index] * Math::Helper::RAD_TO_DEG << " ( Fx: " << parameters.pacejka_fx[wheel_index] << " N ) \n";
+
+
+            return oss.str();
+        }
+
+        void draw_info_wheel(CarParameters& parameters)
+        {
+            Renderer::DrawString(wheel_to_string(parameters, tuning::wheel_fl), Vector2(0.6f, 0.005f));
+            Renderer::DrawString(wheel_to_string(parameters, tuning::wheel_fr), Vector2(1.0f, 0.005f));
+            Renderer::DrawString(wheel_to_string(parameters, tuning::wheel_rl), Vector2(1.4f, 0.005f));
+            Renderer::DrawString(wheel_to_string(parameters, tuning::wheel_rr), Vector2(1.8f, 0.005f));
+        }
+
+        void draw_info_general(CarParameters& parameters, const float speed)
+        {
+            // setup ostringstream
+            oss.str("");
+            oss.clear();
+            oss << fixed << setprecision(2);
+
+            oss << "Speed: " << Math::Helper::Abs<float>(speed) << " Km/h\n"; // meters per second
+            oss << "Torque: " << parameters.engine_torque << " N·m\n";  // Newton meters
+            oss << "RPM: " << parameters.engine_rpm << " rpm\n";  // revolutions per minute, not an SI unit, but commonly used
+            oss << "Gear: " << parameters.gear << "\n";      // gear has no unit
+            oss << "Downforce: " << parameters.aerodynamics_downforce << " N\n";    // newtons
+            oss << "Drag: " << parameters.aerodynamics_drag << " N\n";    // newtons
+            oss << "Break: " << parameters.break_force << " N\n";    // newtons
+
+            Renderer::DrawString(oss.str(), Vector2(0.35f, 0.005f));
+        }
+    }
+
     namespace tire_friction_model
     {
         // description:
@@ -264,10 +327,24 @@ namespace Spartan
             // the force that the tire can exert perpendicular to its direction of travel
             parameters.pacejka_fx[wheel_index]         = compute_pacejka_force(parameters.pacejka_slip_angle[wheel_index], normal_load, false);
             // compute the total force
-            btVector3 wheel_force                      = (parameters.pacejka_fx[wheel_index] * wheel_forward_dir) + (parameters.pacejka_fz[wheel_index] * wheel_right_dir);
+            btVector3 wheel_force                      = (parameters.pacejka_fx[wheel_index] * wheel_right_dir) + (parameters.pacejka_fz[wheel_index] * wheel_forward_dir);
 
             *force          = btVector3(wheel_force.x(), 0.0f, wheel_force.z());
             *force_position = wheel_info->m_raycastInfo.m_contactPointWS;
+
+            if (debug::enabled && wheel_info->m_bIsFrontWheel)
+            {
+                const float arrow_size = 0.02f;
+                Vector3 start          = ToVector3(*force_position);
+
+                // draw fz force
+                Math::Vector3 fz_end = start + Math::Vector3(parameters.pacejka_fz[wheel_index] * wheel_forward_dir) * 0.2f;
+                Renderer::DrawDirectionalArrow(start, fz_end, arrow_size, Vector4(0.0f, 1.0f, 0.0f, 1.0f), 0.0, false);
+
+                // draw fx force
+                Math::Vector3 fx_end = start + Math::Vector3(parameters.pacejka_fx[wheel_index] * wheel_right_dir) * 0.2f;
+                Renderer::DrawDirectionalArrow(start, fx_end, arrow_size, Vector4(1.0f, 0.0f, 0.0f, 1.0f), 0.0, false);
+            }
         }
     }
 
@@ -447,69 +524,6 @@ namespace Spartan
             float car_factor = tuning::aerodynamics_car_drag_coefficient * tuning::aerodynamics_car_frontal_area;
             float speed2     = speed_meters_per_second * speed_meters_per_second;
             return 0.5f * car_factor * tuning::aerodynamics_air_density * speed2;
-        }
-    }
-
-    namespace debug
-    {
-        constexpr bool enabled = true;
-        ostringstream oss;
-
-        string wheel_to_string(CarParameters& parameters, const uint8_t wheel_index)
-        {
-            const btWheelInfo& wheel_info = parameters.vehicle->getWheelInfo(wheel_index);
-
-            string wheel_name;
-            switch (wheel_index)
-            {
-                case tuning::wheel_fl: wheel_name  = "FL";     break;
-                case tuning::wheel_fr: wheel_name  = "FR";     break;
-                case tuning::wheel_rl: wheel_name  = "RL";     break;
-                case tuning::wheel_rr: wheel_name  = "RR";     break;
-                default:               wheel_name = "Unknown"; break;
-            }
-
-            // setup ostringstream
-            oss.str("");
-            oss.clear();
-            oss << fixed << setprecision(2);
-
-            oss << "Wheel: "             << wheel_name                                                                                    << "\n";
-            oss << "Steering: "          << static_cast<float>(wheel_info.m_steering) * Math::Helper::RAD_TO_DEG                          << " deg\n";
-            oss << "Angular velocity: "  << static_cast<float>(wheel_info.m_deltaRotation) / static_cast<float>(Timer::GetDeltaTimeSec()) << " rad/s\n";
-            oss << "Torque: "            << wheel_info.m_engineForce                                                                      << " N\n";
-            oss << "Suspension length: " << wheel_info.m_raycastInfo.m_suspensionLength                                                   << " m\n";
-            oss << "Slip ratio: "        << parameters.pacejka_slip_ratio[wheel_index] << " ( Fz: " << parameters.pacejka_fz[wheel_index] << " N ) \n";
-            oss << "Slip angle: "        << parameters.pacejka_slip_angle[wheel_index] * Math::Helper::RAD_TO_DEG << " ( Fx: " << parameters.pacejka_fx[wheel_index] << " N ) \n";
-
-
-            return oss.str();
-        }
-
-        void draw_info_wheel(CarParameters& parameters)
-        {
-            Renderer::DrawString(wheel_to_string(parameters, tuning::wheel_fl), Vector2(0.6f, 0.005f));
-            Renderer::DrawString(wheel_to_string(parameters, tuning::wheel_fr), Vector2(1.0f, 0.005f));
-            Renderer::DrawString(wheel_to_string(parameters, tuning::wheel_rl), Vector2(1.4f, 0.005f));
-            Renderer::DrawString(wheel_to_string(parameters, tuning::wheel_rr), Vector2(1.8f, 0.005f));
-        }
-
-        void draw_info_general(CarParameters& parameters, const float speed)
-        {
-            // setup ostringstream
-            oss.str("");
-            oss.clear();
-            oss << fixed << setprecision(2);
-
-            oss << "Speed: "      << Math::Helper::Abs<float>(speed)   << " Km/h\n"; // meters per second
-            oss << "Torque: "     << parameters.engine_torque          << " N·m\n";  // Newton meters
-            oss << "RPM: "        << parameters.engine_rpm             << " rpm\n";  // revolutions per minute, not an SI unit, but commonly used
-            oss << "Gear: "       << parameters.gear                   << "\n";      // gear has no unit
-            oss << "Downforce: "  << parameters.aerodynamics_downforce << " N\n";    // newtons
-            oss << "Drag: "       << parameters.aerodynamics_drag      << " N\n";    // newtons
-            oss << "Break: "      << parameters.break_force            << " N\n";    // newtons
-
-            Renderer::DrawString(oss.str(), Vector2(0.35f, 0.005f));
         }
     }
 
