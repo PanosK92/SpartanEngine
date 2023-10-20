@@ -55,13 +55,9 @@ namespace Spartan
         array<shared_ptr<RHI_BlendState>, 3>        m_blend_states;
 
         // renderer resources
-<<<<<<< HEAD
-        array<shared_ptr<RHI_Texture>, 29>       m_render_targets;
+        array<shared_ptr<RHI_Texture>, 29>                      m_render_targets;
         array<shared_ptr<RHI_Shader>, Renderer::number_shaders>        m_shaders;
-=======
-        array<shared_ptr<RHI_Texture>, 28>       m_render_targets;
-        array<shared_ptr<RHI_Shader>, 48>        m_shaders;
->>>>>>> 10bfdcf3f368129fbec948002f50877bd2caa4e2
+
         array<shared_ptr<RHI_Sampler>, 7>        m_samplers;
         array<shared_ptr<RHI_ConstantBuffer>, 3> m_constant_buffers;
         shared_ptr<RHI_StructuredBuffer>         m_structured_buffer;
@@ -213,7 +209,7 @@ namespace Spartan
             render_target(Renderer_RenderTexture::ssr) = make_shared<RHI_Texture2D>(width_render, height_render, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_ssr");
 
             // SSS
-            render_target(Renderer_RenderTexture::sss) = make_shared<RHI_Texture2DArray>(width_render, height_render, RHI_Format::R16_Float, Renderer::GetMaxSSS(), RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_sss");
+            render_target(Renderer_RenderTexture::sss) = make_shared<RHI_Texture2DArray>(width_render, height_render, RHI_Format::R16_Float, Renderer::GetMaxSSS(), RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "rt_sss");
 
             // SSGI
             render_target(Renderer_RenderTexture::ssgi)          = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_ssgi");
@@ -608,11 +604,7 @@ namespace Spartan
         return m_render_targets;
     }
 
-<<<<<<< HEAD
     array<shared_ptr<RHI_Shader>, Renderer::number_shaders>& Renderer::GetShaders()
-=======
-    array<shared_ptr<RHI_Shader>, 48>& Renderer::GetShaders()
->>>>>>> 10bfdcf3f368129fbec948002f50877bd2caa4e2
     {
         return m_shaders;
     }

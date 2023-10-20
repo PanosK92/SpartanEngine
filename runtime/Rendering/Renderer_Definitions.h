@@ -148,18 +148,6 @@ namespace Spartan
         noise_blue   = 29,
     
         // Misc
-<<<<<<< HEAD
-        lutIbl           = 29,
-        environment      = 30,
-        ssgi             = 31,
-        ssr              = 32,
-        frame            = 33,
-        tex              = 34,
-        tex2             = 35,
-        font_atlas       = 36,
-        reflection_probe = 37,
-        sss              = 38,
-=======
         lutIbl           = 30,
         environment      = 31,
         ssgi             = 32,
@@ -168,8 +156,8 @@ namespace Spartan
         tex              = 35,
         tex2             = 36,
         font_atlas       = 37,
-        reflection_probe = 38
->>>>>>> 10bfdcf3f368129fbec948002f50877bd2caa4e2
+        reflection_probe = 38,
+        sss              = 39
     };
 
     enum class Renderer_BindingsUav

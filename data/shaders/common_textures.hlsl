@@ -59,18 +59,6 @@ Texture2D tex_noise_normal    : register(t28);
 Texture2DArray tex_noise_blue : register(t29);
 
 // Misc
-<<<<<<< HEAD
-Texture2D tex_lut_ibl            : register(t29);
-Texture2D tex_environment        : register(t30);
-Texture2D tex_ssgi               : register(t31);
-Texture2D tex_ssr                : register(t32);
-Texture2D tex_frame              : register(t33);
-Texture2D tex                    : register(t34);
-Texture2D tex2                   : register(t35);
-Texture2D tex_font_atlas         : register(t36);
-TextureCube tex_reflection_probe : register(t37);
-Texture2DArray<float> tex_sss    : register(t38);
-=======
 Texture2D tex_lut_ibl            : register(t30);
 Texture2D tex_environment        : register(t31);
 Texture2D tex_ssgi               : register(t32);
@@ -80,7 +68,7 @@ Texture2D tex                    : register(t35);
 Texture2D tex2                   : register(t36);
 Texture2D tex_font_atlas         : register(t37);
 TextureCube tex_reflection_probe : register(t38);
->>>>>>> 10bfdcf3f368129fbec948002f50877bd2caa4e2
+Texture2DArray tex_sss           : register(t39);
 
 // Storage
 RWTexture2D<float4> tex_uav                                : register(u0);
