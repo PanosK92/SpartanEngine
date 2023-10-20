@@ -61,13 +61,13 @@ namespace Spartan
         constexpr float engine_idle_rpm                    = 900.0f;                                    // idle engine rpm
         vector<pair<float, float>> engine_torque_map       =
         {
-             { 1000.0f, 20.0f  },
-             { 2000.0f, 40.0f  },
-             { 3000.0f, 65.0f  },
-             { 4000.0f, 90.0f  },
-             { 5000.0f, 100.0f }, // peak torque
-             { 6000.0f, 90.0f  },
-             { 7000.0f, 75.0f  },
+            { 1000.0f, 20.0f  },
+            { 2000.0f, 40.0f  },
+            { 3000.0f, 65.0f  },
+            { 4000.0f, 90.0f  },
+            { 5000.0f, 100.0f }, // peak torque
+            { 6000.0f, 90.0f  },
+            { 7000.0f, 75.0f  },
         };
 
         // gearbox
@@ -117,40 +117,6 @@ namespace Spartan
         constexpr uint8_t wheel_rr = 3;
     }
 
-    namespace bullet_interface
-    {
-        // notes:
-        // 1. some vector swizzling happens, this is because the engine is using a left-handed coordinate system but bullet is using a right-handed coordinate system
-        // 2. the y axis of certain vectors is zeroed out, this is because pacejka's formula is only concerned with forward and side slip
-
-        btVector3 compute_wheel_direction_forward(const btWheelInfo* wheel_info)
-        {
-            btVector3 forward_right_handed = wheel_info->m_worldTransform.getBasis().getColumn(0).normalized();
-            return btVector3(forward_right_handed.z(), 0.0f, -forward_right_handed.x());
-        }
-
-        btVector3 compute_wheel_direction_right(const btWheelInfo* wheel_info)
-        {
-            return compute_wheel_direction_forward(wheel_info).cross(btVector3(0, 1, 0));
-        }
-
-        btVector3 compute_wheel_velocity(btWheelInfo* wheel_info, btRigidBody* m_vehicle_chassis)
-        {
-            float wheel_radius         = wheel_info->m_wheelsRadius;
-            btVector3 velocity_angular = m_vehicle_chassis->getAngularVelocity().cross(-wheel_info->m_raycastInfo.m_wheelAxleWS) * wheel_radius;
-            btVector3 velocity_linear  = m_vehicle_chassis->getVelocityInLocalPoint(wheel_info->m_raycastInfo.m_contactPointWS);
-            btVector3 velocity_total   = velocity_angular + velocity_linear;
-
-            return btVector3(velocity_total.x(), 0.0f, velocity_total.z());
-        }
-
-        float adjust_break_force(float break_force)
-        {
-            float bullet_inaccuracy_fix = 0.03f;
-            return break_force * bullet_inaccuracy_fix;
-        }
-    }
-
     namespace tire_friction_model
     {
         // description:
@@ -165,8 +131,27 @@ namespace Spartan
         // 2. the y axis of certain vectors is zeroed out, this is because pacejka's formula is only concerned with forward and side slip
         // 3. precision issues and fuzziness, in various math/vectors, can be reduced by increasing the physics simulation rate, we are doing 200hz (aided by clamping and small float additions)
 
-        float compute_slip_ratio(btWheelInfo* wheel_info, const btVector3& wheel_forward, const btVector3& wheel_velocity, const btVector3& vehicle_velocity)
-        {    
+        constexpr float small_float = 0.01f;
+
+        btVector3 compute_wheel_direction_forward(const btWheelInfo* wheel_info)
+        {
+            btVector3 forward_right_handed = wheel_info->m_worldTransform.getBasis().getColumn(0).normalized();
+            // right-handed to left-handed coordinate system
+            return btVector3(forward_right_handed.z(), -forward_right_handed.y(), -forward_right_handed.x());
+        }
+
+        btVector3 compute_wheel_velocity(btWheelInfo* wheel_info, btRigidBody* m_vehicle_chassis)
+        {
+            btVector3 velocity_angular_vehicle = m_vehicle_chassis->getAngularVelocity();
+            btVector3 velocity_angular         = velocity_angular_vehicle.cross(-wheel_info->m_raycastInfo.m_wheelAxleWS) * tuning::wheel_radius;
+            btVector3 velocity_linear          = m_vehicle_chassis->getVelocityInLocalPoint(wheel_info->m_raycastInfo.m_contactPointWS);
+            btVector3 velocity_total           = velocity_angular + velocity_linear;
+
+            return velocity_total;
+        }
+
+        float compute_slip_ratio(const btVector3& wheel_forward, const btVector3& wheel_velocity, const btVector3& vehicle_velocity)
+        {
             // value meanings
             //  0:       tire is rolling perfectly without any slip
             //  0 to  1: the tire is beginning to slip under acceleration
@@ -179,25 +164,29 @@ namespace Spartan
             float nominator        = velocity_wheel - velocity_forward;
             float denominator      = velocity_forward;
 
-            // to avoid a division by zero, or computations with fuzzy zero values which can yield erratic slip ratios,
-            // we have to slightly deviate from the formula definition (additions and clamp), but the results are still accurate enough
-            return Math::Helper::Clamp<float>((nominator + Math::Helper::SMALL_FLOAT) / (denominator + Math::Helper::SMALL_FLOAT), -1.0f, 1.0f);
+            // add a small float to avoid fuzzy zeros which can result in devision by zero and erratic slip ratios
+            float slip_ratio = (nominator + Math::Helper::SMALL_FLOAT) / (denominator + Math::Helper::SMALL_FLOAT);
+
+            return Math::Helper::Clamp<float>(slip_ratio, -1.0f, 1.0f);
         }
 
-        float compute_slip_angle(btWheelInfo* wheel_info, const btVector3& wheel_forward, const btVector3& wheel_side, const btVector3& vehicle_velocity)
+        float compute_slip_angle(const btVector3& wheel_forward, const btVector3& wheel_side, const btVector3& vehicle_velocity)
         {
             // slip angle value meaning (the comments use degrees but this function returns a value from -1 to 1)
             // 0°:                     the direction of the wheel is aligned perfectly with the direction of the travel
             // 0° to 90° (-90° to 0°): the wheel is starting to turn away from the direction of travel
             // 90° (-90°):             the wheel is perpendicular to the direction of the travel, maximum lateral sliding
 
-            btVector3 vehicle_velocity_normalized = vehicle_velocity.fuzzyZero() ? btVector3(0.0f, 0.0f, 0.0f) : vehicle_velocity.normalized();
+            btVector3 adjusted_velocity           = vehicle_velocity + btVector3(Math::Helper::SMALL_FLOAT, Math::Helper::SMALL_FLOAT, Math::Helper::SMALL_FLOAT);
+            btVector3 vehicle_velocity_normalized = adjusted_velocity.normalized();
             float vehicle_dot_wheel_forward       = vehicle_velocity_normalized.dot(wheel_forward);
             float vehicle_dot_wheel_side          = vehicle_velocity_normalized.dot(wheel_side);
             float slip_angle                      = atan2(vehicle_dot_wheel_side + Math::Helper::SMALL_FLOAT, vehicle_dot_wheel_forward + Math::Helper::SMALL_FLOAT);
 
             // convert radians to -1 to 1 range 
-            return slip_angle / Math::Helper::PI;
+            slip_angle /= Math::Helper::PI;
+
+            return slip_angle;
         }
 
         float compute_pacejka_force(float slip, float normal_load)
@@ -238,7 +227,10 @@ namespace Spartan
             float Bx1 = B * (slip + H);
 
             // pacejka ’94 longitudinal formula
-            return D * sin(C * atan(Bx1 - E * (Bx1 - atan(Bx1)))) + V;
+            float force = D * sin(C * atan(Bx1 - E * (Bx1 - atan(Bx1)))) + V;
+
+            // convert to newtons
+            return force * 1000.0f;
         }
 
         void compute_tire_force(CarParameters& parameters, const uint32_t wheel_index, const btVector3& vehicle_velocity, btVector3* force, btVector3* force_position)
@@ -250,21 +242,25 @@ namespace Spartan
             btWheelInfo* wheel_info = &parameters.vehicle->getWheelInfo(wheel_index);
             if (!wheel_info->m_raycastInfo.m_isInContact)
             {
-                *force          = btVector3(0.0f, 0.0f, 0.0f);
-                *force_position = wheel_info->m_raycastInfo.m_contactPointWS;
+                parameters.pacejka_slip_ratio[wheel_index] = 0.0f;
+                parameters.pacejka_slip_angle[wheel_index] = 0.0f;
+                parameters.pacejka_fz[wheel_index]         = 0.0f;
+                parameters.pacejka_fx[wheel_index]         = 0.0f;
+                *force                                     = btVector3(0.0f, 0.0f, 0.0f);
+                *force_position                            = wheel_info->m_raycastInfo.m_contactPointWS;
                 return;
             }
 
             // compute wheel information
-            btVector3 wheel_velocity    = bullet_interface::compute_wheel_velocity(wheel_info, parameters.body);
-            btVector3 wheel_forward_dir = bullet_interface::compute_wheel_direction_forward(wheel_info);
-            btVector3 wheel_right_dir   = bullet_interface::compute_wheel_direction_right(wheel_info);
+            btVector3 wheel_velocity    = compute_wheel_velocity(wheel_info, parameters.body);
+            btVector3 wheel_forward_dir = compute_wheel_direction_forward(wheel_info);
+            btVector3 wheel_right_dir   = wheel_forward_dir.cross(btVector3(0, 1, 0));
             float normal_load           = wheel_info->m_wheelsSuspensionForce;
 
             // a measure of how much a wheel is slipping along the direction of the vehicle travel
-            parameters.pacejka_slip_ratio[wheel_index] = compute_slip_ratio(wheel_info, wheel_forward_dir, wheel_velocity, vehicle_velocity);
+            parameters.pacejka_slip_ratio[wheel_index] = compute_slip_ratio(wheel_forward_dir, wheel_velocity, vehicle_velocity);
             // the angle between the direction in which a wheel is pointed and the direction in which the vehicle is actually traveling
-            parameters.pacejka_slip_angle[wheel_index] = compute_slip_angle(wheel_info, wheel_forward_dir, wheel_right_dir, vehicle_velocity);
+            parameters.pacejka_slip_angle[wheel_index] = compute_slip_angle(wheel_forward_dir, wheel_right_dir, vehicle_velocity);
             // the force that the tire can exert parallel to its direction of travel
             parameters.pacejka_fz[wheel_index]         = compute_pacejka_force(parameters.pacejka_slip_ratio[wheel_index], normal_load) * tuning::tire_friction;
             // the force that the tire can exert perpendicular to its direction of travel
@@ -272,7 +268,7 @@ namespace Spartan
             // compute the total force
             btVector3 wheel_force                      = (parameters.pacejka_fx[wheel_index] * wheel_forward_dir) + (parameters.pacejka_fz[wheel_index] * wheel_right_dir);
 
-            *force            = btVector3(wheel_force.x(), 0.0f, wheel_force.z());
+            *force            = btVector3(wheel_force.x(), 0.0f, wheel_force.z()) * 0.0f;
             *force_position   = wheel_info->m_raycastInfo.m_contactPointWS;
         }
     }
@@ -287,38 +283,30 @@ namespace Spartan
 
         void apply(btRaycastVehicle* vehicle, btRigidBody* chassis, int wheel_index_1, int wheel_index_2, float force)
         {
-            // get the wheel suspension forces and positions
             btWheelInfo& wheel_info1 = vehicle->getWheelInfo(wheel_index_1);
             btWheelInfo& wheel_info2 = vehicle->getWheelInfo(wheel_index_2);
 
-            // determine the anti-roll force necessary to counteract the difference in suspension compression
-            float anti_roll_force = 0.0f;
-            if (wheel_info1.m_raycastInfo.m_isInContact && wheel_info2.m_raycastInfo.m_isInContact)
-            {
-                float suspension_difference = wheel_info1.m_raycastInfo.m_suspensionLength - wheel_info2.m_raycastInfo.m_suspensionLength;
-                anti_roll_force = suspension_difference * force;
-            }
-            else if (!wheel_info1.m_raycastInfo.m_isInContact)
-            {
-                anti_roll_force = -force;
-            }
-            else if (!wheel_info2.m_raycastInfo.m_isInContact)
-            {
-                anti_roll_force = force;
-            }
+            float suspension_difference = (wheel_info1.m_raycastInfo.m_suspensionLength - tuning::suspension_rest_length) - (wheel_info2.m_raycastInfo.m_suspensionLength - tuning::suspension_rest_length);
+            float anti_roll_force       = suspension_difference * force;
 
-            // apply the anti-roll forces to the wheels
-            if (wheel_info1.m_raycastInfo.m_isInContact)
+            if (wheel_info1.m_raycastInfo.m_isInContact || wheel_info2.m_raycastInfo.m_isInContact)
             {
-                btVector3 anti_roll_force_vector(0, anti_roll_force, 0);
-                btVector3 force_position = wheel_info1.m_raycastInfo.m_contactPointWS;
-                chassis->applyForce(anti_roll_force_vector, force_position);
-            }
-            if (wheel_info2.m_raycastInfo.m_isInContact)
-            {
-                btVector3 anti_roll_force_vector(0, -anti_roll_force, 0);
-                btVector3 force_position = wheel_info2.m_raycastInfo.m_contactPointWS;
-                chassis->applyForce(anti_roll_force_vector, force_position);
+                btVector3 chassis_center = chassis->getCenterOfMassPosition();
+                btVector3 roll_axis      = (wheel_info2.m_raycastInfo.m_contactPointWS - wheel_info1.m_raycastInfo.m_contactPointWS).normalized();
+
+                if (wheel_info1.m_raycastInfo.m_isInContact)
+                {
+                    btVector3 force_position         = wheel_info1.m_raycastInfo.m_contactPointWS + roll_axis * (chassis_center - wheel_info1.m_raycastInfo.m_contactPointWS).dot(roll_axis);
+                    btVector3 anti_roll_force_vector = -roll_axis * anti_roll_force;
+                    chassis->applyForce(anti_roll_force_vector, force_position);
+                }
+
+                if (wheel_info2.m_raycastInfo.m_isInContact)
+                {
+                    btVector3 force_position         = wheel_info2.m_raycastInfo.m_contactPointWS + roll_axis * (chassis_center - wheel_info2.m_raycastInfo.m_contactPointWS).dot(roll_axis);
+                    btVector3 anti_roll_force_vector = roll_axis * anti_roll_force;
+                    chassis->applyForce(anti_roll_force_vector, force_position);
+                }
             }
         }
     }
@@ -488,13 +476,13 @@ namespace Spartan
             oss.clear();
             oss << fixed << setprecision(2);
 
-            oss << "Wheel: "             << wheel_name << "\n";
-            oss << "Steering: "          << static_cast<float>(wheel_info.m_steering) * Math::Helper::RAD_TO_DEG << " deg\n";
+            oss << "Wheel: "             << wheel_name                                                                                    << "\n";
+            oss << "Steering: "          << static_cast<float>(wheel_info.m_steering) * Math::Helper::RAD_TO_DEG                          << " deg\n";
             oss << "Angular velocity: "  << static_cast<float>(wheel_info.m_deltaRotation) / static_cast<float>(Timer::GetDeltaTimeSec()) << " rad/s\n";
-            oss << "Torque: "            << wheel_info.m_engineForce << " N\n";
-            oss << "Slip angle: "        << parameters.pacejka_slip_angle[wheel_index]  << " N\n";
-            oss << "Slip ratio: "        << parameters.pacejka_slip_ratio[wheel_index]  << " N\n";
-            oss << "Suspension length: " << wheel_info.m_raycastInfo.m_suspensionLength << " m\n";
+            oss << "Torque: "            << wheel_info.m_engineForce                                                                      << " N\n";
+            oss << "Slip ratio: "        << parameters.pacejka_slip_ratio[wheel_index]                                                    << " \n";
+            oss << "Slip angle: "        << parameters.pacejka_slip_angle[wheel_index]                                                    << " \n";
+            oss << "Suspension length: " << wheel_info.m_raycastInfo.m_suspensionLength                                                   << " m\n";
 
             return oss.str();
         }
@@ -731,7 +719,7 @@ namespace Spartan
             btVector3 force_position;
             tire_friction_model::compute_tire_force(m_parameters, i, velocity_vehicle, &force, &force_position);
 
-            m_parameters.body->applyForce(force, force_position);
+            //m_parameters.body->applyForce(force, force_position);
         }
 
         // anti-roll bar
@@ -767,7 +755,7 @@ namespace Spartan
                 m_parameters.break_force = Math::Helper::Max<float>(m_parameters.break_force - tuning::brake_ramp_speed * delta_time_sec, 0.0f);
             }
 
-            float bullet_brake_force = bullet_interface::adjust_break_force(m_parameters.break_force);
+            float bullet_brake_force = m_parameters.break_force * 0.03f;
             m_parameters.vehicle->setBrake(bullet_brake_force, tuning::wheel_fl);
             m_parameters.vehicle->setBrake(bullet_brake_force, tuning::wheel_fr);
             m_parameters.vehicle->setBrake(bullet_brake_force, tuning::wheel_rl);
