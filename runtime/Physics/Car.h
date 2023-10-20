@@ -60,8 +60,10 @@ namespace Spartan
         bool break_until_opposite_torque    = false;
 
         // tire friction
-        float pacejka_fz                    = 0.0f;
-        float pacejka_fx                    = 0.0f;
+        std::array<float, 4> pacejka_slip_angle = { 0.0f, 0.0f, 0.0f, 0.0f };
+        std::array<float, 4> pacejka_slip_ratio = { 0.0f, 0.0f, 0.0f, 0.0f };
+        std::array<float, 4> pacejka_fz         = { 0.0f, 0.0f, 0.0f, 0.0f };
+        std::array<float, 4> pacejka_fx         = { 0.0f, 0.0f, 0.0f, 0.0f };
 
         // misc
         float steering_angle                = 0.0f;
