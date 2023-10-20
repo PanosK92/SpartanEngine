@@ -51,14 +51,9 @@ def copy(source, destination):
 def extract_third_party_dependencies():
     print("1. Extracting third-party dependencies...")
     cmd = (
-        "Spartan\\build_scripts\\7z.exe e Spartan\\third_party\\libraries\\libraries.7z -othird_party\\libraries\\ -aoa"
-        # "build_scripts\\7z.exe e third_party\\libraries\\libraries.7z -othird_party\\libraries\\ -aoa"
-        # "build_scripts\\7z.exe"
-        # if sys.argv[1] == "vs2022"
-        # else "7za e third_party/libraries/libraries.7z -othird_party/libraries/ -aoa"
-        # "build_scripts\\7z.exe"
-        # "dir"
-        # "Spartan\\build_scripts\\7z.exe"
+        "build_scripts\\7z.exe e third_party\\libraries\\libraries.7z -othird_party\\libraries\\ -aoa"
+        if sys.argv[1] == "vs2022"
+        else "7za e third_party/libraries/libraries.7z -othird_party/libraries/ -aoa"
     )
     os.system(cmd)
 
@@ -83,18 +78,18 @@ def copy_assets():
 def generate_project_files():
     print("\n5. Generating project files...")
     cmd = (
-        f"Spartan\\build_scripts\\premake5.exe --file=Spartan\\build_scripts\\premake.lua {sys.argv[1]} {sys.argv[2]}"
+        f"build_scripts\\premake5.exe --file=build_scripts\\premake.lua {sys.argv[1]} {sys.argv[2]}"
         if sys.argv[1] == "vs2022"
-        else f"Spartan\\build_scripts\\premake5.exe --file=build_scripts/premake.lua {sys.argv[1]} {sys.argv[2]}"
+        else f"premake5 --file=build_scripts/premake.lua {sys.argv[1]} {sys.argv[2]}"
     )
     subprocess.Popen(cmd, shell=True).communicate()
 
 
 def main():
     extract_third_party_dependencies()
-    # create_binaries_folder()
+    create_binaries_folder()
     copy_dlls()
-    # copy_assets()
+    copy_assets()
     generate_project_files()
     sys.exit(0)
 

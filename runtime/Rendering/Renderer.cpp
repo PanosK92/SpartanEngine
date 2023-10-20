@@ -40,7 +40,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Input/Input.h"
 #include "../Display/Display.h"
 //==============================================
-#pragma optimize("", off)
 
 //= NAMESPACES ===============
 using namespace std;

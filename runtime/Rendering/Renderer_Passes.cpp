@@ -107,7 +107,7 @@ namespace Spartan
                 }
 
                 Pass_ReflectionProbes(cmd_list);
-                std::unordered_map<shared_ptr<Light>, int32_t> mapLightIndex;
+                std::unordered_map<shared_ptr<Light>, int32_t> map_light_index;
                 // opaque
                 {
                     bool is_transparent_pass = false;
@@ -129,59 +129,62 @@ namespace Spartan
                             return;
                         // iterate through all the lights
   
-                        std::vector<shared_ptr<Light> > lightCandidates;
+                        std::vector<shared_ptr<Light> > light_candidates;
                         for (shared_ptr<Entity> entity : entities)
                         {
-                            if (shared_ptr<Light> itLight = entity->GetComponent<Light>())
+                            if (shared_ptr<Light> light = entity->GetComponent<Light>())
                             {
-                                if (itLight->GetShadowsEnabled())
+                                if (light->GetShadowsEnabled())
                                 {
-                                    auto transform = itLight->GetTransform();
-                                    // TODO test AABB instead of center
-                                    if (m_camera->IsInViewFrustum(transform->GetPosition(), Vector3(itLight->GetRange())))
+                                    shared_ptr<Transform> transform = light->GetTransform();
+                                    // TODO only do plane / spheretest & fix infinite plane intersections
+                                    if (m_camera->IsInViewFrustum(transform->GetPosition(), Vector3(light->GetRange())))
                                     {
-                                        lightCandidates.push_back(itLight);
+                                        light_candidates.push_back(light);
                                     }
                                 }
                             }
                         }
 
-                        // TODO this heuristic is not ideal
-                        std::sort(lightCandidates.begin(), lightCandidates.end(),
-                            [camera](shared_ptr<Light> LightA, shared_ptr<Light> LightB)
+                        // Note: this heuristic is not ideal
+                        std::sort(light_candidates.begin(), light_candidates.end(),
+                            [camera](shared_ptr<Light> light_a, shared_ptr<Light> light_b) -> bool
                             {
                                 // predicate sort
-                                auto camTransform = camera->GetTransform();
-                                auto LightATransform = LightA->GetTransform();
-                                auto LightBTransform = LightB->GetTransform();
-                                auto distanceA = (camTransform->GetPosition() - LightATransform->GetPosition()).LengthSquared();
-                                auto distanceB = (camTransform->GetPosition() - LightBTransform->GetPosition()).LengthSquared();
-                                return distanceA < distanceB;
+                                shared_ptr<Transform> camera_transform = camera->GetTransform();
+                                shared_ptr<Transform> light_a_transform = light_a->GetTransform();
+                                shared_ptr<Transform> light_b_transform = light_b->GetTransform();
+                                float distance_a = (camera_transform->GetPosition() - light_a_transform->GetPosition()).LengthSquared();
+                                float distance_b = (camera_transform->GetPosition() - light_b_transform->GetPosition()).LengthSquared();
+                                return distance_a < distance_b;
                             });
-                        int32_t nIndex = 0;
-                        for (auto Light : lightCandidates)
+
                         {
-                            if (nIndex >= Renderer::GetMaxSSS())
+                            int32_t index = 0;
+                            for (shared_ptr<Light> light : light_candidates)
                             {
-                                break;
+                                if (index >= Renderer::GetMaxSSS())
+                                {
+                                    break;
+                                }
+                                map_light_index[light] = index++;
                             }
-                            mapLightIndex[Light] = nIndex++;
                         }
 
-                        for (auto pair : mapLightIndex)
+                        for (auto[light, index]: map_light_index)
                         {
                             if(screenspaceshadow_mode == Renderer_ScreenspaceShadow::Bend)
                             {
-                                Pass_Bend_Sss(cmd_list, pair.first, pair.second);
+                                Pass_Bend_Sss(cmd_list, light, index);
                             }
                             else
                             {
-                                Pass_Sss(cmd_list, pair.first, pair.second);
+                                Pass_Sss(cmd_list, light, index);
                             }
                         }
                     }
 
-                    Pass_Light(cmd_list, is_transparent_pass, mapLightIndex);                  // compute diffuse and specular buffers
+                    Pass_Light(cmd_list, is_transparent_pass, map_light_index);                  // compute diffuse and specular buffers
                     Pass_Light_Composition(cmd_list, rt1, is_transparent_pass); // compose diffuse, specular, ssgi, volumetric etc.
                     Pass_Light_ImageBased(cmd_list, rt1, is_transparent_pass);  // apply IBL and SSR
                 }
@@ -207,7 +210,7 @@ namespace Spartan
                     bool is_transparent_pass = true;
 
                     Pass_GBuffer(cmd_list, is_transparent_pass);
-                    Pass_Light(cmd_list, is_transparent_pass, mapLightIndex);
+                    Pass_Light(cmd_list, is_transparent_pass, map_light_index);
                     Pass_Light_Composition(cmd_list, rt1, is_transparent_pass);
                     Pass_Light_ImageBased(cmd_list, rt1, is_transparent_pass);
                 }
@@ -835,7 +838,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Bend_Sss(RHI_CommandList* cmd_list, std::shared_ptr<Light> light, int ArraySliceIndex)
+    void Renderer::Pass_Bend_Sss(RHI_CommandList* cmd_list, std::shared_ptr<Light> light, uint32_t array_slice_index)
     {
         if (!GetOption<bool>(Renderer_Option::ScreenSpaceShadows))
             return;
@@ -867,7 +870,7 @@ namespace Spartan
             Vector4 p = {};
             if (light->GetLightType() == LightType::Directional)
             {
-                // WHY flip sign
+                // TODO: Why do we need to flip sign?
                 p = Vector4(-light->GetTransform()->GetForward().Normalized(), 0.0f) * VP;
             }
             else
@@ -875,26 +878,26 @@ namespace Spartan
                 p = Vector4(light->GetTransform()->GetPosition(), 1.0f) * VP;
             }
 
-            float inLightProjection[] = { p.x, p.y, p.z, p.w };
-            int inViewportSize[] = { static_cast<int>(tex_sss->GetWidth()), static_cast<int>(tex_sss->GetHeight()) };
-            int inMinRenderBounds[] = { 0, 0 };
-            int inMaxRenderBounds[] = { static_cast<int>(tex_sss->GetWidth()), static_cast<int>(tex_sss->GetHeight()) };
-            Bend::DispatchList dispatchList =
-                Bend::BuildDispatchList(inLightProjection, inViewportSize, inMinRenderBounds, inMaxRenderBounds, false);
+            float in_light_projection[] = { p.x, p.y, p.z, p.w };
+            int32_t in_viewport_size[] = { static_cast<int32_t>(tex_sss->GetWidth()), static_cast<int32_t>(tex_sss->GetHeight()) };
+            int32_t in_min_render_bounds[] = { 0, 0 };
+            int32_t in_max_render_bounds[] = { static_cast<int32_t>(tex_sss->GetWidth()), static_cast<int32_t>(tex_sss->GetHeight()) };
+            Bend::DispatchList dispatch_list =
+                Bend::BuildDispatchList(in_light_projection, in_viewport_size, in_min_render_bounds, in_max_render_bounds, false);
             m_cb_pass_cpu.set_f4_value
             (
-                dispatchList.LightCoordinate_Shader[0],
-                dispatchList.LightCoordinate_Shader[1],
-                dispatchList.LightCoordinate_Shader[2],
-                dispatchList.LightCoordinate_Shader[3]
+                dispatch_list.LightCoordinate_Shader[0],
+                dispatch_list.LightCoordinate_Shader[1],
+                dispatch_list.LightCoordinate_Shader[2],
+                dispatch_list.LightCoordinate_Shader[3]
             );
 
-            m_cb_pass_cpu.set_f3_value(near, far, (float)ArraySliceIndex);
+            m_cb_pass_cpu.set_f3_value(near, far, (float)array_slice_index);
             m_cb_pass_cpu.set_f3_value2(1.0f / tex_sss->GetWidth(), 1.0f / tex_sss->GetHeight(), 0.0f);
 
-            for (int iDispatch = 0; iDispatch < dispatchList.DispatchCount; ++iDispatch)
+            for (int32_t iDispatch = 0; iDispatch < dispatch_list.DispatchCount; ++iDispatch)
             {
-                const Bend::DispatchData& dispatch = dispatchList.Dispatch[iDispatch];
+                const Bend::DispatchData& dispatch = dispatch_list.Dispatch[iDispatch];
                 m_cb_pass_cpu.set_resolution_in({ dispatch.WaveOffset_Shader[0], dispatch.WaveOffset_Shader[1] });
                 PushPassConstants(cmd_list);
                 cmd_list->Dispatch(dispatch.WaveCount[0], dispatch.WaveCount[1], dispatch.WaveCount[2]);
@@ -903,7 +906,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Sss(RHI_CommandList* cmd_list, std::shared_ptr<Light> light, int ArraySliceIndex)
+    void Renderer::Pass_Sss(RHI_CommandList* cmd_list, std::shared_ptr<Light> light, uint32_t array_slice_index)
     {
         if (!GetOption<bool>(Renderer_Option::ScreenSpaceShadows))
             return;
@@ -928,7 +931,7 @@ namespace Spartan
             // update light buffer
             UpdateConstantBufferLight(cmd_list, light);
 
-            m_cb_pass_cpu.set_f3_value(0, 0, (float)ArraySliceIndex);
+            m_cb_pass_cpu.set_f3_value(0, 0, (float)array_slice_index);
             PushPassConstants(cmd_list);
 
             // set textures
@@ -941,7 +944,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass, const std::unordered_map<std::shared_ptr<Light>, int32_t>& mapLightIndex)
+    void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass, const std::unordered_map<std::shared_ptr<Light>, int32_t>& map_light_index)
     {
         // acquire shaders
         RHI_Shader* shader_c = GetShader(Renderer_Shader::light_c).get();
@@ -1005,13 +1008,13 @@ namespace Spartan
                         cmd_list->SetTexture(Renderer_BindingsSrv::light_spot_color, tex_color);
                     }
 
-                    auto it = mapLightIndex.find(light);
-                    uint32_t ArraySliceIndex = -1.0f;
-                    if (it != mapLightIndex.end())
+                    auto it = map_light_index.find(light);
+                    uint32_t array_slice_index = -1.0f;
+                    if (it != map_light_index.end())
                     {
-                        ArraySliceIndex = it->second;
+                        array_slice_index = it->second;
                     }
-                    m_cb_pass_cpu.set_f3_value2((float)ArraySliceIndex, 0.0f, 0.0f);
+                    m_cb_pass_cpu.set_f3_value2((float)array_slice_index, 0.0f, 0.0f);
                     cmd_list->SetTexture(Renderer_BindingsSrv::sss, GetRenderTarget(Renderer_RenderTexture::sss));
                 }
                 

@@ -35,7 +35,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     light.Build(surface);
 
     float shadow = ScreenSpaceShadows(surface, light);
-    int ArraySliceIndex = pass_get_f3_value().z;
+    int array_slice_index = pass_get_f3_value().z;
 
-    tex_uav4[int3(thread_id.xy, ArraySliceIndex)] = shadow;
+    tex_uav4[int3(thread_id.xy, array_slice_index)] = shadow;
 }

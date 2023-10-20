@@ -47,20 +47,20 @@ void mainCS
     Light light;
     light.Build(surface);
 
-	DispatchParameters inParameters;
-	inParameters.SetDefaults();
-	inParameters.LightCoordinate = pass_get_f4_value();				// Values stored in DispatchList::LightCoordinate_Shader by BuildDispatchList()
-	inParameters.WaveOffset = pass_get_resolution_in();					// Values stored in DispatchData::WaveOffset_Shader by BuildDispatchList()
-	inParameters.NearDepthValue = pass_get_f3_value().x;				// Set to the Depth Buffer Value for the near clip plane, as determined by renderer projection matrix setup (typically 1).
-	inParameters.FarDepthValue = pass_get_f3_value().y;				// Set to the Depth Buffer Value for the far clip plane, as determined by renderer projection matrix setup (typically 0).
-    inParameters.ArraySliceIndex = pass_get_f3_value().z;
-	inParameters.InvDepthTextureSize = pass_get_f3_value2().xy;			// Inverse of the texture dimensions for 'DepthTexture' (used to convert from pixel coordinates to UVs)
-	inParameters.DepthTexture = tex;	
-	inParameters.OutputTexture = tex_uav4;	
-	inParameters.PointBorderSampler = samplers[sampler_point_wrap];	// A point sampler, with Wrap Mode set to Clamp-To-Border-Color (D3D12_TEXTURE_ADDRESS_MODE_BORDER), and Border Color set to "FarDepthValue" (typically zero), or some other far-depth value out of DepthBounds.
-	inParameters.DebugOutputEdgeMask = false;			// Use this to visualize edges, for tuning the 'BilinearThreshold' value.
-	inParameters.DebugOutputThreadIndex = false;		// Debug output to visualize layout of compute threads
-	inParameters.DebugOutputWaveIndex = false;			// Debug output to visualize layout of compute wavefronts, useful to sanity check the Light Coordinate is being computed correctly.
+	DispatchParameters in_parameters;
+	in_parameters.SetDefaults();
+	in_parameters.LightCoordinate = pass_get_f4_value();				// Values stored in DispatchList::LightCoordinate_Shader by BuildDispatchList()
+	in_parameters.WaveOffset = pass_get_resolution_in();					// Values stored in DispatchData::WaveOffset_Shader by BuildDispatchList()
+	in_parameters.NearDepthValue = pass_get_f3_value().x;				// Set to the Depth Buffer Value for the near clip plane, as determined by renderer projection matrix setup (typically 1).
+	in_parameters.FarDepthValue = pass_get_f3_value().y;				// Set to the Depth Buffer Value for the far clip plane, as determined by renderer projection matrix setup (typically 0).
+    in_parameters.ArraySliceIndex = pass_get_f3_value().z;
+	in_parameters.InvDepthTextureSize = pass_get_f3_value2().xy;			// Inverse of the texture dimensions for 'DepthTexture' (used to convert from pixel coordinates to UVs)
+	in_parameters.DepthTexture = tex;	
+	in_parameters.OutputTexture = tex_uav4;	
+	in_parameters.PointBorderSampler = samplers[sampler_point_wrap];	// A point sampler, with Wrap Mode set to Clamp-To-Border-Color (D3D12_TEXTURE_ADDRESS_MODE_BORDER), and Border Color set to "FarDepthValue" (typically zero), or some other far-depth value out of DepthBounds.
+	in_parameters.DebugOutputEdgeMask = false;			// Use this to visualize edges, for tuning the 'BilinearThreshold' value.
+	in_parameters.DebugOutputThreadIndex = false;		// Debug output to visualize layout of compute threads
+	in_parameters.DebugOutputWaveIndex = false;			// Debug output to visualize layout of compute wavefronts, useful to sanity check the Light Coordinate is being computed correctly.
 
-	WriteScreenSpaceShadow(inParameters, Gid, GTid.x);
+	WriteScreenSpaceShadow(in_parameters, Gid, GTid.x);
 }
