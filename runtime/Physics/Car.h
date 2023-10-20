@@ -39,6 +39,36 @@ namespace Spartan
         Stationary
     };
 
+    struct CarParameters
+    {
+        // engine
+        float engine_torque                 = 0.0f;
+        float engine_rpm                    = 0.0f;
+
+        // aerodynamics
+        float aerodynamics_downforce        = 0.0f;
+        float aerodynamics_drag             = 0.0f;
+
+        // gearbox
+        int32_t gear                        = 0;
+        bool is_shifting                    = false;
+        float last_shift_time               = 0.0f;
+        float gear_ratio                    = 0.0f;
+
+        // brakes
+        float break_force                   = 0.0f;
+        bool break_until_opposite_torque    = false;
+
+        // misc
+        float steering_angle                = 0.0f;
+        float throttle                      = 0.0f;
+        CarMovementState movement_direction = CarMovementState::Stationary;
+        btRaycastVehicle* vehicle           = nullptr;
+        btRigidBody* body                   = nullptr;
+        Transform* transform_steering_wheel = nullptr;
+        std::vector<Transform*> transform_wheels;
+    };
+
     class SP_CLASS Car
     {
     public:
@@ -51,7 +81,7 @@ namespace Spartan
 
         // transforms
         void SetWheelTransform(Transform* transform, uint32_t wheel_index);
-        void SetSteeringWheelTransform(Transform* transform) { m_vehicle_steering_wheel_transform = transform; }
+        void SetSteeringWheelTransform(Transform* transform) { m_parameters.transform_steering_wheel = transform; }
 
         // speed
         float GetSpeedKilometersPerHour() const;
@@ -62,23 +92,6 @@ namespace Spartan
         void ApplyForces();
         void UpdateTransforms();
 
-        float m_engine_torque                         = 0.0f;
-        float m_engine_rpm                            = 0.0f;
-        float m_aerodynamics_drag                     = 0.0f;
-        float m_aerodynamics_drg                      = 0.0f;
-        float m_steering_angle                        = 0.0f;
-        float m_break_force                           = 0.0f;
-        float m_throttle                              = 0.0f;
-        int32_t m_gear                                = 0;
-        float m_last_shift_time                       = 0.0f;
-        bool m_break_until_opposite_torque            = false;
-        bool m_is_shifting                            = false;
-        float m_gear_ratio                            = 0.0f;
-        CarMovementState m_movement_direction         = CarMovementState::Stationary;
-        btRaycastVehicle* m_vehicle                   = nullptr;
-        Transform* m_vehicle_steering_wheel_transform = nullptr;
-        btRigidBody* m_vehicle_chassis                = nullptr;
-        std::vector<Transform*> m_vehicle_wheel_transforms;
-        std::vector<float> m_wheel_angular_velocities;
+        CarParameters m_parameters;
     };
 }

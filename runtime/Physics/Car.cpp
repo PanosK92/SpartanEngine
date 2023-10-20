@@ -366,75 +366,75 @@ namespace Spartan
             return torque;
         }
 
-        void compute_gear_and_gear_ratio(float& engine_rpm, int32_t& current_gear, float& gear_ratio, float& last_shift_time, bool& is_shifting, float throttle_input)
+        void compute_gear_and_gear_ratio(CarParameters& parameters)
         {
             float delta_time_seconds = static_cast<float>(Timer::GetDeltaTimeSec());
 
-            if (!is_shifting)
+            if (!parameters.is_shifting)
             {
                 // compute the current gear based on the throttle input
-                if (throttle_input < 0.0f)
+                if (parameters.throttle < 0.0f)
                 {
-                    current_gear = -1; // set reverse gear
+                    parameters.gear = -1; // set reverse gear
                 }
-                else if (throttle_input > 0.0f)
+                else if (parameters.throttle > 0.0f)
                 {
-                    if (current_gear <= 0) // if in neutral or reverse, start from first gear
+                    if (parameters.gear <= 0) // if in neutral or reverse, start from first gear
                     {
-                        current_gear = 1;
+                        parameters.gear = 1;
                     }
                 }
 
                 // compute the gear ratio based on current gear
-                gear_ratio = current_gear == -1 ?
+                parameters.gear_ratio = parameters.gear == -1 ?
                     (tuning::gearbox_ratio_reverse            * tuning::gearbox_final_drive) :
-                    (tuning::gearbox_ratios[current_gear - 1] * tuning::gearbox_final_drive);
+                    (tuning::gearbox_ratios[parameters.gear - 1] * tuning::gearbox_final_drive);
 
                 // handle gear shifting based on engine RPM
-                if (engine_rpm > tuning::gearbox_rpm_upshift && current_gear < (sizeof(tuning::gearbox_ratios) / sizeof(tuning::gearbox_ratios[0])))
+                if (parameters.engine_rpm > tuning::gearbox_rpm_upshift && parameters.gear < (sizeof(tuning::gearbox_ratios) / sizeof(tuning::gearbox_ratios[0])))
                 {
-                    int32_t old_gear = current_gear;
-                    current_gear++;
-                    last_shift_time += delta_time_seconds;
-                    is_shifting      = true;
+                    int32_t old_gear = parameters.gear;
+                    parameters.gear++;
+                    parameters.last_shift_time += delta_time_seconds;
+                    parameters.is_shifting      = true;
                 }
-                else if (engine_rpm < tuning::gearbox_rpm_downshift && current_gear > 1)
+                else if (parameters.engine_rpm < tuning::gearbox_rpm_downshift && parameters.gear > 1)
                 {
-                    int32_t old_gear = current_gear;
-                    current_gear--;
-                    last_shift_time += delta_time_seconds;
-                    is_shifting      = true;
+                    int32_t old_gear = parameters.gear;
+                    parameters.gear--;
+                    parameters.last_shift_time += delta_time_seconds;
+                    parameters.is_shifting      = true;
                 }
             }
             else // reset is_shifting flag after the delay
             {
-                last_shift_time -= delta_time_seconds;
-                if (last_shift_time <= 0.0f)
+                parameters.last_shift_time -= delta_time_seconds;
+                if (parameters.last_shift_time <= 0.0f)
                 {
-                    is_shifting     = false;
-                    last_shift_time = 0.0f; 
+                    parameters.is_shifting     = false;
+                    parameters.last_shift_time = 0.0f; 
                 }
             }
         }
 
-        float compute_torque(float& engine_rpm, int32_t& current_gear, float& last_shift_time, bool& is_shifting, float& gear_ratio, float throttle_input, btRaycastVehicle* vehicle)
+        float compute_torque(CarParameters& parameters)
         {
-            compute_gear_and_gear_ratio(engine_rpm, current_gear, gear_ratio, last_shift_time, is_shifting, throttle_input);
+            compute_gear_and_gear_ratio(parameters);
 
             // compute engine rpm
             {
-                btWheelInfo* wheel_info       = &vehicle->getWheelInfo(0);
+                btWheelInfo* wheel_info       = &parameters.vehicle->getWheelInfo(0);
                 float wheel_angular_velocity  = wheel_info->m_deltaRotation / static_cast<float>(Timer::GetDeltaTimeSec());
                 float wheel_rpm               = (wheel_angular_velocity * 60.0f) / (2.0f * Math::Helper::PI);
-                float target_rpm              = tuning::engine_idle_rpm + wheel_rpm * gear_ratio * tuning::gearbox_final_drive;
-                target_rpm                   *= Math::Helper::Abs<float>(throttle_input);
+                float target_rpm              = tuning::engine_idle_rpm + wheel_rpm * parameters.gear_ratio * tuning::gearbox_final_drive;
+                target_rpm                   *= Math::Helper::Abs<float>(parameters.throttle);
                 target_rpm                    = Math::Helper::Clamp(target_rpm, tuning::engine_idle_rpm, tuning::engine_max_rpm);
 
                 const float rev_up_down_speed = 0.1f;
-                engine_rpm = lerp(engine_rpm, target_rpm, rev_up_down_speed);
+                parameters.engine_rpm = lerp(parameters.engine_rpm, target_rpm, rev_up_down_speed);
             }
 
-            float torque = torque_curve(engine_rpm);
+            float torque = torque_curve(parameters.engine_rpm);
 
             return torque * tuning::transmission_efficiency * 15.0f;
         }
@@ -503,20 +503,20 @@ namespace Spartan
             Renderer::DrawString(wheel_to_string(vehicle, tuning::wheel_rr), Vector2(1.8f, 0.005f));
         }
 
-        void draw_info_general(const float speed, const float torque, const float rpm, const int32_t gear, const float aerodynamics_downforce, const float aerodynamics_drag, const float brake_force)
+        void draw_info_general(CarParameters& parameters, const float speed)
         {
             // setup ostringstream
             oss.str("");
             oss.clear();
             oss << fixed << setprecision(2);
 
-            oss << "Speed: "     << Math::Helper::Abs<float>(speed) << " Km/h\n"; // meters per second
-            oss << "Torque: "    << torque                          << " N·m\n";  // Newton meters
-            oss << "RPM: "       << rpm                             << " rpm\n";  // revolutions per minute, not an SI unit, but commonly used
-            oss << "Gear: "      << gear                            << "\n";      // gear has no unit
-            oss << "Downforce: " << aerodynamics_downforce          << " N\n";    // newtons
-            oss << "Drag: "      << aerodynamics_drag               << " N\n";    // newtons
-            oss << "Break: "     << brake_force                     << " N\n";    // newtons
+            oss << "Speed: "     << Math::Helper::Abs<float>(speed)   << " Km/h\n"; // meters per second
+            oss << "Torque: "    << parameters.engine_torque          << " N·m\n";  // Newton meters
+            oss << "RPM: "       << parameters.engine_rpm             << " rpm\n";  // revolutions per minute, not an SI unit, but commonly used
+            oss << "Gear: "      << parameters.gear                   << "\n";      // gear has no unit
+            oss << "Downforce: " << parameters.aerodynamics_downforce << " N\n";    // newtons
+            oss << "Drag: "      << parameters.aerodynamics_drag      << " N\n";    // newtons
+            oss << "Break: "     << parameters.break_force            << " N\n";    // newtons
 
             Renderer::DrawString(oss.str(), Vector2(0.35f, 0.005f));
         }
@@ -524,16 +524,16 @@ namespace Spartan
 
     void Car::Create(btRigidBody* chassis)
     {
-        m_vehicle_chassis = chassis;
+        m_parameters.body = chassis;
 
         // vehicle
         btRaycastVehicle::btVehicleTuning vehicle_tuning;
         {
-            if (m_vehicle != nullptr)
+            if (m_parameters.vehicle != nullptr)
             {
-                Physics::RemoveBody(m_vehicle);
-                delete m_vehicle;
-                m_vehicle = nullptr;
+                Physics::RemoveBody(m_parameters.vehicle);
+                delete m_parameters.vehicle;
+                m_parameters.vehicle = nullptr;
             }
 
             vehicle_tuning.m_suspensionStiffness   = tuning::suspension_stiffness;
@@ -544,12 +544,12 @@ namespace Spartan
             vehicle_tuning.m_frictionSlip          = tuning::tire_friction;
 
             btVehicleRaycaster* vehicle_ray_caster = new btDefaultVehicleRaycaster(static_cast<btDynamicsWorld*>(Physics::GetWorld()));
-            m_vehicle = new btRaycastVehicle(vehicle_tuning, m_vehicle_chassis, vehicle_ray_caster);
+            m_parameters.vehicle = new btRaycastVehicle(vehicle_tuning, m_parameters.body, vehicle_ray_caster);
 
             // this is crucial to get right
-            m_vehicle->setCoordinateSystem(0, 1, 2); // X is right, Y is up, Z is forward
+            m_parameters.vehicle->setCoordinateSystem(0, 1, 2); // X is right, Y is up, Z is forward
 
-            Physics::AddBody(m_vehicle);
+            Physics::AddBody(m_parameters.vehicle);
         }
 
         // wheels
@@ -576,7 +576,7 @@ namespace Spartan
                 {
                     bool is_front_wheel = i < 2;
 
-                    m_vehicle->addWheel
+                    m_parameters.vehicle->addWheel
                     (
                         wheel_positions[i],
                         direction_suspension,
@@ -593,21 +593,21 @@ namespace Spartan
 
     void Car::Tick()
     {
-        if (!m_vehicle)
+        if (!m_parameters.vehicle)
             return;
 
         // compute movement state
         if (GetSpeedMetersPerSecond() > 0.1f)
         {
-            m_movement_direction = CarMovementState::Forward;
+            m_parameters.movement_direction = CarMovementState::Forward;
         }
         else if (GetSpeedMetersPerSecond() < -0.1f)
         {
-            m_movement_direction = CarMovementState::Backward;
+            m_parameters.movement_direction = CarMovementState::Backward;
         }
         else
         {
-            m_movement_direction = CarMovementState::Stationary;
+            m_parameters.movement_direction = CarMovementState::Stationary;
         }
 
         HandleInput();
@@ -616,23 +616,23 @@ namespace Spartan
 
         if (debug::enabled)
         {
-            debug::draw_info_wheel(m_vehicle);
+            debug::draw_info_wheel(m_parameters.vehicle);
         }
     }
 
     void Car::SetWheelTransform(Transform* transform, uint32_t wheel_index)
     {
-        if (wheel_index >= m_vehicle_wheel_transforms.size())
+        if (wheel_index >= m_parameters.transform_wheels.size())
         {
-            m_vehicle_wheel_transforms.resize(wheel_index + 1);
+            m_parameters.transform_wheels.resize(wheel_index + 1);
         }
 
-        m_vehicle_wheel_transforms[wheel_index] = transform;
+        m_parameters.transform_wheels[wheel_index] = transform;
     }
 
     float Car::GetSpeedKilometersPerHour() const
     {
-        return m_vehicle->getCurrentSpeedKmHour();
+        return m_parameters.vehicle->getCurrentSpeedKmHour();
     }
 
     float Car::GetSpeedMetersPerSecond() const
@@ -649,38 +649,38 @@ namespace Spartan
             // determine when to stop breaking
             if (Math::Helper::Abs<float>(GetSpeedMetersPerSecond()) < 0.1f)
             {
-                m_break_until_opposite_torque = false;
+                m_parameters.break_until_opposite_torque = false;
             }
 
             if (Input::GetKey(KeyCode::Arrow_Up) || Input::GetControllerTriggerRight() != 0.0f)
             {
-                if (m_movement_direction == CarMovementState::Backward)
+                if (m_parameters.movement_direction == CarMovementState::Backward)
                 {
-                    m_break_until_opposite_torque = true;
+                    m_parameters.break_until_opposite_torque = true;
                 }
                 else
                 {
-                    m_throttle = 1.0f;
+                    m_parameters.throttle = 1.0f;
                 }
             }
             else if (Input::GetKey(KeyCode::Arrow_Down) || Input::GetControllerTriggerLeft() != 0.0f)
             {
-                if (m_movement_direction == CarMovementState::Forward)
+                if (m_parameters.movement_direction == CarMovementState::Forward)
                 {
-                    m_break_until_opposite_torque = true;
+                    m_parameters.break_until_opposite_torque = true;
                 }
                 else
                 {
-                    m_throttle = -1.0f;
+                    m_parameters.throttle = -1.0f;
                 }
             }
             else
             {
-                m_break_until_opposite_torque = false;
-                m_throttle                    = 0.0f;
+                m_parameters.break_until_opposite_torque = false;
+                m_parameters.throttle                    = 0.0f;
             }
 
-            m_engine_torque = gearbox::compute_torque(m_engine_rpm, m_gear, m_last_shift_time, m_is_shifting, m_gear_ratio, m_throttle, m_vehicle);
+            m_parameters.engine_torque = gearbox::compute_torque(m_parameters);
         }
 
         // steer the front wheels
@@ -697,11 +697,11 @@ namespace Spartan
             }
 
             // lerp to new steering angle - real life vehicles don't snap their wheels to the target angle
-            m_steering_angle = Math::Helper::Lerp<float>(m_steering_angle, steering_angle_target, tuning::steering_return_speed * delta_time_sec);
+            m_parameters.steering_angle = Math::Helper::Lerp<float>(m_parameters.steering_angle, steering_angle_target, tuning::steering_return_speed * delta_time_sec);
 
             // set the steering angle
-            m_vehicle->setSteeringValue(m_steering_angle, tuning::wheel_fl);
-            m_vehicle->setSteeringValue(m_steering_angle, tuning::wheel_fr);
+            m_parameters.vehicle->setSteeringValue(m_parameters.steering_angle, tuning::wheel_fl);
+            m_parameters.vehicle->setSteeringValue(m_parameters.steering_angle, tuning::wheel_fr);
         }
     }
 
@@ -709,97 +709,97 @@ namespace Spartan
     {
         float delta_time_sec          = static_cast<float>(Timer::GetDeltaTimeSec());
         float speed_meters_per_second = GetSpeedMetersPerSecond();
-        btVector3 velocity_vehicle    = btVector3(m_vehicle_chassis->getLinearVelocity().x(), 0.0f, m_vehicle_chassis->getLinearVelocity().z());
+        btVector3 velocity_vehicle    = btVector3(m_parameters.body->getLinearVelocity().x(), 0.0f, m_parameters.body->getLinearVelocity().z());
 
         // engine torque (front-wheel drive)
         {
-            float torque_sign = m_throttle >= 0.0f ? -1.0f : 1.0f;
-            float torque      = m_throttle ? (m_engine_torque * torque_sign) : 0.0f;
+            float torque_sign = m_parameters.throttle >= 0.0f ? -1.0f : 1.0f;
+            float torque      = m_parameters.throttle ? (m_parameters.engine_torque * torque_sign) : 0.0f;
 
-            m_vehicle->applyEngineForce(torque, tuning::wheel_fl);
-            m_vehicle->applyEngineForce(torque, tuning::wheel_fr);
+            m_parameters.vehicle->applyEngineForce(torque, tuning::wheel_fl);
+            m_parameters.vehicle->applyEngineForce(torque, tuning::wheel_fr);
         }
 
         // tire friction model
-        for (uint32_t i = 0; i < static_cast<uint32_t>(m_vehicle->getNumWheels()); i++)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_parameters.vehicle->getNumWheels()); i++)
         {
-            btWheelInfo* wheel_info = &m_vehicle->getWheelInfo(i);
+            btWheelInfo* wheel_info = &m_parameters.vehicle->getWheelInfo(i);
 
             if (wheel_info->m_raycastInfo.m_isInContact)
             {
-                btVector3 velocity_wheel = bullet_interface::compute_wheel_velocity(wheel_info, m_vehicle_chassis);
+                btVector3 velocity_wheel = bullet_interface::compute_wheel_velocity(wheel_info, m_parameters.body);
 
                 btVector3 force;
                 btVector3 force_position;
                 tire_friction_model::compute_tire_force(wheel_info, velocity_wheel, velocity_vehicle, &force, &force_position);
 
-                m_vehicle_chassis->applyForce(force, force_position);
+                m_parameters.body->applyForce(force, force_position);
             }
         }
 
         // anti-roll bar
-        anti_roll_bar::apply(m_vehicle, m_vehicle_chassis, tuning::wheel_fl, tuning::wheel_fr, tuning::anti_roll_bar_stiffness_front);
-        anti_roll_bar::apply(m_vehicle, m_vehicle_chassis, tuning::wheel_rl, tuning::wheel_rr, tuning::anti_roll_bar_stiffness_rear);
+        anti_roll_bar::apply(m_parameters.vehicle, m_parameters.body, tuning::wheel_fl, tuning::wheel_fr, tuning::anti_roll_bar_stiffness_front);
+        anti_roll_bar::apply(m_parameters.vehicle, m_parameters.body, tuning::wheel_rl, tuning::wheel_rr, tuning::anti_roll_bar_stiffness_rear);
 
         // aerodynamics
         {
-            m_aerodynamics_drag = aerodynamics::compute_downforce(speed_meters_per_second);
-            m_aerodynamics_drg  = aerodynamics::compute_drag(speed_meters_per_second);
+            m_parameters.aerodynamics_downforce = aerodynamics::compute_downforce(speed_meters_per_second);
+            m_parameters.aerodynamics_drag      = aerodynamics::compute_drag(speed_meters_per_second);
 
             // transform the forces into bullet's right-handed coordinate system
-            btMatrix3x3 orientation    = m_vehicle_chassis->getWorldTransform().getBasis();
-            btVector3 downforce_bullet = orientation * btVector3(0, -m_aerodynamics_drag, 0);
-            btVector3 drag_bullet      = orientation * btVector3(0, 0, -m_aerodynamics_drg);
+            btMatrix3x3 orientation    = m_parameters.body->getWorldTransform().getBasis();
+            btVector3 downforce_bullet = orientation * btVector3(0, -m_parameters.aerodynamics_downforce, 0);
+            btVector3 drag_bullet      = orientation * btVector3(0, 0, -m_parameters.aerodynamics_drag);
 
             // apply the transformed forces
-            m_vehicle_chassis->applyCentralForce(downforce_bullet);
-            m_vehicle_chassis->applyCentralForce(drag_bullet);
+            m_parameters.body->applyCentralForce(downforce_bullet);
+            m_parameters.body->applyCentralForce(drag_bullet);
         }
 
         // breaking
         {
             float breaking = Input::GetKey(KeyCode::Space) ? 1.0f : 0.0f;
-            breaking       = m_break_until_opposite_torque ? 1.0f : breaking;
+            breaking       = m_parameters.break_until_opposite_torque ? 1.0f : breaking;
 
             if (breaking > 0.0f)
             {
-                m_break_force = Math::Helper::Min<float>(m_break_force + tuning::brake_ramp_speed * delta_time_sec * breaking, tuning::brake_force_max);
+                m_parameters.break_force = Math::Helper::Min<float>(m_parameters.break_force + tuning::brake_ramp_speed * delta_time_sec * breaking, tuning::brake_force_max);
             }
             else
             {
-                m_break_force = Math::Helper::Max<float>(m_break_force - tuning::brake_ramp_speed * delta_time_sec, 0.0f);
+                m_parameters.break_force = Math::Helper::Max<float>(m_parameters.break_force - tuning::brake_ramp_speed * delta_time_sec, 0.0f);
             }
 
-            float bullet_brake_force = bullet_interface::adjust_break_force(m_break_force);
-            m_vehicle->setBrake(bullet_brake_force, tuning::wheel_fl);
-            m_vehicle->setBrake(bullet_brake_force, tuning::wheel_fr);
-            m_vehicle->setBrake(bullet_brake_force, tuning::wheel_rl);
-            m_vehicle->setBrake(bullet_brake_force, tuning::wheel_rr);
+            float bullet_brake_force = bullet_interface::adjust_break_force(m_parameters.break_force);
+            m_parameters.vehicle->setBrake(bullet_brake_force, tuning::wheel_fl);
+            m_parameters.vehicle->setBrake(bullet_brake_force, tuning::wheel_fr);
+            m_parameters.vehicle->setBrake(bullet_brake_force, tuning::wheel_rl);
+            m_parameters.vehicle->setBrake(bullet_brake_force, tuning::wheel_rr);
 
         }
 
         if (debug::enabled)
         {
-            debug::draw_info_general(GetSpeedKilometersPerHour(), m_engine_torque, m_engine_rpm, m_gear, m_aerodynamics_drag, m_aerodynamics_drg, m_break_force);
+            debug::draw_info_general(m_parameters, GetSpeedKilometersPerHour());
         }
     }
 
     void Car::UpdateTransforms()
     {
         // steering wheel
-        if (m_vehicle_steering_wheel_transform)
+        if (m_parameters.transform_steering_wheel)
         {
-            m_vehicle_steering_wheel_transform->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 0.0f, -m_steering_angle * Math::Helper::RAD_TO_DEG));
+            m_parameters.transform_steering_wheel->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 0.0f, -m_parameters.steering_angle * Math::Helper::RAD_TO_DEG));
         }
 
         // wheels
-        for (uint32_t wheel_index = 0; wheel_index < static_cast<uint32_t>(m_vehicle_wheel_transforms.size()); wheel_index++)
+        for (uint32_t wheel_index = 0; wheel_index < static_cast<uint32_t>(m_parameters.transform_wheels.size()); wheel_index++)
         {
-            if (Transform* transform = m_vehicle_wheel_transforms[wheel_index])
+            if (Transform* transform = m_parameters.transform_wheels[wheel_index])
             {
                 // update and get the wheel transform from bullet
-                m_vehicle->updateWheelTransform(wheel_index, true);
-                btTransform& transform_bt = m_vehicle->getWheelInfo(wheel_index).m_worldTransform;
+                m_parameters.vehicle->updateWheelTransform(wheel_index, true);
+                btTransform& transform_bt = m_parameters.vehicle->getWheelInfo(wheel_index).m_worldTransform;
 
                 // set the bullet transform to the wheel transform
                 transform->SetPosition(ToVector3(transform_bt.getOrigin()));
@@ -808,7 +808,7 @@ namespace Spartan
                 // rotation order since it's using a right-handed coordinate system, hence a simple quaternion conversion won't work
                 float x, y, z;
                 transform_bt.getRotation().getEulerZYX(x, y, z);
-                float steering_angle_rad = m_vehicle->getSteeringValue(wheel_index);
+                float steering_angle_rad = m_parameters.vehicle->getSteeringValue(wheel_index);
                 Quaternion rotation = Quaternion::FromEulerAngles(z * Math::Helper::RAD_TO_DEG, steering_angle_rad * Math::Helper::RAD_TO_DEG, 0.0f);
                 transform->SetRotationLocal(rotation);
             }
