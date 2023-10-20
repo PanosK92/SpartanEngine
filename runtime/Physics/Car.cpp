@@ -71,44 +71,42 @@ namespace Spartan
         };
 
         // gearbox
-        constexpr float gearbox_ratios[]                  = { 3.166f, 1.904f, 1.31f, 0.969f, 0.815f }; // gear ratios
-        constexpr float gearbox_ratio_reverse             = 3.25f;                                     // reverse gear ratio
-        constexpr float gearbox_final_drive               = 4.312f;                                    // final drive 
-        constexpr float gearbox_rpm_upshift               = engine_max_rpm * 0.9f;                     // 90% of max rpm for upshifting
-        constexpr float gearbox_rpm_downshift             = engine_max_rpm * 0.2f;                     // 20% of max rpm for downshifting
-        constexpr float gearbox_shift_delay               = 0.3f;                                      // gear shift delay in seconds (human and vehicle shift delay)
-        constexpr float transmission_efficiency           = 0.98f;                                     // there is some loss of torque (due to the the clutch and flywheel)
-                                                                                                       
-        // suspension                                                                                  
-        constexpr float suspension_stiffness              = 100.0f;                                    // stiffness of suspension springs in N/m
-        constexpr float suspension_damping                = 2.0f;                                      // damping coefficient to dissipate energy
-        constexpr float suspension_compression            = 1.0f;                                      // compression damping coefficient
-        constexpr float suspension_force_max              = 5000.0f;                                   // maximum force suspension can exert in newtons
-        constexpr float suspension_length                 = 0.35f;                                     // spring length
-        constexpr float suspension_rest_length            = suspension_length * 0.8f;                  // spring length at equilibrium
-        constexpr float suspension_travel_max             = suspension_length * 0.5f;                  // maximum travel of the suspension
-                                                                                                       
-        // anti-roll bar                                                                               
-        constexpr float anti_roll_bar_stiffness_front     = 500.0f;                                    // higher front stiffness reduces oversteer, lower increases it
-        constexpr float anti_roll_bar_stiffness_rear      = 300.0f;                                    // higher rear stiffness reduces understeer, lower increases it
+        constexpr float gearbox_ratios[]                        = { 3.166f, 1.904f, 1.31f, 0.969f, 0.815f }; // gear ratios
+        constexpr float gearbox_ratio_reverse                   = 3.25f;                                     // reverse gear ratio
+        constexpr float gearbox_final_drive                     = 4.312f;                                    // final drive 
+        constexpr float gearbox_rpm_upshift                     = engine_max_rpm * 0.9f;                     // 90% of max rpm for upshifting
+        constexpr float gearbox_rpm_downshift                   = engine_max_rpm * 0.2f;                     // 20% of max rpm for downshifting
+        constexpr float gearbox_shift_delay                     = 0.3f;                                      // gear shift delay in seconds (human and vehicle shift delay)
+        constexpr float transmission_efficiency                 = 0.98f;                                     // there is some loss of torque (due to the the clutch and flywheel)
+                                                                                                             
+        // suspension                                                                                        
+        constexpr float suspension_stiffness                    = 100.0f;                                    // stiffness of suspension springs in N/m
+        constexpr float suspension_damping                      = 2.0f;                                      // damping coefficient to dissipate energy
+        constexpr float suspension_compression                  = 1.0f;                                      // compression damping coefficient
+        constexpr float suspension_force_max                    = 5000.0f;                                   // maximum force suspension can exert in newtons
+        constexpr float suspension_length                       = 0.35f;                                     // spring length
+        constexpr float suspension_rest_length                  = suspension_length * 0.8f;                  // spring length at equilibrium
+        constexpr float suspension_travel_max                   = suspension_length * 0.5f;                  // maximum travel of the suspension                                                                       
+        constexpr float suspension_antiroll_bar_stiffness_front = 500.0f;                                    // higher front stiffness reduces oversteer, lower increases it
+        constexpr float suspension_antiroll_bar_stiffness_rear  = 300.0f;                                    // higher rear stiffness reduces understeer, lower increases it
                                                                                                        
         // breaks                                                                                      
-        constexpr float brake_force_max                   = 800.0f;                                    // maximum brake force applied to wheels in newtons
-        constexpr float brake_ramp_speed                  = 5000.0f;                                   // rate at which brake force increases (human pressing the brake and vehicle applying brake pads)
-                                                                                                       
-        // steering                                                                                    
-        constexpr float steering_angle_max                = 40.0f * Math::Helper::DEG_TO_RAD;          // the maximum steering angle of the front wheels
-        constexpr float steering_return_speed             = 5.0f;                                      // the speed at which the steering wheel returns to the center
-                                                                                                       
-        // aerodynamics                                                                                
-        constexpr float aerodynamics_air_density          = 1.225f;                                    // kg/m^3, air density at sea level and 15°C
-        constexpr float aerodynamics_car_drag_coefficient = 0.34f;                                     // drag coefficient
-        constexpr float aerodynamics_car_frontal_area     = 1.9f;                                      // frontal area in square meters
-        constexpr float aerodynamic_downforce             = 0.2f;                                      // the faster the vehicle, the more the tires will grip the road
+        constexpr float brake_force_max                         = 800.0f;                                    // maximum brake force applied to wheels in newtons
+        constexpr float brake_ramp_speed                        = 5000.0f;                                   // rate at which brake force increases (human pressing the brake and vehicle applying brake pads)
+                                                                                                             
+        // steering                                                                                          
+        constexpr float steering_angle_max                      = 40.0f * Math::Helper::DEG_TO_RAD;          // the maximum steering angle of the front wheels
+        constexpr float steering_return_speed                   = 5.0f;                                      // the speed at which the steering wheel returns to the center
+                                                                                                             
+        // aerodynamics                                                                                      
+        constexpr float aerodynamics_air_density                = 1.225f;                                    // kg/m^3, air density at sea level and 15°C
+        constexpr float aerodynamics_car_drag_coefficient       = 0.34f;                                     // drag coefficient
+        constexpr float aerodynamics_car_frontal_area           = 1.9f;                                      // frontal area in square meters
+        constexpr float aerodynamic_downforce                   = 0.2f;                                      // the faster the vehicle, the more the tires will grip the road
 
-        // misc                                                                                        
-        constexpr float wheel_radius                      = 0.25f;                                     // wheel radius of a typical mid-sized car - this affects the angular velocity
-        constexpr float tire_friction                     = 2.0f;                                      // bullet has a hard time simulating friction that's reliable enough for cars, so this is pretty arbitrary
+        // misc                                                                                              
+        constexpr float wheel_radius                            = 0.25f;                                     // wheel radius of a typical mid-sized car - this affects the angular velocity
+        constexpr float tire_friction                           = 2.0f;                                      // bullet has a hard time simulating friction that's reliable enough for cars, so this is pretty arbitrary
 
         // wheel indices (used for bullet physics)
         constexpr uint8_t wheel_fl = 0;
@@ -177,9 +175,9 @@ namespace Spartan
             // 0° to 90° (-90° to 0°): the wheel is starting to turn away from the direction of travel
             // 90° (-90°):             the wheel is perpendicular to the direction of the travel, maximum lateral sliding
 
-            btVector3 adjusted_velocity           = vehicle_velocity + btVector3(Math::Helper::SMALL_FLOAT, Math::Helper::SMALL_FLOAT, Math::Helper::SMALL_FLOAT);
+            btVector3 adjusted_velocity           = vehicle_velocity.fuzzyZero() ? btVector3(0.0f, 0.0f, 0.0f) : vehicle_velocity;
             btVector3 vehicle_velocity_normalized = adjusted_velocity.normalized();
-            float vehicle_dot_wheel_forward       = vehicle_velocity_normalized.dot(wheel_forward);
+            float vehicle_dot_wheel_forward       = Math::Helper::Abs<float>(vehicle_velocity_normalized.dot(wheel_forward));
             float vehicle_dot_wheel_side          = vehicle_velocity_normalized.dot(wheel_side);
             float slip_angle                      = atan2(vehicle_dot_wheel_side + Math::Helper::SMALL_FLOAT, vehicle_dot_wheel_forward + Math::Helper::SMALL_FLOAT);
 
@@ -273,7 +271,7 @@ namespace Spartan
         }
     }
 
-    namespace anti_roll_bar
+    namespace suspension
     {
         // description:
         // simulation of an anti-roll bar
@@ -281,7 +279,7 @@ namespace Spartan
         // it counters the roll of the vehicle on its longitudinal axis, improving the ride stability and handling
         // the function computes and applies the anti-roll force based on the difference in suspension compression between a pair of wheels
 
-        void apply(btRaycastVehicle* vehicle, btRigidBody* chassis, int wheel_index_1, int wheel_index_2, float force)
+        void apply_antiroll_bar(btRaycastVehicle* vehicle, btRigidBody* chassis, int wheel_index_1, int wheel_index_2, float force)
         {
             btWheelInfo& wheel_info1 = vehicle->getWheelInfo(wheel_index_1);
             btWheelInfo& wheel_info2 = vehicle->getWheelInfo(wheel_index_2);
@@ -723,8 +721,8 @@ namespace Spartan
         }
 
         // anti-roll bar
-        anti_roll_bar::apply(m_parameters.vehicle, m_parameters.body, tuning::wheel_fl, tuning::wheel_fr, tuning::anti_roll_bar_stiffness_front);
-        anti_roll_bar::apply(m_parameters.vehicle, m_parameters.body, tuning::wheel_rl, tuning::wheel_rr, tuning::anti_roll_bar_stiffness_rear);
+        suspension::apply_antiroll_bar(m_parameters.vehicle, m_parameters.body, tuning::wheel_fl, tuning::wheel_fr, tuning::suspension_antiroll_bar_stiffness_front);
+        suspension::apply_antiroll_bar(m_parameters.vehicle, m_parameters.body, tuning::wheel_rl, tuning::wheel_rr, tuning::suspension_antiroll_bar_stiffness_rear);
 
         // aerodynamics
         {
