@@ -706,8 +706,7 @@ namespace Spartan
                 vector<uint32_t> queue_family_indices =
                 {
                     queues::index_graphics,
-                    //queues::index_compute,
-                    2,
+                    queues::index_compute,
                     queues::index_copy
                 };
 

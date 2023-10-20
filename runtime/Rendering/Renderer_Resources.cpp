@@ -56,7 +56,7 @@ namespace Spartan
 
         // renderer resources
         array<shared_ptr<RHI_Texture>, 29>       m_render_targets;
-        array<shared_ptr<RHI_Shader>, Renderer::numberOfShaders>        m_shaders;
+        array<shared_ptr<RHI_Shader>, Renderer::number_shaders>        m_shaders;
         array<shared_ptr<RHI_Sampler>, 7>        m_samplers;
         array<shared_ptr<RHI_ConstantBuffer>, 3> m_constant_buffers;
         shared_ptr<RHI_StructuredBuffer>         m_structured_buffer;
@@ -580,7 +580,7 @@ namespace Spartan
         return m_render_targets;
     }
 
-    array<shared_ptr<RHI_Shader>, Renderer::numberOfShaders>& Renderer::GetShaders()
+    array<shared_ptr<RHI_Shader>, Renderer::number_shaders>& Renderer::GetShaders()
     {
         return m_shaders;
     }
