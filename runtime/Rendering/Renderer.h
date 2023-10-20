@@ -118,16 +118,10 @@ namespace Spartan
         static std::shared_ptr<Camera> GetCamera();
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
 
-<<<<<<< HEAD
-        // Get all
-        static std::array<std::shared_ptr<RHI_Texture>, 29>& GetRenderTargets();
-        static constexpr uint8_t number_shaders = 47;
-        static std::array<std::shared_ptr<RHI_Shader>, number_shaders>& GetShaders();
-=======
         // get all
-        static std::array<std::shared_ptr<RHI_Texture>, 28>& GetRenderTargets();
-        static std::array<std::shared_ptr<RHI_Shader>, 48>& GetShaders();
->>>>>>> 10bfdcf3f368129fbec948002f50877bd2caa4e2
+        static std::array<std::shared_ptr<RHI_Texture>, 29>& GetRenderTargets();
+        static constexpr uint8_t number_shaders = 50;
+        static std::array<std::shared_ptr<RHI_Shader>, number_shaders>& GetShaders();
         static std::array<std::shared_ptr<RHI_ConstantBuffer>, 3>& GetConstantBuffers();
 
         // get individual
@@ -192,13 +186,8 @@ namespace Spartan
         static void Pass_DepthOfField(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Debanding(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-<<<<<<< HEAD
-        // Passes - Lighting
+        // passes - Lighting
         static void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass, const std::unordered_map<std::shared_ptr<Light>, int32_t>& map_light_index);
-=======
-        // passes - lighting
-        static void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass);
->>>>>>> 10bfdcf3f368129fbec948002f50877bd2caa4e2
         static void Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass);
         static void Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass);
         // passes - amd fidelityfx
