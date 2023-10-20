@@ -247,7 +247,7 @@ namespace Spartan
             return D * sin(C * atan(Bx1 - E * (Bx1 - atan(Bx1)))) + V;
         }
 
-        void compute_tire_force(btWheelInfo* wheel_info, const btVector3& wheel_velocity, const btVector3& vehicle_velocity, btVector3* force, btVector3* force_position)
+        void compute_tire_force(CarParameters& parameters, btWheelInfo* wheel_info, const btVector3& wheel_velocity, const btVector3& vehicle_velocity, btVector3* force, btVector3* force_position)
         {
             // the slip ratio and slip angle have the most influence, it's crucial that their
             // computation is accurate, otherwise the tire forces will be wrong and/or erratic
@@ -262,11 +262,11 @@ namespace Spartan
             // the angle between the direction in which a wheel is pointed and the direction in which the vehicle is actually traveling
             float slip_angle      = compute_slip_angle(wheel_info, wheel_forward_dir, wheel_right_dir, vehicle_velocity);
             // the force that the tire can exert parallel to its direction of travel
-            float fz              = compute_pacejka_force(slip_ratio, normal_load);
+            parameters.pacejka_fz = compute_pacejka_force(slip_ratio, normal_load) * tuning::tire_friction;
             // the force that the tire can exert perpendicular to its direction of travel
-            float fx              = compute_pacejka_force(slip_angle, normal_load);
+            parameters.pacejka_fx = compute_pacejka_force(slip_angle, normal_load) * tuning::tire_friction;
             // compute the total force
-            btVector3 wheel_force = (fz * wheel_forward_dir) + (fx * wheel_right_dir) * tuning::tire_friction;
+            btVector3 wheel_force = (parameters.pacejka_fx * wheel_forward_dir) + (parameters.pacejka_fz * wheel_right_dir);
 
             //SP_LOG_INFO("slip ratio: %.4f (%.2f N), slip angle: %.4f (%.2f N)", slip_ratio, slip_force_forward, slip_angle, slip_force_side);
 
@@ -510,13 +510,15 @@ namespace Spartan
             oss.clear();
             oss << fixed << setprecision(2);
 
-            oss << "Speed: "     << Math::Helper::Abs<float>(speed)   << " Km/h\n"; // meters per second
-            oss << "Torque: "    << parameters.engine_torque          << " N·m\n";  // Newton meters
-            oss << "RPM: "       << parameters.engine_rpm             << " rpm\n";  // revolutions per minute, not an SI unit, but commonly used
-            oss << "Gear: "      << parameters.gear                   << "\n";      // gear has no unit
-            oss << "Downforce: " << parameters.aerodynamics_downforce << " N\n";    // newtons
-            oss << "Drag: "      << parameters.aerodynamics_drag      << " N\n";    // newtons
-            oss << "Break: "     << parameters.break_force            << " N\n";    // newtons
+            oss << "Speed: "      << Math::Helper::Abs<float>(speed)   << " Km/h\n"; // meters per second
+            oss << "Torque: "     << parameters.engine_torque          << " N·m\n";  // Newton meters
+            oss << "RPM: "        << parameters.engine_rpm             << " rpm\n";  // revolutions per minute, not an SI unit, but commonly used
+            oss << "Gear: "       << parameters.gear                   << "\n";      // gear has no unit
+            oss << "Downforce: "  << parameters.aerodynamics_downforce << " N\n";    // newtons
+            oss << "Drag: "       << parameters.aerodynamics_drag      << " N\n";    // newtons
+            oss << "Break: "      << parameters.break_force            << " N\n";    // newtons
+            oss << "Pacjkea Fz: " << parameters.pacejka_fz             << " N\n";    // newtons
+            oss << "Pacjkea Fx: " << parameters.pacejka_fx             << " N\n";    // newtons
 
             Renderer::DrawString(oss.str(), Vector2(0.35f, 0.005f));
         }
@@ -731,7 +733,7 @@ namespace Spartan
 
                 btVector3 force;
                 btVector3 force_position;
-                tire_friction_model::compute_tire_force(wheel_info, velocity_wheel, velocity_vehicle, &force, &force_position);
+                tire_friction_model::compute_tire_force(m_parameters, wheel_info, velocity_wheel, velocity_vehicle, &force, &force_position);
 
                 m_parameters.body->applyForce(force, force_position);
             }
