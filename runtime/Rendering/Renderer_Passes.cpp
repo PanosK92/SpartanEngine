@@ -163,7 +163,7 @@ namespace Spartan
                             int32_t index = 0;
                             for (shared_ptr<Light> light : light_candidates)
                             {
-                                if (index >= Renderer::GetMaxSSS())
+                                if (index >= (int32_t)Renderer::GetMaxSSS())
                                 {
                                     break;
                                 }
@@ -1009,7 +1009,7 @@ namespace Spartan
                     }
 
                     auto it = map_light_index.find(light);
-                    uint32_t array_slice_index = -1.0f;
+                    int32_t array_slice_index = -1;
                     if (it != map_light_index.end())
                     {
                         array_slice_index = it->second;
