@@ -195,7 +195,7 @@ namespace Spartan
             rigid_body->SetShapeType(PhysicsShape::Box);
         }
 
-        static void create_default_car(const Math::Vector3& position = Vector3(0.0f, 1.0f, 0.0f))
+        static void create_default_car(const Math::Vector3& position = Vector3(0.0f, 0.2f, 0.0f))
         {
             const float car_scale   = 0.009f;
             const float wheel_scale = 0.16f;
