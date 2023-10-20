@@ -31,28 +31,31 @@ namespace Spartan
     class SP_CLASS World
     {
     public:
+        // system
         static void Initialize();
         static void Shutdown();
         static void PreTick();
         static void Tick();
 
-        static void New();
+        // io
         static bool SaveToFile(const std::string& filePath);
         static bool LoadFromFile(const std::string& file_path);
+
+        // misc
+        static void New();
         static void Resolve();
         static const std::string GetName();
         static const std::string& GetFilePath();
 
-        //= DEFAULT WORLDS==================================
+        // default worlds
         static void CreateDefaultWorldCube();
         static void CreateDefaultWorldHelmets();
         static void CreateDefaultWorldCar();
-        static void CreateDefaultWorldTerrain();
+        static void CreateDefaultWorldForest();
         static void CreateDefaultWorldSponza();
         static void CreateDefaultWorldDoomE1M1();
-        //==================================================
 
-        //= ENTITIES ==================================================================
+        // entities
         static std::shared_ptr<Entity> CreateEntity();
         static bool EntityExists(Entity* entity);
         static void RemoveEntity(std::shared_ptr<Entity> entity);
@@ -60,7 +63,6 @@ namespace Spartan
         static const std::shared_ptr<Entity>& GetEntityByName(const std::string& name);
         static const std::shared_ptr<Entity>& GetEntityById(uint64_t id);
         static const std::vector<std::shared_ptr<Entity>>& GetAllEntities();
-        //=============================================================================
 
     private:
         static void Clear();

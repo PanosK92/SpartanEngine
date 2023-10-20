@@ -64,7 +64,8 @@ namespace Spartan
                 case Renderer_Option::Debug_Physics:            return "Debug_Physics";
                 case Renderer_Option::Debug_Wireframe:          return "Debug_Wireframe";
                 case Renderer_Option::Bloom:                    return "Bloom";
-                case Renderer_Option::VolumetricFog:            return "VolumetricFog";
+                case Renderer_Option::Fog:                      return "Fog";
+                case Renderer_Option::FogVolumetric:            return "FogVolumetric";
                 case Renderer_Option::Ssgi:                     return "Ssgi";
                 case Renderer_Option::ScreenSpaceShadows:       return "ScreenSpaceShadows";
                 case Renderer_Option::ScreenSpaceReflections:   return "ScreenSpaceReflections";
@@ -79,11 +80,9 @@ namespace Spartan
                 case Renderer_Option::Gamma:                    return "Gamma";
                 case Renderer_Option::Exposure:                 return "Exposure";
                 case Renderer_Option::PaperWhite:               return "PaperWhite";
-                case Renderer_Option::FogDensity:               return "FogDensity";
                 case Renderer_Option::Antialiasing:             return "Antialiasing";
                 case Renderer_Option::Tonemapping:              return "Tonemapping";
                 case Renderer_Option::Upsampling:               return "Upsampling";
-                case Renderer_Option::UpsamplingSharpness:      return "UpsamplingSharpness";
                 case Renderer_Option::Sharpness:                return "Sharpness";
                 case Renderer_Option::Hdr:                      return "Hdr";
                 case Renderer_Option::Vsync:                    return "Vsync";

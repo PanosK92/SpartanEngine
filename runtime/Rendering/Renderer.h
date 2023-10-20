@@ -28,12 +28,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector3.h"
 #include "../Math/Vector4.h"
 #include "../Math/Plane.h"
-#include <unordered_map>
 #include "Event.h"
 #include "Mesh.h"
 #include "Renderer_ConstantBuffers.h"
 #include "Font/Font.h"
 #include "Grid.h"
+#include <unordered_map>
 //===================================
 
 namespace Spartan
@@ -58,7 +58,7 @@ namespace Spartan
         static void Tick();
         static void PostTick();
 
-        // Primitive rendering (excellent for debugging)
+        // primitive rendering (useful for debugging)
         static void DrawLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& color_from = DEBUG_COLOR, const Math::Vector4& color_to = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
         static void DrawTriangle(const Math::Vector3& v0, const Math::Vector3& v1, const Math::Vector3& v2, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
         static void DrawRectangle(const Math::Rectangle& rectangle, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
@@ -67,38 +67,39 @@ namespace Spartan
         static void DrawSphere(const Math::Vector3& center, float radius, uint32_t segment_count, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
         static void DrawDirectionalArrow(const Math::Vector3& start, const Math::Vector3& end, float arrow_size, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
         static void DrawPlane(const Math::Plane& plane, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
+        static void DrawString(const std::string& text, const Math::Vector2& position_screen_percentage);
 
-        // Options
+        // options
         template<typename T>
         static T GetOption(const Renderer_Option option) { return static_cast<T>(GetOptions()[option]); }
         static void SetOption(Renderer_Option option, float value);
         static std::unordered_map<Renderer_Option, float>& GetOptions();
         static void SetOptions(const std::unordered_map<Renderer_Option, float>& options);
 
-        // Swapchain
+        // swapchain
         static RHI_SwapChain* GetSwapChain();
         static void Present();
 
-        // Mip generation
+        // mip generation
         static void AddTextureForMipGeneration(RHI_Texture* texture);
         static void Pass_GenerateMips(RHI_CommandList* cmd_list, RHI_Texture* texture);
 
-        // Misc
+        // misc
         static void SetGlobalShaderResources(RHI_CommandList* cmd_list);
         static uint64_t GetFrameNum();
         static RHI_Api_Type GetRhiApiType();
         static void Screenshot(const std::string& file_path);
 
         //= RESOLUTION/SIZE =============================================================================
-        // Viewport
+        // biewport
         static const RHI_Viewport& GetViewport();
         static void SetViewport(float width, float height);
 
-        // Resolution render
+        // resolution render
         static const Math::Vector2& GetResolutionRender();
         static void SetResolutionRender(uint32_t width, uint32_t height, bool recreate_resources = true);
 
-        // Resolution output
+        // resolution output
         static const Math::Vector2& GetResolutionOutput();
         static void SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources = true);
         //===============================================================================================
@@ -117,13 +118,19 @@ namespace Spartan
         static std::shared_ptr<Camera> GetCamera();
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
 
+<<<<<<< HEAD
         // Get all
         static std::array<std::shared_ptr<RHI_Texture>, 29>& GetRenderTargets();
         static constexpr uint8_t number_shaders = 47;
         static std::array<std::shared_ptr<RHI_Shader>, number_shaders>& GetShaders();
+=======
+        // get all
+        static std::array<std::shared_ptr<RHI_Texture>, 28>& GetRenderTargets();
+        static std::array<std::shared_ptr<RHI_Shader>, 48>& GetShaders();
+>>>>>>> 10bfdcf3f368129fbec948002f50877bd2caa4e2
         static std::array<std::shared_ptr<RHI_ConstantBuffer>, 3>& GetConstantBuffers();
 
-        // Get individual
+        // get individual
         static std::shared_ptr<RHI_RasterizerState> GetRasterizerState(const Renderer_RasterizerState type);
         static std::shared_ptr<RHI_DepthStencilState> GetDepthStencilState(const Renderer_DepthStencilState type);
         static std::shared_ptr<RHI_BlendState> GetBlendState(const Renderer_BlendState type);
@@ -134,16 +141,17 @@ namespace Spartan
         static std::shared_ptr<RHI_StructuredBuffer> GetStructuredBuffer();
         static std::shared_ptr<RHI_Texture> GetStandardTexture(const Renderer_StandardTexture type);
         static std::shared_ptr<Mesh> GetStandardMesh(const Renderer_MeshType type);
+        static std::shared_ptr<Font> GetFont();
         //=======================================================================================================
         static uint32_t GetMaxSSS() { return 4; }
     private:
-        // Constant buffers
-        static void UpdateConstantBufferFrame(RHI_CommandList* cmd_list);
+        // constant buffers
+        static void UpdateConstantBufferFrame(RHI_CommandList* cmd_list, const bool set = true);
         static void PushPassConstants(RHI_CommandList* cmd_list);
-        static void UpdateConstantBufferLight(RHI_CommandList* cmd_list, const std::shared_ptr<Light> light);
+        static void UpdateConstantBufferLight(RHI_CommandList* cmd_list, const std::shared_ptr<Light> light, const int array_index = -1);
         static void UpdateConstantBufferMaterial(RHI_CommandList* cmd_list, Material* material);
 
-        // Resource creation
+        // resource creation
         static void CreateConstantBuffers();
         static void CreateStructuredBuffers();
         static void CreateDepthStencilStates();
@@ -156,7 +164,7 @@ namespace Spartan
         static void CreateSamplers(const bool create_only_anisotropic = false);
         static void CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic);
 
-        // Passes - Core
+        // rasses - core
         static void Pass_Frame(RHI_CommandList* cmd_list);
         static void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_ReflectionProbes(RHI_CommandList* cmd_list);
@@ -168,13 +176,13 @@ namespace Spartan
         static void Pass_Sss(RHI_CommandList* cmd_list, std::shared_ptr<Light> light, uint32_t array_slice_index);
         static void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
         static void Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float radius, const float sigma, const uint32_t mip = rhi_all_mips);
-        // Passes - Debug/Editor
+        // passes - debug/editor
         static void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_DebugMeshes(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
-        static void Pass_PeformanceMetrics(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
-        // Passes - Post-Process
+        static void Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
+        // passes - post-process
         static void Pass_PostProcess(RHI_CommandList* cmd_list);
         static void Pass_ToneMappingGammaCorrection(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Fxaa(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
@@ -184,33 +192,38 @@ namespace Spartan
         static void Pass_DepthOfField(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Debanding(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
+<<<<<<< HEAD
         // Passes - Lighting
         static void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass, const std::unordered_map<std::shared_ptr<Light>, int32_t>& map_light_index);
+=======
+        // passes - lighting
+        static void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass);
+>>>>>>> 10bfdcf3f368129fbec948002f50877bd2caa4e2
         static void Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass);
         static void Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass);
-        // Passes - AMD FidelityFX
+        // passes - amd fidelityfx
         static void Pass_Ffx_Cas(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Ffx_Spd(RHI_CommandList* cmd_list, RHI_Texture* tex);
         static void Pass_Ffx_Fsr2(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
 
-        // Event handlers
+        // event handlers
         static void OnWorldResolved(sp_variant data);
         static void OnClear();
         static void OnFullScreenToggled();
 
-        // Lines
+        // lines
         static void Lines_OneFrameStart();
         static void Lines_OnFrameEnd();
 
-        // Frame
+        // frame
         static void OnFrameStart(RHI_CommandList* cmd_list);
         static void OnFrameEnd(RHI_CommandList* cmd_list);
 
-        // Common texture binding
+        // common texture binding
         static void BindTexturesGfbuffer(RHI_CommandList* cmd_list);
         static void BindTexturesMaterial(RHI_CommandList* cmd_list, Material* material);
 
-        // Misc
+        // misc
         static void DestroyResources();
 
         // misc
@@ -220,7 +233,6 @@ namespace Spartan
         static Cb_Light m_cb_light_cpu;
         static Cb_Material m_cb_material_cpu;
         static std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
-        static std::unique_ptr<Font> m_font;
         static std::unique_ptr<Grid> m_world_grid;
         static bool m_brdf_specular_lut_rendered;
         static std::vector<RHI_Vertex_PosCol> m_line_vertices;
@@ -229,6 +241,7 @@ namespace Spartan
         static uint32_t m_lines_index_depth_on;
         static RHI_CommandPool* m_cmd_pool;
         static std::shared_ptr<Camera> m_camera;
-        static const uint32_t m_frames_in_flight = 5;
+        static const uint32_t m_resources_frame_lifetime = 5;
+        static uint32_t m_resource_index;
     };
 }

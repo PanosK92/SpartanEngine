@@ -54,7 +54,6 @@ namespace Spartan
     Cb_Light Renderer::m_cb_light_cpu;
     Cb_Material Renderer::m_cb_material_cpu;
     shared_ptr<RHI_VertexBuffer> Renderer::m_vertex_buffer_lines;
-    unique_ptr<Font> Renderer::m_font;
     unique_ptr<Grid> Renderer::m_world_grid;
     vector<RHI_Vertex_PosCol> Renderer::m_line_vertices;
     vector<float> Renderer::m_lines_duration;
@@ -63,6 +62,7 @@ namespace Spartan
     bool Renderer::m_brdf_specular_lut_rendered;
     RHI_CommandPool* Renderer::m_cmd_pool = nullptr;
     shared_ptr<Camera> Renderer::m_camera = nullptr;
+    uint32_t Renderer::m_resource_index = 0;
 
     namespace
     {
@@ -95,7 +95,6 @@ namespace Spartan
         const uint32_t resolution_shadow_min     = 128;
         float near_plane                         = 0.0f;
         float far_plane                          = 1.0f;
-        uint32_t buffers_frames_since_last_reset = 0;
         bool dirty_orthographic_projection       = true;
 
         void sort_renderables(Camera* camera, vector<shared_ptr<Entity>>* renderables, const bool are_transparent)
@@ -135,8 +134,6 @@ namespace Spartan
 
         // RHI initialization
         {
-            RHI_Context::Initialize();
-
             if (RHI_Context::renderdoc)
             {
                 RenderDoc::OnPreDeviceCreation();
@@ -185,6 +182,7 @@ namespace Spartan
 
         // options
         m_options.clear();
+        SetOption(Renderer_Option::DepthPrepass,             1.0f); // As a world becomes bigger and more complex, this almost becomes a requirement
         SetOption(Renderer_Option::Hdr,                      swap_chain->IsHdr() ? 1.0f : 0.0f);                 // HDR is enabled by default if the swapchain is HDR
         SetOption(Renderer_Option::Bloom,                    0.05f);                                             // non-zero values activate it and define the blend factor.
         SetOption(Renderer_Option::MotionBlur,               1.0f);
@@ -196,13 +194,11 @@ namespace Spartan
         SetOption(Renderer_Option::Tonemapping,              static_cast<float>(Renderer_Tonemapping::Disabled));
         SetOption(Renderer_Option::Gamma,                    2.2f);
         SetOption(Renderer_Option::Exposure,                 1.0f);
-        SetOption(Renderer_Option::Sharpness,                0.5f);
-        SetOption(Renderer_Option::FogDensity,               0.0f);
-        SetOption(Renderer_Option::Antialiasing,             static_cast<float>(Renderer_Antialiasing::TaaFxaa)); // this is using FSR 2 for TAA
+        SetOption(Renderer_Option::Sharpness,                1.0f);
+        SetOption(Renderer_Option::Fog,                      1.5f);
+        SetOption(Renderer_Option::Antialiasing,             static_cast<float>(Renderer_Antialiasing::Taa));    // this is using FSR 2 for TAA
         SetOption(Renderer_Option::Upsampling,               static_cast<float>(Renderer_Upsampling::FSR2));
-        SetOption(Renderer_Option::UpsamplingSharpness,      1.0f);
         SetOption(Renderer_Option::Vsync,                    0.0f);
-        SetOption(Renderer_Option::DepthPrepass,             0.0f);                                               // depth prepass is not always faster, so by default, it's disabled.
         SetOption(Renderer_Option::Debanding,                0.0f);
         SetOption(Renderer_Option::Debug_TransformHandle,    1.0f);
         SetOption(Renderer_Option::Debug_SelectionOutline,   1.0f);
@@ -243,10 +239,6 @@ namespace Spartan
 
     void Renderer::Shutdown()
     {
-        // console doesn't render anymore, log to file
-        Log::SetLogToFile(true);
-
-        // Fire event
         SP_FIRE_EVENT(EventType::RendererOnShutdown);
 
         // Manually invoke the deconstructors so that ParseDeletionQueue(), releases their RHI resources.
@@ -256,7 +248,6 @@ namespace Spartan
             m_entities_to_add.clear();
             m_renderables.clear();
             m_world_grid.reset();
-            m_font.reset();
             swap_chain            = nullptr;
             m_vertex_buffer_lines = nullptr;
             environment_texture   = nullptr;
@@ -275,11 +266,8 @@ namespace Spartan
         if (Window::IsMinimised())
             return;
 
-        // after the first frame has completed, we know the renderer is working
-        // we stop logging to a file and we start logging to the on-screen console
         if (frame_num == 1)
         {
-            Log::SetLogToFile(false);
             SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
         }
 
@@ -293,18 +281,18 @@ namespace Spartan
 
         // reset buffer offsets
         {
-            if (buffers_frames_since_last_reset == m_frames_in_flight)
+            m_resource_index++;
+
+            if (m_resource_index == m_resources_frame_lifetime)
             {
+                m_resource_index = 0;
+
                 for (shared_ptr<RHI_ConstantBuffer> constant_buffer : GetConstantBuffers())
                 {
                     constant_buffer->ResetOffset();
                 }
                 GetStructuredBuffer()->ResetOffset();
-
-                buffers_frames_since_last_reset = true;
             }
-
-            buffers_frames_since_last_reset++;
         }
 
         RHI_Device::Tick(frame_num);
@@ -376,11 +364,12 @@ namespace Spartan
             m_cb_frame_cpu.gamma               = GetOption<float>(Renderer_Option::Gamma);
             m_cb_frame_cpu.frame               = static_cast<uint32_t>(frame_num);
 
-            // these must match what Common_Buffer.hlsl is reading
+            // these must match what common_buffer.hlsl is reading
             m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections), 1 << 0);
             m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Ssgi),                   1 << 1);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::VolumetricFog),          1 << 2);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceShadows),     1 << 3);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceShadows),     1 << 2);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Fog),                    1 << 3);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::FogVolumetric),          1 << 4);
         }
 
         Pass_Frame(cmd_current);
@@ -506,12 +495,15 @@ namespace Spartan
         SP_LOG_INFO("Output resolution output has been set to %dx%d", width, height);
     }
 
-    void Renderer::UpdateConstantBufferFrame(RHI_CommandList* cmd_list)
+    void Renderer::UpdateConstantBufferFrame(RHI_CommandList* cmd_list, const bool set /*= true*/)
     {
         GetConstantBuffer(Renderer_ConstantBuffer::Frame)->Update(&m_cb_frame_cpu);
 
-        // Bind because the offset just changed
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetConstantBuffer(Renderer_ConstantBuffer::Frame));
+        // set by default as the offset has changed
+        if (set)
+        {
+            cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetConstantBuffer(Renderer_ConstantBuffer::Frame));
+        }
     }
 
     void Renderer::PushPassConstants(RHI_CommandList* cmd_list)
@@ -519,11 +511,33 @@ namespace Spartan
         cmd_list->PushConstants(0, sizeof(Pcb_Pass), &m_cb_pass_cpu);
     }
 
-    void Renderer::UpdateConstantBufferLight(RHI_CommandList* cmd_list, shared_ptr<Light> light)
+    void Renderer::UpdateConstantBufferLight(RHI_CommandList* cmd_list, shared_ptr<Light> light, const int array_index)
     {
-        for (uint32_t i = 0; i < light->GetShadowArraySize(); i++)
+        if (array_index == -1) // set all arrays
         {
-            m_cb_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
+            for (uint32_t i = 0; i < light->GetShadowArraySize(); i++)
+            {
+                m_cb_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
+
+                float cascade_end = light->GetCascadeEnd(i) * light->GetRange();
+                if (i == 0)
+                {
+                    m_cb_light_cpu.cascade_ends.x = cascade_end;
+                }
+                else if (i == 1)
+                {
+                    m_cb_light_cpu.cascade_ends.y = cascade_end;
+                }
+                else if (i == 2)
+                {
+                    m_cb_light_cpu.cascade_ends.z = cascade_end;
+                }
+            }
+        }
+        else
+        {
+            // set the first array with the given index
+            m_cb_light_cpu.view_projection[0] = light->GetViewMatrix(array_index) * light->GetProjectionMatrix(array_index);
         }
 
         m_cb_light_cpu.intensity_range_angle_bias = Vector4
@@ -547,7 +561,7 @@ namespace Spartan
 
         GetConstantBuffer(Renderer_ConstantBuffer::Light)->Update(&m_cb_light_cpu);
 
-        // Bind because the offset just changed
+        // bind because the offset just changed
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::light, GetConstantBuffer(Renderer_ConstantBuffer::Light));
     }
 
@@ -672,7 +686,14 @@ namespace Spartan
 
                     if (is_visible)
                     {
-                        m_renderables[is_transparent ? Renderer_Entity::GeometryTransparent : Renderer_Entity::Geometry].emplace_back(entity);
+                        if (is_transparent)
+                        {
+                            m_renderables[renderable->HasInstancing() ? Renderer_Entity::GeometryTransparentInstanced : Renderer_Entity::GeometryTransparent].emplace_back(entity);
+                        }
+                        else
+                        {
+                            m_renderables[renderable->HasInstancing() ? Renderer_Entity::GeometryInstanced : Renderer_Entity::Geometry].emplace_back(entity);
+                        }
                     }
                 }
 
@@ -734,16 +755,21 @@ namespace Spartan
         environment_texture = environment->GetTexture();
     }
 
-    void Renderer::SetOption(Renderer_Option option, float value)
+	void Renderer::DrawString(const string& text, const Vector2& position_screen_percentage)
+	{
+        GetFont()->AddText(text, position_screen_percentage);
+	}
+
+	void Renderer::SetOption(Renderer_Option option, float value)
     {
-        // Clamp value
+        // clamp value
         {
-            // Anisotropy
+            // anisotropy
             if (option == Renderer_Option::Anisotropy)
             {
                 value = Helper::Clamp(value, 0.0f, 16.0f);
             }
-            // Shadow resolution
+            // shadow resolution
             else if (option == Renderer_Option::ShadowResolution)
             {
                 value = Helper::Clamp(value, static_cast<float>(resolution_shadow_min), static_cast<float>(RHI_Device::PropertyGetMaxTexture2dDimension()));
@@ -754,7 +780,7 @@ namespace Spartan
         if ((m_options.find(option) != m_options.end()) && m_options[option] == value)
             return;
 
-        // Reject changes (if needed)
+        // reject changes (if needed)
         {
             if (option == Renderer_Option::Hdr)
             {
@@ -766,12 +792,12 @@ namespace Spartan
             }
         }
 
-        // Set new value
+        // set new value
         m_options[option] = value;
 
-        // Handle cascading changes
+        // handle cascading changes
         {
-            // Antialiasing
+            // aAntialiasing
             if (option == Renderer_Option::Antialiasing)
             {
                 bool taa_enabled = value == static_cast<float>(Renderer_Antialiasing::Taa) || value == static_cast<float>(Renderer_Antialiasing::TaaFxaa);
@@ -779,7 +805,7 @@ namespace Spartan
 
                 if (taa_enabled)
                 {
-                    // Implicitly enable FSR since it's doing TAA.
+                    // implicitly enable FSR since it's doing TAA.
                     if (!fsr_enabled)
                     {
                         m_options[Renderer_Option::Upsampling] = static_cast<float>(Renderer_Upsampling::FSR2);
@@ -912,7 +938,7 @@ namespace Spartan
         return m_renderables;
     }
 
-    void Renderer::BindTexturesGfbuffer(RHI_CommandList* cmd_list)
+	void Renderer::BindTexturesGfbuffer(RHI_CommandList* cmd_list)
     {
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,            GetRenderTarget(Renderer_RenderTexture::gbuffer_albedo));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,            GetRenderTarget(Renderer_RenderTexture::gbuffer_normal));
@@ -930,6 +956,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::material_roughness, material->GetTexture(MaterialTexture::Roughness));
         cmd_list->SetTexture(Renderer_BindingsSrv::material_metallic,  material->GetTexture(MaterialTexture::Metalness));
         cmd_list->SetTexture(Renderer_BindingsSrv::material_normal,    material->GetTexture(MaterialTexture::Normal));
+        cmd_list->SetTexture(Renderer_BindingsSrv::material_normal2,   material->GetTexture(MaterialTexture::Normal2));
         cmd_list->SetTexture(Renderer_BindingsSrv::material_height,    material->GetTexture(MaterialTexture::Height));
         cmd_list->SetTexture(Renderer_BindingsSrv::material_occlusion, material->GetTexture(MaterialTexture::Occlusion));
         cmd_list->SetTexture(Renderer_BindingsSrv::material_emission,  material->GetTexture(MaterialTexture::Emission));

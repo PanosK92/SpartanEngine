@@ -55,12 +55,14 @@ namespace Spartan
         float GetMaxY()     const { return m_max_y; }
         void SetMaxY(float max_z) { m_max_y = max_z; }
 
-        uint32_t GetVertexCount()                    const { return m_vertex_count; }
-        uint32_t GetIndexCount()                     const { return m_index_count; }
-        uint64_t GetHeightSampleCount()              const { return m_height_samples; }
-        float* GetHeightData()                             { return &m_height_data[0]; }
-        const std::vector<Math::Vector3>& GetTreePositions() const { return m_trees; }
-        float GetWaterLevel()                        const { return m_water_level; }
+        uint32_t GetVertexCount()                              const { return m_vertex_count; }
+        uint32_t GetIndexCount()                               const { return m_index_count; }
+        uint64_t GetHeightSampleCount()                        const { return m_height_samples; }
+        float* GetHeightData()                                       { return &m_height_data[0]; }
+        const std::vector<Math::Matrix>& GetTransformsTree()   const { return m_trees; }
+        const std::vector<Math::Matrix>& GetTransformsPlant1() const { return m_plants_1; }
+        const std::vector<Math::Matrix>& GetTransformsPlant2() const { return m_plants_2; }
+        float GetWaterLevel()                                  const { return m_water_level; }
 
         void GenerateAsync(std::function<void()> on_complete = nullptr);
 
@@ -80,6 +82,8 @@ namespace Spartan
         std::shared_ptr<RHI_Texture> m_height_texture;
         std::vector<float> m_height_data;
         std::shared_ptr<Mesh> m_mesh;
-        std::vector<Math::Vector3> m_trees;
+        std::vector<Math::Matrix> m_trees;
+        std::vector<Math::Matrix> m_plants_1;
+        std::vector<Math::Matrix> m_plants_2;
     };
 }

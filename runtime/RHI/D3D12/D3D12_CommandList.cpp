@@ -171,7 +171,7 @@ namespace Spartan
         Profiler::m_rhi_draw++;
     }
     
-    void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
+    void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset, const uint32_t instance_count)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
@@ -214,7 +214,7 @@ namespace Spartan
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_SwapChain* destination)
     {
-        SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearOrBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
+        SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
         SP_ASSERT_MSG(source->GetWidth() <= destination->GetWidth() && source->GetHeight() <= destination->GetHeight(),
             "The source texture dimension(s) are larger than the those of the destination texture");
     }
@@ -226,7 +226,7 @@ namespace Spartan
 
     void RHI_CommandList::Copy(RHI_Texture* source, RHI_SwapChain* destination)
     {
-        SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearOrBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
+        SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
         SP_ASSERT(source->GetWidth() == destination->GetWidth());
         SP_ASSERT(source->GetHeight() == destination->GetHeight());
     }
@@ -263,7 +263,7 @@ namespace Spartan
         static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->RSSetScissorRects(1, &d3d12_rectangle);
     }
     
-    void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
+    void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint32_t binding /*= 0*/)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);

@@ -36,6 +36,7 @@ class btRigidBody;
 class btSoftBody;
 class btTypedConstraint;
 struct btSoftBodyWorldInfo;
+class btRaycastVehicle;
 //========================================
 
 namespace Spartan
@@ -49,22 +50,23 @@ namespace Spartan
 
         static std::vector<btRigidBody*> RayCast(Math::Vector3 start, Math::Vector3 end);
 
-        // Rigid body
+        // Body
         static void AddBody(btRigidBody* body);
         static void RemoveBody(btRigidBody*& body);
-
-        // Soft body
         static void AddBody(btSoftBody* body);
         static void RemoveBody(btSoftBody*& body);
+        static void AddBody(btRaycastVehicle* body);
+        static void RemoveBody(btRaycastVehicle*& body);
 
         // Constraint
         static void AddConstraint(btTypedConstraint* constraint, bool collision_with_linked_body = true);
         static void RemoveConstraint(btTypedConstraint*& constraint);
 
-        // Properties
+        // Misc
         static Math::Vector3 GetGravity();
         static btSoftBodyWorldInfo& GetSoftWorldInfo();
-        static auto GetPhysicsDebugDraw();
+        static void* GetPhysicsDebugDraw();
+        static void* GetWorld();
 
     private:
         // Picking

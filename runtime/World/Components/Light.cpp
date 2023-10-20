@@ -64,6 +64,8 @@ namespace Spartan
         {
             SetIntensity(LightIntensity::bulb_flashlight);
         }
+
+        m_cascade_ends.fill(0.0f);
     }
 
     void Light::OnInitialize()
@@ -207,7 +209,6 @@ namespace Spartan
             m_temperature_kelvin = 5500.0f;
     }
 
-
     void Light::SetIntensity(const LightIntensity intensity)
     {
         m_intensity = intensity;
@@ -292,7 +293,6 @@ namespace Spartan
         // watts can be multiplied by the camera's exposure to get the final intensity
         return power_watts * camera->GetExposure();
     }
-
 
     void Light::SetShadowsEnabled(bool cast_shadows)
     {
@@ -393,23 +393,27 @@ namespace Spartan
     const Matrix& Light::GetViewMatrix(uint32_t index /*= 0*/) const
     {
         SP_ASSERT(index < static_cast<uint32_t>(m_matrix_view.size()));
-
         return m_matrix_view[index];
     }
 
     const Matrix& Light::GetProjectionMatrix(uint32_t index /*= 0*/) const
     {
         SP_ASSERT(index < static_cast<uint32_t>(m_matrix_projection.size()));
-
         return m_matrix_projection[index];
     }
 
-    void Light::ComputeCascadeSplits()
+	float Light::GetCascadeEnd(uint32_t index /*= 0*/) const
+	{
+        SP_ASSERT(index < static_cast<uint32_t>(m_matrix_projection.size()));
+        return m_cascade_ends[index];
+	}
+
+	void Light::ComputeCascadeSplits()
     {
         if (m_shadow_map.slices.empty())
             return;
 
-        // Can happen during the first frame, don't log error
+        // can happen during the first frame, don't log error
         if (!Renderer::GetCamera())
             return;
 
@@ -420,20 +424,19 @@ namespace Spartan
         const Matrix view_projection_inverted = Matrix::Invert(camera->GetViewMatrix() * projection);
 
         // Calculate split depths based on view camera frustum
-        const float split_lambda = 0.98f;
+        const float split_lambda = 0.95f;
         const float clip_range   = clip_far - clip_near;
         const float min_z        = clip_near;
         const float max_z        = clip_near + clip_range;
-        const float range        = max_z - min_z;
+        m_range                  = max_z - min_z;
         const float ratio        = max_z / min_z;
-        vector<float> splits(m_cascade_count);
         for (uint32_t i = 0; i < m_cascade_count; i++)
         {
             const float p       = (i + 1) / static_cast<float>(m_cascade_count);
             const float log     = min_z * Math::Helper::Pow(ratio, p);
-            const float uniform = min_z + range * p;
+            const float uniform = min_z + m_range * p;
             const float d       = split_lambda * (log - uniform) + uniform;
-            splits[i]           = (d - clip_near) / clip_range;
+            m_cascade_ends[i] = (d - clip_near) / clip_range;
         }
 
         float last_split_distance = 0.0f;
@@ -461,14 +464,14 @@ namespace Spartan
 
             // Compute split distance
             {
-                const float split_distance = splits[i];
+                const float split_distance = m_cascade_ends[i];
                 for (uint32_t i = 0; i < 4; i++)
                 {
                     Vector3 distance       = frustum_corners[i + 4] - frustum_corners[i];
                     frustum_corners[i + 4] = frustum_corners[i] + (distance * split_distance);
                     frustum_corners[i]     = frustum_corners[i] + (distance * last_split_distance);
                 }
-                last_split_distance = splits[i];
+                last_split_distance = m_cascade_ends[i];
             }
 
             // Compute frustum bounds
@@ -533,33 +536,33 @@ namespace Spartan
 
         if (GetLightType() == LightType::Directional)
         {
-            m_shadow_map.texture_depth = make_unique<RHI_Texture2DArray>(resolution, resolution, format_depth, m_cascade_count, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_directional");
+            m_shadow_map.texture_depth = make_unique<RHI_Texture2DArray>(resolution, resolution, format_depth, m_cascade_count, RHI_Texture_Rtv | RHI_Texture_Srv, "shadow_map_directional");
 
             if (m_shadows_transparent_enabled)
             {
-                m_shadow_map.texture_color = make_unique<RHI_Texture2DArray>(resolution, resolution, format_color, m_cascade_count, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_directional_color");
+                m_shadow_map.texture_color = make_unique<RHI_Texture2DArray>(resolution, resolution, format_color, m_cascade_count, RHI_Texture_Rtv | RHI_Texture_Srv, "shadow_map_directional_color");
             }
 
             m_shadow_map.slices = vector<ShadowSlice>(m_cascade_count);
         }
         else if (GetLightType() == LightType::Point)
         {
-            m_shadow_map.texture_depth = make_unique<RHI_TextureCube>(resolution, resolution, format_depth, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_point_color");
+            m_shadow_map.texture_depth = make_unique<RHI_TextureCube>(resolution, resolution, format_depth, RHI_Texture_Rtv | RHI_Texture_Srv, "shadow_map_point_color");
 
             if (m_shadows_transparent_enabled)
             {
-                m_shadow_map.texture_color = make_unique<RHI_TextureCube>(resolution, resolution, format_color, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_point_color");
+                m_shadow_map.texture_color = make_unique<RHI_TextureCube>(resolution, resolution, format_color, RHI_Texture_Rtv | RHI_Texture_Srv, "shadow_map_point_color");
             }
 
             m_shadow_map.slices = vector<ShadowSlice>(6);
         }
         else if (GetLightType() == LightType::Spot)
         {
-            m_shadow_map.texture_depth  = make_unique<RHI_Texture2D>(resolution, resolution, 1, format_depth, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_spot_color");
+            m_shadow_map.texture_depth  = make_unique<RHI_Texture2D>(resolution, resolution, 1, format_depth, RHI_Texture_Rtv | RHI_Texture_Srv, "shadow_map_spot_color");
 
             if (m_shadows_transparent_enabled)
             {
-                m_shadow_map.texture_color = make_unique<RHI_Texture2D>(resolution, resolution, 1, format_color, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_spot_color");
+                m_shadow_map.texture_color = make_unique<RHI_Texture2D>(resolution, resolution, 1, format_color, RHI_Texture_Rtv | RHI_Texture_Srv, "shadow_map_spot_color");
             }
 
             m_shadow_map.slices = vector<ShadowSlice>(1);

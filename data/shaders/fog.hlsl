@@ -28,35 +28,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     REGULAR FOG
 ------------------------------------------------------------------------------*/
 
-#if FOG_REGULAR
+static const float g_fog_radius         = 150.0f; // how far away from the camera the fog starts
+static const float g_fog_fade_rate      = 0.05f;  // higher values make the fog fade in more abruptly
+static const float3 g_atmospheric_color = float3(0.4f, 0.4f, 0.8f);  // soft blue
 
-static const float g_fog_start        = -0.5f;
-static const float g_fog_end          = 5.0f;
-static const float g_fog_start_height = -0.5f;
-static const float g_fog_end_height   = 7.0f;
-
-float get_fog_factor(const float pixel_y, const float pixel_z)
+float3 get_fog_factor(const float3 pixel_position, const float3 camera_position)
 {
-    //float depth_factor  = saturate(1.0f - (fog_end - pixel_z)           / (fog_end - fog_start + FLT_MIN));
-    //float height_factor = saturate(1.0f - (fog_end_height - pixel_y)    / (fog_end_height - fog_start_height + FLT_MIN));
-
-    // I'm better off introducing fog volumes so te user can define depth
-    // and height factors instead of using some hardcoded values here (which don't work all that well).
-    float fog_density = pass_get_f3_value().x;
-    return fog_density;
+    float distance_from_camera = length(pixel_position - camera_position) - g_fog_radius;
+    float distance_factor      = max(0.0f, distance_from_camera) / g_fog_radius; // normalize the distance
+    float fog_factor           = 1.0f - exp(-g_fog_fade_rate * distance_factor); // exponential fog factor
+    float fog_density          = pass_get_f4_value().z;
+    
+    return fog_factor * fog_density * g_atmospheric_color;
 }
 
-float get_fog_factor(const Surface surface)
-{
-    return get_fog_factor(surface.position.y, surface.camera_to_pixel_length);
-}
-
-#endif
 /*------------------------------------------------------------------------------
     VOLUMETRIC FOG
 ------------------------------------------------------------------------------*/
-
-#if FOG_VOLUMETRIC
 
 static const uint g_vl_steps                    = 16;
 static const float g_vl_scattering              = 0.8f; // [0, 1]
@@ -73,6 +61,7 @@ float compute_mie_scattering(float v_dot_l)
     return g_vl_x / pow(e, g_vl_pow);
 }
 
+/*
 float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float3 ray_dir, int cascade_index)
 {
     float3 fog_accumulation= 0.0f;
@@ -187,9 +176,6 @@ float3 VolumetricLighting(Surface surface, Light light)
         fog = vl_raymarch(light, ray_pos, ray_step, ray_dir, projection_index);
     }
 
-    float fog_regular     = get_fog_factor(surface);
-    float3 fog_volumetric = fog * light.color * light.intensity * light.attenuation;
-
-    return fog_regular * fog_volumetric;
+    return light.color * light.intensity * light.attenuation;
 }
-#endif
+*/

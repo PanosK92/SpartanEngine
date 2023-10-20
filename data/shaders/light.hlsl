@@ -19,9 +19,6 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#define FOG_REGULAR 1
-#define FOG_VOLUMETRIC 1
-
 //= INCLUDES =================
 #include "common.hlsl"
 #include "brdf.hlsl"
@@ -79,9 +76,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // compute final radiance
     light.radiance *= shadow.rgb * shadow.a;
     
-    float3 light_diffuse    = 0.0f;
-    float3 light_specular   = 0.0f;
-    float3 light_volumetric = 0.0f;
+    float3 light_diffuse  = 0.0f;
+    float3 light_specular = 0.0f;
 
     // reflectance equation
     if (!surface.is_sky())
@@ -98,7 +94,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         {
             light_specular += BRDF_Specular_Anisotropic(surface, angular_info);
         }
-
 
         // specular clearcoat
         if (surface.clearcoat != 0.0f)
@@ -120,15 +115,15 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     }
 
     float3 emissive = surface.emissive * surface.albedo;
-    
+
      // diffuse and specular
     tex_uav[thread_id.xy]  += float4(saturate_11(light_diffuse * light.radiance + emissive), 1.0f);
     tex_uav2[thread_id.xy] += float4(saturate_11(light_specular * light.radiance), 1.0f);
 
     // volumetric
-    if (light_is_volumetric() && is_volumetric_fog_enabled())
-    {
-        light_volumetric       += VolumetricLighting(surface, light);
-        tex_uav3[thread_id.xy] += float4(saturate_11(light_volumetric), 1.0f);
-    }
+    //if (light_is_volumetric() && is_fog_volumetric_enabled())
+    //{
+    //    float3 light_fog = VolumetricLighting(surface, light);
+    //    tex_uav3[thread_id.xy] += float4(saturate_11(light_fog), 1.0f);
+    //}
 }

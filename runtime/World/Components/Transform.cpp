@@ -180,9 +180,9 @@ namespace Spartan
         m_scale_local = scale;
 
         // A scale of 0 will cause a division by zero when decomposing the world transform matrix.
-        m_scale_local.x = (m_scale_local.x == 0.0f) ? Helper::EPSILON : m_scale_local.x;
-        m_scale_local.y = (m_scale_local.y == 0.0f) ? Helper::EPSILON : m_scale_local.y;
-        m_scale_local.z = (m_scale_local.z == 0.0f) ? Helper::EPSILON : m_scale_local.z;
+        m_scale_local.x = (m_scale_local.x == 0.0f) ? Helper::SMALL_FLOAT : m_scale_local.x;
+        m_scale_local.y = (m_scale_local.y == 0.0f) ? Helper::SMALL_FLOAT : m_scale_local.y;
+        m_scale_local.z = (m_scale_local.z == 0.0f) ? Helper::SMALL_FLOAT : m_scale_local.z;
 
         UpdateTransform();
 
@@ -205,42 +205,42 @@ namespace Spartan
     {
         if (!HasParent())
         {
-            SetRotationLocal((m_rotation_local * delta).Normalized());
+            SetRotationLocal((delta * m_rotation_local).Normalized());
         }
         else
         {
-            SetRotationLocal(m_rotation_local * GetRotation().Inverse() * delta * GetRotation());
+            SetRotationLocal(delta * m_rotation_local * GetRotation().Inverse() * delta * GetRotation());
         }
     }
 
     Vector3 Transform::GetUp() const
     {
-        return GetRotationLocal() * Vector3::Up;
+        return GetRotation() * Vector3::Up;
     }
 
     Vector3 Transform::GetDown() const
     {
-        return GetRotationLocal() * Vector3::Down;
+        return GetRotation() * Vector3::Down;
     }
 
     Vector3 Transform::GetForward() const
     {
-        return GetRotationLocal() * Vector3::Forward;
+        return GetRotation() * Vector3::Forward;
     }
 
     Vector3 Transform::GetBackward() const
     {
-        return GetRotationLocal() * Vector3::Backward;
+        return GetRotation() * Vector3::Backward;
     }
 
     Vector3 Transform::GetRight() const
     {
-        return GetRotationLocal() * Vector3::Right;
+        return GetRotation() * Vector3::Right;
     }
 
     Vector3 Transform::GetLeft() const
     {
-        return GetRotationLocal() * Vector3::Left;
+        return GetRotation() * Vector3::Left;
     }
 
     Transform* Transform::GetChildByIndex(const uint32_t index)

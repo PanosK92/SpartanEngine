@@ -135,12 +135,11 @@ namespace Spartan
         condition_var.notify_one();
     }
 
-    void ThreadPool::ParallelLoop(function<void(uint32_t work_index_start, uint32_t work_index_end)>&& function, uint32_t loop_range)
+    void ThreadPool::ParallelLoop(function<void(uint32_t work_index_start, uint32_t work_index_end)>&& function, const uint32_t work_total)
     {
-        SP_ASSERT_MSG(loop_range > 1, "A parallel loop can't have a range of 1 or smaller");
+        SP_ASSERT_MSG(work_total > 1, "A parallel loop can't have a range of 1 or smaller");
 
         uint32_t available_threads = GetIdleThreadCount();
-        uint32_t work_total        = loop_range;
         uint32_t work_per_thread   = work_total / available_threads;
         uint32_t work_remainder    = work_total % available_threads;
         uint32_t work_index        = 0;
@@ -148,12 +147,12 @@ namespace Spartan
         condition_variable cv;
         mutex cv_m;
 
-        // Split work into multiple tasks
+        // split work into multiple tasks
         while (work_index < work_total)
         {
             uint32_t work_to_do = work_per_thread;
 
-            // If the work doesn't divide evenly across threads, add the remainder work to the first thread.
+            // if the work doesn't divide evenly across threads, add the remainder work to the first thread.
             if (work_remainder != 0)
             {
                 work_to_do     += work_remainder;
@@ -171,11 +170,10 @@ namespace Spartan
             work_index += work_to_do;
         }
 
-        // Wait for threads to finish work
+        // wait for threads to finish work
         unique_lock<mutex> lk(cv_m);
         cv.wait(lk, [&]() { return work_done == work_total; });
     }
-
 
     void ThreadPool::Flush(bool remove_queued /*= false*/)
     {

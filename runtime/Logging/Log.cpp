@@ -32,58 +32,85 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static vector<LogCmd> logs;
-    static string log_file_name = "log.txt";
-    static ILogger* logger      = nullptr;
-    static bool log_to_file     = true;
-    #ifdef DEBUG
-    static bool unique_logs     = true;
-    #else
-    static bool unique_logs     = false;
-    #endif
-
-    static void write_to_file(string text, const LogType type)
+    namespace
     {
-        const string prefix = (type == LogType::Info) ? "Info:" : (type == LogType::Warning) ? "Warning:" : "Error:";
-        text                = prefix + " " + text;
+        vector<LogCmd> logs;
+        string log_file_name = "log.txt";
+        ILogger* logger      = nullptr;
+        bool log_to_file     = true;
+        #ifdef DEBUG
+        bool unique_logs     = true;
+        #else
+        bool unique_logs     = false;
+        #endif
 
-        // Delete the previous log file (if it exists)
-        static bool is_first_log = true;
-        if (is_first_log)
+        void write_to_file(string text, const LogType type)
         {
-            FileSystem::Delete(log_file_name);
-            is_first_log = false;
+            const string prefix = (type == LogType::Info) ? "Info:" : (type == LogType::Warning) ? "Warning:" : "Error:";
+            text = prefix + " " + text;
+
+            // delete the previous log file (if it exists)
+            static bool is_first_log = true;
+            if (is_first_log)
+            {
+                FileSystem::Delete(log_file_name);
+                is_first_log = false;
+            }
+
+            // open/create a log file to write the log into
+            static ofstream fout;
+            fout.open(log_file_name, ofstream::out | ofstream::app);
+
+            if (fout.is_open())
+            {
+                // write out the error message
+                fout << text << endl;
+
+                // close the file
+                fout.close();
+            }
         }
+    }
 
-        // Open/Create a log file to write the log into
-        static ofstream fout;
-        fout.open(log_file_name, ofstream::out | ofstream::app);
-
-        if (fout.is_open())
-        {
-            // Write out the error message
-            fout << text << endl;
-
-            // Close the file
-            fout.close();
-        }
+    void Log::Initialize()
+    {
+        SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnFirstFrameCompleted, SP_EVENT_HANDLER_EXPRESSION_STATIC( SetLogToFile(false); ));
+        SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnShutdown,            SP_EVENT_HANDLER_EXPRESSION_STATIC( SetLogToFile(true);  ));
     }
 
     void Log::SetLogger(ILogger* logger_in)
     {
         logger = logger_in;
+
+        // flush the log buffer, if needed
+        if (logger && !logs.empty())
+        {
+            if (!logs.empty())
+            {
+                for (const LogCmd& log : logs)
+                {
+                    logger->Log(log.text, static_cast<uint32_t>(log.type));
+                }
+                logs.clear();
+            }
+        }
     }
 
-    // All functions resolve to this one
+    void Log::SetLogToFile(const bool log)
+    {
+        log_to_file = log;
+    }
+
+    // all functions resolve to this one
     void Log::Write(const char* text, const LogType type)
     {
         SP_ASSERT_MSG(text != nullptr, "Text is null");
 
-        // Lock mutex
+        // lock mutex
         static mutex log_mutex;
         lock_guard<mutex> guard(log_mutex);
 
-        // Only output unique text, if requested.
+        // only output unique text, if requested.
         static vector<string> logs_error_strings;
         if (unique_logs && type == LogType::Error)
         {
@@ -97,40 +124,24 @@ namespace Spartan
             }
         }
 
-        // Add time to the text
+        // add time to the text
         auto t  = time(nullptr);
         auto tm = *localtime(&t);
         ostringstream oss;
         oss << put_time(&tm, "[%H:%M:%S]");
         const string final_text = oss.str() + ": " + string(text);
 
-        // Log to file if requested or if an in-engine logger is not available.
+        // log to file if requested or if an in-engine logger is not available.
         if (log_to_file || !logger)
         {
             logs.emplace_back(final_text, type);
             write_to_file(final_text, type);
         }
 
-        // Log with the logger, if present.
         if (logger)
         {
-            // Flush the log buffer, if needed.
-            if (!logs.empty())
-            {
-                for (const LogCmd& log : logs)
-                {
-                    logger->Log(log.text, static_cast<uint32_t>(log.type));
-                }
-                logs.clear();
-            }
-
             logger->Log(final_text, static_cast<uint32_t>(type));
         }
-    }
-
-    void Log::SetLogToFile(const bool log_to_file_in)
-    {
-        log_to_file = log_to_file_in;
     }
 
     void Log::WriteFInfo(const char* text, ...)

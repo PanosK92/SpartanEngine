@@ -57,7 +57,7 @@ namespace Spartan
         {
             const bool is_native_file = FileSystem::IsEngineMaterialFile(path) || FileSystem::IsEngineModelFile(path);
 
-            // If this is an native engine file, don't do a file check as no actual foreign material exists (it was created on the fly)
+            // if this is an native engine file, don't do a file check as no actual foreign material exists (it was created on the fly)
             if (!is_native_file)
             {
                 if (!FileSystem::IsFile(path))
@@ -69,20 +69,21 @@ namespace Spartan
 
             const std::string file_path_relative = FileSystem::GetRelativePath(path);
 
-            // Foreign file
+            // foreign file
             if (!FileSystem::IsEngineFile(path))
             {
-                m_resource_file_path_foreign    = file_path_relative;
-                m_resource_file_path_native     = FileSystem::NativizeFilePath(file_path_relative);
+                m_resource_file_path_foreign = file_path_relative;
+                m_resource_file_path_native  = FileSystem::NativizeFilePath(file_path_relative);
             }
-            // Native file
+            // engine file
             else
             {
                 m_resource_file_path_foreign.clear();
                 m_resource_file_path_native = file_path_relative;
             }
-            m_object_name        = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path_relative);
+
             m_resource_directory = FileSystem::GetDirectoryFromFilePath(file_path_relative);
+            m_object_name        = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path_relative);
         }
         
         ResourceType GetResourceType()                 const { return m_resource_type; }
@@ -92,7 +93,7 @@ namespace Spartan
         const std::string& GetResourceFilePathNative() const { return m_resource_file_path_native; }
         const std::string& GetResourceDirectory()      const { return m_resource_directory; }
 
-        // Flags
+        // flags
         void SetFlag(const uint32_t flag, bool enabled = true)
         {
             if (enabled)
@@ -107,14 +108,14 @@ namespace Spartan
         uint32_t GetFlags()           const { return m_flags; }
         void SetFlags(const uint32_t flags) { m_flags = flags; }
 
-        // Misc
+        // ready to use
         bool IsReadyForUse() const { return m_is_ready_for_use; }
 
-        // IO
+        // io
         virtual bool SaveToFile(const std::string& file_path) { return true; }
         virtual bool LoadFromFile(const std::string& file_path) { return true; }
 
-        // Type
+        // type
         template <typename T>
         static constexpr ResourceType TypeToEnum();
 

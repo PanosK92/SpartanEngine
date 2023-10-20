@@ -131,7 +131,7 @@ namespace Spartan::Math
     float Ray::HitDistance(const Plane& plane, Vector3* intersection_point /*= nullptr*/) const
     {
         float d = plane.normal.Dot(m_direction);
-        if (Helper::Abs(d) >= Helper::EPSILON)
+        if (Helper::Abs(d) >= Helper::SMALL_FLOAT)
         {
             float t = -(plane.normal.Dot(m_origin) + plane.d) / d;
             if (t >= 0.0f)
@@ -165,7 +165,7 @@ namespace Spartan::Math
         Vector3 p(m_direction.Cross(edge2));
         float det = edge1.Dot(p);
 
-        if (det >= Helper::EPSILON)
+        if (det >= Helper::SMALL_FLOAT)
         {
             // Calculate u & v parameters and test
             Vector3 t(m_origin - v1);
@@ -250,7 +250,7 @@ namespace Spartan::Math
         float d2121 = p21.Dot(p21);
         
         float d = d2121 * d4343 - d4321 * d4321;
-        if (Helper::Abs(d) < Helper::EPSILON)
+        if (Helper::Abs(d) < Helper::SMALL_FLOAT)
             return m_origin;
 
         float n = d1343 * d4321 - d1321 * d4343;
