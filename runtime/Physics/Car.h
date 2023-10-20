@@ -59,7 +59,7 @@ namespace Spartan
         float break_force                   = 0.0f;
         bool break_until_opposite_torque    = false;
 
-        // tire friction
+        // wheels
         std::array<float, 4> pacejka_slip_angle = { 0.0f, 0.0f, 0.0f, 0.0f };
         std::array<float, 4> pacejka_slip_ratio = { 0.0f, 0.0f, 0.0f, 0.0f };
         std::array<float, 4> pacejka_fz         = { 0.0f, 0.0f, 0.0f, 0.0f };
