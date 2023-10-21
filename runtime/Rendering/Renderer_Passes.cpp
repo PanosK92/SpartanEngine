@@ -108,10 +108,8 @@ namespace Spartan
 
                 // opaque
                 {
-                    bool is_transparent_pass = false;
-
                     Pass_Depth_Prepass(cmd_list);
-                    Pass_GBuffer(cmd_list, is_transparent_pass);
+                    Pass_GBuffer(cmd_list);
                     Pass_Ssgi(cmd_list);
                     Pass_Ssr(cmd_list, rt1);
                     if (GetOption<float>(Renderer_Option::ScreenSpaceShadows) == 1)
@@ -122,9 +120,9 @@ namespace Spartan
                     {
                         Pass_Sss_Bend(cmd_list);
                     }
-                    Pass_Light(cmd_list, is_transparent_pass);                  // compute diffuse and specular buffers
-                    Pass_Light_Composition(cmd_list, rt1, is_transparent_pass); // compose diffuse, specular, ssgi, volumetric etc.
-                    Pass_Light_ImageBased(cmd_list, rt1, is_transparent_pass);  // apply IBL and SSR
+                    Pass_Light(cmd_list);                  // compute diffuse and specular buffers
+                    Pass_Light_Composition(cmd_list, rt1); // compose diffuse, specular, ssgi, volumetric etc.
+                    Pass_Light_ImageBased(cmd_list, rt1);  // apply IBL and SSR
                 }
 
                 // transparent
@@ -145,12 +143,11 @@ namespace Spartan
                         Pass_Blur_Gaussian(cmd_list, rt2, depth_aware, radius, sigma, i);
                     }
 
-                    bool is_transparent_pass = true;
-
-                    Pass_GBuffer(cmd_list, is_transparent_pass);
-                    Pass_Light(cmd_list, is_transparent_pass);
-                    Pass_Light_Composition(cmd_list, rt1, is_transparent_pass);
-                    Pass_Light_ImageBased(cmd_list, rt1, is_transparent_pass);
+                    Pass_Depth_Prepass(cmd_list, do_transparent_pass);
+                    Pass_GBuffer(cmd_list, do_transparent_pass);
+                    Pass_Light(cmd_list, do_transparent_pass);
+                    Pass_Light_Composition(cmd_list, rt1, do_transparent_pass);
+                    Pass_Light_ImageBased(cmd_list, rt1, do_transparent_pass);
                 }
 
                 Pass_PostProcess(cmd_list);
@@ -452,7 +449,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list)
+    void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         if (!GetOption<bool>(Renderer_Option::DepthPrepass))
             return;
@@ -464,10 +461,11 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_instanced_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("depth_prepass");
+        cmd_list->BeginTimeblock(!is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent");
 
-        uint32_t start_index = 0;
-        uint32_t end_index   = 2;
+        uint32_t start_index = !is_transparent_pass ? 0 : 2;
+        uint32_t end_index   = !is_transparent_pass ? 2 : 4;
+        bool is_first_pass   = true;
         for (uint32_t i = start_index; i < end_index; i++)
         {
             // acquire entities
@@ -477,7 +475,7 @@ namespace Spartan
 
             // define pipeline state
             static RHI_PipelineState pso;
-            pso.name                        = "depth_prepass";
+            pso.name                        = !is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent";
             pso.instancing                  = i == 1;
             pso.shader_vertex               = !pso.instancing ? shader_v : shader_instanced_v;
             pso.shader_pixel                = shader_p; // alpha testing
@@ -485,7 +483,7 @@ namespace Spartan
             pso.blend_state                 = GetBlendState(Renderer_BlendState::Disabled).get();
             pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
             pso.render_target_depth_texture = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
-            pso.clear_depth                 = !pso.instancing ? 0.0f : rhi_depth_load; // reverse-z
+            pso.clear_depth                 = (is_transparent_pass || pso.instancing) ? rhi_depth_load : 0.0f; // reverse-z
             pso.primitive_topology          = RHI_PrimitiveTopology_Mode::TriangleList;
 
             // begin render pass
@@ -585,7 +583,6 @@ namespace Spartan
 
         // deduce depth-stencil state
         RHI_DepthStencilState* depth_stencil_state = depth_prepass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
-        depth_stencil_state                        = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : depth_stencil_state;
 
         uint32_t start_index = !is_transparent_pass ? 0 : 2;
         uint32_t end_index   = !is_transparent_pass ? 2 : 4;

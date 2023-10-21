@@ -57,7 +57,7 @@ namespace
         "Jesse Guerrero,      US,             LinkedIn, https://www.linkedin.com/in/jguer,                        UX Improvements, N/A",
         "Konstantinos Benos,  Greece,         Twitter,  https://twitter.com/deg3x,                                Bug Fixes,       N/A",
         "Nick Polyderopoulos, Greece,         LinkedIn, https://www.linkedin.com/in/nick-polyderopoulos-21742397, UX Improvements, N/A",
-        "Tri Tran,            Belgium,        LinkedIn, https://www.linkedin.com/in/mtrantr/,                     Day's Gone Screen Space Shadows, Starfield"
+        "Tri Tran,            Belgium,        LinkedIn, https://www.linkedin.com/in/mtrantr/,                     Days Gone Screen Space Shadows, Starfield"
     };
 
     vector<string> comma_seperate_contributors(const vector<string>& contributors)
