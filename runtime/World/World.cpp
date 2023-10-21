@@ -70,7 +70,7 @@ namespace Spartan
         static shared_ptr<Mesh> m_default_model_helmet_damaged  = nullptr;
 
         static void create_default_world_common(
-            const Math::Vector3& camera_position = Vector3(0.0f, 1.0f, -10.0f),
+            const Math::Vector3& camera_position = Vector3(0.0f, 2.0f, -10.0f),
             const Math::Vector3& camera_rotation = Vector3(0.0f, 0.0f, 0.0f),
             const LightIntensity sun_intensity   = LightIntensity::sky_sunlight_noon,
             const char* soundtrack_file_path     = "project\\music\\jake_chudnow_shona.mp3",
@@ -754,11 +754,11 @@ namespace Spartan
 
     void World::CreateDefaultWorldHelmets()
     {
-        Vector3 camera_position = Vector3(0.0f, 1.0f, -10.0f);
+        Vector3 camera_position = Vector3(0.0f, 2.0f, -10.0f);
         Vector3 camera_rotation = Vector3(0.0f, 0.0f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::black_hole);
 
-        // Point light
+        // point light
         {
             shared_ptr<Entity> entity = CreateEntity();
             entity->SetObjectName("light_point");
@@ -767,11 +767,11 @@ namespace Spartan
             shared_ptr<Light> light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
             light->SetColor(Color::light_light_bulb);
-            light->SetIntensity(LightIntensity::bulb_500_watt);
+            light->SetIntensity(LightIntensity::bulb_150_watt);
             light->SetRange(14.78f);
         }
 
-        // Flight helmet
+        // flight helmet
         if (m_default_model_helmet_flight = ResourceCache::Load<Mesh>("project\\models\\flight_helmet\\FlightHelmet.gltf"))
         {
             Entity* entity = m_default_model_helmet_flight->GetRootEntity();
@@ -780,7 +780,7 @@ namespace Spartan
             entity->GetTransform()->SetScale(Vector3(2.0f, 2.0f, 2.0f));
         }
 
-        // Damaged helmet
+        // damaged helmet
         if (m_default_model_helmet_damaged = ResourceCache::Load<Mesh>("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
         {
             Entity* entity = m_default_model_helmet_damaged->GetRootEntity();
@@ -793,13 +793,13 @@ namespace Spartan
             physics_body->SetFriction(0.95f);
         }
 
-        // Start simulating (for the physics and the music to work)
+        // start simulating (for the physics and the music to work)
         Engine::AddFlag(EngineMode::Game);
     }
 
     void World::CreateDefaultWorldCar()
     {
-        Vector3 camera_position = Vector3(8.7844f, 1.5f, -4.1412f);
+        Vector3 camera_position = Vector3(8.7844f, 2.0f, -4.1412f);
         Vector3 camera_rotation = Vector3(7.4f, -65.5f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\riders_on_the_storm_fredwreck_remix.mp3");
 
@@ -941,7 +941,7 @@ namespace Spartan
         Vector3 camera_rotation = Vector3(-8.5f, 90.0f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::black_hole, "project\\music\\jake_chudnow_olive.mp3");
 
-        // Point light
+        // point light
         {
             shared_ptr<Entity> entity = CreateEntity();
             entity->SetObjectName("light_point");
@@ -951,10 +951,10 @@ namespace Spartan
             light->SetLightType(LightType::Point);
             light->SetColor(Color::light_light_bulb);
             light->SetRange(39.66f);
-            light->SetIntensity(LightIntensity::bulb_500_watt);
+            light->SetIntensity(LightIntensity::bulb_150_watt);
         }
 
-        // 3D model - Sponza
+        // 3d model - Sponza
         if (m_default_model_sponza = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
         {
             Entity* entity = m_default_model_sponza->GetRootEntity();
@@ -962,7 +962,7 @@ namespace Spartan
             entity->GetTransform()->SetPosition(Vector3(0.0f, 0.15f, 0.0f));
             entity->GetTransform()->SetScale(Vector3(2.0f, 2.0f, 2.0f)); // I actually walked in Sponza, it's that big
 
-            // Make the lamp frame not cast shadows, so we can place a light within it
+            // make the lamp frame not cast shadows, so we can place a light within it
             if (shared_ptr<Renderable> renderable = entity->GetTransform()->GetDescendantPtrByName("lamp_1stfloor_entrance_1")->GetComponent<Renderable>())
             {
                 renderable->SetCastShadows(false);
@@ -974,7 +974,7 @@ namespace Spartan
             RemoveEntity(entity->GetTransform()->GetDescendantPtrWeakByName("decals_2nd_floor").lock());
             RemoveEntity(entity->GetTransform()->GetDescendantPtrWeakByName("decals_3rd_floor").lock());
 
-            // 3D model - Sponza curtains
+            // 3d model - sponza curtains
             if (m_default_model_sponza_curtains = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
             {
                 Entity* entity = m_default_model_sponza_curtains->GetRootEntity();
@@ -984,7 +984,7 @@ namespace Spartan
             }
         }
 
-        // Start simulating (for the physics and the music to work)
+        // start simulating (for the physics and the music to work)
         Engine::AddFlag(EngineMode::Game);
     }
 
