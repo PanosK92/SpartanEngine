@@ -347,17 +347,17 @@ void RenderOptions::OnTickVisible()
             // Volumetric fog
             option_check_box("Volumetric fog", do_volumetric_fog, "Requires a light with shadows enabled");
 
-            static vector<string> screenspaceshadow_modes =
+            static vector<string> screen_spaces_hadow_modes =
             {
                 "Disabled",
                 "Normal",
                 "Bend"
             };
 
-            uint32_t screenspaceshadow_mode = Renderer::GetOption<uint32_t>(Renderer_Option::ScreenSpaceShadows);
-            if (option_combo_box("Screenspace shadow", screenspaceshadow_modes, screenspaceshadow_mode))
+            uint32_t screen_space_shadow_mode = Renderer::GetOption<uint32_t>(Renderer_Option::ScreenSpaceShadows);
+            if (option_combo_box("Screenspace shadow", screen_spaces_hadow_modes, screen_space_shadow_mode))
             {
-                Renderer::SetOption(Renderer_Option::ScreenSpaceShadows, static_cast<float>(screenspaceshadow_mode));
+                Renderer::SetOption(Renderer_Option::ScreenSpaceShadows, static_cast<float>(screen_space_shadow_mode));
             }
 
             // Shadow resolution

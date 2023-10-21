@@ -19,9 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const uint  g_sss_max_steps                     = 32;    // Max ray steps, affects quality and performance.
-static const float g_sss_ray_max_distance              = 0.5f; // Max shadow length, longer shadows are less accurate.
-static const float g_sss_thickness                     = 0.05f; // Depth testing thickness.
+static const uint  g_sss_max_steps                     = 32;     // Max ray steps, affects quality and performance.
+static const float g_sss_ray_max_distance              = 0.5f;   // Max shadow length, longer shadows are less accurate.
+static const float g_sss_thickness                     = 0.05f;  // Depth testing thickness.
 static const float g_sss_max_delta_from_original_depth = 0.005f; // The maximum allowed depth deviation from the original pixel (a big deviation decreased the probabilty that the pixel is the occluder).
 static const float g_sss_step_length                   = g_sss_ray_max_distance / (float)g_sss_max_steps;
 

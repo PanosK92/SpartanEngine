@@ -208,7 +208,7 @@ namespace Spartan
             render_target(Renderer_RenderTexture::ssr) = make_shared<RHI_Texture2D>(width_render, height_render, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_ssr");
 
             // SSS
-            render_target(Renderer_RenderTexture::sss) = make_shared<RHI_Texture2DArray>(width_render, height_render, RHI_Format::R16_Float, Renderer::GetMaxSSS(), RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "rt_sss");
+            render_target(Renderer_RenderTexture::sss) = make_shared<RHI_Texture2DArray>(width_render, height_render, RHI_Format::R16_Float, 4, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "rt_sss");
 
             // SSGI
             render_target(Renderer_RenderTexture::ssgi)          = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_ssgi");
