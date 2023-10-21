@@ -68,6 +68,7 @@ Texture2D tex                    : register(t35);
 Texture2D tex2                   : register(t36);
 Texture2D tex_font_atlas         : register(t37);
 TextureCube tex_reflection_probe : register(t38);
+Texture2DArray tex_sss			 : register(t39);
 
 // Storage
 RWTexture2D<float4> tex_uav                                : register(u0);
@@ -75,3 +76,4 @@ RWTexture2D<float4> tex_uav2                               : register(u1);
 RWTexture2D<float4> tex_uav3                               : register(u2);
 globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u3);
 globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u4);
+RWTexture2DArray<float4> tex_uav4                          : register(u5);

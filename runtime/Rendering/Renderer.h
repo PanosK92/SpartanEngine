@@ -119,8 +119,9 @@ namespace Spartan
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
 
         // get all
-        static std::array<std::shared_ptr<RHI_Texture>, 28>& GetRenderTargets();
-        static std::array<std::shared_ptr<RHI_Shader>, 48>& GetShaders();
+        static std::array<std::shared_ptr<RHI_Texture>, 29>& GetRenderTargets();
+        static constexpr uint8_t number_shaders = 50;
+        static std::array<std::shared_ptr<RHI_Shader>, number_shaders>& GetShaders();
         static std::array<std::shared_ptr<RHI_ConstantBuffer>, 3>& GetConstantBuffers();
 
         // get individual
@@ -157,7 +158,7 @@ namespace Spartan
         static void CreateSamplers(const bool create_only_anisotropic = false);
         static void CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic);
 
-        // rasses - core
+        // passes - core
         static void Pass_Frame(RHI_CommandList* cmd_list);
         static void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_ReflectionProbes(RHI_CommandList* cmd_list);
@@ -165,6 +166,8 @@ namespace Spartan
         static void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_Ssgi(RHI_CommandList* cmd_list);
         static void Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in);
+        static void Pass_Sss_Bend(RHI_CommandList* cmd_list);
+        static void Pass_Sss(RHI_CommandList* cmd_list);
         static void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
         static void Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float radius, const float sigma, const uint32_t mip = rhi_all_mips);
         // passes - debug/editor
@@ -183,7 +186,7 @@ namespace Spartan
         static void Pass_DepthOfField(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Debanding(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        // passes - lighting
+        // passes - Lighting
         static void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass);
         static void Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass);

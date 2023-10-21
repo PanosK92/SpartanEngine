@@ -56,9 +56,10 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         }
         
         // screen space shadows
-        if (is_screen_space_shadows_enabled())
+        int array_slice_index = pass_get_f3_value2().x;
+        if (light_has_shadows() && is_screen_space_shadows_enabled() && array_slice_index != -1)
         {
-            shadow.a = min(shadow.a, ScreenSpaceShadows(surface, light));
+            shadow.a = min(shadow.a, tex_sss[int3(thread_id.xy, array_slice_index)].x);
         }
 
         // ensure that the shadow is as transparent as the material

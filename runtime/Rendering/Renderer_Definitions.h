@@ -67,6 +67,13 @@ namespace Spartan
         Max
     };
 
+    enum class Renderer_ScreenspaceShadow : uint32_t
+    {
+        Disabled,
+        Normal,
+        Bend
+    };
+
     enum class Renderer_Antialiasing : uint32_t
     {
         Disabled,
@@ -149,7 +156,8 @@ namespace Spartan
         tex              = 35,
         tex2             = 36,
         font_atlas       = 37,
-        reflection_probe = 38
+        reflection_probe = 38,
+        sss              = 39
     };
 
     enum class Renderer_BindingsUav
@@ -158,7 +166,8 @@ namespace Spartan
         tex2           = 1,
         tex3           = 2,
         atomic_counter = 3,
-        tex_array      = 4
+        tex_array      = 4,
+        tex_array2     = 5,
     };
 
     enum class Renderer_Shader : uint8_t
@@ -204,6 +213,8 @@ namespace Spartan
         font_p,
         ssgi_c,
         ssr_c,
+        sss_c,
+        bend_sss_c,
         temporal_filter_c,
         blur_gaussian_c,
         blur_gaussian_bilaterial_c,
@@ -238,6 +249,7 @@ namespace Spartan
         ssgi,
         ssgi_filtered,
         ssr,
+        sss,
         bloom,
         blur,
         fsr2_mask_reactive,

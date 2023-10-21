@@ -187,11 +187,11 @@ namespace Spartan
         SetOption(Renderer_Option::Bloom,                    0.05f);                                             // non-zero values activate it and define the blend factor.
         SetOption(Renderer_Option::MotionBlur,               1.0f);
         SetOption(Renderer_Option::Ssgi,                     1.0f);
-        SetOption(Renderer_Option::ScreenSpaceShadows,       1.0f);
+        SetOption(Renderer_Option::ScreenSpaceShadows,       static_cast<float>(Renderer_ScreenspaceShadow::Bend));
         SetOption(Renderer_Option::ScreenSpaceReflections,   1.0f);
         SetOption(Renderer_Option::Anisotropy,               16.0f);
         SetOption(Renderer_Option::ShadowResolution,         4096.0f);
-        SetOption(Renderer_Option::Tonemapping,              static_cast<float>(Renderer_Tonemapping::Disabled));
+        SetOption(Renderer_Option::Tonemapping,              static_cast<float>(Renderer_Tonemapping::Aces));
         SetOption(Renderer_Option::Gamma,                    2.2f);
         SetOption(Renderer_Option::Exposure,                 1.0f);
         SetOption(Renderer_Option::Sharpness,                1.0f);
@@ -519,18 +519,21 @@ namespace Spartan
             {
                 m_cb_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
 
-                float cascade_end = light->GetCascadeEnd(i) * light->GetRange();
-                if (i == 0)
+                if (light->GetLightType() == LightType::Directional)
                 {
-                    m_cb_light_cpu.cascade_ends.x = cascade_end;
-                }
-                else if (i == 1)
-                {
-                    m_cb_light_cpu.cascade_ends.y = cascade_end;
-                }
-                else if (i == 2)
-                {
-                    m_cb_light_cpu.cascade_ends.z = cascade_end;
+                    float cascade_end = light->GetCascadeEnd(i) * light->GetRange();
+                    if (i == 0)
+                    {
+                        m_cb_light_cpu.cascade_ends.x = cascade_end;
+                    }
+                    else if (i == 1)
+                    {
+                        m_cb_light_cpu.cascade_ends.y = cascade_end;
+                    }
+                    else if (i == 2)
+                    {
+                        m_cb_light_cpu.cascade_ends.z = cascade_end;
+                    }
                 }
             }
         }
