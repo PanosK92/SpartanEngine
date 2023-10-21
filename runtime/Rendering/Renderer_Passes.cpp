@@ -872,7 +872,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Bend_Sss(RHI_CommandList* cmd_list, std::shared_ptr<Light> light, uint32_t array_slice_index)
+    void Renderer::Pass_Bend_Sss(RHI_CommandList* cmd_list, shared_ptr<Light> light, uint32_t array_slice_index)
     {
         if (!GetOption<bool>(Renderer_Option::ScreenSpaceShadows))
             return;
@@ -882,7 +882,7 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("bend sss");
+        cmd_list->BeginTimeblock("sss_bend");
         {
             // acquire render targets
             RHI_Texture* tex_sss = GetRenderTarget(Renderer_RenderTexture::sss).get();
@@ -940,7 +940,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Sss(RHI_CommandList* cmd_list, std::shared_ptr<Light> light, uint32_t array_slice_index)
+    void Renderer::Pass_Sss(RHI_CommandList* cmd_list, shared_ptr<Light> light, uint32_t array_slice_index)
     {
         if (!GetOption<bool>(Renderer_Option::ScreenSpaceShadows))
             return;
