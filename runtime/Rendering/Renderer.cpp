@@ -207,10 +207,6 @@ namespace Spartan
         SetOption(Renderer_Option::Debug_Lights,             1.0f);
         SetOption(Renderer_Option::Debug_Physics,            0.0f);
         SetOption(Renderer_Option::Debug_PerformanceMetrics, 1.0f);
-        // Buggy or unused options
-        //SetOption(Renderer_Option::PaperWhite,             150.0f);                                            // nits
-        //SetOption(RendererOption::DepthOfField,            1.0f);                                              // this is depth of field from ALDI, so until I improve it, it should be disabled by default.
-        //SetOption(RendererOption::VolumetricFog,           1.0f);                                              // disable by default because it's not that great, I need to do it with a voxelised approach.
 
         // resources
         CreateConstantBuffers();
