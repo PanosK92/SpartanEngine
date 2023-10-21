@@ -30,7 +30,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // create surface
     Surface surface;
     surface.Build(thread_id.xy, true, true, true);
-    
     // create light
     Light light;
     light.Build(surface);
