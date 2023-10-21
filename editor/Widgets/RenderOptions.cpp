@@ -213,7 +213,6 @@ void RenderOptions::OnTickVisible()
     bool do_dof                  = Renderer::GetOption<bool>(Renderer_Option::DepthOfField);
     bool do_volumetric_fog       = Renderer::GetOption<bool>(Renderer_Option::FogVolumetric);
     bool do_ssgi                 = Renderer::GetOption<bool>(Renderer_Option::Ssgi);
-    bool do_sss                  = Renderer::GetOption<bool>(Renderer_Option::ScreenSpaceShadows);
     bool do_ssr                  = Renderer::GetOption<bool>(Renderer_Option::ScreenSpaceReflections);
     bool do_motion_blur          = Renderer::GetOption<bool>(Renderer_Option::MotionBlur);
     bool do_film_grain           = Renderer::GetOption<bool>(Renderer_Option::FilmGrain);
@@ -348,8 +347,18 @@ void RenderOptions::OnTickVisible()
             // Volumetric fog
             option_check_box("Volumetric fog", do_volumetric_fog, "Requires a light with shadows enabled");
 
-            // Screen space shadows
-            option_check_box("Screen space shadows", do_sss);
+            static vector<string> screen_spaces_hadow_modes =
+            {
+                "Disabled",
+                "Normal",
+                "Bend"
+            };
+
+            uint32_t screen_space_shadow_mode = Renderer::GetOption<uint32_t>(Renderer_Option::ScreenSpaceShadows);
+            if (option_combo_box("Screenspace shadow", screen_spaces_hadow_modes, screen_space_shadow_mode))
+            {
+                Renderer::SetOption(Renderer_Option::ScreenSpaceShadows, static_cast<float>(screen_space_shadow_mode));
+            }
 
             // Shadow resolution
             option_int("Shadow resolution", resolution_shadow);
@@ -434,7 +443,6 @@ void RenderOptions::OnTickVisible()
     Renderer::SetOption(Renderer_Option::DepthOfField,             do_dof);
     Renderer::SetOption(Renderer_Option::FogVolumetric,            do_volumetric_fog);
     Renderer::SetOption(Renderer_Option::Ssgi,                     do_ssgi);
-    Renderer::SetOption(Renderer_Option::ScreenSpaceShadows,       do_sss);
     Renderer::SetOption(Renderer_Option::ScreenSpaceReflections,   do_ssr);
     Renderer::SetOption(Renderer_Option::MotionBlur,               do_motion_blur);
     Renderer::SetOption(Renderer_Option::FilmGrain,                do_film_grain);

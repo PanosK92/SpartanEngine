@@ -346,7 +346,9 @@ float4 Shadow_Map(Surface surface, Light light)
 
     if (light_is_directional())
     {
-        for (uint cascade_index = 0; cascade_index < light.array_size; cascade_index++)
+        // TODO send from CPU constbuffer Light instead
+        uint cascade_count = 3;
+        for (uint cascade_index = 0; cascade_index < cascade_count; cascade_index++)
         {
             // project into light space
             float3 pos_ndc = world_to_ndc(position_world, buffer_light.view_projection[cascade_index]);
@@ -371,7 +373,7 @@ float4 Shadow_Map(Surface surface, Light light)
                 float cascade_fade = (max2(abs(pos_ndc.xy)) - g_shadow_cascade_blend_threshold) * 4.0f;
                 uint cascade_index_next = cascade_index + 1;
 
-                if (cascade_fade > 0.0f && cascade_index_next < light.array_size - 1)
+                if (cascade_fade > 0.0f && cascade_index_next < cascade_count - 1)
                 {
                     // project into light space
                     pos_ndc = world_to_ndc(position_world, buffer_light.view_projection[cascade_index_next]);

@@ -653,9 +653,9 @@ namespace Spartan
 
         VkImageSubresourceRange image_subresource_range = {};
         image_subresource_range.baseMipLevel            = 0;
-        image_subresource_range.levelCount              = 1;
+        image_subresource_range.levelCount              = VK_REMAINING_MIP_LEVELS;
         image_subresource_range.baseArrayLayer          = 0;
-        image_subresource_range.layerCount              = 1;
+        image_subresource_range.layerCount              = VK_REMAINING_ARRAY_LAYERS;
 
         if (texture->IsColorFormat())
         {
