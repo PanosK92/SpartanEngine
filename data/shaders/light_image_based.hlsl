@@ -115,7 +115,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     // get ssr color
     float ssr_mip_count     = pass_get_f4_value().y;
     mip_level               = lerp(0, ssr_mip_count, surface.roughness);
-    const float4 ssr_sample = (is_ssr_enabled() && pass_is_opaque() && surface.is_opaque()) ? tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level) : 0.0f;
+    const float4 ssr_sample = is_ssr_enabled() ? tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level) : 0.0f;
     const float3 color_ssr  = ssr_sample.rgb;
     float ssr_alpha         = ssr_sample.a;
 

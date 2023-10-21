@@ -279,23 +279,41 @@ namespace Spartan
     )
     {
         // transition to the appropriate layouts (will only happen if needed)
-        tex_input->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
-        tex_depth->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
-        tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
-        tex_mask_reactive->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
-        tex_mask_transparency->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
-        tex_output->SetLayout(RHI_Image_Layout::General, cmd_list);
+        {
+            tex_input->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
+            tex_depth->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
+            tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
+            tex_output->SetLayout(RHI_Image_Layout::General, cmd_list);
+
+            if (tex_mask_reactive)
+            {
+                tex_mask_reactive->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
+            }
+
+            if (tex_mask_transparency)
+            {
+                tex_mask_transparency->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
+            }
+        }
 
         // dispatch description
         {
             // resources
-            fsr2_dispatch_description.color                      = to_ffx_resource(tex_input,             L"fsr2_color");
-            fsr2_dispatch_description.depth                      = to_ffx_resource(tex_depth,             L"fsr2_depth");
-            fsr2_dispatch_description.motionVectors              = to_ffx_resource(tex_velocity,          L"fsr2_velocity");
-            fsr2_dispatch_description.reactive                   = to_ffx_resource(tex_mask_reactive,     L"fsr2_mask_reactive");
-            fsr2_dispatch_description.transparencyAndComposition = to_ffx_resource(tex_mask_transparency, L"fsr2_mask_transparency_and_composition");
-            fsr2_dispatch_description.output                     = to_ffx_resource(tex_output,            L"fsr2_output");
-            fsr2_dispatch_description.commandList                = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
+            {
+                fsr2_dispatch_description.color         = to_ffx_resource(tex_input, L"fsr2_color");
+                fsr2_dispatch_description.depth         = to_ffx_resource(tex_depth, L"fsr2_depth");
+                fsr2_dispatch_description.output        = to_ffx_resource(tex_output, L"fsr2_output");
+                fsr2_dispatch_description.commandList   = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
+                fsr2_dispatch_description.motionVectors = to_ffx_resource(tex_velocity, L"fsr2_velocity");
+                if (tex_mask_reactive)
+                {
+                    fsr2_dispatch_description.reactive = to_ffx_resource(tex_mask_reactive, L"fsr2_mask_reactive");
+                }
+                if (tex_mask_transparency)
+                {
+                    fsr2_dispatch_description.transparencyAndComposition = to_ffx_resource(tex_mask_transparency, L"fsr2_mask_transparency_and_composition");
+                }
+            }
 
             // configuration
             fsr2_dispatch_description.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth());

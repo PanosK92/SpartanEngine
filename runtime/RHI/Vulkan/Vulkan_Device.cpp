@@ -293,6 +293,10 @@ namespace Spartan
             void* p_user_data
         )
         {
+            // temporary, FidelityFX SDK has issues, don't want to be spamed until they are fixed
+            if (strstr(p_callback_data->pMessage, "fsr2") != nullptr)
+                return VK_FALSE;
+
             string msg = "Vulkan: " + string(p_callback_data->pMessage);
 
             if (/*(msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) ||*/ (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))
