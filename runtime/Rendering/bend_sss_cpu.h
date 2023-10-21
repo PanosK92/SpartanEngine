@@ -49,11 +49,9 @@ namespace Bend
         int DispatchCount;					// Number of compute dispatches written to the list
     };
 
-
     // Helper functions
     inline int bend_min(const int a, const int b) { return a > b ? b : a; }
     inline int bend_max(const int a, const int b) { return a > b ? a : b; }
-
 
     // Call this function on the CPU to get a list of Compute Shader dispatches required to generate a screen-space shadow for a given light
     // Syncing the GPU between individual dispatches is not required
@@ -210,7 +208,6 @@ namespace Bend
         return result;
     }
 }
-
 
 /*
 * Common Problems, and tips to solve them:
