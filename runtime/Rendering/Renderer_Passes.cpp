@@ -145,6 +145,7 @@ namespace Spartan
 
                     Pass_Depth_Prepass(cmd_list, do_transparent_pass);
                     Pass_GBuffer(cmd_list, do_transparent_pass);
+                    Pass_Ssr(cmd_list, rt1, do_transparent_pass);
                     Pass_Light(cmd_list, do_transparent_pass);
                     Pass_Light_Composition(cmd_list, rt1, do_transparent_pass);
                     Pass_Light_ImageBased(cmd_list, rt1, do_transparent_pass);
@@ -760,7 +761,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in)
+    void Renderer::Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool is_transparent_pass)
     {
         if (!GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
             return;
@@ -773,7 +774,7 @@ namespace Spartan
         // acquire render targets
         RHI_Texture* tex_ssr = GetRenderTarget(Renderer_RenderTexture::ssr).get();
 
-        cmd_list->BeginTimeblock("ssr");
+        cmd_list->BeginTimeblock(!is_transparent_pass ? "ssr" : "ssr_transparent");
 
         // define pipeline state
         static RHI_PipelineState pso;
@@ -784,6 +785,7 @@ namespace Spartan
 
         // set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_ssr);
+        m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
         PushPassConstants(cmd_list);
 
         // set textures
