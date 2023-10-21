@@ -19,10 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
-#include "common.hlsl"
+//= INCLUDES =======================
+#include "../common.hlsl"
 #include "screen_space_shadows.hlsl"
-//==================== 
+//==================================
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
@@ -30,6 +30,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // create surface
     Surface surface;
     surface.Build(thread_id.xy, true, true, true);
+    
     // create light
     Light light;
     light.Build(surface);
