@@ -51,12 +51,13 @@ namespace
 
     vector<string> contributors =
     {
-        // format: name,country,button text,button url,contribution
-        "Apostolos Bouzalas,  Greece,         LinkedIn, https://www.linkedin.com/in/apostolos-bouzalas,           ECS bug fixes,              N/A",
-        "Iker Galardi,        Basque Country, LinkedIn, https://www.linkedin.com/in/iker-galardi/,                Linux port,                 N/A",
-        "Jesse Guerrero,      US,             LinkedIn, https://www.linkedin.com/in/jguer,                        UX improvements,            N/A",
-        "Konstantinos Benos,  Greece,         Twitter,  https://twitter.com/deg3x,                                Transform handle bug fixes, N/A",
-        "Nick Polyderopoulos, Greece,         LinkedIn, https://www.linkedin.com/in/nick-polyderopoulos-21742397, UX improvements,            N/A"
+        // format: name,country,button text,button url,contribution, steam cd key
+        "Apostolos Bouzalas,  Greece,         LinkedIn, https://www.linkedin.com/in/apostolos-bouzalas,           Bug Fixes,       N/A",
+        "Iker Galardi,        Basque Country, LinkedIn, https://www.linkedin.com/in/iker-galardi/,                Linux Port,      N/A",
+        "Jesse Guerrero,      US,             LinkedIn, https://www.linkedin.com/in/jguer,                        UX Improvements, N/A",
+        "Konstantinos Benos,  Greece,         Twitter,  https://twitter.com/deg3x,                                Bug Fixes,       N/A",
+        "Nick Polyderopoulos, Greece,         LinkedIn, https://www.linkedin.com/in/nick-polyderopoulos-21742397, UX Improvements, N/A",
+        "Tri Tran,            Belgium,        LinkedIn, https://www.linkedin.com/in/mtrantr/,                     Day's Gone Screen Space Shadows, Starfield"
     };
 
     vector<string> comma_seperate_contributors(const vector<string>& contributors)
@@ -146,10 +147,12 @@ namespace
                     ImGui::TableSetColumnIndex(2);
                     string button_text = comma_seperated_contributors[index++];
                     string button_url  = comma_seperated_contributors[index++];
+                    ImGui::PushID(static_cast<uint32_t>(ImGui::GetCursorScreenPos().y));
                     if (ImGui::Button(button_text.c_str()))
                     {
                         Spartan::FileSystem::OpenUrl(button_url);
                     }
+                    ImGui::PopID();
 
                     // contribution
                     ImGui::TableSetColumnIndex(3);
