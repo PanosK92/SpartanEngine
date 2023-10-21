@@ -519,18 +519,21 @@ namespace Spartan
             {
                 m_cb_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
 
-                float cascade_end = light->GetCascadeEnd(i) * light->GetRange();
-                if (i == 0)
+                if (light->GetLightType() == LightType::Directional)
                 {
-                    m_cb_light_cpu.cascade_ends.x = cascade_end;
-                }
-                else if (i == 1)
-                {
-                    m_cb_light_cpu.cascade_ends.y = cascade_end;
-                }
-                else if (i == 2)
-                {
-                    m_cb_light_cpu.cascade_ends.z = cascade_end;
+                    float cascade_end = light->GetCascadeEnd(i) * light->GetRange();
+                    if (i == 0)
+                    {
+                        m_cb_light_cpu.cascade_ends.x = cascade_end;
+                    }
+                    else if (i == 1)
+                    {
+                        m_cb_light_cpu.cascade_ends.y = cascade_end;
+                    }
+                    else if (i == 2)
+                    {
+                        m_cb_light_cpu.cascade_ends.z = cascade_end;
+                    }
                 }
             }
         }
