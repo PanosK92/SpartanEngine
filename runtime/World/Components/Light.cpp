@@ -275,7 +275,7 @@ namespace Spartan
 
         // This magic values are chosen empirically based on how the lights
         // types in the LightIntensity enum should look in the engine
-        const float magic_value_a = 50.0f;
+        const float magic_value_a = 100.0f;
         const float magic_value_b = 0.025f;
 
         // convert lumens to power (in watts) assuming all light is at 555nm

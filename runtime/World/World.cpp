@@ -801,7 +801,7 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(8.7844f, 1.5f, -4.1412f);
         Vector3 camera_rotation = Vector3(7.4f, -65.5f, 0.0f);
-        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, "project\\music\\riders_on_the_storm_fredwreck_remix.mp3");
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\riders_on_the_storm_fredwreck_remix.mp3");
 
         // environment
         {
