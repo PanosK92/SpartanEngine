@@ -124,8 +124,8 @@ struct DispatchParameters
 	// Set sensible starting tuning values
 	void SetDefaults()
 	{
-		SurfaceThickness			= 0.005;
-		BilinearThreshold			= 0.02;
+		SurfaceThickness			= 0.012; // default: 0.005f
+		BilinearThreshold			= 0.02;  // default: 0.02f
 		ShadowContrast				= 4;
 		IgnoreEdgePixels			= false;
 		UsePrecisionOffset			= false;
