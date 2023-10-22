@@ -602,7 +602,7 @@ void WorldViewer::HandleKeyShortcuts()
     }
 
     // Undo and Redo: Ctrl + Z, Ctrl+Shift+Z
-    if (Spartan::Input::GetKeyDown(Spartan::KeyCode::Z))
+    if (Spartan::Input::GetKey(Spartan::KeyCode::Ctrl_Left) && Spartan::Input::GetKeyDown(Spartan::KeyCode::Z))
     {
         if (Spartan::Input::GetKey(Spartan::KeyCode::Shift_Left))
         {
