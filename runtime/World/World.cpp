@@ -417,7 +417,7 @@ namespace Spartan
                         light->SetColor(Color(1.0f, 0.0f, 0.0f, 1.0f));
                         light->SetIntensity(LightIntensity::bulb_500_watt);
                         light->SetShadowsEnabled(false);
-                        light->SetRange(5.0f);
+                        light->SetRange(3.0f);
                         light->SetAngle(145.0f * Math::Helper::DEG_TO_RAD);
                     }
                 }
