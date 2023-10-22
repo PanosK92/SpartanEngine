@@ -147,19 +147,17 @@ namespace Spartan
             uint32_t width  = Window::GetWidth();
             uint32_t height = Window::GetHeight();
 
-            if (!Settings::HasLoadedUserSettingsFromFile())
-            {
-                // the resolution of the output frame (we can upscale to that linearly or with fsr 2)
-                SetResolutionOutput(width, height, false);
+            // the resolution of the output frame (we can upscale to that linearly or with fsr 2)
+            SetResolutionOutput(width, height, false);
 
-                // the resolution of the actual rendering
-                SetResolutionRender(width, height, false);
-            }
+            // the resolution of the actual rendering
+            SetResolutionRender(width, height, false);
 
             // the resolution/size of the editor's viewport. This is overridden by the editor based on the actual viewport size
             SetViewport(static_cast<float>(width), static_cast<float>(height));
 
-            // note: if the editor is active, it will set the render and viewport resolution to what the actual viewport is
+            // note #1: if the editor is active, it will set the render and viewport resolution to what the actual viewport is
+            // note #2: settings can override the render and output resolution (if an xml file was loaded)
         }
 
         // swap chain
@@ -463,31 +461,31 @@ namespace Spartan
 
     void Renderer::SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources /*= true*/)
     {
-        // Return if resolution is invalid
+        // return if resolution is invalid
         if (!RHI_Device::IsValidResolution(width, height))
         {
             SP_LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
         }
 
-        // Silently return if resolution is already set
+        // silently return if resolution is already set
         if (m_resolution_output.x == width && m_resolution_output.y == height)
             return;
 
-        // Set resolution
+        // set resolution
         m_resolution_output.x = static_cast<float>(width);
         m_resolution_output.y = static_cast<float>(height);
 
         if (recreate_resources)
         {
-            // Re-create render textures
+            // re-create render textures
             CreateRenderTextures(false, true, false, true);
 
-            // Re-create samplers
+            // re-create samplers
             CreateSamplers(true);
         }
 
-        // Log
+        // log
         SP_LOG_INFO("Output resolution output has been set to %dx%d", width, height);
     }
 
