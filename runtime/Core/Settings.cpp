@@ -113,6 +113,8 @@ namespace Spartan
                 {
                     root.append_child(renderer_option_to_string(option)).text().set(value);
                 }
+
+                root.append_child("UseRootShaderDirectory").text().set(false);
             }
 
             doc.save_file(file_path.c_str());

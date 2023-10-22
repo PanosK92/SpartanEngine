@@ -40,10 +40,11 @@ namespace Spartan
 {
     namespace
     {
-        static array<string, 6> m_standard_resource_directories;
-        static string m_project_directory;
-        static vector<shared_ptr<IResource>> m_resources;
-        static mutex m_mutex;
+        array<string, 6> m_standard_resource_directories;
+        string m_project_directory;
+        vector<shared_ptr<IResource>> m_resources;
+        mutex m_mutex;
+        bool use_root_shader_directory = false;
     }
 
     void ResourceCache::Initialize()
@@ -268,7 +269,14 @@ namespace Spartan
 
     string ResourceCache::GetResourceDirectory(const ResourceDirectory type)
     {
-        return m_standard_resource_directories[static_cast<uint32_t>(type)];
+        string directory = m_standard_resource_directories[static_cast<uint32_t>(type)];
+
+        if (type == ResourceDirectory::Shaders && use_root_shader_directory)
+        {
+            directory = "..\\" + directory;
+        }
+
+        return directory;
     }
 
     void ResourceCache::SetProjectDirectory(const string& directory)
@@ -304,5 +312,15 @@ namespace Spartan
     mutex& ResourceCache::GetMutex()
     {
         return m_mutex;
+    }
+
+    bool ResourceCache::GetUseRootShaderDirectory()
+    {
+        return use_root_shader_directory;
+    }
+
+    void ResourceCache::SetUseRootShaderDirectory(const bool _use_root_shader_directory)
+    {
+        use_root_shader_directory = _use_root_shader_directory;
     }
 }
