@@ -303,7 +303,7 @@ namespace Spartan
             shader(Renderer_Shader::quad_p)->Compile(RHI_Shader_Pixel, shader_dir + "quad.hlsl", async);
         }
 
-        // vedlight depth
+        // light depth
         {
             shader(Renderer_Shader::depth_light_v) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::depth_light_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_light.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
@@ -460,13 +460,13 @@ namespace Spartan
         shader(Renderer_Shader::temporal_filter_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::temporal_filter_c)->Compile(RHI_Shader_Compute, shader_dir + "temporal_filter.hlsl", async);
 
-        // AMD FidelityFX CAS - Contrast Adaptive Sharpening
+        // amd fidelityfx cas - Contrast Adaptive Sharpening
         shader(Renderer_Shader::ffx_cas_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::ffx_cas_c)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\cas.hlsl", async);
 
         // compiled immediately, they are needed the moment the engine starts.
         {
-            // AMD FidelityFX SPD - Single Pass Downsample
+            // amd fidelityfx spd - single pass downsample
             shader(Renderer_Shader::ffx_spd_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::ffx_spd_c)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
 
