@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// Engine macros
+// engine macros
 #include "Definitions.h"
 
 //= STD =====================
@@ -51,6 +51,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <variant>
 #include <cstring>
 #include <unordered_set>
+#include <chrono>
+#include <random>
 //===========================
 
 //= RUNTIME ====================
