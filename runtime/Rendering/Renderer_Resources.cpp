@@ -55,11 +55,11 @@ namespace Spartan
         array<shared_ptr<RHI_BlendState>, 3>        m_blend_states;
 
         // renderer resources
-        array<shared_ptr<RHI_Texture>, 29>                      m_render_targets;
-        array<shared_ptr<RHI_Shader>, Renderer::number_shaders> m_shaders;
-        array<shared_ptr<RHI_Sampler>, 7>                       m_samplers;
-        array<shared_ptr<RHI_ConstantBuffer>, 3>                m_constant_buffers;
-        shared_ptr<RHI_StructuredBuffer>                        m_structured_buffer;
+        array<shared_ptr<RHI_Texture>, 29>            m_render_targets;
+        array<shared_ptr<RHI_Shader>, number_shaders> m_shaders;
+        array<shared_ptr<RHI_Sampler>, 7>             m_samplers;
+        array<shared_ptr<RHI_ConstantBuffer>, 3>      m_constant_buffers;
+        shared_ptr<RHI_StructuredBuffer>              m_structured_buffer;
 
         // asset resources
         array<shared_ptr<RHI_Texture>, 10> m_standard_textures;
@@ -72,13 +72,13 @@ namespace Spartan
         #define constant_buffer(x) m_constant_buffers[static_cast<uint8_t>(x)]
 
         constant_buffer(Renderer_ConstantBuffer::Frame) = make_shared<RHI_ConstantBuffer>(string("frame"));
-        constant_buffer(Renderer_ConstantBuffer::Frame)->Create<Cb_Frame>(m_resources_frame_lifetime);
+        constant_buffer(Renderer_ConstantBuffer::Frame)->Create<Cb_Frame>(resources_frame_lifetime);
 
         constant_buffer(Renderer_ConstantBuffer::Light) = make_shared<RHI_ConstantBuffer>(string("light"));
-        constant_buffer(Renderer_ConstantBuffer::Light)->Create<Cb_Light>(1600 * m_resources_frame_lifetime);
+        constant_buffer(Renderer_ConstantBuffer::Light)->Create<Cb_Light>(1600 * resources_frame_lifetime);
 
         constant_buffer(Renderer_ConstantBuffer::Material) = make_shared<RHI_ConstantBuffer>(string("material"));
-        constant_buffer(Renderer_ConstantBuffer::Material)->Create<Cb_Material>(30000 * m_resources_frame_lifetime);
+        constant_buffer(Renderer_ConstantBuffer::Material)->Create<Cb_Material>(30000 * resources_frame_lifetime);
     }
 
     void Renderer::CreateStructuredBuffers()
@@ -264,6 +264,33 @@ namespace Spartan
         const string shader_dir = ResourceCache::GetResourceDirectory(ResourceDirectory::Shaders) + "\\";
         #define shader(x) m_shaders[static_cast<uint8_t>(x)]
 
+        // debug
+        {
+            // reflection probe
+            shader(Renderer_Shader::debug_reflection_probe_v) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::debug_reflection_probe_v)->Compile(RHI_Shader_Vertex, shader_dir + "debug_reflection_probe.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+            shader(Renderer_Shader::debug_reflection_probe_p) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::debug_reflection_probe_p)->Compile(RHI_Shader_Pixel, shader_dir + "debug_reflection_probe.hlsl", async);
+
+            // line
+            shader(Renderer_Shader::line_v) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::line_v)->Compile(RHI_Shader_Vertex, shader_dir + "line.hlsl", async, RHI_Vertex_Type::PosCol);
+            shader(Renderer_Shader::line_p) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::line_p)->Compile(RHI_Shader_Pixel, shader_dir + "line.hlsl", async);
+
+            // grid
+            shader(Renderer_Shader::grid_p) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::grid_p)->Compile(RHI_Shader_Pixel, shader_dir + "grid.hlsl", async);
+
+            // outline
+            shader(Renderer_Shader::outline_v) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::outline_v)->Compile(RHI_Shader_Vertex, shader_dir + "outline.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+            shader(Renderer_Shader::outline_p) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::outline_p)->Compile(RHI_Shader_Pixel, shader_dir + "outline.hlsl", async);
+            shader(Renderer_Shader::outline_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::outline_c)->Compile(RHI_Shader_Compute, shader_dir + "outline.hlsl", async);
+        }
+
         // depth prepass
         {
             shader(Renderer_Shader::depth_prepass_v) = make_shared<RHI_Shader>();
@@ -272,6 +299,19 @@ namespace Spartan
             shader(Renderer_Shader::depth_prepass_instanced_v) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::depth_prepass_instanced_v)->AddDefine("INSTANCED");
             shader(Renderer_Shader::depth_prepass_instanced_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_prepass.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+        }
+
+        // light depth
+        {
+            shader(Renderer_Shader::depth_light_v) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::depth_light_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_light.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+
+            shader(Renderer_Shader::depth_light_instanced_v) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::depth_light_instanced_v)->AddDefine("INSTANCED");
+            shader(Renderer_Shader::depth_light_instanced_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_light.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+
+            shader(Renderer_Shader::depth_light_p) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::depth_light_p)->Compile(RHI_Shader_Pixel, shader_dir + "depth_light.hlsl", async);
         }
 
         // g-buffer
@@ -288,8 +328,19 @@ namespace Spartan
         }
 
         // light
-        shader(Renderer_Shader::light_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::light_c)->Compile(RHI_Shader_Compute, shader_dir + "light.hlsl", async);
+        {
+            // light
+            shader(Renderer_Shader::light_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::light_c)->Compile(RHI_Shader_Compute, shader_dir + "light.hlsl", async);
+
+            // composition
+            shader(Renderer_Shader::light_composition_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::light_composition_c)->Compile(RHI_Shader_Compute, shader_dir + "light_composition.hlsl", async);
+
+            // image based
+            shader(Renderer_Shader::light_image_based_p) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::light_image_based_p)->Compile(RHI_Shader_Pixel, shader_dir + "light_image_based.hlsl", async);
+        }
 
         // triangle & quad
         {
@@ -303,19 +354,6 @@ namespace Spartan
             shader(Renderer_Shader::quad_p)->Compile(RHI_Shader_Pixel, shader_dir + "quad.hlsl", async);
         }
 
-        // light depth
-        {
-            shader(Renderer_Shader::depth_light_v) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::depth_light_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_light.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-
-            shader(Renderer_Shader::depth_light_instanced_v) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::depth_light_instanced_v)->AddDefine("INSTANCED");
-            shader(Renderer_Shader::depth_light_instanced_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_light.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-
-            shader(Renderer_Shader::depth_light_p) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::depth_light_p)->Compile(RHI_Shader_Pixel, shader_dir + "depth_light.hlsl", async);
-        }
-
         // depth alpha testing (used for the depth prepass as well as the light depth pass)
         shader(Renderer_Shader::depth_alpha_test_p) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::depth_alpha_test_p)->Compile(RHI_Shader_Pixel, shader_dir + "depth_alpha_test.hlsl", async);
@@ -326,42 +364,20 @@ namespace Spartan
         shader(Renderer_Shader::font_p) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::font_p)->Compile(RHI_Shader_Pixel, shader_dir + "font.hlsl", async);
 
-        // line
-        shader(Renderer_Shader::line_v) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::line_v)->Compile(RHI_Shader_Vertex, shader_dir + "line.hlsl", async, RHI_Vertex_Type::PosCol);
-        shader(Renderer_Shader::line_p) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::line_p)->Compile(RHI_Shader_Pixel, shader_dir + "line.hlsl", async);
-
-        // outline
-        shader(Renderer_Shader::outline_v) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::outline_v)->Compile(RHI_Shader_Vertex, shader_dir + "outline.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-        shader(Renderer_Shader::outline_p) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::outline_p)->Compile(RHI_Shader_Pixel, shader_dir + "outline.hlsl", async);
-        shader(Renderer_Shader::outline_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::outline_c)->Compile(RHI_Shader_Compute, shader_dir + "outline.hlsl", async);
-
         // reflection probe
         shader(Renderer_Shader::reflection_probe_v) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::reflection_probe_v)->Compile(RHI_Shader_Vertex, shader_dir + "reflection_probe.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
         shader(Renderer_Shader::reflection_probe_p) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::reflection_probe_p)->Compile(RHI_Shader_Pixel, shader_dir + "reflection_probe.hlsl", async);
 
-        // debug
-        {
-            shader(Renderer_Shader::debug_reflection_probe_v) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::debug_reflection_probe_v)->Compile(RHI_Shader_Vertex, shader_dir + "debug_reflection_probe.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-            shader(Renderer_Shader::debug_reflection_probe_p) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::debug_reflection_probe_p)->Compile(RHI_Shader_Pixel, shader_dir + "debug_reflection_probe.hlsl", async);
-        }
-
         // blur
         {
-            // Gaussian
+            // gaussian
             shader(Renderer_Shader::blur_gaussian_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::blur_gaussian_c)->AddDefine("PASS_BLUR_GAUSSIAN");
             shader(Renderer_Shader::blur_gaussian_c)->Compile(RHI_Shader_Compute, shader_dir + "blur.hlsl", async);
 
-            // Gaussian bilateral 
+            // gaussian bilateral 
             shader(Renderer_Shader::blur_gaussian_bilaterial_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::blur_gaussian_bilaterial_c)->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
             shader(Renderer_Shader::blur_gaussian_bilaterial_c)->Compile(RHI_Shader_Compute, shader_dir + "blur.hlsl", async);
@@ -431,15 +447,6 @@ namespace Spartan
         // ssgi
         shader(Renderer_Shader::ssgi_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::ssgi_c)->Compile(RHI_Shader_Compute, shader_dir + "ssgi.hlsl", async);
-
-        // light
-        {
-            shader(Renderer_Shader::light_composition_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::light_composition_c)->Compile(RHI_Shader_Compute, shader_dir + "light_composition.hlsl", async);
-
-            shader(Renderer_Shader::light_image_based_p) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::light_image_based_p)->Compile(RHI_Shader_Pixel, shader_dir + "light_image_based.hlsl", async);
-        }
 
         // screen space reflections
         shader(Renderer_Shader::ssr_c) = make_shared<RHI_Shader>();
@@ -539,9 +546,8 @@ namespace Spartan
         create_mesh(Renderer_MeshType::Cylinder);
         create_mesh(Renderer_MeshType::Cone);
 
-        // misc
+        // this buffers holds all debug primitives that can be drawn
         m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(true, "lines");
-        m_world_grid          = make_unique<Grid>();
     }
 
     void Renderer::CreateStandardTextures()
@@ -606,7 +612,7 @@ namespace Spartan
         return m_render_targets;
     }
 
-    array<shared_ptr<RHI_Shader>, Renderer::number_shaders>& Renderer::GetShaders()
+    array<shared_ptr<RHI_Shader>, number_shaders>& Renderer::GetShaders()
     {
         return m_shaders;
     }

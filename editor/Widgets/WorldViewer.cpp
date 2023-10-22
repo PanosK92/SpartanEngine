@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Environment.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/ReflectionProbe.h"
+#include "World/Components/Transform.h"
 //===========================================
 
 //= NAMESPACES =====
