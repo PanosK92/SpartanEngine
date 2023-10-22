@@ -267,13 +267,16 @@ namespace Spartan
         m_standard_resource_directories[static_cast<uint32_t>(type)] = directory;
     }
 
-    string ResourceCache::GetResourceDirectory(const ResourceDirectory type)
+    string ResourceCache::GetResourceDirectory(const ResourceDirectory resource_directory_type)
     {
-        string directory = m_standard_resource_directories[static_cast<uint32_t>(type)];
+        string directory = m_standard_resource_directories[static_cast<uint32_t>(resource_directory_type)];
 
-        if (type == ResourceDirectory::Shaders && use_root_shader_directory)
+        if (use_root_shader_directory)
         {
-            directory = "..\\" + directory;
+            if (resource_directory_type == ResourceDirectory::Shaders)
+            {
+                directory = "..\\" + directory;
+            }
         }
 
         return directory;
