@@ -585,6 +585,9 @@ namespace Spartan
         // deduce depth-stencil state
         RHI_DepthStencilState* depth_stencil_state = depth_prepass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
 
+        // note: if is_transparent_pass is true we could simply clear the RTs, however we don't do this as fsr
+        // can be enabled, and if it is, it will expect the RTs to contain both the opaque and transparent data
+      
         uint32_t start_index = !is_transparent_pass ? 0 : 2;
         uint32_t end_index   = !is_transparent_pass ? 2 : 4;
         bool is_first_pass   = true;
@@ -605,7 +608,7 @@ namespace Spartan
             pso.rasterizer_state                = rasterizer_state;
             pso.depth_stencil_state             = depth_stencil_state;
             pso.render_target_color_textures[0] = tex_albedo;
-            pso.clear_color[0]                  = (!is_first_pass || pso.instancing) ? rhi_color_load : Color::standard_transparent;
+            pso.clear_color[0]                  = (!is_first_pass || pso.instancing || is_transparent_pass) ? rhi_color_load : Color::standard_transparent;
             pso.render_target_color_textures[1] = tex_normal;
             pso.clear_color[1]                  = pso.clear_color[0];
             pso.render_target_color_textures[2] = tex_material;
