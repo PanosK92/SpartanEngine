@@ -164,12 +164,12 @@ namespace Spartan
             );
         }
 
-        // Memory
+        // memory
         static uint64_t GetMemoryUsageCpu(ResourceType type = ResourceType::Unknown);
         static uint64_t GetMemoryUsageGpu(ResourceType type = ResourceType::Unknown);
         static uint32_t GetResourceCount(ResourceType type = ResourceType::Unknown);
 
-        // Directories
+        // directories
         static void AddResourceDirectory(ResourceDirectory type, const std::string& directory);
         static std::string GetResourceDirectory(ResourceDirectory type);
         static void SetProjectDirectory(const std::string& directory);
@@ -177,15 +177,17 @@ namespace Spartan
         static const std::string& GetProjectDirectory();
         static std::string GetDataDirectory();
 
-        // Misc
+        // misc
         static std::vector<std::shared_ptr<IResource>>& GetResources();
         static std::mutex& GetMutex();
+        static bool GetUseRootShaderDirectory();
+        static void SetUseRootShaderDirectory(const bool use_root_shader_directory);
 
     private:
         static bool IsCached(const uint64_t resource_id);
         static bool IsCached(const std::string& resource_name, const ResourceType resource_type);
 
-        // Event handlers
+        // event handlers
         static void SaveResourcesToFiles();
         static void LoadResourcesFromFiles();
     };

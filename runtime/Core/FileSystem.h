@@ -32,7 +32,7 @@ namespace Spartan
     class SP_CLASS FileSystem
     {
     public:
-        // Strings
+        // strings
         static bool IsEmptyOrWhitespace(const std::string& var);
         static bool IsAlphanumeric(const std::string& var);
         static std::string RemoveIllegalCharacters(const std::string& text);
@@ -43,7 +43,7 @@ namespace Spartan
         static std::string ReplaceExpression(const std::string& str, const std::string& from, const std::string& to);
         static std::wstring StringToWstring(const std::string& str);
 
-        // Supported files
+        // supported files
         static bool IsSupportedAudioFile(const std::string& path);
         static bool IsSupportedImageFile(const std::string& path);
         static bool IsSupportedModelFile(const std::string& path);
@@ -59,7 +59,7 @@ namespace Spartan
         static bool IsEngineShaderFile(const std::string& path);
         static bool IsEngineFile(const std::string& path);
 
-        // Supported files in directory
+        // supported files in directory
         static std::vector<std::string> GetSupportedFilesInDirectory(const std::string& path);
         static std::vector<std::string> GetSupportedImageFilesFromPaths(const std::vector<std::string>& paths);
         static std::vector<std::string> GetSupportedAudioFilesFromPaths(const std::vector<std::string>& paths);
@@ -67,7 +67,7 @@ namespace Spartan
         static std::vector<std::string> GetSupportedModelFilesInDirectory(const std::string& path);
         static std::vector<std::string> GetSupportedSceneFilesInDirectory(const std::string& path);
 
-        // Directories & files
+        // directories & files
         static std::string GetFileNameFromFilePath(const std::string& path);
         static std::string GetFileNameWithoutExtensionFromFilePath(const std::string& path);
         static std::string GetDirectoryFromFilePath(const std::string& path);

@@ -43,7 +43,7 @@ namespace Spartan
         std::string url;
     };
 
-    // This system is responsible for saving/loading engine settings to a file
+    // this system is responsible for saving/loading engine settings to an xml file
     class SP_CLASS Settings
     {
     public:

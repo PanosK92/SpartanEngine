@@ -132,7 +132,7 @@ namespace Spartan
 
         Display::DetectDisplayModes();
 
-        // RHI initialization
+        // rhi initialization
         {
             if (RHI_Context::renderdoc)
             {
@@ -149,7 +149,7 @@ namespace Spartan
 
             if (!Settings::HasLoadedUserSettingsFromFile())
             {
-                // the resolution of the output frame (we can upscale to that linearly or with FSR 2)
+                // the resolution of the output frame (we can upscale to that linearly or with fsr 2)
                 SetResolutionOutput(width, height, false);
 
                 // the resolution of the actual rendering
@@ -159,7 +159,7 @@ namespace Spartan
             // the resolution/size of the editor's viewport. This is overridden by the editor based on the actual viewport size
             SetViewport(static_cast<float>(width), static_cast<float>(height));
 
-            // Note: If the editor is active, it will set the render and viewport resolution to what the actual viewport is
+            // note: if the editor is active, it will set the render and viewport resolution to what the actual viewport is
         }
 
         // swap chain
@@ -177,26 +177,26 @@ namespace Spartan
         // command pool
         m_cmd_pool = RHI_Device::CommandPoolAllocate("renderer", swap_chain->GetObjectId(), RHI_Queue_Type::Graphics);
 
-        // AMD FidelityFX suite
+        // amd fidelityfx suite
         RHI_AMD_FidelityFX::Initialize();
 
         // options
         m_options.clear();
-        SetOption(Renderer_Option::DepthPrepass,             1.0f); // As a world becomes bigger and more complex, this almost becomes a requirement
-        SetOption(Renderer_Option::Hdr,                      swap_chain->IsHdr() ? 1.0f : 0.0f);                 // HDR is enabled by default if the swapchain is HDR
-        SetOption(Renderer_Option::Bloom,                    0.05f);                                             // non-zero values activate it and define the blend factor.
-        SetOption(Renderer_Option::MotionBlur,               1.0f);
-        SetOption(Renderer_Option::Ssgi,                     1.0f);
-        SetOption(Renderer_Option::ScreenSpaceShadows,       static_cast<float>(Renderer_ScreenspaceShadow::Bend));
-        SetOption(Renderer_Option::ScreenSpaceReflections,   1.0f);
-        SetOption(Renderer_Option::Anisotropy,               16.0f);
-        SetOption(Renderer_Option::ShadowResolution,         4096.0f);
-        SetOption(Renderer_Option::Tonemapping,              static_cast<float>(Renderer_Tonemapping::Aces));
-        SetOption(Renderer_Option::Gamma,                    2.2f);
-        SetOption(Renderer_Option::Exposure,                 1.0f);
-        SetOption(Renderer_Option::Sharpness,                1.0f);
-        SetOption(Renderer_Option::Fog,                      1.5f);
-        SetOption(Renderer_Option::Antialiasing,             static_cast<float>(Renderer_Antialiasing::Taa));    // this is using FSR 2 for TAA
+        SetOption(Renderer_Option::DepthPrepass,             1.0f);                                                 // As the default worlds become complex, it's better to have this on
+        SetOption(Renderer_Option::Hdr,                      swap_chain->IsHdr() ? 1.0f : 0.0f);                    // hdr is enabled by default if the swapchain is hdr
+        SetOption(Renderer_Option::Bloom,                    0.05f);                                                // non-zero values activate it and define the blend factor
+        SetOption(Renderer_Option::MotionBlur,               1.0f);                                                 
+        SetOption(Renderer_Option::Ssgi,                     1.0f);                                                 
+        SetOption(Renderer_Option::ScreenSpaceShadows,       static_cast<float>(Renderer_ScreenspaceShadow::Bend)); 
+        SetOption(Renderer_Option::ScreenSpaceReflections,   1.0f);                                                 
+        SetOption(Renderer_Option::Anisotropy,               16.0f);                                                
+        SetOption(Renderer_Option::ShadowResolution,         4096.0f);                                              
+        SetOption(Renderer_Option::Tonemapping,              static_cast<float>(Renderer_Tonemapping::Aces));       
+        SetOption(Renderer_Option::Gamma,                    2.2f);                                                 
+        SetOption(Renderer_Option::Exposure,                 1.0f);                                                 
+        SetOption(Renderer_Option::Sharpness,                1.0f);                                                 
+        SetOption(Renderer_Option::Fog,                      1.5f);                                                 
+        SetOption(Renderer_Option::Antialiasing,             static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 2 for taa
         SetOption(Renderer_Option::Upsampling,               static_cast<float>(Renderer_Upsampling::FSR2));
         SetOption(Renderer_Option::Vsync,                    0.0f);
         SetOption(Renderer_Option::Debanding,                0.0f);
