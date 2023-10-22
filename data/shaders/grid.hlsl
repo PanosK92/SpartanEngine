@@ -19,37 +19,29 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+//= INCLUDES =========
+#include "common.hlsl"
+//====================
 
-//= INCLUDES =============================
-#include <vector>
-#include <memory>
-#include "../RHI/RHI_Definitions.h"
-#include "../Math/Matrix.h"
-#include "../Core/Definitions.h"
-#include "../World/Components/Transform.h"
-//========================================
+static const float4 grid_color = float4(0.5f, 0.5f, 0.5f, 1.0f);
 
-namespace Spartan
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-    class SP_CLASS Grid
-    {
-    public:
-        Grid();
-        ~Grid() = default;
-        
-        const Math::Matrix& ComputeWorldMatrix(std::shared_ptr<Transform> camera);
-        const auto& GetVertexBuffer()   const { return m_vertex_buffer; }
-        const uint32_t GetVertexCount() const { return m_vertex_count; }
+    const float2 properties    = pass_get_f3_value().xy;
+    const float line_interval  = properties.x;
+    const float line_thickness = properties.y;
+    
+    // calculate the modulated distance for both x and y coordinates
+    float mod_x = fmod(input.uv.x, line_interval);
+    float mod_y = fmod(input.uv.y, line_interval);
+    
+    // use step function to determine if the pixel is near a line
+    float line_x = step(line_thickness, mod_x) - step(line_interval - line_thickness, mod_x);
+    float line_y = step(line_thickness, mod_y) - step(line_interval - line_thickness, mod_y);
+    
+    // combine line_x and line_y to decide if either is true, then color it as a line
+    float is_line = max(1.0f - line_x, 1.0f - line_y);
 
-    private:
-        void BuildGrid(std::vector<RHI_Vertex_PosCol>* vertices);
-
-        uint32_t m_terrain_height = 200;
-        uint32_t m_terrain_width  = 200;
-        uint32_t m_vertex_count   = 0;
-
-        std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer;
-        Math::Matrix m_world;
-    };
+    // either grid_color or 0 based on is_line
+    return is_line * grid_color + (1.0f - is_line) * 0.0f;
 }

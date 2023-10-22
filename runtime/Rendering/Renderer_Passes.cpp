@@ -23,19 +23,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Renderer.h"
 #include "Window.h"
+#include "bend_sss_cpu.h"
 #include "../Profiling/Profiler.h"
 #include "../World/Entity.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/ReflectionProbe.h"
+#include "../World/Components/Transform.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_AMD_FidelityFX.h"
 #include "../RHI/RHI_StructuredBuffer.h"
 #include "../Display/Display.h"
-#include "bend_sss_cpu.h"
-
 //==============================================
 
 //= NAMESPACES ===============
@@ -1304,7 +1304,8 @@ namespace Spartan
                 Pass_DepthOfField(cmd_list, get_render_in, get_render_out);
             }
 
-            // Line rendering (world grid, vectors, debugging etc)
+            // Debug rendering (world grid, vectors, debugging etc)
+            Pass_Grid(cmd_list, get_render_out);
             Pass_Lines(cmd_list, get_render_out);
             Pass_Outline(cmd_list, get_render_out);
         }
@@ -1980,7 +1981,7 @@ namespace Spartan
 
                     Matrix transform = Matrix(pos_world, rotation_camera_billboard * rotation_reorient_quad, scale);
 
-                    // update transform
+                    // set transform
                     m_cb_pass_cpu.transform = transform * m_cb_frame_cpu.view_projection;
                     PushPassConstants(cmd_list);
                 }
@@ -2024,6 +2025,62 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
+    void Renderer::Pass_Grid(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
+    {
+        if (!GetOption<bool>(Renderer_Option::Debug_Grid))
+            return;
+
+        // acquire shader
+        RHI_Shader* shader_v = GetShader(Renderer_Shader::quad_v).get();
+        RHI_Shader* shader_p = GetShader(Renderer_Shader::grid_p).get();
+        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
+            return;      
+
+        // define the pipeline state
+        static RHI_PipelineState pso;
+        pso.shader_vertex                   = shader_v;
+        pso.shader_pixel                    = shader_p;
+        pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid_cull_none).get();
+        pso.blend_state                     = GetBlendState(Renderer_BlendState::Alpha).get();
+        pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
+        pso.render_target_color_textures[0] = tex_out;
+        pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
+        pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
+
+        // draw
+        cmd_list->BeginTimeblock("grid");
+        cmd_list->SetPipelineState(pso);
+        cmd_list->BeginRenderPass();
+
+        // set transform
+        {
+            // calculate grid spacing and translation to simulate an infinite grid
+            const float grid_spacing       = 1.0f;
+            const Vector3& camera_position = m_camera->GetTransform()->GetPosition();
+            const Vector3 translation      = Vector3(
+                floor(camera_position.x / grid_spacing) * grid_spacing,
+                0.0f,
+                floor(camera_position.z / grid_spacing) * grid_spacing
+            );
+            Matrix quad_transform   = Matrix::CreateScale(Vector3(1000.0f, 1.0f, 1000.0f)) * Matrix::CreateTranslation(translation);
+            m_cb_pass_cpu.transform = quad_transform * m_cb_frame_cpu.view_projection;
+
+            // style
+            const float line_internval  = 0.001f;
+            const float line_thickeness = 0.00002f;
+            m_cb_pass_cpu.set_f3_value(line_internval, line_thickeness, 0.0f);
+
+            PushPassConstants(cmd_list);
+        }
+
+        cmd_list->SetBufferVertex(GetStandardMesh(Renderer_MeshType::Quad)->GetVertexBuffer());
+        cmd_list->SetBufferIndex(GetStandardMesh(Renderer_MeshType::Quad)->GetIndexBuffer());
+        cmd_list->DrawIndexed(6);
+
+        cmd_list->EndRenderPass();
+        cmd_list->EndTimeblock();
+    }
+
     void Renderer::Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
         // acquire shaders
@@ -2050,33 +2107,7 @@ namespace Spartan
         pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
 
-        // draw the grid
-        if (GetOption<bool>(Renderer_Option::Debug_Grid))
-        {
-            cmd_list->BeginMarker("grid");
-
-            // set pipeline state
-            pso.blend_state         = GetBlendState(Renderer_BlendState::Alpha).get();
-            pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
-
-            cmd_list->SetPipelineState(pso);
-            cmd_list->BeginRenderPass();
-            // push pass constants
-            {
-                m_cb_pass_cpu.set_resolution_out(GetResolutionRender());
-                if (GetCamera())
-                {
-                    m_cb_pass_cpu.transform = m_world_grid->ComputeWorldMatrix(GetCamera()->GetTransform());
-                }
-                PushPassConstants(cmd_list);
-            }
-            cmd_list->SetBufferVertex(m_world_grid->GetVertexBuffer().get());
-            cmd_list->Draw(m_world_grid->GetVertexCount());
-            cmd_list->EndRenderPass();
-            cmd_list->EndMarker();
-        }
-
-        // lines below this point are drawn in world space
+        // world space rendering
         m_cb_pass_cpu.transform = Matrix::Identity;
         PushPassConstants(cmd_list);
 
@@ -2203,7 +2234,7 @@ namespace Spartan
         if (!GetOption<bool>(Renderer_Option::Debug_SelectionOutline) || Engine::IsFlagSet(EngineMode::Game))
             return;
 
-        // Acquire shaders
+        // acquire shaders
         RHI_Shader* shader_v = GetShader(Renderer_Shader::outline_v).get();
         RHI_Shader* shader_p = GetShader(Renderer_Shader::outline_p).get();
         RHI_Shader* shader_c = GetShader(Renderer_Shader::outline_c).get();
@@ -2245,7 +2276,7 @@ namespace Spartan
                                     cmd_list->BeginRenderPass();
                                     {
                                         // push draw data
-                                        m_cb_pass_cpu.set_f4_value(DEBUG_COLOR);
+                                        m_cb_pass_cpu.set_f4_value(debug_color);
                                         m_cb_pass_cpu.transform = entity_selected->GetTransform()->GetMatrix();
                                         PushPassConstants(cmd_list);
 

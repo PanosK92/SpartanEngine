@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============================
 #include "pch.h"
 #include "Renderable.h"
+#include "Transform.h"
 #include "../Rendering/Renderer.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../../IO/FileStream.h"

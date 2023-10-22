@@ -27,7 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    #define DEBUG_COLOR Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
+    #define debug_color Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
+    constexpr uint8_t resources_frame_lifetime = 5;
+    constexpr uint8_t number_shaders           = 51;
 
     enum class Renderer_Option : uint32_t
     {
@@ -206,6 +208,7 @@ namespace Spartan
         light_image_based_p,
         line_v,
         line_p,
+        grid_p,
         outline_v,
         outline_p,
         outline_c,

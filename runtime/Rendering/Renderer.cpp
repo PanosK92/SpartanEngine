@@ -22,6 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================================
 #include "pch.h"
 #include "Renderer.h"
+#include "../Profiling/RenderDoc.h"
+#include "../Core/Window.h"
+#include "../Input/Input.h"
+#include "../Display/Display.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_SwapChain.h"
 #include "../RHI/RHI_CommandPool.h"
@@ -30,15 +34,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_AMD_FidelityFX.h"
 #include "../RHI/RHI_StructuredBuffer.h"
 #include "../World/Entity.h"
+#include "../World/Components/Transform.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Environment.h"
 #include "../World/Components/AudioSource.h"
 #include "../World/Components/ReflectionProbe.h"
-#include "../Profiling/RenderDoc.h"
-#include "../Core/Window.h"
-#include "../Input/Input.h"
-#include "../Display/Display.h"
 //==============================================
 
 //= NAMESPACES ===============
@@ -54,7 +55,6 @@ namespace Spartan
     Cb_Light Renderer::m_cb_light_cpu;
     Cb_Material Renderer::m_cb_material_cpu;
     shared_ptr<RHI_VertexBuffer> Renderer::m_vertex_buffer_lines;
-    unique_ptr<Grid> Renderer::m_world_grid;
     vector<RHI_Vertex_PosCol> Renderer::m_line_vertices;
     vector<float> Renderer::m_lines_duration;
     uint32_t Renderer::m_lines_index_depth_off;
@@ -241,7 +241,6 @@ namespace Spartan
 
             m_entities_to_add.clear();
             m_renderables.clear();
-            m_world_grid.reset();
             swap_chain            = nullptr;
             m_vertex_buffer_lines = nullptr;
             environment_texture   = nullptr;
@@ -277,7 +276,7 @@ namespace Spartan
         {
             m_resource_index++;
 
-            if (m_resource_index == m_resources_frame_lifetime)
+            if (m_resource_index == resources_frame_lifetime)
             {
                 m_resource_index = 0;
 
@@ -603,7 +602,7 @@ namespace Spartan
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::material, GetConstantBuffer(Renderer_ConstantBuffer::Material));
     }
 
-    void Renderer::OnWorldResolved(sp_variant data)
+	void Renderer::OnWorldResolved(sp_variant data)
     {
         // note: m_renderables is a vector of shared pointers.
         // this ensures that if any entities are deallocated by the world.
