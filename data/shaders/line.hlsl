@@ -23,12 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-struct PixelOutputType
-{
-    float4 color             : SV_Target0;
-    float fsr2_reactive_mask : SV_Target1;
-};
-
 Pixel_PosColor mainVS(Vertex_PosColor input)
 {
     Pixel_PosColor output;
@@ -41,12 +35,18 @@ Pixel_PosColor mainVS(Vertex_PosColor input)
     return output;
 }
 
+struct PixelOutputType
+{
+    float4 color             : SV_Target0;
+    float fsr2_reactive_mask : SV_Target1;
+};
+
 PixelOutputType mainPS(Pixel_PosColor input)
 {
     PixelOutputType output;
 
     output.color              = input.color;
-    output.fsr2_reactive_mask = input.color.a;
+    output.fsr2_reactive_mask = output.color.a;
 
     return output;
 }

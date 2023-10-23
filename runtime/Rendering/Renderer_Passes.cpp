@@ -1305,9 +1305,15 @@ namespace Spartan
             }
 
             // Debug rendering (world grid, vectors, debugging etc)
-            Pass_Grid(cmd_list, get_render_out);
-            Pass_Lines(cmd_list, get_render_out);
-            Pass_Outline(cmd_list, get_render_out);
+            {
+                // clear the reactive mask since all the debug primitives have no motion vectors and need to be added to the mask
+                RHI_Texture* tex_reactive_mask = GetRenderTarget(Renderer_RenderTexture::fsr2_mask_reactive).get();
+                cmd_list->ClearRenderTarget(tex_reactive_mask, 0, 0, false, Color::standard_black);
+
+                Pass_Grid(cmd_list, get_render_out);
+                Pass_Lines(cmd_list, get_render_out);
+                Pass_Outline(cmd_list, get_render_out);
+            }
         }
 
         // Determine antialiasing modes
@@ -2043,6 +2049,8 @@ namespace Spartan
         pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid_cull_none).get();
         pso.blend_state                     = GetBlendState(Renderer_BlendState::Alpha).get();
         pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
+        pso.render_target_color_textures[1] = GetRenderTarget(Renderer_RenderTexture::fsr2_mask_reactive).get();
+        pso.clear_color[1]                  = rhi_color_load;
         pso.render_target_color_textures[0] = tex_out;
         pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
@@ -2091,10 +2099,6 @@ namespace Spartan
 
         cmd_list->BeginTimeblock("lines");
 
-        // clear the reactive mask
-        RHI_Texture* tex_reactive_mask = GetRenderTarget(Renderer_RenderTexture::fsr2_mask_reactive).get();
-        cmd_list->ClearRenderTarget(tex_reactive_mask, 0, 0, false, Color::standard_black);
-
         // define the pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
@@ -2102,7 +2106,7 @@ namespace Spartan
         pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Wireframe_cull_none).get();
         pso.render_target_color_textures[0] = tex_out;
         pso.clear_color[0]                  = rhi_color_load;
-        pso.render_target_color_textures[1] = tex_reactive_mask;
+        pso.render_target_color_textures[1] = GetRenderTarget(Renderer_RenderTexture::fsr2_mask_reactive).get();
         pso.clear_color[1]                  = rhi_color_load;
         pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
