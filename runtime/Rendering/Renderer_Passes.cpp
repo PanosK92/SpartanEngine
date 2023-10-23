@@ -2071,7 +2071,7 @@ namespace Spartan
                 floor(camera_position.z / grid_spacing) * grid_spacing
             );
             Matrix quad_transform   = Matrix::CreateScale(Vector3(1000.0f, 1.0f, 1000.0f)) * Matrix::CreateTranslation(translation);
-            m_cb_pass_cpu.transform = quad_transform * m_cb_frame_cpu.view_projection;
+            m_cb_pass_cpu.transform = quad_transform * m_cb_frame_cpu.view_projection_unjittered;
 
             // style
             const float line_internval  = 0.001f;
