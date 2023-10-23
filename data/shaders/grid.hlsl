@@ -60,7 +60,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
     float line_thickness      = properties.y;
 
     float fade_factor       = compute_fade_factor(input.uv, fade_start, fade_end);
-    float anti_moire_factor = compute_anti_moire_factor(input.uv, anti_moire_start,);
+    float anti_moire_factor = compute_anti_moire_factor(input.uv, anti_moire_start);
     
     // anti-moire
     line_thickness *= anti_moire_factor;

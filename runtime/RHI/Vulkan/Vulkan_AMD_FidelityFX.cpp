@@ -248,7 +248,7 @@ namespace Spartan
 
             // flags
             {
-                fsr2_context_description.flags      = FFX_FSR2_ENABLE_DEPTH_INVERTED | FFX_FSR2_ENABLE_AUTO_EXPOSURE | FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE;
+                fsr2_context_description.flags      = FFX_FSR2_ENABLE_DEPTH_INVERTED | FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE;
                 #ifdef DEBUG
                 fsr2_context_description.flags     |= FFX_FSR2_ENABLE_DEBUG_CHECKING;
                 fsr2_context_description.fpMessage  = &ffx_message_callback;
