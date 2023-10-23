@@ -161,7 +161,7 @@ float3 amd(float3 color)
 }
 
 // HDR10 ST2084 
-float3 linear_to_pq_color(float3 color, float max_nits)
+float3 rec2084_curve_to_color(float3 color, float max_nits)
 {
     // constants for PQ transfer function based on ST 2084
     const float m1 = 0.1593017578125f; // (2610 / 4096) * (1 / 4)
@@ -170,16 +170,21 @@ float3 linear_to_pq_color(float3 color, float max_nits)
     const float c2 = 18.8515625f;      // (2413 / 128) * 32
     const float c3 = 18.6875f;         // (2392 / 128) * 32
 
-    // scale color to be between 0 and 1 based on max_nits
-    float3 scaled_color = color / max_nits;
+    // calculate the original linear luminance from the color
+    float linear_luminance = dot(color, float3(0.2126, 0.7152, 0.0722));
 
-    // apply the PQ transfer function
-    float3 intermediate = pow(scaled_color, float3(1.0f / m2, 1.0f / m2, 1.0f / m2));
-    float3 numerator    = (c1 + c2 * intermediate);
-    float3 denominator  = (1.0f + c3 * intermediate);
+    // scale luminance to be between 0 and 1 based on max_nits
+    float scaled_luminance = linear_luminance / max_nits;
 
-    // final PQ encoded color
-    return pow(numerator / denominator, float3(1.0f / m1, 1.0f / m1, 1.0f / m1));
+    // apply the PQ transfer function to the luminance
+    float lp           = pow(scaled_luminance, m1);
+    float pq_luminance = pow((c1 + c2 * lp) / (1 + c3 * lp), m2);
+
+    // calculate the ratio of PQ encoded luminance to original luminance
+    float luminance_ratio = pq_luminance / linear_luminance;
+
+    // scale the original color by the luminance ratio to get the final color
+    return color * luminance_ratio;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -200,7 +205,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float4 color = tex[thread_id.xy];
     color.rgb *= exposure;
 
-    // 2. tone-map
+    // 2. tone-map (needed for SDR, optional for HDR)
     switch (tone_mapping)
     {
         case 0:
@@ -223,7 +228,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // 3. linear to color space conversion
     if (hdr != 0.0f) // HDR10 ST2084
     {
-        color.rgb = linear_to_pq_color(color.rgb, luminance_max_nits);
+        color.rgb = rec2084_curve_to_color(color.rgb, luminance_max_nits);
     }
     else // SDR
     {
