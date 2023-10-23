@@ -39,6 +39,11 @@ namespace Spartan
 
     }
     
+    AudioSource::~AudioSource()
+    {
+        Stop();
+    }
+
     void AudioSource::OnInitialize()
     {
         Component::OnInitialize();
