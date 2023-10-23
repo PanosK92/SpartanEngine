@@ -1919,7 +1919,8 @@ namespace Spartan
             tex_out,
             GetCamera().get(),
             m_cb_frame_cpu.delta_time,
-            sharpness
+            sharpness,
+            GetOption<float>(Renderer_Option::Exposure)
         );
 
         cmd_list->EndTimeblock();
