@@ -360,7 +360,7 @@ float4 Shadow_Map(Surface surface, Light light)
                 // sample primary cascade
                 auto_bias(surface, pos_ndc, light, cascade_index);
                 shadow.a = SampleShadowMap(surface, float3(pos_uv, cascade_index), pos_ndc.z);
-
+                return shadow;
                 if (light_has_shadows_transparent())
                 {
                     if (shadow.a > 0.0f && surface.is_opaque())

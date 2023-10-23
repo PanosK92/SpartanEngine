@@ -112,14 +112,7 @@ namespace Spartan
                     Pass_GBuffer(cmd_list);
                     Pass_Ssgi(cmd_list);
                     Pass_Ssr(cmd_list, rt1);
-                    if (GetOption<float>(Renderer_Option::ScreenSpaceShadows) == 1)
-                    {
-                        Pass_Sss(cmd_list);
-                    }
-                    else if (GetOption<float>(Renderer_Option::ScreenSpaceShadows) == 2)
-                    {
-                        Pass_Sss_Bend(cmd_list);
-                    }
+                    Pass_Sss_Bend(cmd_list);
                     Pass_Light(cmd_list);                  // compute diffuse and specular buffers
                     Pass_Light_Composition(cmd_list, rt1); // compose diffuse, specular, ssgi, volumetric etc.
                     Pass_Light_ImageBased(cmd_list, rt1);  // apply IBL and SSR
@@ -698,7 +691,7 @@ namespace Spartan
 
     void Renderer::Pass_Ssgi(RHI_CommandList* cmd_list)
     {
-        if (!GetOption<bool>(Renderer_Option::Ssgi))
+        if (!GetOption<bool>(Renderer_Option::ScreenSpaceGlobalIllumination))
             return;
 
         // acquire shaders
@@ -820,7 +813,7 @@ namespace Spartan
             return;
 
         // acquire shaders
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::bend_sss_c).get();
+        RHI_Shader* shader_c = GetShader(Renderer_Shader::sss_c_bend).get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -903,63 +896,6 @@ namespace Spartan
             }
 
             array_slice_index = 0;
-        }
-        cmd_list->EndTimeblock();
-    }
-
-    void Renderer::Pass_Sss(RHI_CommandList* cmd_list)
-    {
-        if (!GetOption<bool>(Renderer_Option::ScreenSpaceShadows))
-            return;
-
-        // acquire shaders
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::sss_c).get();
-        if (!shader_c->IsCompiled())
-            return;
-
-        // acquire lights
-        const vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Light];
-        if (entities.empty())
-            return;
-
-        cmd_list->BeginTimeblock("sss");
-        {
-            // acquire render targets
-            RHI_Texture* tex_sss = GetRenderTarget(Renderer_RenderTexture::sss).get();
-
-            // define pipeline state
-            static RHI_PipelineState pso;
-            pso.shader_compute = shader_c;
-
-            // set pipeline state
-            cmd_list->SetPipelineState(pso);
-
-            // iterate through all the lights
-            static float light_index = 0;
-            for (shared_ptr<Entity> entity : entities)
-            {
-                if (shared_ptr<Light> light = entity->GetComponent<Light>())
-                {
-                    if (!light->GetShadowsEnabled())
-                        continue;
-
-                    // update light buffer
-                    UpdateConstantBufferLight(cmd_list, light);
-
-                    // light index writes into the texture array index
-                    m_cb_pass_cpu.set_f3_value(0, 0, light_index++);
-                    PushPassConstants(cmd_list);
-
-                    // set textures
-                    BindTexturesGfbuffer(cmd_list);
-                    cmd_list->SetTexture(Renderer_BindingsUav::tex_array2, tex_sss); // write to that
-
-                    // render
-                    cmd_list->Dispatch(thread_group_count_x(tex_sss), thread_group_count_y(tex_sss));
-                }
-            }
-
-            light_index = 0;
         }
         cmd_list->EndTimeblock();
     }
