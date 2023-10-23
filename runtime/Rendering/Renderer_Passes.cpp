@@ -2067,7 +2067,7 @@ namespace Spartan
 
             // style
             const float line_internval  = 0.001f;
-            const float line_thickeness = 0.00002f;
+            const float line_thickeness = 0.00001f;
             m_cb_pass_cpu.set_f3_value(line_internval, line_thickeness, 0.0f);
 
             PushPassConstants(cmd_list);
