@@ -160,36 +160,47 @@ float3 amd(float3 color)
     return color;
 }
 
+// HDR10 ST2084 
+float3 linear_to_pq_color(float3 color, float max_nits)
+{
+    // constants for PQ transfer function based on ST 2084
+    const float m1 = 0.1593017578125f; // (2610 / 4096) * (1 / 4)
+    const float m2 = 78.84375f;        // (2523 / 32) * 128
+    const float c1 = 0.8359375f;       // (3424 / 4096)
+    const float c2 = 18.8515625f;      // (2413 / 128) * 32
+    const float c3 = 18.6875f;         // (2392 / 128) * 32
+
+    // scale color to be between 0 and 1 based on max_nits
+    float3 scaled_color = color / max_nits;
+
+    // apply the PQ transfer function
+    float3 intermediate = pow(scaled_color, float3(1.0f / m2, 1.0f / m2, 1.0f / m2));
+    float3 numerator    = (c1 + c2 * intermediate);
+    float3 denominator  = (1.0f + c3 * intermediate);
+
+    // final PQ encoded color
+    return pow(numerator / denominator, float3(1.0f / m1, 1.0f / m1, 1.0f / m1));
+}
+
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
-    // exposure, tone-mapping, gamma correction
-    float4 color = tex[thread_id.xy];
-
+    // get cpu data
     float3 f3_value          = pass_get_f3_value();
+    float3 f3_value2         = pass_get_f3_value2();
     float luminance_max_nits = f3_value.x;
     float tone_mapping       = f3_value.y;
     float exposure           = f3_value.z;
-    
-    // 1. normalize luminance based on monitor capabilities
-    {
-          // Compute luminance in cd/m^2 and convert it to nits
-          float luminance_original = luminance(color.rgb) * 100; 
-          
-          // Clamp the luminance to the monitor's max luminance
-          float luminance_clamped = min(luminance_original, luminance_max_nits);
-          
-          // Scale the RGB color to match the clamped luminance
-          color.rgb *= luminance_clamped / max(luminance_original, FLT_MIN);
-    }
-
-    // 2. expose
+    float hdr                = f3_value2.x;
+   
+    // 1. expose
+    float4 color = tex[thread_id.xy];
     color.rgb *= exposure;
 
-    // 3. tone-map
+    // 2. tone-map
     switch (tone_mapping)
     {
         case 0:
@@ -209,8 +220,15 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
             break;
     }
 
-    // 4. gamma-correct
-    color.rgb = gamma(color.rgb);
+    // 3. linear to color space conversion
+    if (hdr != 0.0f) // HDR10 ST2084
+    {
+        color.rgb = linear_to_pq_color(color.rgb, luminance_max_nits);
+    }
+    else // SDR
+    {
+        color.rgb = gamma(color.rgb);
+    }
 
     tex_uav[thread_id.xy] = color;
 }

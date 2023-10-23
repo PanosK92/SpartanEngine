@@ -33,7 +33,7 @@ namespace Spartan
 {
     static const uint8_t max_buffer_count = 3;
     static const RHI_Format format_sdr    = RHI_Format::R8G8B8A8_Unorm;
-    static const RHI_Format format_hdr    = RHI_Format::R16G16B16A16_Float;
+    static const RHI_Format format_hdr    = RHI_Format::R10G10B10A2_Unorm;
 
     class SP_CLASS RHI_SwapChain : public SpObject
     {
