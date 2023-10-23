@@ -29,7 +29,7 @@ namespace Spartan
 {
     #define debug_color Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
     constexpr uint8_t resources_frame_lifetime = 5;
-    constexpr uint8_t number_shaders           = 51;
+    constexpr uint8_t number_shaders           = 50;
 
     enum class Renderer_Option : uint32_t
     {
@@ -46,7 +46,7 @@ namespace Spartan
         Bloom,
         Fog,
         FogVolumetric,
-        Ssgi,
+        ScreenSpaceGlobalIllumination,
         ScreenSpaceShadows,
         ScreenSpaceReflections,
         MotionBlur,
@@ -216,8 +216,7 @@ namespace Spartan
         font_p,
         ssgi_c,
         ssr_c,
-        sss_c,
-        bend_sss_c,
+        sss_c_bend,
         temporal_filter_c,
         blur_gaussian_c,
         blur_gaussian_bilaterial_c,

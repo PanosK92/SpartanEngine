@@ -165,7 +165,6 @@ namespace Spartan
         static void Pass_Ssgi(RHI_CommandList* cmd_list);
         static void Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool is_transparent_pass = false);
         static void Pass_Sss_Bend(RHI_CommandList* cmd_list);
-        static void Pass_Sss(RHI_CommandList* cmd_list);
         static void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
         static void Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float radius, const float sigma, const uint32_t mip = rhi_all_mips);
         // passes - debug/editor

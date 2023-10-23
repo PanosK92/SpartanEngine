@@ -184,7 +184,7 @@ namespace Spartan
         SetOption(Renderer_Option::Hdr,                      swap_chain->IsHdr() ? 1.0f : 0.0f);                    // hdr is enabled by default if the swapchain is hdr
         SetOption(Renderer_Option::Bloom,                    0.05f);                                                // non-zero values activate it and define the blend factor
         SetOption(Renderer_Option::MotionBlur,               1.0f);                                                 
-        SetOption(Renderer_Option::Ssgi,                     1.0f);                                                 
+        SetOption(Renderer_Option::ScreenSpaceGlobalIllumination,                     1.0f);                                                 
         SetOption(Renderer_Option::ScreenSpaceShadows,       static_cast<float>(Renderer_ScreenspaceShadow::Bend)); 
         SetOption(Renderer_Option::ScreenSpaceReflections,   1.0f);                                                 
         SetOption(Renderer_Option::Anisotropy,               16.0f);                                                
@@ -359,7 +359,7 @@ namespace Spartan
 
             // these must match what common_buffer.hlsl is reading
             m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections), 1 << 0);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Ssgi),                   1 << 1);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceGlobalIllumination),                   1 << 1);
             m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceShadows),     1 << 2);
             m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Fog),                    1 << 3);
             m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::FogVolumetric),          1 << 4);
@@ -592,8 +592,8 @@ namespace Spartan
         m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::AlphaMask)                         ? (1U << 6) : 0;
         m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Emission)                          ? (1U << 7) : 0;
         m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Occlusion)                         ? (1U << 8) : 0;
-        m_cb_material_cpu.properties          |= material->GetProperty(MaterialProperty::IsTerrain)                       ? (1U << 9) : 0;
-        m_cb_material_cpu.properties          |= material->GetProperty(MaterialProperty::IsWater)                         ? (1U << 10) : 0;
+        m_cb_material_cpu.properties          |= material->GetProperty(MaterialProperty::SlopeBased)                       ? (1U << 9) : 0;
+        m_cb_material_cpu.properties          |= material->GetProperty(MaterialProperty::AnimateUVs)                      ? (1U << 10) : 0;
 
         // Update
         GetConstantBuffer(Renderer_ConstantBuffer::Material)->Update(&m_cb_material_cpu);

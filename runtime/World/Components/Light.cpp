@@ -420,11 +420,11 @@ namespace Spartan
         Camera* camera                        = Renderer::GetCamera().get();
         const float clip_near                 = camera->GetNearPlane();
         const float clip_far                  = camera->GetFarPlane();
-        const Matrix projection               = camera->ComputeProjection(clip_near, clip_far); // Non reverse-z matrix
+        const Matrix projection               = camera->ComputeProjection(clip_near, clip_far); // non reverse-z matrix
         const Matrix view_projection_inverted = Matrix::Invert(camera->GetViewMatrix() * projection);
 
-        // Calculate split depths based on view camera frustum
-        const float split_lambda = 0.95f;
+        // calculate split depths based on view camera frustum
+        const float split_lambda = 0.98f;
         const float clip_range   = clip_far - clip_near;
         const float min_z        = clip_near;
         const float max_z        = clip_near + clip_range;
@@ -436,13 +436,13 @@ namespace Spartan
             const float log     = min_z * Math::Helper::Pow(ratio, p);
             const float uniform = min_z + m_range * p;
             const float d       = split_lambda * (log - uniform) + uniform;
-            m_cascade_ends[i] = (d - clip_near) / clip_range;
+            m_cascade_ends[i]   = (d - clip_near) / clip_range;
         }
 
         float last_split_distance = 0.0f;
         for (uint32_t i = 0; i < m_cascade_count; i++)
         {
-            // Define camera frustum corners in clip space
+            // define camera frustum corners in clip space
             Vector3 frustum_corners[8] =
             {
                 Vector3(-1.0f,  1.0f, -1.0f),
@@ -455,14 +455,14 @@ namespace Spartan
                 Vector3(-1.0f, -1.0f,  1.0f)
             };
 
-            // Project frustum corners into world space
+            // project frustum corners into world space
             for (Vector3& frustum_corner : frustum_corners)
             {
                 Vector4 inverted_corner = Vector4(frustum_corner, 1.0f) * view_projection_inverted;
-                frustum_corner = inverted_corner / inverted_corner.w;
+                frustum_corner          = inverted_corner / inverted_corner.w;
             }
 
-            // Compute split distance
+            // compute split distance
             {
                 const float split_distance = m_cascade_ends[i];
                 for (uint32_t i = 0; i < 4; i++)
@@ -474,7 +474,7 @@ namespace Spartan
                 last_split_distance = m_cascade_ends[i];
             }
 
-            // Compute frustum bounds
+            // compute frustum bounds
             {
                 // Compute bounding sphere which encloses the frustum.
                 // Since a sphere is rotational invariant it will keep the size of the orthographic
@@ -482,7 +482,7 @@ namespace Spartan
 
                 ShadowSlice& shadow_slice = m_shadow_map.slices[i];
 
-                // Compute center
+                // compute center
                 shadow_slice.center = Vector3::Zero;
                 for (const Vector3& frustum_corner : frustum_corners)
                 {
@@ -490,16 +490,16 @@ namespace Spartan
                 }
                 shadow_slice.center /= 8.0f;
 
-                // Compute radius
+                // compute radius
                 float radius = 0.0f;
                 for (const Vector3& frustum_corner : frustum_corners)
                 {
                     const float distance = Vector3::Distance(frustum_corner, shadow_slice.center);
-                    radius = Helper::Max(radius, distance);
+                    radius               = Helper::Max(radius, distance);
                 }
                 radius = Helper::Ceil(radius * 16.0f) / 16.0f;
 
-                // Compute min and max
+                // compute min and max
                 shadow_slice.max = radius;
                 shadow_slice.min = -radius;
             }

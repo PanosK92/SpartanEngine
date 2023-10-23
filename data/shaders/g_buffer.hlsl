@@ -81,9 +81,8 @@ float4 sample_albedo(float2 uv, float slope)
 {
     float4 albedo = tex_material_albedo.Sample(samplers[sampler_anisotropic_wrap], uv);
     
-    if (material_is_terrain())
+    if (material_slope_based())
     {
-        // blend based on slope
         float4 tex_flat  = albedo;
         float4 tex_slope = tex_material_albedo_2.Sample(samplers[sampler_anisotropic_wrap], uv * 0.3f);
         albedo           = lerp(tex_slope, tex_flat, slope);
@@ -96,9 +95,8 @@ float3 smaple_normal(float2 uv, float slope)
 {
     float3 normal = tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], uv).xyz;
 
-    if (material_is_terrain())
+    if (material_slope_based())
     {
-        // blend based on slope
         float3 tex_flat  = normal;
         float3 tex_slope = tex_material_normal2.Sample(samplers[sampler_anisotropic_wrap], uv * 0.3f).rgb;
         normal           = lerp(tex_slope, tex_flat, slope);
@@ -117,7 +115,7 @@ PixelOutputType mainPS(PixelInputType input)
     // uv
     float2 uv  = input.uv;
     uv         = float2(uv.x * buffer_material.tiling.x + buffer_material.offset.x, uv.y * buffer_material.tiling.y + buffer_material.offset.y);
-    uv        += float(buffer_frame.frame * 0.001f) * material_is_water();
+    uv        += float(buffer_frame.frame * 0.001f) * material_animate_uv();
     
     // parallax mapping
     if (has_texture_height())
@@ -143,7 +141,7 @@ PixelOutputType mainPS(PixelInputType input)
     float slope   = compute_slope(normal);
     if (has_texture_normal())
     {
-        // get tangent space normal and apply the user defined intensity. Then transform it to world space.
+        // get tangent space normal and apply the user defined intensity, then transform it to world space
         float3 tangent_normal      = normalize(unpack(smaple_normal(uv, slope)));
         float normal_intensity     = clamp(buffer_material.normal, 0.012f, buffer_material.normal);
         tangent_normal.xy         *= saturate(normal_intensity);

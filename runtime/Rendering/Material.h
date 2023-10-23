@@ -38,7 +38,7 @@ namespace Spartan
         Metalness, // Blends between a non-metallic and metallic material model
         Normal,
         Normal2,   // A second normal for blending purposes
-        Occlusion, // A texture that will be mixed with ssao.
+        Occlusion, // A texture that will be mixed with ssgi.
         Emission,  // A texture that will cause a surface to be lit, works nice with bloom.
         Height,    // Perceived depth for parallax mapping.
         AlphaMask, // A texture which will use pixel shader discards for transparent pixels.
@@ -68,8 +68,8 @@ namespace Spartan
         UvOffsetY,
         SingleTextureRoughnessMetalness,
         CanBeEdited,
-        IsTerrain,
-        IsWater,
+        SlopeBased,
+        AnimateUVs,
         Undefined
     };
 
@@ -79,12 +79,11 @@ namespace Spartan
         Material();
         ~Material() = default;
 
-        //= IResource ===========================================
+        // iresource
         bool LoadFromFile(const std::string& file_path) override;
         bool SaveToFile(const std::string& file_path) override;
-        //=======================================================
 
-        //= TEXTURES  ================================================================================
+        // textures
         void SetTexture(const MaterialTexture texture_type, RHI_Texture* texture);
         void SetTexture(const MaterialTexture texture_type, std::shared_ptr<RHI_Texture> texture);
         void SetTexture(const MaterialTexture texture_type, std::shared_ptr<RHI_Texture2D> texture);
@@ -96,11 +95,12 @@ namespace Spartan
         std::vector<std::string> GetTexturePaths();
         RHI_Texture* GetTexture(const MaterialTexture texture_type);
         std::shared_ptr<RHI_Texture>& GetTexture_PtrShared(const MaterialTexture texturtexture_type);
-        //============================================================================================
-        
+
+        // properties
         float GetProperty(const MaterialProperty property_type) const { return m_properties[static_cast<uint32_t>(property_type)]; }
         void SetProperty(const MaterialProperty property_type, const float value);
 
+        // properties - color
         void SetColor(const Color& color);
  
     private:

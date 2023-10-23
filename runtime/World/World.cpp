@@ -836,7 +836,7 @@ namespace Spartan
                 material->SetTexture(MaterialTexture::Normal,      "project\\terrain\\florest_floor\\normal.png");
                 material->SetTexture(MaterialTexture::Color2,      "project\\terrain\\slate_cliff_rock\\albedo.png");
                 material->SetTexture(MaterialTexture::Normal2,     "project\\terrain\\slate_cliff_rock\\normal.png");
-                material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
+                material->SetProperty(MaterialProperty::SlopeBased, 1.0f);
                 material->SetProperty(MaterialProperty::UvTilingX, 300.0f);
                 material->SetProperty(MaterialProperty::UvTilingY, 300.0f);
 
@@ -871,7 +871,7 @@ namespace Spartan
                         material->SetObjectName("material_water");
                         material->SetColor(Color(0.0f, 48.0f / 255.0f, 75.0f / 255.0f));
                         material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\water_normal_2.jpeg");
-                        material->SetProperty(MaterialProperty::IsWater,             1.0f);
+                        material->SetProperty(MaterialProperty::AnimateUVs,             1.0f);
                         material->SetProperty(MaterialProperty::ColorA,              70.0f / 255.0f);
                         material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.2f); // just a bit of roughness to diffuse the sun a little
                         material->SetProperty(MaterialProperty::NormalMultiplier,    0.3f);
