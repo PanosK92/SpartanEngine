@@ -7,7 +7,7 @@ I welcome anyone to contribute, and you can work on any aspect you prefer. If yo
 
 # How to do it
 - If it's your first time contributing, pick a small task and go through the process of cloning, working, and submitting. This will give you an idea of the workflow, the scale of the project, and maybe even how to have fun while doing it.
-- The bigger the task you choose, the higher the probability that you'll end up dropping it due to complexity, scale, or boredom. You might even feel stressed, which is the wrong way to go about it.
+- The bigger the task you choose, the higher the probability that you'll end up dropping it due to complexity, scale, or boredom. You might even feel stressed, which is the wrong way to go about it. If you are in this place, remember that I have zero expectations.
 - Your first priority should be to have fun; your second priority should be to invest more grey matter in doing rather than planning. If you need help or guidance in the process, talk to me.
 - The workflow is: clone/fork, work, submit a pull request.
 
