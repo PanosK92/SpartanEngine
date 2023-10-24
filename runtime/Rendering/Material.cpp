@@ -45,6 +45,8 @@ namespace Spartan
         {
             switch (material_property)
             {
+                case MaterialProperty::CanBeEdited:                     return "can_be_edited";
+                case MaterialProperty::SingleTextureRoughnessMetalness: return "single_texture_roughness_metalness";
                 case MaterialProperty::Clearcoat:                       return "clearcoat_multiplier";
                 case MaterialProperty::Clearcoat_Roughness:             return "clearcoat_roughness_multiplier";
                 case MaterialProperty::Anisotropic:                     return "anisotropic_multiplier";
@@ -56,18 +58,17 @@ namespace Spartan
                 case MaterialProperty::ColorG:                          return "color_g";
                 case MaterialProperty::ColorB:                          return "color_b";
                 case MaterialProperty::ColorA:                          return "color_a";
-                case MaterialProperty::RoughnessMultiplier:             return "roughness_multiplier";
-                case MaterialProperty::MetalnessMultiplier:             return "metalness_multiplier";
-                case MaterialProperty::NormalMultiplier:                return "normal_multiplier";
-                case MaterialProperty::HeightMultiplier:                return "height_multiplier";
-                case MaterialProperty::UvTilingX:                       return "uv_tiling_x";
-                case MaterialProperty::UvTilingY:                       return "uv_tiling_y";
-                case MaterialProperty::UvOffsetX:                       return "uv_offset_x";
-                case MaterialProperty::UvOffsetY:                       return "uv_offset_y";
-                case MaterialProperty::SingleTextureRoughnessMetalness: return "single_texture_roughness_metalness";
-                case MaterialProperty::CanBeEdited:                     return "can_be_edited";
-                case MaterialProperty::SlopeBased:                      return "is_terrain";
-                case MaterialProperty::AnimateUVs:                      return "is_water";
+                case MaterialProperty::MultiplierRoughness:             return "multiplier_roughness";
+                case MaterialProperty::MultiplierMetalness:             return "multiplier_metalness";
+                case MaterialProperty::MultiplierNormal:                return "multiplier_normal";
+                case MaterialProperty::MultiplierHeight:                return "multiplier_height";
+                case MaterialProperty::TextureTilingX:                  return "texture_tiling_x";
+                case MaterialProperty::TextureTilingY:                  return "texture_tiling_y";
+                case MaterialProperty::TextureOffsetX:                  return "texture_offset_x";
+                case MaterialProperty::TextureOffsetY:                  return "texture_offset_y";
+                case MaterialProperty::TextureSlopeBased:               return "texture_slope_based";
+                case MaterialProperty::TextureAnimate:                  return "texture_animate";
+                case MaterialProperty::VertexAnimateWind:               return "vertex_animate_wind";
                 case MaterialProperty::Undefined:                       return "undefined";
                 default:
                 {
@@ -89,9 +90,9 @@ namespace Spartan
         SetProperty(MaterialProperty::ColorG,              1.0f);
         SetProperty(MaterialProperty::ColorB,              1.0f);
         SetProperty(MaterialProperty::ColorA,              1.0f);
-        SetProperty(MaterialProperty::RoughnessMultiplier, 1.0f);
-        SetProperty(MaterialProperty::UvTilingX,           1.0f);
-        SetProperty(MaterialProperty::UvTilingY,           1.0f);
+        SetProperty(MaterialProperty::MultiplierRoughness, 1.0f);
+        SetProperty(MaterialProperty::TextureTilingX,      1.0f);
+        SetProperty(MaterialProperty::TextureTilingY,      1.0f);
     }
 
     bool Material::LoadFromFile(const std::string& file_path)
@@ -190,19 +191,19 @@ namespace Spartan
         float multiplier = texture != nullptr;
         if (texture_type == MaterialTexture::Roughness)
         {
-            SetProperty(MaterialProperty::RoughnessMultiplier, multiplier);
+            SetProperty(MaterialProperty::MultiplierRoughness, multiplier);
         }
         else if (texture_type == MaterialTexture::Metalness)
         {
-            SetProperty(MaterialProperty::MetalnessMultiplier, multiplier);
+            SetProperty(MaterialProperty::MultiplierMetalness, multiplier);
         }
         else if (texture_type == MaterialTexture::Normal)
         {
-            SetProperty(MaterialProperty::NormalMultiplier, multiplier);
+            SetProperty(MaterialProperty::MultiplierNormal, multiplier);
         }
         else if (texture_type == MaterialTexture::Height)
         {
-            SetProperty(MaterialProperty::HeightMultiplier, multiplier);
+            SetProperty(MaterialProperty::MultiplierHeight, multiplier);
         }
     }
 
@@ -294,7 +295,7 @@ namespace Spartan
             }
 
             // Transparent objects are typically see-through (low roughness) so use the alpha as the roughness multiplier.
-            m_properties[static_cast<uint32_t>(MaterialProperty::RoughnessMultiplier)] = value * 0.5f;
+            m_properties[static_cast<uint32_t>(MaterialProperty::MultiplierRoughness)] = value * 0.5f;
         }
 
         m_properties[static_cast<uint32_t>(property_type)] = value;

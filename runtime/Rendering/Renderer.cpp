@@ -562,42 +562,44 @@ namespace Spartan
 
     void Renderer::UpdateConstantBufferMaterial(RHI_CommandList* cmd_list, Material* material)
     {
-        // Set
-        m_cb_material_cpu.color.x              = material->GetProperty(MaterialProperty::ColorR);
-        m_cb_material_cpu.color.y              = material->GetProperty(MaterialProperty::ColorG);
-        m_cb_material_cpu.color.z              = material->GetProperty(MaterialProperty::ColorB);
-        m_cb_material_cpu.color.w              = material->GetProperty(MaterialProperty::ColorA);
-        m_cb_material_cpu.tiling_uv.x          = material->GetProperty(MaterialProperty::UvTilingX);
-        m_cb_material_cpu.tiling_uv.y          = material->GetProperty(MaterialProperty::UvTilingY);
-        m_cb_material_cpu.offset_uv.x          = material->GetProperty(MaterialProperty::UvOffsetX);
-        m_cb_material_cpu.offset_uv.y          = material->GetProperty(MaterialProperty::UvOffsetY);
-        m_cb_material_cpu.roughness_mul        = material->GetProperty(MaterialProperty::RoughnessMultiplier);
-        m_cb_material_cpu.metallic_mul         = material->GetProperty(MaterialProperty::MetalnessMultiplier);
-        m_cb_material_cpu.normal_mul           = material->GetProperty(MaterialProperty::NormalMultiplier);
-        m_cb_material_cpu.height_mul           = material->GetProperty(MaterialProperty::HeightMultiplier);
-        m_cb_material_cpu.anisotropic          = material->GetProperty(MaterialProperty::Anisotropic);
-        m_cb_material_cpu.anisitropic_rotation = material->GetProperty(MaterialProperty::AnisotropicRotation);
-        m_cb_material_cpu.clearcoat            = material->GetProperty(MaterialProperty::Clearcoat);
-        m_cb_material_cpu.clearcoat_roughness  = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
-        m_cb_material_cpu.sheen                = material->GetProperty(MaterialProperty::Sheen);
-        m_cb_material_cpu.sheen_tint           = material->GetProperty(MaterialProperty::SheenTint);
-        m_cb_material_cpu.properties           = 0;
-        m_cb_material_cpu.properties          |= material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness) ? (1U << 0) : 0;
-        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Height)                            ? (1U << 1) : 0;
-        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Normal)                            ? (1U << 2) : 0;
-        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Color)                             ? (1U << 3) : 0;
-        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Roughness)                         ? (1U << 4) : 0;
-        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Metalness)                         ? (1U << 5) : 0;
-        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::AlphaMask)                         ? (1U << 6) : 0;
-        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Emission)                          ? (1U << 7) : 0;
-        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Occlusion)                         ? (1U << 8) : 0;
-        m_cb_material_cpu.properties          |= material->GetProperty(MaterialProperty::SlopeBased)                       ? (1U << 9) : 0;
-        m_cb_material_cpu.properties          |= material->GetProperty(MaterialProperty::AnimateUVs)                      ? (1U << 10) : 0;
+        m_cb_material_cpu.properties = 0;
 
-        // Update
+        // set
+        m_cb_material_cpu.color.x               = material->GetProperty(MaterialProperty::ColorR);
+        m_cb_material_cpu.color.y               = material->GetProperty(MaterialProperty::ColorG);
+        m_cb_material_cpu.color.z               = material->GetProperty(MaterialProperty::ColorB);
+        m_cb_material_cpu.color.w               = material->GetProperty(MaterialProperty::ColorA);
+        m_cb_material_cpu.tiling_uv.x           = material->GetProperty(MaterialProperty::TextureTilingX);
+        m_cb_material_cpu.tiling_uv.y           = material->GetProperty(MaterialProperty::TextureTilingY);
+        m_cb_material_cpu.offset_uv.x           = material->GetProperty(MaterialProperty::TextureOffsetX);
+        m_cb_material_cpu.offset_uv.y           = material->GetProperty(MaterialProperty::TextureOffsetY);
+        m_cb_material_cpu.roughness_mul         = material->GetProperty(MaterialProperty::MultiplierRoughness);
+        m_cb_material_cpu.metallic_mul          = material->GetProperty(MaterialProperty::MultiplierMetalness);
+        m_cb_material_cpu.normal_mul            = material->GetProperty(MaterialProperty::MultiplierNormal);
+        m_cb_material_cpu.height_mul            = material->GetProperty(MaterialProperty::MultiplierHeight);
+        m_cb_material_cpu.anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
+        m_cb_material_cpu.anisitropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
+        m_cb_material_cpu.clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
+        m_cb_material_cpu.clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
+        m_cb_material_cpu.sheen                 = material->GetProperty(MaterialProperty::Sheen);
+        m_cb_material_cpu.sheen_tint            = material->GetProperty(MaterialProperty::SheenTint);
+        m_cb_material_cpu.properties           |= material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness) ? (1U << 0) : 0;
+        m_cb_material_cpu.properties           |= material->HasTexture(MaterialTexture::Height)                            ? (1U << 1) : 0;
+        m_cb_material_cpu.properties           |= material->HasTexture(MaterialTexture::Normal)                            ? (1U << 2) : 0;
+        m_cb_material_cpu.properties           |= material->HasTexture(MaterialTexture::Color)                             ? (1U << 3) : 0;
+        m_cb_material_cpu.properties           |= material->HasTexture(MaterialTexture::Roughness)                         ? (1U << 4) : 0;
+        m_cb_material_cpu.properties           |= material->HasTexture(MaterialTexture::Metalness)                         ? (1U << 5) : 0;
+        m_cb_material_cpu.properties           |= material->HasTexture(MaterialTexture::AlphaMask)                         ? (1U << 6) : 0;
+        m_cb_material_cpu.properties           |= material->HasTexture(MaterialTexture::Emission)                          ? (1U << 7) : 0;
+        m_cb_material_cpu.properties           |= material->HasTexture(MaterialTexture::Occlusion)                         ? (1U << 8) : 0;
+        m_cb_material_cpu.properties           |= material->GetProperty(MaterialProperty::TextureSlopeBased)               ? (1U << 9) : 0;
+        m_cb_material_cpu.properties           |= material->GetProperty(MaterialProperty::TextureAnimate)                  ? (1U << 10) : 0;
+        m_cb_material_cpu.properties           |= material->GetProperty(MaterialProperty::VertexAnimateWind)               ? (1U << 11) : 0;
+
+        // update
         GetConstantBuffer(Renderer_ConstantBuffer::Material)->Update(&m_cb_material_cpu);
 
-        // Bind because the offset just changed
+        // bind because the offset just changed
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::material, GetConstantBuffer(Renderer_ConstantBuffer::Material));
     }
 

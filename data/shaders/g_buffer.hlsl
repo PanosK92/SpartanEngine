@@ -79,7 +79,7 @@ float4 sample_albedo(float2 uv, float slope)
 {
     float4 albedo = tex_material_albedo.Sample(samplers[sampler_anisotropic_wrap], uv);
     
-    if (material_slope_based())
+    if (material_texture_slope_based())
     {
         float4 tex_flat  = albedo;
         float4 tex_slope = tex_material_albedo_2.Sample(samplers[sampler_anisotropic_wrap], uv * 0.3f);
@@ -93,7 +93,7 @@ float3 smaple_normal(float2 uv, float slope)
 {
     float3 normal = tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], uv).xyz;
 
-    if (material_slope_based())
+    if (material_texture_slope_based())
     {
         float3 tex_flat  = normal;
         float3 tex_slope = tex_material_normal2.Sample(samplers[sampler_anisotropic_wrap], uv * 0.3f).rgb;
@@ -113,7 +113,7 @@ PixelOutputType mainPS(PixelInputType input)
     // uv
     float2 uv  = input.uv;
     uv         = float2(uv.x * buffer_material.tiling.x + buffer_material.offset.x, uv.y * buffer_material.tiling.y + buffer_material.offset.y);
-    uv        += float(buffer_frame.frame * 0.001f) * material_animate_uv();
+    uv        += float(buffer_frame.time * 0.001f) * material_texture_animate();
     
     // parallax mapping
     if (has_texture_height())

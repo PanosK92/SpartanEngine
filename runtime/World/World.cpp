@@ -147,8 +147,8 @@ namespace Spartan
                 shared_ptr<Renderable> renderable = m_default_model_floor->AddComponent<Renderable>();
                 renderable->SetGeometry(Renderer::GetStandardMesh(Renderer_MeshType::Quad).get());
                 renderable->SetDefaultMaterial();
-                renderable->GetMaterial()->SetProperty(MaterialProperty::UvTilingX, 100.0f);
-                renderable->GetMaterial()->SetProperty(MaterialProperty::UvTilingY, 100.0f);
+                renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingX, 100.0f);
+                renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingY, 100.0f);
 
                 // add physics components
                 shared_ptr<PhysicsBody> rigid_body = m_default_model_floor->AddComponent<PhysicsBody>();
@@ -223,8 +223,8 @@ namespace Spartan
                         if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
                         {
                             material->SetColor(Color::material_aluminum);
-                            material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.1f);
-                            material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.15f);
+                            material->SetProperty(MaterialProperty::MultiplierRoughness, 0.1f);
+                            material->SetProperty(MaterialProperty::MultiplierMetalness, 0.15f);
                             material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
                             material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f);
                         }
@@ -237,7 +237,7 @@ namespace Spartan
                             if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
                             {
                                 material->SetColor(Color::material_tire);
-                                material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
+                                material->SetProperty(MaterialProperty::MultiplierRoughness, 0.35f);
                             }
                         }
 
@@ -246,7 +246,7 @@ namespace Spartan
                             if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
                             {
                                 material->SetColor(Color::material_tire);
-                                material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
+                                material->SetProperty(MaterialProperty::MultiplierRoughness, 0.35f);
                             }
                         }
                     }
@@ -258,15 +258,15 @@ namespace Spartan
                     {
                         material->SetColor(Color::material_tire);
                         material->SetTexture(MaterialTexture::Roughness, nullptr);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.8f);
-                        material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.0f);
+                        material->SetProperty(MaterialProperty::MultiplierRoughness, 0.8f);
+                        material->SetProperty(MaterialProperty::MultiplierMetalness, 0.0f);
                     }
 
                     if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("Interior_InteriorPlastic2_0")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetColor(Color::material_tire);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.8f);
-                        material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.0f);
+                        material->SetProperty(MaterialProperty::MultiplierRoughness, 0.8f);
+                        material->SetProperty(MaterialProperty::MultiplierMetalness, 0.0f);
                     }
 
                 }
@@ -276,14 +276,14 @@ namespace Spartan
                     if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("CarBody_LampCovers_0")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetColor(Color::material_glass);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.2f);
+                        material->SetProperty(MaterialProperty::MultiplierRoughness, 0.2f);
                         material->SetTexture(MaterialTexture::Emission, material->GetTexture_PtrShared(MaterialTexture::Color));
                     }
 
                     // plastic covers
                     if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("Headlights_Trim2_0")->GetComponent<Renderable>()->GetMaterial())
                     {
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
+                        material->SetProperty(MaterialProperty::MultiplierRoughness, 0.35f);
                         material->SetColor(Color::material_tire);
                     }
                 }
@@ -836,9 +836,9 @@ namespace Spartan
                 material->SetTexture(MaterialTexture::Normal,      "project\\terrain\\florest_floor\\normal.png");
                 material->SetTexture(MaterialTexture::Color2,      "project\\terrain\\slate_cliff_rock\\albedo.png");
                 material->SetTexture(MaterialTexture::Normal2,     "project\\terrain\\slate_cliff_rock\\normal.png");
-                material->SetProperty(MaterialProperty::SlopeBased, 1.0f);
-                material->SetProperty(MaterialProperty::UvTilingX, 300.0f);
-                material->SetProperty(MaterialProperty::UvTilingY, 300.0f);
+                material->SetProperty(MaterialProperty::TextureSlopeBased, 1.0f);
+                material->SetProperty(MaterialProperty::TextureTilingX, 300.0f);
+                material->SetProperty(MaterialProperty::TextureTilingY, 300.0f);
 
                 m_default_terrain->GetComponent<Renderable>()->SetMaterial(material);
             }
@@ -871,11 +871,11 @@ namespace Spartan
                         material->SetObjectName("material_water");
                         material->SetColor(Color(0.0f, 48.0f / 255.0f, 75.0f / 255.0f, 50.0f / 255.0f));
                         material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\water_normal_2.jpeg");
-                        material->SetProperty(MaterialProperty::AnimateUVs,          1.0f);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.2f); // just a bit of roughness to diffuse the sun a little
-                        material->SetProperty(MaterialProperty::NormalMultiplier,    0.3f);
-                        material->SetProperty(MaterialProperty::UvTilingX,           500.0f);
-                        material->SetProperty(MaterialProperty::UvTilingY,           500.0f);
+                        material->SetProperty(MaterialProperty::TextureAnimate,          1.0f);
+                        material->SetProperty(MaterialProperty::MultiplierRoughness, 0.2f); // just a bit of roughness to diffuse the sun a little
+                        material->SetProperty(MaterialProperty::MultiplierNormal,    0.3f);
+                        material->SetProperty(MaterialProperty::TextureTilingX,           500.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingY,           500.0f);
 
                         // create a file path for this material (required for the material to be able to be cached by the resource cache)
                         const string file_path = "project\\terrain\\water_material" + string(EXTENSION_MATERIAL);

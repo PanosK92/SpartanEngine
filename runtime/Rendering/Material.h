@@ -33,43 +33,44 @@ namespace Spartan
     enum class MaterialTexture
     {
         Color,
-        Color2,    // A second color for blending purposes
-        Roughness, // Specifies microfacet roughness of the surface for diffuse and specular reflection
-        Metalness, // Blends between a non-metallic and metallic material model
+        Color2,    // a second color for blending purposes
+        Roughness, // specifies microfacet roughness of the surface for diffuse and specular reflection
+        Metalness, // blends between a non-metallic and metallic material model
         Normal,
-        Normal2,   // A second normal for blending purposes
-        Occlusion, // A texture that will be mixed with ssgi.
-        Emission,  // A texture that will cause a surface to be lit, works nice with bloom.
-        Height,    // Perceived depth for parallax mapping.
-        AlphaMask, // A texture which will use pixel shader discards for transparent pixels.
+        Normal2,   // a second normal for blending purposes
+        Occlusion, // a texture that will be mixed with ssgi.
+        Emission,  // a texture that will cause a surface to be lit, works nice with bloom.
+        Height,    // perceived depth for parallax mapping.
+        AlphaMask, // a texture which will use pixel shader discards for transparent pixels.
         Undefined
     };
 
     enum class MaterialProperty
     {
-        Clearcoat,           // Extra white specular layer on top of others
-        Clearcoat_Roughness, // Roughness of clearcoat specular
-        Anisotropic,         // Amount of anisotropy for specular reflection
-        AnisotropicRotation, // Rotates the direction of anisotropy, with 1.0 going full circle
-        Sheen ,              // Amount of soft velvet like reflection near edges
-        SheenTint,           // Mix between white and using base color for sheen reflection
-        ColorTint,           // Diffuse or metal surface color
+        CanBeEdited,
+        SingleTextureRoughnessMetalness,
+        Clearcoat,           // extra white specular layer on top of others
+        Clearcoat_Roughness, // roughness of clearcoat specular
+        Anisotropic,         // amount of anisotropy for specular reflection
+        AnisotropicRotation, // rotates the direction of anisotropy, with 1.0 going full circle
+        Sheen ,              // amount of soft velvet like reflection near edges
+        SheenTint,           // mix between white and using base color for sheen reflection
+        ColorTint,           // diffuse or metal surface color
         ColorR,
         ColorG,
         ColorB,
         ColorA,
-        RoughnessMultiplier,
-        MetalnessMultiplier,
-        NormalMultiplier,
-        HeightMultiplier,
-        UvTilingX,
-        UvTilingY,
-        UvOffsetX,
-        UvOffsetY,
-        SingleTextureRoughnessMetalness,
-        CanBeEdited,
-        SlopeBased,
-        AnimateUVs,
+        MultiplierRoughness,
+        MultiplierMetalness,
+        MultiplierNormal,
+        MultiplierHeight,
+        TextureTilingX,
+        TextureTilingY,
+        TextureOffsetX,
+        TextureOffsetY,
+        TextureAnimate,
+        TextureSlopeBased,
+        VertexAnimateWind,
         Undefined
     };
 
@@ -105,6 +106,6 @@ namespace Spartan
  
     private:
         std::array<std::shared_ptr<RHI_Texture>, 11> m_textures;
-        std::array<float, 23> m_properties;
+        std::array<float, 24> m_properties;
     };
 }
