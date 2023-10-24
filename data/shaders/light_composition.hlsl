@@ -23,60 +23,72 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-float compute_fade_factor(float2 uv)
+struct refraction
 {
-    float edge_threshold = 0.05f; // how close to the edge to start fading
-    float2 edge_distance = min(uv, 1.0f - uv);
-    return saturate(min(edge_distance.x, edge_distance.y) / edge_threshold);
-}
+    static const float depth_bias = 0.02f;
 
-float3 refract_vector(float3 i, float3 n, float eta)
-{
-    float cosi  = dot(-i, n);
-    float cost2 = 1.0f - eta * eta * (1.0f - cosi * cosi);
-    return eta * i + (eta * cosi - sqrt(abs(cost2))) * n;
-}
-
-float3 refraction(Surface surface, float ior, float scale)
-{   
-    float3 view_pos    = world_to_view(surface.position);
-    float3 view_normal = world_to_view(surface.normal, false);
-    float3 view_dir    = normalize(view_pos);
-    
-    // compute refracted uv
-    float3 refracted_dir        = refract_vector(view_dir, view_normal, 1.0f / ior);
-    float2 refraction_uv_offset = refracted_dir.xy * scale;
-    float2 refracted_uv         = surface.uv + refraction_uv_offset;
-
-    // get mip level
-    float frame_mip_count = pass_get_f3_value().x;
-    float mip_level       = lerp(0, frame_mip_count, surface.roughness_alpha);
-    
-    // chromatic aberration
-    float3 color_refracted = float3(0, 0, 0);
+    static float compute_fade_factor(float2 uv)
     {
-        float chromatic_aberration_strength  = ior * 0.001f;
-        chromatic_aberration_strength       *= (1.0f + surface.roughness_alpha);
-        
-        float2 ca_offsets[3];
-        ca_offsets[0] = float2(chromatic_aberration_strength, 0.0f);
-        ca_offsets[1] = float2(0.0f, 0.0f);
-        ca_offsets[2] = float2(-chromatic_aberration_strength, 0.0f); 
-
-        [unroll]
-        for (int i = 0; i < 3; ++i)
-        {
-            float4 sampled_color = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], refracted_uv + ca_offsets[i], mip_level);
-            color_refracted[i] = sampled_color[i];
-        }
+        float edge_threshold = 0.05f; // how close to the edge to start fading
+        float2 edge_distance = min(uv, 1.0f - uv);
+        return saturate(min(edge_distance.x, edge_distance.y) / edge_threshold);
     }
-
-    // screen fade
-    float fade_factor     = compute_fade_factor(refracted_uv);
-    float3 color_original = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level).rgb;
     
-    return lerp(color_original, color_refracted, fade_factor);
-}
+    static float3 refract_vector(float3 i, float3 n, float eta)
+    {
+        float cosi  = dot(-i, n);
+        float cost2 = 1.0f - eta * eta * (1.0f - cosi * cosi);
+        return eta * i + (eta * cosi - sqrt(abs(cost2))) * n;
+    }
+    
+    static float3 get_color(Surface surface, float ior, float scale)
+    {
+        // comute view space data
+        float3 view_pos    = world_to_view(surface.position);
+        float3 view_normal = world_to_view(surface.normal, false);
+        float3 view_dir    = normalize(view_pos);
+        
+        // compute refracted uv
+        float3 refracted_dir        = refract_vector(view_dir, view_normal, 1.0f / ior);
+        float2 refraction_uv_offset = refracted_dir.xy * scale;
+        float2 refracted_uv         = surface.uv + refraction_uv_offset;
+
+        // get base color (no refraction)
+        float frame_mip_count = pass_get_f3_value().x;
+        float mip_level       = lerp(0, frame_mip_count, surface.roughness_alpha);    
+        float3 color          = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level).rgb;
+        
+        // dont refract surfaces which are behind this surface
+        const bool is_behind = step(get_linear_depth(surface.depth) - depth_bias, get_linear_depth(refracted_uv)) == 1.0f;
+        if (is_behind)
+        {
+            // simulate light breaking off into individual color bands via chromatic aberration
+            float3 color_refracted = float3(0, 0, 0);
+            {
+                float chromatic_aberration_strength  = ior * 0.0005f;
+                chromatic_aberration_strength       *= (1.0f + surface.roughness_alpha);
+                
+                float2 ca_offsets[3];
+                ca_offsets[0] = float2(chromatic_aberration_strength, 0.0f);
+                ca_offsets[1] = float2(0.0f, 0.0f);
+                ca_offsets[2] = float2(-chromatic_aberration_strength, 0.0f); 
+    
+                [unroll]
+                for (int i = 0; i < 3; ++i)
+                {
+                    float4 sampled_color = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], refracted_uv + ca_offsets[i], mip_level);
+                    color_refracted[i] = sampled_color[i];
+                }
+            }
+    
+            // screen fade
+            float fade_factor = compute_fade_factor(refracted_uv);
+            color             = lerp(color, color_refracted, fade_factor);
+        }
+
+        return color;
+    }
+};
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
@@ -113,7 +125,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         {
             float ior        = 1.33; // water
             float scale      = 0.05f;
-            light_refraction = refraction(surface, ior, scale); 
+            light_refraction = refraction::get_color(surface, ior, scale); 
         }
         
         // compose
