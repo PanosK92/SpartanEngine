@@ -94,34 +94,42 @@ namespace Spartan
     struct Cb_Light
     {
         Math::Matrix view_projection[6];
-        Math::Vector4 intensity_range_angle_bias;
-        Color color;
-        Math::Vector4 position;
-        Math::Vector4 direction;
 
+        float intensity;
+        float range;
+        float angle;
+        float bias;
+
+        Color color;
+
+        Math::Vector3 position;
         float normal_bias;
+
+        Math::Vector3 direction;
         uint32_t options;
-        Math::Vector2 padding;
 
         Math::Vector3 cascade_ends;
-        float padding2;
+        float padding;
     
         bool operator==(const Cb_Light& rhs)
         {
             return
-                view_projection[0]         == rhs.view_projection[0]         &&
-                view_projection[1]         == rhs.view_projection[1]         &&
-                view_projection[2]         == rhs.view_projection[2]         &&
-                view_projection[3]         == rhs.view_projection[3]         &&
-                view_projection[4]         == rhs.view_projection[4]         &&
-                view_projection[5]         == rhs.view_projection[5]         &&
-                intensity_range_angle_bias == rhs.intensity_range_angle_bias &&
-                cascade_ends               == rhs.cascade_ends               &&
-                normal_bias                == rhs.normal_bias                &&
-                color                      == rhs.color                      &&
-                position                   == rhs.position                   &&
-                direction                  == rhs.direction                  &&
-                options                    == rhs.options;
+                view_projection[0] == rhs.view_projection[0] &&
+                view_projection[1] == rhs.view_projection[1] &&
+                view_projection[2] == rhs.view_projection[2] &&
+                view_projection[3] == rhs.view_projection[3] &&
+                view_projection[4] == rhs.view_projection[4] &&
+                view_projection[5] == rhs.view_projection[5] &&
+                intensity          == rhs.intensity          &&
+                range              == rhs.range              &&
+                angle              == rhs.angle              &&
+                bias               == rhs.bias               &&
+                cascade_ends       == rhs.cascade_ends       &&
+                normal_bias        == rhs.normal_bias        &&
+                color              == rhs.color              &&
+                position           == rhs.position           &&
+                direction          == rhs.direction          &&
+                options            == rhs.options;
         }
     };
 
