@@ -93,7 +93,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     // try to compute some sort of ambient light that makes sense
     float3 light_ambient = 1.0f;
     {
-        light_ambient = buffer_light.intensity_range_angle_bias.x * 0.1f * surface.occlusion;
+        light_ambient = buffer_light.intensity.x * 0.1f * surface.occlusion;
     }
     
     // compute specular energy

@@ -50,17 +50,22 @@ struct FrameBufferData
 struct LightBufferData
 {
     matrix view_projection[6];
-    float4 intensity_range_angle_bias;
-    float4 color;
-    float4 position;
-    float4 direction;
-
-    float normal_bias;
-    uint options;
-    float2 padding;
     
+    float intensity;
+    float range;
+    float angle;
+    float bias;
+
+    float4 color;
+    
+    float3 position;
+    float normal_bias;
+    
+    float3 direction;
+    uint options;
+   
     float3 cascade_ends;
-    float padding2;
+    float padding;
 };
 
 struct MaterialBufferData
@@ -83,7 +88,7 @@ struct MaterialBufferData
     float anisotropic_rotation;
     float sheen;
     float sheen_tint;
-    float padding3;
+    float padding2;
 };
 
 cbuffer BufferFrame    : register(b0) { FrameBufferData buffer_frame;       }; // low frequency    - updates once per frame

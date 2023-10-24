@@ -210,10 +210,10 @@ struct Light
     {
         color             = buffer_light.color.rgb;
         position          = buffer_light.position.xyz;
-        intensity         = buffer_light.intensity_range_angle_bias.x;
-        far               = buffer_light.intensity_range_angle_bias.y;
-        angle             = buffer_light.intensity_range_angle_bias.z;
-        bias              = buffer_light.intensity_range_angle_bias.w;
+        intensity         = buffer_light.intensity;
+        far               = buffer_light.range;
+        angle             = buffer_light.angle;
+        bias              = buffer_light.bias;
         forward           = buffer_light.direction.xyz;
         normal_bias       = buffer_light.normal_bias;
         near              = 0.1f;

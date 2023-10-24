@@ -536,18 +536,15 @@ namespace Spartan
             m_cb_light_cpu.view_projection[0] = light->GetViewMatrix(array_index) * light->GetProjectionMatrix(array_index);
         }
 
-        m_cb_light_cpu.intensity_range_angle_bias = Vector4
-        (
-            light->GetIntensityWatt(m_camera.get()),
-            light->GetRange(), light->GetAngle(),
-            light->GetBias()
-        );
-
-        m_cb_light_cpu.color       = light->GetColor();
-        m_cb_light_cpu.normal_bias = light->GetNormalBias();
-        m_cb_light_cpu.position    = light->GetTransform()->GetPosition();
-        m_cb_light_cpu.direction   = light->GetTransform()->GetForward();
-        m_cb_light_cpu.options     = 0;
+        m_cb_light_cpu.intensity    = light->GetIntensityWatt(m_camera.get());
+        m_cb_light_cpu.range        = light->GetRange();
+        m_cb_light_cpu.angle        = light->GetAngle();
+        m_cb_light_cpu.bias         = light->GetBias();
+        m_cb_light_cpu.color        = light->GetColor();
+        m_cb_light_cpu.normal_bias  = light->GetNormalBias();
+        m_cb_light_cpu.position     = light->GetTransform()->GetPosition();
+        m_cb_light_cpu.direction    = light->GetTransform()->GetForward();
+        m_cb_light_cpu.options      = 0;
         m_cb_light_cpu.options     |= light->GetLightType() == LightType::Directional ? (1 << 0) : 0;
         m_cb_light_cpu.options     |= light->GetLightType() == LightType::Point       ? (1 << 1) : 0;
         m_cb_light_cpu.options     |= light->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
