@@ -525,13 +525,16 @@ namespace Spartan
                 }
 
                 // set pass constants
-                m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix();
-                m_cb_pass_cpu.set_f3_value(
-                    material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
-                    material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
-                    material->GetProperty(MaterialProperty::ColorA)
-                );
-                PushPassConstants(cmd_list);
+                {
+                    m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix();
+                    m_cb_pass_cpu.set_f3_value(
+                        material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
+                        material->HasTexture(MaterialTexture::Color) ? 1.0f : 0.0f,
+                        material->GetProperty(MaterialProperty::ColorA)
+                    );
+
+                    PushPassConstants(cmd_list);
+                }
 
                 // draw
                 cmd_list->DrawIndexed(

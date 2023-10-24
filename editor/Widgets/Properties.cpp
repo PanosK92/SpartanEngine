@@ -376,6 +376,7 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
         string name_mesh        = mesh ? mesh->GetObjectName() : "N/A";
         string name_material    = material ? material->GetObjectName() : "N/A";
         bool cast_shadows       = renderable->GetCastShadows();
+        bool affected_by_wind   = renderable->GetAffectedByWind();
         //=====================================================================
 
         // mesh
@@ -400,13 +401,16 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
             renderable->SetMaterial(std::get<const char*>(payload->data));
         }
 
-        // cast shadows
-        ImGui::Text("Cast Shadows");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##RenderableCastShadows", &cast_shadows);
+        ImGui::Text("Cast shadows");
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##renderable_cast_shadows", &cast_shadows);
 
-        //= MAP ===================================================================================
+        ImGui::Text("Affected by wind");
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##renderable_affected_by_wind", &affected_by_wind);
+
+        //= MAP ==========================================================================================
         if (cast_shadows != renderable->GetCastShadows()) renderable->SetCastShadows(cast_shadows);
-        //=========================================================================================
+        if (cast_shadows != renderable->GetCastShadows()) renderable->SetAffectedByWind(affected_by_wind);
+        //================================================================================================
     }
     component_end();
 }

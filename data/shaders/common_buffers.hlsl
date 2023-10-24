@@ -35,9 +35,9 @@ struct FrameBufferData
     float2 taa_jitter_current;
     float2 taa_jitter_previous;
     
+    float time;
     float delta_time;
     uint frame;
-    float gamma;
     uint options;
     
     float3 camera_position;
@@ -45,6 +45,9 @@ struct FrameBufferData
     
     float3 camera_direction;
     float camera_far;
+
+    float gamma;
+    float3 padding;
 };
 
 struct LightBufferData
@@ -65,7 +68,7 @@ struct LightBufferData
     uint options;
    
     float3 cascade_ends;
-    float padding;
+    float padding2;
 };
 
 struct MaterialBufferData
@@ -88,7 +91,7 @@ struct MaterialBufferData
     float anisotropic_rotation;
     float sheen;
     float sheen_tint;
-    float padding2;
+    float padding3;
 };
 
 cbuffer BufferFrame    : register(b0) { FrameBufferData buffer_frame;       }; // low frequency    - updates once per frame

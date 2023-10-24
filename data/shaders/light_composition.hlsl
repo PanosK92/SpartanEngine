@@ -88,7 +88,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     surface.Build(thread_id.xy, true, true, false);
 
     bool early_exit_1 = pass_is_opaque() && surface.is_transparent(); // if this is an opaque pass, ignore all transparent pixels.
-    bool early_exit_2 = pass_is_transparent() && surface.is_opaque(); // if this is an transparent pass, ignore all opaque pixels.
+    bool early_exit_2 = pass_is_transparent() && surface.is_opaque(); // if this is a transparent pass, ignore all opaque pixels.
     bool early_exit_3 = pass_is_transparent() && surface.is_sky();    // if this is a transparent pass, ignore sky pixels (they only render in the opaque)
     if (early_exit_1 || early_exit_2 || early_exit_3)
         return;
@@ -101,7 +101,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         color.rgb += tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(surface.camera_to_pixel), 0).rgb;
         color.rgb *= saturate(buffer_light.intensity); // modulate it's intensity in order to fake day/night.
     }
-    else // everything else
+    else // anything else
     {
         // diffuse and specular
         float3 light_diffuse  = tex_light_diffuse[thread_id.xy].rgb;
@@ -118,7 +118,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         
         // compose
         float3 light_ds = (light_diffuse + surface.gi) * surface.albedo + light_specular;
-        color.rgb       += lerp(light_ds, light_refraction, 1.0f - surface.alpha);
+        color.rgb       = lerp(light_ds, light_refraction, 1.0f - surface.alpha);
     }
 
     // volumetric fog

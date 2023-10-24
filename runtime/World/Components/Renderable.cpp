@@ -41,6 +41,7 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,       bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,               Material*);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_cast_shadows,           bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_affected_by_wind,       bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_offset,  uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_count,   uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_offset, uint32_t);
