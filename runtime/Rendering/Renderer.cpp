@@ -935,7 +935,7 @@ namespace Spartan
         return m_renderables;
     }
 
-	void Renderer::BindTexturesGfbuffer(RHI_CommandList* cmd_list)
+	void Renderer::SetTexturesGfbuffer(RHI_CommandList* cmd_list)
     {
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,            GetRenderTarget(Renderer_RenderTexture::gbuffer_albedo));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,            GetRenderTarget(Renderer_RenderTexture::gbuffer_normal));
@@ -946,7 +946,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity_previous, GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity_previous));
     }
 
-    void Renderer::BindTexturesMaterial(RHI_CommandList* cmd_list, Material* material)
+    void Renderer::SetTexturesMaterial(RHI_CommandList* cmd_list, Material* material)
     {
         cmd_list->SetTexture(Renderer_BindingsSrv::material_albedo,    material->GetTexture(MaterialTexture::Color));
         cmd_list->SetTexture(Renderer_BindingsSrv::material_albedo2,   material->GetTexture(MaterialTexture::Color2));
