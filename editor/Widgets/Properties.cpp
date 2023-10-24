@@ -376,7 +376,6 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
         string name_mesh        = mesh ? mesh->GetObjectName() : "N/A";
         string name_material    = material ? material->GetObjectName() : "N/A";
         bool cast_shadows       = renderable->GetCastShadows();
-        bool affected_by_wind   = renderable->GetAffectedByWind();
         //=====================================================================
 
         // mesh
@@ -404,13 +403,9 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
         ImGui::Text("Cast shadows");
         ImGui::SameLine(column_pos_x); ImGui::Checkbox("##renderable_cast_shadows", &cast_shadows);
 
-        ImGui::Text("Affected by wind");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##renderable_affected_by_wind", &affected_by_wind);
-
-        //= MAP ==========================================================================================
+        //= MAP ===================================================================================
         if (cast_shadows != renderable->GetCastShadows()) renderable->SetCastShadows(cast_shadows);
-        if (cast_shadows != renderable->GetCastShadows()) renderable->SetAffectedByWind(affected_by_wind);
-        //================================================================================================
+        //=========================================================================================
     }
     component_end();
 }
@@ -663,13 +658,13 @@ void Properties::ShowMaterial(Material* material) const
     {
         //= REFLECT ===========================================
         Math::Vector2 tiling = Vector2(
-            material->GetProperty(MaterialProperty::UvTilingX),
-            material->GetProperty(MaterialProperty::UvTilingY)
+            material->GetProperty(MaterialProperty::TextureTilingX),
+            material->GetProperty(MaterialProperty::TextureTilingY)
         );
 
         Math::Vector2 offset = Vector2(
-            material->GetProperty(MaterialProperty::UvOffsetX),
-            material->GetProperty(MaterialProperty::UvOffsetY)
+            material->GetProperty(MaterialProperty::TextureOffsetX),
+            material->GetProperty(MaterialProperty::TextureOffsetY)
         );
 
         m_material_color_picker->SetColor(Color(
@@ -747,7 +742,7 @@ void Properties::ShowMaterial(Material* material) const
                             ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
                             float value = material->GetProperty(mat_property);
 
-                            if (mat_property != MaterialProperty::MetalnessMultiplier)
+                            if (mat_property != MaterialProperty::MultiplierMetalness)
                             {
                                 ImGuiSp::draw_float_wrap("", &value, 0.004f, 0.0f, 1.0f);
                             }
@@ -771,10 +766,10 @@ void Properties::ShowMaterial(Material* material) const
                 show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTexture::Undefined,  MaterialProperty::Sheen);
                 show_property("Sheen tint",           "Mix between white and using base color for sheen reflection",                       MaterialTexture::Undefined,  MaterialProperty::SheenTint);
                 show_property("Color",                "Surface color",                                                                     MaterialTexture::Color,      MaterialProperty::ColorTint);
-                show_property("Roughness",            "Specifies microfacet roughness of the surface for diffuse and specular reflection", MaterialTexture::Roughness,  MaterialProperty::RoughnessMultiplier);
-                show_property("Metalness",            "Blends between a non-metallic and metallic material model",                         MaterialTexture::Metalness,  MaterialProperty::MetalnessMultiplier);
-                show_property("Normal",               "Controls the normals of the base layers",                                           MaterialTexture::Normal,     MaterialProperty::NormalMultiplier);
-                show_property("Height",               "Perceived depth for parallax mapping",                                              MaterialTexture::Height,     MaterialProperty::HeightMultiplier);
+                show_property("Roughness",            "Specifies microfacet roughness of the surface for diffuse and specular reflection", MaterialTexture::Roughness,  MaterialProperty::MultiplierRoughness);
+                show_property("Metalness",            "Blends between a non-metallic and metallic material model",                         MaterialTexture::Metalness,  MaterialProperty::MultiplierMetalness);
+                show_property("Normal",               "Controls the normals of the base layers",                                           MaterialTexture::Normal,     MaterialProperty::MultiplierNormal);
+                show_property("Height",               "Perceived depth for parallax mapping",                                              MaterialTexture::Height,     MaterialProperty::MultiplierHeight);
                 show_property("Occlusion",            "Amount of light loss, can be complementary to SSAO",                                MaterialTexture::Occlusion,  MaterialProperty::Undefined);
                 show_property("Emission",             "Light emission from the surface, works nice with bloom",                            MaterialTexture::Emission,   MaterialProperty::Undefined);
                 show_property("Alpha mask",           "Discards pixels",                                                                   MaterialTexture::AlphaMask,  MaterialProperty::Undefined);
@@ -803,10 +798,10 @@ void Properties::ShowMaterial(Material* material) const
         }
 
         //= MAP ===============================================================================
-        material->SetProperty(MaterialProperty::UvTilingX, tiling.x);
-        material->SetProperty(MaterialProperty::UvTilingY, tiling.y);
-        material->SetProperty(MaterialProperty::UvOffsetX, offset.x);
-        material->SetProperty(MaterialProperty::UvOffsetY, offset.y);
+        material->SetProperty(MaterialProperty::TextureTilingX, tiling.x);
+        material->SetProperty(MaterialProperty::TextureTilingY, tiling.y);
+        material->SetProperty(MaterialProperty::TextureOffsetX, offset.x);
+        material->SetProperty(MaterialProperty::TextureOffsetY, offset.y);
         material->SetProperty(MaterialProperty::ColorR, m_material_color_picker->GetColor().r);
         material->SetProperty(MaterialProperty::ColorG, m_material_color_picker->GetColor().g);
         material->SetProperty(MaterialProperty::ColorB, m_material_color_picker->GetColor().b);

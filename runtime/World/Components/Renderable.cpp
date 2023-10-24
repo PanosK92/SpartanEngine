@@ -41,7 +41,6 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,       bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,               Material*);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_cast_shadows,           bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_affected_by_wind,       bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_offset,  uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_count,   uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_offset, uint32_t);
@@ -211,8 +210,8 @@ namespace Spartan
         shared_ptr<Material> material = make_shared<Material>();
         material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard" + EXTENSION_MATERIAL); // Set resource file path so it can be used by the resource cache
         material->SetProperty(MaterialProperty::CanBeEdited, 0.0f);
-        material->SetProperty(MaterialProperty::UvTilingX, 10.0f);
-        material->SetProperty(MaterialProperty::UvTilingY, 10.0f);
+        material->SetProperty(MaterialProperty::TextureTilingX, 10.0f);
+        material->SetProperty(MaterialProperty::TextureTilingY, 10.0f);
         material->SetProperty(MaterialProperty::ColorR, 1.0f);
         material->SetProperty(MaterialProperty::ColorG, 1.0f);
         material->SetProperty(MaterialProperty::ColorB, 1.0f);
