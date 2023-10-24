@@ -2,6 +2,12 @@
 To elevate yourself: Don't settle for the 9-to-5 grind. Step outside your comfort zone, expand your knowledge, and engage with the carefully curated Spartan community.
 Remember, neither this project nor you will be around forever. So seize the opportunity, life can be exciting when you make it so.
 
+# How to do it
+- If it's your first time contributing, pick a small task and go through the process of cloning, working, and submitting. This will give you an idea of the workflow, the scale of the project, and maybe even how to have fun while doing it.
+- The bigger the task you choose, the higher the probability that you'll end up dropping it due to complexity, scale, or boredom. You might even feel stressed, which is the wrong way to go about it. If you are in this place, remember that I have zero expectations.
+- Your first priority should be to have fun; your second priority should be to invest more grey matter in doing rather than planning. If you need help or guidance in the process, talk to me.
+- The workflow is: clone/fork, work, submit a pull request.
+
 # What to do
 I welcome anyone to contribute, and you can work on any aspect you prefer. If you need ideas on what to do:
 - Check out the [issues](https://github.com/PanosK92/SpartanEngine/issues) section. I regularly open issues myself to keep track of them and also for others to tackle them.
@@ -9,15 +15,9 @@ I welcome anyone to contribute, and you can work on any aspect you prefer. If yo
 - The readme page has a [roadmap section](https://github.com/PanosK92/SpartanEngine#roadmap), which is another way to see how you could help.
 - Another great approach is to simply run the engine, see what doesn't work or could be improved.
 
-# How to do it
-- If it's your first time contributing, pick a small task and go through the process of cloning, working, and submitting. This will give you an idea of the workflow, the scale of the project, and maybe even how to have fun while doing it.
-- The bigger the task you choose, the higher the probability that you'll end up dropping it due to complexity, scale, or boredom. You might even feel stressed, which is the wrong way to go about it. If you are in this place, remember that I have zero expectations.
-- Your first priority should be to have fun; your second priority should be to invest more grey matter in doing rather than planning. If you need help or guidance in the process, talk to me.
-- The workflow is: clone/fork, work, submit a pull request.
+# Coding style
 
-# Code Style
-
-## General
+## General advice
 - Try to adhere to the [KISS](https://en.wikipedia.org/wiki/KISS_principle) principle whenever possible.
 - Avoid [defensive programming](https://en.wikipedia.org/wiki/Defensive_programming). Instead, use asserts everywhere (offensive). If an assert pops up, it should be fixed ASAP.
 - If **auto** is used, the type must be deducible at a glance. Long iterator types can also be replaced with auto.
