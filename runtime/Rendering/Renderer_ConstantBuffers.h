@@ -47,9 +47,9 @@ namespace Spartan
         Math::Vector2 taa_jitter_current;
         Math::Vector2 taa_jitter_previous;
 
+        float time;
         float delta_time;
         uint32_t frame;
-        float gamma;
         uint32_t options;
 
         Math::Vector3 camera_position;
@@ -57,6 +57,9 @@ namespace Spartan
 
         Math::Vector3 camera_direction;
         float camera_far;
+
+        float gamma;
+        Math::Vector3 padding;
 
         void set_bit(const bool set, const uint32_t bit)
         {
@@ -73,6 +76,7 @@ namespace Spartan
                 view_projection_ortho      == rhs.view_projection_ortho      &&
                 view_projection_unjittered == rhs.view_projection_unjittered &&
                 view_projection_previous   == rhs.view_projection_previous   &&
+                time                       == rhs.time                       &&
                 delta_time                 == rhs.delta_time                 &&
                 frame                      == rhs.frame                      &&
                 camera_near                == rhs.camera_near                &&

@@ -42,23 +42,26 @@ struct PixelOutputType
     float fsr2_transparency_mask : SV_Target5;
 };
 
-PixelInputType mainVS(Vertex_PosUvNorTan input)
+PixelInputType mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     PixelInputType output;
 
-    output.position             = compute_screen_space_position(input, buffer_pass.transform, buffer_frame.view_projection);
-    output.position_ss_current  = output.position;
-    
-    // update this part to use the adjusted position_world for the previous frame as well
+    // position current
+    output.position            = compute_screen_space_position(input, instance_id, buffer_pass.transform, buffer_frame.view_projection);
+    output.position_ss_current = output.position;
+
+    // position previous
     float4 position_world_previous = mul(input.position, pass_get_transform_previous());
     #if INSTANCED
     position_world_previous        = mul(position_world_previous, input.instance_transform);
+    position_world_previous        = apply_wind_to_vertex(instance_id, position_world_previous, buffer_frame.time - buffer_frame.delta_time);
     #endif
     output.position_ss_previous    = mul(position_world_previous, buffer_frame.view_projection_previous);
-                                   
-    output.normal_world            = normalize(mul(input.normal, (float3x3)buffer_pass.transform)).xyz;
-    output.tangent_world           = normalize(mul(input.tangent, (float3x3)buffer_pass.transform)).xyz;
-    output.uv                      = input.uv;
+
+    // misc
+    output.normal_world  = normalize(mul(input.normal, (float3x3)buffer_pass.transform)).xyz;
+    output.tangent_world = normalize(mul(input.tangent, (float3x3)buffer_pass.transform)).xyz;
+    output.uv            = input.uv;
     
     return output;
 }

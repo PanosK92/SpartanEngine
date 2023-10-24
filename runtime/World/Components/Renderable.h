@@ -41,7 +41,7 @@ namespace Spartan
         Renderable(std::weak_ptr<Entity> entity);
         ~Renderable();
 
-        // IComponent
+        // icomponent
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
 
@@ -79,7 +79,11 @@ namespace Spartan
 
         // shadows
         void SetCastShadows(const bool cast_shadows) { m_cast_shadows = cast_shadows; }
-        auto GetCastShadows() const                  { return m_cast_shadows; }
+        bool GetCastShadows() const                  { return m_cast_shadows; }
+
+        // affected by wind
+        void SetAffectedByWind(const bool affected_by_wind) { m_affected_by_wind = affected_by_wind; }
+        bool GetAffectedByWind() const                      { return m_affected_by_wind; }
 
         // instancing
         bool HasInstancing()                  const { return !m_instances.empty(); }
@@ -109,5 +113,6 @@ namespace Spartan
         // misc
         Math::Matrix m_last_transform = Math::Matrix::Identity;
         bool m_cast_shadows           = true;
+        bool m_affected_by_wind       = false;
     };
 }
