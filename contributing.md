@@ -1,3 +1,7 @@
+# Why do it
+To elevate yourself: Don't settle for the 9-to-5 grind. Step outside your comfort zone, expand your knowledge, and engage with the carefully curated Spartan community.
+Remember, neither this project nor you will be around forever. So seize the opportunity, life can be exciting when you make it so.
+
 # What to do
 I welcome anyone to contribute, and you can work on any aspect you prefer. If you need ideas on what to do:
 - Check out the [issues](https://github.com/PanosK92/SpartanEngine/issues) section. I regularly open issues myself to keep track of them and also for others to tackle them.
