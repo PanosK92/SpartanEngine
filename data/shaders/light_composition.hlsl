@@ -37,10 +37,8 @@ float3 refract_vector(float3 i, float3 n, float eta)
     return eta * i + (eta * cosi - sqrt(abs(cost2))) * n;
 }
 
-float3 refraction(Surface surface, float ior, float scale, float depth_bias)
-{
-    const float chromatic_aberration_strength = 0.0012f;
-    
+float3 refraction(Surface surface, float ior, float scale)
+{   
     float3 view_pos    = world_to_view(surface.position);
     float3 view_normal = world_to_view(surface.normal, false);
     float3 view_dir    = normalize(view_pos);
@@ -57,6 +55,10 @@ float3 refraction(Surface surface, float ior, float scale, float depth_bias)
     // chromatic aberration
     float3 color_refracted = float3(0, 0, 0);
     {
+        // chromatic aberration is affected by the IOR and the roughhness/thickness
+        float chromatic_aberration_strength  = ior * 0.001f;
+        chromatic_aberration_strength       *= (1.0f + surface.roughness_alpha);
+        
         float2 ca_offsets[3];
         ca_offsets[0] = float2(chromatic_aberration_strength, 0.0f);
         ca_offsets[1] = float2(0.0f, 0.0f);
@@ -112,8 +114,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         {
             float ior        = 1.33; // water
             float scale      = 0.05f;
-            float depth_bias = 0.02f;
-            light_refraction = refraction(surface, ior, scale, depth_bias); 
+            light_refraction = refraction(surface, ior, scale); 
         }
         
         // compose
