@@ -16,9 +16,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
+//= INCLUDES ===========================
 #include "common.hlsl"
-//====================
+#include "common_vertex_operations.hlsl"
+//======================================
 
 struct PixelInputType
 {
@@ -45,14 +46,8 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
 {
     PixelInputType output;
 
-    // position computation has to be an exact match to depth_prepass.hlsl
-    input.position.w             = 1.0f;
-    output.position_world        = mul(input.position, buffer_pass.transform);
-    #if INSTANCED
-    output.position_world        = mul(output.position_world, input.instance_transform);
-    #endif
-    output.position              = mul(output.position_world, buffer_frame.view_projection);
-    output.position_ss_current   = output.position;
+    output.position             = compute_screen_space_position(input, buffer_pass.transform, buffer_frame.view_projection);
+    output.position_ss_current  = output.position;
     
     // update this part to use the adjusted position_world for the previous frame as well
     float4 position_world_previous = mul(input.position, pass_get_transform_previous());
