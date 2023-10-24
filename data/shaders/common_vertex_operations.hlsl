@@ -21,24 +21,49 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // thse functions are shared between depth_prepass.hlsl and g_buffer.hlsl, this is because the calculations have to be exactly the same
 
-float4 apply_wind_to_vertex(uint instance_id, float4 world_position, float time)
-{ 
-    const float3 wind_direction  = float3(1, 0, 0);
-    const float sway_extent      = 0.0001f; // oscillation amplitude
-    const float sway_speed       = 2.0f; // oscillation frequency
-    const float sway_more_on_top = 2.0f; // sway at the top more
-
-    if (material_vertex_animate_wind())
+struct wind
+{
+    static float hash(float n)
     {
-        float wave_factor = sin((time * sway_speed) + world_position.x + float(instance_id) * 0.1f); // offset by instance_id
-        float height_factor = pow(world_position.y, sway_more_on_top);
-
-        float3 offset = wind_direction * wave_factor * height_factor * sway_extent;
-        world_position.xyz += offset;
+        return frac(sin(n) * 43758.5453f);
     }
 
-    return world_position;
-}
+    static float perlin_noise(float x)
+    {
+        float i = floor(x);
+        float f = frac(x);
+        f = f * f * (3.0 - 2.0 * f);
+
+        return lerp(hash(i), hash(i + 1.0), f);
+    }
+
+    static float4 apply_to_vertex(uint instance_id, float4 world_position, float time)
+    {
+        const float3 wind_direction = float3(1, 0, 0);
+        const float sway_extent     = 0.08f; // oscillation amplitude
+        const float sway_speed      = 4.0f;  // oscillation frequency
+        const float phase_offset    = float(instance_id) * 0.1f;
+
+        if (material_vertex_animate_wind())
+        {
+            // base sine wave
+            float base_wave = sin((time * sway_speed) + world_position.x + phase_offset);
+
+            // additional Perlin noise
+            float noise_factor = perlin_noise(world_position.x * 0.1f + time) - 0.5f;
+
+            // combine multiple frequencies
+            float combined_wave = base_wave + 0.5 * sin((time * sway_speed * 1.5f) + world_position.x + phase_offset);
+
+            // calculate final offset
+            float3 offset = wind_direction * (combined_wave + noise_factor) * sway_extent;
+
+            world_position.xyz += offset;
+        }
+
+        return world_position;
+    }
+};
 
 float4 compute_screen_space_position(Vertex_PosUvNorTan input, uint instance_id, matrix transform, matrix view_projection)
 {
@@ -49,7 +74,7 @@ float4 compute_screen_space_position(Vertex_PosUvNorTan input, uint instance_id,
 
     #if INSTANCED
     world_position = mul(world_position, input.instance_transform);
-    world_position = apply_wind_to_vertex(instance_id, world_position, buffer_frame.time);
+    world_position = wind::apply_to_vertex(instance_id, world_position, buffer_frame.time);
     #endif
 
     return mul(world_position, view_projection);
