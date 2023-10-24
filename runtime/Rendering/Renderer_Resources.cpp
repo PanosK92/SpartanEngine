@@ -63,7 +63,7 @@ namespace Spartan
 
         // asset resources
         array<shared_ptr<RHI_Texture>, 10> m_standard_textures;
-        array<shared_ptr<Mesh>, 6>         m_standard_meshes;
+        array<shared_ptr<Mesh>, 7>         m_standard_meshes;
         array<shared_ptr<Font>, 5> m_fonts; // as many as m_resources_frame_lifetime
     }
 
@@ -508,6 +508,12 @@ namespace Spartan
                 Geometry::CreateQuad(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_quad" + EXTENSION_MODEL);
             }
+            else if (type == Renderer_MeshType::Grid)
+            {
+                uint32_t resolution = 500;
+                Geometry::CreateGrid(&vertices, &indices, resolution);
+                mesh->SetResourceFilePath(project_directory + "standard_grid" + EXTENSION_MODEL);
+            }
             else if (type == Renderer_MeshType::Sphere)
             {
                 Geometry::CreateSphere(&vertices, &indices);
@@ -535,6 +541,7 @@ namespace Spartan
 
         create_mesh(Renderer_MeshType::Cube);
         create_mesh(Renderer_MeshType::Quad);
+        create_mesh(Renderer_MeshType::Grid);
         create_mesh(Renderer_MeshType::Sphere);
         create_mesh(Renderer_MeshType::Cylinder);
         create_mesh(Renderer_MeshType::Cone);

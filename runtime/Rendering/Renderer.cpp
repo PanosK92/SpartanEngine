@@ -360,11 +360,11 @@ namespace Spartan
 
 
             // these must match what common_buffer.hlsl is reading
-            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections), 1 << 0);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceGlobalIllumination),                   1 << 1);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceShadows),     1 << 2);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Fog),                    1 << 3);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::FogVolumetric),          1 << 4);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections),        1 << 0);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceGlobalIllumination), 1 << 1);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceShadows),            1 << 2);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Fog),                           1 << 3);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::FogVolumetric),                 1 << 4);
         }
 
         Pass_Frame(cmd_current);
@@ -595,6 +595,7 @@ namespace Spartan
         m_cb_material_cpu.properties           |= material->GetProperty(MaterialProperty::TextureSlopeBased)               ? (1U << 9) : 0;
         m_cb_material_cpu.properties           |= material->GetProperty(MaterialProperty::TextureAnimate)                  ? (1U << 10) : 0;
         m_cb_material_cpu.properties           |= material->GetProperty(MaterialProperty::VertexAnimateWind)               ? (1U << 11) : 0;
+        m_cb_material_cpu.properties           |= material->GetProperty(MaterialProperty::VertexAnimateWater)              ? (1U << 12) : 0;
 
         // update
         GetConstantBuffer(Renderer_ConstantBuffer::Material)->Update(&m_cb_material_cpu);

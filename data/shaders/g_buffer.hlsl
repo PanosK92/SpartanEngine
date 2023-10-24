@@ -54,9 +54,13 @@ PixelInputType mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID
     float4 position_world_previous = mul(input.position, pass_get_transform_previous());
     #if INSTANCED
     position_world_previous        = mul(position_world_previous, input.instance_transform);
-    position_world_previous        = wind::apply_to_vertex(instance_id, position_world_previous, buffer_frame.time - buffer_frame.delta_time);
+    position_world_previous        = vertex_simulation::wind::apply(instance_id, position_world_previous, buffer_frame.time - buffer_frame.delta_time);
     #endif
-    output.position_ss_previous    = mul(position_world_previous, buffer_frame.view_projection_previous);
+    if (material_vertex_animate_water())
+    {
+        position_world_previous = vertex_simulation::wave::apply(position_world_previous, buffer_frame.time - buffer_frame.delta_time);
+    }
+    output.position_ss_previous = mul(position_world_previous, buffer_frame.view_projection_previous);
 
     // misc
     output.normal_world  = normalize(mul(input.normal, (float3x3)buffer_pass.transform)).xyz;

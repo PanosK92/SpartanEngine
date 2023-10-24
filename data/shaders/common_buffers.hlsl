@@ -120,6 +120,7 @@ bool has_texture_occlusion()                  { return buffer_material.propertie
 bool material_texture_slope_based()           { return buffer_material.properties & uint(1U << 9); }
 bool material_texture_animate()               { return buffer_material.properties & uint(1U << 10); }
 bool material_vertex_animate_wind()           { return buffer_material.properties & uint(1U << 11); }
+bool material_vertex_animate_water()          { return buffer_material.properties & uint(1U << 12); }
 
 // lighting properties
 bool light_is_directional()           { return buffer_light.options & uint(1U << 0); }

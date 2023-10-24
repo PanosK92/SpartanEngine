@@ -308,6 +308,7 @@ namespace Spartan
         NotAssigned,
         Cube,
         Quad,
+        Grid,
         Sphere,
         Cylinder,
         Cone,
