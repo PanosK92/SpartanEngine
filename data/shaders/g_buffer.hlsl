@@ -113,7 +113,7 @@ PixelOutputType mainPS(PixelInputType input)
     // uv
     float2 uv  = input.uv;
     uv         = float2(uv.x * buffer_material.tiling.x + buffer_material.offset.x, uv.y * buffer_material.tiling.y + buffer_material.offset.y);
-    uv        += float(buffer_frame.time * 0.001f) * material_texture_animate();
+    uv        += float(buffer_frame.time * 0.1f) * material_texture_animate();
     
     // parallax mapping
     if (has_texture_height())

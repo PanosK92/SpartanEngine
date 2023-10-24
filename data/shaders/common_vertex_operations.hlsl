@@ -22,18 +22,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // thse functions are shared between depth_prepass.hlsl and g_buffer.hlsl, this is because the calculations have to be exactly the same
 
 float4 apply_wind_to_vertex(uint instance_id, float4 world_position, float time)
-{
-    const float3 wind_direction = float3(1, 0, 0);
+{ 
+    const float3 wind_direction  = float3(1, 0, 0);
     const float sway_extent      = 0.0001f; // oscillation amplitude
-    const float sway_speed       = 2.0f;    // oscillation frequency
-    const float sway_more_on_top = 2.0f;    // sway at the top more
-  
-    float wave_factor   = sin((time * sway_speed) + world_position.x + float(instance_id) * 0.1f); // offset by instance_id
-    float height_factor = pow(world_position.y, sway_more_on_top);
+    const float sway_speed       = 2.0f; // oscillation frequency
+    const float sway_more_on_top = 2.0f; // sway at the top more
 
-    float3 offset       = wind_direction * wave_factor * height_factor * sway_extent;
-    world_position.xyz += offset;
-    
+    if (material_vertex_animate_wind())
+    {
+        float wave_factor = sin((time * sway_speed) + world_position.x + float(instance_id) * 0.1f); // offset by instance_id
+        float height_factor = pow(world_position.y, sway_more_on_top);
+
+        float3 offset = wind_direction * wave_factor * height_factor * sway_extent;
+        world_position.xyz += offset;
+    }
+
     return world_position;
 }
 
