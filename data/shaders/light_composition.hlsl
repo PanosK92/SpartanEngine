@@ -55,7 +55,6 @@ float3 refraction(Surface surface, float ior, float scale)
     // chromatic aberration
     float3 color_refracted = float3(0, 0, 0);
     {
-        // chromatic aberration is affected by the IOR and the roughhness/thickness
         float chromatic_aberration_strength  = ior * 0.001f;
         chromatic_aberration_strength       *= (1.0f + surface.roughness_alpha);
         

@@ -19,17 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
-#include "common.hlsl"
-#include "common_vertex_operations.hlsl"
-//======================================
-
-Pixel_PosUv mainVS(Vertex_PosUvNorTan input)
+// this is shared between depth_prepass.hlsl and g_buffer.hlsl, this is because the calculations have to be exactly the same
+float4 compute_screen_space_position(Vertex_PosUvNorTan input, matrix transform, matrix view_projection)
 {
-    Pixel_PosUv output;
+    float4 position = input.position;
+    position.w      = 1.0f;
     
-    output.position = compute_screen_space_position(input, buffer_pass.transform, buffer_frame.view_projection);
-    output.uv       = input.uv;
-    
-    return output;
+    float4 world_position = mul(position, transform);
+
+    #if INSTANCED
+    world_position = mul(world_position, input.instance_transform);
+    #endif
+
+    return mul(world_position, view_projection);
 }
