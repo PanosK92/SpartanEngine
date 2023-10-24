@@ -111,6 +111,49 @@ namespace Spartan::Geometry
         indices->emplace_back(1);
     }
 
+    void CreateGrid(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, uint32_t resolution)
+    {
+        using namespace Math;
+
+        const float spacing = 1.0f / static_cast<float>(resolution - 1); // Ensures the last vertex lands on 1.0
+        const Vector3 normal(0, 1, 0);
+        const Vector3 tangent(1, 0, 0);
+
+        // vertices
+        for (uint32_t i = 0; i < resolution; ++i)
+        {
+            for (uint32_t j = 0; j < resolution; ++j)
+            {
+                const float x = static_cast<float>(i) * spacing - 0.5f; // Offset by -0.5 to center the grid
+                const float z = static_cast<float>(j) * spacing - 0.5f; // Offset by -0.5 to center the grid
+                const Vector2 texCoord(static_cast<float>(i) * spacing, static_cast<float>(j) * spacing);
+                vertices->emplace_back(Vector3(x, 0.0f, z), texCoord, normal, tangent);
+            }
+        }
+
+        // indices
+        for (uint32_t i = 0; i < resolution - 1; ++i)
+        {
+            for (uint32_t j = 0; j < resolution - 1; ++j)
+            {
+                int topLeft     = i * resolution + j;
+                int topRight    = i * resolution + j + 1;
+                int bottomLeft  = (i + 1) * resolution + j;
+                int bottomRight = (i + 1) * resolution + j + 1;
+
+                // Triangle 1 (Top-Left, Bottom-Left, Bottom-Right)
+                indices->emplace_back(topLeft);
+                indices->emplace_back(bottomLeft);
+                indices->emplace_back(bottomRight);
+
+                // Triangle 2 (Top-Left, Bottom-Right, Top-Right)
+                indices->emplace_back(topLeft);
+                indices->emplace_back(bottomRight);
+                indices->emplace_back(topRight);
+            }
+        }
+    }
+
     static void CreateSphere(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius = 1.0f, int slices = 20, int stacks = 20)
     {
         using namespace Math;

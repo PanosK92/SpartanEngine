@@ -832,13 +832,13 @@ namespace Spartan
 
                 shared_ptr<Material> material = make_shared<Material>();
                 material->SetResourceFilePath(string("project\\terrain\\material_terrain") + string(EXTENSION_MATERIAL));
-                material->SetTexture(MaterialTexture::Color,       "project\\terrain\\florest_floor\\albedo.png");
-                material->SetTexture(MaterialTexture::Normal,      "project\\terrain\\florest_floor\\normal.png");
-                material->SetTexture(MaterialTexture::Color2,      "project\\terrain\\slate_cliff_rock\\albedo.png");
-                material->SetTexture(MaterialTexture::Normal2,     "project\\terrain\\slate_cliff_rock\\normal.png");
+                material->SetTexture(MaterialTexture::Color,               "project\\terrain\\florest_floor\\albedo.png");
+                material->SetTexture(MaterialTexture::Normal,              "project\\terrain\\florest_floor\\normal.png");
+                material->SetTexture(MaterialTexture::Color2,              "project\\terrain\\slate_cliff_rock\\albedo.png");
+                material->SetTexture(MaterialTexture::Normal2,             "project\\terrain\\slate_cliff_rock\\normal.png");
                 material->SetProperty(MaterialProperty::TextureSlopeBased, 1.0f);
-                material->SetProperty(MaterialProperty::TextureTilingX, 300.0f);
-                material->SetProperty(MaterialProperty::TextureTilingY, 300.0f);
+                material->SetProperty(MaterialProperty::TextureTilingX,    300.0f);
+                material->SetProperty(MaterialProperty::TextureTilingY,    300.0f);
 
                 m_default_terrain->GetComponent<Renderable>()->SetMaterial(material);
             }
@@ -863,7 +863,7 @@ namespace Spartan
                     water->GetTransform()->SetScale(Vector3(2000.0f, 1.0f, 2000.0f));
 
                     Renderable* renderable = water->AddComponent<Renderable>().get();
-                    renderable->SetGeometry(Renderer_MeshType::Quad);
+                    renderable->SetGeometry(Renderer_MeshType::Grid);
 
                     // material
                     {
@@ -871,11 +871,12 @@ namespace Spartan
                         material->SetObjectName("material_water");
                         material->SetColor(Color(0.0f, 48.0f / 255.0f, 75.0f / 255.0f, 50.0f / 255.0f));
                         material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\water_normal_2.jpeg");
-                        material->SetProperty(MaterialProperty::TextureAnimate,          1.0f);
                         material->SetProperty(MaterialProperty::MultiplierRoughness, 0.2f); // just a bit of roughness to diffuse the sun a little
                         material->SetProperty(MaterialProperty::MultiplierNormal,    0.3f);
-                        material->SetProperty(MaterialProperty::TextureTilingX,           500.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingY,           500.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingX,      500.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingY,      500.0f);
+                        material->SetProperty(MaterialProperty::TextureAnimate,      1.0f);
+                        material->SetProperty(MaterialProperty::VertexAnimateWater,  1.0f);
 
                         // create a file path for this material (required for the material to be able to be cached by the resource cache)
                         const string file_path = "project\\terrain\\water_material" + string(EXTENSION_MATERIAL);

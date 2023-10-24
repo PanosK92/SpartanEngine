@@ -69,6 +69,7 @@ namespace Spartan
                 case MaterialProperty::TextureSlopeBased:               return "texture_slope_based";
                 case MaterialProperty::TextureAnimate:                  return "texture_animate";
                 case MaterialProperty::VertexAnimateWind:               return "vertex_animate_wind";
+                case MaterialProperty::VertexAnimateWater:              return "vertex_animate_water";
                 case MaterialProperty::Undefined:                       return "undefined";
                 default:
                 {
