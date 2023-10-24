@@ -53,7 +53,7 @@ namespace Spartan
 
     }
 
-    void RHI_AMD_FidelityFX::FSR2_Resize(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output)
+    void RHI_AMD_FidelityFX::FSR2_Resize(const Vector2& resolution_render, const Vector2& resolution_output)
     {
 
     }
@@ -69,7 +69,8 @@ namespace Spartan
         RHI_Texture* tex_output,
         Camera* camera,
         float delta_time_sec,
-        float sharpness
+        float sharpness,
+        float exposure
     )
     {
 

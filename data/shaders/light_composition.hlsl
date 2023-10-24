@@ -32,7 +32,7 @@ float compute_fade_factor(float2 uv)
 
 float3 refract_vector(float3 i, float3 n, float eta)
 {
-    float cosi = dot(-i, n);
+    float cosi  = dot(-i, n);
     float cost2 = 1.0f - eta * eta * (1.0f - cosi * cosi);
     return eta * i + (eta * cosi - sqrt(abs(cost2))) * n;
 }
@@ -126,4 +126,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = saturate_16(color);
 }
-
