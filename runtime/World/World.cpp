@@ -901,9 +901,13 @@ namespace Spartan
 
                     if (Entity* leafs = entity->GetTransform()->GetDescendantPtrByName("Mobile_Tree_1_2"))
                     {
+                        // enable instancing
                         Renderable* renderable = leafs->GetComponent<Renderable>().get();
-                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\vegetation_tree_1\\leaf.png");
                         renderable->SetInstances(terrain->GetTransformsTree());
+
+                        // set material
+                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\vegetation_tree_1\\leaf.png");
+                        renderable->GetMaterial()->SetProperty(MaterialProperty::VertexAnimateWind, 1.0f);
                     }
                 }
 
@@ -916,12 +920,17 @@ namespace Spartan
 
                     if (Entity* child = entity->GetTransform()->GetDescendantPtrByName("Plane.010"))
                     {
+                        // enable instancing
                         Renderable* renderable = child->GetComponent<Renderable>().get();
-                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color,    "project\\models\\vegetation_plant_1\\ormbunke.png");
-                        renderable->GetMaterial()->SetProperty(MaterialProperty::ColorR, 1.0f);
-                        renderable->GetMaterial()->SetProperty(MaterialProperty::ColorG, 1.0f);
-                        renderable->GetMaterial()->SetProperty(MaterialProperty::ColorB, 1.0f);
                         renderable->SetInstances(terrain->GetTransformsPlant1());
+
+                        // tweak material
+                        Material* material = renderable->GetMaterial();
+                        material->SetTexture(MaterialTexture::Color,    "project\\models\\vegetation_plant_1\\ormbunke.png");
+                        material->SetProperty(MaterialProperty::ColorR, 1.0f);
+                        material->SetProperty(MaterialProperty::ColorG, 1.0f);
+                        material->SetProperty(MaterialProperty::ColorB, 1.0f);
+                        material->SetProperty(MaterialProperty::VertexAnimateWind, 1.0f);
                     }
                 }
 
