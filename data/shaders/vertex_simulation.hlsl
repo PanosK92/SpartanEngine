@@ -27,9 +27,10 @@ static const float  wind_vertex_sway_extent = 0.08f; // oscillation amplitude
 static const float  wind_vertex_sway_speed  = 4.0f;  // oscillation frequency
 
 // wave
-static const float wave_speed     = 0.8f;
-static const float wave_amplitude = 0.4f;
-static const float wave_frequency = 1.0f;
+static const float  wave_height    = 0.15f;
+static const float  wave_frequency = 10.0f;
+static const float  wave_speed     = 0.5f; 
+static const float3 wave_direction = float3(1.0f, 0.0f, 0.0f);
 
 struct vertex_simulation
 {
@@ -75,12 +76,27 @@ struct vertex_simulation
 
     struct wave
     {
+        // gerstner waves
+        
         static float4 apply(float4 world_position, float time)
         {
-            // simple sinusoidal wave equation
-            float y_offset = sin(wave_frequency * world_position.x + (time * wave_speed)) * wave_amplitude;
+            // gerstner wave equation
+            float k = PI2 / wave_frequency;
+            float w = sqrt(9.8f / k) * wave_speed;
 
-            world_position.y += y_offset;
+            // phase and amplitude
+            float phase = dot(wave_direction, world_position.xz) * k + time * w;
+            float c     = cos(phase);
+            float s     = sin(phase);
+
+            // calculate new position
+            float3 offset;
+            offset.x = wave_height * wave_direction.x * c;
+            offset.z = wave_height * wave_direction.z * c;
+            offset.y = wave_height * s;
+
+            world_position.xz += offset.xz;
+            world_position.y  += offset.y;
 
             return world_position;
         }
