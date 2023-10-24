@@ -25,17 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 float3 refraction(Surface surface, float ior, float scale, float depth_bias)
 {
-    float distance_falloff      = clamp(1.0f / world_to_view(surface.position).z, -3.0f, 3.0f);
-    float2 refraction_normal    = world_to_view(surface.normal.xyz, false).xy ;
-    float2 refraction_uv_offset = refraction_normal * distance_falloff * scale * max(0.0f, ior - 1.0f);
-
-    float depth_surface           = get_linear_depth(surface.depth);
-    float depth_surface_refracted = get_linear_depth(surface.uv + refraction_uv_offset);
-    float is_behind               = step(depth_surface - depth_bias, depth_surface_refracted);
-
-    float frame_mip_count = pass_get_f3_value().x;
-    float mip_level       = lerp(0, frame_mip_count, surface.roughness_alpha);
-
+    const float refraction_scale      = (ior > 1.0f) ? (ior - 1.0f) : 0.0f;
+    const float2 refraction_uv_offset = world_to_view(surface.normal.xyz, false).xy * scale * refraction_scale;
+    const float is_behind             = step(get_linear_depth(surface.depth) - depth_bias, get_linear_depth(surface.uv + refraction_uv_offset));
+    float mip_level                   = lerp(0, pass_get_f3_value().x, surface.roughness_alpha);
+    
     return tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv + refraction_uv_offset * is_behind, mip_level).rgb;
 }
 
@@ -73,7 +67,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         if (surface.is_transparent())
         {
             float ior        = 1.33; // water
-            float scale      = 0.1f;
+            float scale      = 5.0f;
             float depth_bias = 0.02f;
             light_refraction = refraction(surface, ior, scale, depth_bias); 
         }

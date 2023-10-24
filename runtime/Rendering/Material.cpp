@@ -66,8 +66,8 @@ namespace Spartan
                 case MaterialProperty::UvOffsetY:                       return "uv_offset_y";
                 case MaterialProperty::SingleTextureRoughnessMetalness: return "single_texture_roughness_metalness";
                 case MaterialProperty::CanBeEdited:                     return "can_be_edited";
-                case MaterialProperty::SlopeBased:                       return "is_terrain";
-                case MaterialProperty::AnimateUVs:                         return "is_water";
+                case MaterialProperty::SlopeBased:                      return "is_terrain";
+                case MaterialProperty::AnimateUVs:                      return "is_water";
                 case MaterialProperty::Undefined:                       return "undefined";
                 default:
                 {
