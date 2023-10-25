@@ -19,8 +19,6 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// thse functions are shared between depth_prepass.hlsl and g_buffer.hlsl, this is because the calculations have to be exactly the same
-
 struct vertex_simulation
 {
     struct wind
@@ -41,28 +39,37 @@ struct vertex_simulation
 
         static float4 apply(uint instance_id, float4 position_vertex, float3 position_transform, float time)
         {
-            static const float3 wind_direction          = float3(1, 0, 0);
-            static const float  wind_vertex_sway_extent = 0.1f; // oscillation amplitude
+            static const float3 base_wind_direction     = float3(1, 0, 0);
+            static const float  wind_vertex_sway_extent = 0.4f; // oscillation amplitude
             static const float  wind_vertex_sway_speed  = 4.0f; // oscillation frequency
-            
-            // base wave
+
+            // base oscillation, a combination of two since ways with a phase difference of
             float phase_offset = float(instance_id) * PI_HALF;
-            float base_wave1   = sin((time * wind_vertex_sway_speed) + position_vertex.x + phase_offset);
-            float base_wave2   = sin((time * wind_vertex_sway_speed * 0.8f) + position_vertex.x + phase_offset + PI_HALF); // out of phase
-
-            // perlin noise
-            float noise_factor = perlin_noise(position_vertex.x * 0.1f + time) - 0.5f;
-
-            // combine base waves with noise
-            float combined_wave = (base_wave1 + base_wave2) * 0.5f + noise_factor;
-
-            // don't sway at the bottom of the mesh, sway the most at the top
+            float phase1       = (time * wind_vertex_sway_speed) + position_vertex.x + phase_offset;
+            float phase_diff   = PI / 4.0f; // not a multiple of half pi to avoid total cancelation
+            float phase2       = phase1 + phase_diff; 
+            float base_wave1   = sin(phase1);
+            float base_wave2   = sin(phase2);
+            
+            // perlin noise for low-frequency wind changes
+            float low_freq_noise        = perlin_noise(time * 0.1f);
+            float wind_direction_factor = lerp(-1.0f, 1.0f, low_freq_noise);
+            float3 wind_direction       = base_wind_direction * wind_direction_factor;
+        
+            // high-frequency perlin noise for flutter
+            float high_freq_noise = perlin_noise(position_vertex.x * 10.0f + time * 10.0f) - 0.5f;
+        
+            // combine all factors
+            float combined_wave = (base_wave1 + base_wave2 + high_freq_noise) / 3.0f;
+        
+            // reduce sway at the bottom, increase at the top
             float sway_factor = saturate((position_vertex.y - position_transform.y) / buffer_material.world_space_height);
             
             // calculate final offset
-            float3 offset = wind_direction * (combined_wave + noise_factor) * wind_vertex_sway_extent * sway_factor;
-
+            float3 offset = wind_direction * combined_wave * wind_vertex_sway_extent * sway_factor;
+        
             position_vertex.xyz += offset;
+        
             return position_vertex;
         }
     };

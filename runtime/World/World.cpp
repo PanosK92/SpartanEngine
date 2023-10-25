@@ -860,7 +860,7 @@ namespace Spartan
                     shared_ptr<Entity> water = CreateEntity();
                     water->SetObjectName("water");
                     water->GetTransform()->SetPosition(Vector3(0.0f, terrain->GetWaterLevel(), 0.0f));
-                    water->GetTransform()->SetScale(Vector3(2000.0f, 1.0f, 2000.0f));
+                    water->GetTransform()->SetScale(Vector3(1100.0f, 1.0f, 1100.0f));
 
                     Renderable* renderable = water->AddComponent<Renderable>().get();
                     renderable->SetGeometry(Renderer_MeshType::Grid);
@@ -874,8 +874,8 @@ namespace Spartan
                         material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\water_normal_2.jpeg");
                         material->SetProperty(MaterialProperty::MultiplierRoughness, 0.2f); // just a bit of roughness to diffuse the sun a little
                         material->SetProperty(MaterialProperty::MultiplierNormal,    0.3f);
-                        material->SetProperty(MaterialProperty::TextureTilingX,      500.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingY,      500.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingX,      250.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingY,      250.0f);
                         material->SetProperty(MaterialProperty::TextureAnimate,      1.0f);
                         material->SetProperty(MaterialProperty::VertexAnimateWater,  1.0f);
 
