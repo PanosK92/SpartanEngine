@@ -158,7 +158,7 @@ namespace Spartan
         float anisitropic_rotation = 0.0f;
         float sheen                = 0.0f;
         float sheen_tint           = 0.0f;
-        float padding              = 0.0f;
+        float world_space_height   = 0.0f;
 
         bool operator==(const Cb_Material& rhs) const
         {
@@ -176,7 +176,8 @@ namespace Spartan
                 anisotropic          == rhs.anisotropic          &&
                 anisitropic_rotation == rhs.anisitropic_rotation &&
                 sheen                == rhs.sheen                &&
-                sheen_tint           == rhs.sheen_tint;
+                sheen_tint           == rhs.sheen_tint           &&
+                world_space_height   == rhs.world_space_height;
         }
     };
 

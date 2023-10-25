@@ -47,6 +47,7 @@ namespace Spartan
             {
                 case MaterialProperty::CanBeEdited:                     return "can_be_edited";
                 case MaterialProperty::SingleTextureRoughnessMetalness: return "single_texture_roughness_metalness";
+                case MaterialProperty::WorldSpaceHeight:                return "world_space_height";
                 case MaterialProperty::Clearcoat:                       return "clearcoat_multiplier";
                 case MaterialProperty::Clearcoat_Roughness:             return "clearcoat_roughness_multiplier";
                 case MaterialProperty::Anisotropic:                     return "anisotropic_multiplier";
@@ -94,6 +95,7 @@ namespace Spartan
         SetProperty(MaterialProperty::MultiplierRoughness, 1.0f);
         SetProperty(MaterialProperty::TextureTilingX,      1.0f);
         SetProperty(MaterialProperty::TextureTilingY,      1.0f);
+        SetProperty(MaterialProperty::WorldSpaceHeight,    1.0f);
     }
 
     bool Material::LoadFromFile(const std::string& file_path)

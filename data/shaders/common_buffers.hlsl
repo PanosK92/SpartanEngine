@@ -91,7 +91,7 @@ struct MaterialBufferData
     float anisotropic_rotation;
     float sheen;
     float sheen_tint;
-    float padding3;
+    float world_space_height;
 };
 
 cbuffer BufferFrame    : register(b0) { FrameBufferData buffer_frame;       }; // low frequency    - updates once per frame

@@ -867,6 +867,7 @@ namespace Spartan
 
                     // material
                     {
+                        // set material
                         shared_ptr<Material> material = make_shared<Material>();
                         material->SetObjectName("material_water");
                         material->SetColor(Color(0.0f, 48.0f / 255.0f, 75.0f / 255.0f, 50.0f / 255.0f));
@@ -906,9 +907,11 @@ namespace Spartan
                         Renderable* renderable = leafs->GetComponent<Renderable>().get();
                         renderable->SetInstances(terrain->GetTransformsTree());
 
-                        // set material
-                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\vegetation_tree_1\\leaf.png");
-                        renderable->GetMaterial()->SetProperty(MaterialProperty::VertexAnimateWind, 1.0f);
+                        // tweak material
+                        Material* material = renderable->GetMaterial();
+                        material->SetTexture(MaterialTexture::Color, "project\\models\\vegetation_tree_1\\leaf.png");
+                        material->SetProperty(MaterialProperty::VertexAnimateWind, 1.0f);
+                        material->SetProperty(MaterialProperty::WorldSpaceHeight,  renderable->GetBoundingBoxNoInstancing().GetSize().y);
                     }
                 }
 
@@ -932,6 +935,7 @@ namespace Spartan
                         material->SetProperty(MaterialProperty::ColorG, 1.0f);
                         material->SetProperty(MaterialProperty::ColorB, 1.0f);
                         material->SetProperty(MaterialProperty::VertexAnimateWind, 1.0f);
+                        material->SetProperty(MaterialProperty::WorldSpaceHeight,  renderable->GetBoundingBoxNoInstancing().GetSize().y);
                     }
                 }
 

@@ -46,26 +46,15 @@ PixelInputType mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID
 {
     PixelInputType output;
 
-    // position current
-    output.position            = compute_screen_space_position(input, instance_id, buffer_pass.transform, buffer_frame.view_projection);
-    output.position_ss_current = output.position;
-
-    // position previous
-    float4 position_world_previous = mul(input.position, pass_get_transform_previous());
-    #if INSTANCED
-    position_world_previous        = mul(position_world_previous, input.instance_transform);
-    position_world_previous        = vertex_simulation::wind::apply(instance_id, position_world_previous, buffer_frame.time - buffer_frame.delta_time);
-    #endif
-    if (material_vertex_animate_water())
-    {
-        position_world_previous = vertex_simulation::wave::apply(position_world_previous, buffer_frame.time - buffer_frame.delta_time);
-    }
-    output.position_ss_previous = mul(position_world_previous, buffer_frame.view_projection_previous);
-
-    // misc
+    // position
+    output.position             = compute_screen_space_position(input, instance_id, buffer_pass.transform, buffer_frame.view_projection);
+    output.position_ss_current  = output.position;
+    output.position_ss_previous = compute_screen_space_position(input, instance_id, pass_get_transform_previous(), buffer_frame.view_projection_previous);
+    // normals
     output.normal_world  = normalize(mul(input.normal, (float3x3)buffer_pass.transform)).xyz;
     output.tangent_world = normalize(mul(input.tangent, (float3x3)buffer_pass.transform)).xyz;
-    output.uv            = input.uv;
+    // uv
+    output.uv = input.uv;
     
     return output;
 }

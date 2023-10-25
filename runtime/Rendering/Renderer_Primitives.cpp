@@ -341,14 +341,14 @@ namespace Spartan
             }
         }
         
-        // AABBs
+        // bounding boxes
         if (GetOption<bool>(Renderer_Option::Debug_Aabb))
         {
             for (const auto& entity : GetEntities()[Renderer_Entity::Geometry])
             {
                 if (auto renderable = entity->GetComponent<Renderable>())
                 {
-                    DrawBox(renderable->GetAabb(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+                    DrawBox(renderable->GetBoundingBox(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
                 }
             }
         
@@ -356,7 +356,7 @@ namespace Spartan
             {
                 if (auto renderable = entity->GetComponent<Renderable>())
                 {
-                    DrawBox(renderable->GetAabb(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+                    DrawBox(renderable->GetBoundingBox(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
                 }
             }
         }

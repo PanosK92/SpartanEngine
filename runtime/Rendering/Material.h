@@ -49,6 +49,7 @@ namespace Spartan
     {
         CanBeEdited,
         SingleTextureRoughnessMetalness,
+        WorldSpaceHeight,    // height of the mesh the material is applied to
         Clearcoat,           // extra white specular layer on top of others
         Clearcoat_Roughness, // roughness of clearcoat specular
         Anisotropic,         // amount of anisotropy for specular reflection
@@ -107,6 +108,6 @@ namespace Spartan
  
     private:
         std::array<std::shared_ptr<RHI_Texture>, 11> m_textures;
-        std::array<float, 25> m_properties;
+        std::array<float, 26> m_properties;
     };
 }
