@@ -23,11 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // wind
 static const float3 wind_direction          = float3(1, 0, 0);
-static const float  wind_vertex_sway_extent = 0.08f; // oscillation amplitude
-static const float  wind_vertex_sway_speed  = 4.0f;  // oscillation frequency
+static const float  wind_vertex_sway_extent = 0.1f; // oscillation amplitude
+static const float  wind_vertex_sway_speed  = 4.0f; // oscillation frequency
 
 // wave
-static const float  wave_height    = 0.15f;
+static const float  wave_height    = 0.2f;
 static const float  wave_frequency = 10.0f;
 static const float  wave_speed     = 0.5f; 
 static const float3 wave_direction = float3(1.0f, 0.0f, 0.0f);
@@ -50,27 +50,27 @@ struct vertex_simulation
             return lerp(hash(i), hash(i + 1.0), f);
         }
 
-        static float4 apply(uint instance_id, float4 world_position, float time)
+        static float4 apply(uint instance_id, float4 position_vertex, float3 position_transform, float time)
         {
-            if (material_vertex_animate_wind())
-            {
-                // base sine wave
-                float phase_offset = float(instance_id) * 0.1f;
-                float base_wave    = sin((time * wind_vertex_sway_speed) + world_position.x + phase_offset);
+            // base wave
+            float phase_offset = float(instance_id) * PI_HALF;
+            float base_wave1   = sin((time * wind_vertex_sway_speed) + position_vertex.x + phase_offset);
+            float base_wave2   = sin((time * wind_vertex_sway_speed * 0.8f) + position_vertex.x + phase_offset + PI_HALF); // out of phase
 
-                // additional Perlin noise
-                float noise_factor = perlin_noise(world_position.x * 0.1f + time) - 0.5f;
+            // perlin noise
+            float noise_factor = perlin_noise(position_vertex.x * 0.1f + time) - 0.5f;
 
-                // combine multiple frequencies
-                float combined_wave = base_wave + 0.5 * sin((time * wind_vertex_sway_speed * 1.5f) + world_position.x + phase_offset);
+            // combine base waves with noise
+            float combined_wave = (base_wave1 + base_wave2) * 0.5f + noise_factor;
 
-                // calculate final offset
-                float3 offset = wind_direction * (combined_wave + noise_factor) * wind_vertex_sway_extent;
+            // don't sway at the bottom of the mesh, sway the most at the top
+            float sway_factor = saturate((position_vertex.y - position_transform.y) / buffer_material.world_space_height);
+            
+            // calculate final offset
+            float3 offset = wind_direction * (combined_wave + noise_factor) * wind_vertex_sway_extent * sway_factor;
 
-                world_position.xyz += offset;
-            }
-
-            return world_position;
+            position_vertex.xyz += offset;
+            return position_vertex;
         }
     };
 
@@ -78,14 +78,14 @@ struct vertex_simulation
     {
         // gerstner waves
         
-        static float4 apply(float4 world_position, float time)
+        static float4 apply(float4 position_vertex, float time)
         {
             // gerstner wave equation
             float k = PI2 / wave_frequency;
             float w = sqrt(9.8f / k) * wave_speed;
 
             // phase and amplitude
-            float phase = dot(wave_direction, world_position.xz) * k + time * w;
+            float phase = dot(wave_direction, position_vertex.xz) * k + time * w;
             float c     = cos(phase);
             float s     = sin(phase);
 
@@ -95,10 +95,10 @@ struct vertex_simulation
             offset.z = wave_height * wave_direction.z * c;
             offset.y = wave_height * s;
 
-            world_position.xz += offset.xz;
-            world_position.y  += offset.y;
+            position_vertex.xz += offset.xz;
+            position_vertex.y  += offset.y;
 
-            return world_position;
+            return position_vertex;
         }
     };
 };

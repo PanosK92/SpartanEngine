@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===============================
 
 // this function is shared between depth_prepass.hlsl and g_buffer.hlsl, this is because the calculations have to be exactly the same
-
 float4 compute_screen_space_position(Vertex_PosUvNorTan input, uint instance_id, matrix transform, matrix view_projection)
 {
     float4 position = input.position;
@@ -33,8 +32,12 @@ float4 compute_screen_space_position(Vertex_PosUvNorTan input, uint instance_id,
     float4 world_position = mul(position, transform);
 
     #if INSTANCED
-    world_position = mul(world_position, input.instance_transform);
-    world_position = vertex_simulation::wind::apply(instance_id, world_position, buffer_frame.time);
+    matrix instance = input.instance_transform;
+    world_position = mul(world_position, instance);
+    if (material_vertex_animate_wind())
+    {
+        world_position = vertex_simulation::wind::apply(instance_id, world_position, float3(instance._41, instance._42, instance._43), buffer_frame.time);
+    }
     #endif
 
     if (material_vertex_animate_water())

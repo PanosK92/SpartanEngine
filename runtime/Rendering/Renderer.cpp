@@ -108,7 +108,7 @@ namespace Spartan
                 if (!renderable)
                     return 0.0f;
 
-                return (renderable->GetAabb().GetCenter() - camera->GetTransform()->GetPosition()).LengthSquared();
+                return (renderable->GetBoundingBox().GetCenter() - camera->GetTransform()->GetPosition()).LengthSquared();
             };
 
             // sort by depth
@@ -565,6 +565,7 @@ namespace Spartan
         m_cb_material_cpu.properties = 0;
 
         // set
+        m_cb_material_cpu.world_space_height    = material->GetProperty(MaterialProperty::WorldSpaceHeight);
         m_cb_material_cpu.color.x               = material->GetProperty(MaterialProperty::ColorR);
         m_cb_material_cpu.color.y               = material->GetProperty(MaterialProperty::ColorG);
         m_cb_material_cpu.color.z               = material->GetProperty(MaterialProperty::ColorB);
