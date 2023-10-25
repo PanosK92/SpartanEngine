@@ -42,7 +42,7 @@ float4 compute_screen_space_position(Vertex_PosUvNorTan input, uint instance_id,
 
     if (material_vertex_animate_water())
     {
-        world_position = vertex_simulation::wave::apply(world_position, buffer_frame.time);
+        world_position = vertex_simulation::water_wave::apply(world_position, buffer_frame.time);
     }
 
     return mul(world_position, view_projection);

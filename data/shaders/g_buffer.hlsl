@@ -51,7 +51,7 @@ PixelInputType mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID
     output.position_ss_current  = output.position;
     output.position_ss_previous = compute_screen_space_position(input, instance_id, pass_get_transform_previous(), buffer_frame.view_projection_previous);
     // normals
-    output.normal_world  = normalize(mul(input.normal, (float3x3)buffer_pass.transform)).xyz;
+    output.normal_world  = normalize(mul(input.normal,  (float3x3)buffer_pass.transform)).xyz;
     output.tangent_world = normalize(mul(input.tangent, (float3x3)buffer_pass.transform)).xyz;
     // uv
     output.uv = input.uv;

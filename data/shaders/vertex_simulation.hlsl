@@ -21,17 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // thse functions are shared between depth_prepass.hlsl and g_buffer.hlsl, this is because the calculations have to be exactly the same
 
-// wind
-static const float3 wind_direction          = float3(1, 0, 0);
-static const float  wind_vertex_sway_extent = 0.1f; // oscillation amplitude
-static const float  wind_vertex_sway_speed  = 4.0f; // oscillation frequency
-
-// wave
-static const float  wave_height    = 0.2f;
-static const float  wave_frequency = 10.0f;
-static const float  wave_speed     = 0.5f; 
-static const float3 wave_direction = float3(1.0f, 0.0f, 0.0f);
-
 struct vertex_simulation
 {
     struct wind
@@ -52,6 +41,10 @@ struct vertex_simulation
 
         static float4 apply(uint instance_id, float4 position_vertex, float3 position_transform, float time)
         {
+            static const float3 wind_direction          = float3(1, 0, 0);
+            static const float  wind_vertex_sway_extent = 0.1f; // oscillation amplitude
+            static const float  wind_vertex_sway_speed  = 4.0f; // oscillation frequency
+            
             // base wave
             float phase_offset = float(instance_id) * PI_HALF;
             float base_wave1   = sin((time * wind_vertex_sway_speed) + position_vertex.x + phase_offset);
@@ -74,30 +67,46 @@ struct vertex_simulation
         }
     };
 
-    struct wave
+    struct water_wave
     {
-        // gerstner waves
-        
         static float4 apply(float4 position_vertex, float time)
         {
-            // gerstner wave equation
-            float k = PI2 / wave_frequency;
-            float w = sqrt(9.8f / k) * wave_speed;
+            static const float  base_wave_height    = 0.1f;
+            static const float  base_wave_frequency = 20.0f;
+            static const float  base_wave_speed     = 0.5f;
+            static const float3 base_wave_direction = float3(1.0f, 0.0f, 0.0f);
 
-            // phase and amplitude
-            float phase = dot(wave_direction, position_vertex.xz) * k + time * w;
-            float c     = cos(phase);
-            float s     = sin(phase);
-
-            // calculate new position
-            float3 offset;
-            offset.x = wave_height * wave_direction.x * c;
-            offset.z = wave_height * wave_direction.z * c;
-            offset.y = wave_height * s;
-
+            // interleave 4 waves to have a more complex wave pattern
+            float3 offset = float3(0.0f, 0.0f, 0.0f);
+            for (int i = 0; i < 4; i++)
+            {
+                // Modulate base wave parameters based on index
+                float wave_height    = base_wave_height * (0.75f + i * 0.1f);
+                float wave_frequency = base_wave_frequency * (0.9f + i * 0.05f);
+                float wave_speed     = base_wave_speed * (0.9f + i * 0.05f);
+    
+                // dynamically calculate wave direction based on index
+                float angle = 2.0f * 3.14159f * i / 4.0f;
+                float2 wave_direction = float2(cos(angle), sin(angle));
+    
+                // gerstner wave equation
+                float k = 2 * 3.14159 / wave_frequency;
+                float w = sqrt(9.8f / k) * wave_speed;
+    
+                // phase and amplitude
+                float phase = dot(wave_direction, position_vertex.xz) * k + time * w;
+                float c     = cos(phase);
+                float s     = sin(phase);
+    
+                // calculate new position for this wave and add to the offset
+                offset.x += wave_height * wave_direction.x * c;
+                offset.z += wave_height * wave_direction.y * c;
+                offset.y += wave_height * s;
+            }
+    
             position_vertex.xz += offset.xz;
             position_vertex.y  += offset.y;
-
+    
             return position_vertex;
         }
     };
