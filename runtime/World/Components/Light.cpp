@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================
+//= INCLUDES =========================
 #include "pch.h"
 #include "Light.h"
 #include "Transform.h"
@@ -30,8 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Renderer.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../RHI/RHI_TextureCube.h"
-#include "../../RHI/RHI_Texture2DArray.h"
-//=======================================
+//====================================
 
 //= NAMESPACES ===============
 using namespace Spartan::Math;
@@ -40,6 +39,11 @@ using namespace std;
 
 namespace Spartan
 {
+    namespace
+    {
+        float orthographic_extent = 100.0f; // that's 100x100 in world space units
+    }
+
     Light::Light(weak_ptr<Entity> entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_enabled, bool);
@@ -55,17 +59,18 @@ namespace Spartan
         if (m_light_type == LightType::Directional)
         {
             SetIntensity(LightIntensity::sky_sunlight_noon);
+            m_range = 1024.0;
         }
         else if (m_light_type == LightType::Point)
         {
             SetIntensity(LightIntensity::bulb_150_watt);
+            m_range = 10.0f;
         }
         else if (m_light_type == LightType::Spot)
         {
             SetIntensity(LightIntensity::bulb_flashlight);
+            m_range = 10.0f;
         }
-
-        m_cascade_ends.fill(0.0f);
     }
 
     void Light::OnInitialize()
@@ -111,17 +116,12 @@ namespace Spartan
         // Update shadow map(s)
         if (m_shadows_enabled)
         {
-            if (m_light_type == LightType::Directional)
-            {
-                ComputeCascadeSplits();
-            }
-
             ComputeViewMatrix();
 
             // Compute projection matrix
-            if (m_shadow_map.texture_depth)
+            if (m_texture_depth)
             {
-                for (uint32_t i = 0; i < m_shadow_map.texture_depth->GetArrayLength(); i++)
+                for (uint32_t i = 0; i < m_texture_depth->GetArrayLength(); i++)
                 {
                     ComputeProjectionMatrix(i);
                 }
@@ -330,63 +330,65 @@ namespace Spartan
 
     void Light::ComputeViewMatrix()
     {
+        const Vector3 position = GetTransform()->GetPosition();
+        const Vector3 forward  = GetTransform()->GetForward();
+
         if (m_light_type == LightType::Directional)
         {
-            if (!m_shadow_map.slices.empty())
+            if (Camera* camera = Renderer::GetCamera().get())
             {
-                for (uint32_t i = 0; i < m_cascade_count; i++)
-                {
-                    ShadowSlice& shadow_map = m_shadow_map.slices[i];
-                    Vector3 position        = shadow_map.center - GetTransform()->GetForward() * shadow_map.max.z;
-                    Vector3 target          = shadow_map.center;
-                    Vector3 up              = GetTransform()->GetUp();
-                    m_matrix_view[i]        = Matrix::CreateLookAtLH(position, target, up);
-                }
+                Vector3 light_target   = camera->GetTransform()->GetPosition();
+                Vector3 light_position = light_target - forward * (m_range * 0.5f);
+                m_matrix_view[0]       = Matrix::CreateLookAtLH(light_position, light_target, Vector3::Up);
             }
         }
         else if (m_light_type == LightType::Spot)
-        {   
-            const Vector3 position = GetTransform()->GetPosition();
-            const Vector3 forward  = GetTransform()->GetForward();
-            const Vector3 up       = GetTransform()->GetUp();
-
-            // Compute
-            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + forward, up);
+        {
+            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + forward, Vector3::Up);
         }
         else if (m_light_type == LightType::Point)
         {
-            const Vector3 position = GetTransform()->GetPosition();
-
-            // Compute view for each side of the cube map
-            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Right,    Vector3::Up);       // x+
-            m_matrix_view[1] = Matrix::CreateLookAtLH(position, position + Vector3::Left,     Vector3::Up);       // x-
-            m_matrix_view[2] = Matrix::CreateLookAtLH(position, position + Vector3::Up,       Vector3::Backward); // y+
-            m_matrix_view[3] = Matrix::CreateLookAtLH(position, position + Vector3::Down,     Vector3::Forward);  // y-
-            m_matrix_view[4] = Matrix::CreateLookAtLH(position, position + Vector3::Forward,  Vector3::Up);       // z+
-            m_matrix_view[5] = Matrix::CreateLookAtLH(position, position + Vector3::Backward, Vector3::Up);       // z-
+            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Right,    Vector3::Up);
+            m_matrix_view[1] = Matrix::CreateLookAtLH(position, position + Vector3::Left,     Vector3::Up);
+            m_matrix_view[2] = Matrix::CreateLookAtLH(position, position + Vector3::Up,       Vector3::Backward);
+            m_matrix_view[3] = Matrix::CreateLookAtLH(position, position + Vector3::Down,     Vector3::Forward);
+            m_matrix_view[4] = Matrix::CreateLookAtLH(position, position + Vector3::Forward,  Vector3::Up);
+            m_matrix_view[5] = Matrix::CreateLookAtLH(position, position + Vector3::Backward, Vector3::Up);
         }
     }
 
     void Light::ComputeProjectionMatrix(uint32_t index /*= 0*/)
     {
-        SP_ASSERT(index < m_shadow_map.texture_depth->GetArrayLength());
-
-        ShadowSlice& shadow_slice = m_shadow_map.slices[index];
+        SP_ASSERT(index < m_texture_depth->GetArrayLength());
 
         if (m_light_type == LightType::Directional)
         {
-            const float cascade_depth  = (shadow_slice.max.z - shadow_slice.min.z);
-            m_matrix_projection[index] = Matrix::CreateOrthoOffCenterLH(shadow_slice.min.x, shadow_slice.max.x, shadow_slice.min.y, shadow_slice.max.y, cascade_depth, 0.0f); // reverse-z
-            shadow_slice.frustum       = Frustum(m_matrix_view[index], m_matrix_projection[index], cascade_depth);
+            // orthographic bounds
+            float left       = -orthographic_extent;
+            float right      = orthographic_extent;
+            float bottom     = -orthographic_extent;
+            float top        = orthographic_extent;
+            float near_plane = 0.0f;
+            float far_plane  = m_range;
+
+            // snap the orthographic bounds to the nearest texel (to avoid shimmering)
+            //float world_units_per_texel = (2.0f * orthographic_extent) / static_cast<float>(m_texture_depth->GetWidth());
+            //left                        = floor(left / world_units_per_texel) * world_units_per_texel;
+            //right                       = floor(right / world_units_per_texel) * world_units_per_texel;
+            //bottom                      = floor(bottom / world_units_per_texel) * world_units_per_texel;
+            //top                         = floor(top / world_units_per_texel) * world_units_per_texel;
+
+            m_matrix_projection = Matrix::CreateOrthoOffCenterLH(left, right, bottom, top, far_plane, near_plane);
+            m_frustums[0]       = Frustum(m_matrix_view[0], m_matrix_projection, far_plane - near_plane);
         }
         else
         {
-            const uint32_t width       = m_shadow_map.texture_depth->GetWidth();
-            const uint32_t height      = m_shadow_map.texture_depth->GetHeight();
-            const float aspect_ratio   = static_cast<float>(width) / static_cast<float>(height);
-            const float fov            = m_light_type == LightType::Spot ? m_angle_rad * 2.0f : Math::Helper::PI_DIV_2;
-            m_matrix_projection[index] = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, m_range, 0.3f); // reverse-z
-            shadow_slice.frustum       = Frustum(m_matrix_view[index], m_matrix_projection[index], m_range);
+            const uint32_t width     = m_texture_depth->GetWidth();
+            const uint32_t height    = m_texture_depth->GetHeight();
+            const float aspect_ratio = static_cast<float>(width) / static_cast<float>(height);
+            const float fov          = m_light_type == LightType::Spot ? m_angle_rad * 2.0f : Math::Helper::PI_DIV_2;
+            m_matrix_projection      = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, m_range, 0.3f); // reverse-z
+            m_frustums[index]        = Frustum(m_matrix_view[index], m_matrix_projection, m_range);
         }
     }
 
@@ -396,176 +398,56 @@ namespace Spartan
         return m_matrix_view[index];
     }
 
-    const Matrix& Light::GetProjectionMatrix(uint32_t index /*= 0*/) const
-    {
-        SP_ASSERT(index < static_cast<uint32_t>(m_matrix_projection.size()));
-        return m_matrix_projection[index];
-    }
-
-	float Light::GetCascadeEnd(uint32_t index /*= 0*/) const
-	{
-        SP_ASSERT(index < static_cast<uint32_t>(m_matrix_projection.size()));
-        return m_cascade_ends[index];
-	}
-
-	void Light::ComputeCascadeSplits()
-    {
-        if (m_shadow_map.slices.empty())
-            return;
-
-        // can happen during the first frame, don't log error
-        if (!Renderer::GetCamera())
-            return;
-
-        Camera* camera                        = Renderer::GetCamera().get();
-        const float clip_near                 = camera->GetNearPlane();
-        const float clip_far                  = camera->GetFarPlane();
-        const Matrix projection               = camera->ComputeProjection(clip_near, clip_far); // non reverse-z matrix
-        const Matrix view_projection_inverted = Matrix::Invert(camera->GetViewMatrix() * projection);
-
-        // calculate split depths based on view camera frustum
-        const float split_lambda = 0.98f;
-        const float clip_range   = clip_far - clip_near;
-        const float min_z        = clip_near;
-        const float max_z        = clip_near + clip_range;
-        m_range                  = max_z - min_z;
-        const float ratio        = max_z / min_z;
-        for (uint32_t i = 0; i < m_cascade_count; i++)
-        {
-            const float p       = (i + 1) / static_cast<float>(m_cascade_count);
-            const float log     = min_z * Math::Helper::Pow(ratio, p);
-            const float uniform = min_z + m_range * p;
-            const float d       = split_lambda * (log - uniform) + uniform;
-            m_cascade_ends[i]   = (d - clip_near) / clip_range;
-        }
-
-        float last_split_distance = 0.0f;
-        for (uint32_t i = 0; i < m_cascade_count; i++)
-        {
-            // define camera frustum corners in clip space
-            Vector3 frustum_corners[8] =
-            {
-                Vector3(-1.0f,  1.0f, -1.0f),
-                Vector3( 1.0f,  1.0f, -1.0f),
-                Vector3( 1.0f, -1.0f, -1.0f),
-                Vector3(-1.0f, -1.0f, -1.0f),
-                Vector3(-1.0f,  1.0f,  1.0f),
-                Vector3( 1.0f,  1.0f,  1.0f),
-                Vector3( 1.0f, -1.0f,  1.0f),
-                Vector3(-1.0f, -1.0f,  1.0f)
-            };
-
-            // project frustum corners into world space
-            for (Vector3& frustum_corner : frustum_corners)
-            {
-                Vector4 inverted_corner = Vector4(frustum_corner, 1.0f) * view_projection_inverted;
-                frustum_corner          = inverted_corner / inverted_corner.w;
-            }
-
-            // compute split distance
-            {
-                const float split_distance = m_cascade_ends[i];
-                for (uint32_t i = 0; i < 4; i++)
-                {
-                    Vector3 distance       = frustum_corners[i + 4] - frustum_corners[i];
-                    frustum_corners[i + 4] = frustum_corners[i] + (distance * split_distance);
-                    frustum_corners[i]     = frustum_corners[i] + (distance * last_split_distance);
-                }
-                last_split_distance = m_cascade_ends[i];
-            }
-
-            // compute frustum bounds
-            {
-                // Compute bounding sphere which encloses the frustum.
-                // Since a sphere is rotational invariant it will keep the size of the orthographic
-                // projection frustum same independent of eye view direction, hence eliminating shimmering.
-
-                ShadowSlice& shadow_slice = m_shadow_map.slices[i];
-
-                // compute center
-                shadow_slice.center = Vector3::Zero;
-                for (const Vector3& frustum_corner : frustum_corners)
-                {
-                    shadow_slice.center += Vector3(frustum_corner);
-                }
-                shadow_slice.center /= 8.0f;
-
-                // compute radius
-                float radius = 0.0f;
-                for (const Vector3& frustum_corner : frustum_corners)
-                {
-                    const float distance = Vector3::Distance(frustum_corner, shadow_slice.center);
-                    radius               = Helper::Max(radius, distance);
-                }
-                radius = Helper::Ceil(radius * 16.0f) / 16.0f;
-
-                // compute min and max
-                shadow_slice.max = radius;
-                shadow_slice.min = -radius;
-            }
-        }
-    }
-
     uint32_t Light::GetShadowArraySize() const
     {
-        return m_shadow_map.texture_depth ? m_shadow_map.texture_depth->GetArrayLength() : 0;
+        return m_texture_depth ? m_texture_depth->GetArrayLength() : 0;
     }
 
     void Light::CreateShadowMap()
     {
-        // Early exit if there is no change in shadow map resolution
+        // early exit if there is no change in shadow map resolution
         const uint32_t resolution     = Renderer::GetOption<uint32_t>(Renderer_Option::ShadowResolution);
-        const bool resolution_changed = m_shadow_map.texture_depth ? (resolution != m_shadow_map.texture_depth->GetWidth()) : false;
+        const bool resolution_changed = m_texture_depth ? (resolution != m_texture_depth->GetWidth()) : false;
         if ((!m_is_dirty && !resolution_changed))
             return;
 
-        // Early exit if this light casts no shadows
+        // early exit if this light casts no shadows
         if (!m_shadows_enabled)
         {
-            m_shadow_map.texture_depth.reset();
+            m_texture_depth.reset();
             return;
         }
 
         if (!m_shadows_transparent_enabled)
         {
-            m_shadow_map.texture_color.reset();
+            m_texture_color.reset();
         }
 
         RHI_Format format_depth = RHI_Format::D32_Float;
         RHI_Format format_color = RHI_Format::R8G8B8A8_Unorm;
+        uint32_t flags          = RHI_Texture_Rtv | RHI_Texture_Srv;
 
-        if (GetLightType() == LightType::Directional)
+        if (GetLightType() == LightType::Directional || GetLightType() == LightType::Spot)
         {
-            m_shadow_map.texture_depth = make_unique<RHI_Texture2DArray>(resolution, resolution, format_depth, m_cascade_count, RHI_Texture_Rtv | RHI_Texture_Srv, "shadow_map_directional");
+            m_texture_depth = make_unique<RHI_Texture2D>(resolution, resolution, 1, format_depth, flags, "shadow_map");
 
             if (m_shadows_transparent_enabled)
             {
-                m_shadow_map.texture_color = make_unique<RHI_Texture2DArray>(resolution, resolution, format_color, m_cascade_count, RHI_Texture_Rtv | RHI_Texture_Srv, "shadow_map_directional_color");
+                m_texture_color = make_unique<RHI_Texture2D>(resolution, resolution, 1, format_color, flags, "shadow_map_color");
             }
 
-            m_shadow_map.slices = vector<ShadowSlice>(m_cascade_count);
+            m_frustums = vector<Frustum>(1);
         }
         else if (GetLightType() == LightType::Point)
         {
-            m_shadow_map.texture_depth = make_unique<RHI_TextureCube>(resolution, resolution, format_depth, RHI_Texture_Rtv | RHI_Texture_Srv, "shadow_map_point_color");
+            m_texture_depth = make_unique<RHI_TextureCube>(resolution, resolution, format_depth, flags, "shadow_map");
 
             if (m_shadows_transparent_enabled)
             {
-                m_shadow_map.texture_color = make_unique<RHI_TextureCube>(resolution, resolution, format_color, RHI_Texture_Rtv | RHI_Texture_Srv, "shadow_map_point_color");
+                m_texture_color = make_unique<RHI_TextureCube>(resolution, resolution, format_color, flags, "shadow_map_color");
             }
 
-            m_shadow_map.slices = vector<ShadowSlice>(6);
-        }
-        else if (GetLightType() == LightType::Spot)
-        {
-            m_shadow_map.texture_depth  = make_unique<RHI_Texture2D>(resolution, resolution, 1, format_depth, RHI_Texture_Rtv | RHI_Texture_Srv, "shadow_map_spot_color");
-
-            if (m_shadows_transparent_enabled)
-            {
-                m_shadow_map.texture_color = make_unique<RHI_Texture2D>(resolution, resolution, 1, format_color, RHI_Texture_Rtv | RHI_Texture_Srv, "shadow_map_spot_color");
-            }
-
-            m_shadow_map.slices = vector<ShadowSlice>(1);
+            m_frustums = vector<Frustum>(6);
         }
     }
 
@@ -578,6 +460,6 @@ namespace Spartan
         // ensure that potential shadow casters from behind the near plane are not rejected
         const bool ignore_near_plane = (m_light_type == LightType::Directional) ? true : false;
 
-        return m_shadow_map.slices[index].frustum.IsVisible(center, extents, ignore_near_plane);
+        return m_frustums[index].IsVisible(center, extents, ignore_near_plane);
     }
 }  
