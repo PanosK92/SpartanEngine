@@ -140,7 +140,7 @@ namespace Spartan
         // constant buffers
         static void UpdateConstantBufferFrame(RHI_CommandList* cmd_list, const bool set = true);
         static void PushPassConstants(RHI_CommandList* cmd_list);
-        static void UpdateConstantBufferLight(RHI_CommandList* cmd_list, const std::shared_ptr<Light> light, const int array_index = -1);
+        static void UpdateConstantBufferLight(RHI_CommandList* cmd_list, const std::shared_ptr<Light> light);
         static void UpdateConstantBufferMaterial(RHI_CommandList* cmd_list, Material* material);
 
         // resource creation

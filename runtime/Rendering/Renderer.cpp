@@ -506,36 +506,11 @@ namespace Spartan
         cmd_list->PushConstants(0, sizeof(Pcb_Pass), &m_cb_pass_cpu);
     }
 
-    void Renderer::UpdateConstantBufferLight(RHI_CommandList* cmd_list, shared_ptr<Light> light, const int array_index)
+    void Renderer::UpdateConstantBufferLight(RHI_CommandList* cmd_list, shared_ptr<Light> light)
     {
-        if (array_index == -1) // set all arrays
+        for (uint32_t i = 0; i < light->GetShadowArraySize(); i++)
         {
-            for (uint32_t i = 0; i < light->GetShadowArraySize(); i++)
-            {
-                m_cb_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
-
-                if (light->GetLightType() == LightType::Directional)
-                {
-                    float cascade_end = light->GetCascadeEnd(i) * light->GetRange();
-                    if (i == 0)
-                    {
-                        m_cb_light_cpu.cascade_ends.x = cascade_end;
-                    }
-                    else if (i == 1)
-                    {
-                        m_cb_light_cpu.cascade_ends.y = cascade_end;
-                    }
-                    else if (i == 2)
-                    {
-                        m_cb_light_cpu.cascade_ends.z = cascade_end;
-                    }
-                }
-            }
-        }
-        else
-        {
-            // set the first array with the given index
-            m_cb_light_cpu.view_projection[0] = light->GetViewMatrix(array_index) * light->GetProjectionMatrix(array_index);
+            m_cb_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix();
         }
 
         m_cb_light_cpu.intensity    = light->GetIntensityWatt(m_camera.get());

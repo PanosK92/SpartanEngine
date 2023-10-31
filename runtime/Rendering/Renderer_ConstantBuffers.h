@@ -112,9 +112,6 @@ namespace Spartan
         Math::Vector3 direction;
         uint32_t options;
 
-        Math::Vector3 cascade_ends;
-        float padding;
-    
         bool operator==(const Cb_Light& rhs)
         {
             return
@@ -128,7 +125,6 @@ namespace Spartan
                 range              == rhs.range              &&
                 angle              == rhs.angle              &&
                 bias               == rhs.bias               &&
-                cascade_ends       == rhs.cascade_ends       &&
                 normal_bias        == rhs.normal_bias        &&
                 color              == rhs.color              &&
                 position           == rhs.position           &&

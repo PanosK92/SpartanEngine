@@ -64,21 +64,6 @@ namespace Spartan
         custom                        // Custom intensity
     };
 
-    struct ShadowSlice
-    {
-        Math::Vector3 min    = Math::Vector3::Zero;
-        Math::Vector3 max    = Math::Vector3::Zero;
-        Math::Vector3 center = Math::Vector3::Zero;
-        Math::Frustum frustum;
-    };
-
-    struct ShadowMap
-    {
-        std::shared_ptr<RHI_Texture> texture_color;
-        std::shared_ptr<RHI_Texture> texture_depth;
-        std::vector<ShadowSlice> slices;
-    };
-
     class SP_CLASS Light : public Component
     {
     public:
@@ -130,11 +115,10 @@ namespace Spartan
         auto GetNormalBias() const { return m_normal_bias; }
 
         const Math::Matrix& GetViewMatrix(uint32_t index = 0) const;
-        const Math::Matrix& GetProjectionMatrix(uint32_t index = 0) const;
-        float GetCascadeEnd(uint32_t index = 0) const;
+        const Math::Matrix& GetProjectionMatrix() const { return m_matrix_projection; }
 
-        RHI_Texture* GetDepthTexture() const { return m_shadow_map.texture_depth.get(); }
-        RHI_Texture* GetColorTexture() const { return m_shadow_map.texture_color.get(); }
+        RHI_Texture* GetDepthTexture() const { return m_texture_depth.get(); }
+        RHI_Texture* GetColorTexture() const { return m_texture_color.get(); }
         uint32_t GetShadowArraySize() const;
         void CreateShadowMap();
 
@@ -143,35 +127,34 @@ namespace Spartan
     private:
         void ComputeViewMatrix();
         void ComputeProjectionMatrix(uint32_t index = 0);
-        void ComputeCascadeSplits();
 
-        // Intensity
+        // intensity
         LightIntensity m_intensity = LightIntensity::bulb_500_watt;
         float m_intensity_lumens   = 2600.0f;
 
-        // Shadows
+        // shadows
         bool m_shadows_enabled             = true;
         bool m_shadows_transparent_enabled = true;
-        uint32_t m_cascade_count           = 3;
-        ShadowMap m_shadow_map;
+        std::shared_ptr<RHI_Texture> m_texture_color;
+        std::shared_ptr<RHI_Texture> m_texture_depth;
+        std::vector<Math::Frustum> m_frustums;
 
-        // Bias
+        // bias
         float m_bias        = 0.0f;
         float m_normal_bias = 5.0f;
 
-        // Misc
+        // misc
         LightType m_light_type     = LightType::Directional;
         Color m_color_rgb          = Color::standard_black;;
         float m_temperature_kelvin = 0.0f;
         bool m_volumetric_enabled  = true;
-        float m_range              = 10.0f;
+        float m_range              = 0.0f;
         float m_angle_rad          = 0.5f; // about 30 degrees
         bool m_initialized         = false;
         std::array<Math::Matrix, 6> m_matrix_view;
-        std::array<Math::Matrix, 6> m_matrix_projection;
-        std::array<float, 3> m_cascade_ends;
+        Math::Matrix m_matrix_projection;
 
-        // Dirty checks
+        // dirty checks
         bool m_is_dirty                     = true;
         Math::Matrix m_previous_camera_view = Math::Matrix::Identity;
     };
