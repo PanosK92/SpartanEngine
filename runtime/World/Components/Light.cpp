@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES ============================
 #include "pch.h"
 #include "Light.h"
 #include "Transform.h"
@@ -30,7 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Renderer.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../RHI/RHI_TextureCube.h"
-//====================================
+#include "../../RHI/RHI_Texture2DArray.h"
+//=======================================
 
 //= NAMESPACES ===============
 using namespace Spartan::Math;
@@ -41,7 +42,9 @@ namespace Spartan
 {
     namespace
     {
-        float orthographic_extent = 100.0f; // that's 100x100 in world space units
+        float orthographic_depth  = 512.0; // depth of the near cascade
+        float orthographic_extent = 30.0f; // size of the near cascade
+        float far_cascade_scale   = 8.0f;  // size of the far cascade compared to the near one
     }
 
     Light::Light(weak_ptr<Entity> entity) : Component(entity)
@@ -59,7 +62,7 @@ namespace Spartan
         if (m_light_type == LightType::Directional)
         {
             SetIntensity(LightIntensity::sky_sunlight_noon);
-            m_range = 1024.0;
+            m_range = orthographic_depth;
         }
         else if (m_light_type == LightType::Point)
         {
@@ -113,19 +116,11 @@ namespace Spartan
         if (!m_is_dirty)
             return;
 
-        // Update shadow map(s)
+        // update matrices
         if (m_shadows_enabled)
         {
             ComputeViewMatrix();
-
-            // Compute projection matrix
-            if (m_texture_depth)
-            {
-                for (uint32_t i = 0; i < m_texture_depth->GetArrayLength(); i++)
-                {
-                    ComputeProjectionMatrix(i);
-                }
-            }
+            ComputeProjectionMatrix();
         }
 
         m_is_dirty = false;
@@ -337,9 +332,15 @@ namespace Spartan
         {
             if (Camera* camera = Renderer::GetCamera().get())
             {
-                Vector3 light_target   = camera->GetTransform()->GetPosition();
-                Vector3 light_position = light_target - forward * (m_range * 0.5f);
+                Vector3 light_target = camera->GetTransform()->GetPosition();
+
+                // near cascade
+                Vector3 light_position = light_target - forward * m_range * 0.5f;
                 m_matrix_view[0]       = Matrix::CreateLookAtLH(light_position, light_target, Vector3::Up);
+
+                // far cascade
+                light_position   = light_target - forward * m_range * 0.5f * far_cascade_scale;
+                m_matrix_view[1] = Matrix::CreateLookAtLH(light_position, light_target, Vector3::Up);
             }
         }
         else if (m_light_type == LightType::Spot)
@@ -357,50 +358,72 @@ namespace Spartan
         }
     }
 
-    void Light::ComputeProjectionMatrix(uint32_t index /*= 0*/)
+    void Light::ComputeProjectionMatrix()
     {
-        SP_ASSERT(index < m_texture_depth->GetArrayLength());
+        if (!m_texture_depth)
+            return;
 
         if (m_light_type == LightType::Directional)
         {
-            // orthographic bounds
-            float left       = -orthographic_extent;
-            float right      = orthographic_extent;
-            float bottom     = -orthographic_extent;
-            float top        = orthographic_extent;
-            float near_plane = 0.0f;
-            float far_plane  = m_range;
+            for (uint32_t i = 0; i < 2; i++)
+            { 
+                // determine the orthographic extent based on the cascade index
+                float cascade_extent_multiplier = (i == 0) ? 1.0f : far_cascade_scale;
+                float extent                    = orthographic_extent * cascade_extent_multiplier;
 
-            // snap the orthographic bounds to the nearest texel (to avoid shimmering)
-            //float world_units_per_texel = (2.0f * orthographic_extent) / static_cast<float>(m_texture_depth->GetWidth());
-            //left                        = floor(left / world_units_per_texel) * world_units_per_texel;
-            //right                       = floor(right / world_units_per_texel) * world_units_per_texel;
-            //bottom                      = floor(bottom / world_units_per_texel) * world_units_per_texel;
-            //top                         = floor(top / world_units_per_texel) * world_units_per_texel;
+                // orthographic bounds
+                float left       = -extent;
+                float right      = extent;
+                float bottom     = -extent;
+                float top        = extent;
+                float near_plane = 0.0f;
+                float far_plane  = m_range * cascade_extent_multiplier;
 
-            m_matrix_projection = Matrix::CreateOrthoOffCenterLH(left, right, bottom, top, far_plane, near_plane);
-            m_frustums[0]       = Frustum(m_matrix_view[0], m_matrix_projection, far_plane - near_plane);
+                // snap the orthographic bounds to the nearest texel (to avoid shimmering)
+                //float world_units_per_texel = (2.0f * orthographic_extent) / static_cast<float>(m_texture_depth->GetWidth());
+                //left                        = floor(left / world_units_per_texel) * world_units_per_texel;
+                //right                       = floor(right / world_units_per_texel) * world_units_per_texel;
+                //bottom                      = floor(bottom / world_units_per_texel) * world_units_per_texel;
+                //top                         = floor(top / world_units_per_texel) * world_units_per_texel;
+
+                m_matrix_projection[i] = Matrix::CreateOrthoOffCenterLH(left, right, bottom, top, far_plane, near_plane);
+                m_frustums[i]          = Frustum(m_matrix_view[i], m_matrix_projection[i], far_plane - near_plane);
+            }
         }
         else
         {
-            const uint32_t width     = m_texture_depth->GetWidth();
-            const uint32_t height    = m_texture_depth->GetHeight();
-            const float aspect_ratio = static_cast<float>(width) / static_cast<float>(height);
+            const float aspect_ratio = static_cast<float>(m_texture_depth->GetWidth()) / static_cast<float>(m_texture_depth->GetHeight());
             const float fov          = m_light_type == LightType::Spot ? m_angle_rad * 2.0f : Math::Helper::PI_DIV_2;
-            m_matrix_projection      = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, m_range, 0.3f); // reverse-z
-            m_frustums[index]        = Frustum(m_matrix_view[index], m_matrix_projection, m_range);
+            Matrix projection        = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, m_range, 0.3f); // reverse-z
+
+            for (uint32_t i = 0; i < m_texture_depth->GetArrayLength(); i++)
+            {
+                m_matrix_projection[i] = projection;
+                m_frustums[i]          = Frustum(m_matrix_view[i], projection, m_range);
+            }
         }
     }
 
-    const Matrix& Light::GetViewMatrix(uint32_t index /*= 0*/) const
+    const Matrix& Light::GetViewMatrix(uint32_t index) const
     {
-        SP_ASSERT(index < static_cast<uint32_t>(m_matrix_view.size()));
         return m_matrix_view[index];
     }
 
-    uint32_t Light::GetShadowArraySize() const
+    const Spartan::Math::Matrix& Light::GetProjectionMatrix(uint32_t index) const
     {
-        return m_texture_depth ? m_texture_depth->GetArrayLength() : 0;
+        return m_matrix_projection[index];
+    }
+
+    bool Light::IsInViewFrustum(shared_ptr<Renderable> renderable, uint32_t index) const
+    {
+        const BoundingBox box     = renderable->GetBoundingBox();
+        const Vector3 center      = box.GetCenter();
+        const Vector3 extents     = box.GetExtents();
+
+        // ensure that potential shadow casters from behind the near plane are not rejected
+        const bool ignore_near_plane = (m_light_type == LightType::Directional) ? true : false;
+
+        return m_frustums[index].IsVisible(center, extents, ignore_near_plane);
     }
 
     void Light::CreateShadowMap()
@@ -427,39 +450,32 @@ namespace Spartan
         RHI_Format format_color = RHI_Format::R8G8B8A8_Unorm;
         uint32_t flags          = RHI_Texture_Rtv | RHI_Texture_Srv;
 
-        if (GetLightType() == LightType::Directional || GetLightType() == LightType::Spot)
+        if (GetLightType() == LightType::Directional)
         {
-            m_texture_depth = make_unique<RHI_Texture2D>(resolution, resolution, 1, format_depth, flags, "shadow_map");
+            m_texture_depth = make_unique<RHI_Texture2DArray>(resolution, resolution, format_depth, 2, flags, "shadow_map_directional");
 
             if (m_shadows_transparent_enabled)
             {
-                m_texture_color = make_unique<RHI_Texture2D>(resolution, resolution, 1, format_color, flags, "shadow_map_color");
-            }
+                m_texture_color = make_unique<RHI_Texture2DArray>(resolution, resolution, format_color, 2, flags, "shadow_map_directional_color");
+            }          
+        }
+        else if (GetLightType() == LightType::Spot)
+        {
+            m_texture_depth = make_unique<RHI_Texture2D>(resolution, resolution, 1, format_depth, flags, "shadow_map_spot");
 
-            m_frustums = vector<Frustum>(1);
+            if (m_shadows_transparent_enabled)
+            {
+                m_texture_color = make_unique<RHI_Texture2D>(resolution, resolution, 1, format_color, flags, "shadow_map_spot_color");
+            }
         }
         else if (GetLightType() == LightType::Point)
         {
-            m_texture_depth = make_unique<RHI_TextureCube>(resolution, resolution, format_depth, flags, "shadow_map");
+            m_texture_depth = make_unique<RHI_TextureCube>(resolution, resolution, format_depth, flags, "shadow_map_point");
 
             if (m_shadows_transparent_enabled)
             {
-                m_texture_color = make_unique<RHI_TextureCube>(resolution, resolution, format_color, flags, "shadow_map_color");
+                m_texture_color = make_unique<RHI_TextureCube>(resolution, resolution, format_color, flags, "shadow_map_point_color");
             }
-
-            m_frustums = vector<Frustum>(6);
         }
-    }
-
-    bool Light::IsInViewFrustum(shared_ptr<Renderable> renderable, uint32_t index) const
-    {
-        const auto box     = renderable->GetBoundingBox();
-        const auto center  = box.GetCenter();
-        const auto extents = box.GetExtents();
-
-        // ensure that potential shadow casters from behind the near plane are not rejected
-        const bool ignore_near_plane = (m_light_type == LightType::Directional) ? true : false;
-
-        return m_frustums[index].IsVisible(center, extents, ignore_near_plane);
     }
 }  

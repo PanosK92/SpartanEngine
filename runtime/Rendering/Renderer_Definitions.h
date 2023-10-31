@@ -109,7 +109,7 @@ namespace Spartan
     
     enum class Renderer_BindingsSrv
     {
-        // Material
+        // material
         material_albedo    = 0,
         material_albedo2   = 1,
         material_roughness = 2,
@@ -121,7 +121,7 @@ namespace Spartan
         material_emission  = 8,
         material_mask      = 9,
     
-        // G-buffer
+        // g-buffer
         gbuffer_albedo            = 10,
         gbuffer_normal            = 11,
         gbuffer_material          = 12,
@@ -130,34 +130,36 @@ namespace Spartan
         gbuffer_velocity_previous = 15,
         gbuffer_depth             = 16,
     
-        // Lighting
+        // lighting
         light_diffuse              = 17,
         light_diffuse_transparent  = 18,
         light_specular             = 19,
         light_specular_transparent = 20,
         light_volumetric           = 21,
     
-        // Light depth/color maps
-        light_depth       = 22,
-        light_color       = 23,
-        light_point_depth = 24,
-        light_point_color = 25,
+        // light depth/color maps
+        light_directional_depth = 22,
+        light_directional_color = 23,
+        light_point_depth       = 24,
+        light_point_color       = 25,
+        light_spot_depth        = 26,
+        light_spot_color        = 27,
     
-        // Noise
-        noise_normal = 26,
-        noise_blue   = 27,
+        // noise
+        noise_normal = 28,
+        noise_blue   = 29,
     
-        // Misc
-        lutIbl           = 28,
-        environment      = 29,
-        ssgi             = 30,
-        ssr              = 31,
-        frame            = 32,
-        tex              = 33,
-        tex2             = 34,
-        font_atlas       = 35,
-        reflection_probe = 36,
-        sss              = 37
+        // misc
+        lutIbl           = 30,
+        environment      = 31,
+        ssgi             = 32,
+        ssr              = 33,
+        frame            = 34,
+        tex              = 35,
+        tex2             = 36,
+        font_atlas       = 37,
+        reflection_probe = 38,
+        sss              = 39
     };
 
     enum class Renderer_BindingsUav

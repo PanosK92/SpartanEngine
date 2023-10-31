@@ -508,9 +508,12 @@ namespace Spartan
 
     void Renderer::UpdateConstantBufferLight(RHI_CommandList* cmd_list, shared_ptr<Light> light)
     {
-        for (uint32_t i = 0; i < light->GetShadowArraySize(); i++)
+        if (RHI_Texture* texture = light->GetDepthTexture())
         {
-            m_cb_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix();
+            for (uint32_t i = 0; i < texture->GetArrayLength(); i++)
+            {
+                m_cb_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
+            }
         }
 
         m_cb_light_cpu.intensity    = light->GetIntensityWatt(m_camera.get());
@@ -530,8 +533,6 @@ namespace Spartan
         m_cb_light_cpu.options     |= light->GetVolumetricEnabled()                   ? (1 << 5) : 0;
 
         GetConstantBuffer(Renderer_ConstantBuffer::Light)->Update(&m_cb_light_cpu);
-
-        // bind because the offset just changed
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::light, GetConstantBuffer(Renderer_ConstantBuffer::Light));
     }
 
@@ -573,10 +574,7 @@ namespace Spartan
         m_cb_material_cpu.properties           |= material->GetProperty(MaterialProperty::VertexAnimateWind)               ? (1U << 11) : 0;
         m_cb_material_cpu.properties           |= material->GetProperty(MaterialProperty::VertexAnimateWater)              ? (1U << 12) : 0;
 
-        // update
         GetConstantBuffer(Renderer_ConstantBuffer::Material)->Update(&m_cb_material_cpu);
-
-        // bind because the offset just changed
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::material, GetConstantBuffer(Renderer_ConstantBuffer::Material));
     }
 
