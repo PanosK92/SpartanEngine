@@ -80,24 +80,30 @@ namespace Spartan
         const LightType GetLightType() const { return m_light_type; }
         void SetLightType(LightType type);
 
-        // Color
+        // color
         void SetTemperature(const float temperature_kelvin);
         float GetTemperature() const { return m_temperature_kelvin; }
         void SetColor(const Color& rgb);
         const Color& GetColor() const { return m_color_rgb; }
 
-        // Intensity
+        // intensity
         void SetIntensityLumens(const float lumens);
         void SetIntensity(const LightIntensity lumens);
         float GetIntensityLumens() const    { return m_intensity_lumens; }
         LightIntensity GetIntensity() const { return m_intensity; }
         float GetIntensityWatt(Camera* camera) const;
 
+        // shadows
         bool GetShadowsEnabled() const { return m_shadows_enabled; }
         void SetShadowsEnabled(bool cast_shadows);
-
         bool GetShadowsTransparentEnabled() const { return m_shadows_transparent_enabled; }
         void SetShadowsTransparentEnabled(bool cast_transparent_shadows);
+
+        // bias
+        void SetBias(float value)       { m_bias = value; }
+        float GetBias() const           { return m_bias; }
+        void SetNormalBias(float value) { m_normal_bias = value; }
+        auto GetNormalBias() const      { return m_normal_bias; }
 
         bool GetVolumetricEnabled() const             { return m_volumetric_enabled; }
         void SetVolumetricEnabled(bool is_volumetric) { m_volumetric_enabled = is_volumetric; }
@@ -108,25 +114,18 @@ namespace Spartan
         void SetAngle(float angle_rad);
         auto GetAngle() const { return m_angle_rad; }
 
-        void SetBias(float value) { m_bias = value; }
-        float GetBias() const     { return m_bias; }
-
-        void SetNormalBias(float value) { m_normal_bias = value; }
-        auto GetNormalBias() const { return m_normal_bias; }
-
-        const Math::Matrix& GetViewMatrix(uint32_t index = 0) const;
-        const Math::Matrix& GetProjectionMatrix() const { return m_matrix_projection; }
+        const Math::Matrix& GetViewMatrix(uint32_t index) const;
+        const Math::Matrix& GetProjectionMatrix(uint32_t index) const;
 
         RHI_Texture* GetDepthTexture() const { return m_texture_depth.get(); }
         RHI_Texture* GetColorTexture() const { return m_texture_color.get(); }
-        uint32_t GetShadowArraySize() const;
         void CreateShadowMap();
 
-        bool IsInViewFrustum(std::shared_ptr<Renderable> renderable, uint32_t index) const;
+        bool IsInViewFrustum(std::shared_ptr<Renderable> renderable, const uint32_t index) const;
 
     private:
         void ComputeViewMatrix();
-        void ComputeProjectionMatrix(uint32_t index = 0);
+        void ComputeProjectionMatrix();
 
         // intensity
         LightIntensity m_intensity = LightIntensity::bulb_500_watt;
@@ -137,7 +136,9 @@ namespace Spartan
         bool m_shadows_transparent_enabled = true;
         std::shared_ptr<RHI_Texture> m_texture_color;
         std::shared_ptr<RHI_Texture> m_texture_depth;
-        std::vector<Math::Frustum> m_frustums;
+        std::array<Math::Frustum, 6> m_frustums;
+        std::array<Math::Matrix, 6> m_matrix_view;
+        std::array<Math::Matrix, 6> m_matrix_projection;
 
         // bias
         float m_bias        = 0.0f;
@@ -151,8 +152,6 @@ namespace Spartan
         float m_range              = 0.0f;
         float m_angle_rad          = 0.5f; // about 30 degrees
         bool m_initialized         = false;
-        std::array<Math::Matrix, 6> m_matrix_view;
-        Math::Matrix m_matrix_projection;
 
         // dirty checks
         bool m_is_dirty                     = true;

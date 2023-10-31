@@ -47,26 +47,28 @@ Texture2D tex_light_specular_transparent : register(t20);
 Texture2D tex_light_volumetric           : register(t21);
 
 // light depth/color maps
-Texture2D tex_light_depth         : register(t22);
-Texture2D tex_light_color         : register(t23);
-TextureCube tex_light_point_depth : register(t24);
-TextureCube tex_light_point_color : register(t25);
+Texture2DArray tex_light_directional_depth : register(t22);
+Texture2DArray tex_light_directional_color : register(t23);
+TextureCube tex_light_point_depth          : register(t24);
+TextureCube tex_light_point_color          : register(t25);
+Texture2D tex_light_spot_depth             : register(t26);
+Texture2D tex_light_spot_color             : register(t27);
 
 // noise
-Texture2D tex_noise_normal    : register(t26);
-Texture2DArray tex_noise_blue : register(t27);
+Texture2D tex_noise_normal    : register(t28);
+Texture2DArray tex_noise_blue : register(t29);
 
 // misc
-Texture2D tex_lut_ibl            : register(t28);
-Texture2D tex_environment        : register(t29);
-Texture2D tex_ssgi               : register(t30);
-Texture2D tex_ssr                : register(t31);
-Texture2D tex_frame              : register(t32);
-Texture2D tex                    : register(t33);
-Texture2D tex2                   : register(t34);
-Texture2D tex_font_atlas         : register(t35);
-TextureCube tex_reflection_probe : register(t36);
-Texture2DArray tex_sss			 : register(t37);
+Texture2D tex_lut_ibl            : register(t30);
+Texture2D tex_environment        : register(t31);
+Texture2D tex_ssgi               : register(t32);
+Texture2D tex_ssr                : register(t33);
+Texture2D tex_frame              : register(t34);
+Texture2D tex                    : register(t35);
+Texture2D tex2                   : register(t36);
+Texture2D tex_font_atlas         : register(t37);
+TextureCube tex_reflection_probe : register(t38);
+Texture2DArray tex_sss			 : register(t39);
 
 // storage
 RWTexture2D<float4> tex_uav                                : register(u0);

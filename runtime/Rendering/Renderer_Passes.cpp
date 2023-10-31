@@ -231,10 +231,11 @@ namespace Spartan
                     // set appropriate rasterizer state
                     if (light->GetLightType() == LightType::Directional)
                     {
-                        // "Pancaking" - https://www.gamedev.net/forums/topic/639036-shadow-mapping-and-high-up-objects/
-                        // it's basically a way to capture the silhouettes of potential shadow casters behind the light's view point.
-                        // of course we also have to make sure that the light doesn't cull them in the first place (this is done automatically by the light)
+                        // disable depth clipping so that we can capture silhouettes even behind the light
                         pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Light_directional).get();
+
+                        // don't do alpha testing for far away cascades, as it's not noticeable and it's a performance hit
+                        pso.shader_pixel = array_index >= 1 ? nullptr : pso.shader_pixel;
                     }
                     else
                     {
@@ -248,8 +249,11 @@ namespace Spartan
                         cmd_list->BeginRenderPass();
                     }
 
-                    // set light
-                    UpdateConstantBufferLight(cmd_list, light);
+                    // set light (only needs to be done once for each light)
+                    if (array_index == 0)
+                    {
+                        UpdateConstantBufferLight(cmd_list, light);
+                    }
 
                     // go through all of the entities
                     for (shared_ptr<Entity> entity : entities)
@@ -298,6 +302,7 @@ namespace Spartan
 
                         // set pass constants
                         m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix();
+                        m_cb_pass_cpu.set_f3_value(array_index, 0.0f, 0.0f);
                         PushPassConstants(cmd_list);
 
                         // draw
@@ -938,7 +943,7 @@ namespace Spartan
         {
             if (shared_ptr<Light> light = entity->GetComponent<Light>())
             {
-                // do the lighting even when intensity is zero, since we can have emissive lighting.
+                // do the lighting even when intensity is zero, since we can have emissive lighting
                 SetTexturesGfbuffer(cmd_list);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_diffuse);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_specular);
@@ -950,15 +955,20 @@ namespace Spartan
                 {
                     RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : nullptr;
 
-                    if (light->GetLightType() == LightType::Point)
+                    if (light->GetLightType() == LightType::Directional)
+                    {
+                        cmd_list->SetTexture(Renderer_BindingsSrv::light_directional_depth, light->GetDepthTexture());
+                        cmd_list->SetTexture(Renderer_BindingsSrv::light_directional_color, tex_color);
+                    }
+                    else if (light->GetLightType() == LightType::Point)
                     {
                         cmd_list->SetTexture(Renderer_BindingsSrv::light_point_depth, light->GetDepthTexture());
                         cmd_list->SetTexture(Renderer_BindingsSrv::light_point_color, tex_color);
                     }
-                    else
+                    else if (light->GetLightType() == LightType::Spot)
                     {
-                        cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, light->GetDepthTexture());
-                        cmd_list->SetTexture(Renderer_BindingsSrv::light_color, tex_color);
+                        cmd_list->SetTexture(Renderer_BindingsSrv::light_spot_depth, light->GetDepthTexture());
+                        cmd_list->SetTexture(Renderer_BindingsSrv::light_spot_color, tex_color);
                     }
 
                     // light index reads from the texture array index (sss)
