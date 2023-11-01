@@ -348,7 +348,7 @@ namespace Spartan
     void Terrain::Deserialize(FileStream* stream)
     {
         m_height_texture = ResourceCache::GetByPath<RHI_Texture2D>(stream->ReadAs<string>());
-        m_mesh       = ResourceCache::GetByName<Mesh>(stream->ReadAs<string>());
+        m_mesh           = ResourceCache::GetByName<Mesh>(stream->ReadAs<string>());
         stream->Read(&m_min_y);
         stream->Read(&m_max_y);
 

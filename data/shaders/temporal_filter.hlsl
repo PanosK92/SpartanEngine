@@ -108,7 +108,7 @@ float get_factor_dissoclusion(float2 uv_reprojected, float2 velocity)
 float compute_blend_factor(float2 uv_reprojected, float2 velocity)
 {
     float blend_factor        = RPC_32;                                            // accumulate 32 samples
-    float factor_screen_edge  = !is_saturated(uv_reprojected);                     // if re-projected UV is out of screen, reject history
+    float factor_screen_edge = !is_valid_uv(uv_reprojected);                       // if re-projected UV is out of screen, reject history
     float factor_dissoclusion = get_factor_dissoclusion(uv_reprojected, velocity); // if there is dissoclusion, reject history
     
     return saturate(blend_factor + factor_screen_edge + factor_dissoclusion);

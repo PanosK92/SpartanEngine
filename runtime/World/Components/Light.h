@@ -100,10 +100,10 @@ namespace Spartan
         void SetShadowsTransparentEnabled(bool cast_transparent_shadows);
 
         // bias
-        void SetBias(float value)       { m_bias = value; }
-        float GetBias() const           { return m_bias; }
-        void SetNormalBias(float value) { m_normal_bias = value; }
-        auto GetNormalBias() const      { return m_normal_bias; }
+        static float GetBias()            { return -0.004f; }
+        static float GetBiasSlopeScaled() { return -2.0f; }
+        void SetNormalBias(float value)   { m_bias_normal = value; }
+        auto GetNormalBias() const        { return m_bias_normal; }
 
         bool GetVolumetricEnabled() const             { return m_volumetric_enabled; }
         void SetVolumetricEnabled(bool is_volumetric) { m_volumetric_enabled = is_volumetric; }
@@ -134,15 +134,12 @@ namespace Spartan
         // shadows
         bool m_shadows_enabled             = true;
         bool m_shadows_transparent_enabled = true;
+        float m_bias_normal                = 0.0f;
         std::shared_ptr<RHI_Texture> m_texture_color;
         std::shared_ptr<RHI_Texture> m_texture_depth;
         std::array<Math::Frustum, 6> m_frustums;
         std::array<Math::Matrix, 6> m_matrix_view;
         std::array<Math::Matrix, 6> m_matrix_projection;
-
-        // bias
-        float m_bias        = 0.0f;
-        float m_normal_bias = 5.0f;
 
         // misc
         LightType m_light_type     = LightType::Directional;

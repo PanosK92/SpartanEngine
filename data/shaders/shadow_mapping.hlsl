@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // technique - all
 static const uint   g_shadow_samples       = 3;
-static const float  g_shadow_filter_size   = 3.0f;
+static const float  g_shadow_filter_size   = 2.0f;
 // technique - vogel                       
 static const uint   g_penumbra_samples     = 8;
 static const float  g_penumbra_filter_size = 128.0f;
@@ -288,46 +288,19 @@ float Technique_Poisson(Surface surface, float3 uv, float compare)
 ------------------------------------------------------------------------------*/
 float Technique_Pcf(Surface surface, float3 uv, float compare)
 {
-    float shadow = 0.0f;
+    float shadow    = 0.0f;
+    int kernel_size = 2 * g_pcf_filter_size + 1;
 
-    for (float y = -g_pcf_filter_size; y <= g_pcf_filter_size; y++)
+    for (int y = -g_pcf_filter_size; y <= g_pcf_filter_size; y++)
     {
-        for (float x = -g_pcf_filter_size; x <= g_pcf_filter_size; x++)
+        for (int x = -g_pcf_filter_size; x <= g_pcf_filter_size; x++)
         {
             float2 offset = float2(x, y) * get_shadow_texel_size();
-            shadow        += shadow_compare_depth(uv + float3(offset, 0.0f), compare);
+            shadow += shadow_compare_depth(uv + float3(offset, 0.0f), compare);
         }
     }
-    
-    return shadow * g_shadow_samples_rpc;
-}
 
-/*------------------------------------------------------------------------------
-    BIAS
-------------------------------------------------------------------------------*/
-void auto_bias(Surface surface, inout float3 position, Light light, float bias_mul = 1.0f)
-{
-    //// Receiver plane bias (slope scaled basically)
-    //float3 du                   = ddx(position);
-    //float3 dv                   = ddy(position);
-    //float2 receiver_plane_bias  = mul(transpose(float2x2(du.xy, dv.xy)), float2(du.z, dv.z));
-    
-    //// Static depth biasing to make up for incorrect fractional sampling on the shadow map grid
-    //float sampling_error = min(2.0f * dot(g_shadow_texel_size, abs(receiver_plane_bias)), 0.01f);
-
-    // Scale down as the user is interacting with much bigger, non-fractional values (just a UX approach)
-    float fixed_factor = 0.0001f;
-    
-    // Slope scaling
-    float slope_factor = (1.0f - saturate(light.n_dot_l));
-
-    // Apply bias
-    position.z += fixed_factor * slope_factor * light.bias * (bias_mul + 1.0f);
-}
-
-float3 bias_normal_offset(Surface surface, Light light, float3 normal)
-{
-    return normal * (1.0f - saturate(light.n_dot_l)) * light.normal_bias * get_shadow_texel_size() * 10;
+    return shadow / (kernel_size * kernel_size);
 }
 
 /*------------------------------------------------------------------------------
@@ -340,7 +313,8 @@ float4 Shadow_Map(Surface surface, Light light)
     if (light.distance_to_pixel <= light.far)
     {
         // compute world position
-        float3 position_world = surface.position + bias_normal_offset(surface, light, surface.normal);
+        float normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * light.normal_bias * get_shadow_texel_size();
+        float3 position_world    = surface.position + normal_offset_bias;
         
         // project to light space
         uint slice_index = light_is_point() ? direction_to_cube_face_index(light.to_pixel) : 0;
@@ -348,7 +322,7 @@ float4 Shadow_Map(Surface surface, Light light)
         float2 pos_uv    = ndc_to_uv(pos_ndc);
         
         // for the directional light, switch to the far cascade (if needed)
-        if (light_is_directional() && !is_saturated(pos_uv))
+        if (light_is_directional() && !is_valid_uv(pos_uv))
         {
             slice_index = 1;
             pos_ndc     = world_to_ndc(position_world, buffer_light.view_projection[slice_index]);
@@ -356,10 +330,8 @@ float4 Shadow_Map(Surface surface, Light light)
         }
 
         // check if the uv is out of bounds
-        if (is_saturated(pos_uv))
+        if (is_valid_uv(pos_uv))
         {
-            auto_bias(surface, pos_ndc, light);
-            
             // point uses direction, spot uses uv, directional uses uv and the cascade index
             float3 sample_coords = light_is_point() ? light.to_pixel : float3(pos_uv.x, pos_uv.y, slice_index);
             float compare_depth  = pos_ndc.z;
