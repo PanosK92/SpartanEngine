@@ -313,7 +313,7 @@ float4 Shadow_Map(Surface surface, Light light)
     if (light.distance_to_pixel <= light.far)
     {
         // compute world position
-        float normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * light.normal_bias * get_shadow_texel_size();
+        float normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * (light.normal_bias * 10.0f) * get_shadow_texel_size();
         float3 position_world    = surface.position + normal_offset_bias;
         
         // project to light space

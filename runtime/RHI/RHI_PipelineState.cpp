@@ -57,8 +57,6 @@ namespace Spartan
         m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(dynamic_scissor));
         m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(is_fullscreen_triangle));
         m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(primitive_topology));
-        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(render_target_color_texture_array_index));
-        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(render_target_depth_stencil_texture_array_index));
 
         if (render_target_swapchain)
         {
