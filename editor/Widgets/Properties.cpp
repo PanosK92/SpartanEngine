@@ -235,7 +235,6 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         bool shadows                = light->GetShadowsEnabled();
         bool shadows_transparent    = light->GetShadowsTransparentEnabled();
         bool volumetric             = light->GetVolumetricEnabled();
-        float bias                  = light->GetBias();
         float normal_bias           = light->GetNormalBias();
         float range                 = light->GetRange();
         m_colorPicker_light->SetColor(light->GetColor());
@@ -320,11 +319,6 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         }
         ImGui::EndDisabled();
 
-        // Bias
-        ImGui::Text("Bias");
-        ImGui::SameLine(column_pos_x);
-        ImGui::InputFloat("##lightBias", &bias, 1.0f, 1.0f, "%.0f");
-
         // Normal Bias
         ImGui::Text("Normal Bias");
         ImGui::SameLine(column_pos_x);
@@ -346,18 +340,17 @@ void Properties::ShowLight(shared_ptr<Light> light) const
             ImGuiSp::draw_float_wrap("##lightAngle", &angle, 0.01f, 1.0f, 179.0f);
         }
 
-        //= MAP =====================================================================================================================
-        if (intensity != light->GetIntensityLumens())                      light->SetIntensityLumens(intensity);
-        if (shadows != light->GetShadowsEnabled())                         light->SetShadowsEnabled(shadows);
-        if (shadows_transparent != light->GetShadowsTransparentEnabled())  light->SetShadowsTransparentEnabled(shadows_transparent);
-        if (volumetric != light->GetVolumetricEnabled())                   light->SetVolumetricEnabled(volumetric);
-        if (bias != light->GetBias())                                      light->SetBias(bias);
-        if (normal_bias != light->GetNormalBias())                         light->SetNormalBias(normal_bias);
-        if (angle != light->GetAngle() * Math::Helper::RAD_TO_DEG * 0.5f)  light->SetAngle(angle * Math::Helper::DEG_TO_RAD * 0.5f);
-        if (range != light->GetRange())                                    light->SetRange(range);
-        if (m_colorPicker_light->GetColor() != light->GetColor())          light->SetColor(m_colorPicker_light->GetColor());
-        if (temperature_kelvin != light->GetTemperature())                 light->SetTemperature(temperature_kelvin);
-        //===========================================================================================================================
+        //= MAP ===================================================================================================================
+        if (intensity != light->GetIntensityLumens())                     light->SetIntensityLumens(intensity);
+        if (shadows != light->GetShadowsEnabled())                        light->SetShadowsEnabled(shadows);
+        if (shadows_transparent != light->GetShadowsTransparentEnabled()) light->SetShadowsTransparentEnabled(shadows_transparent);
+        if (volumetric != light->GetVolumetricEnabled())                  light->SetVolumetricEnabled(volumetric);
+        if (normal_bias != light->GetNormalBias())                        light->SetNormalBias(normal_bias);
+        if (angle != light->GetAngle() * Math::Helper::RAD_TO_DEG * 0.5f) light->SetAngle(angle * Math::Helper::DEG_TO_RAD * 0.5f);
+        if (range != light->GetRange())                                   light->SetRange(range);
+        if (m_colorPicker_light->GetColor() != light->GetColor())         light->SetColor(m_colorPicker_light->GetColor());
+        if (temperature_kelvin != light->GetTemperature())                light->SetTemperature(temperature_kelvin);
+        //=========================================================================================================================
     }
     component_end();
 }

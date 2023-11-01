@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================================
 #include "pch.h"
 #include "Renderer.h"
-#include "Window.h"
 #include "bend_sss_cpu.h"
+#include "../Display/Display.h"
 #include "../Profiling/Profiler.h"
 #include "../World/Entity.h"
 #include "../World/Components/Camera.h"
@@ -35,7 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_AMD_FidelityFX.h"
 #include "../RHI/RHI_StructuredBuffer.h"
-#include "../Display/Display.h"
 //==============================================
 
 //= NAMESPACES ===============

@@ -19,10 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
+//= INCLUDES ============
 #include "../common.hlsl"
-#include "screen_space_shadows.hlsl"
-//==================================
+//=======================
 
 #define WAVE_SIZE 64
 #define SAMPLE_COUNT 60

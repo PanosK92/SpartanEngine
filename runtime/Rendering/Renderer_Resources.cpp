@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Window.h"
 #include "Renderer.h"
 #include "Geometry.h"
+#include "../World/Components/Light.h"
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture2D.h"
 #include "../RHI/RHI_Texture2DArray.h"
@@ -102,10 +103,10 @@ namespace Spartan
 
     void Renderer::CreateRasterizerStates()
     {
-        static const float depth_bias              = -0.004f;
-        static const float depth_bias_clamp        = 0.0f;
-        static const float depth_bias_slope_scaled = -2.0f;
-        static const float line_width              = 2.0f;
+        float depth_bias              = Light::GetBias();
+        float depth_bias_clamp        = 0.0f;
+        float depth_bias_slope_scaled = Light::GetBiasSlopeScaled();
+        float line_width              = 2.0f;
 
         #define rasterizer_state(x) m_rasterizer_states[static_cast<uint8_t>(x)]
         // cull mode, filled mode, depth clip, scissor, bias, bias clamp, slope scaled bias, line width
