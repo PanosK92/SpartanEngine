@@ -171,7 +171,7 @@ namespace Spartan
         // acquire shaders
         RHI_Shader* shader_v           = GetShader(Renderer_Shader::depth_light_v).get();
         RHI_Shader* shader_instanced_v = GetShader(Renderer_Shader::depth_light_instanced_v).get();
-        RHI_Shader* shader_p           = is_transparent_pass ? GetShader(Renderer_Shader::depth_light_p).get() : GetShader(Renderer_Shader::depth_alpha_test_p).get();
+        RHI_Shader* shader_p           = is_transparent_pass ? GetShader(Renderer_Shader::depth_light_p).get() : GetShader(Renderer_Shader::alpha_test_p).get();
         if (!shader_v->IsCompiled() || !shader_instanced_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
@@ -445,7 +445,7 @@ namespace Spartan
         // acquire shaders
         RHI_Shader* shader_v           = GetShader(Renderer_Shader::depth_prepass_v).get();
         RHI_Shader* shader_instanced_v = GetShader(Renderer_Shader::depth_prepass_instanced_v).get();
-        RHI_Shader* shader_p           = GetShader(Renderer_Shader::depth_alpha_test_p).get();
+        RHI_Shader* shader_p           = GetShader(Renderer_Shader::alpha_test_p).get();
         if (!shader_v->IsCompiled() || !shader_instanced_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 

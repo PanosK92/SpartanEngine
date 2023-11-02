@@ -51,6 +51,8 @@ namespace
         ImGui::SetCursorPos(ImVec2(pos.x + m_tree_depth_stride * time_block.GetTreeDepth(), pos.y));
         ImGui::Text("%s - %.2f ms", name, duration);
     }
+
+    bool sort_time_blocks = false;
 }
 
 Profiler::Profiler(Editor* editor) : Widget(editor)
@@ -75,14 +77,23 @@ void Profiler::OnTickVisible()
 {
     int previous_item_type = m_item_type;
 
-    ImGui::RadioButton("CPU", &m_item_type, 0);
-    ImGui::SameLine();
-    ImGui::RadioButton("GPU", &m_item_type, 1);
-    ImGui::SameLine();
-    float interval = Spartan::Profiler::GetUpdateInterval();
-    ImGui::DragFloat("Update interval", &interval, 0.001f, 0.0f, 0.5f);
-    Spartan::Profiler::SetUpdateInterval(interval);
-    ImGui::Separator();
+    // controls
+    {
+        ImGui::RadioButton("CPU", &m_item_type, 0);
+        ImGui::SameLine();
+
+        ImGui::RadioButton("GPU", &m_item_type, 1);
+        ImGui::SameLine();
+
+        float interval = Spartan::Profiler::GetUpdateInterval();
+        ImGui::DragFloat("Update interval", &interval, 0.001f, 0.0f, 0.5f);
+        Spartan::Profiler::SetUpdateInterval(interval);
+        ImGui::SameLine();
+
+        ImGui::Checkbox("Sort", &sort_time_blocks);
+
+        ImGui::Separator();
+    }
 
     Spartan::TimeBlockType type            = m_item_type == 0 ? Spartan::TimeBlockType::Cpu : Spartan::TimeBlockType::Gpu;
     vector<Spartan::TimeBlock> time_blocks = Spartan::Profiler::GetTimeBlocks();
@@ -90,10 +101,13 @@ void Profiler::OnTickVisible()
     float time_last                        = type == Spartan::TimeBlockType::Cpu ? Spartan::Profiler::GetTimeCpuLast() : Spartan::Profiler::GetTimeGpuLast();
 
     // sort time_blocks by duration, descending
-    sort(time_blocks.begin(), time_blocks.end(), [](const Spartan::TimeBlock& a, const Spartan::TimeBlock& b)
+    if (sort_time_blocks)
     {
-        return b.GetDuration() < a.GetDuration();
-    });
+        sort(time_blocks.begin(), time_blocks.end(), [](const Spartan::TimeBlock& a, const Spartan::TimeBlock& b)
+            {
+                return b.GetDuration() < a.GetDuration();
+            });
+    }
 
     // time blocks
     for (uint32_t i = 0; i < time_block_count; i++)

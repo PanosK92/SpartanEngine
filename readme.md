@@ -37,7 +37,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 
 # Features
 #### Rendering
-- 128-byte push constant buffer for lightning fast GPU data transfer.
+- 128-byte push constant buffer for lightning fast CPU to GPU data transfer.
 - AMD FidelityFX suite for enhanced visuals and performance.
 - Bloom effect inspired by Resident Evil 2's RE Engine.
 - Unified deferred rendering with transparency (BSDF with same render path and shaders).
@@ -87,4 +87,4 @@ Don't forget that there is a [wiki](https://github.com/PanosK92/SpartanEngine/wi
 - [Perks of a contributor](https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor)
 
 # Use cases
-- Godot uses Spartan's TAA, see it [here](https://github.com/godotengine/godot/blob/37d51d2cb7f6e47bef8329887e9e1740a914dc4e/servers/rendering/renderer_rd/shaders/effects/taa_resolve.glsl#L2)
+- Godot uses Spartan's TAA, see [here](https://github.com/godotengine/godot/blob/37d51d2cb7f6e47bef8329887e9e1740a914dc4e/servers/rendering/renderer_rd/shaders/effects/taa_resolve.glsl#L2)

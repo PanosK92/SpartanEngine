@@ -356,8 +356,8 @@ namespace Spartan
         }
 
         // depth alpha testing (used for the depth prepass as well as the light depth pass)
-        shader(Renderer_Shader::depth_alpha_test_p) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::depth_alpha_test_p)->Compile(RHI_Shader_Pixel, shader_dir + "depth_alpha_test.hlsl", async);
+        shader(Renderer_Shader::alpha_test_p) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::alpha_test_p)->Compile(RHI_Shader_Pixel, shader_dir + "alpha_test.hlsl", async);
 
         // font
         shader(Renderer_Shader::font_v) = make_shared<RHI_Shader>();

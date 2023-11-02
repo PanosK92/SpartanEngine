@@ -182,7 +182,7 @@ namespace Spartan
         depth_light_v,
         depth_light_instanced_v,
         depth_light_p,
-        depth_alpha_test_p,
+        alpha_test_p,
         fullscreen_triangle_v,
         quad_v,
         quad_p,
