@@ -69,61 +69,6 @@ float2 get_closest_pixel_velocity_3x3(uint2 thread_id)
 }
 
 /*------------------------------------------------------------------------------
-                              HISTORY SAMPLING
-------------------------------------------------------------------------------*/
-float4 sample_catmull_rom_9(RWTexture2D<float4> tex, float2 uv, float2 resolution)
-{
-    float2 sample_pos = uv * resolution;
-    float2 texPos1 = floor(sample_pos - 0.5f) + 0.5f;
-    float2 f = sample_pos - texPos1;
-
-    // Calculate the weights as in your original function
-    float2 w0 = f * (-0.5f + f * (1.0f - 0.5f * f));
-    float2 w1 = 1.0f + f * f * (-2.5f + 1.5f * f);
-    float2 w2 = f * (0.5f + f * (2.0f - 1.5f * f));
-    float2 w3 = f * f * (-0.5f + 0.5f * f);
-    
-    // Since we can't sample in between pixels using a UAV, we will just read the pixel values directly
-    float4 result = 0.0f;
-    for (int j = -1; j <= 2; ++j)
-    {
-        for (int i = -1; i <= 2; ++i)
-        {
-            // Determine the weight for this particular texel
-            float2 weight = float2(1, 1);
-            if (i == -1)
-                weight.x = w0.x;
-            else if (i == 0)
-                weight.x = w1.x;
-            else if (i == 1)
-                weight.x = w2.x;
-            else if (i == 2)
-                weight.x = w3.x;
-
-            if (j == -1)
-                weight.y = w0.y;
-            else if (j == 0)
-                weight.y = w1.y;
-            else if (j == 1)
-                weight.y = w2.y;
-            else if (j == 2)
-                weight.y = w3.y;
-
-            // Sample the texture at the current location
-            float2 texelPos = (texPos1 + float2(i, j)) / resolution;
-            float4 texel = tex[int2(texelPos)];
-            
-            // Accumulate the weighted result
-            result += texel * weight.x * weight.y;
-        }
-    }
-    
-    return max(result, 0.0f);
-}
-
-
-
-/*------------------------------------------------------------------------------
                               HISTORY CLIPPING
 ------------------------------------------------------------------------------*/
 // based on https://github.com/playdeadgames/temporal
@@ -215,9 +160,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float2 uv_reprojected = uv - velocity;
 
     // get history color
-    float4 history = tex_uav2[thread_id.xy];
-    //sample_catmull_rom_9(tex_uav, uv_reprojected, buffer_frame.resolution_render);
-    
+    float4 history = tex_uav[uv_reprojected * buffer_frame.resolution_render];
+
     // clip history (clipping reduces ghosting)
     float2 velocity_closest = get_closest_pixel_velocity_3x3(thread_id.xy);
     history                 = clip_history_3x3(thread_id.xy, history, velocity_closest);
