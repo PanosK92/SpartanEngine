@@ -214,8 +214,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float2 velocity       = tex_velocity[thread_id.xy].xy;
     float2 uv_reprojected = uv - velocity;
 
-    // get history color (catmull-rom sampling reduces ghosting)
-    float4 history = sample_catmull_rom_9(tex_uav, uv_reprojected, buffer_frame.resolution_render);
+    // get history color
+    float4 history = tex_uav2[thread_id.xy];
+    //sample_catmull_rom_9(tex_uav, uv_reprojected, buffer_frame.resolution_render);
     
     // clip history (clipping reduces ghosting)
     float2 velocity_closest = get_closest_pixel_velocity_3x3(thread_id.xy);
