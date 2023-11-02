@@ -85,3 +85,6 @@ Don't forget that there is a [wiki](https://github.com/PanosK92/SpartanEngine/wi
 - [Compiling](https://github.com/PanosK92/SpartanEngine/wiki/Compiling) 
 - [Contributing](https://github.com/PanosK92/SpartanEngine/blob/master/contributing.md)
 - [Perks of a contributor](https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor)
+
+# Users
+- Godot's uses Spartan's TAA.
