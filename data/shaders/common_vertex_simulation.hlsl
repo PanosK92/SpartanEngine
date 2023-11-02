@@ -37,7 +37,7 @@ struct vertex_simulation
             return lerp(hash(i), hash(i + 1.0), f);
         }
 
-        static float4 apply(uint instance_id, float4 position_vertex, float3 position_transform, float time)
+        static float3 apply(uint instance_id, float3 position_vertex, float3 position_transform, float time)
         {
             static const float3 base_wind_direction     = float3(1, 0, 0);
             static const float  wind_vertex_sway_extent = 0.4f; // oscillation amplitude
@@ -76,7 +76,7 @@ struct vertex_simulation
 
     struct water_wave
     {
-        static float4 apply(float4 position_vertex, float time)
+        static float3 apply(float3 position_vertex, float time)
         {
             static const float  base_wave_height    = 0.1f;
             static const float  base_wave_frequency = 20.0f;
