@@ -259,20 +259,13 @@ namespace Spartan
                     {
                         // acquire renderable component
                         shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                        if (!renderable)
-                            continue;
-
-                        // skip meshes that don't cast shadows
-                        if (!renderable->GetCastShadows())
+                        Mesh* mesh         = renderable->GetMesh();
+                        Material* material = renderable->GetMaterial();
+                        if (!renderable || !renderable->GetCastShadows() || !mesh || !material)
                             continue;
 
                         // skip objects outside of the view frustum
                         if (!light->IsInViewFrustum(renderable, array_index))
-                            continue;
-
-                        // mesh can be null when async loading
-                        Mesh* mesh = renderable->GetMesh();
-                        if (!mesh)
                             continue;
 
                         // set vertex, index and instance buffers
@@ -287,7 +280,6 @@ namespace Spartan
                         }
 
                         // set material
-                        if (Material* material = renderable->GetMaterial())
                         {
                             SetTexturesMaterial(cmd_list, material);
                             UpdateConstantBufferMaterial(cmd_list, material);
@@ -295,15 +287,12 @@ namespace Spartan
 
                         // set pass constants
                         {
-                            if (Material* material = renderable->GetMaterial())
-                            {
-                                m_cb_pass_cpu.set_f3_value(
-                                    material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
-                                    material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
-                                    material->GetProperty(MaterialProperty::ColorA)
-                                );
-                            }
-                            m_cb_pass_cpu.set_f3_value2(array_index, 0.0f, 0.0f);
+                            m_cb_pass_cpu.set_f3_value(
+                                material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
+                                material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
+                                material->GetProperty(MaterialProperty::ColorA)
+                            );
+                            m_cb_pass_cpu.set_f3_value2(static_cast<float>(array_index), 0.0f, 0.0f);
                             m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix();
                             PushPassConstants(cmd_list);
                         }
