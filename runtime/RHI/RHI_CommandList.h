@@ -150,7 +150,6 @@ namespace Spartan
 
     private:
         void OnDraw();
-        void GetDescriptorsFromPipelineState(RHI_PipelineState& pipeline_state, std::vector<RHI_Descriptor>& descriptors);
 
         // Sync
         std::shared_ptr<RHI_Fence> m_proccessed_fence;

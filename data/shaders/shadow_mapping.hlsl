@@ -53,67 +53,54 @@ float get_shadow_texel_size()
 ------------------------------------------------------------------------------*/
 float shadow_compare_depth(float3 uv, float compare)
 {
+    // float3 -> uv, slice
     if (light_is_directional())
-    {
-        // float3 -> uv, slice
         return tex_light_directional_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv, compare).r;
-    }
-    else if (light_is_point())
-    {
-        // float3 -> direction
-        return tex_light_point_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv, compare).r;
-    }
-    else if (light_is_spot())
-    {
-        // float3 -> uv, 0
-        return tex_light_spot_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv.xy, compare).r;
-    }
     
+    // float3 -> direction
+    if (light_is_point())
+        return tex_light_point_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv, compare).r;
+    
+    // float3 -> uv, 0
+    if (light_is_spot()) 
+        return tex_light_spot_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv.xy, compare).r;
+
     return 0.0f;
 }
 
 float shadow_sample_depth(float3 uv)
 {
+    // float3 -> uv, slice
     if (light_is_directional())
-    {
-        // float3 -> uv, slice
         return tex_light_directional_depth.SampleLevel(samplers[sampler_point_clamp], uv, 0).r;
-    }
-    else if (light_is_point())
-    {
-        // float3 -> direction
-        return tex_light_point_depth.SampleLevel(samplers[sampler_point_clamp], uv, 0).r;
-    }
-    else if (light_is_spot())
-    {
-        // float3 -> uv, 0
-        return tex_light_spot_depth.SampleLevel(samplers[sampler_point_clamp], uv.xy, 0).r;
-    }
     
+    // float3 -> direction
+    if (light_is_point())
+        return tex_light_point_depth.SampleLevel(samplers[sampler_point_clamp], uv, 0).r;
+
+    // float3 -> uv, 0
+    if (light_is_spot())
+        return tex_light_spot_depth.SampleLevel(samplers[sampler_point_clamp], uv.xy, 0).r;
+
     return 0.0f;
 }
 
 float3 shadow_sample_color(float3 uv)
 {
+    // float3 -> uv, slice
     if (light_is_directional())
-    {
-        // float3 -> uv, slice
         return tex_light_directional_color.SampleLevel(samplers[sampler_point_clamp], uv, 0).rgb;
-    }
-    else if (light_is_point())
-    {
-        // float3 -> direction
+
+    // float3 -> direction
+    if (light_is_point())
         return tex_light_point_color.SampleLevel(samplers[sampler_point_clamp], uv, 0).rgb;
-    }
-    else if (light_is_spot())
-    {
-        // float3 -> uv, 0
+
+    // float3 -> uv, 0
+    if (light_is_spot())
         return tex_light_spot_color.SampleLevel(samplers[sampler_point_clamp], uv.xy, 0).rgb;
-    }
     
     return 0.0f;
 }
-
 
 /*------------------------------------------------------------------------------
     PENUMBRA
@@ -157,7 +144,7 @@ float compute_penumbra(float vogel_angle, float3 uv, float compare)
         penumbra *= 10.0f;
     }
     
-    return clamp(penumbra, 1.0f, FLT_MAX_16);
+    return saturate_16(penumbra);
 }
 
 /*------------------------------------------------------------------------------

@@ -291,18 +291,22 @@ namespace Spartan
                         {
                             SetTexturesMaterial(cmd_list, material);
                             UpdateConstantBufferMaterial(cmd_list, material);
-
-                            m_cb_pass_cpu.set_f3_value(
-                                material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
-                                material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
-                                material->GetProperty(MaterialProperty::ColorA)
-                            );
                         }
 
                         // set pass constants
-                        m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix();
-                        m_cb_pass_cpu.set_f3_value(array_index, 0.0f, 0.0f);
-                        PushPassConstants(cmd_list);
+                        {
+                            if (Material* material = renderable->GetMaterial())
+                            {
+                                m_cb_pass_cpu.set_f3_value(
+                                    material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
+                                    material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
+                                    material->GetProperty(MaterialProperty::ColorA)
+                                );
+                            }
+                            m_cb_pass_cpu.set_f3_value2(array_index, 0.0f, 0.0f);
+                            m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix();
+                            PushPassConstants(cmd_list);
+                        }
 
                         // draw
                         cmd_list->DrawIndexed(
@@ -471,7 +475,7 @@ namespace Spartan
             // define pipeline state
             static RHI_PipelineState pso;
             pso.name                        = !is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent";
-            pso.instancing                  = i == 1;
+            pso.instancing                  = i == 1 || i == 3;
             pso.shader_vertex               = !pso.instancing ? shader_v : shader_instanced_v;
             pso.shader_pixel                = shader_p; // alpha testing
             pso.rasterizer_state            = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
@@ -531,7 +535,7 @@ namespace Spartan
                     m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix();
                     m_cb_pass_cpu.set_f3_value(
                         material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
-                        material->HasTexture(MaterialTexture::Color) ? 1.0f : 0.0f,
+                        material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
                         material->GetProperty(MaterialProperty::ColorA)
                     );
 

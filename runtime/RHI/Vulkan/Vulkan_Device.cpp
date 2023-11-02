@@ -588,12 +588,12 @@ namespace Spartan
         SP_ASSERT_MSG(RHI_Context::api_type == RHI_Api_Type::Vulkan, "RHI context not initialized");
 
         #ifdef DEBUG
-            // ad validation related extensions
-            RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
-            RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
-            // add debugging related extensions
-            RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_report");
-            RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_utils");
+        // ad validation related extensions
+        RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
+        RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
+        // add debugging related extensions
+        RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_report");
+        RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_utils");
         #endif
 
         // create instance

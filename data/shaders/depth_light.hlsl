@@ -19,16 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES =========
 #include "common.hlsl"
-#include "common_vertex_operations.hlsl"
-//======================================
+//====================
 
 Pixel_PosUv mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     Pixel_PosUv output;
 
-    uint array_index = (uint)pass_get_f3_value().x;
+    uint array_index = (uint)pass_get_f3_value2().x;
     output.position  = compute_screen_space_position(input, instance_id, buffer_pass.transform, buffer_light.view_projection[array_index]);
     output.uv        = input.uv;
 
