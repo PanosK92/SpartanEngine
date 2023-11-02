@@ -128,7 +128,7 @@ namespace Spartan
 
     void Renderer::CreateSamplers(const bool create_only_anisotropic /*= false*/)
     {
-        // Compute mip bias
+        // compute mip bias
         float mip_bias = 0.0f;
         if (GetResolutionOutput().x > GetResolutionRender().x)
         {
@@ -178,8 +178,8 @@ namespace Spartan
             mip_count++;
         }
 
-        // Notes.
-        // Gbuffer_Normal: Any format with or below 8 bits per channel, will produce banding.
+        // notes:
+        // - gbuffer_normal: Any format with or below 8 bits per channel, will produce banding
         #define render_target(x) m_render_targets[static_cast<uint8_t>(x)]
 
         // render resolution
@@ -234,7 +234,7 @@ namespace Spartan
             render_target(Renderer_RenderTexture::frame_output)   = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Rtv | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "rt_frame_output");
             render_target(Renderer_RenderTexture::frame_output_2) = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Rtv | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "rt_frame_output_2");
 
-            // Bloom
+            // bloom
             render_target(Renderer_RenderTexture::bloom) = make_shared<RHI_Texture2D>(width_output, height_output, mip_count, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_bloom");
         }
 

@@ -420,22 +420,22 @@ float2 direction_sphere_uv(float3 direction)
 
 uint direction_to_cube_face_index(const float3 direction)
 {
-    float3 direction_abs = abs(direction);
-    float max_coordinate = max3(direction_abs);
-    
-    if (max_coordinate == direction_abs.x)
-    {
-        return direction_abs.x == direction.x ? 0 : 1;
-    }
-    else if (max_coordinate == direction_abs.y)
-    {
-        return direction_abs.y == direction.y ? 2 : 3;
-    }
-    else
-    {
-        return direction_abs.z == direction.z ? 4 : 5;
-    }
-    
+    // find the absolute values of the direction components
+    float3 abs_direction = abs(direction);
+
+    // identify which component is the greatest
+    float max_component = max(max(abs_direction.x, abs_direction.y), abs_direction.z);
+
+    // determine the cube face index based on the greatest component and its sign
+    if (max_component == abs_direction.x)
+        return (direction.x > 0.0f) ? 0 : 1;
+
+    if (max_component == abs_direction.y)
+        return (direction.y > 0.0f) ? 2 : 3;
+
+    if (max_component == abs_direction.z)
+        return (direction.z > 0.0f) ? 4 : 5;
+
     return 0;
 }
 
@@ -660,8 +660,10 @@ static const float3 hemisphere_samples[64] =
     float3(-0.44272, -0.67928, 0.1865)
 };
 
-//= INCLUDES =================
+//= INCLUDES ===========================
 #include "common_structs.hlsl"
-//============================
+#include "common_vertex_simulation.hlsl"
+#include "common_vertex_operations.hlsl"
+//======================================
 
 #endif // SPARTAN_COMMON
