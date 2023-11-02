@@ -26,8 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SampleShadowMap Technique_Vogel
 
 // technique - all
-static const uint   g_shadow_samples       = 3;
-static const float  g_shadow_filter_size   = 2.0f;
+static const uint   g_shadow_samples                 = 3;
+static const float  g_shadow_filter_size             = 2.0f;
+static const float  g_shadow_cascade_blend_threshold = 0.8f;
 // technique - vogel                       
 static const uint   g_penumbra_samples     = 8;
 static const float  g_penumbra_filter_size = 128.0f;
@@ -295,40 +296,46 @@ float Technique_Pcf(Surface surface, float3 uv, float compare)
 ------------------------------------------------------------------------------*/
 float4 Shadow_Map(Surface surface, Light light)
 {
-    float4 shadow = 1.0f;
-    
+    float4 shadow = 1.0f; // default shadow value for fully lit (no shadow)
+
+    // process only if the pixel is within the light's effective range
     if (light.distance_to_pixel <= light.far)
     {
-        // compute world position
-        float normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * (light.normal_bias * 10.0f) * get_shadow_texel_size();
+        // compute world position with normal offset bias to reduce shadow acne
+        float normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * light.normal_bias * get_shadow_texel_size();
         float3 position_world    = surface.position + normal_offset_bias;
-        
+
         // project to light space
         uint slice_index = light_is_point() ? direction_to_cube_face_index(light.to_pixel) : 0;
         float3 pos_ndc   = world_to_ndc(position_world, buffer_light.view_projection[slice_index]);
         float2 pos_uv    = ndc_to_uv(pos_ndc);
-        
-        // for the directional light, switch to the far cascade (if needed)
-        if (light_is_directional() && !is_valid_uv(pos_uv))
-        {
-            slice_index = 1;
-            pos_ndc     = world_to_ndc(position_world, buffer_light.view_projection[slice_index]);
-            pos_uv      = ndc_to_uv(pos_ndc);
-        }
 
-        // check if the uv is out of bounds
+        // sample shadow map
         if (is_valid_uv(pos_uv))
         {
-            // point uses direction, spot uses uv, directional uses uv and the cascade index
             float3 sample_coords = light_is_point() ? light.to_pixel : float3(pos_uv.x, pos_uv.y, slice_index);
-            float compare_depth  = pos_ndc.z;
+            float  compare_value = pos_ndc.z;
             
-            shadow.a = SampleShadowMap(surface, sample_coords, compare_depth);
-
-            if (light_has_shadows_transparent() && shadow.a > 0.0f && surface.is_opaque())
+            shadow.a = SampleShadowMap(surface, sample_coords, compare_value);
+            if (shadow.a > 0.0f && light_has_shadows_transparent() && !surface.is_opaque())
             {
-                shadow.rgb *= Technique_Vogel_Color(surface, sample_coords);
+                // sample color map (this is for transparent objects - which tint the light/shadow)
+                shadow.rgb = Technique_Vogel_Color(surface, sample_coords);
             }
+        }
+        
+        // blend with the far cascade for the directional lights
+        float cascade_fade = saturate((max(abs(pos_ndc.x), abs(pos_ndc.y)) - g_shadow_cascade_blend_threshold) * 4.0f);
+        if (light_is_directional() && cascade_fade > 0.0f)
+        {
+            // sample shadow map
+            slice_index      = 1;
+            pos_ndc          = world_to_ndc(position_world, buffer_light.view_projection[slice_index]);
+            pos_uv           = ndc_to_uv(pos_ndc);
+            float shadow_far = SampleShadowMap(surface, float3(pos_uv, slice_index), pos_ndc.z);
+
+            // blend/lerp
+            shadow.a = lerp(shadow.a, shadow_far, cascade_fade);
         }
     }
 
