@@ -153,7 +153,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float alpha   = compute_alpha(thread_id.xy, hit_uv, v_dot_r);
 
     // sample scene color
-    hit_uv          -= tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], hit_uv, 0).xy; // reproject
+    hit_uv          -= get_velocity_ndc(hit_uv); // reproject
     bool valid_uv    = hit_uv.x != - 1.0f;
     bool valid_alpha = alpha != 0.0f;
     float3 color     = (valid_uv && valid_alpha) ? tex.SampleLevel(samplers[sampler_bilinear_clamp], hit_uv, 0).rgb : 0.0f;

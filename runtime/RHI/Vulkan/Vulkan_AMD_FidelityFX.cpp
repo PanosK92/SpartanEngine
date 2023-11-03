@@ -329,8 +329,8 @@ namespace Spartan
             }
 
             // configuration
-            fsr2_dispatch_description.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth());
-            fsr2_dispatch_description.motionVectorScale.y    = -static_cast<float>(tex_velocity->GetHeight());
+            fsr2_dispatch_description.motionVectorScale.x    = static_cast<float>(tex_velocity->GetWidth());
+            fsr2_dispatch_description.motionVectorScale.y    = static_cast<float>(tex_velocity->GetHeight());
             fsr2_dispatch_description.reset                  = fsr2_reset_history;       // a boolean value which when set to true, indicates the camera has moved discontinuously
             fsr2_dispatch_description.enableSharpening       = sharpness != 0.0f;
             fsr2_dispatch_description.sharpness              = sharpness;
