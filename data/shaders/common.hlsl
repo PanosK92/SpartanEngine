@@ -419,13 +419,9 @@ float3 get_view_direction_view_space(float3 position_world)
 ------------------------------------------------------------------------------*/
 float2 direction_sphere_uv(float3 direction)
 {
-    float n = length(direction.xz);
-    float2 uv = float2((n > 0.0000001) ? direction.x / n : 0.0, direction.y);
-    uv = acos(uv) * INV_PI;
-    uv.x = (direction.z > 0.0) ? uv.x * 0.5 : 1.0 - (uv.x * 0.5);
-    uv.x = 1.0 - uv.x;
-    
-    return uv;
+    float u = 0.5f + atan2(direction.z, direction.x) / PI2;
+    float v = 0.5f - asin(direction.y) / PI;
+    return float2(u, v);
 }
 
 uint direction_to_cube_face_index(const float3 direction)
