@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const float g_motion_blur_strength = 0.6f;
+static const float g_motion_blur_strength = 0.01f;
 static const uint  g_motion_blur_samples  = 32;
 
 float2 get_velocity_max_3x3(float2 uv)
