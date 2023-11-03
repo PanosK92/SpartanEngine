@@ -235,15 +235,6 @@ float2 ndc_to_uv(float3 x)
     return x.xy * float2(0.5f, -0.5f) + 0.5f;
 }
 
-float3 get_position_ws_from_depth(const float2 uv, const float depth)
-{
-    float x          = uv.x * 2.0f - 1.0f;
-    float y          = (1.0f - uv.y) * 2.0f - 1.0f;
-    float4 pos_clip  = float4(x, y, depth, 1.0f);
-    float4 pos_world = mul(pos_clip, buffer_frame.view_projection_inverted);
-    return             pos_world.xyz / pos_world.w;
-}
-
 /*------------------------------------------------------------------------------
     NORMAL
 ------------------------------------------------------------------------------*/
@@ -294,7 +285,7 @@ float3x3 make_world_to_tangent_matrix(float3 n, float3 t)
 }
 
 /*------------------------------------------------------------------------------
-    DEPTH
+    DEPTH - REVERSE-Z
 ------------------------------------------------------------------------------*/
 float get_depth(uint2 position)
 {
@@ -313,7 +304,7 @@ float get_linear_depth(float z)
 {
     float near = buffer_frame.camera_near;
     float far  = buffer_frame.camera_far;
-    float z_b  = 1.0f - z;
+    float z_b  = z;
     float z_n  = 2.0f * z_b - 1.0f;
     return 2.0f * far * near / (near + far - z_n * (near - far));
 }

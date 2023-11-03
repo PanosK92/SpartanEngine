@@ -23,13 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const uint g_motion_blur_samples = 16;
+static const float g_motion_blur_strength = 0.6f;
+static const uint  g_motion_blur_samples  = 32;
 
-// returns max velocity (3x3 neighborhood)
 float2 get_velocity_max_3x3(float2 uv)
 {
-    // the render target can be larger than the g-buffer (including the velocity), so we have to sample with UVs.
-
     float2 max_velocity = 0.0f;
     float max_length2   = 0.0f;
 
@@ -66,7 +64,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // compute motion blur strength from camera's shutter speed
     float camera_shutter_speed = pass_get_f3_value().x;
-    float motion_blur_strength = saturate(camera_shutter_speed * 0.5f);
+    float motion_blur_strength = saturate(camera_shutter_speed * g_motion_blur_strength);
     
     // scale with delta time
     motion_blur_strength /= buffer_frame.delta_time + FLT_MIN;
