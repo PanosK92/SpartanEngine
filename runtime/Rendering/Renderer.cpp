@@ -328,8 +328,6 @@ namespace Spartan
             if (upsampling_mode == Renderer_Upsampling::FSR2 || GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa)
             {
                 RHI_AMD_FidelityFX::FSR2_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
-                jitter_offset.x            = (jitter_offset.x / m_resolution_render.x);
-                jitter_offset.y            = (jitter_offset.y / m_resolution_render.y);
                 m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(jitter_offset.x, jitter_offset.y, 0.0f));
             }
             else
