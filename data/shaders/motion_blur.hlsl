@@ -23,13 +23,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const float g_motion_blur_strength = 0.01f;
+static const float g_motion_blur_strength = 0.025f;
 static const uint  g_motion_blur_samples  = 32;
 
-float2 get_velocity_max_3x3(float2 uv)
+float2 get_velocity_3x3_average(float2 uv)
 {
-    float2 max_velocity = 0.0f;
-    float max_length2   = 0.0f;
+    float2 total_velocity = 0.0f;
+    int sample_count = 0;
 
     [unroll]
     for (int y = -1; y <= 1; ++y)
@@ -37,19 +37,15 @@ float2 get_velocity_max_3x3(float2 uv)
         [unroll]
         for (int x = -1; x <= 1; ++x)
         {
-            float2 offset   = float2(x, y) * get_rt_texel_size();
+            float2 offset = float2(x, y) * get_rt_texel_size();
             float2 velocity = tex_velocity.SampleLevel(samplers[sampler_point_clamp], uv + offset, 0).xy;
-            float length2   = dot(velocity, velocity);
 
-            if (length2 > max_length2)
-            {
-                max_velocity = velocity;
-                max_length2 = length2;
-            }
+            total_velocity += velocity;
+            ++sample_count;
         }
     }
 
-    return max_velocity;
+    return total_velocity / float(sample_count);
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -58,30 +54,24 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
-    const float2 uv = (thread_id.xy + 0.5f) / pass_get_resolution_out();
+    float2 uv       = (thread_id.xy + 0.5f) / pass_get_resolution_out();
     float4 color    = tex[thread_id.xy];
-    float2 velocity = get_velocity_max_3x3(uv);
+    float2 velocity = get_velocity_3x3_average(uv);
 
     // compute motion blur strength from camera's shutter speed
     float camera_shutter_speed = pass_get_f3_value().x;
     float motion_blur_strength = saturate(camera_shutter_speed * g_motion_blur_strength);
     
-    // scale with delta time
-    motion_blur_strength /= buffer_frame.delta_time + FLT_MIN;
-    
-    // scale velocity
-    velocity *= motion_blur_strength;
-    
-    // early exit
-    if (abs(velocity.x) + abs(velocity.y) < FLT_MIN)
-        tex_uav[thread_id.xy] = color;
+    // scale velocity by the motion blur strength and delta time
+    velocity *= motion_blur_strength / (buffer_frame.delta_time + FLT_MIN);
     
     [unroll]
     for (uint i = 1; i < g_motion_blur_samples; ++i)
     {
-        float2 offset = velocity * (float(i) / float(g_motion_blur_samples - 1) - 0.5f);
-        color.rgb += tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + offset, 0).rgb;
+        float2 sample_offset = velocity * (float(i) / float(g_motion_blur_samples - 1) - 0.5f);
+        color.rgb += tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + sample_offset, 0).rgb;
     }
 
+    // normalize the accumulated color by the number of samples
     tex_uav[thread_id.xy] = float4(color.rgb / float(g_motion_blur_samples), 1.0f);
 }
