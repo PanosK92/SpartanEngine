@@ -100,25 +100,26 @@ float3 smaple_normal(float2 uv, float slope)
 PixelOutputType mainPS(PixelInputType input)
 {
     // initial g-buffer values
-    float4 albedo      = buffer_material.color;
-    float3 normal      = input.normal_world.xyz;
-    float roughness    = buffer_material.roughness;
-    float metalness    = buffer_material.metallness;
-    float occlusion    = 1.0f;
-    float emission     = 0.0f;
-    float2 velocity_uv = 0.0f;
+    float4 albedo   = buffer_material.color;
+    float3 normal   = input.normal_world.xyz;
+    float roughness = buffer_material.roughness;
+    float metalness = buffer_material.metallness;
+    float occlusion = 1.0f;
+    float emission  = 0.0f;
+    float2 velocity = 0.0f;
     
-    // velocity
+    // velocity ndc
     {
+        // compute previous and current positions
         float2 position_ndc_current  = (input.position_ss_current.xy / input.position_ss_current.w);
         float2 position_ndc_previous = (input.position_ss_previous.xy / input.position_ss_previous.w);
 
-        // remove the jitter from the NDC coordinates.
+        // remove the ndc jitter
         position_ndc_current  -= buffer_frame.taa_jitter_current;
         position_ndc_previous -= buffer_frame.taa_jitter_previous;
 
-        // compute the velocity in UV space
-        velocity_uv = ndc_to_uv(position_ndc_current) - ndc_to_uv(position_ndc_previous);
+        // compute the velocity
+        velocity = position_ndc_current - position_ndc_previous;
     }
 
     // uv
@@ -242,7 +243,7 @@ PixelOutputType mainPS(PixelInputType input)
     g_buffer.normal                 = float4(normal, buffer_material.sheen);
     g_buffer.material               = float4(roughness, metalness, emission, occlusion);
     g_buffer.material_2             = float4(buffer_material.anisotropic, buffer_material.anisotropic_rotation, buffer_material.clearcoat, buffer_material.clearcoat_roughness);
-    g_buffer.velocity               = velocity_uv;
+    g_buffer.velocity               = velocity;
     g_buffer.fsr2_transparency_mask = (1.0f - albedo.a) * (pass_is_transparent() ? 1.0f : 0.0f);
 
     return g_buffer;
