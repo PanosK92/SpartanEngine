@@ -140,9 +140,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float v_dot_r          = dot(-camera_to_pixel, reflection);
 
     // compute early exit cases
-    bool early_exit_1 = pass_is_opaque() && surface.is_transparent();   // If this is an opaque pass, ignore all transparent pixels.
-    bool early_exit_2 = pass_is_transparent() && surface.is_opaque();   // If this is an transparent pass, ignore all opaque pixels.
-    bool early_exit_3 = surface.is_sky();                               // We don't want to do SSR on the sky itself.
+    bool early_exit_1 = pass_is_opaque() && surface.is_transparent();   // if this is an opaque pass, ignore all transparent pixels.
+    bool early_exit_2 = pass_is_transparent() && surface.is_opaque();   // if this is an transparent pass, ignore all opaque pixels.
+    bool early_exit_3 = surface.is_sky();                               // fe don't want to do SSR on the sky itself.
     bool early_exit_4 = surface.roughness >= g_ssr_roughness_threshold; // don't trace very rough surfaces
     bool early_exit_5 = v_dot_r >= 0.0f;                                // don't trace rays which are facing the camera
     if (early_exit_1 || early_exit_2 || early_exit_3 || early_exit_4 || early_exit_5)
