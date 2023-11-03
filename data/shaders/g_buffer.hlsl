@@ -110,7 +110,7 @@ PixelOutputType mainPS(PixelInputType input)
     
     // velocity
     {
-        // compute previous and current positions
+        // convert to ndc
         float2 position_ndc_current = (input.position_ss_current.xy / input.position_ss_current.w);
         float2 position_ndc_previous = (input.position_ss_previous.xy / input.position_ss_previous.w);
     
@@ -119,7 +119,7 @@ PixelOutputType mainPS(PixelInputType input)
         position_ndc_previous -= buffer_frame.taa_jitter_previous;
     
         // compute the velocity
-        velocity = (ndc_to_uv(position_ndc_current) - ndc_to_uv(position_ndc_previous)) / buffer_frame.delta_time;
+        velocity = ndc_to_uv(position_ndc_current) - ndc_to_uv(position_ndc_previous);
     }
 
     // uv
