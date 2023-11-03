@@ -309,16 +309,13 @@ float get_depth(float2 uv)
     return tex_depth.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).r;
 }
 
-float get_linear_depth(float z, float near, float far)
-{
-    float z_b = z;
-    float z_n = 2.0f * z_b - 1.0f;
-    return 2.0f * far * near / (near + far - z_n * (near - far));
-}
-
 float get_linear_depth(float z)
 {
-    return get_linear_depth(z, buffer_frame.camera_near, buffer_frame.camera_far);
+    float near = buffer_frame.camera_near;
+    float far  = buffer_frame.camera_far;
+    float z_b  = 1.0f - z;
+    float z_n  = 2.0f * z_b - 1.0f;
+    return 2.0f * far * near / (near + far - z_n * (near - far));
 }
 
 float get_linear_depth(uint2 pos)
