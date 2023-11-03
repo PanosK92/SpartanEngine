@@ -352,6 +352,28 @@ float3 get_position_view_space(float2 uv)
     return mul(float4(get_position(uv), 1.0f), buffer_frame.view).xyz;
 }
 
+float3 get_position_ws_from_depth(const float2 uv, const float depth)
+{
+    float x          = uv.x * 2.0f - 1.0f;
+    float y          = (1.0f - uv.y) * 2.0f - 1.0f;
+    float4 pos_clip  = float4(x, y, depth, 1.0f);
+    float4 pos_world = mul(pos_clip, buffer_frame.view_projection_inverted);
+    return pos_world.xyz / pos_world.w;
+}
+
+/*------------------------------------------------------------------------------
+    VELOCITY
+------------------------------------------------------------------------------*/
+float2 get_velocity_ndc(uint2 pos)
+{
+    return tex_velocity[pos].xy;
+}
+
+float2 get_velocity_ndc(float2 uv)
+{
+    return tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).xy;
+}
+
 /*------------------------------------------------------------------------------
     VIEW DIRECTION
 ------------------------------------------------------------------------------*/
