@@ -119,7 +119,7 @@ PixelOutputType mainPS(PixelInputType input)
         position_ndc_previous -= buffer_frame.taa_jitter_previous;
 
         // compute the velocity
-        velocity = position_ndc_current - position_ndc_previous;
+        velocity = ndc_to_uv(position_ndc_current) - ndc_to_uv(position_ndc_previous);
     }
 
     // uv
