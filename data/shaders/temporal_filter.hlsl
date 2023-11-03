@@ -60,6 +60,7 @@ float2 get_closest_pixel_velocity_3x3(uint2 thread_id)
     float min_depth = 0.0f; // start with the smallest possible value for reverse-Z
     uint2 min_pos   = thread_id;
 
+    [unroll]
     for (int i = 0; i < 9; ++i)
     {
         depth_test_min(thread_id + kOffsets3x3[i], min_depth, min_pos);
@@ -156,7 +157,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // get reprojected uv
     float2 uv             = (thread_id.xy + 0.5f) / pass_get_resolution_out();
-    float2 velocity       = tex_velocity[thread_id.xy].xy;
+    float2 velocity       = get_velocity_ndc(thread_id.xy);
     float2 uv_reprojected = uv - velocity;
 
     // get history color
