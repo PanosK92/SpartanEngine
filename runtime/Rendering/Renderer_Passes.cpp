@@ -564,15 +564,18 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_v_instanced->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
-
         // acquire render targets
         RHI_Texture* tex_color      = GetRenderTarget(Renderer_RenderTexture::gbuffer_color).get();
         RHI_Texture* tex_normal     = GetRenderTarget(Renderer_RenderTexture::gbuffer_normal).get();
         RHI_Texture* tex_material   = GetRenderTarget(Renderer_RenderTexture::gbuffer_material).get();
         RHI_Texture* tex_material_2 = GetRenderTarget(Renderer_RenderTexture::gbuffer_material_2).get();
-        RHI_Texture* tex_velocity   = GetRenderTarget((GetFrameNum() % 2 == 0) ? Renderer_RenderTexture::gbuffer_velocity : Renderer_RenderTexture::gbuffer_velocity_previous).get();
+        RHI_Texture* tex_velocity   = GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity).get();
         RHI_Texture* tex_depth      = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
+
+        cmd_list->BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
+
+        // blit, don't alternate between velocity and velocity previous, this is because FSR needs to rely on velocity to be the latest
+        cmd_list->Blit(tex_velocity, GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity_previous).get(), false);
 
         bool depth_prepass = GetOption<bool>(Renderer_Option::DepthPrepass);
         bool wireframe     = GetOption<bool>(Renderer_Option::Debug_Wireframe);
@@ -594,6 +597,9 @@ namespace Spartan
             if (entities.empty())
                 continue;
 
+            // note: if is_transparent_pass is true we could simply clear the RTs, however we don't do this as fsr
+            // can be enabled, and if it is, it will expect the RTs to contain both the opaque and transparent data
+
             // define pipeline state
             RHI_PipelineState pso;
             pso.name                            = is_transparent_pass ? "g_buffer_transparent" : "g_buffer";
@@ -604,7 +610,7 @@ namespace Spartan
             pso.rasterizer_state                = rasterizer_state;
             pso.depth_stencil_state             = depth_stencil_state;
             pso.render_target_color_textures[0] = tex_color;
-            pso.clear_color[0]                  = (!is_first_pass || pso.instancing) ? rhi_color_load : Color::standard_transparent;
+            pso.clear_color[0]                  = (!is_first_pass || pso.instancing || is_transparent_pass) ? rhi_color_load : Color::standard_transparent;
             pso.render_target_color_textures[1] = tex_normal;
             pso.clear_color[1]                  = pso.clear_color[0];
             pso.render_target_color_textures[2] = tex_material;

@@ -33,7 +33,8 @@ float4 compute_screen_space_position(Vertex_PosUvNorTan input, uint instance_id,
     world_position  = mul(float4(world_position, 1.0f), instance).xyz;
     if (material_vertex_animate_wind())
     {
-        world_position = vertex_simulation::wind::apply(instance_id, world_position, float3(instance._41, instance._42, instance._43), buffer_frame.time);
+        float3 animation_pivot = float3(instance._31, instance._32, instance._33); // position
+        world_position = vertex_simulation::wind::apply(instance_id, world_position, animation_pivot, buffer_frame.time);
     }
     #endif
 
