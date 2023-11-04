@@ -161,7 +161,7 @@ namespace Spartan
 
         // transition the render target to a readable state so it can be rendered
         // within the viewport or copied to the swap chain back buffer
-        rt_output->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
+        rt_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
     }
 
     void Renderer::Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass)
@@ -577,9 +577,6 @@ namespace Spartan
         // deduce depth-stencil state
         RHI_DepthStencilState* depth_stencil_state = depth_prepass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
 
-        // note: if is_transparent_pass is true we could simply clear the RTs, however we don't do this as fsr
-        // can be enabled, and if it is, it will expect the RTs to contain both the opaque and transparent data
-      
         uint32_t start_index = !is_transparent_pass ? 0 : 2;
         uint32_t end_index   = !is_transparent_pass ? 2 : 4;
         bool is_first_pass   = true;
@@ -590,9 +587,8 @@ namespace Spartan
             if (entities.empty())
                 continue;
 
-            // pixels with an alpha of -1 will render as the sky
-            // see common_structs.hlsl for further details
-            static const Color color_clear = Color(0.0f, 0.0f, 0.0f, -1.0f);
+            // see common_structs.hlsl for details about clear color meaning
+            static const Color color_clear = Color(0.0f, 0.0f, 0.0f, 0.0f);
 
             // define pipeline state
             RHI_PipelineState pso;
@@ -604,7 +600,7 @@ namespace Spartan
             pso.rasterizer_state                = rasterizer_state;
             pso.depth_stencil_state             = depth_stencil_state;
             pso.render_target_color_textures[0] = tex_color;
-            pso.clear_color[0]                  = (!is_first_pass || pso.instancing || is_transparent_pass) ? rhi_color_load : color_clear;
+            pso.clear_color[0]                  = (!is_first_pass || pso.instancing) ? rhi_color_load : color_clear;
             pso.render_target_color_textures[1] = tex_normal;
             pso.clear_color[1]                  = pso.clear_color[0];
             pso.render_target_color_textures[2] = tex_material;
@@ -2382,7 +2378,7 @@ namespace Spartan
         Pass_Ffx_Spd(cmd_list, texture);
 
         // set all generated mips to read only optimal
-        texture->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list, 0, texture->GetMipCount());
+        texture->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list, 0, texture->GetMipCount());
 
         // destroy per mip resource views since they are no longer needed
         {

@@ -278,14 +278,14 @@ namespace Spartan
     {
         General,
         Preinitialized,
-        Color_Attachment_Optimal,
-        Depth_Attachment_Optimal,
-        Depth_Stencil_Attachment_Optimal,
-        Depth_Stencil_Read_Only_Optimal,
-        Shader_Read_Only_Optimal,
-        Transfer_Src_Optimal,
-        Transfer_Dst_Optimal,
-        Present_Src,
+        Color_Attachment,
+        Depth_Attachment,
+        Depth_Stencil_Attachment,
+        Depth_Stencil_Read,
+        Shader_Read,
+        Transfer_Source,
+        Transfer_Destination,
+        Present_Source,
         Undefined
     };
 

@@ -289,10 +289,10 @@ namespace Spartan
                         1,
                         1,
                         RHI_Image_Layout::Undefined,
-                        RHI_Image_Layout::Color_Attachment_Optimal
+                        RHI_Image_Layout::Color_Attachment
                     );
 
-                    m_layouts[i] = RHI_Image_Layout::Color_Attachment_Optimal;
+                    m_layouts[i] = RHI_Image_Layout::Color_Attachment;
                 }
 
                 // End/flush
@@ -426,7 +426,7 @@ namespace Spartan
         SP_ASSERT_MSG(!(SDL_GetWindowFlags(static_cast<SDL_Window*>(m_sdl_window)) & SDL_WINDOW_MINIMIZED), "Present should not be called for a minimized window");
         SP_ASSERT_MSG(m_rhi_swapchain != nullptr,                                                           "Invalid swapchain");
         SP_ASSERT_MSG(m_image_index != m_image_index_previous,                                              "No image was acquired");
-        SP_ASSERT_MSG(m_layouts[m_image_index] == RHI_Image_Layout::Present_Src,                            "Invalid layout");
+        SP_ASSERT_MSG(m_layouts[m_image_index] == RHI_Image_Layout::Present_Source,                            "Invalid layout");
 
         // get the semaphores that present should wait for
         m_wait_semaphores.clear();

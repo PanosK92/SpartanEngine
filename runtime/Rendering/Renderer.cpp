@@ -859,7 +859,7 @@ namespace Spartan
     
     void Renderer::Present()
     {
-        SP_ASSERT(swap_chain->GetLayout() == RHI_Image_Layout::Present_Src);
+        SP_ASSERT(swap_chain->GetLayout() == RHI_Image_Layout::Present_Source);
 
         if (Window::IsMinimised())
         {

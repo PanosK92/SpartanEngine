@@ -69,7 +69,7 @@ namespace Spartan
             }
         }
 
-        static FfxSurfaceFormat to_ffx_surface_format(const RHI_Format format)
+        FfxSurfaceFormat to_ffx_surface_format(const RHI_Format format)
         {
             switch (format)
             {
@@ -110,7 +110,7 @@ namespace Spartan
             }
         }
 
-        static FfxResource to_ffx_resource(RHI_Texture* texture, const wchar_t* name, FfxResourceUsage usage_additional = static_cast<FfxResourceUsage>(0))
+        FfxResource to_ffx_resource(RHI_Texture* texture, const wchar_t* name, FfxResourceUsage usage_additional = static_cast<FfxResourceUsage>(0))
         {
             FfxResourceDescription resource_description = {};
             resource_description.type                   = FfxResourceType::FFX_RESOURCE_TYPE_TEXTURE2D;
@@ -124,7 +124,7 @@ namespace Spartan
             resource_description.usage                  = static_cast<FfxResourceUsage>(resource_description.usage | (texture->IsUav() ? FFX_RESOURCE_USAGE_UAV : 0));
             resource_description.usage                  = static_cast<FfxResourceUsage>(resource_description.usage | usage_additional);
 
-            bool is_shader_read_only_optimal = texture->GetLayout(0) == RHI_Image_Layout::Shader_Read_Only_Optimal;
+            bool is_shader_read_only_optimal = texture->GetLayout(0) == RHI_Image_Layout::Shader_Read;
             FfxResourceStates current_state  = is_shader_read_only_optimal ? FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ : FFX_RESOURCE_STATE_UNORDERED_ACCESS;
 
             return ffxGetResourceVK(
@@ -284,9 +284,10 @@ namespace Spartan
     {
         // transition to the appropriate layouts (will only happen if needed)
         {
-            tex_color_opaque->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
-            tex_depth->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
-            tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
+            tex_color_opaque->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            tex_color_opaque_transparent->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
             tex_output->SetLayout(RHI_Image_Layout::General, cmd_list);
         }
 

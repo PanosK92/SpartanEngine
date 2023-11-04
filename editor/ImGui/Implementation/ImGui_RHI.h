@@ -302,7 +302,7 @@ namespace ImGui::RHI
                     if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
                     {
                         // transition will happen only if needed
-                        texture->SetLayout(Spartan::RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
+                        texture->SetLayout(Spartan::RHI_Image_Layout::Shader_Read, cmd_list);
                     }
                 }
             }
