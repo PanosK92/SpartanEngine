@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =============================
 #include "pch.h"
-#include "../RHI_AMD_FidelityFX.h"
+#include "../RHI_FidelityFX.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
 #include "../../World/Components/Camera.h"
@@ -33,39 +33,38 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    void RHI_AMD_FidelityFX::Initialize()
+    void RHI_FidelityFX::Initialize()
     {
 
     }
 
-    void RHI_AMD_FidelityFX::Destroy()
+    void RHI_FidelityFX::Destroy()
     {
 
     }
 
-    void RHI_AMD_FidelityFX::FSR2_ResetHistory()
+    void RHI_FidelityFX::FSR2_ResetHistory()
     {
 
     }
 
-    void RHI_AMD_FidelityFX::FSR2_GenerateJitterSample(float* x, float* y)
+    void RHI_FidelityFX::FSR2_GenerateJitterSample(float* x, float* y)
     {
 
     }
 
-    void RHI_AMD_FidelityFX::FSR2_Resize(const Vector2& resolution_render, const Vector2& resolution_output)
+    void RHI_FidelityFX::FSR2_Resize(const Vector2& resolution_render, const Vector2& resolution_output)
     {
 
     }
 
-    void RHI_AMD_FidelityFX::FSR2_Dispatch
+    void RHI_FidelityFX::FSR2_Dispatch
     (
         RHI_CommandList* cmd_list,
-        RHI_Texture* tex_input,
+        RHI_Texture* tex_color_opaque,
+        RHI_Texture* tex_color_opaque_transparent,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
-        RHI_Texture* tex_mask_reactive,
-        RHI_Texture* tex_mask_transparency,
         RHI_Texture* tex_output,
         Camera* camera,
         float delta_time_sec,
