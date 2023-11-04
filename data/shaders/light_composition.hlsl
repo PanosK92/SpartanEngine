@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // = INCLUDES ========
 #include "common.hlsl"
+#include "fog.hlsl"
 //====================
 
 struct refraction
@@ -133,8 +134,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         color.rgb       = lerp(light_ds, light_refraction, 1.0f - surface.alpha);
     }
 
-    // volumetric fog
-    color.rgb += tex_light_volumetric[thread_id.xy].rgb;
+    // fog
+    color.rgb += get_fog_factor(surface.position, buffer_frame.camera_position.xyz); // standard
+    color.rgb += tex_light_volumetric[thread_id.xy].rgb; // volumetric
 
     tex_uav[thread_id.xy] = saturate_16(color);
 }

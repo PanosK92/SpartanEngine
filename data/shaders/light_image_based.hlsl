@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // = INCLUDES ======
 #include "brdf.hlsl"
-#include "fog.hlsl"
 //==================
 
 // From Sebastien Lagarde Moving Frostbite to PBR page 69
@@ -167,10 +166,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
     // fade out for transparents
     ibl *= surface.alpha;
-    
-    // fog
-    float3 fog = get_fog_factor(surface.position, buffer_frame.camera_position.xyz);
-    ibl += fog;
     
     // Perfection achieved
     return float4(ibl, 0.0f);

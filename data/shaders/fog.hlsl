@@ -37,7 +37,7 @@ float3 get_fog_factor(const float3 pixel_position, const float3 camera_position)
     float distance_from_camera = length(pixel_position - camera_position) - g_fog_radius;
     float distance_factor      = max(0.0f, distance_from_camera) / g_fog_radius; // normalize the distance
     float fog_factor           = 1.0f - exp(-g_fog_fade_rate * distance_factor); // exponential fog factor
-    float fog_density          = pass_get_f4_value().z;
+    float fog_density          = pass_get_f3_value().y;
     
     return fog_factor * fog_density * g_atmospheric_color;
 }

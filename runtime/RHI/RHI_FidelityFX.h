@@ -45,8 +45,8 @@ namespace Spartan
         static void FSR2_GenerateJitterSample(float* x, float* y);
         static void FSR2_Dispatch(
             RHI_CommandList* cmd_list,
+            RHI_Texture* tex_color,
             RHI_Texture* tex_color_opaque,
-            RHI_Texture* tex_color_opaque_transparent,
             RHI_Texture* tex_depth,
             RHI_Texture* tex_velocity,
             RHI_Texture* tex_output,
