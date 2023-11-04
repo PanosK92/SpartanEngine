@@ -105,7 +105,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (early_exit_1 || early_exit_2 || early_exit_3)
         return;
 
-    float4 color = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    float4 color = float4(0.0f, 0.0f, 0.0f, surface.alpha); // maintain surface alpha, crucial for FSR
 
     // sky
     if (surface.is_sky()) 

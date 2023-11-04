@@ -120,29 +120,36 @@ namespace Spartan
                 }
 
                 // transparent
-                if (do_transparent_pass)
                 {
-                    // blit the frame so that refraction can sample from it
-                    cmd_list->Copy(rt_render, rt_render_2, true);
-
-                    // generate frame mips so that the reflections can simulate roughness
-                    Pass_Ffx_Spd(cmd_list, rt_render_2);
-
-                    // blur the smaller mips to reduce blockiness/flickering
-                    for (uint32_t i = 1; i < rt_render_2->GetMipCount(); i++)
+                    if (do_transparent_pass) // actual geometry processing
                     {
-                        const bool depth_aware = false;
-                        const float radius     = 1.0f;
-                        const float sigma      = 12.0f;
-                        Pass_Blur_Gaussian(cmd_list, rt_render_2, depth_aware, radius, sigma, i);
+                        // blit the frame so that refraction can sample from it
+                        cmd_list->Copy(rt_render, rt_render_2, true);
+
+                        // generate frame mips so that the reflections can simulate roughness
+                        Pass_Ffx_Spd(cmd_list, rt_render_2);
+
+                        // blur the smaller mips to reduce blockiness/flickering
+                        for (uint32_t i = 1; i < rt_render_2->GetMipCount(); i++)
+                        {
+                            const bool depth_aware = false;
+                            const float radius = 1.0f;
+                            const float sigma = 12.0f;
+                            Pass_Blur_Gaussian(cmd_list, rt_render_2, depth_aware, radius, sigma, i);
+                        }
+
+                        Pass_Depth_Prepass(cmd_list, do_transparent_pass);
+                        Pass_GBuffer(cmd_list, do_transparent_pass);
+                        Pass_Ssr(cmd_list, rt_render, do_transparent_pass);
+                        Pass_Light(cmd_list, do_transparent_pass);
+                        Pass_Light_Composition(cmd_list, rt_render, do_transparent_pass);
+                        Pass_Light_ImageBased(cmd_list, rt_render, do_transparent_pass);
                     }
 
-                    Pass_Depth_Prepass(cmd_list, do_transparent_pass);
-                    Pass_GBuffer(cmd_list, do_transparent_pass);
-                    Pass_Ssr(cmd_list, rt_render, do_transparent_pass);
-                    Pass_Light(cmd_list, do_transparent_pass);
-                    Pass_Light_Composition(cmd_list, rt_render, do_transparent_pass);
-                    Pass_Light_ImageBased(cmd_list, rt_render, do_transparent_pass);
+                    // debug
+                    Pass_Grid(cmd_list, rt_render);
+                    Pass_Lines(cmd_list, rt_render);
+                    Pass_Outline(cmd_list, rt_render);
                 }
 
                 Pass_PostProcess(cmd_list);
@@ -587,9 +594,6 @@ namespace Spartan
             if (entities.empty())
                 continue;
 
-            // see common_structs.hlsl for details about clear color meaning
-            static const Color color_clear = Color(0.0f, 0.0f, 0.0f, 0.0f);
-
             // define pipeline state
             RHI_PipelineState pso;
             pso.name                            = is_transparent_pass ? "g_buffer_transparent" : "g_buffer";
@@ -600,7 +604,7 @@ namespace Spartan
             pso.rasterizer_state                = rasterizer_state;
             pso.depth_stencil_state             = depth_stencil_state;
             pso.render_target_color_textures[0] = tex_color;
-            pso.clear_color[0]                  = (!is_first_pass || pso.instancing) ? rhi_color_load : color_clear;
+            pso.clear_color[0]                  = (!is_first_pass || pso.instancing) ? rhi_color_load : Color::standard_transparent;
             pso.render_target_color_textures[1] = tex_normal;
             pso.clear_color[1]                  = pso.clear_color[0];
             pso.render_target_color_textures[2] = tex_material;
@@ -1209,24 +1213,24 @@ namespace Spartan
 
     void Renderer::Pass_PostProcess(RHI_CommandList* cmd_list)
     {
-        // IN:  Frame_Render, which is and HDR render resolution render target (with a second texture so passes can alternate between them)
-        // OUT: Frame_Output, which is and LDR output resolution render target (with a second texture so passes can alternate between them)
+        // IN:  frame_Render, an HDR render resolution render target (with a second texture so passes can alternate between them)
+        // OUT: frame_Output, an LDR output resolution render target (with a second texture so passes can alternate between them)
 
-        // Acquire render targets (as references so that swapping the pointers around works)
-        RHI_Texture* rt_frame_render         = GetRenderTarget(Renderer_RenderTexture::frame_render).get();   // render res
-        RHI_Texture* rt_frame_render_scratch = GetRenderTarget(Renderer_RenderTexture::frame_render_post_process).get(); // render res
-        RHI_Texture* rt_frame_output         = GetRenderTarget(Renderer_RenderTexture::frame_output).get();   // output res
-        RHI_Texture* rt_frame_output_scratch = GetRenderTarget(Renderer_RenderTexture::frame_output_2).get(); // output res
+        // acquire render targets (as references so that swapping the pointers around works)
+        RHI_Texture* rt_frame_render         = GetRenderTarget(Renderer_RenderTexture::frame_render).get();
+        RHI_Texture* rt_frame_render_scratch = GetRenderTarget(Renderer_RenderTexture::frame_render_post_process).get();
+        RHI_Texture* rt_frame_output         = GetRenderTarget(Renderer_RenderTexture::frame_output).get();     
+        RHI_Texture* rt_frame_output_scratch = GetRenderTarget(Renderer_RenderTexture::frame_output_2).get();        
 
-        // A bunch of macros which allows us to keep track of which texture is an input/output for each pass.
+        cmd_list->BeginMarker("post_proccess");
+
+        // macros which allows us to keep track of which texture is an input/output for each pass
         bool swap_render = true;
         #define get_render_in  swap_render ? rt_frame_render_scratch : rt_frame_render
         #define get_render_out swap_render ? rt_frame_render : rt_frame_render_scratch
         bool swap_output = true;
         #define get_output_in  swap_output ? rt_frame_output_scratch : rt_frame_output
         #define get_output_out swap_output ? rt_frame_output : rt_frame_output_scratch
- 
-        cmd_list->BeginMarker("post_proccess");
 
         // RENDER RESOLUTION
         {
@@ -1236,32 +1240,25 @@ namespace Spartan
                 swap_render = !swap_render;
                 Pass_DepthOfField(cmd_list, get_render_in, get_render_out);
             }
-
-            // Debug rendering (world grid, vectors, debugging etc)
-            {
-                Pass_Grid(cmd_list, get_render_out);
-                Pass_Lines(cmd_list, get_render_out);
-                Pass_Outline(cmd_list, get_render_out);
-            }
         }
 
-        // Determine antialiasing modes
+        // determine antialiasing modes
         Renderer_Antialiasing antialiasing = GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing);
         bool taa_enabled                   = antialiasing == Renderer_Antialiasing::Taa  || antialiasing == Renderer_Antialiasing::TaaFxaa;
         bool fxaa_enabled                  = antialiasing == Renderer_Antialiasing::Fxaa || antialiasing == Renderer_Antialiasing::TaaFxaa;
 
-        // Get upsampling mode
+        // get upsampling mode
         Renderer_Upsampling upsampling_mode = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling);
 
         // RENDER RESOLUTION -> OUTPUT RESOLUTION
         {
-            // FSR 2.0 (It can be used both for upsampling and just TAA)
+            // fsr 2 - upsampling and taa
             if (upsampling_mode == Renderer_Upsampling::FSR2 || taa_enabled)
             {
                 swap_render = !swap_render;
                 Pass_Ffx_Fsr2(cmd_list, get_render_in, rt_frame_output);
             }
-            // Linear
+            // linear
             else if (upsampling_mode == Renderer_Upsampling::Linear)
             {
                 swap_render = !swap_render;
