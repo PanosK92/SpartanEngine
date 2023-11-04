@@ -47,13 +47,7 @@ float compute_fade_factor(float2 uv, float fade_start, float fade_end)
     return saturate((fade_end - distance_from_center) / (fade_end - fade_start));
 }
 
-struct PixelOutputType
-{
-    float4 color             : SV_Target0;
-    float fsr2_reactive_mask : SV_Target1;
-};
-
-PixelOutputType mainPS(Pixel_PosUv input)
+float4 mainPS(Pixel_PosUv input)
 {
     const float2 properties   = pass_get_f3_value().xy;
     const float line_interval = properties.x;
@@ -70,16 +64,12 @@ PixelOutputType mainPS(Pixel_PosUv input)
     float mod_y = fmod(input.uv.y, line_interval);
     
     // use step function to determine if the pixel is near a line
-    float line_x            = step(line_thickness, mod_x) - step(line_interval - line_thickness, mod_x);
-    float line_y            = step(line_thickness, mod_y) - step(line_interval - line_thickness, mod_y);
+    float line_x = step(line_thickness, mod_x) - step(line_interval - line_thickness, mod_x);
+    float line_y = step(line_thickness, mod_y) - step(line_interval - line_thickness, mod_y);
     
     // combine line_x and line_y to decide if either is true, then color it as a line
     float is_line = max(1.0f - line_x, 1.0f - line_y);
 
     // write both on the color render target and the reactive mask
-    PixelOutputType output;
-    output.color              = fade_factor * (is_line * grid_color + (1.0f - is_line) * 0.0f);
-    output.fsr2_reactive_mask = output.color.a;
-    
-    return output;
+    return fade_factor * (is_line * grid_color + (1.0f - is_line) * 0.0f);
 }

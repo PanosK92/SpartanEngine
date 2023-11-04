@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_CommandPool.h"
 #include "../RHI/RHI_ConstantBuffer.h"
 #include "../RHI/RHI_Implementation.h"
-#include "../RHI/RHI_AMD_FidelityFX.h"
+#include "../RHI/RHI_FidelityFX.h"
 #include "../RHI/RHI_StructuredBuffer.h"
 #include "../World/Entity.h"
 #include "../World/Components/Transform.h"
@@ -176,7 +176,7 @@ namespace Spartan
         m_cmd_pool = RHI_Device::CommandPoolAllocate("renderer", swap_chain->GetObjectId(), RHI_Queue_Type::Graphics);
 
         // amd fidelityfx suite
-        RHI_AMD_FidelityFX::Initialize();
+        RHI_FidelityFX::Initialize();
 
         // options
         m_options.clear();
@@ -248,7 +248,7 @@ namespace Spartan
 
         RenderDoc::Shutdown();
         RHI_Device::QueueWaitAll();
-        RHI_AMD_FidelityFX::Destroy();
+        RHI_FidelityFX::Destroy();
         RHI_Device::DeletionQueueParse();
         RHI_Device::Destroy();
     }
@@ -327,7 +327,7 @@ namespace Spartan
             Renderer_Upsampling upsampling_mode = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling);
             if (upsampling_mode == Renderer_Upsampling::FSR2 || GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa)
             {
-                RHI_AMD_FidelityFX::FSR2_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
+                RHI_FidelityFX::FSR2_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
                 m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(jitter_offset.x, jitter_offset.y, 0.0f));
             }
             else
@@ -779,7 +779,7 @@ namespace Spartan
                     if (!fsr_enabled)
                     {
                         m_options[Renderer_Option::Upsampling] = static_cast<float>(Renderer_Upsampling::FSR2);
-                        RHI_AMD_FidelityFX::FSR2_ResetHistory();
+                        RHI_FidelityFX::FSR2_ResetHistory();
                         SP_LOG_INFO("Enabled FSR 2.0 since it's used for TAA.");
                     }
                 }
@@ -813,7 +813,7 @@ namespace Spartan
                     if (!taa_enabled)
                     {
                         m_options[Renderer_Option::Antialiasing] = static_cast<float>(Renderer_Antialiasing::Taa);
-                        RHI_AMD_FidelityFX::FSR2_ResetHistory();
+                        RHI_FidelityFX::FSR2_ResetHistory();
                         SP_LOG_INFO("Enabled TAA since FSR 2.0 does it.");
                     }
                 }
@@ -910,7 +910,7 @@ namespace Spartan
 
 	void Renderer::SetTexturesGfbuffer(RHI_CommandList* cmd_list)
     {
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,            GetRenderTarget(Renderer_RenderTexture::gbuffer_albedo));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,            GetRenderTarget(Renderer_RenderTexture::gbuffer_color));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,            GetRenderTarget(Renderer_RenderTexture::gbuffer_normal));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,             GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material,          GetRenderTarget(Renderer_RenderTexture::gbuffer_material));

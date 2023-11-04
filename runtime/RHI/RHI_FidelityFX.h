@@ -30,7 +30,7 @@ namespace Spartan
 {
     class Camera;
 
-    class RHI_AMD_FidelityFX
+    class RHI_FidelityFX
     {
     public:
         static void Initialize();
@@ -45,11 +45,10 @@ namespace Spartan
         static void FSR2_GenerateJitterSample(float* x, float* y);
         static void FSR2_Dispatch(
             RHI_CommandList* cmd_list,
-            RHI_Texture* tex_input,
+            RHI_Texture* tex_color_opaque,
+            RHI_Texture* tex_color_opaque_transparent,
             RHI_Texture* tex_depth,
             RHI_Texture* tex_velocity,
-            RHI_Texture* tex_mask_reactive,
-            RHI_Texture* tex_mask_transparency,
             RHI_Texture* tex_output,
             Camera* camera,
             float delta_time,
