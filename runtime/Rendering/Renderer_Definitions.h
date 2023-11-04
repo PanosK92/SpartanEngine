@@ -229,7 +229,7 @@ namespace Spartan
     enum class Renderer_RenderTexture : uint8_t
     {
         undefined,
-        gbuffer_albedo,
+        gbuffer_color,
         gbuffer_normal,
         gbuffer_material,
         gbuffer_material_2,
@@ -243,7 +243,8 @@ namespace Spartan
         light_specular_transparent,
         light_volumetric,
         frame_render,
-        frame_render_2,
+        frame_render_post_process,
+        frame_render_fsr2_opaque,
         frame_output,
         frame_output_2,
         dof_half,
@@ -254,8 +255,6 @@ namespace Spartan
         sss,
         bloom,
         blur,
-        fsr2_mask_reactive,
-        fsr2_mask_transparency,
         outline
     };
     

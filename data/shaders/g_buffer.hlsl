@@ -35,30 +35,12 @@ struct PixelInputType
 
 struct PixelOutputType
 {
-    float4 albedo                : SV_Target0;
-    float4 normal                : SV_Target1;
-    float4 material              : SV_Target2;
-    float4 material_2            : SV_Target3;
-    float2 velocity              : SV_Target4;
-    float fsr2_transparency_mask : SV_Target5;
+    float4 albedo     : SV_Target0;
+    float4 normal     : SV_Target1;
+    float4 material   : SV_Target2;
+    float4 material_2 : SV_Target3;
+    float2 velocity   : SV_Target4;
 };
-
-PixelInputType mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
-{
-    PixelInputType output;
-
-    // position
-    output.position             = compute_screen_space_position(input, instance_id, buffer_pass.transform, buffer_frame.view_projection);
-    output.position_ss_current  = output.position;
-    output.position_ss_previous = compute_screen_space_position(input, instance_id, pass_get_transform_previous(), buffer_frame.view_projection_previous, output.position_world);
-    // normals
-    output.normal_world  = normalize(mul(input.normal,  (float3x3)buffer_pass.transform)).xyz;
-    output.tangent_world = normalize(mul(input.tangent, (float3x3)buffer_pass.transform)).xyz;
-    // uv
-    output.uv = input.uv;
-    
-    return output;
-}
 
 float compute_slope(float3 normal)
 {
@@ -97,6 +79,23 @@ float3 smaple_normal(float2 uv, float slope)
     return normal;
 }
 
+PixelInputType mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
+{
+    PixelInputType output;
+
+    // position
+    output.position             = compute_screen_space_position(input, instance_id, buffer_pass.transform, buffer_frame.view_projection);
+    output.position_ss_current  = output.position;
+    output.position_ss_previous = compute_screen_space_position(input, instance_id, pass_get_transform_previous(), buffer_frame.view_projection_previous, output.position_world);
+    // normals
+    output.normal_world  = normalize(mul(input.normal,  (float3x3)buffer_pass.transform)).xyz;
+    output.tangent_world = normalize(mul(input.tangent, (float3x3)buffer_pass.transform)).xyz;
+    // uv
+    output.uv = input.uv;
+    
+    return output;
+}
+
 PixelOutputType mainPS(PixelInputType input)
 {
     // initial g-buffer values
@@ -111,11 +110,11 @@ PixelOutputType mainPS(PixelInputType input)
     // velocity
     {
         // convert to ndc
-        float2 position_ndc_current = (input.position_ss_current.xy / input.position_ss_current.w);
+        float2 position_ndc_current  = (input.position_ss_current.xy / input.position_ss_current.w);
         float2 position_ndc_previous = (input.position_ss_previous.xy / input.position_ss_previous.w);
     
         // remove the ndc jitter
-        position_ndc_current -= buffer_frame.taa_jitter_current;
+        position_ndc_current  -= buffer_frame.taa_jitter_current;
         position_ndc_previous -= buffer_frame.taa_jitter_previous;
     
         // compute the velocity
@@ -239,12 +238,11 @@ PixelOutputType mainPS(PixelInputType input)
 
     // write to g-buffer
     PixelOutputType g_buffer;
-    g_buffer.albedo                 = albedo;
-    g_buffer.normal                 = float4(normal, buffer_material.sheen);
-    g_buffer.material               = float4(roughness, metalness, emission, occlusion);
-    g_buffer.material_2             = float4(buffer_material.anisotropic, buffer_material.anisotropic_rotation, buffer_material.clearcoat, buffer_material.clearcoat_roughness);
-    g_buffer.velocity               = velocity;
-    g_buffer.fsr2_transparency_mask = (1.0f - albedo.a) * (pass_is_transparent() ? 1.0f : 0.0f);
+    g_buffer.albedo     = albedo;
+    g_buffer.normal     = float4(normal, buffer_material.sheen);
+    g_buffer.material   = float4(roughness, metalness, emission, occlusion);
+    g_buffer.material_2 = float4(buffer_material.anisotropic, buffer_material.anisotropic_rotation, buffer_material.clearcoat, buffer_material.clearcoat_roughness);
+    g_buffer.velocity   = velocity;
 
     return g_buffer;
 }

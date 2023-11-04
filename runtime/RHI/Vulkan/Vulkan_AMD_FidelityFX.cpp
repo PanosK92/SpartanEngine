@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================================
 #include "pch.h"
-#include "../RHI_AMD_FidelityFX.h"
+#include "../RHI_FidelityFX.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_Texture.h"
@@ -136,7 +136,7 @@ namespace Spartan
         }
     }
 
-    void RHI_AMD_FidelityFX::Initialize()
+    void RHI_FidelityFX::Initialize()
     {
         // common interface
         {
@@ -175,7 +175,7 @@ namespace Spartan
         }
     }
 
-    void RHI_AMD_FidelityFX::Destroy()
+    void RHI_FidelityFX::Destroy()
     {
         // spd
         if (spd_context_created)
@@ -198,7 +198,7 @@ namespace Spartan
         }
     }
 
-    void RHI_AMD_FidelityFX::SPD_Dispatch(RHI_CommandList* cmd_list, RHI_Texture* texture)
+    void RHI_FidelityFX::SPD_Dispatch(RHI_CommandList* cmd_list, RHI_Texture* texture)
     {
         FfxSpdDispatchDescription dispatch_description = {};
         dispatch_description.commandList               = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
@@ -207,12 +207,12 @@ namespace Spartan
         //SP_ASSERT(ffxSpdContextDispatch(&spd_context, &dispatch_description) == FFX_OK);
     }
 
-    void RHI_AMD_FidelityFX::FSR2_ResetHistory()
+    void RHI_FidelityFX::FSR2_ResetHistory()
     {
         fsr2_reset_history = true;
     }
 
-    void RHI_AMD_FidelityFX::FSR2_GenerateJitterSample(float* x, float* y)
+    void RHI_FidelityFX::FSR2_GenerateJitterSample(float* x, float* y)
     {
         // get jitter phase count
         uint32_t resolution_render_x     = static_cast<uint32_t>(fsr2_context_description.maxRenderSize.width);
@@ -231,7 +231,7 @@ namespace Spartan
         *y = -2.0f * fsr2_dispatch_description.jitterOffset.y / resolution_render_y;
     }
 
-    void RHI_AMD_FidelityFX::FSR2_Resize(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output)
+    void RHI_FidelityFX::FSR2_Resize(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output)
     {
         // destroy context
         if (fsr2_context_created)
@@ -268,14 +268,13 @@ namespace Spartan
         fsr2_jitter_index = 0;
     }
 
-    void RHI_AMD_FidelityFX::FSR2_Dispatch
+    void RHI_FidelityFX::FSR2_Dispatch
     (
         RHI_CommandList* cmd_list,
-        RHI_Texture* tex_input,
+        RHI_Texture* tex_color_opaque,
+        RHI_Texture* tex_color_opaque_transparent,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
-        RHI_Texture* tex_mask_reactive,
-        RHI_Texture* tex_mask_transparency,
         RHI_Texture* tex_output,
         Camera* camera,
         float delta_time_sec,
@@ -285,54 +284,42 @@ namespace Spartan
     {
         // transition to the appropriate layouts (will only happen if needed)
         {
-            tex_input->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
+            tex_color_opaque->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
             tex_depth->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
             tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
             tex_output->SetLayout(RHI_Image_Layout::General, cmd_list);
-
-            if (tex_mask_reactive)
-            {
-                tex_mask_reactive->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
-            }
-
-            if (tex_mask_transparency)
-            {
-                tex_mask_transparency->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
-            }
         }
 
         // dispatch description
         {
             // resources
             {
-                fsr2_dispatch_description.color         = to_ffx_resource(tex_input, L"fsr2_color");
-                fsr2_dispatch_description.depth         = to_ffx_resource(tex_depth, L"fsr2_depth");
-                fsr2_dispatch_description.output        = to_ffx_resource(tex_output, L"fsr2_output");
-                fsr2_dispatch_description.commandList   = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
-                fsr2_dispatch_description.motionVectors = to_ffx_resource(tex_velocity, L"fsr2_velocity");
-                if (tex_mask_reactive)
-                {
-                    fsr2_dispatch_description.reactive = to_ffx_resource(tex_mask_reactive, L"fsr2_mask_reactive");
-                }
-                if (tex_mask_transparency)
-                {
-                    fsr2_dispatch_description.transparencyAndComposition = to_ffx_resource(tex_mask_transparency, L"fsr2_mask_transparency_and_composition");
-                }
+                fsr2_dispatch_description.colorOpaqueOnly = to_ffx_resource(tex_color_opaque, L"fsr2_color_opaque");
+                fsr2_dispatch_description.color           = to_ffx_resource(tex_color_opaque_transparent, L"fsr2_color_opaque_transparent");
+                fsr2_dispatch_description.depth           = to_ffx_resource(tex_depth, L"fsr2_depth");
+                fsr2_dispatch_description.output          = to_ffx_resource(tex_output, L"fsr2_output");
+                fsr2_dispatch_description.commandList     = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
+                fsr2_dispatch_description.motionVectors   = to_ffx_resource(tex_velocity, L"fsr2_velocity");
             }
 
             // configuration
             fsr2_dispatch_description.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth());
             fsr2_dispatch_description.motionVectorScale.y    = -static_cast<float>(tex_velocity->GetHeight());
-            fsr2_dispatch_description.reset                  = fsr2_reset_history;       // a boolean value which when set to true, indicates the camera has moved discontinuously
-            fsr2_dispatch_description.enableSharpening       = sharpness != 0.0f;
-            fsr2_dispatch_description.sharpness              = sharpness;
-            fsr2_dispatch_description.frameTimeDelta         = delta_time_sec * 1000.0f; // seconds to milliseconds
-            fsr2_dispatch_description.preExposure            = exposure;                 // the exposure value if not using FFX_FSR2_ENABLE_AUTO_EXPOSURE
-            fsr2_dispatch_description.renderSize.width       = tex_input->GetWidth();    // the resolution that was used for rendering the input resources
-            fsr2_dispatch_description.renderSize.height      = tex_input->GetHeight();   // the resolution that was used for rendering the input resources
-            fsr2_dispatch_description.cameraNear             = camera->GetFarPlane();    // far as near because we are using reverse-z
-            fsr2_dispatch_description.cameraFar              = camera->GetNearPlane();   // near as far because we are using reverse-z
+            fsr2_dispatch_description.reset                  = fsr2_reset_history;            // a boolean value which when set to true, indicates the camera has moved discontinuously
+            fsr2_dispatch_description.enableSharpening       = sharpness != 0.0f;           
+            fsr2_dispatch_description.sharpness              = sharpness;                   
+            fsr2_dispatch_description.frameTimeDelta         = delta_time_sec * 1000.0f;      // seconds to milliseconds
+            fsr2_dispatch_description.preExposure            = exposure;                      // the exposure value if not using FFX_FSR2_ENABLE_AUTO_EXPOSURE
+            fsr2_dispatch_description.renderSize.width       = tex_color_opaque->GetWidth();  // the resolution that was used for rendering the input resources
+            fsr2_dispatch_description.renderSize.height      = tex_color_opaque->GetHeight(); // the resolution that was used for rendering the input resources
+            fsr2_dispatch_description.cameraNear             = camera->GetFarPlane();         // far as near because we are using reverse-z
+            fsr2_dispatch_description.cameraFar              = camera->GetNearPlane();        // near as far because we are using reverse-z
             fsr2_dispatch_description.cameraFovAngleVertical = camera->GetFovVerticalRad();
+            fsr2_dispatch_description.enableAutoReactive     = true;                          // generate reactive and transparency & composition masks
+            fsr2_dispatch_description.autoReactiveMax        = 0.9f;                          // a value to clamp the reactive mask, GPUOpen recommends a max of 0.9
+            fsr2_dispatch_description.autoReactiveScale      = 1.0f;                          // a value to scale the reactive mask
+            fsr2_dispatch_description.autoTcThreshold        = 1.0f;                          // cutoff value for TC
+            fsr2_dispatch_description.autoTcScale            = 1.0f;                          // a value to scale the transparency and composition mask
         }
 
         // dispatch
