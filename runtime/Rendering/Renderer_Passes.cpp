@@ -1922,7 +1922,7 @@ namespace Spartan
                     Matrix transform = Matrix(pos_world, rotation_camera_billboard * rotation_reorient_quad, scale);
 
                     // set transform
-                    m_cb_pass_cpu.transform = transform * m_cb_frame_cpu.view_projection;
+                    m_cb_pass_cpu.transform = transform * m_cb_frame_cpu.view_projection_unjittered;
                     PushPassConstants(cmd_list);
                 }
 
