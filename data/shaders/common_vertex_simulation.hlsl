@@ -37,7 +37,7 @@ struct vertex_simulation
             return lerp(hash(i), hash(i + 1.0), f);
         }
 
-        static float3 apply(uint instance_id, float3 position_vertex, float3 position_transform, float time)
+        static float3 apply(uint instance_id, float3 position_vertex, float3 animation_pivot, float time)
         {
             static const float3 base_wind_direction     = float3(1, 0, 0);
             static const float  wind_vertex_sway_extent = 0.4f; // oscillation amplitude
@@ -63,7 +63,7 @@ struct vertex_simulation
             float combined_wave = (base_wave1 + base_wave2 + high_freq_noise) / 3.0f;
         
             // reduce sway at the bottom, increase at the top
-            float sway_factor = saturate((position_vertex.y - position_transform.y) / buffer_material.world_space_height);
+            float sway_factor = saturate((position_vertex.y - animation_pivot.y) / buffer_material.world_space_height);
             
             // calculate final offset
             float3 offset = wind_direction * combined_wave * wind_vertex_sway_extent * sway_factor;
