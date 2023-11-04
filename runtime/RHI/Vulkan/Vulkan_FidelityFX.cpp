@@ -270,8 +270,8 @@ namespace Spartan
     void RHI_FidelityFX::FSR2_Dispatch
     (
         RHI_CommandList* cmd_list,
+        RHI_Texture* tex_color,
         RHI_Texture* tex_color_opaque,
-        RHI_Texture* tex_color_opaque_transparent,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
         RHI_Texture* tex_output,
@@ -283,8 +283,8 @@ namespace Spartan
     {
         // transition to the appropriate layouts (will only happen if needed)
         {
+            tex_color->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
             tex_color_opaque->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-            tex_color_opaque_transparent->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
             tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
             tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
             tex_output->SetLayout(RHI_Image_Layout::General, cmd_list);
@@ -294,8 +294,8 @@ namespace Spartan
         {
             // resources
             {
+                fsr2_dispatch_description.color           = to_ffx_resource(tex_color,                    L"fsr2_color");
                 fsr2_dispatch_description.colorOpaqueOnly = to_ffx_resource(tex_color_opaque,             L"fsr2_color_opaque");
-                fsr2_dispatch_description.color           = to_ffx_resource(tex_color_opaque_transparent, L"fsr2_color_opaque_transparent");
                 fsr2_dispatch_description.depth           = to_ffx_resource(tex_depth,                    L"fsr2_depth");
                 fsr2_dispatch_description.output          = to_ffx_resource(tex_output,                   L"fsr2_output");
                 fsr2_dispatch_description.motionVectors   = to_ffx_resource(tex_velocity,                 L"fsr2_velocity");

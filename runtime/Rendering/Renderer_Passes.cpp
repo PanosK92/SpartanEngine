@@ -1011,7 +1011,7 @@ namespace Spartan
         // push pass constants
         m_cb_pass_cpu.set_resolution_out(tex_out);
         m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
-        m_cb_pass_cpu.set_f3_value(static_cast<float>(GetRenderTarget(Renderer_RenderTexture::frame_render)->GetMipCount()), 0.0f, 0.0f);
+        m_cb_pass_cpu.set_f3_value(static_cast<float>(GetRenderTarget(Renderer_RenderTexture::frame_render)->GetMipCount()), GetOption<float>(Renderer_Option::Fog), 0.0f);
         PushPassConstants(cmd_list);
 
         // update light buffer with the directional light
@@ -1091,7 +1091,7 @@ namespace Spartan
         // set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_out);
         m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
-        m_cb_pass_cpu.set_f4_value(!probes.empty() ? 1.0f : 0.0f, static_cast<float>(GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount()), GetOption<float>(Renderer_Option::Fog), 0.0f); // reflection probe available
+        m_cb_pass_cpu.set_f4_value(!probes.empty() ? 1.0f : 0.0f, static_cast<float>(GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount()), 0.0f, 0.0f); // reflection probe available
         PushPassConstants(cmd_list);
 
         // update light buffer with the directional light
@@ -1837,8 +1837,8 @@ namespace Spartan
 
         RHI_FidelityFX::FSR2_Dispatch(
             cmd_list,
-            GetRenderTarget(Renderer_RenderTexture::frame_render_fsr2_opaque).get(),
             tex_in,
+            GetRenderTarget(Renderer_RenderTexture::frame_render_fsr2_opaque).get(),
             GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get(),
             GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity).get(),
             tex_out,
