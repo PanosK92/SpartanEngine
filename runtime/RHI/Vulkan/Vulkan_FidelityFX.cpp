@@ -53,7 +53,6 @@ namespace Spartan
         FfxFsr2Context fsr2_context                          = {};
         FfxFsr2ContextDescription fsr2_context_description   = {};
         FfxFsr2DispatchDescription fsr2_dispatch_description = {};
-        bool fsr2_reset_history                              = false;
         bool fsr2_context_created                            = false;
         uint32_t fsr2_jitter_index                           = 0;
 
@@ -209,7 +208,7 @@ namespace Spartan
 
     void RHI_FidelityFX::FSR2_ResetHistory()
     {
-        fsr2_reset_history = true;
+        fsr2_dispatch_description.reset = true;
     }
 
     void RHI_FidelityFX::FSR2_GenerateJitterSample(float* x, float* y)
@@ -295,36 +294,35 @@ namespace Spartan
         {
             // resources
             {
-                fsr2_dispatch_description.colorOpaqueOnly = to_ffx_resource(tex_color_opaque, L"fsr2_color_opaque");
+                fsr2_dispatch_description.colorOpaqueOnly = to_ffx_resource(tex_color_opaque,             L"fsr2_color_opaque");
                 fsr2_dispatch_description.color           = to_ffx_resource(tex_color_opaque_transparent, L"fsr2_color_opaque_transparent");
-                fsr2_dispatch_description.depth           = to_ffx_resource(tex_depth, L"fsr2_depth");
-                fsr2_dispatch_description.output          = to_ffx_resource(tex_output, L"fsr2_output");
+                fsr2_dispatch_description.depth           = to_ffx_resource(tex_depth,                    L"fsr2_depth");
+                fsr2_dispatch_description.output          = to_ffx_resource(tex_output,                   L"fsr2_output");
+                fsr2_dispatch_description.motionVectors   = to_ffx_resource(tex_velocity,                 L"fsr2_velocity");
                 fsr2_dispatch_description.commandList     = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
-                fsr2_dispatch_description.motionVectors   = to_ffx_resource(tex_velocity, L"fsr2_velocity");
             }
 
             // configuration
             fsr2_dispatch_description.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth());
             fsr2_dispatch_description.motionVectorScale.y    = -static_cast<float>(tex_velocity->GetHeight());
-            fsr2_dispatch_description.reset                  = fsr2_reset_history;            // a boolean value which when set to true, indicates the camera has moved discontinuously
-            fsr2_dispatch_description.enableSharpening       = sharpness != 0.0f;           
-            fsr2_dispatch_description.sharpness              = sharpness;                   
-            fsr2_dispatch_description.frameTimeDelta         = delta_time_sec * 1000.0f;      // seconds to milliseconds
-            fsr2_dispatch_description.preExposure            = exposure;                      // the exposure value if not using FFX_FSR2_ENABLE_AUTO_EXPOSURE
-            fsr2_dispatch_description.renderSize.width       = tex_color_opaque->GetWidth();  // the resolution that was used for rendering the input resources
-            fsr2_dispatch_description.renderSize.height      = tex_color_opaque->GetHeight(); // the resolution that was used for rendering the input resources
-            fsr2_dispatch_description.cameraNear             = camera->GetFarPlane();         // far as near because we are using reverse-z
-            fsr2_dispatch_description.cameraFar              = camera->GetNearPlane();        // near as far because we are using reverse-z
-            fsr2_dispatch_description.cameraFovAngleVertical = camera->GetFovVerticalRad();
-            fsr2_dispatch_description.enableAutoReactive     = true;                          // generate reactive and transparency & composition masks
-            fsr2_dispatch_description.autoReactiveMax        = 0.9f;                          // a value to clamp the reactive mask, GPUOpen recommends a max of 0.9
-            fsr2_dispatch_description.autoReactiveScale      = 1.0f;                          // a value to scale the reactive mask
-            fsr2_dispatch_description.autoTcThreshold        = 1.0f;                          // cutoff value for TC
-            fsr2_dispatch_description.autoTcScale            = 1.0f;                          // a value to scale the transparency and composition mask
-        }
+            fsr2_dispatch_description.enableSharpening       = sharpness != 0.0f;             
+            fsr2_dispatch_description.sharpness              = sharpness;                     
+            fsr2_dispatch_description.frameTimeDelta         = delta_time_sec * 1000.0f;    // seconds to milliseconds
+            fsr2_dispatch_description.preExposure            = exposure;                    // the exposure value if not using FFX_FSR2_ENABLE_AUTO_EXPOSURE
+            fsr2_dispatch_description.renderSize.width       = tex_velocity->GetWidth();    // the resolution that was used for rendering the input resources
+            fsr2_dispatch_description.renderSize.height      = tex_velocity->GetHeight();   // the resolution that was used for rendering the input resources
+            fsr2_dispatch_description.cameraNear             = camera->GetFarPlane();       // far as near because we are using reverse-z
+            fsr2_dispatch_description.cameraFar              = camera->GetNearPlane();      // near as far because we are using reverse-z
+            fsr2_dispatch_description.cameraFovAngleVertical = camera->GetFovVerticalRad(); 
+            fsr2_dispatch_description.enableAutoReactive     = true;                        // generate reactive and transparency & composition masks
+            fsr2_dispatch_description.autoReactiveMax        = 0.9f;                        // a value to clamp the reactive mask
+            fsr2_dispatch_description.autoReactiveScale      = 1.0f;                        // a value to scale the reactive mask
+            fsr2_dispatch_description.autoTcThreshold        = 1.0f;                        // cutoff value for TC
+            fsr2_dispatch_description.autoTcScale            = 1.0f;                        // a value to scale the transparency and composition mask
+        }                                                                                   
 
         // dispatch
         SP_ASSERT(ffxFsr2ContextDispatch(&fsr2_context, &fsr2_dispatch_description) == FFX_OK);
-        fsr2_reset_history = false;
+        fsr2_dispatch_description.reset = false;
     }
 }
