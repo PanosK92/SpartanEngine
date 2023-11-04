@@ -47,7 +47,7 @@ float compute_fade_factor(float2 uv, float fade_start, float fade_end)
     return saturate((fade_end - distance_from_center) / (fade_end - fade_start));
 }
 
-float4 mainPS(Pixel_PosUv input)
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     const float2 properties   = pass_get_f3_value().xy;
     const float line_interval = properties.x;
