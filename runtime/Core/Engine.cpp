@@ -21,6 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================================
 #include "pch.h"
+
+#include "ScriptEngine.h"
 #include "Window.h"
 #include "ThreadPool.h"
 #include "../Audio/Audio.h"
@@ -70,7 +72,7 @@ namespace Spartan
             Physics::Initialize();
             Renderer::Initialize();
             World::Initialize();
-
+            ScriptEngine::Initialize();
             // post
             Settings::PostInitialize();
         }
