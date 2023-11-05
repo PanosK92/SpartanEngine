@@ -64,7 +64,7 @@ typedef void(HOSTFXR_CALLTYPE *hostfxr_error_writer_fn)(const char_t *message);
 // By default no callback is registered in which case the errors are written to stderr.
 //
 // Each call to the error writer is sort of like writing a single line (the EOL character is omitted).
-// Multiple calls to the error writer may occure for one failure.
+// Multiple calls to the error writer may occur for one failure.
 //
 // If the hostfxr invokes functions in hostpolicy as part of its operation, the error writer
 // will be propagated to hostpolicy for the duration of the call. This means that errors from
@@ -88,6 +88,8 @@ struct hostfxr_initialize_parameters
 //      Number of argv arguments
 //    argv
 //      Command-line arguments for running an application (as if through the dotnet executable).
+//      Only command-line arguments which are accepted by runtime installation are supported, SDK/CLI commands are not supported.
+//      For example 'app.dll app_argument_1 app_argument_2`.
 //    parameters
 //      Optional. Additional parameters for initialization
 //    host_context_handle
@@ -284,5 +286,38 @@ typedef int32_t(HOSTFXR_CALLTYPE *hostfxr_get_runtime_delegate_fn)(
 //     The error code result.
 //
 typedef int32_t(HOSTFXR_CALLTYPE *hostfxr_close_fn)(const hostfxr_handle host_context_handle);
+
+struct hostfxr_dotnet_environment_sdk_info
+{
+    size_t size;
+    const char_t* version;
+    const char_t* path;
+};
+
+typedef void(HOSTFXR_CALLTYPE* hostfxr_get_dotnet_environment_info_result_fn)(
+    const struct hostfxr_dotnet_environment_info* info,
+    void* result_context);
+
+struct hostfxr_dotnet_environment_framework_info
+{
+    size_t size;
+    const char_t* name;
+    const char_t* version;
+    const char_t* path;
+};
+
+struct hostfxr_dotnet_environment_info
+{
+    size_t size;
+
+    const char_t* hostfxr_version;
+    const char_t* hostfxr_commit_hash;
+
+    size_t sdk_count;
+    const struct hostfxr_dotnet_environment_sdk_info* sdks;
+
+    size_t framework_count;
+    const struct hostfxr_dotnet_environment_framework_info* frameworks;
+};
 
 #endif //__HOSTFXR_H__
