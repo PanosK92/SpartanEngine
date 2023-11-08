@@ -109,6 +109,7 @@ namespace Spartan
                 {
                     Pass_Depth_Prepass(cmd_list);
                     Pass_GBuffer(cmd_list);
+                    Pass_AtmosphericScattering(cmd_list);
                     Pass_Ssgi(cmd_list);
                     Pass_Ssr(cmd_list, rt_render);
                     Pass_Sss_Bend(cmd_list);
@@ -907,6 +908,62 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
+    void Renderer::Pass_AtmosphericScattering(RHI_CommandList* cmd_list)
+    {
+        // acquire shaders
+        RHI_Shader* shader_c = GetShader(Renderer_Shader::atmospheric_scattering_c).get();
+        if (!shader_c->IsCompiled())
+            return;
+
+        // acquire directional light
+        shared_ptr<Light> light_directional = nullptr;
+        const vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Light];
+        for (shared_ptr<Entity> entity : entities)
+        {
+            if (shared_ptr<Light> light = entity->GetComponent<Light>())
+            {
+                if (light->GetLightType() == LightType::Directional)
+                {
+                    light_directional = light;
+                }
+            }
+        }
+
+        if (!light_directional)
+            return;
+
+        // acquire render targets
+        RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTexture::atmospheric_scattering).get();
+
+        // define pipeline state
+        static RHI_PipelineState pso;
+        pso.shader_compute = shader_c;
+
+        cmd_list->BeginTimeblock("atmospheric_scattering");
+        {
+            // set pipeline state
+            cmd_list->SetPipelineState(pso);
+
+            // set pass constants
+            m_cb_pass_cpu.set_resolution_out(tex_out);
+            PushPassConstants(cmd_list);
+
+            // set textures
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+
+            // set directional light
+            UpdateConstantBufferLight(cmd_list, light_directional);
+
+            // render
+            cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+
+            // generate mips
+            Pass_Ffx_Spd(cmd_list, tex_out);
+
+        }
+        cmd_list->EndTimeblock();
+    }
+
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // acquire shaders
@@ -1041,7 +1098,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric, GetRenderTarget(Renderer_RenderTexture::light_volumetric));
         cmd_list->SetTexture(Renderer_BindingsSrv::frame,            GetRenderTarget(Renderer_RenderTexture::frame_render_post_process)); // refraction
         cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,             GetRenderTarget(Renderer_RenderTexture::ssgi_filtered));
-        cmd_list->SetTexture(Renderer_BindingsSrv::environment,      GetEnvironmentTexture());
+        cmd_list->SetTexture(Renderer_BindingsSrv::environment,      GetRenderTarget(Renderer_RenderTexture::atmospheric_scattering));
 
         // render
         cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
@@ -1082,7 +1139,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::ssr,         GetRenderTarget(Renderer_RenderTexture::ssr));
         cmd_list->SetTexture(Renderer_BindingsSrv::sss,         GetRenderTarget(Renderer_RenderTexture::sss));
         cmd_list->SetTexture(Renderer_BindingsSrv::lutIbl,      GetRenderTarget(Renderer_RenderTexture::brdf_specular_lut));
-        cmd_list->SetTexture(Renderer_BindingsSrv::environment, GetEnvironmentTexture());
+        cmd_list->SetTexture(Renderer_BindingsSrv::environment, GetRenderTarget(Renderer_RenderTexture::atmospheric_scattering));
 
         // set probe textures and data
         if (!probes.empty())

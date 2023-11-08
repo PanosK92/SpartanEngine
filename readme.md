@@ -46,6 +46,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - Frustum culling.
 - Physical light units (intensity from lumens and color from kelvin).
 - Physically based camera.
+- Atmospheric Scattering.
 - GPU-based mip generation (single dispatch).
 - Advanced shadow features with penumbra and colored translucency.
 - Screen space global illumination, reflections, and shadows.
@@ -68,7 +69,6 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - Continue switching to bindless.
 - Continue work on D3D12 (on going and non blocking since Vulkan is there).
 - Skeletal Animation.
-- Atmospheric Scattering.
 - Eye Adaptation.
 - Subsurface scattering.
 - Ray traced reflections & shadows.

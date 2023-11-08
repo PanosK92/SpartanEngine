@@ -37,7 +37,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Transform.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
-#include "../World/Components/Environment.h"
 #include "../World/Components/AudioSource.h"
 #include "../World/Components/ReflectionProbe.h"
 //==============================================
@@ -70,10 +69,6 @@ namespace Spartan
         Math::Vector2 m_resolution_render = Math::Vector2::Zero;
         Math::Vector2 m_resolution_output = Math::Vector2::Zero;
         RHI_Viewport m_viewport           = RHI_Viewport(0, 0, 0, 0);
-
-        // environment texture
-        shared_ptr<RHI_Texture> environment_texture;
-        mutex mutex_environment_texture;
 
         // swapchain
         const uint8_t swap_chain_buffer_count = 2;
@@ -166,7 +161,7 @@ namespace Spartan
             Window::GetHandleSDL(),
             static_cast<uint32_t>(m_resolution_output.x),
             static_cast<uint32_t>(m_resolution_output.y),
-            // Present mode: For v-sync, we could Mailbox for lower latency, but Fifo is always supported, so we'll assume that
+            // present mode: for v-sync, we could mailbox for lower latency, but fifo is always supported, so we'll assume that
             GetOption<bool>(Renderer_Option::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
             swap_chain_buffer_count,
             "renderer"
@@ -175,36 +170,36 @@ namespace Spartan
         // command pool
         m_cmd_pool = RHI_Device::CommandPoolAllocate("renderer", swap_chain->GetObjectId(), RHI_Queue_Type::Graphics);
 
-        // amd fidelityfx suite
+        // fidelityfx suite
         RHI_FidelityFX::Initialize();
 
         // options
         m_options.clear();
-        SetOption(Renderer_Option::DepthPrepass,             1.0f);                                                 // As the default worlds become complex, it's better to have this on
-        SetOption(Renderer_Option::Hdr,                      swap_chain->IsHdr() ? 1.0f : 0.0f);                    // hdr is enabled by default if the swapchain is hdr
-        SetOption(Renderer_Option::Bloom,                    0.05f);                                                // non-zero values activate it and define the blend factor
-        SetOption(Renderer_Option::MotionBlur,               1.0f);                                                 
-        SetOption(Renderer_Option::ScreenSpaceGlobalIllumination,                     1.0f);                                                 
-        SetOption(Renderer_Option::ScreenSpaceShadows,       static_cast<float>(Renderer_ScreenspaceShadow::Bend)); 
-        SetOption(Renderer_Option::ScreenSpaceReflections,   1.0f);                                                 
-        SetOption(Renderer_Option::Anisotropy,               16.0f);                                                
-        SetOption(Renderer_Option::ShadowResolution,         4096.0f);                                              
-        SetOption(Renderer_Option::Tonemapping,              static_cast<float>(Renderer_Tonemapping::Aces));       
-        SetOption(Renderer_Option::Gamma,                    2.2f);                                                 
-        SetOption(Renderer_Option::Exposure,                 1.0f);                                                 
-        SetOption(Renderer_Option::Sharpness,                1.0f);                                                 
-        SetOption(Renderer_Option::Fog,                      1.5f);                                                 
-        SetOption(Renderer_Option::Antialiasing,             static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 2 for taa
-        SetOption(Renderer_Option::Upsampling,               static_cast<float>(Renderer_Upsampling::FSR2));
-        SetOption(Renderer_Option::Vsync,                    0.0f);
-        SetOption(Renderer_Option::Debanding,                0.0f);
-        SetOption(Renderer_Option::Debug_TransformHandle,    1.0f);
-        SetOption(Renderer_Option::Debug_SelectionOutline,   1.0f);
-        SetOption(Renderer_Option::Debug_Grid,               1.0f);
-        SetOption(Renderer_Option::Debug_ReflectionProbes,   1.0f);
-        SetOption(Renderer_Option::Debug_Lights,             1.0f);
-        SetOption(Renderer_Option::Debug_Physics,            0.0f);
-        SetOption(Renderer_Option::Debug_PerformanceMetrics, 1.0f);
+        SetOption(Renderer_Option::DepthPrepass,                  1.0f);                                                 // as the default worlds become complex, it's better to have this on
+        SetOption(Renderer_Option::Hdr,                           swap_chain->IsHdr() ? 1.0f : 0.0f);                    // hdr is enabled by default if the swapchain is hdr
+        SetOption(Renderer_Option::Bloom,                         0.05f);                                                // non-zero values activate it and define the blend factor
+        SetOption(Renderer_Option::MotionBlur,                    1.0f);                                                 
+        SetOption(Renderer_Option::ScreenSpaceGlobalIllumination, 1.0f);                                                 
+        SetOption(Renderer_Option::ScreenSpaceShadows,            static_cast<float>(Renderer_ScreenspaceShadow::Bend)); 
+        SetOption(Renderer_Option::ScreenSpaceReflections,        1.0f);                                                 
+        SetOption(Renderer_Option::Anisotropy,                    16.0f);                                                
+        SetOption(Renderer_Option::ShadowResolution,              4096.0f);                                              
+        SetOption(Renderer_Option::Tonemapping,                   static_cast<float>(Renderer_Tonemapping::Aces));       
+        SetOption(Renderer_Option::Gamma,                         2.2f);                                                 
+        SetOption(Renderer_Option::Exposure,                      1.0f);                                                 
+        SetOption(Renderer_Option::Sharpness,                     1.0f);                                                 
+        SetOption(Renderer_Option::Fog,                           1.5f);                                                 
+        SetOption(Renderer_Option::Antialiasing,                  static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 2 for taa
+        SetOption(Renderer_Option::Upsampling,                    static_cast<float>(Renderer_Upsampling::FSR2));
+        SetOption(Renderer_Option::Vsync,                         0.0f);
+        SetOption(Renderer_Option::Debanding,                     0.0f);
+        SetOption(Renderer_Option::Debug_TransformHandle,         1.0f);
+        SetOption(Renderer_Option::Debug_SelectionOutline,        1.0f);
+        SetOption(Renderer_Option::Debug_Grid,                    1.0f);
+        SetOption(Renderer_Option::Debug_ReflectionProbes,        1.0f);
+        SetOption(Renderer_Option::Debug_Lights,                  1.0f);
+        SetOption(Renderer_Option::Debug_Physics,                 0.0f);
+        SetOption(Renderer_Option::Debug_PerformanceMetrics,      1.0f);
 
         // resources
         CreateConstantBuffers();
@@ -235,7 +230,7 @@ namespace Spartan
     {
         SP_FIRE_EVENT(EventType::RendererOnShutdown);
 
-        // Manually invoke the deconstructors so that ParseDeletionQueue(), releases their RHI resources.
+        // manually invoke the deconstructors so that ParseDeletionQueue(), releases their rhi resources.
         {
             DestroyResources();
 
@@ -243,7 +238,6 @@ namespace Spartan
             m_renderables.clear();
             swap_chain            = nullptr;
             m_vertex_buffer_lines = nullptr;
-            environment_texture   = nullptr;
         }
 
         RenderDoc::Shutdown();
@@ -499,11 +493,6 @@ namespace Spartan
         }
     }
 
-    void Renderer::PushPassConstants(RHI_CommandList* cmd_list)
-    {
-        cmd_list->PushConstants(0, sizeof(Pcb_Pass), &m_cb_pass_cpu);
-    }
-
     void Renderer::UpdateConstantBufferLight(RHI_CommandList* cmd_list, shared_ptr<Light> light)
     {
         if (RHI_Texture* texture = light->GetDepthTexture())
@@ -574,6 +563,11 @@ namespace Spartan
 
         GetConstantBuffer(Renderer_ConstantBuffer::Material)->Update(&m_cb_material_cpu);
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::material, GetConstantBuffer(Renderer_ConstantBuffer::Material));
+    }
+
+    void Renderer::PushPassConstants(RHI_CommandList* cmd_list)
+    {
+        cmd_list->PushConstants(0, sizeof(Pcb_Pass), &m_cb_pass_cpu);
     }
 
 	void Renderer::OnWorldResolved(sp_variant data)
@@ -712,17 +706,6 @@ namespace Spartan
     void Renderer::OnFrameEnd(RHI_CommandList* cmd_list)
     {
         Lines_OnFrameEnd();
-    }
-
-    const shared_ptr<RHI_Texture> Renderer::GetEnvironmentTexture()
-    {
-        return environment_texture ? environment_texture : GetStandardTexture(Renderer_StandardTexture::Black);
-    }
-
-    void Renderer::SetEnvironment(Environment* environment)
-    {
-        lock_guard lock(mutex_environment_texture);
-        environment_texture = environment->GetTexture();
     }
 
 	void Renderer::DrawString(const string& text, const Vector2& position_screen_percentage)

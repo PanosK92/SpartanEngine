@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Light.h"
 #include "Components/Renderable.h"
 #include "Components/PhysicsBody.h"
-#include "Components/Environment.h"
 #include "Components/AudioSource.h"
 #include "Components/AudioListener.h"
 #include "Components/Terrain.h"
@@ -309,7 +308,6 @@ namespace Spartan
             case ComponentType::Light:           component = static_pointer_cast<Component>(AddComponent<Light>());           break;
             case ComponentType::Renderable:      component = static_pointer_cast<Component>(AddComponent<Renderable>());      break;
             case ComponentType::PhysicsBody:     component = static_pointer_cast<Component>(AddComponent<PhysicsBody>());     break;
-            case ComponentType::Environment:     component = static_pointer_cast<Component>(AddComponent<Environment>());     break;
             case ComponentType::Transform:       component = static_pointer_cast<Component>(AddComponent<Transform>());       break;
             case ComponentType::Terrain:         component = static_pointer_cast<Component>(AddComponent<Terrain>());         break;
             case ComponentType::ReflectionProbe: component = static_pointer_cast<Component>(AddComponent<ReflectionProbe>()); break;

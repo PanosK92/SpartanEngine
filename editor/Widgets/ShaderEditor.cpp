@@ -173,7 +173,7 @@ void ShaderEditor::ShowControls()
 {
     if (ImGui::BeginChild("##shader_editor_controls", ImVec2(0.0f, 0.0f), true, ImGuiWindowFlags_NoScrollbar))
     {
-        // Compile button
+        // compile button
         if (ImGuiSp::button("Compile"))
         {
             if (m_index_displayed != -1)
