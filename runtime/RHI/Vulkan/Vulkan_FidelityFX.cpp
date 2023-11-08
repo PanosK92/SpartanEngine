@@ -214,9 +214,9 @@ namespace Spartan
     void RHI_FidelityFX::FSR2_GenerateJitterSample(float* x, float* y)
     {
         // get jitter phase count
-        uint32_t resolution_render_x     = static_cast<uint32_t>(fsr2_context_description.maxRenderSize.width);
-        uint32_t resolution_render_y     = static_cast<uint32_t>(fsr2_context_description.maxRenderSize.height);
-        const int32_t jitter_phase_count = ffxFsr2GetJitterPhaseCount(resolution_render_x, resolution_render_x);
+        const uint32_t resolution_render_x = static_cast<uint32_t>(fsr2_context_description.maxRenderSize.width);
+        const uint32_t resolution_render_y = static_cast<uint32_t>(fsr2_context_description.maxRenderSize.height);
+        const int32_t jitter_phase_count   = ffxFsr2GetJitterPhaseCount(resolution_render_x, resolution_render_x);
 
         // ensure fsr2_jitter_index is properly wrapped around the jitter_phase_count
         fsr2_jitter_index = (fsr2_jitter_index + 1) % jitter_phase_count;

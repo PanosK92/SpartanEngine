@@ -41,7 +41,6 @@ namespace Spartan
     class Entity;
     class Camera;
     class Light;
-    class Environment;
     namespace Math
     {
         class BoundingBox;
@@ -102,12 +101,7 @@ namespace Spartan
         static const Math::Vector2& GetResolutionOutput();
         static void SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources = true);
         //===============================================================================================
-
-        //= ENVIRONMENT ==================================================
-        static const std::shared_ptr<RHI_Texture> GetEnvironmentTexture();
-        static void SetEnvironment(Environment* environment);
-        //================================================================
-
+        // 
         //= RHI RESOURCES====================
         static RHI_CommandList* GetCmdList();
         //===================================
@@ -139,9 +133,9 @@ namespace Spartan
     private:
         // constant buffers
         static void UpdateConstantBufferFrame(RHI_CommandList* cmd_list, const bool set = true);
-        static void PushPassConstants(RHI_CommandList* cmd_list);
         static void UpdateConstantBufferLight(RHI_CommandList* cmd_list, const std::shared_ptr<Light> light);
         static void UpdateConstantBufferMaterial(RHI_CommandList* cmd_list, Material* material);
+        static void PushPassConstants(RHI_CommandList* cmd_list);
 
         // resource creation
         static void CreateConstantBuffers();
@@ -165,6 +159,7 @@ namespace Spartan
         static void Pass_Ssgi(RHI_CommandList* cmd_list);
         static void Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool is_transparent_pass = false);
         static void Pass_Sss_Bend(RHI_CommandList* cmd_list);
+        static void Pass_AtmosphericScattering(RHI_CommandList* cmd_list);
         static void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
         static void Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float radius, const float sigma, const uint32_t mip = rhi_all_mips);
         // passes - debug/editor

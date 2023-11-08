@@ -35,7 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
 #include "World/Components/AudioListener.h"
-#include "World/Components/Environment.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/ReflectionProbe.h"
 #include "Rendering/Mesh.h"
@@ -158,7 +157,6 @@ void Properties::OnTickVisible()
         ShowLight(entity_ptr->GetComponent<Light>());
         ShowCamera(entity_ptr->GetComponent<Camera>());
         ShowTerrain(entity_ptr->GetComponent<Terrain>());
-        ShowEnvironment(entity_ptr->GetComponent<Environment>());
         ShowAudioSource(entity_ptr->GetComponent<AudioSource>());
         ShowAudioListener(entity_ptr->GetComponent<AudioListener>());
         ShowReflectionProbe(entity_ptr->GetComponent<ReflectionProbe>());
@@ -295,7 +293,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
 
             // lumens
             ImGui::SameLine();
-            ImGuiSp::draw_float_wrap("lm", &intensity, 1.0f, 5.0f, 120000.0f);
+            ImGuiSp::draw_float_wrap("lm", &intensity, 10.0f, 0.0f, 120000.0f);
             ImGuiSp::tooltip("Intensity expressed in lumens");
         }
 
@@ -882,20 +880,6 @@ void Properties::ShowCamera(shared_ptr<Camera> camera) const
     component_end();
 }
 
-void Properties::ShowEnvironment(shared_ptr<Environment> environment) const
-{
-    if (!environment)
-        return;
-
-    if (component_begin("Environment", IconType::Component_Environment, environment))
-    {
-        ImGui::Text("Sphere Map");
-
-        ImGuiSp::image_slot(environment->GetTexture(), [&environment](const shared_ptr<RHI_Texture>& texture) { environment->SetTexture(texture); } );
-    }
-    component_end();
-}
-
 void Properties::ShowTerrain(shared_ptr<Terrain> terrain) const
 {
     if (!terrain)
@@ -1172,17 +1156,6 @@ void Properties::ComponentContextMenu_Add() const
                 else if (ImGui::MenuItem("Audio Listener"))
                 {
                     entity->AddComponent<AudioListener>();
-                }
-
-                ImGui::EndMenu();
-            }
-
-            // ENVIRONMENT
-            if (ImGui::BeginMenu("Environment"))
-            {
-                if (ImGui::MenuItem("Environment"))
-                {
-                    entity->AddComponent<Environment>();
                 }
 
                 ImGui::EndMenu();

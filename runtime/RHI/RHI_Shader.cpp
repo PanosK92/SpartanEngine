@@ -90,6 +90,10 @@ namespace Spartan
 
     void RHI_Shader::Compile(const RHI_Shader_Stage shader_type, const string& file_path, bool async, const RHI_Vertex_Type vertex_type)
     {
+        // clear in case of re-compilation
+        m_descriptors.clear();
+        m_input_layout = nullptr;
+
         m_shader_type = shader_type;
         m_vertex_type = vertex_type;
         if (m_shader_type == RHI_Shader_Vertex)

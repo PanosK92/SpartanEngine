@@ -45,7 +45,6 @@ namespace Spartan
         Light,
         Renderable,
         PhysicsBody,
-        Environment,
         Transform,
         Terrain,
         ReflectionProbe,

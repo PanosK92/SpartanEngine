@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Transform.h"
 #include "Components/Camera.h"
 #include "Components/Light.h"
-#include "Components/Environment.h"
 #include "Components/AudioListener.h"
 #include "Components/AudioSource.h"
 #include "Components/PhysicsBody.h"
@@ -78,13 +77,6 @@ namespace Spartan
             const bool load_floor                = true
         )
         {
-            // environment
-            {
-                m_default_environment = World::CreateEntity();
-                m_default_environment->SetObjectName("environment");
-                m_default_environment->AddComponent<Environment>();
-            }
-
             // camera
             {
                 // create the camera's root (which will be used for movement)
@@ -120,7 +112,7 @@ namespace Spartan
 
                 shared_ptr<Light> light = entity->AddComponent<Light>();
                 light->SetLightType(LightType::Directional);
-                light->SetTemperature(1400.0f);
+                light->SetTemperature(2300.0f);
                 light->SetIntensity(sun_intensity);
                 light->SetShadowsEnabled(shadows_enabled ? (light->GetIntensityLumens() > 0.0f) : false);
             }
@@ -802,12 +794,6 @@ namespace Spartan
         Vector3 camera_position = Vector3(8.7844f, 2.0f, -4.1412f);
         Vector3 camera_rotation = Vector3(7.4f, -65.5f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\riders_on_the_storm_fredwreck_remix.mp3");
-
-        // environment
-        {
-            m_default_environment->GetComponent<Environment>()->SetFromTextureSphere("project\\environment\\kloppenheim_05_4k.hdr");
-        }
-
         create_default_car();
 
         Engine::AddFlag(EngineMode::Game);

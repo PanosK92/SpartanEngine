@@ -106,13 +106,12 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (early_exit_1 || early_exit_2 || early_exit_3)
         return;
 
-    float4 color = float4(0.0f, 0.0f, 0.0f, surface.alpha); // maintain surface alpha, crucial for FSR
+    float4 color = float4(0.0f, 0.0f, 0.0f, surface.alpha); // maintain surface alpha, in case FSR benefits when generating the masks
 
     // sky
     if (surface.is_sky()) 
     {
         color.rgb += tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(surface.camera_to_pixel), 0).rgb;
-        color.rgb *= saturate(buffer_light.intensity); // modulate it's intensity in order to fake day/night.
     }
     else // anything else
     {
@@ -130,13 +129,13 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         }
         
         // compose
-        float3 light_ds = (light_diffuse + surface.gi) * surface.albedo + light_specular;
-        color.rgb       = lerp(light_ds, light_refraction, 1.0f - surface.alpha);
+        float3 light = (light_diffuse + surface.gi) * surface.albedo + light_specular;
+        color.rgb    = lerp(light, light_refraction, 1.0f - surface.alpha);
     }
 
     // fog
-    color.rgb += get_fog_factor(surface.position, buffer_frame.camera_position.xyz); // standard
-    color.rgb += tex_light_volumetric[thread_id.xy].rgb; // volumetric
+    //color.rgb += get_fog_factor(surface.position, buffer_frame.camera_position.xyz) * buffer_light.intensity; // standard
+    //color.rgb += tex_light_volumetric[thread_id.xy].rgb; // volumetric
 
     tex_uav[thread_id.xy] = saturate_16(color);
 }
