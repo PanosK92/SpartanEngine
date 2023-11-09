@@ -211,9 +211,6 @@ namespace Spartan
             render_target(Renderer_RenderTexture::light_specular_transparent) = make_unique<RHI_Texture2D>(width_render, height_render, 1, light_format, light_flags, "rt_light_specular_transparent");
             render_target(Renderer_RenderTexture::light_volumetric)           = make_unique<RHI_Texture2D>(width_render, height_render, 1, light_format, light_flags, "rt_light_volumetric");
 
-            // atmospheric scattering
-            render_target(Renderer_RenderTexture::atmospheric_scattering) = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_atmospheric_scattering");
-
             // ssr - mips are used to emulate roughness for surfaces which require it
             render_target(Renderer_RenderTexture::ssr) = make_shared<RHI_Texture2D>(width_render, height_render, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_ssr");
 
@@ -247,8 +244,12 @@ namespace Spartan
         // fixed resolution
         if (create_fixed)
         {
+            // brdf
             render_target(Renderer_RenderTexture::brdf_specular_lut) = make_unique<RHI_Texture2D>(400, 400, 1, RHI_Format::R8G8_Unorm, RHI_Texture_Uav | RHI_Texture_Srv, "rt_brdf_specular_lut");
             m_brdf_specular_lut_rendered = false;
+
+            // atmospheric scattering
+            render_target(Renderer_RenderTexture::atmospheric_scattering) = make_unique<RHI_Texture2D>(3840, 2160, mip_count, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_atmospheric_scattering");
         }
 
         // dynamic resolution

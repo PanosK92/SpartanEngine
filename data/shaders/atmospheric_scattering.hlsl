@@ -52,7 +52,7 @@ float3 compute_star_color(float3 view_direction, float3 sun_direction, float tim
 {
     float probability   = 8.0f;
     float exposure      = 200.0f;
-    float flicker_speed = 0.3f;
+    float flicker_speed = 0.35f;
 
     float stars_noise  = pow(clamp(noise(view_direction * 200.0f), 0.0f, 1.0f), probability) * exposure;
     stars_noise       *= lerp(0.4, 1.4, noise(view_direction * 100.0f + time * flicker_speed));
@@ -113,7 +113,7 @@ float3 compute_mie_scatter_color(float3 view_dir, float3 sun_dir)
     float sun_angle = saturate(1.0f - dot(sun_dir, up_dir)); // 0 at horizon, 1 at zenith
 
     // color shift towards orange/red at the horizon
-    float3 horizon_color = float3(1.0, 0.5, 0.0); // example orange color, you should tune this
+    float3 horizon_color = float3(1.0, 0.5, 0.0); // orange color
     float3 mie_color     = lerp(1.0f, horizon_color, sun_angle); // white color when sun is high
 
     return mie_color * mie_scatter;
