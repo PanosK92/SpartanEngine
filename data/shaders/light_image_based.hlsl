@@ -89,12 +89,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     if (early_exit_1 || early_exit_2 || early_exit_3)
         discard;
 
-    // try to compute some sort of ambient light that makes sense
-    float3 light_ambient = 1.0f;
-    {
-        light_ambient = buffer_light.intensity * 0.08f * surface.occlusion;
-    }
-    
     // compute specular energy
     const float n_dot_v          = saturate(dot(-surface.camera_to_pixel, surface.normal));
     const float3 F               = F_Schlick_Roughness(surface.F0, n_dot_v, surface.roughness);
@@ -103,13 +97,13 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
     // IBL - Diffuse
     float3 diffuse_energy = compute_diffuse_energy(specular_energy, surface.metallic); // Used to town down diffuse such as that only non metals have it
-    float3 ibl_diffuse    = sample_environment(direction_sphere_uv(surface.normal), ENVIRONMENT_MAX_MIP) * surface.albedo.rgb * light_ambient * diffuse_energy;
+    float3 ibl_diffuse    = sample_environment(direction_sphere_uv(surface.normal), ENVIRONMENT_MAX_MIP) * surface.albedo.rgb * diffuse_energy;
 
     // IBL - Specular
     const float3 reflection            = reflect(surface.camera_to_pixel, surface.normal);
     float3 dominant_specular_direction = get_dominant_specular_direction(surface.normal, reflection, surface.roughness);
     float mip_level                    = lerp(0, ENVIRONMENT_MAX_MIP, surface.roughness);
-    float3 ibl_specular_environment    = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level) * light_ambient;
+    float3 ibl_specular_environment    = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level);
     
     // get ssr color
     float ssr_mip_count     = pass_get_f4_value().y;
