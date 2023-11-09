@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-float3 compute_rayleigh_scatter_color(float3 view_dir, float3 sun_dir, float3 position)
+float3 compute_rayleigh_scatter_color(float3 view_dir, float3 sun_dir, float3 position, float brightness)
 {
     // constants
     const float3 rayleigh_beta    = float3(5.8e-6, 13.5e-6, 33.1e-6);
@@ -51,7 +51,7 @@ float3 compute_rayleigh_scatter_color(float3 view_dir, float3 sun_dir, float3 po
     float3 horizon_color    = float3(1.0, 0.5, 0.0); // example orange color
     float3 adjusted_scatter = lerp(scatter, scatter * horizon_color, sun_angle) * (1.0f - sun_angle);
 
-    return adjusted_scatter;
+    return adjusted_scatter * brightness * 0.2f;
 }
 
 float3 compute_mie_scatter_color(float3 view_dir, float3 sun_dir, float brightness)
@@ -92,7 +92,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float3 view_direction = normalize(float3(sin(theta) * cos(phi), cos(theta), sin(theta) * sin(phi)));
 
     // rayleigh scatter - this is the actual atmospheric color
-    float3 rayleigh_color = compute_rayleigh_scatter_color(view_direction, buffer_light.direction, buffer_frame.camera_position);
+    float3 rayleigh_color = compute_rayleigh_scatter_color(view_direction, buffer_light.direction, buffer_frame.camera_position, buffer_light.intensity);
 
     // mie scatter - this is the sun disc and the directional light coming from that disc
     float3 mie_color = compute_mie_scatter_color(view_direction, buffer_light.direction, buffer_light.intensity);
