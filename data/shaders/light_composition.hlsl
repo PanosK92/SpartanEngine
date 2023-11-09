@@ -134,7 +134,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     }
 
     // fog
-    //color.rgb += get_fog_factor(surface.position, buffer_frame.camera_position.xyz) * buffer_light.intensity; // standard
+    color.rgb += get_fog_factor(surface.position, buffer_frame.camera_position.xyz) * buffer_light.intensity; // standard
     //color.rgb += tex_light_volumetric[thread_id.xy].rgb; // volumetric
 
     tex_uav[thread_id.xy] = saturate_16(color);
