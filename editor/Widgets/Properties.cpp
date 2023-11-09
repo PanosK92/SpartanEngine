@@ -810,7 +810,7 @@ void Properties::ShowCamera(shared_ptr<Camera> camera) const
 
     if (component_begin("Camera", IconType::Component_Camera, camera))
     {
-        //= REFLECT ====================================================================
+        //= REFLECT ===============================================================
         static vector<string> projection_types = { "Perspective", "Orthographic" };
         float aperture                         = camera->GetAperture();
         float shutter_speed                    = camera->GetShutterSpeed();
@@ -819,8 +819,7 @@ void Properties::ShowCamera(shared_ptr<Camera> camera) const
         float near_plane                       = camera->GetNearPlane();
         float far_plane                        = camera->GetFarPlane();
         bool first_person_control_enabled      = camera->GetIsControlEnabled();
-        m_colorPicker_camera->SetColor(camera->GetClearColor());
-        //==============================================================================
+        //=========================================================================
 
         const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
 
@@ -866,16 +865,15 @@ void Properties::ShowCamera(shared_ptr<Camera> camera) const
         ImGui::SameLine(column_pos_x); ImGui::Checkbox("##camera_first_person_control", &first_person_control_enabled);
         ImGuiSp::tooltip("Enables first person control while holding down the right mouse button (or when a controller is connected)");
 
-        //= MAP =======================================================================================================================================
-        if (aperture != camera->GetAperture())                                      camera->SetAperture(aperture);
-        if (shutter_speed != camera->GetShutterSpeed())                             camera->SetShutterSpeed(shutter_speed);
-        if (iso != camera->GetIso())                                                camera->SetIso(iso);
-        if (fov != camera->GetFovHorizontalDeg())                                   camera->SetFovHorizontalDeg(fov);
-        if (near_plane != camera->GetNearPlane())                                   camera->SetNearPlane(near_plane);
-        if (far_plane != camera->GetFarPlane())                                     camera->SetFarPlane(far_plane);
+        //= MAP =====================================================================================================================
+        if (aperture != camera->GetAperture())                             camera->SetAperture(aperture);
+        if (shutter_speed != camera->GetShutterSpeed())                    camera->SetShutterSpeed(shutter_speed);
+        if (iso != camera->GetIso())                                       camera->SetIso(iso);
+        if (fov != camera->GetFovHorizontalDeg())                          camera->SetFovHorizontalDeg(fov);
+        if (near_plane != camera->GetNearPlane())                          camera->SetNearPlane(near_plane);
+        if (far_plane != camera->GetFarPlane())                            camera->SetFarPlane(far_plane);
         if (first_person_control_enabled != camera->GetIsControlEnabled()) camera->SetIsControlEnalbed(first_person_control_enabled);
-        if (m_colorPicker_camera->GetColor() != camera->GetClearColor())            camera->SetClearColor(m_colorPicker_camera->GetColor());
-        //=============================================================================================================================================
+        //===========================================================================================================================
     }
     component_end();
 }

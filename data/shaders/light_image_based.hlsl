@@ -170,4 +170,3 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     // Perfection achieved
     return float4(ibl, 0.0f);
 }
-
