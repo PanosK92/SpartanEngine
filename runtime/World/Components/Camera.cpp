@@ -90,7 +90,6 @@ namespace Spartan
         stream->Write(m_aperture);
         stream->Write(m_shutter_speed);
         stream->Write(m_iso);
-        stream->Write(m_clear_color);
         stream->Write(uint32_t(m_projection_type));
         stream->Write(m_fov_horizontal_rad);
         stream->Write(m_near_plane);
@@ -102,7 +101,6 @@ namespace Spartan
         stream->Read(&m_aperture);
         stream->Read(&m_shutter_speed);
         stream->Read(&m_iso);
-        stream->Read(&m_clear_color);
         m_projection_type = ProjectionType(stream->ReadAs<uint32_t>());
         stream->Read(&m_fov_horizontal_rad);
         stream->Read(&m_near_plane);

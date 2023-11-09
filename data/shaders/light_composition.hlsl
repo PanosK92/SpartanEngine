@@ -131,11 +131,12 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         // compose
         float3 light = (light_diffuse + surface.gi) * surface.albedo + light_specular;
         color.rgb    = lerp(light, light_refraction, 1.0f - surface.alpha);
-    }
 
-    // fog
-    color.rgb += get_fog_factor(surface.position, buffer_frame.camera_position.xyz) * buffer_light.intensity; // standard
-    //color.rgb += tex_light_volumetric[thread_id.xy].rgb; // volumetric
+        // fog
+        float fog_intensity = luminance(tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(surface.camera_to_pixel), 11));
+        color.rgb += get_fog_factor(surface.position, buffer_frame.camera_position.xyz) * fog_intensity; // standard
+        //color.rgb += tex_light_volumetric[thread_id.xy].rgb; // volumetric
+    }
 
     tex_uav[thread_id.xy] = saturate_16(color);
 }

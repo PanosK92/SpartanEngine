@@ -75,87 +75,79 @@ namespace Spartan
 
         UpdateConstantBufferFrame(cmd_list, false);
 
+        // generate brdf specular lut
+        if (!m_brdf_specular_lut_rendered)
+        {
+            Pass_BrdfSpecularLut(cmd_list);
+            m_brdf_specular_lut_rendered = true;
+        }
+
         if (shared_ptr<Camera> camera = GetCamera())
         { 
-            // if there are no entities, clear to the camera's color
-            if (GetEntities()[Renderer_Entity::Geometry].empty() && GetEntities()[Renderer_Entity::GeometryTransparent].empty() && GetEntities()[Renderer_Entity::Light].empty())
+            // determine if a transparent pass is required
+            const bool do_transparent_pass = !GetEntities()[Renderer_Entity::GeometryTransparent].empty();
+            
+            // shadow maps
             {
-                GetCmdList()->ClearRenderTarget(rt_output, 0, 0, false, camera->GetClearColor());
+                Pass_ShadowMaps(cmd_list, false);
+                if (do_transparent_pass)
+                {
+                    Pass_ShadowMaps(cmd_list, true);
+                }
             }
-            else // render frame
+            
+            Pass_ReflectionProbes(cmd_list);
+            
+            // opaque
             {
-                // generate brdf specular lut
-                if (!m_brdf_specular_lut_rendered)
-                {
-                    Pass_BrdfSpecularLut(cmd_list);
-                    m_brdf_specular_lut_rendered = true;
-                }
-
-                // determine if a transparent pass is required
-                const bool do_transparent_pass = !GetEntities()[Renderer_Entity::GeometryTransparent].empty();
-
-                // shadow maps
-                {
-                    Pass_ShadowMaps(cmd_list, false);
-                    if (do_transparent_pass)
-                    {
-                        Pass_ShadowMaps(cmd_list, true);
-                    }
-                }
-
-                Pass_ReflectionProbes(cmd_list);
-
-                // opaque
-                {
-                    Pass_Depth_Prepass(cmd_list);
-                    Pass_GBuffer(cmd_list);
-                    Pass_AtmosphericScattering(cmd_list);
-                    Pass_Ssgi(cmd_list);
-                    Pass_Ssr(cmd_list, rt_render);
-                    Pass_Sss_Bend(cmd_list);
-                    Pass_Light(cmd_list);                        // compute diffuse and specular buffers
-                    Pass_Light_Composition(cmd_list, rt_render); // compose diffuse, specular, ssgi, volumetric etc.
-                    Pass_Light_ImageBased(cmd_list, rt_render);  // apply IBL and SSR
-
-                    cmd_list->Blit(rt_render, GetRenderTarget(Renderer_RenderTexture::frame_render_fsr2_opaque).get(), false);
-                }
-
-                // transparent
-                {
-                    if (do_transparent_pass) // actual geometry processing
-                    {
-                        // blit the frame so that refraction can sample from it
-                        cmd_list->Copy(rt_render, rt_render_2, true);
-
-                        // generate frame mips so that the reflections can simulate roughness
-                        Pass_Ffx_Spd(cmd_list, rt_render_2);
-
-                        // blur the smaller mips to reduce blockiness/flickering
-                        for (uint32_t i = 1; i < rt_render_2->GetMipCount(); i++)
-                        {
-                            const bool depth_aware = false;
-                            const float radius = 1.0f;
-                            const float sigma = 12.0f;
-                            Pass_Blur_Gaussian(cmd_list, rt_render_2, depth_aware, radius, sigma, i);
-                        }
-
-                        Pass_Depth_Prepass(cmd_list, do_transparent_pass);
-                        Pass_GBuffer(cmd_list, do_transparent_pass);
-                        Pass_Ssr(cmd_list, rt_render, do_transparent_pass);
-                        Pass_Light(cmd_list, do_transparent_pass);
-                        Pass_Light_Composition(cmd_list, rt_render, do_transparent_pass);
-                        Pass_Light_ImageBased(cmd_list, rt_render, do_transparent_pass);
-                    }
-
-                    // debug
-                    Pass_Grid(cmd_list, rt_render);
-                    Pass_Lines(cmd_list, rt_render);
-                    Pass_Outline(cmd_list, rt_render);
-                }
-
-                Pass_PostProcess(cmd_list);
+                Pass_Depth_Prepass(cmd_list);
+                Pass_GBuffer(cmd_list);
+                Pass_AtmosphericScattering(cmd_list);
+                Pass_Ssgi(cmd_list);
+                Pass_Ssr(cmd_list, rt_render);
+                Pass_Sss_Bend(cmd_list);
+                Pass_Light(cmd_list);                        // compute diffuse and specular buffers
+                Pass_Light_Composition(cmd_list, rt_render); // compose diffuse, specular, ssgi, volumetric etc.
+                Pass_Light_ImageBased(cmd_list, rt_render);  // apply IBL and SSR
+            
+                cmd_list->Blit(rt_render, GetRenderTarget(Renderer_RenderTexture::frame_render_fsr2_opaque).get(), false);
             }
-
+            
+            // transparent
+            {
+                if (do_transparent_pass) // actual geometry processing
+                {
+                    // blit the frame so that refraction can sample from it
+                    cmd_list->Copy(rt_render, rt_render_2, true);
+            
+                    // generate frame mips so that the reflections can simulate roughness
+                    Pass_Ffx_Spd(cmd_list, rt_render_2);
+            
+                    // blur the smaller mips to reduce blockiness/flickering
+                    for (uint32_t i = 1; i < rt_render_2->GetMipCount(); i++)
+                    {
+                        const bool depth_aware = false;
+                        const float radius     = 1.0f;
+                        const float sigma      = 12.0f;
+                        Pass_Blur_Gaussian(cmd_list, rt_render_2, depth_aware, radius, sigma, i);
+                    }
+            
+                    Pass_Depth_Prepass(cmd_list, do_transparent_pass);
+                    Pass_GBuffer(cmd_list, do_transparent_pass);
+                    Pass_Ssr(cmd_list, rt_render, do_transparent_pass);
+                    Pass_Light(cmd_list, do_transparent_pass);
+                    Pass_Light_Composition(cmd_list, rt_render, do_transparent_pass);
+                    Pass_Light_ImageBased(cmd_list, rt_render, do_transparent_pass);
+                }
+            
+                // debug
+                Pass_Grid(cmd_list, rt_render);
+                Pass_Lines(cmd_list, rt_render);
+                Pass_Outline(cmd_list, rt_render);
+            }
+            
+            Pass_PostProcess(cmd_list);
+                     
             // editor related stuff - passes that render on top of each other
             Pass_DebugMeshes(cmd_list, rt_output);
             Pass_Icons(cmd_list, rt_output);         
