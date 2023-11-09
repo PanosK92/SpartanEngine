@@ -51,7 +51,7 @@ float3 compute_rayleigh_scatter_color(float3 view_dir, float3 sun_dir, float3 po
     float3 horizon_color    = float3(1.0, 0.5, 0.0); // example orange color
     float3 adjusted_scatter = lerp(scatter, scatter * horizon_color, sun_angle) * (1.0f - sun_angle);
 
-    return adjusted_scatter * brightness * 0.2f;
+    return adjusted_scatter * brightness * 0.05f;
 }
 
 float3 compute_mie_scatter_color(float3 view_dir, float3 sun_dir, float brightness)
