@@ -84,6 +84,7 @@ namespace Spartan
     {
         SP_FIRE_EVENT(EventType::EngineShutdown);
 
+        ScriptEngine::Shutdown();
         ResourceCache::Shutdown();
         World::Shutdown();
         Renderer::Shutdown();
@@ -96,6 +97,7 @@ namespace Spartan
         ImageImporterExporter::Shutdown();
         FontImporter::Shutdown();
         Settings::Shutdown();
+        
     }
 
     void Engine::Tick()
@@ -110,6 +112,7 @@ namespace Spartan
         Physics::Tick();
         World::Tick();
         Renderer::Tick();
+        ScriptEngine::Tick();
 
         // post-tick
         Input::PostTick();

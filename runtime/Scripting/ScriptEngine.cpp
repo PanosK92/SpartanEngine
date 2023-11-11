@@ -1,5 +1,5 @@
 ﻿/*
-Copyright(c) 2016-2023 Nick Polyderopoulos
+Copyright(c) 2023 Nick Polyderopoulos
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -77,6 +77,25 @@ namespace Spartan
         hostfxr_run_app_fn run_app_fptr;
         hostfxr_close_fn close_fptr;
 
+
+        // private fields
+        typedef void (CORECLR_DELEGATE_CALLTYPE* initialize_entry_point_fn)();
+        initialize_entry_point_fn initialize = nullptr;
+
+        typedef void (CORECLR_DELEGATE_CALLTYPE* tick_entry_point_fn)();
+        tick_entry_point_fn tick = nullptr;
+
+        typedef void (CORECLR_DELEGATE_CALLTYPE* shutdown_entry_point_fn)();
+        shutdown_entry_point_fn shutdown = nullptr;
+
+        load_assembly_and_get_function_pointer_fn function_pointer_getter = nullptr;
+
+        // Constants
+        string_t root_path = STR("H:\\Repos\\SpartanEngine\\binaries\\gameplay\\");
+        string_t app_path = root_path + STR("Scripting.SDK.dll");
+        string_t config_path = root_path + STR("Scripting.SDK.runtimeconfig.json");
+        const char_t* dotnet_type = STR("Scripting.SDK.Engine, Scripting.SDK");
+
         // Forward declarations
         bool load_hostfxr(const char_t* app);
         load_assembly_and_get_function_pointer_fn get_dotnet_load_assembly(const char_t* assembly);
@@ -85,82 +104,91 @@ namespace Spartan
 
     void ScriptEngine::Initialize()
     {
-        const string_t app_path = STR("H:\\Repos\\Dotnet-Samples\\core\\hosting\\bin\\Debug\\App.dll");
-
-        if (!load_hostfxr(app_path.c_str()))
+        //
+       // STEP 1: Load HostFxr and get exported hosting functions
+       //
+        if (!load_hostfxr(nullptr))
         {
             SP_ASSERT_MSG(false, "Failure: load_hostfxr()");
-            SP_LOG_ERROR("Failure: load_hostfxr()");
             return;
         }
 
-        // Load .NET Core
-        hostfxr_handle cxt = nullptr;
-        std::vector<const char_t*> args{ app_path.c_str(), STR("app_arg_1"), STR("app_arg_2") };
-        int rc = init_for_cmd_line_fptr(args.size(), args.data(), nullptr, &cxt);
-        if (rc != 0 || cxt == nullptr)
-        {
-            SP_LOG_ERROR("ScriptEngine: Init failed") //<< std::hex << std::showbase << rc << std::endl);
-            close_fptr(cxt);
-            return;
-        }
+        //
+        // STEP 2: Initialize and start the .NET Core runtime
+        //
+        function_pointer_getter = get_dotnet_load_assembly(config_path.c_str());
 
-        // Get the function pointer to get function pointers
-        get_function_pointer_fn get_function_pointer;
-        rc = get_delegate_fptr(
-            cxt,
-            hdt_get_function_pointer,
-            (void**)&get_function_pointer);
-        if (rc != 0 || get_function_pointer == nullptr)
-            std::cerr << "Get delegate failed: " << std::hex << std::showbase << rc << std::endl;
+        SP_ASSERT_MSG(function_pointer_getter != nullptr , "Failure: get_dotnet_load_assembly()");
 
-        // Function pointer to App.IsWaiting
-        typedef unsigned char (CORECLR_DELEGATE_CALLTYPE* is_waiting_fn)();
-        is_waiting_fn is_waiting;
-        rc = get_function_pointer(
-            STR("App, App"),
-            STR("IsWaiting"),
+        //
+        // STEP 3: Load managed assembly and get function pointer to a managed method
+        //
+        
+        
+        //
+        // STEP 4: Run managed code
+        //
+       
+        // UnmanagedCallersOnly
+        int rc = function_pointer_getter(
+            app_path.c_str(),
+            dotnet_type,
+            STR("Initialize") /*method_name*/,
             UNMANAGEDCALLERSONLY_METHOD,
-            nullptr, nullptr, (void**)&is_waiting);
+            nullptr,
+            (void**)&initialize);
 
-        SP_ASSERT_MSG(rc == 0 && is_waiting != nullptr, "Failure: get_function_pointer()");
+        SP_ASSERT_MSG(rc == 0 && initialize != nullptr, "Failure: load_assembly_and_get_function_pointer() initialize");
 
-        // Function pointer to App.Hello
-        typedef void (CORECLR_DELEGATE_CALLTYPE* hello_fn)(const char*);
-        hello_fn hello;
-        rc = get_function_pointer(
-            STR("App, App"),
-            STR("Hello"),
+        // UnmanagedCallersOnly
+        rc = function_pointer_getter(
+            app_path.c_str(),
+            dotnet_type,
+            STR("Tick") /*method_name*/,
             UNMANAGEDCALLERSONLY_METHOD,
-            nullptr, nullptr, (void**)&hello);
+            nullptr,
+            (void**)&tick);
 
-        SP_ASSERT_MSG(rc == 0 && hello != nullptr, "Failure: get_function_pointer()");
+        SP_ASSERT_MSG(rc == 0 && tick != nullptr, "Failure: load_assembly_and_get_function_pointer() tick");
 
-        // Invoke the functions in a different thread from the main app
-        std::thread t([&]
-            {
-                while (is_waiting() != 1)
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        // UnmanagedCallersOnly
+        rc = function_pointer_getter(
+            app_path.c_str(),
+            dotnet_type,
+            STR("Shutdown") /*method_name*/,
+            UNMANAGEDCALLERSONLY_METHOD,
+            nullptr,
+            (void**)&shutdown);
 
-                for (int i = 0; i < 3; ++i)
-                    hello("from host!");
-            });
+        SP_ASSERT_MSG(rc == 0 && shutdown != nullptr, "Failure: load_assembly_and_get_function_pointer() shutdown");
 
-        // Run the app
-        run_app_fptr(cxt);
-        t.join();
+        initialize();
 
-        close_fptr(cxt);
+
+
     }
 
     void ScriptEngine::Shutdown()
     {
-      
+        shutdown();
+
+        // Maybe that will clean up the resources ?
+        initialize = nullptr;
+        tick = nullptr;
+        shutdown = nullptr;
+
+        init_for_cmd_line_fptr = nullptr;
+        init_for_config_fptr = nullptr;
+        get_delegate_fptr = nullptr;
+        run_app_fptr = nullptr;
+        close_fptr = nullptr;
+
+        function_pointer_getter = nullptr;
     }
 
     void ScriptEngine::Tick()
     {
-       
+        tick();
     }
 
     /********************************************************************************************
