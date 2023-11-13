@@ -65,8 +65,8 @@ struct space
     
     static float3 compute_star_color(float3 view_direction, float3 atmosphere_color, float time)
     {
-        float probability = 8.0f;
-        float exposure = 200.0f;
+        float probability   = 8.0f;
+        float exposure      = 200.0f;
         float flicker_speed = 0.35f;
     
         float stars_noise = pow(clamp(noise(view_direction * 200.0f), 0.0f, 1.0f), probability) * exposure;
@@ -81,7 +81,7 @@ struct space
         const float3 base_starlight_color = float3(0.05f, 0.05f, 0.1f); // soft, cool blue-gray tone
         const float3 star_color           = compute_star_color(view_direction, atmosphere_color, time);
 
-        return base_starlight_color + star_color;
+        return base_starlight_color * 0.5f + star_color;
     };
 };
 
