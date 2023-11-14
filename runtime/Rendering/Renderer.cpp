@@ -175,7 +175,6 @@ namespace Spartan
 
         // options
         m_options.clear();
-        SetOption(Renderer_Option::DepthPrepass,                  1.0f);                                                 // as the default worlds become complex, it's better to have this on
         SetOption(Renderer_Option::Hdr,                           swap_chain->IsHdr() ? 1.0f : 0.0f);                    // hdr is enabled by default if the swapchain is hdr
         SetOption(Renderer_Option::Bloom,                         0.05f);                                                // non-zero values activate it and define the blend factor
         SetOption(Renderer_Option::MotionBlur,                    1.0f);                                                 

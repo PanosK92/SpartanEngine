@@ -74,7 +74,6 @@ namespace Spartan
                 case Renderer_Option::FilmGrain:                     return "FilmGrain";
                 case Renderer_Option::ChromaticAberration:           return "ChromaticAberration";
                 case Renderer_Option::Debanding:                     return "Debanding";
-                case Renderer_Option::DepthPrepass:                  return "DepthPrepass";
                 case Renderer_Option::Anisotropy:                    return "Anisotropy";
                 case Renderer_Option::ShadowResolution:              return "ShadowResolution";
                 case Renderer_Option::Gamma:                         return "Gamma";

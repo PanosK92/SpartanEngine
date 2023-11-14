@@ -231,7 +231,6 @@ void RenderOptions::OnTickVisible()
     bool debug_reflection_probes = Renderer::GetOption<bool>(Renderer_Option::Debug_ReflectionProbes);
     bool performance_metrics     = Renderer::GetOption<bool>(Renderer_Option::Debug_PerformanceMetrics);
     bool debug_wireframe         = Renderer::GetOption<bool>(Renderer_Option::Debug_Wireframe);
-    bool do_depth_prepass        = Renderer::GetOption<bool>(Renderer_Option::DepthPrepass);
     int resolution_shadow        = Renderer::GetOption<int>(Renderer_Option::ShadowResolution);
 
     // Present options (with a table)
@@ -397,9 +396,6 @@ void RenderOptions::OnTickVisible()
                 }
             }
 
-            // depth pre pass
-            option_check_box("Depth PrePass", do_depth_prepass);
-
             // performance metrics
             {
                 bool performance_metrics_previous = performance_metrics;
@@ -452,5 +448,4 @@ void RenderOptions::OnTickVisible()
     Renderer::SetOption(Renderer_Option::Debug_ReflectionProbes,        debug_reflection_probes);
     Renderer::SetOption(Renderer_Option::Debug_PerformanceMetrics,      performance_metrics);
     Renderer::SetOption(Renderer_Option::Debug_Wireframe,               debug_wireframe);
-    Renderer::SetOption(Renderer_Option::DepthPrepass,                  do_depth_prepass);
 }
