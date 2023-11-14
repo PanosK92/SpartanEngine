@@ -243,12 +243,8 @@ namespace Spartan
                         pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Light_point_spot).get();
                     }
 
-                    // start render pass
+                    // start pso
                     cmd_list->SetPipelineState(pso);
-                    if (!cmd_list->IsRenderPassActive())
-                    {
-                        cmd_list->BeginRenderPass();
-                    }
 
                     // set light (only needs to be done once for each light)
                     if (array_index == 0)
@@ -308,10 +304,7 @@ namespace Spartan
                         );
                     }
 
-                    if (cmd_list->IsRenderPassActive())
-                    {
-                        cmd_list->EndRenderPass();
-                    }
+                    cmd_list->EndRenderPass();
                 }
             }
         }
@@ -375,9 +368,6 @@ namespace Spartan
 
                 // set pipeline state
                 cmd_list->SetPipelineState(pso);
-
-                // begin render pass
-                cmd_list->BeginRenderPass();
 
                 // compute view projection matrix
                 Matrix view_projection = probe->GetViewMatrix(face_index) * probe->GetProjectionMatrix();
@@ -473,9 +463,8 @@ namespace Spartan
             pso.clear_depth                 = (is_transparent_pass || pso.instancing) ? rhi_depth_load : 0.0f; // reverse-z
             pso.primitive_topology          = RHI_PrimitiveTopology_Mode::TriangleList;
 
-            // begin render pass
+            // set pso
             cmd_list->SetPipelineState(pso);
-            cmd_list->BeginRenderPass();
 
             uint64_t bound_material_id = 0;
             for (shared_ptr<Entity> entity : entities)
@@ -608,9 +597,8 @@ namespace Spartan
             pso.clear_depth                     = rhi_depth_load;
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
-            // begin render pass
+            // set pso
             cmd_list->SetPipelineState(pso);
-            cmd_list->BeginRenderPass();
 
             uint64_t bound_material_id = 0;
             for (shared_ptr<Entity> entity : entities)
@@ -1155,7 +1143,6 @@ namespace Spartan
         }
 
         // render
-        cmd_list->BeginRenderPass();
         {
             cmd_list->Draw(3, 0);
             cmd_list->EndRenderPass();
@@ -1930,8 +1917,7 @@ namespace Spartan
         // set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        bool render_pass_started = false;
-        auto draw_icon = [&cmd_list, &render_pass_started](Transform* transform, RHI_Texture* texture)
+        auto draw_icon = [&cmd_list](Transform* transform, RHI_Texture* texture)
         {
             const Vector3 pos_world        = transform->GetPosition();
             const Vector3 pos_world_camera = GetCamera()->GetTransform()->GetPosition();
@@ -1941,12 +1927,6 @@ namespace Spartan
             // only draw if it's inside our view
             if (v_dot_l > 0.5f)
             {
-                if (!render_pass_started)
-                {
-                    cmd_list->BeginRenderPass();
-                    render_pass_started = true;
-                }
-
                 // compute transform
                 {
                     // Use the distance from the camera to scale the icon, this will
@@ -1997,11 +1977,7 @@ namespace Spartan
             draw_icon(entity->GetTransform().get(), texture);
         }
 
-        if (render_pass_started)
-        {
-            cmd_list->EndRenderPass();
-        }
-
+        cmd_list->EndRenderPass();
         cmd_list->EndTimeblock();
     }
 
@@ -2030,7 +2006,6 @@ namespace Spartan
         // draw
         cmd_list->BeginTimeblock("grid");
         cmd_list->SetPipelineState(pso);
-        cmd_list->BeginRenderPass();
 
         // set transform
         {
@@ -2114,7 +2089,6 @@ namespace Spartan
                     pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
 
                     cmd_list->SetPipelineState(pso);
-                    cmd_list->BeginRenderPass();
                     cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
                     cmd_list->Draw(m_lines_index_depth_off + 1);
                     cmd_list->EndRenderPass();
@@ -2131,7 +2105,6 @@ namespace Spartan
                     pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
 
                     cmd_list->SetPipelineState(pso);
-                    cmd_list->BeginRenderPass();
                     cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
                     cmd_list->Draw((m_lines_index_depth_on - (vertex_count / 2)) + 1, vertex_count / 2);
                     cmd_list->EndRenderPass();
@@ -2172,11 +2145,10 @@ namespace Spartan
         pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
-        // Set pipeline state
+        // set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // Render
-        cmd_list->BeginRenderPass();
+        // render
         {
             cmd_list->SetBufferVertex(GetStandardMesh(Renderer_MeshType::Sphere)->GetVertexBuffer());
             cmd_list->SetBufferIndex(GetStandardMesh(Renderer_MeshType::Sphere)->GetIndexBuffer());
@@ -2243,11 +2215,10 @@ namespace Spartan
                                     pso.clear_color[0]                  = clear_color;
                                     pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
-                                    // Set pipeline state
+                                    // set pipeline state
                                     cmd_list->SetPipelineState(pso);
 
-                                    // Render
-                                    cmd_list->BeginRenderPass();
+                                    // render
                                     {
                                         // push draw data
                                         m_cb_pass_cpu.set_f4_value(debug_color);
@@ -2337,7 +2308,6 @@ namespace Spartan
         {
             cmd_list->BeginTimeblock("outline");
             cmd_list->SetPipelineState(pso);
-            cmd_list->BeginRenderPass();
             {
                 // set pass constants
                 m_cb_pass_cpu.set_resolution_out(tex_out);
@@ -2357,7 +2327,6 @@ namespace Spartan
         {
             cmd_list->BeginTimeblock("inline");
             cmd_list->SetPipelineState(pso);
-            cmd_list->BeginRenderPass();
             {
                 // set pass constants
                 m_cb_pass_cpu.set_resolution_out(tex_out);
