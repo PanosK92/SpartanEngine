@@ -28,17 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Transform.h"
 #include "Components/Camera.h"
 #include "Components/Light.h"
-#include "Components/AudioListener.h"
-#include "Components/AudioSource.h"
-#include "Components/PhysicsBody.h"
-#include "Components/Terrain.h"
-#include "../Resource/ResourceCache.h"
-#include "../IO/FileStream.h"
-#include "../Profiling/Profiler.h"
-#include "../Physics/Car.h"
-#include "../RHI/RHI_Texture2D.h"
-#include "../Rendering/Mesh.h"
-#include "../Rendering/Renderer.h"
 //==========================
 
 namespace Spartan
