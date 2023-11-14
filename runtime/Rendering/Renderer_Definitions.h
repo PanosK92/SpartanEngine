@@ -54,7 +54,6 @@ namespace Spartan
         FilmGrain,
         ChromaticAberration,
         Debanding,
-        DepthPrepass,
         Anisotropy,
         ShadowResolution,
         Gamma,

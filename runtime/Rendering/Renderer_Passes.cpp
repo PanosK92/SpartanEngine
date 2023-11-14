@@ -441,9 +441,6 @@ namespace Spartan
 
     void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
-        if (!GetOption<bool>(Renderer_Option::DepthPrepass))
-            return;
-
         // acquire shaders
         RHI_Shader* shader_v           = GetShader(Renderer_Shader::depth_prepass_v).get();
         RHI_Shader* shader_instanced_v = GetShader(Renderer_Shader::depth_prepass_instanced_v).get();
@@ -570,15 +567,10 @@ namespace Spartan
         // blit, don't alternate between velocity and velocity previous, this is because FSR needs to rely on velocity to be the latest
         cmd_list->Blit(tex_velocity, GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity_previous).get(), false);
 
-        bool depth_prepass = GetOption<bool>(Renderer_Option::DepthPrepass);
-        bool wireframe     = GetOption<bool>(Renderer_Option::Debug_Wireframe);
-
         // deduce rasterizer state
+        bool wireframe                        = GetOption<bool>(Renderer_Option::Debug_Wireframe);
         RHI_RasterizerState* rasterizer_state = is_transparent_pass ? GetRasterizerState(Renderer_RasterizerState::Solid_cull_none).get() : GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
         rasterizer_state                      = wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe_cull_none).get() : rasterizer_state;
-
-        // deduce depth-stencil state
-        RHI_DepthStencilState* depth_stencil_state = depth_prepass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
 
         uint32_t start_index = !is_transparent_pass ? 0 : 2;
         uint32_t end_index   = !is_transparent_pass ? 2 : 4;
@@ -601,7 +593,7 @@ namespace Spartan
             pso.shader_vertex                   = pso.instancing ? shader_v_instanced : shader_v;
             pso.blend_state                     = GetBlendState(Renderer_BlendState::Disabled).get();
             pso.rasterizer_state                = rasterizer_state;
-            pso.depth_stencil_state             = depth_stencil_state;
+            pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
             pso.render_target_color_textures[0] = tex_color;
             pso.clear_color[0]                  = (!is_first_pass || pso.instancing || is_transparent_pass) ? rhi_color_load : Color::standard_transparent;
             pso.render_target_color_textures[1] = tex_normal;
@@ -613,7 +605,7 @@ namespace Spartan
             pso.render_target_color_textures[4] = tex_velocity;
             pso.clear_color[4]                  = pso.clear_color[0];
             pso.render_target_depth_texture     = tex_depth;
-            pso.clear_depth                     = (!is_first_pass || depth_prepass) ? rhi_depth_load : 0.0f; // reverse-z
+            pso.clear_depth                     = rhi_depth_load;
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
             // begin render pass
