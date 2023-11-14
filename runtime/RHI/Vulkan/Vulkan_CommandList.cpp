@@ -438,7 +438,7 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT_MSG(m_pso.IsGraphics(), "You can't use a render pass with a compute pipeline");
-        SP_ASSERT_MSG(!m_is_rendering, "The command list is already rendering");
+        SP_ASSERT_MSG(!m_is_render_pass_active, "The command list is already rendering");
 
         if (!m_pso.IsGraphics())
             return;
@@ -556,15 +556,15 @@ namespace Spartan
         );
         SetViewport(viewport);
 
-        m_is_rendering = true;
+        m_is_render_pass_active = true;
     }
 
     void RHI_CommandList::EndRenderPass()
     {
-        if (m_is_rendering)
+        if (m_is_render_pass_active)
         {
             vkCmdEndRendering(static_cast<VkCommandBuffer>(m_rhi_resource));
-            m_is_rendering = false;
+            m_is_render_pass_active = false;
         }
 
         if (m_pso.render_target_swapchain)
@@ -1187,7 +1187,7 @@ namespace Spartan
             // Transition
             if (transition_required)
             {
-                SP_ASSERT(!m_is_rendering && "Can't transition to a different layout while rendering");
+                SP_ASSERT(!m_is_render_pass_active && "Can't transition to a different layout while rendering");
                 texture->SetLayout(target_layout, this, mip_index, mip_range);
             }
         }
@@ -1312,6 +1312,11 @@ namespace Spartan
     void RHI_CommandList::OnDraw()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        if (!m_is_render_pass_active && m_pso.IsGraphics())
+        {
+            BeginRenderPass();
+        }
 
         Renderer::SetGlobalShaderResources(this);
 

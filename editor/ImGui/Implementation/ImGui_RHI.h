@@ -315,7 +315,6 @@ namespace ImGui::RHI
         cmd_list->SetBufferVertex(vertex_buffer);
         cmd_list->SetBufferIndex(index_buffer);
         cmd_list->SetPipelineState(pso);
-        cmd_list->BeginRenderPass();
 
         // render
         {

@@ -54,10 +54,7 @@ namespace Spartan
         void End();
         void Submit();
         void WaitForExecution();
-
-        // Render pass
         void SetPipelineState(RHI_PipelineState& pso);
-        void BeginRenderPass();
         void EndRenderPass();
 
         // Clear
@@ -146,10 +143,10 @@ namespace Spartan
         // Misc
         RHI_Semaphore* GetSemaphoreProccessed() { return m_proccessed_semaphore.get(); }
         void* GetRhiResource() const { return m_rhi_resource; }
-        bool IsRenderPassActive() const { return m_is_rendering; }
 
     private:
         void OnDraw();
+        void BeginRenderPass();
 
         // Sync
         std::shared_ptr<RHI_Fence> m_proccessed_fence;
@@ -167,7 +164,7 @@ namespace Spartan
 
         // Misc
         RHI_Pipeline* m_pipeline                             = nullptr;
-        bool m_is_rendering                                  = false;
+        bool m_is_render_pass_active                                  = false;
         bool m_pipeline_dirty                                = false;
         static const uint8_t m_resource_array_length_max     = 16;
         RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
