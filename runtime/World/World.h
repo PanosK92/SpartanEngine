@@ -24,6 +24,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============
 #include "Definitions.h"
 #include "../Math/Vector3.h"
+#include "Entity.h"
+#include "Components/Transform.h"
+#include "Components/Camera.h"
+#include "Components/Light.h"
+#include "Components/AudioListener.h"
+#include "Components/AudioSource.h"
+#include "Components/PhysicsBody.h"
+#include "Components/Terrain.h"
+#include "../Resource/ResourceCache.h"
+#include "../IO/FileStream.h"
+#include "../Profiling/Profiler.h"
+#include "../Physics/Car.h"
+#include "../RHI/RHI_Texture2D.h"
+#include "../Rendering/Mesh.h"
+#include "../Rendering/Renderer.h"
 //==========================
 
 namespace Spartan
@@ -63,6 +78,43 @@ namespace Spartan
         static const std::shared_ptr<Entity>& GetEntityByName(const std::string& name);
         static const std::shared_ptr<Entity>& GetEntityById(uint64_t id);
         static const std::vector<std::shared_ptr<Entity>>& GetAllEntities();
+
+    protected:
+        static inline std::vector<std::shared_ptr<Entity>> m_entities;
+        static inline std::string m_name;
+        static inline std::string m_file_path;
+        static inline std::mutex m_entity_access_mutex;
+        static inline bool m_resolve = false;
+        static inline bool m_was_in_editor_mode = false;
+
+        // default worlds resources
+        static inline std::shared_ptr<Entity> m_default_terrain             = nullptr;
+        static inline std::shared_ptr<Entity> m_default_cube                = nullptr;
+        static inline std::shared_ptr<Entity> m_default_physics_body_camera = nullptr;
+        static inline std::shared_ptr<Entity> m_default_environment         = nullptr;
+        static inline std::shared_ptr<Entity> m_default_model_floor         = nullptr;
+        static inline std::shared_ptr<Mesh> m_default_model_sponza          = nullptr;
+        static inline std::shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
+        static inline std::shared_ptr<Mesh> m_default_model_car             = nullptr;
+        static inline std::shared_ptr<Mesh> m_default_model_wheel           = nullptr;
+        static inline std::shared_ptr<Mesh> m_default_model_helmet_flight   = nullptr;
+        static inline std::shared_ptr<Mesh> m_default_model_helmet_damaged  = nullptr;
+
+        static void create_default_world_common(
+            const Math::Vector3& camera_position = Math::Vector3(0.0f, 2.0f, -10.0f),
+            const Math::Vector3& camera_rotation = Math::Vector3(0.0f, 0.0f, 0.0f),
+            const LightIntensity sun_intensity   = LightIntensity::sky_sunlight_noon,
+            const char* soundtrack_file_path     = "project\\music\\jake_chudnow_shona.mp3",
+            const bool shadows_enabled           = true,
+            const bool load_floor                = true
+        );
+
+        static void create_default_cube(
+            const Math::Vector3& position = Math::Vector3(0.0f, 4.0f, 0.0f),
+            const Math::Vector3& scale    = Math::Vector3(1.0f, 1.0f, 1.0f)
+        );
+
+        static void create_default_car(const Math::Vector3& position = Math::Vector3(0.0f, 0.2f, 0.0f));
 
     private:
         static void Clear();
