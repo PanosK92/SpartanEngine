@@ -41,7 +41,7 @@ namespace Spartan
         Renderable(std::weak_ptr<Entity> entity);
         ~Renderable();
 
-        // IComponent
+        // icomponent
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
 
@@ -56,13 +56,15 @@ namespace Spartan
         void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
 
         // properties
-        uint32_t GetIndexOffset()                 const { return m_geometry_index_offset; }
-        uint32_t GetIndexCount()                  const { return m_geometry_index_count; }
-        uint32_t GetVertexOffset()                const { return m_geometry_vertex_offset; }
-        uint32_t GetVertexCount()                 const { return m_geometry_vertex_count; }
-        Mesh* GetMesh()                           const { return m_mesh; }
-        const Math::BoundingBox& GetBoundingBox() const { return m_bounding_box_local; }
-        const Math::BoundingBox& GetAabb();
+        uint32_t GetIndexOffset()  const { return m_geometry_index_offset; }
+        uint32_t GetIndexCount()   const { return m_geometry_index_count; }
+        uint32_t GetVertexOffset() const { return m_geometry_vertex_offset; }
+        uint32_t GetVertexCount()  const { return m_geometry_vertex_count; }
+        Mesh* GetMesh()            const { return m_mesh; }
+
+        // bounding box
+        const Math::BoundingBox& GetBoundingBox();
+        const Math::BoundingBox GetBoundingBoxNoInstancing();
 
         //= MATERIAL ====================================================================
         // Sets a material from memory (adds it to the resource cache by default)
@@ -79,7 +81,7 @@ namespace Spartan
 
         // shadows
         void SetCastShadows(const bool cast_shadows) { m_cast_shadows = cast_shadows; }
-        auto GetCastShadows() const                  { return m_cast_shadows; }
+        bool GetCastShadows() const                  { return m_cast_shadows; }
 
         // instancing
         bool HasInstancing()                  const { return !m_instances.empty(); }
@@ -95,7 +97,7 @@ namespace Spartan
         uint32_t m_geometry_vertex_count  = 0;
         Mesh* m_mesh                      = nullptr;
         bool m_bounding_box_dirty         = true;
-        Math::BoundingBox m_bounding_box_local;
+        Math::BoundingBox m_bounding_box_mesh;
         Math::BoundingBox m_bounding_box;
 
         // material
@@ -108,6 +110,6 @@ namespace Spartan
 
         // misc
         Math::Matrix m_last_transform = Math::Matrix::Identity;
-        bool m_cast_shadows           = true;
+        bool m_cast_shadows = true;
     };
 }

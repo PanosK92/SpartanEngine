@@ -23,18 +23,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-Pixel_PosUv mainVS(Vertex_PosUvNorTan input)
+Pixel_PosUv mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     Pixel_PosUv output;
 
-    input.position.w     = 1.0f; 
-    output.position      = mul(input.position, buffer_pass.transform);
-    #if INSTANCED
-    output.position      = mul(output.position, input.instance_transform);
-    #endif
-    output.position      = mul(output.position, buffer_light.view_projection[0]);
-
-    output.uv = input.uv;
+    uint array_index = (uint)pass_get_f3_value2().x;
+    output.position  = compute_screen_space_position(input, instance_id, buffer_pass.transform, buffer_light.view_projection[array_index]);
+    output.uv        = input.uv;
 
     return output;
 }

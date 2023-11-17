@@ -22,23 +22,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================================
 #include "pch.h"
 #include "Renderer.h"
+#include "../Profiling/RenderDoc.h"
+#include "../Core/Window.h"
+#include "../Input/Input.h"
+#include "../Display/Display.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_SwapChain.h"
 #include "../RHI/RHI_CommandPool.h"
 #include "../RHI/RHI_ConstantBuffer.h"
 #include "../RHI/RHI_Implementation.h"
-#include "../RHI/RHI_AMD_FidelityFX.h"
+#include "../RHI/RHI_FidelityFX.h"
 #include "../RHI/RHI_StructuredBuffer.h"
 #include "../World/Entity.h"
+#include "../World/Components/Transform.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
-#include "../World/Components/Environment.h"
 #include "../World/Components/AudioSource.h"
 #include "../World/Components/ReflectionProbe.h"
-#include "../Profiling/RenderDoc.h"
-#include "../Core/Window.h"
-#include "../Input/Input.h"
-#include "../Display/Display.h"
 //==============================================
 
 //= NAMESPACES ===============
@@ -54,7 +54,6 @@ namespace Spartan
     Cb_Light Renderer::m_cb_light_cpu;
     Cb_Material Renderer::m_cb_material_cpu;
     shared_ptr<RHI_VertexBuffer> Renderer::m_vertex_buffer_lines;
-    unique_ptr<Grid> Renderer::m_world_grid;
     vector<RHI_Vertex_PosCol> Renderer::m_line_vertices;
     vector<float> Renderer::m_lines_duration;
     uint32_t Renderer::m_lines_index_depth_off;
@@ -70,10 +69,6 @@ namespace Spartan
         Math::Vector2 m_resolution_render = Math::Vector2::Zero;
         Math::Vector2 m_resolution_output = Math::Vector2::Zero;
         RHI_Viewport m_viewport           = RHI_Viewport(0, 0, 0, 0);
-
-        // environment texture
-        shared_ptr<RHI_Texture> environment_texture;
-        mutex mutex_environment_texture;
 
         // swapchain
         const uint8_t swap_chain_buffer_count = 2;
@@ -108,7 +103,7 @@ namespace Spartan
                 if (!renderable)
                     return 0.0f;
 
-                return (renderable->GetAabb().GetCenter() - camera->GetTransform()->GetPosition()).LengthSquared();
+                return (renderable->GetBoundingBox().GetCenter() - camera->GetTransform()->GetPosition()).LengthSquared();
             };
 
             // sort by depth
@@ -132,7 +127,7 @@ namespace Spartan
 
         Display::DetectDisplayModes();
 
-        // RHI initialization
+        // rhi initialization
         {
             if (RHI_Context::renderdoc)
             {
@@ -147,19 +142,17 @@ namespace Spartan
             uint32_t width  = Window::GetWidth();
             uint32_t height = Window::GetHeight();
 
-            if (!Settings::HasLoadedUserSettingsFromFile())
-            {
-                // the resolution of the output frame (we can upscale to that linearly or with FSR 2)
-                SetResolutionOutput(width, height, false);
+            // the resolution of the output frame (we can upscale to that linearly or with fsr 2)
+            SetResolutionOutput(width, height, false);
 
-                // the resolution of the actual rendering
-                SetResolutionRender(width, height, false);
-            }
+            // the resolution of the actual rendering
+            SetResolutionRender(width, height, false);
 
             // the resolution/size of the editor's viewport. This is overridden by the editor based on the actual viewport size
             SetViewport(static_cast<float>(width), static_cast<float>(height));
 
-            // Note: If the editor is active, it will set the render and viewport resolution to what the actual viewport is
+            // note #1: if the editor is active, it will set the render and viewport resolution to what the actual viewport is
+            // note #2: settings can override the render and output resolution (if an xml file was loaded)
         }
 
         // swap chain
@@ -168,7 +161,7 @@ namespace Spartan
             Window::GetHandleSDL(),
             static_cast<uint32_t>(m_resolution_output.x),
             static_cast<uint32_t>(m_resolution_output.y),
-            // Present mode: For v-sync, we could Mailbox for lower latency, but Fifo is always supported, so we'll assume that
+            // present mode: for v-sync, we could mailbox for lower latency, but fifo is always supported, so we'll assume that
             GetOption<bool>(Renderer_Option::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
             swap_chain_buffer_count,
             "renderer"
@@ -177,36 +170,35 @@ namespace Spartan
         // command pool
         m_cmd_pool = RHI_Device::CommandPoolAllocate("renderer", swap_chain->GetObjectId(), RHI_Queue_Type::Graphics);
 
-        // AMD FidelityFX suite
-        RHI_AMD_FidelityFX::Initialize();
+        // fidelityfx suite
+        RHI_FidelityFX::Initialize();
 
         // options
         m_options.clear();
-        SetOption(Renderer_Option::DepthPrepass,             1.0f); // As a world becomes bigger and more complex, this almost becomes a requirement
-        SetOption(Renderer_Option::Hdr,                      swap_chain->IsHdr() ? 1.0f : 0.0f);                 // HDR is enabled by default if the swapchain is HDR
-        SetOption(Renderer_Option::Bloom,                    0.05f);                                             // non-zero values activate it and define the blend factor.
-        SetOption(Renderer_Option::MotionBlur,               1.0f);
-        SetOption(Renderer_Option::Ssgi,                     1.0f);
-        SetOption(Renderer_Option::ScreenSpaceShadows,       static_cast<float>(Renderer_ScreenspaceShadow::Bend));
-        SetOption(Renderer_Option::ScreenSpaceReflections,   1.0f);
-        SetOption(Renderer_Option::Anisotropy,               16.0f);
-        SetOption(Renderer_Option::ShadowResolution,         4096.0f);
-        SetOption(Renderer_Option::Tonemapping,              static_cast<float>(Renderer_Tonemapping::Aces));
-        SetOption(Renderer_Option::Gamma,                    2.2f);
-        SetOption(Renderer_Option::Exposure,                 1.0f);
-        SetOption(Renderer_Option::Sharpness,                1.0f);
-        SetOption(Renderer_Option::Fog,                      1.5f);
-        SetOption(Renderer_Option::Antialiasing,             static_cast<float>(Renderer_Antialiasing::Taa));    // this is using FSR 2 for TAA
-        SetOption(Renderer_Option::Upsampling,               static_cast<float>(Renderer_Upsampling::FSR2));
-        SetOption(Renderer_Option::Vsync,                    0.0f);
-        SetOption(Renderer_Option::Debanding,                0.0f);
-        SetOption(Renderer_Option::Debug_TransformHandle,    1.0f);
-        SetOption(Renderer_Option::Debug_SelectionOutline,   1.0f);
-        SetOption(Renderer_Option::Debug_Grid,               1.0f);
-        SetOption(Renderer_Option::Debug_ReflectionProbes,   1.0f);
-        SetOption(Renderer_Option::Debug_Lights,             1.0f);
-        SetOption(Renderer_Option::Debug_Physics,            0.0f);
-        SetOption(Renderer_Option::Debug_PerformanceMetrics, 1.0f);
+        SetOption(Renderer_Option::Hdr,                           swap_chain->IsHdr() ? 1.0f : 0.0f);                    // hdr is enabled by default if the swapchain is hdr
+        SetOption(Renderer_Option::Bloom,                         0.05f);                                                // non-zero values activate it and define the blend factor
+        SetOption(Renderer_Option::MotionBlur,                    1.0f);                                                 
+        SetOption(Renderer_Option::ScreenSpaceGlobalIllumination, 1.0f);                                                 
+        SetOption(Renderer_Option::ScreenSpaceShadows,            static_cast<float>(Renderer_ScreenspaceShadow::Bend)); 
+        SetOption(Renderer_Option::ScreenSpaceReflections,        1.0f);                                                 
+        SetOption(Renderer_Option::Anisotropy,                    16.0f);                                                
+        SetOption(Renderer_Option::ShadowResolution,              4096.0f);                                              
+        SetOption(Renderer_Option::Tonemapping,                   static_cast<float>(Renderer_Tonemapping::Aces));       
+        SetOption(Renderer_Option::Gamma,                         2.2f);                                                 
+        SetOption(Renderer_Option::Exposure,                      1.0f);                                                 
+        SetOption(Renderer_Option::Sharpness,                     1.0f);                                                 
+        SetOption(Renderer_Option::Fog,                           20.0f);                                                 
+        SetOption(Renderer_Option::Antialiasing,                  static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 2 for taa
+        SetOption(Renderer_Option::Upsampling,                    static_cast<float>(Renderer_Upsampling::FSR2));
+        SetOption(Renderer_Option::Vsync,                         0.0f);
+        SetOption(Renderer_Option::Debanding,                     0.0f);
+        SetOption(Renderer_Option::Debug_TransformHandle,         1.0f);
+        SetOption(Renderer_Option::Debug_SelectionOutline,        1.0f);
+        SetOption(Renderer_Option::Debug_Grid,                    1.0f);
+        SetOption(Renderer_Option::Debug_ReflectionProbes,        1.0f);
+        SetOption(Renderer_Option::Debug_Lights,                  1.0f);
+        SetOption(Renderer_Option::Debug_Physics,                 0.0f);
+        SetOption(Renderer_Option::Debug_PerformanceMetrics,      1.0f);
 
         // resources
         CreateConstantBuffers();
@@ -237,21 +229,19 @@ namespace Spartan
     {
         SP_FIRE_EVENT(EventType::RendererOnShutdown);
 
-        // Manually invoke the deconstructors so that ParseDeletionQueue(), releases their RHI resources.
+        // manually invoke the deconstructors so that ParseDeletionQueue(), releases their rhi resources.
         {
             DestroyResources();
 
             m_entities_to_add.clear();
             m_renderables.clear();
-            m_world_grid.reset();
             swap_chain            = nullptr;
             m_vertex_buffer_lines = nullptr;
-            environment_texture   = nullptr;
         }
 
         RenderDoc::Shutdown();
         RHI_Device::QueueWaitAll();
-        RHI_AMD_FidelityFX::Destroy();
+        RHI_FidelityFX::Destroy();
         RHI_Device::DeletionQueueParse();
         RHI_Device::Destroy();
     }
@@ -279,7 +269,7 @@ namespace Spartan
         {
             m_resource_index++;
 
-            if (m_resource_index == m_resources_frame_lifetime)
+            if (m_resource_index == resources_frame_lifetime)
             {
                 m_resource_index = 0;
 
@@ -330,9 +320,7 @@ namespace Spartan
             Renderer_Upsampling upsampling_mode = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling);
             if (upsampling_mode == Renderer_Upsampling::FSR2 || GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa)
             {
-                RHI_AMD_FidelityFX::FSR2_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
-                jitter_offset.x            = (jitter_offset.x / m_resolution_render.x);
-                jitter_offset.y            = (jitter_offset.y / m_resolution_render.y);
+                RHI_FidelityFX::FSR2_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
                 m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(jitter_offset.x, jitter_offset.y, 0.0f));
             }
             else
@@ -356,16 +344,18 @@ namespace Spartan
             m_cb_frame_cpu.resolution_render   = m_resolution_render;
             m_cb_frame_cpu.taa_jitter_previous = m_cb_frame_cpu.taa_jitter_current;
             m_cb_frame_cpu.taa_jitter_current  = jitter_offset;
-            m_cb_frame_cpu.delta_time          = static_cast<float>(Timer::GetDeltaTimeSmoothedSec());
-            m_cb_frame_cpu.gamma               = GetOption<float>(Renderer_Option::Gamma);
+            m_cb_frame_cpu.time                = static_cast<float>(Timer::GetTimeSec());
+            m_cb_frame_cpu.delta_time          = static_cast<float>(Timer::GetDeltaTimeSmoothedSec()); // removes stutters from motion related code
             m_cb_frame_cpu.frame               = static_cast<uint32_t>(frame_num);
+            m_cb_frame_cpu.gamma               = GetOption<float>(Renderer_Option::Gamma);
+
 
             // these must match what common_buffer.hlsl is reading
-            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections), 1 << 0);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Ssgi),                   1 << 1);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceShadows),     1 << 2);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Fog),                    1 << 3);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::FogVolumetric),          1 << 4);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections),        1 << 0);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceGlobalIllumination), 1 << 1);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceShadows),            1 << 2);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Fog),                           1 << 3);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::FogVolumetric),                 1 << 4);
         }
 
         Pass_Frame(cmd_current);
@@ -463,31 +453,31 @@ namespace Spartan
 
     void Renderer::SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources /*= true*/)
     {
-        // Return if resolution is invalid
+        // return if resolution is invalid
         if (!RHI_Device::IsValidResolution(width, height))
         {
             SP_LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
         }
 
-        // Silently return if resolution is already set
+        // silently return if resolution is already set
         if (m_resolution_output.x == width && m_resolution_output.y == height)
             return;
 
-        // Set resolution
+        // set resolution
         m_resolution_output.x = static_cast<float>(width);
         m_resolution_output.y = static_cast<float>(height);
 
         if (recreate_resources)
         {
-            // Re-create render textures
+            // re-create render textures
             CreateRenderTextures(false, true, false, true);
 
-            // Re-create samplers
+            // re-create samplers
             CreateSamplers(true);
         }
 
-        // Log
+        // log
         SP_LOG_INFO("Output resolution output has been set to %dx%d", width, height);
     }
 
@@ -502,55 +492,25 @@ namespace Spartan
         }
     }
 
-    void Renderer::PushPassConstants(RHI_CommandList* cmd_list)
+    void Renderer::UpdateConstantBufferLight(RHI_CommandList* cmd_list, shared_ptr<Light> light)
     {
-        cmd_list->PushConstants(0, sizeof(Pcb_Pass), &m_cb_pass_cpu);
-    }
-
-    void Renderer::UpdateConstantBufferLight(RHI_CommandList* cmd_list, shared_ptr<Light> light, const int array_index)
-    {
-        if (array_index == -1) // set all arrays
+        if (RHI_Texture* texture = light->GetDepthTexture())
         {
-            for (uint32_t i = 0; i < light->GetShadowArraySize(); i++)
+            for (uint32_t i = 0; i < texture->GetArrayLength(); i++)
             {
                 m_cb_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
-
-                if (light->GetLightType() == LightType::Directional)
-                {
-                    float cascade_end = light->GetCascadeEnd(i) * light->GetRange();
-                    if (i == 0)
-                    {
-                        m_cb_light_cpu.cascade_ends.x = cascade_end;
-                    }
-                    else if (i == 1)
-                    {
-                        m_cb_light_cpu.cascade_ends.y = cascade_end;
-                    }
-                    else if (i == 2)
-                    {
-                        m_cb_light_cpu.cascade_ends.z = cascade_end;
-                    }
-                }
             }
         }
-        else
-        {
-            // set the first array with the given index
-            m_cb_light_cpu.view_projection[0] = light->GetViewMatrix(array_index) * light->GetProjectionMatrix(array_index);
-        }
 
-        m_cb_light_cpu.intensity_range_angle_bias = Vector4
-        (
-            light->GetIntensityWatt(m_camera.get()),
-            light->GetRange(), light->GetAngle(),
-            light->GetBias()
-        );
-
-        m_cb_light_cpu.color       = light->GetColor();
-        m_cb_light_cpu.normal_bias = light->GetNormalBias();
-        m_cb_light_cpu.position    = light->GetTransform()->GetPosition();
-        m_cb_light_cpu.direction   = light->GetTransform()->GetForward();
-        m_cb_light_cpu.options     = 0;
+        m_cb_light_cpu.intensity    = light->GetIntensityWatt(m_camera.get());
+        m_cb_light_cpu.range        = light->GetRange();
+        m_cb_light_cpu.angle        = light->GetAngle();
+        m_cb_light_cpu.bias         = light->GetBias();
+        m_cb_light_cpu.color        = light->GetColor();
+        m_cb_light_cpu.normal_bias  = light->GetNormalBias();
+        m_cb_light_cpu.position     = light->GetTransform()->GetPosition();
+        m_cb_light_cpu.direction    = light->GetTransform()->GetForward();
+        m_cb_light_cpu.options      = 0;
         m_cb_light_cpu.options     |= light->GetLightType() == LightType::Directional ? (1 << 0) : 0;
         m_cb_light_cpu.options     |= light->GetLightType() == LightType::Point       ? (1 << 1) : 0;
         m_cb_light_cpu.options     |= light->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
@@ -559,53 +519,57 @@ namespace Spartan
         m_cb_light_cpu.options     |= light->GetVolumetricEnabled()                   ? (1 << 5) : 0;
 
         GetConstantBuffer(Renderer_ConstantBuffer::Light)->Update(&m_cb_light_cpu);
-
-        // bind because the offset just changed
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::light, GetConstantBuffer(Renderer_ConstantBuffer::Light));
     }
 
     void Renderer::UpdateConstantBufferMaterial(RHI_CommandList* cmd_list, Material* material)
     {
-        // Set
-        m_cb_material_cpu.color.x              = material->GetProperty(MaterialProperty::ColorR);
-        m_cb_material_cpu.color.y              = material->GetProperty(MaterialProperty::ColorG);
-        m_cb_material_cpu.color.z              = material->GetProperty(MaterialProperty::ColorB);
-        m_cb_material_cpu.color.w              = material->GetProperty(MaterialProperty::ColorA);
-        m_cb_material_cpu.tiling_uv.x          = material->GetProperty(MaterialProperty::UvTilingX);
-        m_cb_material_cpu.tiling_uv.y          = material->GetProperty(MaterialProperty::UvTilingY);
-        m_cb_material_cpu.offset_uv.x          = material->GetProperty(MaterialProperty::UvOffsetX);
-        m_cb_material_cpu.offset_uv.y          = material->GetProperty(MaterialProperty::UvOffsetY);
-        m_cb_material_cpu.roughness_mul        = material->GetProperty(MaterialProperty::RoughnessMultiplier);
-        m_cb_material_cpu.metallic_mul         = material->GetProperty(MaterialProperty::MetalnessMultiplier);
-        m_cb_material_cpu.normal_mul           = material->GetProperty(MaterialProperty::NormalMultiplier);
-        m_cb_material_cpu.height_mul           = material->GetProperty(MaterialProperty::HeightMultiplier);
-        m_cb_material_cpu.anisotropic          = material->GetProperty(MaterialProperty::Anisotropic);
-        m_cb_material_cpu.anisitropic_rotation = material->GetProperty(MaterialProperty::AnisotropicRotation);
-        m_cb_material_cpu.clearcoat            = material->GetProperty(MaterialProperty::Clearcoat);
-        m_cb_material_cpu.clearcoat_roughness  = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
-        m_cb_material_cpu.sheen                = material->GetProperty(MaterialProperty::Sheen);
-        m_cb_material_cpu.sheen_tint           = material->GetProperty(MaterialProperty::SheenTint);
-        m_cb_material_cpu.properties           = 0;
-        m_cb_material_cpu.properties          |= material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness) ? (1U << 0) : 0;
-        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Height)                            ? (1U << 1) : 0;
-        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Normal)                            ? (1U << 2) : 0;
-        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Color)                             ? (1U << 3) : 0;
-        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Roughness)                         ? (1U << 4) : 0;
-        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Metalness)                         ? (1U << 5) : 0;
-        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::AlphaMask)                         ? (1U << 6) : 0;
-        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Emission)                          ? (1U << 7) : 0;
-        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Occlusion)                         ? (1U << 8) : 0;
-        m_cb_material_cpu.properties          |= material->GetProperty(MaterialProperty::IsTerrain)                       ? (1U << 9) : 0;
-        m_cb_material_cpu.properties          |= material->GetProperty(MaterialProperty::IsWater)                         ? (1U << 10) : 0;
+        m_cb_material_cpu.properties = 0;
 
-        // Update
+        // set
+        m_cb_material_cpu.world_space_height    = material->GetProperty(MaterialProperty::WorldSpaceHeight);
+        m_cb_material_cpu.color.x               = material->GetProperty(MaterialProperty::ColorR);
+        m_cb_material_cpu.color.y               = material->GetProperty(MaterialProperty::ColorG);
+        m_cb_material_cpu.color.z               = material->GetProperty(MaterialProperty::ColorB);
+        m_cb_material_cpu.color.w               = material->GetProperty(MaterialProperty::ColorA);
+        m_cb_material_cpu.tiling_uv.x           = material->GetProperty(MaterialProperty::TextureTilingX);
+        m_cb_material_cpu.tiling_uv.y           = material->GetProperty(MaterialProperty::TextureTilingY);
+        m_cb_material_cpu.offset_uv.x           = material->GetProperty(MaterialProperty::TextureOffsetX);
+        m_cb_material_cpu.offset_uv.y           = material->GetProperty(MaterialProperty::TextureOffsetY);
+        m_cb_material_cpu.roughness_mul         = material->GetProperty(MaterialProperty::MultiplierRoughness);
+        m_cb_material_cpu.metallic_mul          = material->GetProperty(MaterialProperty::MultiplierMetalness);
+        m_cb_material_cpu.normal_mul            = material->GetProperty(MaterialProperty::MultiplierNormal);
+        m_cb_material_cpu.height_mul            = material->GetProperty(MaterialProperty::MultiplierHeight);
+        m_cb_material_cpu.anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
+        m_cb_material_cpu.anisitropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
+        m_cb_material_cpu.clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
+        m_cb_material_cpu.clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
+        m_cb_material_cpu.sheen                 = material->GetProperty(MaterialProperty::Sheen);
+        m_cb_material_cpu.sheen_tint            = material->GetProperty(MaterialProperty::SheenTint);
+        m_cb_material_cpu.properties           |= material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness) ? (1U << 0) : 0;
+        m_cb_material_cpu.properties           |= material->HasTexture(MaterialTexture::Height)                            ? (1U << 1) : 0;
+        m_cb_material_cpu.properties           |= material->HasTexture(MaterialTexture::Normal)                            ? (1U << 2) : 0;
+        m_cb_material_cpu.properties           |= material->HasTexture(MaterialTexture::Color)                             ? (1U << 3) : 0;
+        m_cb_material_cpu.properties           |= material->HasTexture(MaterialTexture::Roughness)                         ? (1U << 4) : 0;
+        m_cb_material_cpu.properties           |= material->HasTexture(MaterialTexture::Metalness)                         ? (1U << 5) : 0;
+        m_cb_material_cpu.properties           |= material->HasTexture(MaterialTexture::AlphaMask)                         ? (1U << 6) : 0;
+        m_cb_material_cpu.properties           |= material->HasTexture(MaterialTexture::Emission)                          ? (1U << 7) : 0;
+        m_cb_material_cpu.properties           |= material->HasTexture(MaterialTexture::Occlusion)                         ? (1U << 8) : 0;
+        m_cb_material_cpu.properties           |= material->GetProperty(MaterialProperty::TextureSlopeBased)               ? (1U << 9) : 0;
+        m_cb_material_cpu.properties           |= material->GetProperty(MaterialProperty::TextureAnimate)                  ? (1U << 10) : 0;
+        m_cb_material_cpu.properties           |= material->GetProperty(MaterialProperty::VertexAnimateWind)               ? (1U << 11) : 0;
+        m_cb_material_cpu.properties           |= material->GetProperty(MaterialProperty::VertexAnimateWater)              ? (1U << 12) : 0;
+
         GetConstantBuffer(Renderer_ConstantBuffer::Material)->Update(&m_cb_material_cpu);
-
-        // Bind because the offset just changed
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::material, GetConstantBuffer(Renderer_ConstantBuffer::Material));
     }
 
-    void Renderer::OnWorldResolved(sp_variant data)
+    void Renderer::PushPassConstants(RHI_CommandList* cmd_list)
+    {
+        cmd_list->PushConstants(0, sizeof(Pcb_Pass), &m_cb_pass_cpu);
+    }
+
+	void Renderer::OnWorldResolved(sp_variant data)
     {
         // note: m_renderables is a vector of shared pointers.
         // this ensures that if any entities are deallocated by the world.
@@ -743,17 +707,6 @@ namespace Spartan
         Lines_OnFrameEnd();
     }
 
-    const shared_ptr<RHI_Texture> Renderer::GetEnvironmentTexture()
-    {
-        return environment_texture ? environment_texture : GetStandardTexture(Renderer_StandardTexture::Black);
-    }
-
-    void Renderer::SetEnvironment(Environment* environment)
-    {
-        lock_guard lock(mutex_environment_texture);
-        environment_texture = environment->GetTexture();
-    }
-
 	void Renderer::DrawString(const string& text, const Vector2& position_screen_percentage)
 	{
         GetFont()->AddText(text, position_screen_percentage);
@@ -808,7 +761,7 @@ namespace Spartan
                     if (!fsr_enabled)
                     {
                         m_options[Renderer_Option::Upsampling] = static_cast<float>(Renderer_Upsampling::FSR2);
-                        RHI_AMD_FidelityFX::FSR2_ResetHistory();
+                        RHI_FidelityFX::FSR2_ResetHistory();
                         SP_LOG_INFO("Enabled FSR 2.0 since it's used for TAA.");
                     }
                 }
@@ -842,7 +795,7 @@ namespace Spartan
                     if (!taa_enabled)
                     {
                         m_options[Renderer_Option::Antialiasing] = static_cast<float>(Renderer_Antialiasing::Taa);
-                        RHI_AMD_FidelityFX::FSR2_ResetHistory();
+                        RHI_FidelityFX::FSR2_ResetHistory();
                         SP_LOG_INFO("Enabled TAA since FSR 2.0 does it.");
                     }
                 }
@@ -888,7 +841,7 @@ namespace Spartan
     
     void Renderer::Present()
     {
-        SP_ASSERT(swap_chain->GetLayout() == RHI_Image_Layout::Present_Src);
+        SP_ASSERT(swap_chain->GetLayout() == RHI_Image_Layout::Present_Source);
 
         if (Window::IsMinimised())
         {
@@ -937,9 +890,9 @@ namespace Spartan
         return m_renderables;
     }
 
-	void Renderer::BindTexturesGfbuffer(RHI_CommandList* cmd_list)
+	void Renderer::SetTexturesGfbuffer(RHI_CommandList* cmd_list)
     {
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,            GetRenderTarget(Renderer_RenderTexture::gbuffer_albedo));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,            GetRenderTarget(Renderer_RenderTexture::gbuffer_color));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,            GetRenderTarget(Renderer_RenderTexture::gbuffer_normal));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,             GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material,          GetRenderTarget(Renderer_RenderTexture::gbuffer_material));
@@ -948,7 +901,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity_previous, GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity_previous));
     }
 
-    void Renderer::BindTexturesMaterial(RHI_CommandList* cmd_list, Material* material)
+    void Renderer::SetTexturesMaterial(RHI_CommandList* cmd_list, Material* material)
     {
         cmd_list->SetTexture(Renderer_BindingsSrv::material_albedo,    material->GetTexture(MaterialTexture::Color));
         cmd_list->SetTexture(Renderer_BindingsSrv::material_albedo2,   material->GetTexture(MaterialTexture::Color2));

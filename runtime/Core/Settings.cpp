@@ -19,16 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================
+//= INCLUDES =========================
 #include "pch.h"
 #include "Window.h"
-#include "../Core/ThreadPool.h"
 #include "../Rendering/Renderer.h"
+#include "../Resource/ResourceCache.h"
 #include "../Input/Input.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
-//=================================
+//====================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -39,53 +39,52 @@ namespace Spartan
 {
     namespace
     { 
-        static bool m_is_fullscreen            = false;
-        static bool m_is_mouse_visible         = true;
-        static Vector2 m_resolution_output     = Vector2::Zero;
-        static Vector2 m_resolution_render     = Vector2::Zero;
-        static double fps_limit                = 0;
-        static bool m_has_loaded_user_settings = false;
-        string file_path                       = "spartan.xml";
-        static unordered_map<Renderer_Option, float> m_render_options;
-        static vector<third_party_lib> m_third_party_libs;
+        bool m_is_fullscreen            = false;
+        bool m_is_mouse_visible         = false;
+        Vector2 m_resolution_output     = Vector2::Zero;
+        Vector2 m_resolution_render     = Vector2::Zero;
+        double fps_limit                = 0;
+        bool m_has_loaded_user_settings = false;
+        string file_path                = "spartan.xml";
+        unordered_map<Renderer_Option, float> m_render_options;
+        vector<third_party_lib> m_third_party_libs;
 
         const char* renderer_option_to_string(const Renderer_Option option)
         {
             switch (option)
             {
-                case Renderer_Option::Debug_Aabb:               return "Debug_Aabb";
-                case Renderer_Option::Debug_PickingRay:         return "Debug_PickingRay";
-                case Renderer_Option::Debug_Grid:               return "Debug_Grid";
-                case Renderer_Option::Debug_ReflectionProbes:   return "Debug_ReflectionProbes";
-                case Renderer_Option::Debug_TransformHandle:    return "Debug_TransformHandle";
-                case Renderer_Option::Debug_SelectionOutline:   return "Debug_SelectionOutline";
-                case Renderer_Option::Debug_Lights:             return "Debug_Lights";
-                case Renderer_Option::Debug_PerformanceMetrics: return "Debug_PerformanceMetrics";
-                case Renderer_Option::Debug_Physics:            return "Debug_Physics";
-                case Renderer_Option::Debug_Wireframe:          return "Debug_Wireframe";
-                case Renderer_Option::Bloom:                    return "Bloom";
-                case Renderer_Option::Fog:                      return "Fog";
-                case Renderer_Option::FogVolumetric:            return "FogVolumetric";
-                case Renderer_Option::Ssgi:                     return "Ssgi";
-                case Renderer_Option::ScreenSpaceShadows:       return "ScreenSpaceShadows";
-                case Renderer_Option::ScreenSpaceReflections:   return "ScreenSpaceReflections";
-                case Renderer_Option::MotionBlur:               return "MotionBlur";
-                case Renderer_Option::DepthOfField:             return "DepthOfField";
-                case Renderer_Option::FilmGrain:                return "FilmGrain";
-                case Renderer_Option::ChromaticAberration:      return "ChromaticAberration";
-                case Renderer_Option::Debanding:                return "Debanding";
-                case Renderer_Option::DepthPrepass:             return "DepthPrepass";
-                case Renderer_Option::Anisotropy:               return "Anisotropy";
-                case Renderer_Option::ShadowResolution:         return "ShadowResolution";
-                case Renderer_Option::Gamma:                    return "Gamma";
-                case Renderer_Option::Exposure:                 return "Exposure";
-                case Renderer_Option::PaperWhite:               return "PaperWhite";
-                case Renderer_Option::Antialiasing:             return "Antialiasing";
-                case Renderer_Option::Tonemapping:              return "Tonemapping";
-                case Renderer_Option::Upsampling:               return "Upsampling";
-                case Renderer_Option::Sharpness:                return "Sharpness";
-                case Renderer_Option::Hdr:                      return "Hdr";
-                case Renderer_Option::Vsync:                    return "Vsync";
+                case Renderer_Option::Debug_Aabb:                    return "Debug_Aabb";
+                case Renderer_Option::Debug_PickingRay:              return "Debug_PickingRay";
+                case Renderer_Option::Debug_Grid:                    return "Debug_Grid";
+                case Renderer_Option::Debug_ReflectionProbes:        return "Debug_ReflectionProbes";
+                case Renderer_Option::Debug_TransformHandle:         return "Debug_TransformHandle";
+                case Renderer_Option::Debug_SelectionOutline:        return "Debug_SelectionOutline";
+                case Renderer_Option::Debug_Lights:                  return "Debug_Lights";
+                case Renderer_Option::Debug_PerformanceMetrics:      return "Debug_PerformanceMetrics";
+                case Renderer_Option::Debug_Physics:                 return "Debug_Physics";
+                case Renderer_Option::Debug_Wireframe:               return "Debug_Wireframe";
+                case Renderer_Option::Bloom:                         return "Bloom";
+                case Renderer_Option::Fog:                           return "Fog";
+                case Renderer_Option::FogVolumetric:                 return "FogVolumetric";
+                case Renderer_Option::ScreenSpaceGlobalIllumination: return "ScreenSpaceGlobalIllumination";
+                case Renderer_Option::ScreenSpaceShadows:            return "ScreenSpaceShadows";
+                case Renderer_Option::ScreenSpaceReflections:        return "ScreenSpaceReflections";
+                case Renderer_Option::MotionBlur:                    return "MotionBlur";
+                case Renderer_Option::DepthOfField:                  return "DepthOfField";
+                case Renderer_Option::FilmGrain:                     return "FilmGrain";
+                case Renderer_Option::ChromaticAberration:           return "ChromaticAberration";
+                case Renderer_Option::Debanding:                     return "Debanding";
+                case Renderer_Option::Anisotropy:                    return "Anisotropy";
+                case Renderer_Option::ShadowResolution:              return "ShadowResolution";
+                case Renderer_Option::Gamma:                         return "Gamma";
+                case Renderer_Option::Exposure:                      return "Exposure";
+                case Renderer_Option::PaperWhite:                    return "PaperWhite";
+                case Renderer_Option::Antialiasing:                  return "Antialiasing";
+                case Renderer_Option::Tonemapping:                   return "Tonemapping";
+                case Renderer_Option::Upsampling:                    return "Upsampling";
+                case Renderer_Option::Sharpness:                     return "Sharpness";
+                case Renderer_Option::Hdr:                           return "Hdr";
+                case Renderer_Option::Vsync:                         return "Vsync";
                 default:
                 {
                     SP_ASSERT_MSG(false, "Renderer_Option not handled");
@@ -113,6 +112,8 @@ namespace Spartan
                 {
                     root.append_child(renderer_option_to_string(option)).text().set(value);
                 }
+
+                root.append_child("UseRootShaderDirectory").text().set(ResourceCache::GetUseRootShaderDirectory());
             }
 
             doc.save_file(file_path.c_str());
@@ -146,6 +147,9 @@ namespace Spartan
                     Renderer_Option option = static_cast<Renderer_Option>(i);
                     m_render_options[option] = root.child(renderer_option_to_string(option)).text().as_float();
                 }
+
+                // this setting can be mapped directly to the resource cache (no need to wait for it to initialize)
+                ResourceCache::SetUseRootShaderDirectory(root.child("UseRootShaderDirectory").text().as_bool());
             }
 
             m_has_loaded_user_settings = true;
@@ -153,10 +157,11 @@ namespace Spartan
 
         static void map()
         {
+            if (!m_has_loaded_user_settings)
+                return;
+
             Timer::SetFpsLimit(static_cast<float>(fps_limit));
-
             Input::SetMouseCursorVisible(m_is_mouse_visible);
-
             Renderer::SetResolutionOutput(static_cast<uint32_t>(m_resolution_output.x), static_cast<uint32_t>(m_resolution_output.y));
             Renderer::SetResolutionRender(static_cast<uint32_t>(m_resolution_render.x), static_cast<uint32_t>(m_resolution_render.y));
             Renderer::SetOptions(m_render_options);
@@ -185,19 +190,17 @@ namespace Spartan
         RegisterThirdPartyLib("SPIRV-Cross", "03-06-2022", "https://github.com/KhronosGroup/SPIRV-Cross");
         RegisterThirdPartyLib("DirectXShaderCompiler", "1.7.2207.3", "https://github.com/microsoft/DirectXShaderCompiler");
 
-        reflect();
-
         if (FileSystem::Exists(file_path))
         {
             load();
-            map();
-        }
-        else
-        {
-            save();
         }
     }
     
+    void Settings::PostInitialize()
+    {
+        map();
+    }
+
     void Settings::Shutdown()
     {
         reflect();

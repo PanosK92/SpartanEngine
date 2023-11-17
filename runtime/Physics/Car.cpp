@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BulletPhysicsHelper.h"
 #include "../Rendering/Renderer.h"
 #include "../Input/Input.h"
+#include "../World/Components/Transform.h"
 SP_WARNINGS_OFF
 #include <BulletDynamics/Vehicle/btRaycastVehicle.h>
 #include "LinearMath/btVector3.h"

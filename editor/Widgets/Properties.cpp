@@ -35,7 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
 #include "World/Components/AudioListener.h"
-#include "World/Components/Environment.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/ReflectionProbe.h"
 #include "Rendering/Mesh.h"
@@ -158,7 +157,6 @@ void Properties::OnTickVisible()
         ShowLight(entity_ptr->GetComponent<Light>());
         ShowCamera(entity_ptr->GetComponent<Camera>());
         ShowTerrain(entity_ptr->GetComponent<Terrain>());
-        ShowEnvironment(entity_ptr->GetComponent<Environment>());
         ShowAudioSource(entity_ptr->GetComponent<AudioSource>());
         ShowAudioListener(entity_ptr->GetComponent<AudioListener>());
         ShowReflectionProbe(entity_ptr->GetComponent<ReflectionProbe>());
@@ -235,7 +233,6 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         bool shadows                = light->GetShadowsEnabled();
         bool shadows_transparent    = light->GetShadowsTransparentEnabled();
         bool volumetric             = light->GetVolumetricEnabled();
-        float bias                  = light->GetBias();
         float normal_bias           = light->GetNormalBias();
         float range                 = light->GetRange();
         m_colorPicker_light->SetColor(light->GetColor());
@@ -296,7 +293,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
 
             // lumens
             ImGui::SameLine();
-            ImGuiSp::draw_float_wrap("lm", &intensity, 1.0f, 5.0f, 120000.0f);
+            ImGuiSp::draw_float_wrap("lm", &intensity, 10.0f, 0.0f, 120000.0f);
             ImGuiSp::tooltip("Intensity expressed in lumens");
         }
 
@@ -320,11 +317,6 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         }
         ImGui::EndDisabled();
 
-        // Bias
-        ImGui::Text("Bias");
-        ImGui::SameLine(column_pos_x);
-        ImGui::InputFloat("##lightBias", &bias, 1.0f, 1.0f, "%.0f");
-
         // Normal Bias
         ImGui::Text("Normal Bias");
         ImGui::SameLine(column_pos_x);
@@ -346,18 +338,17 @@ void Properties::ShowLight(shared_ptr<Light> light) const
             ImGuiSp::draw_float_wrap("##lightAngle", &angle, 0.01f, 1.0f, 179.0f);
         }
 
-        //= MAP =====================================================================================================================
-        if (intensity != light->GetIntensityLumens())                      light->SetIntensityLumens(intensity);
-        if (shadows != light->GetShadowsEnabled())                         light->SetShadowsEnabled(shadows);
-        if (shadows_transparent != light->GetShadowsTransparentEnabled())  light->SetShadowsTransparentEnabled(shadows_transparent);
-        if (volumetric != light->GetVolumetricEnabled())                   light->SetVolumetricEnabled(volumetric);
-        if (bias != light->GetBias())                                      light->SetBias(bias);
-        if (normal_bias != light->GetNormalBias())                         light->SetNormalBias(normal_bias);
-        if (angle != light->GetAngle() * Math::Helper::RAD_TO_DEG * 0.5f)  light->SetAngle(angle * Math::Helper::DEG_TO_RAD * 0.5f);
-        if (range != light->GetRange())                                    light->SetRange(range);
-        if (m_colorPicker_light->GetColor() != light->GetColor())          light->SetColor(m_colorPicker_light->GetColor());
-        if (temperature_kelvin != light->GetTemperature())                 light->SetTemperature(temperature_kelvin);
-        //===========================================================================================================================
+        //= MAP ===================================================================================================================
+        if (intensity != light->GetIntensityLumens())                     light->SetIntensityLumens(intensity);
+        if (shadows != light->GetShadowsEnabled())                        light->SetShadowsEnabled(shadows);
+        if (shadows_transparent != light->GetShadowsTransparentEnabled()) light->SetShadowsTransparentEnabled(shadows_transparent);
+        if (volumetric != light->GetVolumetricEnabled())                  light->SetVolumetricEnabled(volumetric);
+        if (normal_bias != light->GetNormalBias())                        light->SetNormalBias(normal_bias);
+        if (angle != light->GetAngle() * Math::Helper::RAD_TO_DEG * 0.5f) light->SetAngle(angle * Math::Helper::DEG_TO_RAD * 0.5f);
+        if (range != light->GetRange())                                   light->SetRange(range);
+        if (m_colorPicker_light->GetColor() != light->GetColor())         light->SetColor(m_colorPicker_light->GetColor());
+        if (temperature_kelvin != light->GetTemperature())                light->SetTemperature(temperature_kelvin);
+        //=========================================================================================================================
     }
     component_end();
 }
@@ -400,9 +391,8 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
             renderable->SetMaterial(std::get<const char*>(payload->data));
         }
 
-        // cast shadows
-        ImGui::Text("Cast Shadows");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##RenderableCastShadows", &cast_shadows);
+        ImGui::Text("Cast shadows");
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##renderable_cast_shadows", &cast_shadows);
 
         //= MAP ===================================================================================
         if (cast_shadows != renderable->GetCastShadows()) renderable->SetCastShadows(cast_shadows);
@@ -659,13 +649,13 @@ void Properties::ShowMaterial(Material* material) const
     {
         //= REFLECT ===========================================
         Math::Vector2 tiling = Vector2(
-            material->GetProperty(MaterialProperty::UvTilingX),
-            material->GetProperty(MaterialProperty::UvTilingY)
+            material->GetProperty(MaterialProperty::TextureTilingX),
+            material->GetProperty(MaterialProperty::TextureTilingY)
         );
 
         Math::Vector2 offset = Vector2(
-            material->GetProperty(MaterialProperty::UvOffsetX),
-            material->GetProperty(MaterialProperty::UvOffsetY)
+            material->GetProperty(MaterialProperty::TextureOffsetX),
+            material->GetProperty(MaterialProperty::TextureOffsetY)
         );
 
         m_material_color_picker->SetColor(Color(
@@ -743,7 +733,7 @@ void Properties::ShowMaterial(Material* material) const
                             ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
                             float value = material->GetProperty(mat_property);
 
-                            if (mat_property != MaterialProperty::MetalnessMultiplier)
+                            if (mat_property != MaterialProperty::MultiplierMetalness)
                             {
                                 ImGuiSp::draw_float_wrap("", &value, 0.004f, 0.0f, 1.0f);
                             }
@@ -767,10 +757,10 @@ void Properties::ShowMaterial(Material* material) const
                 show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTexture::Undefined,  MaterialProperty::Sheen);
                 show_property("Sheen tint",           "Mix between white and using base color for sheen reflection",                       MaterialTexture::Undefined,  MaterialProperty::SheenTint);
                 show_property("Color",                "Surface color",                                                                     MaterialTexture::Color,      MaterialProperty::ColorTint);
-                show_property("Roughness",            "Specifies microfacet roughness of the surface for diffuse and specular reflection", MaterialTexture::Roughness,  MaterialProperty::RoughnessMultiplier);
-                show_property("Metalness",            "Blends between a non-metallic and metallic material model",                         MaterialTexture::Metalness,  MaterialProperty::MetalnessMultiplier);
-                show_property("Normal",               "Controls the normals of the base layers",                                           MaterialTexture::Normal,     MaterialProperty::NormalMultiplier);
-                show_property("Height",               "Perceived depth for parallax mapping",                                              MaterialTexture::Height,     MaterialProperty::HeightMultiplier);
+                show_property("Roughness",            "Specifies microfacet roughness of the surface for diffuse and specular reflection", MaterialTexture::Roughness,  MaterialProperty::MultiplierRoughness);
+                show_property("Metalness",            "Blends between a non-metallic and metallic material model",                         MaterialTexture::Metalness,  MaterialProperty::MultiplierMetalness);
+                show_property("Normal",               "Controls the normals of the base layers",                                           MaterialTexture::Normal,     MaterialProperty::MultiplierNormal);
+                show_property("Height",               "Perceived depth for parallax mapping",                                              MaterialTexture::Height,     MaterialProperty::MultiplierHeight);
                 show_property("Occlusion",            "Amount of light loss, can be complementary to SSAO",                                MaterialTexture::Occlusion,  MaterialProperty::Undefined);
                 show_property("Emission",             "Light emission from the surface, works nice with bloom",                            MaterialTexture::Emission,   MaterialProperty::Undefined);
                 show_property("Alpha mask",           "Discards pixels",                                                                   MaterialTexture::AlphaMask,  MaterialProperty::Undefined);
@@ -799,10 +789,10 @@ void Properties::ShowMaterial(Material* material) const
         }
 
         //= MAP ===============================================================================
-        material->SetProperty(MaterialProperty::UvTilingX, tiling.x);
-        material->SetProperty(MaterialProperty::UvTilingY, tiling.y);
-        material->SetProperty(MaterialProperty::UvOffsetX, offset.x);
-        material->SetProperty(MaterialProperty::UvOffsetY, offset.y);
+        material->SetProperty(MaterialProperty::TextureTilingX, tiling.x);
+        material->SetProperty(MaterialProperty::TextureTilingY, tiling.y);
+        material->SetProperty(MaterialProperty::TextureOffsetX, offset.x);
+        material->SetProperty(MaterialProperty::TextureOffsetY, offset.y);
         material->SetProperty(MaterialProperty::ColorR, m_material_color_picker->GetColor().r);
         material->SetProperty(MaterialProperty::ColorG, m_material_color_picker->GetColor().g);
         material->SetProperty(MaterialProperty::ColorB, m_material_color_picker->GetColor().b);
@@ -820,7 +810,7 @@ void Properties::ShowCamera(shared_ptr<Camera> camera) const
 
     if (component_begin("Camera", IconType::Component_Camera, camera))
     {
-        //= REFLECT ====================================================================
+        //= REFLECT ===============================================================
         static vector<string> projection_types = { "Perspective", "Orthographic" };
         float aperture                         = camera->GetAperture();
         float shutter_speed                    = camera->GetShutterSpeed();
@@ -829,8 +819,7 @@ void Properties::ShowCamera(shared_ptr<Camera> camera) const
         float near_plane                       = camera->GetNearPlane();
         float far_plane                        = camera->GetFarPlane();
         bool first_person_control_enabled      = camera->GetIsControlEnabled();
-        m_colorPicker_camera->SetColor(camera->GetClearColor());
-        //==============================================================================
+        //=========================================================================
 
         const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
 
@@ -876,30 +865,15 @@ void Properties::ShowCamera(shared_ptr<Camera> camera) const
         ImGui::SameLine(column_pos_x); ImGui::Checkbox("##camera_first_person_control", &first_person_control_enabled);
         ImGuiSp::tooltip("Enables first person control while holding down the right mouse button (or when a controller is connected)");
 
-        //= MAP =======================================================================================================================================
-        if (aperture != camera->GetAperture())                                      camera->SetAperture(aperture);
-        if (shutter_speed != camera->GetShutterSpeed())                             camera->SetShutterSpeed(shutter_speed);
-        if (iso != camera->GetIso())                                                camera->SetIso(iso);
-        if (fov != camera->GetFovHorizontalDeg())                                   camera->SetFovHorizontalDeg(fov);
-        if (near_plane != camera->GetNearPlane())                                   camera->SetNearPlane(near_plane);
-        if (far_plane != camera->GetFarPlane())                                     camera->SetFarPlane(far_plane);
+        //= MAP =====================================================================================================================
+        if (aperture != camera->GetAperture())                             camera->SetAperture(aperture);
+        if (shutter_speed != camera->GetShutterSpeed())                    camera->SetShutterSpeed(shutter_speed);
+        if (iso != camera->GetIso())                                       camera->SetIso(iso);
+        if (fov != camera->GetFovHorizontalDeg())                          camera->SetFovHorizontalDeg(fov);
+        if (near_plane != camera->GetNearPlane())                          camera->SetNearPlane(near_plane);
+        if (far_plane != camera->GetFarPlane())                            camera->SetFarPlane(far_plane);
         if (first_person_control_enabled != camera->GetIsControlEnabled()) camera->SetIsControlEnalbed(first_person_control_enabled);
-        if (m_colorPicker_camera->GetColor() != camera->GetClearColor())            camera->SetClearColor(m_colorPicker_camera->GetColor());
-        //=============================================================================================================================================
-    }
-    component_end();
-}
-
-void Properties::ShowEnvironment(shared_ptr<Environment> environment) const
-{
-    if (!environment)
-        return;
-
-    if (component_begin("Environment", IconType::Component_Environment, environment))
-    {
-        ImGui::Text("Sphere Map");
-
-        ImGuiSp::image_slot(environment->GetTexture(), [&environment](const shared_ptr<RHI_Texture>& texture) { environment->SetTexture(texture); } );
+        //===========================================================================================================================
     }
     component_end();
 }
@@ -1180,17 +1154,6 @@ void Properties::ComponentContextMenu_Add() const
                 else if (ImGui::MenuItem("Audio Listener"))
                 {
                     entity->AddComponent<AudioListener>();
-                }
-
-                ImGui::EndMenu();
-            }
-
-            // ENVIRONMENT
-            if (ImGui::BeginMenu("Environment"))
-            {
-                if (ImGui::MenuItem("Environment"))
-                {
-                    entity->AddComponent<Environment>();
                 }
 
                 ImGui::EndMenu();

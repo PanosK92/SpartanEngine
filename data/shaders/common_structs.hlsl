@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 struct Surface
 {
-    // Properties
+    // properties
     float3 albedo;
     float  alpha;
     float  roughness;
@@ -54,7 +54,7 @@ struct Surface
     float3 specular_energy;
     float3 diffuse_energy;
     
-    // Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
+    // activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
     float3 multi_bounce_ao(float visibility, float3 albedo)
     {
         float3 a = 2.0404 * albedo - 0.3324;
@@ -73,7 +73,7 @@ struct Surface
         float4 sample_material_2 = tex_material_2[position_screen];
         float sample_depth       = get_depth(position_screen);
 
-        // Misc
+        // misc
         uv     = (position_screen + 0.5f) / pass_get_resolution_out();
         depth  = sample_depth;
         normal = sample_normal.xyz;
@@ -115,7 +115,7 @@ struct Surface
             }
         }
 
-        position               = get_position_ws_from_depth(uv, depth);
+        position               = get_position(depth, uv);
         camera_to_pixel        = position - buffer_frame.camera_position.xyz;
         camera_to_pixel_length = length(camera_to_pixel);
         camera_to_pixel        = normalize(camera_to_pixel);
@@ -147,7 +147,7 @@ struct Light
     // attenuation functions are derived from Frostbite
     // https://media.contentapi.ea.com/content/dam/eacom/frostbite/files/course-notes-moving-frostbite-to-pbr-v2.pdf
 
-    // Attenuation over distance
+    // attenuation over distance
     float compute_attenuation_distance(const float3 surface_position)
     {
         float distance_to_pixel = length(surface_position - position);
@@ -155,7 +155,7 @@ struct Light
         return attenuation * attenuation;
     }
 
-    // Attenuation over angle (approaching the outer cone)
+    // attenuation over angle (approaching the outer cone)
     float compute_attenuation_angle()
     {
         float cos_outer         = cos(angle);
@@ -169,7 +169,7 @@ struct Light
         return attenuation * attenuation;
     }
 
-    // Final attenuation for all supported lights
+    // final attenuation for all supported lights
     float compute_attenuation(const float3 surface_position)
     {
         float attenuation = 0.0f;
@@ -210,10 +210,10 @@ struct Light
     {
         color             = buffer_light.color.rgb;
         position          = buffer_light.position.xyz;
-        intensity         = buffer_light.intensity_range_angle_bias.x;
-        far               = buffer_light.intensity_range_angle_bias.y;
-        angle             = buffer_light.intensity_range_angle_bias.z;
-        bias              = buffer_light.intensity_range_angle_bias.w;
+        intensity         = buffer_light.intensity;
+        far               = buffer_light.range;
+        angle             = buffer_light.angle;
+        bias              = buffer_light.bias;
         forward           = buffer_light.direction.xyz;
         normal_bias       = buffer_light.normal_bias;
         near              = 0.1f;

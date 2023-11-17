@@ -438,7 +438,7 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT_MSG(m_pso.IsGraphics(), "You can't use a render pass with a compute pipeline");
-        SP_ASSERT_MSG(!m_is_rendering, "The command list is already rendering");
+        SP_ASSERT_MSG(!m_is_render_pass_active, "The command list is already rendering");
 
         if (!m_pso.IsGraphics())
             return;
@@ -460,9 +460,9 @@ namespace Spartan
             if (swapchain)
             {
                 // transition to the appropriate layout
-                if (swapchain->GetLayout() != RHI_Image_Layout::Color_Attachment_Optimal)
+                if (swapchain->GetLayout() != RHI_Image_Layout::Color_Attachment)
                 {
-                    swapchain->SetLayout(RHI_Image_Layout::Color_Attachment_Optimal, this);
+                    swapchain->SetLayout(RHI_Image_Layout::Color_Attachment, this);
                 }
 
                 VkRenderingAttachmentInfo color_attachment = {};
@@ -488,9 +488,9 @@ namespace Spartan
                     SP_ASSERT_MSG(rt->IsRenderTargetColor(), "The texture wasn't created with the RHI_Texture_RenderTarget flag and/or isn't a color format");
 
                     // Transition to the appropriate layout
-                    if (rt->GetLayout(0) != RHI_Image_Layout::Color_Attachment_Optimal)
+                    if (rt->GetLayout(0) != RHI_Image_Layout::Color_Attachment)
                     {
-                        rt->SetLayout(RHI_Image_Layout::Color_Attachment_Optimal, this);
+                        rt->SetLayout(RHI_Image_Layout::Color_Attachment, this);
                     }
 
                     VkRenderingAttachmentInfo color_attachment = {};
@@ -520,10 +520,10 @@ namespace Spartan
             SP_ASSERT(rt->IsRenderTargetDepthStencil());
 
             // Transition to the appropriate layout
-            RHI_Image_Layout layout = rt->IsStencilFormat() ? RHI_Image_Layout::Depth_Stencil_Attachment_Optimal : RHI_Image_Layout::Depth_Attachment_Optimal;
+            RHI_Image_Layout layout = rt->IsStencilFormat() ? RHI_Image_Layout::Depth_Stencil_Attachment : RHI_Image_Layout::Depth_Attachment;
             if (m_pso.render_target_depth_texture_read_only)
             {
-                layout = RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal;
+                layout = RHI_Image_Layout::Depth_Stencil_Read;
             }
             rt->SetLayout(layout, this);
 
@@ -556,20 +556,20 @@ namespace Spartan
         );
         SetViewport(viewport);
 
-        m_is_rendering = true;
+        m_is_render_pass_active = true;
     }
 
     void RHI_CommandList::EndRenderPass()
     {
-        if (m_is_rendering)
+        if (m_is_render_pass_active)
         {
             vkCmdEndRendering(static_cast<VkCommandBuffer>(m_rhi_resource));
-            m_is_rendering = false;
+            m_is_render_pass_active = false;
         }
 
         if (m_pso.render_target_swapchain)
         {
-            m_pso.render_target_swapchain->SetLayout(RHI_Image_Layout::Present_Src, this);
+            m_pso.render_target_swapchain->SetLayout(RHI_Image_Layout::Present_Source, this);
         }
     }
 
@@ -649,7 +649,7 @@ namespace Spartan
         }
 
         // One of the required layouts for clear functions
-        texture->SetLayout(RHI_Image_Layout::Transfer_Dst_Optimal, this);
+        texture->SetLayout(RHI_Image_Layout::Transfer_Destination, this);
 
         VkImageSubresourceRange image_subresource_range = {};
         image_subresource_range.baseMipLevel            = 0;
@@ -785,8 +785,8 @@ namespace Spartan
         array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_destination = destination->GetLayouts();
 
         // Transition to blit appropriate layouts
-        source->SetLayout(RHI_Image_Layout::Transfer_Src_Optimal,      this);
-        destination->SetLayout(RHI_Image_Layout::Transfer_Dst_Optimal, this);
+        source->SetLayout(RHI_Image_Layout::Transfer_Source,      this);
+        destination->SetLayout(RHI_Image_Layout::Transfer_Destination, this);
 
         // Blit
         vkCmdBlitImage(
@@ -847,8 +847,8 @@ namespace Spartan
         RHI_Image_Layout source_layout_initial = source->GetLayout(0);
 
         // transition to blit appropriate layouts
-        source->SetLayout(RHI_Image_Layout::Transfer_Src_Optimal,      this);
-        destination->SetLayout(RHI_Image_Layout::Transfer_Dst_Optimal, this);
+        source->SetLayout(RHI_Image_Layout::Transfer_Source,      this);
+        destination->SetLayout(RHI_Image_Layout::Transfer_Destination, this);
 
         // deduce filter
         bool width_equal  = source->GetWidth() == destination->GetWidth();
@@ -866,7 +866,7 @@ namespace Spartan
 
         // Transition to the initial layouts
         source->SetLayout(source_layout_initial, this);
-        destination->SetLayout(RHI_Image_Layout::Present_Src, this);
+        destination->SetLayout(RHI_Image_Layout::Present_Source, this);
     }
 
     void RHI_CommandList::Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)
@@ -903,8 +903,8 @@ namespace Spartan
         array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_destination = destination->GetLayouts();
 
         // transition to blit appropriate layouts
-        source->SetLayout(RHI_Image_Layout::Transfer_Src_Optimal, this);
-        destination->SetLayout(RHI_Image_Layout::Transfer_Dst_Optimal, this);
+        source->SetLayout(RHI_Image_Layout::Transfer_Source, this);
+        destination->SetLayout(RHI_Image_Layout::Transfer_Destination, this);
 
         vkCmdCopyImage(
             static_cast<VkCommandBuffer>(m_rhi_resource),
@@ -949,8 +949,8 @@ namespace Spartan
 
         // Transition to blit appropriate layouts
         RHI_Image_Layout layout_initial_source = source->GetLayout(0);
-        source->SetLayout(RHI_Image_Layout::Transfer_Src_Optimal, this);
-        destination->SetLayout(RHI_Image_Layout::Transfer_Dst_Optimal, this);
+        source->SetLayout(RHI_Image_Layout::Transfer_Source, this);
+        destination->SetLayout(RHI_Image_Layout::Transfer_Destination, this);
 
         // Blit
         vkCmdCopyImage(
@@ -962,7 +962,7 @@ namespace Spartan
 
         // Transition to the initial layout
         source->SetLayout(layout_initial_source, this);
-        destination->SetLayout(RHI_Image_Layout::Present_Src, this);
+        destination->SetLayout(RHI_Image_Layout::Present_Source, this);
     }
 
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
@@ -1154,13 +1154,13 @@ namespace Spartan
                 // Color
                 if (texture->IsColorFormat())
                 {
-                    target_layout = RHI_Image_Layout::Shader_Read_Only_Optimal;
+                    target_layout = RHI_Image_Layout::Shader_Read;
                 }
 
                 // Depth
                 if (texture->IsDepthFormat())
                 {
-                    target_layout = RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal;
+                    target_layout = RHI_Image_Layout::Depth_Stencil_Read;
                 }
             }
 
@@ -1187,7 +1187,7 @@ namespace Spartan
             // Transition
             if (transition_required)
             {
-                SP_ASSERT(!m_is_rendering && "Can't transition to a different layout while rendering");
+                SP_ASSERT(!m_is_render_pass_active && "Can't transition to a different layout while rendering");
                 texture->SetLayout(target_layout, this, mip_index, mip_range);
             }
         }
@@ -1312,6 +1312,11 @@ namespace Spartan
     void RHI_CommandList::OnDraw()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        if (!m_is_render_pass_active && m_pso.IsGraphics())
+        {
+            BeginRenderPass();
+        }
 
         Renderer::SetGlobalShaderResources(this);
 

@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Transform.h"
 #include "Components/Camera.h"
 #include "Components/Light.h"
-#include "Components/Environment.h"
 #include "Components/AudioListener.h"
 #include "Components/AudioSource.h"
 #include "Components/PhysicsBody.h"
@@ -78,13 +77,6 @@ namespace Spartan
             const bool load_floor                = true
         )
         {
-            // environment
-            {
-                m_default_environment = World::CreateEntity();
-                m_default_environment->SetObjectName("environment");
-                m_default_environment->AddComponent<Environment>();
-            }
-
             // camera
             {
                 // create the camera's root (which will be used for movement)
@@ -120,7 +112,7 @@ namespace Spartan
 
                 shared_ptr<Light> light = entity->AddComponent<Light>();
                 light->SetLightType(LightType::Directional);
-                light->SetTemperature(1400.0f);
+                light->SetTemperature(2300.0f);
                 light->SetIntensity(sun_intensity);
                 light->SetShadowsEnabled(shadows_enabled ? (light->GetIntensityLumens() > 0.0f) : false);
             }
@@ -147,8 +139,8 @@ namespace Spartan
                 shared_ptr<Renderable> renderable = m_default_model_floor->AddComponent<Renderable>();
                 renderable->SetGeometry(Renderer::GetStandardMesh(Renderer_MeshType::Quad).get());
                 renderable->SetDefaultMaterial();
-                renderable->GetMaterial()->SetProperty(MaterialProperty::UvTilingX, 100.0f);
-                renderable->GetMaterial()->SetProperty(MaterialProperty::UvTilingY, 100.0f);
+                renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingX, 100.0f);
+                renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingY, 100.0f);
 
                 // add physics components
                 shared_ptr<PhysicsBody> rigid_body = m_default_model_floor->AddComponent<PhysicsBody>();
@@ -223,8 +215,8 @@ namespace Spartan
                         if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
                         {
                             material->SetColor(Color::material_aluminum);
-                            material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.1f);
-                            material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.15f);
+                            material->SetProperty(MaterialProperty::MultiplierRoughness, 0.1f);
+                            material->SetProperty(MaterialProperty::MultiplierMetalness, 0.15f);
                             material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
                             material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f);
                         }
@@ -237,7 +229,7 @@ namespace Spartan
                             if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
                             {
                                 material->SetColor(Color::material_tire);
-                                material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
+                                material->SetProperty(MaterialProperty::MultiplierRoughness, 0.35f);
                             }
                         }
 
@@ -246,7 +238,7 @@ namespace Spartan
                             if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
                             {
                                 material->SetColor(Color::material_tire);
-                                material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
+                                material->SetProperty(MaterialProperty::MultiplierRoughness, 0.35f);
                             }
                         }
                     }
@@ -258,15 +250,15 @@ namespace Spartan
                     {
                         material->SetColor(Color::material_tire);
                         material->SetTexture(MaterialTexture::Roughness, nullptr);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.8f);
-                        material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.0f);
+                        material->SetProperty(MaterialProperty::MultiplierRoughness, 0.8f);
+                        material->SetProperty(MaterialProperty::MultiplierMetalness, 0.0f);
                     }
 
                     if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("Interior_InteriorPlastic2_0")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetColor(Color::material_tire);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.8f);
-                        material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.0f);
+                        material->SetProperty(MaterialProperty::MultiplierRoughness, 0.8f);
+                        material->SetProperty(MaterialProperty::MultiplierMetalness, 0.0f);
                     }
 
                 }
@@ -276,14 +268,14 @@ namespace Spartan
                     if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("CarBody_LampCovers_0")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetColor(Color::material_glass);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.2f);
+                        material->SetProperty(MaterialProperty::MultiplierRoughness, 0.2f);
                         material->SetTexture(MaterialTexture::Emission, material->GetTexture_PtrShared(MaterialTexture::Color));
                     }
 
                     // plastic covers
                     if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("Headlights_Trim2_0")->GetComponent<Renderable>()->GetMaterial())
                     {
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
+                        material->SetProperty(MaterialProperty::MultiplierRoughness, 0.35f);
                         material->SetColor(Color::material_tire);
                     }
                 }
@@ -417,7 +409,7 @@ namespace Spartan
                         light->SetColor(Color(1.0f, 0.0f, 0.0f, 1.0f));
                         light->SetIntensity(LightIntensity::bulb_500_watt);
                         light->SetShadowsEnabled(false);
-                        light->SetRange(5.0f);
+                        light->SetRange(3.0f);
                         light->SetAngle(145.0f * Math::Helper::DEG_TO_RAD);
                     }
                 }
@@ -802,12 +794,6 @@ namespace Spartan
         Vector3 camera_position = Vector3(8.7844f, 2.0f, -4.1412f);
         Vector3 camera_rotation = Vector3(7.4f, -65.5f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\riders_on_the_storm_fredwreck_remix.mp3");
-
-        // environment
-        {
-            m_default_environment->GetComponent<Environment>()->SetFromTextureSphere("project\\environment\\kloppenheim_05_4k.hdr");
-        }
-
         create_default_car();
 
         Engine::AddFlag(EngineMode::Game);
@@ -832,13 +818,13 @@ namespace Spartan
 
                 shared_ptr<Material> material = make_shared<Material>();
                 material->SetResourceFilePath(string("project\\terrain\\material_terrain") + string(EXTENSION_MATERIAL));
-                material->SetTexture(MaterialTexture::Color,       "project\\terrain\\florest_floor\\albedo.png");
-                material->SetTexture(MaterialTexture::Normal,      "project\\terrain\\florest_floor\\normal.png");
-                material->SetTexture(MaterialTexture::Color2,      "project\\terrain\\slate_cliff_rock\\albedo.png");
-                material->SetTexture(MaterialTexture::Normal2,     "project\\terrain\\slate_cliff_rock\\normal.png");
-                material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
-                material->SetProperty(MaterialProperty::UvTilingX, 300.0f);
-                material->SetProperty(MaterialProperty::UvTilingY, 300.0f);
+                material->SetTexture(MaterialTexture::Color,               "project\\terrain\\florest_floor\\albedo.png");
+                material->SetTexture(MaterialTexture::Normal,              "project\\terrain\\florest_floor\\normal.png");
+                material->SetTexture(MaterialTexture::Color2,              "project\\terrain\\slate_cliff_rock\\albedo.png");
+                material->SetTexture(MaterialTexture::Normal2,             "project\\terrain\\slate_cliff_rock\\normal.png");
+                material->SetProperty(MaterialProperty::TextureSlopeBased, 1.0f);
+                material->SetProperty(MaterialProperty::TextureTilingX,    300.0f);
+                material->SetProperty(MaterialProperty::TextureTilingY,    300.0f);
 
                 m_default_terrain->GetComponent<Renderable>()->SetMaterial(material);
             }
@@ -860,23 +846,24 @@ namespace Spartan
                     shared_ptr<Entity> water = CreateEntity();
                     water->SetObjectName("water");
                     water->GetTransform()->SetPosition(Vector3(0.0f, terrain->GetWaterLevel(), 0.0f));
-                    water->GetTransform()->SetScale(Vector3(2000.0f, 1.0f, 2000.0f));
+                    water->GetTransform()->SetScale(Vector3(1100.0f, 1.0f, 1100.0f));
 
                     Renderable* renderable = water->AddComponent<Renderable>().get();
-                    renderable->SetGeometry(Renderer_MeshType::Quad);
+                    renderable->SetGeometry(Renderer_MeshType::Grid);
 
                     // material
                     {
+                        // set material
                         shared_ptr<Material> material = make_shared<Material>();
                         material->SetObjectName("material_water");
-                        material->SetColor(Color(0.0f, 48.0f / 255.0f, 75.0f / 255.0f));
+                        material->SetColor(Color(0.0f, 48.0f / 255.0f, 75.0f / 255.0f, 50.0f / 255.0f));
                         material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\water_normal_2.jpeg");
-                        material->SetProperty(MaterialProperty::IsWater,             1.0f);
-                        material->SetProperty(MaterialProperty::ColorA,              70.0f / 255.0f);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.2f); // just a bit of roughness to diffuse the sun a little
-                        material->SetProperty(MaterialProperty::NormalMultiplier,    0.3f);
-                        material->SetProperty(MaterialProperty::UvTilingX,           500.0f);
-                        material->SetProperty(MaterialProperty::UvTilingY,           500.0f);
+                        material->SetProperty(MaterialProperty::MultiplierRoughness, 0.2f); // just a bit of roughness to diffuse the sun a little
+                        material->SetProperty(MaterialProperty::MultiplierNormal,    0.3f);
+                        material->SetProperty(MaterialProperty::TextureTilingX,      250.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingY,      250.0f);
+                        material->SetProperty(MaterialProperty::TextureAnimate,      1.0f);
+                        material->SetProperty(MaterialProperty::VertexAnimateWater,  1.0f);
 
                         // create a file path for this material (required for the material to be able to be cached by the resource cache)
                         const string file_path = "project\\terrain\\water_material" + string(EXTENSION_MATERIAL);
@@ -902,9 +889,15 @@ namespace Spartan
 
                     if (Entity* leafs = entity->GetTransform()->GetDescendantPtrByName("Mobile_Tree_1_2"))
                     {
+                        // enable instancing
                         Renderable* renderable = leafs->GetComponent<Renderable>().get();
-                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\vegetation_tree_1\\leaf.png");
                         renderable->SetInstances(terrain->GetTransformsTree());
+
+                        // tweak material
+                        Material* material = renderable->GetMaterial();
+                        material->SetTexture(MaterialTexture::Color, "project\\models\\vegetation_tree_1\\leaf.png");
+                        material->SetProperty(MaterialProperty::VertexAnimateWind, 1.0f);
+                        material->SetProperty(MaterialProperty::WorldSpaceHeight,  renderable->GetBoundingBoxNoInstancing().GetSize().y);
                     }
                 }
 
@@ -917,12 +910,18 @@ namespace Spartan
 
                     if (Entity* child = entity->GetTransform()->GetDescendantPtrByName("Plane.010"))
                     {
+                        // enable instancing
                         Renderable* renderable = child->GetComponent<Renderable>().get();
-                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color,    "project\\models\\vegetation_plant_1\\ormbunke.png");
-                        renderable->GetMaterial()->SetProperty(MaterialProperty::ColorR, 1.0f);
-                        renderable->GetMaterial()->SetProperty(MaterialProperty::ColorG, 1.0f);
-                        renderable->GetMaterial()->SetProperty(MaterialProperty::ColorB, 1.0f);
                         renderable->SetInstances(terrain->GetTransformsPlant1());
+
+                        // tweak material
+                        Material* material = renderable->GetMaterial();
+                        material->SetTexture(MaterialTexture::Color,    "project\\models\\vegetation_plant_1\\ormbunke.png");
+                        material->SetProperty(MaterialProperty::ColorR, 1.0f);
+                        material->SetProperty(MaterialProperty::ColorG, 1.0f);
+                        material->SetProperty(MaterialProperty::ColorB, 1.0f);
+                        material->SetProperty(MaterialProperty::VertexAnimateWind, 1.0f);
+                        material->SetProperty(MaterialProperty::WorldSpaceHeight,  renderable->GetBoundingBoxNoInstancing().GetSize().y);
                     }
                 }
 

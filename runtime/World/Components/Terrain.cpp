@@ -263,6 +263,7 @@ namespace Spartan
             const vector<uint32_t>& indices,
             uint32_t tree_count,
             float max_slope_radians,
+            bool rotate_to_match_surface_normal,
             float water_level,
             float terrain_offset
         )
@@ -293,16 +294,21 @@ namespace Spartan
                     // generate barycentric coordinates
                     float u = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
                     float v = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-
                     if (u + v > 1.0f)
                     {
                         u = 1.0f - u;
                         v = 1.0f - v;
                     }
 
-                    Vector3 position    = v0 + (u * (v1 - v0) + terrain_offset) + v * (v2 - v0);
-                    Quaternion rotation = Quaternion::FromEulerAngles(0.0f, get_random_float(0.0f, 360.0f), 0.0f);
-                    Vector3 scale       = Vector3(get_random_float(0.5f, 1.5f));
+                    // scale is a random value between 0.5 and 1.5
+                    Vector3 scale = Vector3(get_random_float(0.5f, 1.5f));
+
+                    // position is the barycentric coordinates multiplied by the vertices of the triangle, plus a terrain_offset to avoid floating object
+                    Vector3 position = v0 + (u * (v1 - v0) + terrain_offset) + v * (v2 - v0);
+
+                    // rotation is a random rotation around the Y axis, and then rotated to match the normal of the triangle
+                    Quaternion rotate_to_normal = rotate_to_match_surface_normal ? Quaternion::FromToRotation(Vector3::Up, normal) : Quaternion::Identity;
+                    Quaternion rotation         = rotate_to_normal * Quaternion::FromEulerAngles(0.0f, get_random_float(0.0f, 360.0f), 0.0f);
 
                     // we are mapping 4 vector4 (c++ side, see vulka_pipeline.cpp) to 1 matrix (HLSL side), and the matrix
                     // memory layout is column-major, so we need to transpose to get it as row-major
@@ -310,7 +316,7 @@ namespace Spartan
                 }
                 else
                 {
-                    // if the slope is too steep, try again
+                    // if the slope is too steep or the object is underwater, try again
                     --i;
                 }
             }
@@ -342,7 +348,7 @@ namespace Spartan
     void Terrain::Deserialize(FileStream* stream)
     {
         m_height_texture = ResourceCache::GetByPath<RHI_Texture2D>(stream->ReadAs<string>());
-        m_mesh       = ResourceCache::GetByName<Mesh>(stream->ReadAs<string>());
+        m_mesh           = ResourceCache::GetByName<Mesh>(stream->ReadAs<string>());
         stream->Read(&m_min_y);
         stream->Read(&m_max_y);
 
@@ -432,19 +438,21 @@ namespace Spartan
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
             // compute tree positions
-            uint32_t tree_count     = 5000;
-            float max_slope         = 30.0f * Math::Helper::DEG_TO_RAD;
-            float terrain_offset    = -0.2f;
-            m_trees                 = generate_transforms(vertices, indices, tree_count, max_slope, m_water_level, terrain_offset);
+            uint32_t tree_count              = 5000;
+            float max_slope                  = 30.0f * Math::Helper::DEG_TO_RAD;
+            bool rotate_match_surface_normal = false; // trees tend to grow upwards (they go for the sun)
+            float terrain_offset             = -0.2f;
+            m_trees                          = generate_transforms(vertices, indices, tree_count, max_slope, rotate_match_surface_normal, m_water_level, terrain_offset);
 
             // compute plant 1 positions
-            uint32_t plant_count = 20000;
-            max_slope            = 40.0f * Math::Helper::DEG_TO_RAD;
-            terrain_offset       = 0.0f;
-            m_plants_1           = generate_transforms(vertices, indices, plant_count, max_slope, m_water_level, terrain_offset);
+            uint32_t plant_count        = 20000;
+            max_slope                   = 40.0f * Math::Helper::DEG_TO_RAD;
+            rotate_match_surface_normal = true; // small plants tend to grow towards the sun but they can have some wonky angles due to low mass
+            terrain_offset              = 0.0f;
+            m_plants_1                  = generate_transforms(vertices, indices, plant_count, max_slope, rotate_match_surface_normal, m_water_level, terrain_offset);
 
             // compute plant 2 positions
-            m_plants_2 = generate_transforms(vertices, indices, plant_count, max_slope, m_water_level, terrain_offset);
+            m_plants_2 = generate_transforms(vertices, indices, plant_count, max_slope, rotate_match_surface_normal, m_water_level, terrain_offset);
 
             if (on_complete)
             {

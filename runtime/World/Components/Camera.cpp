@@ -90,7 +90,6 @@ namespace Spartan
         stream->Write(m_aperture);
         stream->Write(m_shutter_speed);
         stream->Write(m_iso);
-        stream->Write(m_clear_color);
         stream->Write(uint32_t(m_projection_type));
         stream->Write(m_fov_horizontal_rad);
         stream->Write(m_near_plane);
@@ -102,7 +101,6 @@ namespace Spartan
         stream->Read(&m_aperture);
         stream->Read(&m_shutter_speed);
         stream->Read(&m_iso);
-        stream->Read(&m_clear_color);
         m_projection_type = ProjectionType(stream->ReadAs<uint32_t>());
         stream->Read(&m_fov_horizontal_rad);
         stream->Read(&m_near_plane);
@@ -154,7 +152,7 @@ namespace Spartan
 
     bool Camera::IsInViewFrustum(shared_ptr<Renderable> renderable) const
     {
-        const BoundingBox& box = renderable->GetAabb();
+        const BoundingBox& box = renderable->GetBoundingBox();
         const Vector3 center   = box.GetCenter();
         const Vector3 extents  = box.GetExtents();
 
@@ -195,7 +193,7 @@ namespace Spartan
                     continue;
 
                 // Get object oriented bounding box
-                const BoundingBox& aabb = entity->GetComponent<Renderable>()->GetAabb();
+                const BoundingBox& aabb = entity->GetComponent<Renderable>()->GetBoundingBox();
 
                 // Compute hit distance
                 float distance = m_ray.HitDistance(aabb);
@@ -620,7 +618,7 @@ namespace Spartan
             // ...otherwise we apply a simple offset so that the rotation vector doesn't suffer
             if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
             {
-                m_lerp_to_target_position -= target_direction * renderable->GetAabb().GetExtents().Length() * 2.0f;
+                m_lerp_to_target_position -= target_direction * renderable->GetBoundingBox().GetExtents().Length() * 2.0f;
             }
             else
             {

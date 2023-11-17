@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Component.h"
 #include "Light.h"
-#include "Environment.h"
 #include "PhysicsBody.h"
 #include "Constraint.h"
 #include "Camera.h"
@@ -71,7 +70,6 @@ namespace Spartan
     REGISTER_COMPONENT(Light,           ComponentType::Light)
     REGISTER_COMPONENT(Renderable,      ComponentType::Renderable)
     REGISTER_COMPONENT(PhysicsBody,     ComponentType::PhysicsBody)
-    REGISTER_COMPONENT(Environment,     ComponentType::Environment)
     REGISTER_COMPONENT(Terrain,         ComponentType::Terrain)
     REGISTER_COMPONENT(Transform,       ComponentType::Transform)
     REGISTER_COMPONENT(ReflectionProbe, ComponentType::ReflectionProbe)

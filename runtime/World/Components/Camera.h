@@ -124,10 +124,6 @@ namespace Spartan
         void AddBookmark(camera_bookmark bookmark)               { m_bookmarks.emplace_back(bookmark); };
         const std::vector<camera_bookmark>& GetBookmarks() const { return m_bookmarks; };
 
-        // Clear color
-        const Color& GetClearColor()                   const  { return m_clear_color; }
-        void SetClearColor(const Color& color)                { m_clear_color = color; }
-
         // First person control
         bool GetIsControlEnabled()             const { return m_first_person_control_enabled; }
         void SetIsControlEnalbed(const bool enabled) { m_first_person_control_enabled = enabled; }
@@ -157,7 +153,6 @@ namespace Spartan
         float m_near_plane                         = 0.1f;
         float m_far_plane                          = 1000.0f;
         ProjectionType m_projection_type           = Projection_Perspective;
-        Color m_clear_color                        = Color::standard_cornflower_blue;
         Math::Matrix m_view                        = Math::Matrix::Identity;
         Math::Matrix m_projection                  = Math::Matrix::Identity;
         Math::Matrix m_view_projection             = Math::Matrix::Identity;

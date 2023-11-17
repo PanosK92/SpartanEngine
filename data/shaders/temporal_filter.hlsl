@@ -24,9 +24,54 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 /*------------------------------------------------------------------------------
+                           NEIGHBOURHOOD OFFSETS
+------------------------------------------------------------------------------*/
+static const int2 kOffsets3x3[9] =
+{
+    int2(-1, -1),
+    int2(0, -1),
+    int2(1, -1),
+    int2(-1, 0),
+    int2(0, 0),
+    int2(1, 0),
+    int2(-1, 1),
+    int2(0, 1),
+    int2(1, 1),
+};
+
+/*------------------------------------------------------------------------------
+                                VELOCITY
+------------------------------------------------------------------------------*/
+void depth_test_min(uint2 pos, inout float min_depth, inout uint2 min_pos)
+{
+    float depth = get_linear_depth(pos);
+
+    // reverse-z, a greater depth value is closer
+    if (depth > min_depth)
+    {
+        min_depth = depth;
+        min_pos   = pos;
+    }
+}
+
+// Returns velocity with closest depth (3x3 neighborhood)
+float2 get_closest_pixel_velocity_3x3(uint2 thread_id)
+{
+    float min_depth = 0.0f; // start with the smallest possible value for reverse-Z
+    uint2 min_pos   = thread_id;
+
+    [unroll]
+    for (int i = 0; i < 9; ++i)
+    {
+        depth_test_min(thread_id + kOffsets3x3[i], min_depth, min_pos);
+    }
+
+    return tex_velocity[min_pos].xy;
+}
+
+/*------------------------------------------------------------------------------
                               HISTORY CLIPPING
 ------------------------------------------------------------------------------*/
-
 // based on https://github.com/playdeadgames/temporal
 float4 clip_aabb(float4 aabb_min, float4 aabb_max, float4 p, float4 q)
 {
@@ -50,19 +95,6 @@ float4 clip_aabb(float4 aabb_min, float4 aabb_max, float4 p, float4 q)
 
     return p + r;
 }
-
-static const int2 kOffsets3x3[9] =
-{
-    int2(-1, -1),
-    int2(0, -1),
-    int2(1, -1),
-    int2(-1, 0),
-    int2(0, 0),
-    int2(1, 0),
-    int2(-1, 1),
-    int2(0, 1),
-    int2(1, 1),
-};
 
 // clip history to the neighbourhood of the current sample
 float4 clip_history_3x3(uint2 pos, float4 color_history, float2 velocity_closest)
@@ -94,21 +126,20 @@ float4 clip_history_3x3(uint2 pos, float4 color_history, float2 velocity_closest
 }
 
 /*------------------------------------------------------------------------------
-                               INPUT BLEND FACTOR
+                               BLEND FACTOR
 ------------------------------------------------------------------------------*/
-
 float get_factor_dissoclusion(float2 uv_reprojected, float2 velocity)
 {
     float2 velocity_previous = tex_velocity_previous[uv_reprojected * buffer_frame.resolution_render].xy;
-    float dissoclusion = length(velocity_previous - velocity);
+    float dissoclusion       = length(velocity_previous - velocity);
 
     return saturate(dissoclusion * 1000.0f);
 }
 
 float compute_blend_factor(float2 uv_reprojected, float2 velocity)
 {
-    float blend_factor        = RPC_32;                                            // accumulate 32 samples
-    float factor_screen_edge  = !is_saturated(uv_reprojected);                     // if re-projected UV is out of screen, reject history
+    float blend_factor        = RPC_16; // accumulate 16 samples
+    float factor_screen_edge  = !is_valid_uv(uv_reprojected);                      // if re-projected UV is out of screen, reject history
     float factor_dissoclusion = get_factor_dissoclusion(uv_reprojected, velocity); // if there is dissoclusion, reject history
     
     return saturate(blend_factor + factor_screen_edge + factor_dissoclusion);
@@ -126,12 +157,15 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // get reprojected uv
     float2 uv             = (thread_id.xy + 0.5f) / pass_get_resolution_out();
-    float2 velocity       = tex_velocity[thread_id.xy].xy;
+    float2 velocity       = get_velocity_ndc(thread_id.xy);
     float2 uv_reprojected = uv - velocity;
 
-    // clip history
-    float4 history  = tex_uav[uv_reprojected * buffer_frame.resolution_render];
-    history         = clip_history_3x3(thread_id.xy, history, velocity);
+    // get history color
+    float4 history = tex_uav[uv_reprojected * buffer_frame.resolution_render];
+
+    // clip history (clipping reduces ghosting)
+    float2 velocity_closest = get_closest_pixel_velocity_3x3(thread_id.xy);
+    history                 = clip_history_3x3(thread_id.xy, history, velocity_closest);
 
     // accumulate
     float4 input_sample   = tex_uav2[thread_id.xy];

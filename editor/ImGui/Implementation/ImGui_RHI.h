@@ -53,7 +53,7 @@ namespace ImGui::RHI
     using namespace std;
     //======================
 
-    static const uint32_t buffer_count = 6;
+     const uint32_t buffer_count = 6;
 
     struct ViewportRhiResources
     {
@@ -73,7 +73,10 @@ namespace ImGui::RHI
             for (uint32_t i = 0; i < buffer_count; i++)
             {
                 index_buffers[i]  = make_unique<RHI_IndexBuffer>(true, name);
+                index_buffers[i]->CreateDynamic<ImDrawIdx>(100000);
+
                 vertex_buffers[i] = make_unique<RHI_VertexBuffer>(true, name);
+                vertex_buffers[i]->CreateDynamic<ImDrawVert>(50000);
             }
         }
     };
@@ -98,7 +101,7 @@ namespace ImGui::RHI
     shared_ptr<RHI_Shader>            g_shader_vertex;
     shared_ptr<RHI_Shader>            g_shader_pixel;
 
-    static void destroy_rhi_resources()
+    void destroy_rhi_resources()
     {
         g_font_atlas          = nullptr;
         g_depth_stencil_state = nullptr;
@@ -118,7 +121,7 @@ namespace ImGui::RHI
         }
     }
 
-    static void Initialize()
+    void Initialize()
     {
         // create required RHI objects
         {
@@ -196,12 +199,12 @@ namespace ImGui::RHI
         SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnShutdown, SP_EVENT_HANDLER_STATIC(destroy_rhi_resources));
     }
 
-    static void shutdown()
+    void shutdown()
     {
         DestroyPlatformWindows();
     }
 
-    static void render(ImDrawData* draw_data, WindowData* window_data = nullptr, const bool clear = true)
+    void render(ImDrawData* draw_data, WindowData* window_data = nullptr, const bool clear = true)
     {
         // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
         int fb_width  = static_cast<int>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
@@ -302,7 +305,7 @@ namespace ImGui::RHI
                     if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
                     {
                         // transition will happen only if needed
-                        texture->SetLayout(Spartan::RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
+                        texture->SetLayout(Spartan::RHI_Image_Layout::Shader_Read, cmd_list);
                     }
                 }
             }
@@ -312,7 +315,6 @@ namespace ImGui::RHI
         cmd_list->SetBufferVertex(vertex_buffer);
         cmd_list->SetBufferIndex(index_buffer);
         cmd_list->SetPipelineState(pso);
-        cmd_list->BeginRenderPass();
 
         // render
         {
@@ -433,7 +435,7 @@ namespace ImGui::RHI
         }
     }
 
-    static void window_create(ImGuiViewport* viewport)
+    void window_create(ImGuiViewport* viewport)
     {
         // platformHandle is SDL_Window, PlatformHandleRaw is HWND
         SP_ASSERT_MSG(viewport->PlatformHandle != nullptr, "Platform handle is invalid");
@@ -453,7 +455,7 @@ namespace ImGui::RHI
         viewport->RendererUserData     = window;
     }
 
-    static void window_destroy(ImGuiViewport* viewport)
+   void window_destroy(ImGuiViewport* viewport)
     {
         if (WindowData* window = static_cast<WindowData*>(viewport->RendererUserData))
         {
@@ -464,25 +466,25 @@ namespace ImGui::RHI
         viewport->RendererUserData = nullptr;
     }
 
-    static void window_resize(ImGuiViewport* viewport, const ImVec2 size)
+    void window_resize(ImGuiViewport* viewport, const ImVec2 size)
     {
         static_cast<WindowData*>(viewport->RendererUserData)->swapchain->Resize(static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y));
     }
 
-    static void window_render(ImGuiViewport* viewport, void*)
+    void window_render(ImGuiViewport* viewport, void*)
     {
         const bool clear = !(viewport->Flags & ImGuiViewportFlags_NoRendererClear);
         render(viewport->DrawData, static_cast<WindowData*>(viewport->RendererUserData), clear);
     }
 
-    static void window_present(ImGuiViewport* viewport, void*)
+    void window_present(ImGuiViewport* viewport, void*)
     {
         WindowData* window = static_cast<WindowData*>(viewport->RendererUserData);
         SP_ASSERT(window->viewport_rhi_resources->cmd_pool->GetCurrentCommandList()->GetState() == Spartan::RHI_CommandListState::Submitted);
         window->swapchain->Present();
     }
 
-    inline void initialize_platform_interface()
+    void initialize_platform_interface()
     {
         ImGuiPlatformIO& platform_io       = ImGui::GetPlatformIO();
         platform_io.Renderer_CreateWindow  = window_create;

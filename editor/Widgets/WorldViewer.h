@@ -69,7 +69,6 @@ private:
     static void ActionEntityCreateConstraint();
     static void ActionEntityCreateAudioSource();
     static void ActionEntityCreateAudioListener();
-    static void ActionEntityCreateEnvironment();
     static void ActionEntityCreateReflectionProbe();
 
     std::shared_ptr<Spartan::Entity> m_entity_empty;

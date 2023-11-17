@@ -47,23 +47,23 @@ namespace Spartan
         RHI_Shader();
         ~RHI_Shader();
 
-        // Compilation
+        // compilation
         void Compile(const RHI_Shader_Stage type, const std::string& file_path, bool async, const RHI_Vertex_Type vertex_type = RHI_Vertex_Type::Undefined);
         RHI_ShaderCompilationState GetCompilationState() const { return m_compilation_state; }
         bool IsCompiled()                                  const { return m_compilation_state == RHI_ShaderCompilationState::Succeeded; }
 
-        // Source
+        // source
         void LoadFromDrive(const std::string& file_path);
         const std::vector<std::string>& GetNames()     const { return m_names; }
         const std::vector<std::string>& GetFilePaths() const { return m_file_paths; }
         const std::vector<std::string>& GetSources()   const { return m_sources; }
         void SetSource(const uint32_t index, const std::string& source);
 
-        // Defines
+        // defines
         void AddDefine(const std::string& define, const std::string& value = "1") { m_defines[define] = value; }
         auto& GetDefines() const                                                  { return m_defines; }
 
-        // Misc
+        // misc
         uint32_t GetVertexSize() const;
         const std::vector<RHI_Descriptor>& GetDescriptors()      const { return m_descriptors; }
         const std::shared_ptr<RHI_InputLayout>& GetInputLayout() const { return m_input_layout; } // only valid for a vertex shader

@@ -43,12 +43,14 @@ namespace Spartan
         std::string url;
     };
 
-    // This system is responsible for saving/loading engine settings to a file
+    // this system is responsible for saving/loading engine settings to an xml file
     class SP_CLASS Settings
     {
     public:
         static void Initialize();
+        static void PostInitialize();
         static void Shutdown();
+
         static void RegisterThirdPartyLib(const std::string& name, const std::string& version, const std::string& url);
         static const std::vector<third_party_lib>& GetThirdPartyLibs();
         static bool HasLoadedUserSettingsFromFile();

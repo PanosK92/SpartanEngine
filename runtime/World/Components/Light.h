@@ -64,21 +64,6 @@ namespace Spartan
         custom                        // Custom intensity
     };
 
-    struct ShadowSlice
-    {
-        Math::Vector3 min    = Math::Vector3::Zero;
-        Math::Vector3 max    = Math::Vector3::Zero;
-        Math::Vector3 center = Math::Vector3::Zero;
-        Math::Frustum frustum;
-    };
-
-    struct ShadowMap
-    {
-        std::shared_ptr<RHI_Texture> texture_color;
-        std::shared_ptr<RHI_Texture> texture_depth;
-        std::vector<ShadowSlice> slices;
-    };
-
     class SP_CLASS Light : public Component
     {
     public:
@@ -95,24 +80,30 @@ namespace Spartan
         const LightType GetLightType() const { return m_light_type; }
         void SetLightType(LightType type);
 
-        // Color
+        // color
         void SetTemperature(const float temperature_kelvin);
         float GetTemperature() const { return m_temperature_kelvin; }
         void SetColor(const Color& rgb);
         const Color& GetColor() const { return m_color_rgb; }
 
-        // Intensity
+        // intensity
         void SetIntensityLumens(const float lumens);
         void SetIntensity(const LightIntensity lumens);
         float GetIntensityLumens() const    { return m_intensity_lumens; }
         LightIntensity GetIntensity() const { return m_intensity; }
         float GetIntensityWatt(Camera* camera) const;
 
+        // shadows
         bool GetShadowsEnabled() const { return m_shadows_enabled; }
         void SetShadowsEnabled(bool cast_shadows);
-
         bool GetShadowsTransparentEnabled() const { return m_shadows_transparent_enabled; }
         void SetShadowsTransparentEnabled(bool cast_transparent_shadows);
+
+        // bias
+        static float GetBias()            { return -0.004f; }
+        static float GetBiasSlopeScaled() { return -2.0f; }
+        void SetNormalBias(float value)   { m_bias_normal = value; }
+        auto GetNormalBias() const        { return m_bias_normal; }
 
         bool GetVolumetricEnabled() const             { return m_volumetric_enabled; }
         void SetVolumetricEnabled(bool is_volumetric) { m_volumetric_enabled = is_volumetric; }
@@ -123,55 +114,43 @@ namespace Spartan
         void SetAngle(float angle_rad);
         auto GetAngle() const { return m_angle_rad; }
 
-        void SetBias(float value) { m_bias = value; }
-        float GetBias() const     { return m_bias; }
+        const Math::Matrix& GetViewMatrix(uint32_t index) const;
+        const Math::Matrix& GetProjectionMatrix(uint32_t index) const;
 
-        void SetNormalBias(float value) { m_normal_bias = value; }
-        auto GetNormalBias() const { return m_normal_bias; }
-
-        const Math::Matrix& GetViewMatrix(uint32_t index = 0) const;
-        const Math::Matrix& GetProjectionMatrix(uint32_t index = 0) const;
-        float GetCascadeEnd(uint32_t index = 0) const;
-
-        RHI_Texture* GetDepthTexture() const { return m_shadow_map.texture_depth.get(); }
-        RHI_Texture* GetColorTexture() const { return m_shadow_map.texture_color.get(); }
-        uint32_t GetShadowArraySize() const;
+        RHI_Texture* GetDepthTexture() const { return m_texture_depth.get(); }
+        RHI_Texture* GetColorTexture() const { return m_texture_color.get(); }
         void CreateShadowMap();
 
-        bool IsInViewFrustum(std::shared_ptr<Renderable> renderable, uint32_t index) const;
+        bool IsInViewFrustum(std::shared_ptr<Renderable> renderable, const uint32_t index) const;
 
     private:
         void ComputeViewMatrix();
-        void ComputeProjectionMatrix(uint32_t index = 0);
-        void ComputeCascadeSplits();
+        void ComputeProjectionMatrix();
 
-        // Intensity
+        // intensity
         LightIntensity m_intensity = LightIntensity::bulb_500_watt;
         float m_intensity_lumens   = 2600.0f;
 
-        // Shadows
+        // shadows
         bool m_shadows_enabled             = true;
         bool m_shadows_transparent_enabled = true;
-        uint32_t m_cascade_count           = 3;
-        ShadowMap m_shadow_map;
+        float m_bias_normal                = 0.0f;
+        std::shared_ptr<RHI_Texture> m_texture_color;
+        std::shared_ptr<RHI_Texture> m_texture_depth;
+        std::array<Math::Frustum, 6> m_frustums;
+        std::array<Math::Matrix, 6> m_matrix_view;
+        std::array<Math::Matrix, 6> m_matrix_projection;
 
-        // Bias
-        float m_bias        = 0.0f;
-        float m_normal_bias = 5.0f;
-
-        // Misc
+        // misc
         LightType m_light_type     = LightType::Directional;
         Color m_color_rgb          = Color::standard_black;;
         float m_temperature_kelvin = 0.0f;
         bool m_volumetric_enabled  = true;
-        float m_range              = 10.0f;
+        float m_range              = 0.0f;
         float m_angle_rad          = 0.5f; // about 30 degrees
         bool m_initialized         = false;
-        std::array<Math::Matrix, 6> m_matrix_view;
-        std::array<Math::Matrix, 6> m_matrix_projection;
-        std::array<float, 3> m_cascade_ends;
 
-        // Dirty checks
+        // dirty checks
         bool m_is_dirty                     = true;
         Math::Matrix m_previous_camera_view = Math::Matrix::Identity;
     };

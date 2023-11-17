@@ -42,17 +42,21 @@ namespace Spartan
 {
     namespace
     { 
-        static VkColorSpaceKHR get_color_space(bool is_hdr)
+        static VkColorSpaceKHR get_color_space(const RHI_Format format)
         {
             // VK_COLOR_SPACE_HDR10_ST2084_EXT represents the HDR10 color space with the ST.2084 (PQ)electro - optical transfer function.
             // This is the most common HDR format used for HDR TVs and monitors.
 
-            // VK_COLOR_SPACE_SRGB_NONLINEAR_KHR represents the sRGB color space.
+            // VK_COLOR_SPACE_SRGB_NONLINEAR_KHR represents the sRGB color space
             // This is the standard color space for the web and is supported by most modern displays.
             // sRGB is a nonlinear color space, which means that the values stored in an image are not directly proportional to the perceived brightness of the colors.
             // When displaying an image in sRGB, the values must be converted to linear space before they are displayed.
 
-            return is_hdr ? VK_COLOR_SPACE_HDR10_ST2084_EXT : VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+            VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;                                                                // SDR
+            color_space                 = format == RHI_Format::R16G16B16A16_Float ? VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT : color_space; // HDR
+            color_space                 = format == RHI_Format::R10G10B10A2_Unorm  ? VK_COLOR_SPACE_HDR10_ST2084_EXT         : color_space; // HDR
+
+            return color_space;
         }
 
         static VkSurfaceCapabilitiesKHR get_surface_capabilities(const VkSurfaceKHR surface)
@@ -222,7 +226,7 @@ namespace Spartan
         VkSurfaceCapabilitiesKHR capabilities = get_surface_capabilities(surface);
 
         // Ensure that the surface supports the requested format and color space
-        VkColorSpaceKHR color_space = get_color_space(IsHdr());
+        VkColorSpaceKHR color_space = get_color_space(m_format);
         SP_ASSERT_MSG(is_format_and_color_space_supported(surface, &m_format, color_space), "The surface doesn't support the requested format");
 
         // Clamp size between the supported min and max
@@ -285,10 +289,10 @@ namespace Spartan
                         1,
                         1,
                         RHI_Image_Layout::Undefined,
-                        RHI_Image_Layout::Color_Attachment_Optimal
+                        RHI_Image_Layout::Color_Attachment
                     );
 
-                    m_layouts[i] = RHI_Image_Layout::Color_Attachment_Optimal;
+                    m_layouts[i] = RHI_Image_Layout::Color_Attachment;
                 }
 
                 // End/flush
@@ -422,7 +426,7 @@ namespace Spartan
         SP_ASSERT_MSG(!(SDL_GetWindowFlags(static_cast<SDL_Window*>(m_sdl_window)) & SDL_WINDOW_MINIMIZED), "Present should not be called for a minimized window");
         SP_ASSERT_MSG(m_rhi_swapchain != nullptr,                                                           "Invalid swapchain");
         SP_ASSERT_MSG(m_image_index != m_image_index_previous,                                              "No image was acquired");
-        SP_ASSERT_MSG(m_layouts[m_image_index] == RHI_Image_Layout::Present_Src,                            "Invalid layout");
+        SP_ASSERT_MSG(m_layouts[m_image_index] == RHI_Image_Layout::Present_Source,                            "Invalid layout");
 
         // get the semaphores that present should wait for
         m_wait_semaphores.clear();

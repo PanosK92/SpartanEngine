@@ -32,23 +32,23 @@ namespace Spartan
 {
     namespace
     {
-        // Accumulation
-        static const uint32_t frames_to_accumulate = 15;
-        static const double weight_delta           = 1.0 / static_cast<float>(frames_to_accumulate);
+        // accumulation
+        const uint32_t frames_to_accumulate = 60;
+        const double weight_delta           = 1.0 / static_cast<float>(frames_to_accumulate);
 
-        // Frame time
-        static double time_ms                = 0.0f;
-        static double delta_time_ms          = 0.0f;
-        static double delta_time_smoothed_ms = 0.0f;
+        // frame time
+        double time_ms                = 0.0f;
+        double delta_time_ms          = 0.0f;
+        double delta_time_smoothed_ms = 0.0f;
 
-        // FPS
-        static float fps_min            = 30.0f;
-        static float fps_max            = 10000.0f;
-        static float fps_limit          = fps_min; // if it's lower than the monitor's hz, it will be updated to match it, so start with something low.
-        static float fps_limit_previous = fps_limit;
+        // fps
+        float fps_min            = 30.0f;
+        float fps_max            = 10000.0f;
+        float fps_limit          = fps_min; // if it's lower than the monitor's hz, it will be updated to match it, so start with something low.
+        float fps_limit_previous = fps_limit;
 
-        // Misc
-        static chrono::steady_clock::time_point last_tick_time;
+        // misc
+        chrono::steady_clock::time_point last_tick_time;
     }
 
     void Timer::PostTick()

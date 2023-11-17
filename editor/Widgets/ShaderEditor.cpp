@@ -173,7 +173,7 @@ void ShaderEditor::ShowControls()
 {
     if (ImGui::BeginChild("##shader_editor_controls", ImVec2(0.0f, 0.0f), true, ImGuiWindowFlags_NoScrollbar))
     {
-        // Compile button
+        // compile button
         if (ImGuiSp::button("Compile"))
         {
             if (m_index_displayed != -1)
@@ -207,7 +207,7 @@ void ShaderEditor::ShowControls()
 
 void ShaderEditor::GetShaderInstances()
 {
-    array<shared_ptr<RHI_Shader>, Renderer::number_shaders> shaders = Renderer::GetShaders();
+    array<shared_ptr<RHI_Shader>, number_shaders> shaders = Renderer::GetShaders();
     m_shaders.clear();
 
     for (const shared_ptr<RHI_Shader>& shader : shaders)
