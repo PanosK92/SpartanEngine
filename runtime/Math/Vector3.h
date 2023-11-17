@@ -182,6 +182,16 @@ namespace Spartan::Math
             z = floor(z);
         }
 
+
+        static Vector3 Round(const Vector3& vec)
+        {
+            return Vector3{
+                std::round(vec.x),
+                std::round(vec.y),
+                std::round(vec.z)
+            };
+        }
+
         // Return absolute vector
         [[nodiscard]] Vector3 Abs() const { return Vector3(Helper::Abs(x), Helper::Abs(y), Helper::Abs(z)); }
 

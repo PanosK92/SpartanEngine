@@ -27,7 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    #define DEBUG_COLOR Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
+    #define debug_color Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
+    constexpr uint8_t resources_frame_lifetime = 5;
+    constexpr uint8_t number_shaders           = 51;
 
     enum class Renderer_Option : uint32_t
     {
@@ -44,7 +46,7 @@ namespace Spartan
         Bloom,
         Fog,
         FogVolumetric,
-        Ssgi,
+        ScreenSpaceGlobalIllumination,
         ScreenSpaceShadows,
         ScreenSpaceReflections,
         MotionBlur,
@@ -52,7 +54,6 @@ namespace Spartan
         FilmGrain,
         ChromaticAberration,
         Debanding,
-        DepthPrepass,
         Anisotropy,
         ShadowResolution,
         Gamma,
@@ -107,7 +108,7 @@ namespace Spartan
     
     enum class Renderer_BindingsSrv
     {
-        // Material
+        // material
         material_albedo    = 0,
         material_albedo2   = 1,
         material_roughness = 2,
@@ -119,7 +120,7 @@ namespace Spartan
         material_emission  = 8,
         material_mask      = 9,
     
-        // G-buffer
+        // g-buffer
         gbuffer_albedo            = 10,
         gbuffer_normal            = 11,
         gbuffer_material          = 12,
@@ -128,14 +129,14 @@ namespace Spartan
         gbuffer_velocity_previous = 15,
         gbuffer_depth             = 16,
     
-        // Lighting
+        // lighting
         light_diffuse              = 17,
         light_diffuse_transparent  = 18,
         light_specular             = 19,
         light_specular_transparent = 20,
         light_volumetric           = 21,
     
-        // Light depth/color maps
+        // light depth/color maps
         light_directional_depth = 22,
         light_directional_color = 23,
         light_point_depth       = 24,
@@ -143,11 +144,11 @@ namespace Spartan
         light_spot_depth        = 26,
         light_spot_color        = 27,
     
-        // Noise
+        // noise
         noise_normal = 28,
         noise_blue   = 29,
     
-        // Misc
+        // misc
         lutIbl           = 30,
         environment      = 31,
         ssgi             = 32,
@@ -180,7 +181,7 @@ namespace Spartan
         depth_light_v,
         depth_light_instanced_v,
         depth_light_p,
-        depth_alpha_test_p,
+        alpha_test_p,
         fullscreen_triangle_v,
         quad_v,
         quad_p,
@@ -206,6 +207,7 @@ namespace Spartan
         light_image_based_p,
         line_v,
         line_p,
+        grid_p,
         outline_v,
         outline_p,
         outline_c,
@@ -213,8 +215,8 @@ namespace Spartan
         font_p,
         ssgi_c,
         ssr_c,
-        sss_c,
-        bend_sss_c,
+        sss_c_bend,
+        atmospheric_scattering_c,
         temporal_filter_c,
         blur_gaussian_c,
         blur_gaussian_bilaterial_c,
@@ -227,7 +229,7 @@ namespace Spartan
     enum class Renderer_RenderTexture : uint8_t
     {
         undefined,
-        gbuffer_albedo,
+        gbuffer_color,
         gbuffer_normal,
         gbuffer_material,
         gbuffer_material_2,
@@ -241,7 +243,8 @@ namespace Spartan
         light_specular_transparent,
         light_volumetric,
         frame_render,
-        frame_render_2,
+        frame_render_post_process,
+        frame_render_fsr2_opaque,
         frame_output,
         frame_output_2,
         dof_half,
@@ -250,10 +253,9 @@ namespace Spartan
         ssgi_filtered,
         ssr,
         sss,
+        atmospheric_scattering,
         bloom,
         blur,
-        fsr2_mask_reactive,
-        fsr2_mask_transparency,
         outline
     };
     
@@ -306,6 +308,7 @@ namespace Spartan
         NotAssigned,
         Cube,
         Quad,
+        Grid,
         Sphere,
         Cylinder,
         Cone,

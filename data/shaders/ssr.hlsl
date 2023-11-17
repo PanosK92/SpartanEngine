@@ -24,9 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 static const float g_ssr_max_distance        = 100.0f;
-static const uint g_ssr_max_steps            = 45;
-static const uint g_ssr_binary_search_steps  = 24;
-static const float g_ssr_thickness           = 0.0001f;
+static const uint g_ssr_max_steps            = 16;
+static const uint g_ssr_binary_search_steps  = 12;
+static const float g_ssr_thickness           = 0.01f;
 static const float g_ssr_roughness_threshold = 0.8f;
 
 float compute_alpha(uint2 screen_pos, float2 hit_uv, float v_dot_r)
@@ -140,18 +140,20 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float v_dot_r          = dot(-camera_to_pixel, reflection);
 
     // compute early exit cases
-    bool early_exit_1 = !surface.is_opaque();                           // don't trace rays which are transparent
-    bool early_exit_2 = surface.roughness >= g_ssr_roughness_threshold; // don't trace very rough surfaces
-    bool early_exit_3 = v_dot_r >= 0.0f;                                // don't trace rays which are facing the camera
-    if (early_exit_1 || early_exit_2 || early_exit_3)
+    bool early_exit_1 = pass_is_opaque() && surface.is_transparent();   // if this is an opaque pass, ignore all transparent pixels.
+    bool early_exit_2 = pass_is_transparent() && surface.is_opaque();   // if this is an transparent pass, ignore all opaque pixels.
+    bool early_exit_3 = surface.is_sky();                               // fe don't want to do SSR on the sky itself.
+    bool early_exit_4 = surface.roughness >= g_ssr_roughness_threshold; // don't trace very rough surfaces
+    bool early_exit_5 = v_dot_r >= 0.0f;                                // don't trace rays which are facing the camera
+    if (early_exit_1 || early_exit_2 || early_exit_3 || early_exit_4 || early_exit_5)
         return;
 
-    // treace
+    // trace
     float2 hit_uv = trace_ray(thread_id.xy, position, reflection);
     float alpha   = compute_alpha(thread_id.xy, hit_uv, v_dot_r);
 
     // sample scene color
-    hit_uv          -= tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], hit_uv, 0).xy; // reproject
+    hit_uv          -= get_velocity_ndc(hit_uv); // reproject
     bool valid_uv    = hit_uv.x != - 1.0f;
     bool valid_alpha = alpha != 0.0f;
     float3 color     = (valid_uv && valid_alpha) ? tex.SampleLevel(samplers[sampler_bilinear_clamp], hit_uv, 0).rgb : 0.0f;

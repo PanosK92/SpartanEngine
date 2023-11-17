@@ -59,11 +59,12 @@ namespace Spartan
         // RTs
         RHI_Texture* render_target_depth_texture = nullptr;
         std::array<RHI_Texture*, rhi_max_render_target_count> render_target_color_textures;
-        uint32_t render_target_color_texture_array_index         = 0;
-        uint32_t render_target_depth_stencil_texture_array_index = 0;
         //====================================================================================
 
-        //= DYNAMIC - Will not cause PSO generation ===============
+        //= DYNAMIC - Will not cause PSO generation =================
+        uint32_t render_target_color_texture_array_index         = 0;
+        uint32_t render_target_depth_stencil_texture_array_index = 0;
+
         float clear_depth      = rhi_depth_load;
         uint32_t clear_stencil = rhi_stencil_load;
         std::array<Color, rhi_max_render_target_count> clear_color;
@@ -71,7 +72,7 @@ namespace Spartan
         bool render_target_depth_texture_read_only = false;
 
         std::string name;
-        //=========================================================
+        //===========================================================
 
     private:
         uint64_t m_hash                   = 0;

@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // = INCLUDES ======
 #include "brdf.hlsl"
-#include "fog.hlsl"
 //==================
 
 // From Sebastien Lagarde Moving Frostbite to PBR page 69
@@ -84,38 +83,32 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     bool use_ssgi = pass_is_opaque(); // we don't do ssgi for transparents.
     surface.Build(pos, true, use_ssgi, false);
 
-    bool early_exit_1 = pass_is_opaque() && surface.is_transparent(); // If this is an opaque pass, ignore all transparent pixels.
-    bool early_exit_2 = pass_is_transparent() && surface.is_opaque(); // If this is an transparent pass, ignore all opaque pixels.
-    bool early_exit_3 = surface.is_sky();                             // We don't want to do IBL on the sky itself.
+    bool early_exit_1 = pass_is_opaque() && surface.is_transparent(); // if this is an opaque pass, ignore all transparent pixels
+    bool early_exit_2 = pass_is_transparent() && surface.is_opaque(); // if this is an transparent pass, ignore all opaque pixels
+    bool early_exit_3 = surface.is_sky();                             // we don't want to do IBL on the sky itself
     if (early_exit_1 || early_exit_2 || early_exit_3)
         discard;
 
-    // try to compute some sort of ambient light that makes sense
-    float3 light_ambient = 1.0f;
-    {
-        light_ambient = buffer_light.intensity_range_angle_bias.x * 0.1f * surface.occlusion;
-    }
-    
     // compute specular energy
     const float n_dot_v          = saturate(dot(-surface.camera_to_pixel, surface.normal));
     const float3 F               = F_Schlick_Roughness(surface.F0, n_dot_v, surface.roughness);
     const float2 envBRDF         = tex_lut_ibl.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, surface.roughness), 0.0f).xy;
     const float3 specular_energy = F * envBRDF.x + envBRDF.y;
 
-    // IBL - Diffuse
-    float3 diffuse_energy = compute_diffuse_energy(specular_energy, surface.metallic); // Used to town down diffuse such as that only non metals have it
-    float3 ibl_diffuse    = sample_environment(direction_sphere_uv(surface.normal), ENVIRONMENT_MAX_MIP) * surface.albedo.rgb * light_ambient * diffuse_energy;
+    // ibl - diffuse
+    float3 diffuse_energy = compute_diffuse_energy(specular_energy, surface.metallic); // used to town down diffuse such as that only non metals have it
+    float3 ibl_diffuse    = sample_environment(direction_sphere_uv(surface.normal), ENVIRONMENT_MAX_MIP) * surface.albedo.rgb * diffuse_energy;
 
-    // IBL - Specular
+    // ibl - specular
     const float3 reflection            = reflect(surface.camera_to_pixel, surface.normal);
     float3 dominant_specular_direction = get_dominant_specular_direction(surface.normal, reflection, surface.roughness);
     float mip_level                    = lerp(0, ENVIRONMENT_MAX_MIP, surface.roughness);
-    float3 ibl_specular_environment    = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level) * light_ambient;
+    float3 ibl_specular_environment    = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level);
     
     // get ssr color
     float ssr_mip_count     = pass_get_f4_value().y;
     mip_level               = lerp(0, ssr_mip_count, surface.roughness);
-    const float4 ssr_sample = (is_ssr_enabled() && pass_is_opaque() && surface.is_opaque()) ? tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level) : 0.0f;
+    const float4 ssr_sample = is_ssr_enabled() ? tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level) : 0.0f;
     const float3 color_ssr  = ssr_sample.rgb;
     float ssr_alpha         = ssr_sample.a;
 
@@ -159,7 +152,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
     float3 ibl = ibl_diffuse + ibl_specular;
     
-    // SSGI
+    // ssgi
     if (is_ssgi_enabled() && use_ssgi)
     {
         ibl *= surface.occlusion;
@@ -168,10 +161,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     // fade out for transparents
     ibl *= surface.alpha;
     
-    // fog
-    float3 fog = get_fog_factor(surface.position, buffer_frame.camera_position.xyz);
-    ibl += fog;
-    
-    // Perfection achieved
+    // perfection achieved
     return float4(ibl, 0.0f);
 }

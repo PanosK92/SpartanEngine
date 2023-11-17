@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// Material
+// material
 Texture2D tex_material_albedo     : register (t0);
 Texture2D tex_material_albedo_2   : register (t1);
 Texture2D tex_material_roughness  : register (t2);
@@ -31,7 +31,7 @@ Texture2D tex_material_occlusion  : register (t7);
 Texture2D tex_material_emission   : register (t8);
 Texture2D tex_material_mask       : register (t9);
 
-// G-buffer
+// g-buffer
 Texture2D tex_albedo            : register(t10);
 Texture2D tex_normal            : register(t11);
 Texture2D tex_material          : register(t12);
@@ -46,7 +46,7 @@ Texture2D tex_light_specular             : register(t19);
 Texture2D tex_light_specular_transparent : register(t20);
 Texture2D tex_light_volumetric           : register(t21);
 
-// Light depth/color maps
+// light depth/color maps
 Texture2DArray tex_light_directional_depth : register(t22);
 Texture2DArray tex_light_directional_color : register(t23);
 TextureCube tex_light_point_depth          : register(t24);
@@ -54,11 +54,11 @@ TextureCube tex_light_point_color          : register(t25);
 Texture2D tex_light_spot_depth             : register(t26);
 Texture2D tex_light_spot_color             : register(t27);
 
-// Noise
+// noise
 Texture2D tex_noise_normal    : register(t28);
 Texture2DArray tex_noise_blue : register(t29);
 
-// Misc
+// misc
 Texture2D tex_lut_ibl            : register(t30);
 Texture2D tex_environment        : register(t31);
 Texture2D tex_ssgi               : register(t32);
@@ -70,7 +70,7 @@ Texture2D tex_font_atlas         : register(t37);
 TextureCube tex_reflection_probe : register(t38);
 Texture2DArray tex_sss			 : register(t39);
 
-// Storage
+// storage
 RWTexture2D<float4> tex_uav                                : register(u0);
 RWTexture2D<float4> tex_uav2                               : register(u1);
 RWTexture2D<float4> tex_uav3                               : register(u2);

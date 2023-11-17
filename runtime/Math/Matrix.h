@@ -225,9 +225,9 @@ namespace Spartan::Math
         //================================================================================================
 
         //= MISC ===========================================================================================================================
-        static inline Matrix CreateLookAtLH(const Vector3& camera_position, const Vector3& target, const Vector3& up)
+        static inline Matrix CreateLookAtLH(const Vector3& position, const Vector3& target, const Vector3& up)
         {
-            const Vector3 zAxis = Vector3::Normalize(target - camera_position);
+            const Vector3 zAxis = Vector3::Normalize(target - position);
             const Vector3 xAxis = Vector3::Normalize(Vector3::Cross(up, zAxis));
             const Vector3 yAxis = Vector3::Cross(zAxis, xAxis);
 
@@ -235,7 +235,7 @@ namespace Spartan::Math
                 xAxis.x, yAxis.x, zAxis.x, 0,
                 xAxis.y, yAxis.y, zAxis.y, 0,
                 xAxis.z, yAxis.z, zAxis.z, 0,
-                -Vector3::Dot(xAxis, camera_position), -Vector3::Dot(yAxis, camera_position), -Vector3::Dot(zAxis, camera_position), 1.0f
+                -Vector3::Dot(xAxis, position), -Vector3::Dot(yAxis, position), -Vector3::Dot(zAxis, position), 1.0f
             );
         }
 

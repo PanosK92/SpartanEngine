@@ -53,6 +53,26 @@ namespace Spartan
             descriptors.end()
         );
 
+        // Check for unique binding numbers
+        unordered_set<uint32_t> unique_bindings;
+        vector<VkDescriptorSetLayoutBinding> duplicate_bindings;
+
+        for (const auto& descriptor : descriptors) {
+            if (!unique_bindings.insert(descriptor.slot).second) {
+                // If insertion failed, the binding number is not unique, store it for inspection
+                duplicate_bindings.push_back({
+                    descriptor.slot,                                        // binding
+                    static_cast<VkDescriptorType>(descriptor.type),        // descriptorType
+                    descriptor.IsArray() ? descriptor.array_length : 1,    // descriptorCount
+                    descriptor.stage,                                       // stageFlags
+                    nullptr                                                 // pImmutableSamplers
+                    });
+            }
+        }
+
+        // If there are duplicate bindings, trigger a breakpoint.
+        SP_ASSERT(duplicate_bindings.empty());
+
         // layout bindings
         static const uint8_t descriptors_max = 255;
         static array<VkDescriptorSetLayoutBinding, descriptors_max> layout_bindings;

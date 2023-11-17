@@ -1,13 +1,16 @@
 /*
-Copyright(c) 2016-2022 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
 copies of the Software, and to permit persons to whom the Software is furnished
 to do so, subject to the following conditions :
+
 The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
+
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
 FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
@@ -23,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /*------------------------------------------------------------------------------
                            NEIGHBOURHOOD OFFSETS
 ------------------------------------------------------------------------------*/
-
 static const int2 kOffsets3x3[9] =
 {
     int2(-1, -1),
@@ -40,7 +42,6 @@ static const int2 kOffsets3x3[9] =
 /*------------------------------------------------------------------------------
                         THREAD GROUP SHARED MEMORY (LDS)
 ------------------------------------------------------------------------------*/
-
 static const int kBorderSize     = 1;
 static const int kGroupSize      = THREAD_GROUP_COUNT_X;
 static const int kTileDimension  = kGroupSize + kBorderSize * 2;
@@ -103,7 +104,6 @@ void populate_group_shared_memory(uint2 group_id, uint group_index)
 /*------------------------------------------------------------------------------
                                 VELOCITY
 ------------------------------------------------------------------------------*/
-
 void depth_test_min(uint2 pos, inout float min_depth, inout uint2 min_pos)
 {
     float depth = load_depth(pos);
@@ -138,7 +138,6 @@ void get_closest_pixel_velocity_3x3(in uint2 group_pos, uint2 group_top_left, ou
 /*------------------------------------------------------------------------------
                               HISTORY SAMPLING
 ------------------------------------------------------------------------------*/
-
 float3 sample_catmull_rom_9(Texture2D stex, float2 uv, float2 resolution)
 {
     // Source: https://gist.github.com/TheRealMJP/c83b8c0f46b63f3a88a5986f4fa982b1
@@ -196,7 +195,6 @@ float3 sample_catmull_rom_9(Texture2D stex, float2 uv, float2 resolution)
 /*------------------------------------------------------------------------------
                               HISTORY CLIPPING
 ------------------------------------------------------------------------------*/
-
 // Based on "Temporal Reprojection Anti-Aliasing" - https://github.com/playdeadgames/temporal
 float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 {
@@ -253,55 +251,8 @@ float3 clip_history_3x3(uint2 group_pos, float3 color_history, float2 velocity_c
 }
 
 /*------------------------------------------------------------------------------
-                            UPSAMPLING [WIP]
-------------------------------------------------------------------------------*/
-
-float distance_squared(float2 a_to_b, float2 offset)
-{
-    float2 v = a_to_b - offset;
-    return dot(v, v);
-}
-
-float get_sample_weight(float distance_squared)
-{
-    const float std_dev = 0.18f;
-    const float dawa = 1.0f / (2.0f * std_dev * std_dev);
-    return exp(distance_squared - dawa);
-}
-
-float3 get_input_sample(uint2 group_top_left, uint2 group_pos)
-{
-    uint2 thread_id               = group_top_left + group_pos;
-    const float2 uv               = (group_top_left + group_pos + 0.5f) / g_resolution_rt;
-    const float2 pos_input        = uv * g_resolution_render;
-    const float2 pos_input_center = floor(pos_input) + 0.5f;
-    
-    // Compute sample weights
-    float weights[9];
-    float weight_sum = 0.0f;
-    float weight_normaliser = 1.0f;
-    for (uint i = 0; i < 9; i++)
-    {
-        weights[i] = get_sample_weight(distance_squared(group_pos, (float2)kOffsets3x3[i]));
-        weight_sum += weights[i];
-    }
-    weight_normaliser /= weight_sum;
-    
-    // Fetch color samples
-    float3 color = 0.0f;
-    for (uint j = 0; j < 9; j++)
-    {
-        float weight = weights[j] * weight_normaliser;
-        color += load_color(group_pos + (float2)kOffsets3x3[j]); // * weight;
-    }
-    
-    return color;
-}
-
-/*------------------------------------------------------------------------------
                                     TAA
 ------------------------------------------------------------------------------*/
-
 float get_factor_luminance(uint2 pos, Texture2D tex_history, float3 color_input)
 {
     float luminance_history   = luminance(tex_history[pos].rgb);
@@ -329,7 +280,7 @@ float3 temporal_antialiasing(uint2 thread_id, uint2 pos_group_top_left, uint2 po
     float2 uv_reprojected = uv - velocity;
 
     // Get input color
-    float3 color_input = get_input_sample(pos_group_top_left, pos_group);
+    float3 color_input = load_color(thread_id);
 
     // Get history color (catmull-rom reduces a lot of the blurring that you get under motion)
     float3 color_history = sample_catmull_rom_9(tex_history, uv_reprojected, g_resolution_rt).rgb;
@@ -343,7 +294,7 @@ float3 temporal_antialiasing(uint2 thread_id, uint2 pos_group_top_left, uint2 po
     float blend_factor = RPC_16; // We want to be able to accumulate as many jitter samples as we generated, that is, 16.
     {
         // If re-projected UV is out of screen, converge to current color immediately
-        float factor_screen = !is_saturated(uv_reprojected);
+        float factor_screen = !is_valid_uv(uv_reprojected);
 
         // Increase blend factor when there is dissoclusion (fixes a lot of the remaining ghosting).
         float factor_dissoclusion = get_factor_dissoclusion(uv_reprojected, velocity);

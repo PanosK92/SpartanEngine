@@ -92,12 +92,7 @@ float pow4(float x)
     return xx * xx;
 }
 
-bool is_saturated(float value)  { return value == saturate(value); }
-bool is_saturated(float2 value) { return is_saturated(value.x) && is_saturated(value.y); }
-bool is_saturated(float3 value) { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z); }
-bool is_saturated(float4 value) { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z) && is_saturated(value.w); }
-
-bool is_valid_uv(float2 value) { return (value.x >= 0.0f && value.x <= 1.0f) || (value.y >= 0.0f && value.y <= 1.0f); }
+bool is_valid_uv(float2 value) { return (value.x >= 0.0f && value.x <= 1.0f) && (value.y >= 0.0f && value.y <= 1.0f); }
 
 /*------------------------------------------------------------------------------
     SATURATE
@@ -240,15 +235,6 @@ float2 ndc_to_uv(float3 x)
     return x.xy * float2(0.5f, -0.5f) + 0.5f;
 }
 
-float3 get_position_ws_from_depth(const float2 uv, const float depth)
-{
-    float x          = uv.x * 2.0f - 1.0f;
-    float y          = (1.0f - uv.y) * 2.0f - 1.0f;
-    float4 pos_clip  = float4(x, y, depth, 1.0f);
-    float4 pos_world = mul(pos_clip, buffer_frame.view_projection_inverted);
-    return             pos_world.xyz / pos_world.w;
-}
-
 /*------------------------------------------------------------------------------
     NORMAL
 ------------------------------------------------------------------------------*/
@@ -299,7 +285,7 @@ float3x3 make_world_to_tangent_matrix(float3 n, float3 t)
 }
 
 /*------------------------------------------------------------------------------
-    DEPTH
+    DEPTH - REVERSE-Z
 ------------------------------------------------------------------------------*/
 float get_depth(uint2 position)
 {
@@ -314,16 +300,13 @@ float get_depth(float2 uv)
     return tex_depth.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).r;
 }
 
-float get_linear_depth(float z, float near, float far)
-{
-    float z_b = z;
-    float z_n = 2.0f * z_b - 1.0f;
-    return 2.0f * far * near / (near + far - z_n * (near - far));
-}
-
 float get_linear_depth(float z)
 {
-    return get_linear_depth(z, buffer_frame.camera_near, buffer_frame.camera_far);
+    float near = buffer_frame.camera_near;
+    float far  = buffer_frame.camera_far;
+    float z_b  = z;
+    float z_n  = 2.0f * z_b - 1.0f;
+    return 2.0f * far * near / (near + far - z_n * (near - far));
 }
 
 float get_linear_depth(uint2 pos)
@@ -367,6 +350,28 @@ float3 get_position_view_space(uint2 pos)
 float3 get_position_view_space(float2 uv)
 {
     return mul(float4(get_position(uv), 1.0f), buffer_frame.view).xyz;
+}
+
+float3 get_position_ws_from_depth(const float2 uv, const float depth)
+{
+    float x          = uv.x * 2.0f - 1.0f;
+    float y          = (1.0f - uv.y) * 2.0f - 1.0f;
+    float4 pos_clip  = float4(x, y, depth, 1.0f);
+    float4 pos_world = mul(pos_clip, buffer_frame.view_projection_inverted);
+    return pos_world.xyz / pos_world.w;
+}
+
+/*------------------------------------------------------------------------------
+    VELOCITY
+------------------------------------------------------------------------------*/
+float2 get_velocity_ndc(uint2 pos)
+{
+    return tex_velocity[pos].xy;
+}
+
+float2 get_velocity_ndc(float2 uv)
+{
+    return tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).xy;
 }
 
 /*------------------------------------------------------------------------------
@@ -414,33 +419,29 @@ float3 get_view_direction_view_space(float3 position_world)
 ------------------------------------------------------------------------------*/
 float2 direction_sphere_uv(float3 direction)
 {
-    float n = length(direction.xz);
-    float2 uv = float2((n > 0.0000001) ? direction.x / n : 0.0, direction.y);
-    uv = acos(uv) * INV_PI;
-    uv.x = (direction.z > 0.0) ? uv.x * 0.5 : 1.0 - (uv.x * 0.5);
-    uv.x = 1.0 - uv.x;
-    
-    return uv;
+    float u = 0.5f + atan2(direction.z, direction.x) / PI2;
+    float v = 0.5f - asin(direction.y) / PI;
+    return float2(u, v);
 }
 
 uint direction_to_cube_face_index(const float3 direction)
 {
-    float3 direction_abs = abs(direction);
-    float max_coordinate = max3(direction_abs);
-    
-    if (max_coordinate == direction_abs.x)
-    {
-        return direction_abs.x == direction.x ? 0 : 1;
-    }
-    else if (max_coordinate == direction_abs.y)
-    {
-        return direction_abs.y == direction.y ? 2 : 3;
-    }
-    else
-    {
-        return direction_abs.z == direction.z ? 4 : 5;
-    }
-    
+    // find the absolute values of the direction components
+    float3 abs_direction = abs(direction);
+
+    // identify which component is the greatest
+    float max_component = max(max(abs_direction.x, abs_direction.y), abs_direction.z);
+
+    // determine the cube face index based on the greatest component and its sign
+    if (max_component == abs_direction.x)
+        return (direction.x > 0.0f) ? 0 : 1;
+
+    if (max_component == abs_direction.y)
+        return (direction.y > 0.0f) ? 2 : 3;
+
+    if (max_component == abs_direction.z)
+        return (direction.z > 0.0f) ? 4 : 5;
+
     return 0;
 }
 
@@ -665,8 +666,10 @@ static const float3 hemisphere_samples[64] =
     float3(-0.44272, -0.67928, 0.1865)
 };
 
-//= INCLUDES =================
+//= INCLUDES ===========================
 #include "common_structs.hlsl"
-//============================
+#include "common_vertex_simulation.hlsl"
+#include "common_vertex_operations.hlsl"
+//======================================
 
 #endif // SPARTAN_COMMON

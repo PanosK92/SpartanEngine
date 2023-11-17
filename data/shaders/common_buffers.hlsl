@@ -35,9 +35,9 @@ struct FrameBufferData
     float2 taa_jitter_current;
     float2 taa_jitter_previous;
     
+    float time;
     float delta_time;
     uint frame;
-    float gamma;
     uint options;
     
     float3 camera_position;
@@ -45,22 +45,27 @@ struct FrameBufferData
     
     float3 camera_direction;
     float camera_far;
+
+    float gamma;
+    float3 padding;
 };
 
 struct LightBufferData
 {
     matrix view_projection[6];
-    float4 intensity_range_angle_bias;
-    float4 color;
-    float4 position;
-    float4 direction;
-
-    float normal_bias;
-    uint options;
-    float2 padding;
     
-    float3 cascade_ends;
-    float padding2;
+    float intensity;
+    float range;
+    float angle;
+    float bias;
+
+    float4 color;
+    
+    float3 position;
+    float normal_bias;
+    
+    float3 direction;
+    uint options;
 };
 
 struct MaterialBufferData
@@ -83,7 +88,7 @@ struct MaterialBufferData
     float anisotropic_rotation;
     float sheen;
     float sheen_tint;
-    float padding3;
+    float world_space_height;
 };
 
 cbuffer BufferFrame    : register(b0) { FrameBufferData buffer_frame;       }; // low frequency    - updates once per frame
@@ -109,8 +114,10 @@ bool has_texture_metalness()                  { return buffer_material.propertie
 bool has_texture_alpha_mask()                 { return buffer_material.properties & uint(1U << 6); }
 bool has_texture_emissive()                   { return buffer_material.properties & uint(1U << 7); }
 bool has_texture_occlusion()                  { return buffer_material.properties & uint(1U << 8); }
-bool material_is_terrain()                    { return buffer_material.properties & uint(1U << 9); }
-bool material_is_water()                      { return buffer_material.properties & uint(1U << 10); }
+bool material_texture_slope_based()           { return buffer_material.properties & uint(1U << 9); }
+bool material_texture_animate()               { return buffer_material.properties & uint(1U << 10); }
+bool material_vertex_animate_wind()           { return buffer_material.properties & uint(1U << 11); }
+bool material_vertex_animate_water()          { return buffer_material.properties & uint(1U << 12); }
 
 // lighting properties
 bool light_is_directional()           { return buffer_light.options & uint(1U << 0); }

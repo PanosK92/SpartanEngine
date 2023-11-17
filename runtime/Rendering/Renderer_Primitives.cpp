@@ -302,10 +302,8 @@ namespace Spartan
 
                         if (light->GetLightType() == LightType::Directional)
                         {
-                            Vector3 extent    = light->GetTransform()->GetForward() * 1000.0f;
-                            Vector3 pos_start = light->GetTransform()->GetPosition() - extent;
-                            Vector3 pos_end   = light->GetTransform()->GetPosition() + extent;
-                            DrawLine(pos_start, pos_end);
+                            Vector3 pos = light->GetTransform()->GetPosition() - light->GetTransform()->GetForward() * 1000.0f;
+                            DrawDirectionalArrow(pos, Vector3::Zero, 2.5f);
                         }
                         else if (light->GetLightType() == LightType::Point)
                         {
@@ -341,14 +339,14 @@ namespace Spartan
             }
         }
         
-        // AABBs
+        // bounding boxes
         if (GetOption<bool>(Renderer_Option::Debug_Aabb))
         {
             for (const auto& entity : GetEntities()[Renderer_Entity::Geometry])
             {
                 if (auto renderable = entity->GetComponent<Renderable>())
                 {
-                    DrawBox(renderable->GetAabb(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+                    DrawBox(renderable->GetBoundingBox(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
                 }
             }
         
@@ -356,7 +354,7 @@ namespace Spartan
             {
                 if (auto renderable = entity->GetComponent<Renderable>())
                 {
-                    DrawBox(renderable->GetAabb(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+                    DrawBox(renderable->GetBoundingBox(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
                 }
             }
         }

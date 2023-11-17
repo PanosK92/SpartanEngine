@@ -55,7 +55,7 @@ float ScreenSpaceShadows(Surface surface, Light light)
         ray_uv  = view_to_uv(ray_pos);
 
         // Ensure the UV coordinates are inside the screen
-        if (!is_saturated(ray_uv))
+        if (!is_valid_uv(ray_uv))
             return 1.0f;
         
         // Compute the difference between the ray's and the camera's depth

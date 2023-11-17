@@ -269,7 +269,7 @@ namespace Spartan
             if (RHI_CommandList* cmd_list = RHI_Device::CmdImmediateBegin(RHI_Queue_Type::Graphics))
             {
                 // optimal layout for images which are the destination of a transfer format
-                RHI_Image_Layout layout = RHI_Image_Layout::Transfer_Dst_Optimal;
+                RHI_Image_Layout layout = RHI_Image_Layout::Transfer_Destination;
 
                 // insert memory barrier
                 cmd_list->InsertMemoryBarrierImage(texture, 0, texture->GetMipCount(), texture->GetArrayLength(), texture->GetLayout(0), layout);
@@ -303,18 +303,18 @@ namespace Spartan
 
             if (texture->IsRenderTargetColor())
             {
-                target_layout = RHI_Image_Layout::Color_Attachment_Optimal;
+                target_layout = RHI_Image_Layout::Color_Attachment;
             }
             else if (texture->IsRenderTargetDepthStencil())
             {
-                target_layout = RHI_Image_Layout::Depth_Stencil_Attachment_Optimal;
+                target_layout = RHI_Image_Layout::Depth_Stencil_Attachment;
             }
 
             if (texture->IsUav())
                 target_layout = RHI_Image_Layout::General;
 
             if (texture->IsSrv())
-                target_layout = RHI_Image_Layout::Shader_Read_Only_Optimal;
+                target_layout = RHI_Image_Layout::Shader_Read;
 
             return target_layout;
         }

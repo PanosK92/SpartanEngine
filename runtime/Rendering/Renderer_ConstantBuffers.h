@@ -47,9 +47,9 @@ namespace Spartan
         Math::Vector2 taa_jitter_current;
         Math::Vector2 taa_jitter_previous;
 
+        float time;
         float delta_time;
         uint32_t frame;
-        float gamma;
         uint32_t options;
 
         Math::Vector3 camera_position;
@@ -57,6 +57,9 @@ namespace Spartan
 
         Math::Vector3 camera_direction;
         float camera_far;
+
+        float gamma;
+        Math::Vector3 padding;
 
         void set_bit(const bool set, const uint32_t bit)
         {
@@ -73,6 +76,7 @@ namespace Spartan
                 view_projection_ortho      == rhs.view_projection_ortho      &&
                 view_projection_unjittered == rhs.view_projection_unjittered &&
                 view_projection_previous   == rhs.view_projection_previous   &&
+                time                       == rhs.time                       &&
                 delta_time                 == rhs.delta_time                 &&
                 frame                      == rhs.frame                      &&
                 camera_near                == rhs.camera_near                &&
@@ -94,34 +98,38 @@ namespace Spartan
     struct Cb_Light
     {
         Math::Matrix view_projection[6];
-        Math::Vector4 intensity_range_angle_bias;
+
+        float intensity;
+        float range;
+        float angle;
+        float bias;
+
         Color color;
-        Math::Vector4 position;
-        Math::Vector4 direction;
 
+        Math::Vector3 position;
         float normal_bias;
-        uint32_t options;
-        Math::Vector2 padding;
 
-        Math::Vector3 cascade_ends;
-        float padding2;
-    
+        Math::Vector3 direction;
+        uint32_t options;
+
         bool operator==(const Cb_Light& rhs)
         {
             return
-                view_projection[0]         == rhs.view_projection[0]         &&
-                view_projection[1]         == rhs.view_projection[1]         &&
-                view_projection[2]         == rhs.view_projection[2]         &&
-                view_projection[3]         == rhs.view_projection[3]         &&
-                view_projection[4]         == rhs.view_projection[4]         &&
-                view_projection[5]         == rhs.view_projection[5]         &&
-                intensity_range_angle_bias == rhs.intensity_range_angle_bias &&
-                cascade_ends               == rhs.cascade_ends               &&
-                normal_bias                == rhs.normal_bias                &&
-                color                      == rhs.color                      &&
-                position                   == rhs.position                   &&
-                direction                  == rhs.direction                  &&
-                options                    == rhs.options;
+                view_projection[0] == rhs.view_projection[0] &&
+                view_projection[1] == rhs.view_projection[1] &&
+                view_projection[2] == rhs.view_projection[2] &&
+                view_projection[3] == rhs.view_projection[3] &&
+                view_projection[4] == rhs.view_projection[4] &&
+                view_projection[5] == rhs.view_projection[5] &&
+                intensity          == rhs.intensity          &&
+                range              == rhs.range              &&
+                angle              == rhs.angle              &&
+                bias               == rhs.bias               &&
+                normal_bias        == rhs.normal_bias        &&
+                color              == rhs.color              &&
+                position           == rhs.position           &&
+                direction          == rhs.direction          &&
+                options            == rhs.options;
         }
     };
 
@@ -146,7 +154,7 @@ namespace Spartan
         float anisitropic_rotation = 0.0f;
         float sheen                = 0.0f;
         float sheen_tint           = 0.0f;
-        float padding              = 0.0f;
+        float world_space_height   = 0.0f;
 
         bool operator==(const Cb_Material& rhs) const
         {
@@ -164,7 +172,8 @@ namespace Spartan
                 anisotropic          == rhs.anisotropic          &&
                 anisitropic_rotation == rhs.anisitropic_rotation &&
                 sheen                == rhs.sheen                &&
-                sheen_tint           == rhs.sheen_tint;
+                sheen_tint           == rhs.sheen_tint           &&
+                world_space_height   == rhs.world_space_height;
         }
     };
 

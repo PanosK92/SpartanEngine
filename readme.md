@@ -1,7 +1,7 @@
 
 <img align="center" padding="2" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/data/textures/banner.bmp"/>
 
-<p>Spartan is a research-focused game engine designed for real-time solutions, providing a dynamic experience. Not intended for game development yet, it serves as a valuable study resource due to its clean, modern, and high-quality architecture.</p>
+<p> Spartan Engine is more than an engine; it's a vibrant hub for learning and connection, redefining the open-source community experience. While centered around a research-focused game engine for real-time solutions, our core mission is to foster a unique, collaborative environment. Join us for exclusive perks like contributor recognition, networking opportunities with tech professionals, and valuable learning resources, including our active Discord community and insightful YouTube tutorials. Spartan Engine isn't just about code; it's about building a community like no other.</p>
 
 - <img align="left" width="32" src="https://clipart.info/images/ccovers/1534043159circle-twitter-logo-png.png"/>For occasional updates regarding the project's development, you can follow me on <a href="https://twitter.com/panoskarabelas1?ref_src=twsrc%5Etfw">twitter</a>.
   
@@ -9,8 +9,10 @@
   
 - <img align="left" width="32" height="32" src="https://www.freeiconspng.com/uploads/git-github-hub-icon-25.png">For issues and anything directly related to the project, feel free to open an issue.
   
-- <img align="left" width="32" height="32" src="https://i0.wp.com/opensource.org/wp-content/uploads/2023/01/cropped-cropped-OSI_Horizontal_Logo_0-e1674081292667.png">Adhering to the <a href="https://en.wikipedia.org/wiki/MIT_License">MIT license</a> is appreciated. This means that you can copy all the code you want as long as you include a copy of the original license.
+- <img align="left" width="32" height="32" src="https://cdn3d.iconscout.com/3d/premium/thumb/ai-5143193-4312366.png?f=webp">Meet my AI replica, equipped with Spartan Engine knowledge and my personality traits, ready to assist you. Interact with it [here](https://chat.openai.com/g/g-etpaCChzi-spartan).
 
+- <img align="left" width="32" height="32" src="https://i0.wp.com/opensource.org/wp-content/uploads/2023/01/cropped-cropped-OSI_Horizontal_Logo_0-e1674081292667.png">Please adhere to the <a href="https://en.wikipedia.org/wiki/MIT_License">MIT license</a> You're free to copy the code, provided you include the original license.
+  
 #### Status
 ![build_status](https://github.com/PanosK92/SpartanEngine/actions/workflows/workflow.yml/badge.svg)
 [![Discord](https://img.shields.io/discord/677302405263785986?label=Discord)](https://discord.gg/TG5r2BS)
@@ -37,7 +39,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 
 # Features
 #### Rendering
-- 128-byte push constant buffer for lightning fast GPU data transfer.
+- 128-byte push constant buffer for lightning fast CPU to GPU data transfer.
 - AMD FidelityFX suite for enhanced visuals and performance.
 - Bloom effect inspired by Resident Evil 2's RE Engine.
 - Unified deferred rendering with transparency (BSDF with same render path and shaders).
@@ -46,6 +48,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - Frustum culling.
 - Physical light units (intensity from lumens and color from kelvin).
 - Physically based camera.
+- Atmospheric scattering.
 - GPU-based mip generation (single dispatch).
 - Advanced shadow features with penumbra and colored translucency.
 - Screen space global illumination, reflections, and shadows.
@@ -64,19 +67,17 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - Wide file format support: 10+ for fonts, 20+ for audio, 30+ for images, and 40+ for models.
 
 # Roadmap
-- Keep an eye on Vulkan, it's stable but you never know.
 - Continue switching to bindless.
-- Continue work on D3D12 (on going and non blocking since Vulkan is there).
 - Skeletal Animation.
-- Atmospheric Scattering.
 - Eye Adaptation.
 - Subsurface scattering.
 - Ray traced reflections & shadows.
 - Dynamic resolution scaling (and use FSR 2, to properly reconstuct).
+- Scripting.
 - Export on Windows.
 - Improved the editor style/theme.
-- Scripting.
-- Linux port.
+- Continue work on D3D12 (low priority since Vulkan is there).
+- Linux port (low priority since the target audience is small).
   
 If you are looking at what to do, there are more ideas in the [issues]([https://github.com/PanosK92/SpartanEngine/wiki/Wiki](https://github.com/PanosK92/SpartanEngine/issues)) section.
 
@@ -85,3 +86,6 @@ Don't forget that there is a [wiki](https://github.com/PanosK92/SpartanEngine/wi
 - [Compiling](https://github.com/PanosK92/SpartanEngine/wiki/Compiling) 
 - [Contributing](https://github.com/PanosK92/SpartanEngine/blob/master/contributing.md)
 - [Perks of a contributor](https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor)
+
+# Use cases
+- Godot uses Spartan's TAA, see [here](https://github.com/godotengine/godot/blob/37d51d2cb7f6e47bef8329887e9e1740a914dc4e/servers/rendering/renderer_rd/shaders/effects/taa_resolve.glsl#L2)

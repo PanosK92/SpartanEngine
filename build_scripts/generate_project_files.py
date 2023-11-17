@@ -8,7 +8,6 @@ paths = {
     "binaries": {
         "data": Path("binaries/data"),
         "models": Path("binaries/project/models"),
-        "environment": Path("binaries/project/environment"),
         "music": Path("binaries/project/music"),
         "terrain": Path("binaries/project/terrain"),
         "materials": Path("binaries/project/materials"),
@@ -20,7 +19,6 @@ paths = {
     },
     "assets": {
         "models": Path("assets/models"),
-        "environment": Path("assets/environment"),
         "music": Path("assets/music"),
         "terrain": Path("assets/terrain"),
         "materials": Path("assets/materials"),

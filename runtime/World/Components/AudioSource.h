@@ -35,7 +35,7 @@ namespace Spartan
     {
     public:
         AudioSource(std::weak_ptr<Entity> entity);
-        ~AudioSource() = default;
+        ~AudioSource();
 
         // IComponent
         void OnInitialize() override;

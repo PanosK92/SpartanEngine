@@ -19,10 +19,6 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
-#include "screen_space_shadows.hlsl"
-//==================================
-
 /*------------------------------------------------------------------------------
     SETTINGS
 ------------------------------------------------------------------------------*/
@@ -31,19 +27,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // technique - all
 static const uint   g_shadow_samples                 = 3;
-static const float  g_shadow_filter_size             = 3.0f;
+static const float  g_shadow_filter_size             = 2.0f;
 static const float  g_shadow_cascade_blend_threshold = 0.8f;
-// technique - vogel
-static const uint   g_penumbra_samples               = 8;
-static const float  g_penumbra_filter_size           = 128.0f;
+// technique - vogel                       
+static const uint   g_penumbra_samples     = 8;
+static const float  g_penumbra_filter_size = 128.0f;
 // technique - pre-calculated
-static const float g_pcf_filter_size    = (sqrt((float)g_shadow_samples) - 1.0f) / 2.0f;
-static const float g_shadow_samples_rpc = 1.0f / (float) g_shadow_samples;
+static const float g_pcf_filter_size       = (sqrt((float)g_shadow_samples) - 1.0f) / 2.0f;
+static const float g_shadow_samples_rpc    = 1.0f / (float) g_shadow_samples;
 
 /*------------------------------------------------------------------------------
     SHADER VARIABLES
 ------------------------------------------------------------------------------*/
-
 float get_shadow_resolution()
 {
     return pass_get_f3_value().y;
@@ -57,66 +52,53 @@ float get_shadow_texel_size()
 /*------------------------------------------------------------------------------
     LIGHT SHADOW MAP SAMPLING
 ------------------------------------------------------------------------------*/
-
 float shadow_compare_depth(float3 uv, float compare)
 {
+    // float3 -> uv, slice
     if (light_is_directional())
-    {
-        // float3 -> uv, slice
         return tex_light_directional_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv, compare).r;
-    }
-    else if (light_is_point())
-    {
-        // float3 -> direction
-        return tex_light_point_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv, compare).r;
-    }
-    else if (light_is_spot())
-    {
-        // float3 -> uv, 0
-        return tex_light_spot_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv.xy, compare).r;
-    }
     
+    // float3 -> direction
+    if (light_is_point())
+        return tex_light_point_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv, compare).r;
+    
+    // float3 -> uv, 0
+    if (light_is_spot()) 
+        return tex_light_spot_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv.xy, compare).r;
+
     return 0.0f;
 }
 
 float shadow_sample_depth(float3 uv)
 {
+    // float3 -> uv, slice
     if (light_is_directional())
-    {
-        // float3 -> uv, slice
         return tex_light_directional_depth.SampleLevel(samplers[sampler_point_clamp], uv, 0).r;
-    }
-    else if (light_is_point())
-    {
-        // float3 -> direction
-        return tex_light_point_depth.SampleLevel(samplers[sampler_point_clamp], uv, 0).r;
-    }
-    else if (light_is_spot())
-    {
-        // float3 -> uv, 0
-        return tex_light_spot_depth.SampleLevel(samplers[sampler_point_clamp], uv.xy, 0).r;
-    }
     
+    // float3 -> direction
+    if (light_is_point())
+        return tex_light_point_depth.SampleLevel(samplers[sampler_point_clamp], uv, 0).r;
+
+    // float3 -> uv, 0
+    if (light_is_spot())
+        return tex_light_spot_depth.SampleLevel(samplers[sampler_point_clamp], uv.xy, 0).r;
+
     return 0.0f;
 }
 
 float3 shadow_sample_color(float3 uv)
 {
+    // float3 -> uv, slice
     if (light_is_directional())
-    {
-        // float3 -> uv, slice
         return tex_light_directional_color.SampleLevel(samplers[sampler_point_clamp], uv, 0).rgb;
-    }
-    else if (light_is_point())
-    {
-        // float3 -> direction
+
+    // float3 -> direction
+    if (light_is_point())
         return tex_light_point_color.SampleLevel(samplers[sampler_point_clamp], uv, 0).rgb;
-    }
-    else if (light_is_spot())
-    {
-        // float3 -> uv, 0
+
+    // float3 -> uv, 0
+    if (light_is_spot())
         return tex_light_spot_color.SampleLevel(samplers[sampler_point_clamp], uv.xy, 0).rgb;
-    }
     
     return 0.0f;
 }
@@ -157,13 +139,13 @@ float compute_penumbra(float vogel_angle, float3 uv, float compare)
     {
         blocker_depth_avg /= (float)blocker_count;
 
-        // Compute penumbra
+        // compute penumbra
         penumbra = (compare - blocker_depth_avg) / (blocker_depth_avg + FLT_MIN);
         penumbra *= penumbra;
         penumbra *= 10.0f;
     }
     
-    return clamp(penumbra, 1.0f, FLT_MAX_16);
+    return saturate_16(penumbra);
 }
 
 /*------------------------------------------------------------------------------
@@ -294,153 +276,66 @@ float Technique_Poisson(Surface surface, float3 uv, float compare)
 ------------------------------------------------------------------------------*/
 float Technique_Pcf(Surface surface, float3 uv, float compare)
 {
-    float shadow = 0.0f;
+    float shadow    = 0.0f;
+    int kernel_size = 2 * g_pcf_filter_size + 1;
 
-    for (float y = -g_pcf_filter_size; y <= g_pcf_filter_size; y++)
+    for (int y = -g_pcf_filter_size; y <= g_pcf_filter_size; y++)
     {
-        for (float x = -g_pcf_filter_size; x <= g_pcf_filter_size; x++)
+        for (int x = -g_pcf_filter_size; x <= g_pcf_filter_size; x++)
         {
             float2 offset = float2(x, y) * get_shadow_texel_size();
-            shadow        += shadow_compare_depth(uv + float3(offset, 0.0f), compare);
+            shadow += shadow_compare_depth(uv + float3(offset, 0.0f), compare);
         }
     }
-    
-    return shadow * g_shadow_samples_rpc;
-}
 
-/*------------------------------------------------------------------------------
-    BIAS
-------------------------------------------------------------------------------*/
-inline void auto_bias(Surface surface, inout float3 position, Light light, float bias_mul = 1.0f)
-{
-    //// Receiver plane bias (slope scaled basically)
-    //float3 du                   = ddx(position);
-    //float3 dv                   = ddy(position);
-    //float2 receiver_plane_bias  = mul(transpose(float2x2(du.xy, dv.xy)), float2(du.z, dv.z));
-    
-    //// Static depth biasing to make up for incorrect fractional sampling on the shadow map grid
-    //float sampling_error = min(2.0f * dot(g_shadow_texel_size, abs(receiver_plane_bias)), 0.01f);
-
-    // Scale down as the user is interacting with much bigger, non-fractional values (just a UX approach)
-    float fixed_factor = 0.0001f;
-    
-    // Slope scaling
-    float slope_factor = (1.0f - saturate(light.n_dot_l));
-
-    // Apply bias
-    position.z += fixed_factor * slope_factor * light.bias * (bias_mul + 1.0f);
-}
-
-inline float3 bias_normal_offset(Surface surface, Light light, float3 normal)
-{
-    return normal * (1.0f - saturate(light.n_dot_l)) * light.normal_bias * get_shadow_texel_size() * 10;
+    return shadow / (kernel_size * kernel_size);
 }
 
 /*------------------------------------------------------------------------------
     ENTRYPOINT
 ------------------------------------------------------------------------------*/
 float4 Shadow_Map(Surface surface, Light light)
-{ 
-    float3 position_world = surface.position + bias_normal_offset(surface, light, surface.normal);
-    float4 shadow         = 1.0f;
+{
+    float4 shadow = 1.0f; // default shadow value for fully lit (no shadow)
 
-    if (light_is_directional())
+    // process only if the pixel is within the light's effective range
+    if (light.distance_to_pixel <= light.far)
     {
-        // TODO send from CPU constbuffer Light instead
-        uint cascade_count = 3;
-        for (uint cascade_index = 0; cascade_index < cascade_count; cascade_index++)
+        // compute world position with normal offset bias to reduce shadow acne
+        float normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * light.normal_bias * get_shadow_texel_size();
+        float3 position_world    = surface.position + normal_offset_bias;
+
+        // project to light space
+        uint slice_index = light_is_point() ? direction_to_cube_face_index(light.to_pixel) : 0;
+        float3 pos_ndc   = world_to_ndc(position_world, buffer_light.view_projection[slice_index]);
+        float2 pos_uv    = ndc_to_uv(pos_ndc);
+
+        // sample shadow map
+        if (is_valid_uv(pos_uv))
         {
-            // project into light space
-            float3 pos_ndc = world_to_ndc(position_world, buffer_light.view_projection[cascade_index]);
-            float2 pos_uv  = ndc_to_uv(pos_ndc);
-
-            // ensure not out of bound
-            if (is_saturated(pos_uv))
-            {
-                // sample primary cascade
-                auto_bias(surface, pos_ndc, light, cascade_index);
-                shadow.a = SampleShadowMap(surface, float3(pos_uv, cascade_index), pos_ndc.z);
-
-                if (light_has_shadows_transparent())
-                {
-                    if (shadow.a > 0.0f && surface.is_opaque())
-                    {
-                        shadow.rgb *= Technique_Vogel_Color(surface, float3(pos_uv, cascade_index));
-                    }
-                }
-
-                // if we are close to the edge a secondary cascade exists, lerp with it.
-                float cascade_fade = (max2(abs(pos_ndc.xy)) - g_shadow_cascade_blend_threshold) * 4.0f;
-                uint cascade_index_next = cascade_index + 1;
-
-                if (cascade_fade > 0.0f && cascade_index_next < cascade_count - 1)
-                {
-                    // project into light space
-                    pos_ndc = world_to_ndc(position_world, buffer_light.view_projection[cascade_index_next]);
-                    pos_uv  = ndc_to_uv(pos_ndc);
-
-                    // sample secondary cascade
-                    auto_bias(surface, pos_ndc, light, cascade_index_next);
-                    float shadow_secondary = SampleShadowMap(surface, float3(pos_uv, cascade_index_next), pos_ndc.z);
-
-                    // blend cascades
-                    shadow.a = lerp(shadow.a, shadow_secondary, cascade_fade);
-                    
-                    if (light_has_shadows_transparent())
-                    {
-                        if (shadow.a > 0.0f && surface.is_opaque())
-                        {
-                            shadow.rgb = min(shadow.rgb, Technique_Vogel_Color(surface, float3(pos_uv, cascade_index_next)));
-                        }
-                    }
-                }
-
-                break;
-            }
-        }
-    }
-    else if (light_is_point())
-    {
-        if (light.distance_to_pixel < light.far)
-        {
-            // project into light space
-            uint slice_index  = direction_to_cube_face_index(light.to_pixel);
-            float3 pos_ndc    = world_to_ndc(position_world, buffer_light.view_projection[slice_index]);
-
-            auto_bias(surface, pos_ndc, light);
-            shadow.a = SampleShadowMap(surface, light.to_pixel, pos_ndc.z);
+            float3 sample_coords = light_is_point() ? light.to_pixel : float3(pos_uv.x, pos_uv.y, slice_index);
+            float  compare_value = pos_ndc.z;
             
-            if (light_has_shadows_transparent())
+            shadow.a = SampleShadowMap(surface, sample_coords, compare_value);
+            if (shadow.a > 0.0f && light_has_shadows_transparent() && !surface.is_opaque())
             {
-                if (shadow.a > 0.0f && surface.is_opaque())
-                {
-                    shadow.rgb *= Technique_Vogel_Color(surface, light.to_pixel);
-                }
+                // sample color map (this is for transparent objects - which tint the light/shadow)
+                shadow.rgb = Technique_Vogel_Color(surface, sample_coords);
             }
         }
-    }
-    else if (light_is_spot())
-    {
-        if (light.distance_to_pixel < light.far)
+        
+        // blend with the far cascade for the directional lights
+        float cascade_fade = saturate((max(abs(pos_ndc.x), abs(pos_ndc.y)) - g_shadow_cascade_blend_threshold) * 4.0f);
+        if (light_is_directional() && cascade_fade > 0.0f)
         {
-            // project into light space
-            float3 pos_ndc  = world_to_ndc(position_world, buffer_light.view_projection[0]);
-            float3 pos_uv   = float3(ndc_to_uv(pos_ndc), 0);
+            // sample shadow map
+            slice_index      = 1;
+            pos_ndc          = world_to_ndc(position_world, buffer_light.view_projection[slice_index]);
+            pos_uv           = ndc_to_uv(pos_ndc);
+            float shadow_far = SampleShadowMap(surface, float3(pos_uv, slice_index), pos_ndc.z);
 
-            // ensure not out of bound
-            if (is_saturated(pos_uv.xy))
-            {
-                auto_bias(surface, pos_ndc, light);
-                shadow.a = SampleShadowMap(surface, pos_uv, pos_ndc.z);
-
-                if (light_has_shadows_transparent())
-                {
-                    if (shadow.a > 0.0f && surface.is_opaque())
-                    {
-                        shadow.rgb *= Technique_Vogel_Color(surface, pos_uv);
-                    }
-                }
-            }
+            // blend/lerp
+            shadow.a = lerp(shadow.a, shadow_far, cascade_fade);
         }
     }
 

@@ -293,6 +293,10 @@ namespace Spartan
             void* p_user_data
         )
         {
+            // temporary, FidelityFX SDK has issues, don't want to be spamed until they are fixed
+            if (strstr(p_callback_data->pMessage, "fsr2") != nullptr)
+                return VK_FALSE;
+
             string msg = "Vulkan: " + string(p_callback_data->pMessage);
 
             if (/*(msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) ||*/ (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))
@@ -584,12 +588,12 @@ namespace Spartan
         SP_ASSERT_MSG(RHI_Context::api_type == RHI_Api_Type::Vulkan, "RHI context not initialized");
 
         #ifdef DEBUG
-            // ad validation related extensions
-            RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
-            RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
-            // add debugging related extensions
-            RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_report");
-            RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_utils");
+        // ad validation related extensions
+        RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
+        RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
+        // add debugging related extensions
+        RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_report");
+        RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_utils");
         #endif
 
         // create instance
