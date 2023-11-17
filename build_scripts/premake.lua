@@ -87,32 +87,7 @@ function configure_graphics_api()
     end
 end
 
-function modify_sdl_config_for_platform()
-    local sdl_config_path = "../third_party/sdl/SDL_config.h"
-
-    local file = io.open(sdl_config_path, "r")
-    if not file then
-        print("Failed to open " .. sdl_config_path)
-        return
-    end
-    
-    local content = file:read("*all")
-    file:close()
-
-    if os.target() == "linux" then
-        content = content:gsub("SDL_VIDEO_DRIVER_WINDOWS", "SDL_VIDEO_DRIVER_X11")
-    elseif os.target() == "windows" then
-        content = content:gsub("SDL_VIDEO_DRIVER_X11", "SDL_VIDEO_DRIVER_WINDOWS")
-    end
-
-    file = io.open(sdl_config_path, "w")
-    file:write(content)
-    file:close()
-end
-
 function solution_configuration()
-    modify_sdl_config_for_platform()
-
     solution (SOLUTION_NAME)
         location ".." -- generate in root directory
         systemversion "latest"
@@ -139,7 +114,11 @@ function solution_configuration()
 
         -- "Debug"
         filter "configurations:debug"
-            defines { "DEBUG", "SPARTAN_RUNTIME_STATIC=1", "SPARTAN_RUNTIME_SHARED=0" }
+            if os.target() == "windows" then
+                defines { "DEBUG", "SPARTAN_RUNTIME_STATIC=1", "SPARTAN_RUNTIME_SHARED=0" }
+            else
+                defines { "DEBUG", "SPARTAN_RUNTIME_STATIC=0", "SPARTAN_RUNTIME_SHARED=1" }
+            end
             flags { "MultiProcessorCompile" }
             optimize "Off"
             symbols "On"
@@ -147,7 +126,11 @@ function solution_configuration()
 
         -- "Release"
         filter "configurations:release"
-            defines { "NDEBUG", "SPARTAN_RUNTIME_STATIC=1", "SPARTAN_RUNTIME_SHARED=0" }
+            if os.target() == "windows" then
+                defines { "DEBUG", "SPARTAN_RUNTIME_STATIC=1", "SPARTAN_RUNTIME_SHARED=0" }
+            else
+                defines { "DEBUG", "SPARTAN_RUNTIME_STATIC=0", "SPARTAN_RUNTIME_SHARED=1" }
+            end
             flags { "MultiProcessorCompile", "LinkTimeOptimization" }
             optimize "Speed"
             symbols "Off"
@@ -158,7 +141,11 @@ function runtime_project_configuration()
         location (RUNTIME_DIR)
         objdir (OBJ_DIR)
         cppdialect (CPP_VERSION)
-        kind "StaticLib"
+        if os.target() == "windows" then
+            kind "StaticLib"
+        else
+            kind "SharedLib"
+        end
         staticruntime "On"
         defines{ "SPARTAN_RUNTIME", API_CPP_DEFINE  }
         if os.target() == "windows" then
@@ -182,17 +169,27 @@ function runtime_project_configuration()
         pchsource "../runtime/Core/pch.cpp"
 
         -- Includes
-        includedirs { "../third_party" }
-        includedirs { "../third_party/sdl" }
-        includedirs { "../third_party/assimp" }
-        includedirs { "../third_party/bullet" }
-        includedirs { "../third_party/fmod" }
-        includedirs { "../third_party/free_image" }
-        includedirs { "../third_party/free_type" }
-        includedirs { "../third_party/compressonator" }
-        includedirs { "../third_party/renderdoc" }
-        includedirs(API_INCLUDES[ARG_API_GRAPHICS] or {})
-		includedirs { "../runtime/Core" } -- This is here because clang needs the full pre-compiled header path
+        if os.target() == "windows" then
+            includedirs { "../third_party" }
+            includedirs { "../third_party/sdl" }
+            includedirs { "../third_party/assimp" }
+            includedirs { "../third_party/bullet" }
+            includedirs { "../third_party/fmod" }
+            includedirs { "../third_party/free_image" }
+            includedirs { "../third_party/free_type" }
+            includedirs { "../third_party/compressonator" }
+            includedirs { "../third_party/renderdoc" }
+            includedirs { "../third_party/pugixml" }
+            includedirs(API_INCLUDES[ARG_API_GRAPHICS] or {})
+        else
+            includedirs { "/usr/include/SDL2" }
+            includedirs { "/usr/include/assimp" }
+            includedirs { "/usr/include/bullet" }
+            includedirs { "/usr/include/freetype2" }
+            includedirs { "/usr/include/renderdoc" }
+        end
+
+  includedirs { "../runtime/Core" } -- This is here because clang needs the full pre-compiled header path
 
         -- Libraries
         libdirs (LIBRARY_DIR)
@@ -207,23 +204,34 @@ function runtime_project_configuration()
             links { "FreeImageLib" }
             links { "freetype" }
             links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
-            links { "SDL2.lib" }
-            links { "Compressonator_MT.lib" }
+            links { "SDL2" }
+            links { "Compressonator_MT" }
 			links(API_LIBRARIES[ARG_API_GRAPHICS].release or {})
 			
         -- "Debug"
         filter "configurations:debug"
             debugdir (TARGET_DIR)
             targetdir (TARGET_DIR)
-            links { "dxcompiler" }
-            links { "assimp_debug" }
-            links { "fmodL_vc" }
-            links { "FreeImageLib_debug" }
-            links { "freetype_debug" }
-            links { "BulletCollision_debug", "BulletDynamics_debug", "BulletSoftBody_debug", "LinearMath_debug" }
-            links { "SDL2_debug.lib" }
-            links { "Compressonator_MT_debug.lib" }
-            links(API_LIBRARIES[ARG_API_GRAPHICS].debug or {})
+            if os.target() == "windows" then
+                links { "dxcompiler" }
+                links { "assimp_debug" }
+                links { "fmodL_vc" }
+                links { "FreeImageLib_debug" }
+                links { "freetype_debug" }
+                links { "BulletCollision_debug", "BulletDynamics_debug", "BulletSoftBody_debug", "LinearMath_debug" }
+                links { "SDL2_debug.lib" }
+                links { "Compressonator_MT_debug.lib" }
+                links(API_LIBRARIES[ARG_API_GRAPHICS].debug or {})
+            else
+                links { "dxcompiler" }
+                links { "assimp" }
+                links { "fmod_vc" }
+                links { "FreeImageLib" }
+                links { "freetype" }
+                links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
+                links { "SDL2" }
+                links { "Compressonator_MT" }
+            end
 end
 
 function editor_project_configuration()
@@ -263,8 +271,13 @@ function editor_project_configuration()
         -- Includes
         includedirs { RUNTIME_DIR }
         includedirs { RUNTIME_DIR .. "/Core" }     -- This is here because the runtime uses it
-        includedirs { "../third_party/free_type" } -- Used to rasterise the ImGui font atlas
-        includedirs { "../third_party/sdl" }  	   -- SDL, used by ImGui to create windows
+        if os.target() == "windows" then
+            includedirs { "../third_party/free_type" } -- Used to rasterise the ImGui font atlas
+            includedirs { "../third_party/sdl" }  	   -- SDL, used by ImGui to create windows
+        else
+            includedirs { "/usr/include/SDL2" }
+            includedirs { "/usr/include/freetype2" }
+        end
 
         -- Libraries
         libdirs (LIBRARY_DIR)
@@ -282,8 +295,13 @@ function editor_project_configuration()
             targetname ( EXECUTABLE_NAME .. "_debug" )
             targetdir (TARGET_DIR)
             debugdir (TARGET_DIR)
-            links { "freetype_debug" }
-            links { "SDL2_debug" }
+            if os.target() == "windows" then
+                links { "freetype_debug" }
+                links { "SDL2_debug" }
+            else
+                links { "freetype" }
+                links { "SDL2" }
+            end
 end
 
 configure_graphics_api()
