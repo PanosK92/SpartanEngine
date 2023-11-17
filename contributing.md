@@ -11,7 +11,7 @@ Remember, neither this project nor you will be around forever. So seize the oppo
 # What to do
 I welcome anyone to contribute, and you can work on any aspect you prefer. If you need ideas on what to do:
 - Check out the [issues](https://github.com/PanosK92/SpartanEngine/issues) section. I regularly open issues myself to keep track of them and also for others to tackle them.
-- You can also [join our Discord server](https://discord.gg/TG5r2BS), a growing community of 250+ members, where you can ask for ideas on what to contribute.
+- You can also [join our Discord server](https://discord.gg/TG5r2BS), a growing community of 300+ members, where you can ask for ideas on what to contribute.
 - The readme page has a [roadmap section](https://github.com/PanosK92/SpartanEngine#roadmap), which is another way to see how you could help.
 - Another great approach is to simply run the engine, see what doesn't work or could be improved.
 
