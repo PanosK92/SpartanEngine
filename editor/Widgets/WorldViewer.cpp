@@ -31,7 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/AudioListener.h"
 #include "World/Components/PhysicsBody.h"
 #include "World/Components/Constraint.h"
-#include "World/Components/Environment.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/ReflectionProbe.h"
 #include "Commands/CommandStack.h"
@@ -514,11 +513,7 @@ void WorldViewer::PopupContextMenu() const
     // ENVIRONMENT
     if (ImGui::BeginMenu("Environment"))
     {
-        if (ImGui::MenuItem("Environment"))
-        {
-            ActionEntityCreateEnvironment();
-        }
-        else if (ImGui::MenuItem("Reflection Probe"))
+        if (ImGui::MenuItem("Reflection Probe"))
         {
             ActionEntityCreateReflectionProbe();
         }
@@ -751,13 +746,6 @@ void WorldViewer::ActionEntityCreateAudioListener()
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Spartan::AudioListener>();
     entity->SetObjectName("AudioListener");
-}
-
-void WorldViewer::ActionEntityCreateEnvironment()
-{
-    auto entity = ActionEntityCreateEmpty();
-    entity->AddComponent<Spartan::Environment>();
-    entity->SetObjectName("Environment");
 }
 
 void WorldViewer::ActionEntityCreateReflectionProbe()
