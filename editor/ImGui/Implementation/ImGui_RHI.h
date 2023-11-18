@@ -421,7 +421,6 @@ namespace ImGui::RHI
         }
 
         // submit
-        cmd_list->EndRenderPass();
         cmd_list->EndTimeblock();
         cmd_list->End();
         cmd_list->Submit();

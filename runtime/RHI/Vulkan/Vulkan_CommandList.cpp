@@ -363,6 +363,11 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
+        if (m_render_pass_active && m_pso.IsGraphics())
+        {
+            EndRenderPass();
+        }
+
         SP_ASSERT_MSG(
             vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource)) == VK_SUCCESS,
             "Failed to end command buffer"
@@ -432,13 +437,22 @@ namespace Spartan
             m_vertex_buffer_id = 0;
             m_index_buffer_id  = 0;
         }
+
+        if (m_render_pass_active)
+        {
+            EndRenderPass();
+        }
     }
 
     void RHI_CommandList::BeginRenderPass()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT_MSG(m_pso.IsGraphics(), "You can't use a render pass with a compute pipeline");
-        SP_ASSERT_MSG(!m_is_render_pass_active, "The command list is already rendering");
+
+        if (m_render_pass_active)
+        {
+            EndRenderPass();
+        }
 
         if (!m_pso.IsGraphics())
             return;
@@ -556,15 +570,15 @@ namespace Spartan
         );
         SetViewport(viewport);
 
-        m_is_render_pass_active = true;
+        m_render_pass_active = true;
     }
 
     void RHI_CommandList::EndRenderPass()
     {
-        if (m_is_render_pass_active)
+        if (m_render_pass_active)
         {
             vkCmdEndRendering(static_cast<VkCommandBuffer>(m_rhi_resource));
-            m_is_render_pass_active = false;
+            m_render_pass_active = false;
         }
 
         if (m_pso.render_target_swapchain)
@@ -1187,7 +1201,7 @@ namespace Spartan
             // Transition
             if (transition_required)
             {
-                SP_ASSERT(!m_is_render_pass_active && "Can't transition to a different layout while rendering");
+                SP_ASSERT(!m_render_pass_active && "Can't transition to a different layout while rendering");
                 texture->SetLayout(target_layout, this, mip_index, mip_range);
             }
         }
@@ -1313,7 +1327,8 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (!m_is_render_pass_active && m_pso.IsGraphics())
+        // begin new render pass
+        if (!m_render_pass_active && m_pso.IsGraphics())
         {
             BeginRenderPass();
         }
@@ -1405,6 +1420,12 @@ namespace Spartan
             {
                 destination_stage_mask = access_flags_to_pipeline_stage(image_barrier.dstAccessMask);
             }
+        }
+
+        // as per vulkan, you can't transition within a render pass
+        if (m_render_pass_active)
+        {
+            EndRenderPass();
         }
 
         vkCmdPipelineBarrier

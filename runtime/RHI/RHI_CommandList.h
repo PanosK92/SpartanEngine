@@ -55,7 +55,6 @@ namespace Spartan
         void Submit();
         void WaitForExecution();
         void SetPipelineState(RHI_PipelineState& pso);
-        void EndRenderPass();
 
         // Clear
         void ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state);
@@ -147,6 +146,7 @@ namespace Spartan
     private:
         void OnDraw();
         void BeginRenderPass();
+        void EndRenderPass();
 
         // Sync
         std::shared_ptr<RHI_Fence> m_proccessed_fence;
@@ -164,7 +164,7 @@ namespace Spartan
 
         // Misc
         RHI_Pipeline* m_pipeline                             = nullptr;
-        bool m_is_render_pass_active                                  = false;
+        bool m_render_pass_active                            = false;
         bool m_pipeline_dirty                                = false;
         static const uint8_t m_resource_array_length_max     = 16;
         RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
