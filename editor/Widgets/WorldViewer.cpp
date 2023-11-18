@@ -42,13 +42,13 @@ using namespace std;
 
 namespace
 {
-    static bool popup_rename_entity       = false;
-    static Spartan::Entity* entity_copied = nullptr;
-    static weak_ptr <Spartan::Entity> entity_clicked;
-    static weak_ptr <Spartan::Entity> entity_hovered;
-    static ImGuiSp::DragDropPayload g_payload;
+    bool popup_rename_entity       = false;
+    Spartan::Entity* entity_copied = nullptr;
+    weak_ptr <Spartan::Entity> entity_clicked;
+    weak_ptr <Spartan::Entity> entity_hovered;
+    ImGuiSp::DragDropPayload g_payload;
 
-    static void load_default_world_prompt(Editor* editor)
+    void load_default_world_prompt(Editor* editor)
     {
         // Load default world window
         static bool is_default_world_window_visible = true;
@@ -71,7 +71,7 @@ namespace
                     "6. Sponza",
                     "7. Doom E1M1"
                 };
-                static int item_index = 4; // forestWorld]
+                static int item_index = 4; // forest
                 static int item_count = IM_ARRAYSIZE(items);
                 ImGui::PushItemWidth(450.0f * Spartan::Window::GetDpiScale());
                 ImGui::ListBox("##list_box", &item_index, items, item_count, item_count);

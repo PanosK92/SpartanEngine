@@ -48,11 +48,11 @@ namespace Spartan
 {
     namespace
     {
-        static mutex mutex_allocation;
-        static mutex mutex_deletion_queue;
-        static unordered_map<RHI_Resource_Type, vector<void*>> deletion_queue;
+        mutex mutex_allocation;
+        mutex mutex_deletion_queue;
+        unordered_map<RHI_Resource_Type, vector<void*>> deletion_queue;
 
-        static bool is_present_instance_layer(const char* layer_name)
+        bool is_present_instance_layer(const char* layer_name)
         {
             uint32_t layer_count;
             vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
@@ -69,7 +69,7 @@ namespace Spartan
             return false;
         }
 
-        static bool is_present_device_extension(const char* extension_name, VkPhysicalDevice device_physical)
+        bool is_present_device_extension(const char* extension_name, VkPhysicalDevice device_physical)
         {
             uint32_t extension_count = 0;
             vkEnumerateDeviceExtensionProperties(device_physical, nullptr, &extension_count, nullptr);
@@ -86,7 +86,7 @@ namespace Spartan
             return false;
         }
 
-        static bool is_present_instance(const char* extension_name)
+        bool is_present_instance(const char* extension_name)
         {
             uint32_t extension_count = 0;
             vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
@@ -103,7 +103,7 @@ namespace Spartan
             return false;
         }
 
-        static vector<const char*> get_physical_device_supported_extensions(const vector<const char*>& extensions, VkPhysicalDevice device_physical)
+        vector<const char*> get_physical_device_supported_extensions(const vector<const char*>& extensions, VkPhysicalDevice device_physical)
         {
             vector<const char*> extensions_supported;
 
@@ -122,7 +122,7 @@ namespace Spartan
             return extensions_supported;
         }
 
-        static vector<const char*> get_supported_extensions(const vector<const char*>& extensions)
+        vector<const char*> get_supported_extensions(const vector<const char*>& extensions)
         {
             vector<const char*> extensions_supported;
 
@@ -141,7 +141,7 @@ namespace Spartan
             return extensions_supported;
         }
 
-        static VkImageUsageFlags get_image_usage_flags(const RHI_Texture* texture)
+        VkImageUsageFlags get_image_usage_flags(const RHI_Texture* texture)
         {
             VkImageUsageFlags flags = 0;
 
@@ -173,17 +173,17 @@ namespace Spartan
 
     namespace queues
     {
-        static mutex mutex_queue;
-        static void* graphics = nullptr;
-        static void* compute  = nullptr;
-        static void* copy     = nullptr;
+        mutex mutex_queue;
+        void* graphics = nullptr;
+        void* compute  = nullptr;
+        void* copy     = nullptr;
 
         #define invalid_index numeric_limits<uint32_t>::max()
-        static uint32_t index_graphics = invalid_index;
-        static uint32_t index_compute  = invalid_index;
-        static uint32_t index_copy     = invalid_index;
+        uint32_t index_graphics = invalid_index;
+        uint32_t index_compute  = invalid_index;
+        uint32_t index_copy     = invalid_index;
 
-        static uint32_t get_queue_family_index(const vector<VkQueueFamilyProperties>& queue_families, VkQueueFlags queue_flags)
+        uint32_t get_queue_family_index(const vector<VkQueueFamilyProperties>& queue_families, VkQueueFlags queue_flags)
         {
             // compute only queue family index
             if ((queue_flags & VK_QUEUE_COMPUTE_BIT) == queue_flags)
@@ -228,7 +228,7 @@ namespace Spartan
             return invalid_index;
         }
 
-        static void detect_queue_family_indices(VkPhysicalDevice device_physical)
+        void detect_queue_family_indices(VkPhysicalDevice device_physical)
         {
             uint32_t queue_family_count = 0;
             vkGetPhysicalDeviceQueueFamilyProperties(device_physical, &queue_family_count, nullptr);
@@ -244,14 +244,14 @@ namespace Spartan
 
     namespace functions
     {
-        static PFN_vkCreateDebugUtilsMessengerEXT  create_messenger;
-        static PFN_vkDestroyDebugUtilsMessengerEXT destroy_messenger;
-        static PFN_vkSetDebugUtilsObjectTagEXT     set_object_tag;
-        static PFN_vkSetDebugUtilsObjectNameEXT    set_object_name;
-        static PFN_vkCmdBeginDebugUtilsLabelEXT    marker_begin;
-        static PFN_vkCmdEndDebugUtilsLabelEXT      marker_end;
+        PFN_vkCreateDebugUtilsMessengerEXT  create_messenger;
+        PFN_vkDestroyDebugUtilsMessengerEXT destroy_messenger;
+        PFN_vkSetDebugUtilsObjectTagEXT     set_object_tag;
+        PFN_vkSetDebugUtilsObjectNameEXT    set_object_name;
+        PFN_vkCmdBeginDebugUtilsLabelEXT    marker_begin;
+        PFN_vkCmdEndDebugUtilsLabelEXT      marker_end;
 
-        static void initialize(bool validation_enabled, bool gpu_markers_enabled)
+        void initialize(bool validation_enabled, bool gpu_markers_enabled)
         {
             #define get_func(var, def)\
             var = reinterpret_cast<PFN_##def>(vkGetInstanceProcAddr(static_cast<VkInstance>(RHI_Context::instance), #def));\
@@ -283,9 +283,9 @@ namespace Spartan
 
     namespace validation_layer_logging
     {
-        static VkDebugUtilsMessengerEXT messenger;
+        VkDebugUtilsMessengerEXT messenger;
 
-        static VKAPI_ATTR VkBool32 VKAPI_CALL callback
+        VKAPI_ATTR VkBool32 VKAPI_CALL callback
         (
             VkDebugUtilsMessageSeverityFlagBitsEXT msg_severity,
             VkDebugUtilsMessageTypeFlagsEXT msg_type,
@@ -315,7 +315,7 @@ namespace Spartan
             return VK_FALSE;
         }
 
-        static void initialize(VkInstance instance)
+        void initialize(VkInstance instance)
         {
             if (functions::create_messenger)
             {
@@ -329,7 +329,7 @@ namespace Spartan
             }
         }
 
-        static void shutdown(VkInstance instance)
+        void shutdown(VkInstance instance)
         {
             if (!functions::destroy_messenger)
                 return;
@@ -340,11 +340,11 @@ namespace Spartan
 
     namespace vulkan_memory_allocator
     {
-        static mutex mutex_allocator;
-        static VmaAllocator allocator;
-        static unordered_map<uint64_t, VmaAllocation> allocations;
+        mutex mutex_allocator;
+        VmaAllocator allocator;
+        unordered_map<uint64_t, VmaAllocation> allocations;
 
-        static void initialize(const uint32_t api_version)
+        void initialize(const uint32_t api_version)
         {
             // https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/staying_within_budget.html
             // It is recommended to use VK_EXT_memory_budget device extension to obtain information about the budget from Vulkan device.
@@ -361,7 +361,7 @@ namespace Spartan
             SP_ASSERT_MSG(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator) == VK_SUCCESS, "Failed to create memory allocator");
         }
 
-        static void destroy()
+        void destroy()
         {
             SP_ASSERT(vulkan_memory_allocator::allocator != nullptr);
             SP_ASSERT_MSG(vulkan_memory_allocator::allocations.empty(),  "There are still allocations");
@@ -369,12 +369,12 @@ namespace Spartan
             vulkan_memory_allocator::allocator = nullptr;
         }
 
-        static uint64_t resource_to_id(void* resource)
+        uint64_t resource_to_id(void* resource)
         {
             return reinterpret_cast<uint64_t>(resource);
         }
 
-        static void save_allocation(void*& resource, const char* name, VmaAllocation allocation)
+        void save_allocation(void*& resource, const char* name, VmaAllocation allocation)
         {
             SP_ASSERT_MSG(resource != nullptr, "Resource can't be null");
             SP_ASSERT_MSG(name != nullptr, "Name can't be empty");
@@ -391,7 +391,7 @@ namespace Spartan
             allocations[resource_to_id(resource)] = allocation;
         }
 
-        static void destroy_allocation(void*& resource)
+        void destroy_allocation(void*& resource)
         {
             lock_guard<mutex> lock(mutex_allocation);
 
@@ -404,7 +404,7 @@ namespace Spartan
             resource = nullptr;
         }
 
-        static VmaAllocation get_allocation_from_resource(void* resource)
+        VmaAllocation get_allocation_from_resource(void* resource)
         {
             lock_guard<mutex> lock(mutex_allocation);
 
@@ -420,24 +420,24 @@ namespace Spartan
 
     namespace descriptors
     {
-        static uint32_t allocated_descriptor_sets                          = 0;
-        static uint32_t descriptor_pool_max_sets                           = 4098;
-        static const uint16_t descriptor_pool_max_textures                 = 16536;
-        static const uint16_t descriptor_pool_max_storage_textures         = 16536;
-        static const uint16_t descriptor_pool_max_storage_buffers_dynamic  = 32;
-        static const uint16_t descriptor_pool_max_constant_buffers_dynamic = 32;
-        static const uint16_t descriptor_pool_max_samplers                 = 32;
+        uint32_t allocated_descriptor_sets                          = 0;
+        uint32_t descriptor_pool_max_sets                           = 4098;
+        const uint16_t descriptor_pool_max_textures                 = 16536;
+        const uint16_t descriptor_pool_max_storage_textures         = 16536;
+        const uint16_t descriptor_pool_max_storage_buffers_dynamic  = 32;
+        const uint16_t descriptor_pool_max_constant_buffers_dynamic = 32;
+        const uint16_t descriptor_pool_max_samplers                 = 32;
 
-        static VkDescriptorPool descriptor_pool = nullptr;
+        VkDescriptorPool descriptor_pool = nullptr;
 
         // cache
-        static unordered_map<uint64_t, RHI_DescriptorSet> descriptor_sets;
-        static unordered_map<uint64_t, shared_ptr<RHI_DescriptorSetLayout>> descriptor_set_layouts;
-        static unordered_map<uint64_t, shared_ptr<RHI_Pipeline>> pipelines;
-        static array<VkDescriptorSet, 2> descriptor_sets_bindless;
-        static array<VkDescriptorSetLayout, 2> descriptor_set_layouts_bindless;
+        unordered_map<uint64_t, RHI_DescriptorSet> descriptor_sets;
+        unordered_map<uint64_t, shared_ptr<RHI_DescriptorSetLayout>> descriptor_set_layouts;
+        unordered_map<uint64_t, shared_ptr<RHI_Pipeline>> pipelines;
+        array<VkDescriptorSet, 2> descriptor_sets_bindless;
+        array<VkDescriptorSetLayout, 2> descriptor_set_layouts_bindless;
 
-        static void create_descriptor_set_samplers(
+        void create_descriptor_set_samplers(
             const vector<shared_ptr<RHI_Sampler>>& samplers,
             const uint32_t binding_slot,
             const RHI_Device_Resource resource_type
@@ -497,7 +497,7 @@ namespace Spartan
             vkUpdateDescriptorSets(RHI_Context::device, 1, &descriptor_write, 0, nullptr);
         }
 
-        static void get_descriptors_from_pipeline_state(RHI_PipelineState& pipeline_state, vector<RHI_Descriptor>& descriptors)
+        void get_descriptors_from_pipeline_state(RHI_PipelineState& pipeline_state, vector<RHI_Descriptor>& descriptors)
         {
             SP_ASSERT(pipeline_state.IsValid());
             descriptors.clear();
@@ -548,7 +548,7 @@ namespace Spartan
             });
         }
 
-        static shared_ptr<RHI_DescriptorSetLayout> get_or_create_descriptor_set_layout(RHI_PipelineState& pipeline_state)
+        shared_ptr<RHI_DescriptorSetLayout> get_or_create_descriptor_set_layout(RHI_PipelineState& pipeline_state)
         {
             // get descriptors from pipeline state
             vector<RHI_Descriptor> descriptors;

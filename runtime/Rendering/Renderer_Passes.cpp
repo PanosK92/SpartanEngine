@@ -303,8 +303,6 @@ namespace Spartan
                             pso.instancing ? renderable->GetInstanceCount() : 1
                         );
                     }
-
-                    cmd_list->EndRenderPass();
                 }
             }
         }
@@ -422,7 +420,6 @@ namespace Spartan
                         }
                     }
                 }
-                cmd_list->EndRenderPass();
             }
         }
 
@@ -527,8 +524,6 @@ namespace Spartan
                     pso.instancing ? renderable->GetInstanceCount() : 1
                 );
             }
-
-            cmd_list->EndRenderPass();
         }
 
         cmd_list->EndTimeblock();
@@ -662,8 +657,6 @@ namespace Spartan
                 is_first_pass = false;
                 Profiler::m_renderer_meshes_rendered++;
             }
-
-            cmd_list->EndRenderPass();
         }
 
         cmd_list->EndTimeblock();
@@ -1143,10 +1136,7 @@ namespace Spartan
         }
 
         // render
-        {
-            cmd_list->Draw(3, 0);
-            cmd_list->EndRenderPass();
-        }
+        cmd_list->Draw(3, 0);
 
         cmd_list->EndTimeblock();
     }
@@ -1774,7 +1764,7 @@ namespace Spartan
 
     void Renderer::Pass_Ffx_Cas(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
-        // Acquire shaders
+        // acquire shaders
         RHI_Shader* shader_c = GetShader(Renderer_Shader::ffx_cas_c).get();
         if (!shader_c->IsCompiled())
             return;
@@ -1977,7 +1967,6 @@ namespace Spartan
             draw_icon(entity->GetTransform().get(), texture);
         }
 
-        cmd_list->EndRenderPass();
         cmd_list->EndTimeblock();
     }
 
@@ -2032,7 +2021,6 @@ namespace Spartan
         cmd_list->SetBufferIndex(GetStandardMesh(Renderer_MeshType::Quad)->GetIndexBuffer());
         cmd_list->DrawIndexed(6);
 
-        cmd_list->EndRenderPass();
         cmd_list->EndTimeblock();
     }
 
@@ -2091,7 +2079,6 @@ namespace Spartan
                     cmd_list->SetPipelineState(pso);
                     cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
                     cmd_list->Draw(m_lines_index_depth_off + 1);
-                    cmd_list->EndRenderPass();
                     cmd_list->EndMarker();
                 }
 
@@ -2107,7 +2094,6 @@ namespace Spartan
                     cmd_list->SetPipelineState(pso);
                     cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
                     cmd_list->Draw((m_lines_index_depth_on - (vertex_count / 2)) + 1, vertex_count / 2);
-                    cmd_list->EndRenderPass();
                     cmd_list->EndMarker();
                 }
             }
@@ -2170,7 +2156,6 @@ namespace Spartan
                 }
             }
         }
-        cmd_list->EndRenderPass();
 
         cmd_list->EndTimeblock();
     }
@@ -2228,7 +2213,6 @@ namespace Spartan
                                         cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
                                         cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
                                         cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
-                                        cmd_list->EndRenderPass();
                                     }
                                 }
                                 cmd_list->EndMarker();
@@ -2319,7 +2303,6 @@ namespace Spartan
                 cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlasOutline());
                 cmd_list->DrawIndexed(font->GetIndexCount());
             }
-            cmd_list->EndRenderPass();
             cmd_list->EndTimeblock();
         }
 
@@ -2337,7 +2320,6 @@ namespace Spartan
                 cmd_list->SetBufferIndex(font->GetIndexBuffer());
                 cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlas());
                 cmd_list->DrawIndexed(font->GetIndexCount());
-                cmd_list->EndRenderPass();
             }
             cmd_list->EndTimeblock();
         }
