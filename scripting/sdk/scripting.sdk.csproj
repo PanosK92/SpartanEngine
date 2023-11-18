@@ -6,8 +6,9 @@
     <Nullable>enable</Nullable>
     <Platforms>x64</Platforms>
     <EnableDynamicLoading>true</EnableDynamicLoading>
-    <OutputPath>..\binaries\gameplay</OutputPath>
+    <OutputPath>..\..\binaries\gameplay</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <Configurations>debug windows;release windows</Configurations>
   </PropertyGroup>
 
 </Project>
