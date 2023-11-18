@@ -115,7 +115,7 @@ function solution_configuration()
         -- "Debug"
         filter "configurations:debug"
             if os.target() == "windows" then
-                defines { "DEBUG", "SPARTAN_RUNTIME_STATIC=1", "SPARTAN_RUNTIME_SHARED=0" }
+                defines { "WINDOWS", "WIN32","DEBUG", "SPARTAN_RUNTIME_STATIC=1", "SPARTAN_RUNTIME_SHARED=0" }
             else
                 defines { "DEBUG", "SPARTAN_RUNTIME_STATIC=0", "SPARTAN_RUNTIME_SHARED=1" }
             end
@@ -127,7 +127,7 @@ function solution_configuration()
         -- "Release"
         filter "configurations:release"
             if os.target() == "windows" then
-                defines { "SPARTAN_RUNTIME_STATIC=1", "SPARTAN_RUNTIME_SHARED=0" }
+                defines { "WINDOWS", "WIN32","SPARTAN_RUNTIME_STATIC=1", "SPARTAN_RUNTIME_SHARED=0" }
             else
                 defines { "SPARTAN_RUNTIME_STATIC=0", "SPARTAN_RUNTIME_SHARED=1" }
             end
@@ -180,6 +180,7 @@ function runtime_project_configuration()
             includedirs { "../third_party/compressonator" }
             includedirs { "../third_party/renderdoc" }
             includedirs { "../third_party/pugixml" }
+            includedirs { "../third_party/dotnet" }
             includedirs(API_INCLUDES[ARG_API_GRAPHICS] or {})
         else
             includedirs { "/usr/include/SDL2" }
@@ -190,7 +191,7 @@ function runtime_project_configuration()
         end
 
   includedirs { "../runtime/Core" } -- This is here because clang needs the full pre-compiled header path
-
+  includedirs { "../runtime/Scripting" }
         -- Libraries
         libdirs (LIBRARY_DIR)
 
@@ -206,8 +207,9 @@ function runtime_project_configuration()
             links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
             links { "SDL2" }
             links { "Compressonator_MT" }
-			links(API_LIBRARIES[ARG_API_GRAPHICS].release or {})
-			
+            links { "nethost.lib" }
+            links(API_LIBRARIES[ARG_API_GRAPHICS].release or {})
+            
         -- "Debug"
         filter "configurations:debug"
             debugdir (TARGET_DIR)
@@ -221,6 +223,7 @@ function runtime_project_configuration()
                 links { "BulletCollision_debug", "BulletDynamics_debug", "BulletSoftBody_debug", "LinearMath_debug" }
                 links { "SDL2_debug.lib" }
                 links { "Compressonator_MT_debug.lib" }
+                links { "nethost.lib" }
                 links(API_LIBRARIES[ARG_API_GRAPHICS].debug or {})
             else
                 links { "dxcompiler" }
