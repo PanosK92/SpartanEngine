@@ -19,35 +19,45 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+
 //= INCLUDES =============================
 #include "pch.h"
 #include "Audio.h"
 #include "../Profiling/Profiler.h"
 #include "../World/Components/Transform.h"
 SP_WARNINGS_OFF
+#if defined(_MSC_VER)
 #include <fmod.hpp>
 #include <fmod_errors.h>
+#endif
+
 SP_WARNINGS_ON
 //========================================
 
 //= NAMESPACES ======
 using namespace std;
+#if defined(_MSC_VER)
 using namespace FMOD;
+#endif
 //===================
 
 namespace Spartan
 {
     namespace
     { 
+        #if defined(_MSC_VER)
         static FMOD::System* fmod_system  = nullptr;
         static uint32_t fmod_result       = 0;
         static uint32_t fmod_max_channels = 32;
         static float fmod_distance_entity = 1.0f;
         static Transform* m_listener      = nullptr;
+        #endif
     }
+
 
     void Audio::Initialize()
     {
+        #if defined(_MSC_VER)
         // Create FMOD instance
         if (!HandleErrorFmod(System_Create(&fmod_system)))
             return;
@@ -83,19 +93,23 @@ namespace Spartan
         (
             m_listener = nullptr;
         ));
+        #endif 
     }
 
     void Audio::Shutdown()
     {
+        #if defined(_MSC_VER)
         if (!fmod_system)
             return;
 
         HandleErrorFmod(fmod_system->close());
         HandleErrorFmod(fmod_system->release());
+        #endif
     }
 
     void Audio::Tick()
     {
+        #if defined(_MSC_VER)
         // Don't play audio if the engine is not in game mode
         if (!Engine::IsFlagSet(EngineMode::Game))
             return;
@@ -121,36 +135,53 @@ namespace Spartan
                 reinterpret_cast<FMOD_VECTOR*>(&up)
             ));
         }
+        #endif
     }
 
     void Audio::SetListenerTransform(shared_ptr<Transform> transform)
     {
+        #if defined(_MSC_VER)
         m_listener = transform.get();
+        #endif
     }
 
     bool Audio::HandleErrorFmod(int result)
     {
+        #if defined(_MSC_VER)
         if (result != FMOD_OK)
         {
             SP_LOG_ERROR("%s", FMOD_ErrorString(static_cast<FMOD_RESULT>(result)));
             return false;
         }
+        #endif
 
         return true;
     }
 
     bool Audio::CreateSound(const std::string& file_path, int sound_mode, void*& sound)
     {
+        #if defined(_MSC_VER)
         return Audio::HandleErrorFmod(fmod_system->createSound(file_path.c_str(), sound_mode, nullptr, reinterpret_cast<FMOD::Sound**>(&sound)));
+        #else
+        return true;
+        #endif
     }
 
     bool Audio::CreateStream(const std::string& file_path, int sound_mode, void*& sound)
     {
+        #if defined(_MSC_VER)
         return Audio::HandleErrorFmod(fmod_system->createStream(file_path.c_str(), sound_mode, nullptr, reinterpret_cast<FMOD::Sound**>(&sound)));
+        #else
+        return true;
+        #endif
     }
 
     bool Audio::PlaySound(void* sound, void*& channel)
     {
+        #if defined(_MSC_VER)
         return Audio::HandleErrorFmod(fmod_system->playSound(static_cast<FMOD::Sound*>(sound), nullptr, false, reinterpret_cast<FMOD::Channel**>(&channel)));
+        #else
+        return false;
+        #endif
     }
 }
