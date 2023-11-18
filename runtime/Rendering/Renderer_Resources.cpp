@@ -56,11 +56,11 @@ namespace Spartan
         array<shared_ptr<RHI_BlendState>, 3>        m_blend_states;
 
         // renderer resources
-        array<shared_ptr<RHI_Texture>, 29>            m_render_targets;
-        array<shared_ptr<RHI_Shader>, number_shaders> m_shaders;
-        array<shared_ptr<RHI_Sampler>, 7>             m_samplers;
-        array<shared_ptr<RHI_ConstantBuffer>, 3>      m_constant_buffers;
-        shared_ptr<RHI_StructuredBuffer>              m_structured_buffer;
+        array<shared_ptr<RHI_Texture>, render_target_count> m_render_targets;
+        array<shared_ptr<RHI_Shader>, shader_count>         m_shaders;
+        array<shared_ptr<RHI_Sampler>, 7>                   m_samplers;
+        array<shared_ptr<RHI_ConstantBuffer>, 3>            m_constant_buffers;
+        shared_ptr<RHI_StructuredBuffer>                    m_structured_buffer;
 
         // asset resources
         array<shared_ptr<RHI_Texture>, 10> m_standard_textures;
@@ -193,14 +193,17 @@ namespace Spartan
             render_target(Renderer_RenderTexture::frame_render_fsr2_opaque)  = make_unique<RHI_Texture2D>(width_render, height_render, 1,         frame_render_format, frame_render_flags,                           "rt_frame_render_opaque");
 
             // g-buffer
-            uint32_t g_buffer_flags = RHI_Texture_Rtv | RHI_Texture_Srv;
-            render_target(Renderer_RenderTexture::gbuffer_color)             = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     g_buffer_flags,                         "rt_gbuffer_color");
-            render_target(Renderer_RenderTexture::gbuffer_normal)            = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, g_buffer_flags,                         "rt_gbuffer_normal");
-            render_target(Renderer_RenderTexture::gbuffer_material)          = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     g_buffer_flags,                         "rt_gbuffer_material");
-            render_target(Renderer_RenderTexture::gbuffer_material_2)        = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     g_buffer_flags,                         "rt_gbuffer_material_2");
-            render_target(Renderer_RenderTexture::gbuffer_velocity)          = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16_Float,       g_buffer_flags | RHI_Texture_ClearBlit, "rt_gbuffer_velocity");
-            render_target(Renderer_RenderTexture::gbuffer_velocity_previous) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16_Float,       g_buffer_flags | RHI_Texture_ClearBlit, "rt_gbuffer_velocity_previous");
-            render_target(Renderer_RenderTexture::gbuffer_depth)             = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          g_buffer_flags,                         "rt_gbuffer_depth");
+            {
+                uint32_t g_buffer_flags = RHI_Texture_Rtv | RHI_Texture_Srv;
+                render_target(Renderer_RenderTexture::gbuffer_color)             = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     g_buffer_flags,                         "rt_gbuffer_color");
+                render_target(Renderer_RenderTexture::gbuffer_normal)            = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, g_buffer_flags,                         "rt_gbuffer_normal");
+                render_target(Renderer_RenderTexture::gbuffer_material)          = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     g_buffer_flags,                         "rt_gbuffer_material");
+                render_target(Renderer_RenderTexture::gbuffer_material_2)        = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     g_buffer_flags,                         "rt_gbuffer_material_2");
+                render_target(Renderer_RenderTexture::gbuffer_velocity)          = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16_Float,       g_buffer_flags | RHI_Texture_ClearBlit, "rt_gbuffer_velocity");
+                render_target(Renderer_RenderTexture::gbuffer_depth)             = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          g_buffer_flags,                         "rt_gbuffer_depth");
+
+                render_target(Renderer_RenderTexture::gbuffer_velocity_previous) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16_Float, g_buffer_flags | RHI_Texture_ClearBlit, "rt_gbuffer_velocity_previous");
+            }
 
             // light
             uint32_t light_flags = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit;
@@ -307,6 +310,9 @@ namespace Spartan
             shader(Renderer_Shader::depth_prepass_instanced_v) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::depth_prepass_instanced_v)->AddDefine("INSTANCED");
             shader(Renderer_Shader::depth_prepass_instanced_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_prepass.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+
+            shader(Renderer_Shader::depth_prepass_alpha_test_p) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::depth_prepass_alpha_test_p)->Compile(RHI_Shader_Pixel, shader_dir + "depth_prepass.hlsl", async);
         }
 
         // light depth
@@ -320,6 +326,9 @@ namespace Spartan
 
             shader(Renderer_Shader::depth_light_p) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::depth_light_p)->Compile(RHI_Shader_Pixel, shader_dir + "depth_light.hlsl", async);
+
+            shader(Renderer_Shader::depth_light_alpha_test_p) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::depth_light_alpha_test_p)->Compile(RHI_Shader_Pixel, shader_dir + "depth_light_alpha_test.hlsl", async);
         }
 
         // g-buffer
@@ -365,10 +374,6 @@ namespace Spartan
         // atmospheric scattering
         shader(Renderer_Shader::atmospheric_scattering_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::atmospheric_scattering_c)->Compile(RHI_Shader_Compute, shader_dir + "atmospheric_scattering.hlsl", async);
-
-        // depth alpha testing (used for the depth prepass as well as the light depth pass)
-        shader(Renderer_Shader::alpha_test_p) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::alpha_test_p)->Compile(RHI_Shader_Pixel, shader_dir + "alpha_test.hlsl", async);
 
         // font
         shader(Renderer_Shader::font_v) = make_shared<RHI_Shader>();
@@ -619,12 +624,12 @@ namespace Spartan
         m_fonts.fill(nullptr);
     }
 
-    array<shared_ptr<RHI_Texture>, 29>& Renderer::GetRenderTargets()
+    array<shared_ptr<RHI_Texture>, render_target_count>& Renderer::GetRenderTargets()
     {
         return m_render_targets;
     }
 
-    array<shared_ptr<RHI_Shader>, number_shaders>& Renderer::GetShaders()
+    array<shared_ptr<RHI_Shader>, shader_count>& Renderer::GetShaders()
     {
         return m_shaders;
     }

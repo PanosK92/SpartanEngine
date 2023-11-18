@@ -173,7 +173,7 @@ namespace Spartan
         // acquire shaders
         RHI_Shader* shader_v           = GetShader(Renderer_Shader::depth_light_v).get();
         RHI_Shader* shader_instanced_v = GetShader(Renderer_Shader::depth_light_instanced_v).get();
-        RHI_Shader* shader_p           = is_transparent_pass ? GetShader(Renderer_Shader::depth_light_p).get() : GetShader(Renderer_Shader::alpha_test_p).get();
+        RHI_Shader* shader_p           = is_transparent_pass ? GetShader(Renderer_Shader::depth_light_p).get() : GetShader(Renderer_Shader::depth_light_alpha_test_p).get();
         if (!shader_v->IsCompiled() || !shader_instanced_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
@@ -234,9 +234,6 @@ namespace Spartan
                     {
                         // disable depth clipping so that we can capture silhouettes even behind the light
                         pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Light_directional).get();
-
-                        // don't do alpha testing for far away cascades, as it's not noticeable and it's a performance hit
-                        pso.shader_pixel = array_index >= 1 ? nullptr : pso.shader_pixel;
                     }
                     else
                     {
@@ -431,7 +428,7 @@ namespace Spartan
         // acquire shaders
         RHI_Shader* shader_v           = GetShader(Renderer_Shader::depth_prepass_v).get();
         RHI_Shader* shader_instanced_v = GetShader(Renderer_Shader::depth_prepass_instanced_v).get();
-        RHI_Shader* shader_p           = GetShader(Renderer_Shader::alpha_test_p).get();
+        RHI_Shader* shader_p           = GetShader(Renderer_Shader::depth_prepass_alpha_test_p).get();
         if (!shader_v->IsCompiled() || !shader_instanced_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
