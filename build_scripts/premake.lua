@@ -127,9 +127,9 @@ function solution_configuration()
         -- "Release"
         filter "configurations:release"
             if os.target() == "windows" then
-                defines { "DEBUG", "SPARTAN_RUNTIME_STATIC=1", "SPARTAN_RUNTIME_SHARED=0" }
+                defines { "SPARTAN_RUNTIME_STATIC=1", "SPARTAN_RUNTIME_SHARED=0" }
             else
-                defines { "DEBUG", "SPARTAN_RUNTIME_STATIC=0", "SPARTAN_RUNTIME_SHARED=1" }
+                defines { "SPARTAN_RUNTIME_STATIC=0", "SPARTAN_RUNTIME_SHARED=1" }
             end
             flags { "MultiProcessorCompile", "LinkTimeOptimization" }
             optimize "Speed"
