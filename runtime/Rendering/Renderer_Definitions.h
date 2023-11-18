@@ -29,7 +29,8 @@ namespace Spartan
 {
     #define debug_color Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
     constexpr uint8_t resources_frame_lifetime = 5;
-    constexpr uint8_t number_shaders           = 51;
+    constexpr uint8_t shader_count             = 52;
+    constexpr uint8_t render_target_count      = 29;
 
     enum class Renderer_Option : uint32_t
     {
@@ -178,10 +179,11 @@ namespace Spartan
         gbuffer_p,
         depth_prepass_v,
         depth_prepass_instanced_v,
+        depth_prepass_alpha_test_p,
         depth_light_v,
         depth_light_instanced_v,
         depth_light_p,
-        alpha_test_p,
+        depth_light_alpha_test_p,
         fullscreen_triangle_v,
         quad_v,
         quad_p,

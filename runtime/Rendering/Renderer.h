@@ -112,8 +112,8 @@ namespace Spartan
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
 
         // get all
-        static std::array<std::shared_ptr<RHI_Texture>, 29>& GetRenderTargets();
-        static std::array<std::shared_ptr<RHI_Shader>, number_shaders>& GetShaders();
+        static std::array<std::shared_ptr<RHI_Texture>, render_target_count>& GetRenderTargets();
+        static std::array<std::shared_ptr<RHI_Shader>, shader_count>& GetShaders();
         static std::array<std::shared_ptr<RHI_ConstantBuffer>, 3>& GetConstantBuffers();
 
         // get individual
