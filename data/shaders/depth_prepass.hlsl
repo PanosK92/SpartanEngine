@@ -27,7 +27,7 @@ Pixel_PosUv mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     Pixel_PosUv output;
     
-    output.position = compute_screen_space_position(input, instance_id, buffer_pass.transform, buffer_frame.view_projection);
+    output.position = compute_screen_space_position(input, instance_id, buffer_pass.transform, buffer_frame.view_projection, buffer_frame.time);
     output.uv       = input.uv;
     
     return output;
