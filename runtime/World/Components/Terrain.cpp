@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "pch.h"
+#include <cfloat>
 #include "Terrain.h"
 #include "Renderable.h"
 #include "../Entity.h"
