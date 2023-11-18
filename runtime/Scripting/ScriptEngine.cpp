@@ -91,9 +91,9 @@ namespace Spartan
         load_assembly_and_get_function_pointer_fn function_pointer_getter = nullptr;
 
         // Constants
-        string_t root_path = STR("H:\\Repos\\SpartanEngine\\binaries\\gameplay\\");
-        string_t app_path = root_path + STR("Scripting.SDK.dll");
-        string_t config_path = root_path + STR("Scripting.SDK.runtimeconfig.json");
+        string_t root_path;
+        string_t app_path;
+        string_t config_path;
         const char_t* dotnet_type = STR("Scripting.SDK.Engine, Scripting.SDK");
 
         // Forward declarations
@@ -104,6 +104,10 @@ namespace Spartan
 
     void ScriptEngine::Initialize()
     {
+        root_path = std::filesystem::current_path().wstring() + DIR_SEPARATOR + STR("gameplay");
+        app_path = root_path + DIR_SEPARATOR + STR("scripting.sdk.dll");
+        config_path = root_path + DIR_SEPARATOR + STR("scripting.sdk.runtimeconfig.json");
+
         //
        // STEP 1: Load HostFxr and get exported hosting functions
        //
