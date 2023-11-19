@@ -35,7 +35,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace ImGui::TransformGizmo
 {
-    bool first_frame_in_control = true;
+    bool first_use = true;
+    Spartan::Math::Vector3 position_previous;
+    Spartan::Math::Quaternion rotation_previous;
+    Spartan::Math::Vector3 scale_previous;
 
     void apply_style()
     {
@@ -59,17 +62,17 @@ namespace ImGui::TransformGizmo
         if (!camera)
             return;
 
-        // Get selected entity
+        // get selected entity
         std::shared_ptr<Spartan::Entity> entity = camera->GetSelectedEntity();
 
-        // Enable/disable gizmo
+        // enable/disable gizmo
         ImGuizmo::Enable(entity != nullptr);
         if (!entity)
         {
             return;
         }
 
-        // Switch between position, rotation and scale operations, with W, E and R respectively
+        // switch between position, rotation and scale operations, with W, E and R respectively
         static ImGuizmo::OPERATION transform_operation = ImGuizmo::TRANSLATE;
         if (!camera->IsActivelyControlled())
         {
@@ -94,7 +97,7 @@ namespace ImGui::TransformGizmo
         const Spartan::Math::Matrix& matrix_view       = camera->GetViewMatrix().Transposed();
         std::shared_ptr<Spartan::Transform> transform  = entity->GetComponent<Spartan::Transform>();
 
-        // Begin
+        // begin
         const bool is_orthographic = false;
         ImGuizmo::SetOrthographic(is_orthographic);
         ImGuizmo::BeginFrame();
@@ -115,28 +118,32 @@ namespace ImGui::TransformGizmo
         // map imguizmo to transform
         if (ImGuizmo::IsUsing())
         {
-            if (first_frame_in_control)
+            // start of handling - save the initial transform
+            if (first_use)
             {
-                // add the old transform to the command stack
-                Spartan::CommandStack::Apply<Spartan::CommandTransform>(
-                    entity.get(),
-                    transform->GetPosition(), transform->GetRotation(), transform->GetScale()
-                );
+                position_previous = transform->GetPosition();
+                rotation_previous = transform->GetRotation();
+                scale_previous    = transform->GetScale();
 
-                first_frame_in_control = false;
+                first_use = false;
             }
 
             transform_matrix.Transposed().Decompose(scale, rotation, position);
-
             transform->SetPosition(position);
             transform->SetRotation(rotation);
             transform->SetScale(scale);
+
+            // end of handling - add the current and previous transforms to the command stack
+            if (Spartan::Input::GetKeyUp(Spartan::KeyCode::Click_Left))
+            {
+                Spartan::CommandStack::Add<Spartan::CommandTransform>(entity.get(), position_previous, rotation_previous, scale_previous);
+            }
         }
     }
 
     static bool allow_picking()
     {
-        first_frame_in_control = true;
+        first_use = true;
         return !ImGuizmo::IsOver() && !ImGuizmo::IsUsing();        
     }
 }

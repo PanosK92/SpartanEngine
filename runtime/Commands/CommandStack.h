@@ -34,13 +34,9 @@ namespace Spartan
 
     class SP_CLASS CommandStack
     {
-    public:
-        static void Initialize();
-        static void Shutdown();
-
-        /** Creates and applies a new command (Note: this clears the redo buffer) */
+    public: 
         template<typename CommandType, typename... Args>
-        static void Apply(Args&&... args)
+        static void Add(Args&&... args)
         {
             // @todo this is garbage for performance, as it has to copy the entire buffer when it's full
             // could be solved by using linked lists instead of dynamic arrays (vectors)
@@ -52,8 +48,6 @@ namespace Spartan
             }
 
             std::shared_ptr<Command> new_command = std::make_shared<CommandType>(std::forward<Args>(args)...);
-            new_command->OnApply();
-
             m_undo_buffer.push_back(new_command);
 
             // Make sure to clear the redo buffer if you apply a new command, to preserve the time continuum.
