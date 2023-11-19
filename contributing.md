@@ -3,10 +3,16 @@ To elevate yourself: Don't settle for the 9-to-5 grind. Step outside your comfor
 Remember, neither this project nor you will be around forever. So seize the opportunity, life can be exciting when you make it so.
 
 # How to do it
-- If it's your first time contributing, pick a small task and go through the process of cloning, working, and submitting. This will give you an idea of the workflow, the scale of the project, and maybe even how to have fun while doing it.
-- The bigger the task you choose, the higher the probability that you'll end up dropping it due to complexity, scale, or boredom. You might even feel stressed, which is the wrong way to go about it. If you are in this place, remember that I have zero expectations.
-- Your first priority should be to have fun; your second priority should be to invest more grey matter in doing rather than planning. If you need help or guidance in the process, talk to me.
-- The workflow is: clone/fork, work, submit a pull request.
+- Starting small: If it's your first time contributing, pick a small task and go through the process of cloning, working, and submitting. This will give you an idea of the workflow, the scale of the project, and maybe even how to have fun while doing it.
+- Task complexity: The bigger the task you choose, the higher the probability that you'll end up dropping it due to complexity, scale, or boredom. You might even feel stressed, which is the wrong way to go about it. If you are in this place, remember that I have zero expectations.
+- Enjoyment priority: Your first priority should be to have fun; your second priority should be to invest more grey matter in doing rather than planning. If you need help or guidance in the process, talk to me.
+- Workflow overview: The workflow is: clone/fork, work, submit a pull request.
+
+# Pull Request (PR) Guidelines
+- Functionality: Ensure your PR is functional. While it can be incomplete, the code it introduces should be operational.
+- Collaboration restrictions: Other contributors generally can't modify your PR directly. Hence, non-functional PRs can obstruct the project's progress.
+- Iterative improvements: It's okay for your PR to be a part of a larger task. Incremental, functional changes are encouraged.
+- Communication: If you're looking for collaboration on your PR, communicate this in your PR description or through our Discord community.
 
 # What to do
 I welcome anyone to contribute, and you can work on any aspect you prefer. If you need ideas on what to do:
