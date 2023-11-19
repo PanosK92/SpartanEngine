@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2023 Fredrik Svantesson
+Copyright(c) 2023 Fredrik Svantesson
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -35,14 +35,14 @@ namespace Spartan
         if (m_undo_buffer.size() == 0)
             return;
 
-        // Fetch the latest applied command, so we know what we are undoing
+        // fetch
         shared_ptr<Command> undo_command = m_undo_buffer.back();
         m_undo_buffer.pop_back();
 
-        // Actually undo
+        // undo
         undo_command->OnRevert();
 
-        // Push it to the top of the redo stack
+        // push it to the top of the redo stack
         m_redo_buffer.push_back(undo_command);
     }
 
@@ -51,14 +51,14 @@ namespace Spartan
         if (m_redo_buffer.size() == 0)
             return;
 
-        // Fetch the latest undoed command, so we know what we are redoing
+        // fetch
         shared_ptr<Command> redo_command = m_redo_buffer.back();
         m_redo_buffer.pop_back();
 
-        // Actually redo
+        // redo
         redo_command->OnApply();
 
-        // Push it to the top of the undo stack
+        // push it to the top of the undo stack
         m_undo_buffer.push_back(redo_command);
     }
 

@@ -21,19 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============================
+//= INCLUDES ===========
 #include "Definitions.h"
-//========================================
+//======================
 
 namespace Spartan
 {
-    /**
-     * Baseclass for commands to be used in a CommandStack.
-     */
     class SP_CLASS Command
     {
     public:
-        virtual void OnApply() = 0;
+        virtual void OnApply()  = 0;
         virtual void OnRevert() = 0;
     };
 }

@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2023 Fredrik Svantesson
+Copyright(c) 2023 Fredrik Svantesson
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
