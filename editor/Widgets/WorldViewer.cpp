@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Constraint.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/ReflectionProbe.h"
-#include "World/Components/Transform.h"
+#include "Commands/CommandStack.h"
 //===========================================
 
 //= NAMESPACES =====
@@ -595,6 +595,21 @@ void WorldViewer::HandleKeyShortcuts()
     {
         m_editor->GetWidget<MenuBar>()->ShowWorldLoadDialog();
     }
+
+    // Undo and Redo: Ctrl + Z, Ctrl+Shift+Z
+    if (Spartan::Input::GetKey(Spartan::KeyCode::Ctrl_Left) && Spartan::Input::GetKeyDown(Spartan::KeyCode::Z))
+    {
+        if (Spartan::Input::GetKey(Spartan::KeyCode::Shift_Left))
+        {
+            Spartan::CommandStack::Redo();
+        }
+        else
+        {
+            Spartan::CommandStack::Undo();
+        }
+    }
+
+
 }
 
 void WorldViewer::ActionEntityDelete(const shared_ptr<Spartan::Entity> entity)
