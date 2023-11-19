@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // properties
-static const float4 grid_color          = float4(0.5f, 0.5f, 0.5f, 1.0f);
+static const float4 grid_color          = float4(0.5f, 0.5f, 0.5f, 0.5f);
 static const float  fade_start          = 0.1f;
 static const float  fade_end            = 0.5f;
 static const float  anti_moire_start    = 0.0f;
