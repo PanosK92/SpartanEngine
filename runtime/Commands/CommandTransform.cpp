@@ -25,13 +25,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/World.h"
 //===========================
 
-//= NAMESPACES =====
+//= NAMESPACES ===============
 using namespace std;
-//==================
+using namespace Spartan::Math;
+//============================
 
 namespace Spartan
 {
-    CommandTransform::CommandTransform(Spartan::Entity* entity, Math::Vector3 old_position, Math::Quaternion old_rotation, Math::Vector3 old_scale)
+    CommandTransform::CommandTransform(Entity* entity,Vector3 old_position, Quaternion old_rotation, Vector3 old_scale)
     {
         SP_ASSERT(entity);
 
@@ -41,18 +42,18 @@ namespace Spartan
         // Right now this wont work as expected, since the object ids are just incremented on creation
         m_entity_id = entity->GetObjectId();
 
-        m_new_position = entity->GetTransform()->GetPosition();
-        m_new_rotation = entity->GetTransform()->GetRotation();
-        m_new_scale    = entity->GetTransform()->GetScale();
-   
         m_old_position = old_position;
         m_old_rotation = old_rotation;
         m_old_scale    = old_scale;
+
+        m_new_position = entity->GetTransform()->GetPosition();
+        m_new_rotation = entity->GetTransform()->GetRotation();
+        m_new_scale    = entity->GetTransform()->GetScale();
     }
 
     void CommandTransform::OnApply()
     {
-        shared_ptr<Entity> entity = Spartan::World::GetEntityById(m_entity_id);
+        shared_ptr<Entity> entity = World::GetEntityById(m_entity_id);
         if (!entity)
             return;
 
@@ -63,7 +64,7 @@ namespace Spartan
 
     void CommandTransform::OnRevert()
     {
-        shared_ptr<Entity> entity = Spartan::World::GetEntityById(m_entity_id);
+        shared_ptr<Entity> entity = World::GetEntityById(m_entity_id);
         if (!entity)
             return;
 
