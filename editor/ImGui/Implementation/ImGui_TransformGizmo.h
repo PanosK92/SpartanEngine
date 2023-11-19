@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace ImGui::TransformGizmo
 {
-    static inline bool previous_handled = false;
+    static inline bool transform_command_done = false;
 
     static inline Spartan::Math::Vector3 begin_position;
     static inline Spartan::Math::Quaternion begin_rotation;
@@ -114,37 +114,35 @@ namespace ImGui::TransformGizmo
         ImGuizmo::SetDrawlist();
         ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowWidth(), ImGui::GetWindowHeight());
 
-        bool this_handled = ImGuizmo::Manipulate(&matrix_view.m00, &matrix_projection.m00, transform_operation, transform_space, &transform_matrix.m00, nullptr, nullptr);
-        bool began_handling = !previous_handled && this_handled;
-        bool ended_handling = previous_handled && !this_handled;
-        previous_handled = this_handled;
+        ImGuizmo::Manipulate(&matrix_view.m00, &matrix_projection.m00, transform_operation, transform_space, &transform_matrix.m00, nullptr, nullptr);
 
         // Map ImGuizmo to transform
         if (ImGuizmo::IsUsing())
         {
             transform_matrix.Transposed().Decompose(scale, rotation, position);
 
-            if (began_handling)
-            {
-                begin_position = position;
-                begin_rotation = rotation;
-                begin_scale = scale;
-            }
-
             transform->SetPosition(position);
             transform->SetRotation(rotation);
             transform->SetScale(scale);
-
-            if (ended_handling)
+          
+            begin_position = position;
+            begin_rotation = rotation;
+            begin_scale = scale;      
+        }
+        else
+        {
+            if (!transform_command_done)
             {
                 SP_LOG_INFO("Applying command");
                 Spartan::CommandStack::Apply<Spartan::TransformEntity>(entity.get(), begin_position, begin_rotation, begin_scale);
+                transform_command_done = true;
             }
         }
     }
 
     static bool allow_picking()
     {
-        return !ImGuizmo::IsOver() && !ImGuizmo::IsUsing();
+        transform_command_done = false;
+        return !ImGuizmo::IsOver() && !ImGuizmo::IsUsing();        
     }
 }
