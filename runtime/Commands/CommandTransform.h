@@ -33,10 +33,10 @@ namespace Spartan
     /**
      * Baseclass for commands to be used in a CommandStack.
      */
-    class SP_CLASS TransformEntity : public Spartan::Command
+    class SP_CLASS CommandTransform : public Spartan::Command
     {
     public:
-        TransformEntity(Spartan::Entity* entity, Math::Vector3 old_position, Math::Quaternion old_rotation, Math::Vector3 old_scale);
+        CommandTransform(Spartan::Entity* entity, Math::Vector3 old_position, Math::Quaternion old_rotation, Math::Vector3 old_scale);
 
         virtual void OnApply() override;
         virtual void OnRevert() override;

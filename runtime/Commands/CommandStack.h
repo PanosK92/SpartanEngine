@@ -67,7 +67,6 @@ namespace Spartan
         static void Redo();
 
     protected:
-
         static std::vector<std::shared_ptr<Command>> m_undo_buffer;
         static std::vector<std::shared_ptr<Command>> m_redo_buffer;
     };
