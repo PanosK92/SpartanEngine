@@ -33,11 +33,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Constraint.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/ReflectionProbe.h"
-<<<<<<< HEAD
 #include "World/Components/Transform.h"
-=======
 #include "Commands/CommandStack.h"
->>>>>>> d79ac6e8d (Implement basic undo system (wip))
 //===========================================
 
 //= NAMESPACES =====
