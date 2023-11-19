@@ -30,9 +30,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    /**
-     * Baseclass for commands to be used in a CommandStack.
-     */
     class SP_CLASS CommandTransform : public Spartan::Command
     {
     public:
@@ -52,6 +49,5 @@ namespace Spartan
         Math::Vector3 m_old_position;
         Math::Quaternion m_old_rotation;
         Math::Vector3 m_old_scale;
-
     };
 }

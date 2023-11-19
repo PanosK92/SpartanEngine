@@ -608,8 +608,6 @@ void WorldViewer::HandleKeyShortcuts()
             Spartan::CommandStack::Undo();
         }
     }
-
-
 }
 
 void WorldViewer::ActionEntityDelete(const shared_ptr<Spartan::Entity> entity)
