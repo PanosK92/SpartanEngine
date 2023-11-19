@@ -29,19 +29,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Rendering/Renderer.h"
 #include "Input/Input.h"
 #include "Commands/CommandStack.h"
-#include "Commands/TransformEntity.h"
+#include "Commands/CommandTransform.h"
 #include "Engine.h"
 //======================================
 
 namespace ImGui::TransformGizmo
 {
-    static inline bool transform_command_done = false;
+    bool first_frame_in_control = true;
 
-    static inline Spartan::Math::Vector3 begin_position;
-    static inline Spartan::Math::Quaternion begin_rotation;
-    static inline Spartan::Math::Vector3 begin_scale;
-
-    static void apply_style()
+    void apply_style()
     {
         ImGuizmo::Style& style           = ImGuizmo::GetStyle();
         style.TranslationLineThickness   = 6.0f;
@@ -103,46 +99,44 @@ namespace ImGui::TransformGizmo
         ImGuizmo::SetOrthographic(is_orthographic);
         ImGuizmo::BeginFrame();
 
-        // Map transform to ImGuizmo
+        // map transform to ImGuizmo
         Spartan::Math::Vector3 position    = transform->GetPosition();
         Spartan::Math::Vector3 scale       = transform->GetScale();
         Spartan::Math::Quaternion rotation = transform->GetRotation();
 
         Spartan::Math::Matrix transform_matrix = Spartan::Math::Matrix::GenerateRowFirst(position, rotation, scale);
 
-        // Set viewport rectangle
+        // set viewport rectangle
         ImGuizmo::SetDrawlist();
         ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowWidth(), ImGui::GetWindowHeight());
 
         ImGuizmo::Manipulate(&matrix_view.m00, &matrix_projection.m00, transform_operation, transform_space, &transform_matrix.m00, nullptr, nullptr);
 
-        // Map ImGuizmo to transform
+        // map imguizmo to transform
         if (ImGuizmo::IsUsing())
         {
+            if (first_frame_in_control)
+            {
+                // add the old transform to the command stack
+                Spartan::CommandStack::Apply<Spartan::CommandTransform>(
+                    entity.get(),
+                    transform->GetPosition(), transform->GetRotation(), transform->GetScale()
+                );
+
+                first_frame_in_control = false;
+            }
+
             transform_matrix.Transposed().Decompose(scale, rotation, position);
 
             transform->SetPosition(position);
             transform->SetRotation(rotation);
             transform->SetScale(scale);
-          
-            begin_position = position;
-            begin_rotation = rotation;
-            begin_scale = scale;      
-        }
-        else
-        {
-            if (!transform_command_done)
-            {
-                SP_LOG_INFO("Applying command");
-                Spartan::CommandStack::Apply<Spartan::TransformEntity>(entity.get(), begin_position, begin_rotation, begin_scale);
-                transform_command_done = true;
-            }
         }
     }
 
     static bool allow_picking()
     {
-        transform_command_done = false;
+        first_frame_in_control = true;
         return !ImGuizmo::IsOver() && !ImGuizmo::IsUsing();        
     }
 }

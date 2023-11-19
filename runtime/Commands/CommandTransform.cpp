@@ -19,71 +19,56 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES ================
 #include "pch.h"
-#include "TransformEntity.h"
+#include "CommandTransform.h"
 #include "../World/World.h"
-//=====================================
+//===========================
 
+//= NAMESPACES =====
+using namespace std;
+//==================
 
 namespace Spartan
 {
-
-    TransformEntity::TransformEntity(Spartan::Entity* entity, Math::Vector3 old_position, Math::Quaternion old_rotation, Math::Vector3 old_scale)
+    CommandTransform::CommandTransform(Spartan::Entity* entity, Math::Vector3 old_position, Math::Quaternion old_rotation, Math::Vector3 old_scale)
     {
         SP_ASSERT(entity);
 
-        // In the current implementation of GetObjectId, it may seem unneccessary to not just store a (shared) pointer to the entity
+        // In the current implementation of GetObjectId, it may seem unnecessary to not just store a (shared) pointer to the entity
         // however if we ever move to a UUID based system, or hashed name system, and entities can be destroyed/created or unloaded/loaded with consistent ids
         // we want to actually store the ID and then resolve from that.
         // Right now this wont work as expected, since the object ids are just incremented on creation
         m_entity_id = entity->GetObjectId();
 
-        std::shared_ptr<Transform> transform = entity->GetTransform();
-        SP_ASSERT(transform.get());
-
-        m_new_position = transform->GetPosition();
-        m_new_rotation = transform->GetRotation();
-        m_new_scale = transform->GetScale();
-
-        
+        m_new_position = entity->GetTransform()->GetPosition();
+        m_new_rotation = entity->GetTransform()->GetRotation();
+        m_new_scale    = entity->GetTransform()->GetScale();
+   
         m_old_position = old_position;
         m_old_rotation = old_rotation;
-        m_old_scale = old_scale;
+        m_old_scale    = old_scale;
     }
 
-    void TransformEntity::OnApply()
+    void CommandTransform::OnApply()
     {
-        std::shared_ptr<Entity> entity = Spartan::World::GetEntityById(m_entity_id);
-
-        // this may likely happen in legitimate edge cases according to my experience 
+        shared_ptr<Entity> entity = Spartan::World::GetEntityById(m_entity_id);
         if (!entity)
             return;
 
-        std::shared_ptr<Transform> transform = entity->GetTransform();
-
-        SP_ASSERT_MSG(transform, "We had entity, but it didn't have a valid transform.");
-
-        transform->SetPosition(m_new_position);
-        transform->SetRotation(m_new_rotation);
-        transform->SetScale(m_new_scale);
+        entity->GetTransform()->SetPosition(m_new_position);
+        entity->GetTransform()->SetRotation(m_new_rotation);
+        entity->GetTransform()->SetScale(m_new_scale);
     }
 
-    void TransformEntity::OnRevert()
+    void CommandTransform::OnRevert()
     {
-        std::shared_ptr<Entity> entity = Spartan::World::GetEntityById(m_entity_id);
-
-        // this may likely happen in legitimate edge cases according to my experience 
+        shared_ptr<Entity> entity = Spartan::World::GetEntityById(m_entity_id);
         if (!entity)
             return;
 
-        std::shared_ptr<Transform> transform = entity->GetTransform();
-
-        SP_ASSERT_MSG(transform, "We had entity, but it didn't have a valid transform.");
-
-        transform->SetPosition(m_old_position);
-        transform->SetRotation(m_old_rotation);
-        transform->SetScale(m_old_scale);
+        entity->GetTransform()->SetPosition(m_old_position);
+        entity->GetTransform()->SetRotation(m_old_rotation);
+        entity->GetTransform()->SetScale(m_old_scale);
     }
-
 }
