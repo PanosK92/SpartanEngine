@@ -222,6 +222,16 @@ struct Light
         n_dot_l           = saturate(dot(surface_normal, -to_pixel)); // Pre-compute n_dot_l since it's used in many places
         attenuation       = compute_attenuation(surface_position);
 
+        // we are doing IBL from an atmospheric scattering texture, so we sample that
+        if (light_is_directional())
+        {
+            float2 uv      = direction_sphere_uv(-forward);
+            uint mip_level = ENVIRONMENT_MAX_MIP - 3; // instead of taking multiple samples around the direction of the
+                                                      // sun, we'll use a blurry mip to "capture" more light from that direction
+            color     = tex_environment.SampleLevel(samplers[sampler_trilinear_clamp], uv, mip_level).rgb;
+            intensity = luminance(color) * 20.0f;
+        }
+
         // apply occlusion
         float occlusion_factor = is_ssgi_enabled() ? occlusion : 1.0;
         radiance               = color * intensity * attenuation * n_dot_l * occlusion_factor;

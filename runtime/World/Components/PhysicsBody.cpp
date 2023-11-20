@@ -301,7 +301,7 @@ namespace Spartan
         }
     }
 
-    Spartan::Math::Vector3 PhysicsBody::GetLinearVelocity() const
+    Vector3 PhysicsBody::GetLinearVelocity() const
     {
         if (!m_rigid_body)
             return Vector3::Zero;
@@ -808,19 +808,16 @@ namespace Spartan
                     return;
                 }
 
-                terrain_width  = terrain->GetHeightMap()->GetWidth();
-                terrain_length = terrain->GetHeightMap()->GetHeight();
-
                 btHeightfieldTerrainShape* shape_local = new btHeightfieldTerrainShape(
-                    terrain_width,            // width
-                    terrain_length,           // length
-                    terrain->GetHeightData(), // data - row major
-                    1.0f,                     // height scale
-                    terrain->GetMinY(),       // min height
-                    terrain->GetMaxY(),       // max height
-                    1,                        // Up axis (0=x, 1=y, 2=z)
-                    PHY_FLOAT,                // Data type
-                    false                     // Flip quad edges or not
+                    terrain->GetHeightMap()->GetWidth(),  // width
+                    terrain->GetHeightMap()->GetHeight(), // length
+                    terrain->GetHeightData(),             // data - row major
+                    1.0f,                                 // height scale
+                    terrain->GetMinY(),                   // min height
+                    terrain->GetMaxY(),                   // max height
+                    1,                                    // Up axis (0=x, 1=y, 2=z)
+                    PHY_FLOAT,                            // Data type
+                    false                                 // Flip quad edges or not
                 );
                 
                 shape_local->setLocalScaling(ToBtVector3(size));

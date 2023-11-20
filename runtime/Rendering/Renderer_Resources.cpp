@@ -527,7 +527,7 @@ namespace Spartan
             }
             else if (type == Renderer_MeshType::Grid)
             {
-                uint32_t resolution = 1000;
+                uint32_t resolution = 2000;
                 Geometry::CreateGrid(&vertices, &indices, resolution);
                 mesh->SetResourceFilePath(project_directory + "standard_grid" + EXTENSION_MODEL);
             }

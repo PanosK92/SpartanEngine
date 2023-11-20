@@ -969,7 +969,7 @@ namespace Spartan
                 cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_specular);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex3, tex_volumetric);
                 cmd_list->SetTexture(Renderer_BindingsSrv::ssgi, GetRenderTarget(Renderer_RenderTexture::ssgi_filtered));
-                
+   
                 // set shadow maps
                 if (light->GetShadowsEnabled())
                 {
@@ -979,6 +979,7 @@ namespace Spartan
                     {
                         cmd_list->SetTexture(Renderer_BindingsSrv::light_directional_depth, light->GetDepthTexture());
                         cmd_list->SetTexture(Renderer_BindingsSrv::light_directional_color, tex_color);
+                        cmd_list->SetTexture(Renderer_BindingsSrv::environment, GetRenderTarget(Renderer_RenderTexture::atmospheric_scattering));
                     }
                     else if (light->GetLightType() == LightType::Point)
                     {

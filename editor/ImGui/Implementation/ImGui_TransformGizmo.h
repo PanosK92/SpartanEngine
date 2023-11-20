@@ -137,13 +137,13 @@ namespace ImGui::TransformGizmo
             if (Spartan::Input::GetKeyUp(Spartan::KeyCode::Click_Left))
             {
                 Spartan::CommandStack::Add<Spartan::CommandTransform>(entity.get(), position_previous, rotation_previous, scale_previous);
+                first_use = true;
             }
         }
     }
 
     static bool allow_picking()
     {
-        first_use = true;
         return !ImGuizmo::IsOver() && !ImGuizmo::IsUsing();        
     }
 }
