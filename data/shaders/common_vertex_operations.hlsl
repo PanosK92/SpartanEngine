@@ -41,7 +41,7 @@ float4 compute_screen_space_position(Vertex_PosUvNorTan input, uint instance_id,
 
     if (material_vertex_animate_water())
     {
-        //world_position = vertex_simulation::water::apply_wave(world_position, time);
+        world_position = vertex_simulation::water::apply_wave(world_position, time);
         world_position = vertex_simulation::water::apply_ripple(world_position, time);
     }
 
