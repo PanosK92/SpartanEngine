@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "pch.h"
-#include <cfloat>
 #include "Terrain.h"
 #include "Renderable.h"
 #include "../Entity.h"
@@ -40,41 +39,41 @@ using namespace Spartan::Math;
 namespace Spartan
 {
     namespace
-    { 
-        static bool load_and_normalize_height_data(vector<float>& height_data_out, shared_ptr<RHI_Texture> height_texture, float min_y, float max_y)
     {
-        vector<std::byte> height_data = height_texture->GetMip(0, 0).bytes;
-
-        // if the data is not there, load it
-        if (height_data.empty())
+        bool generate_height_points_from_height_map(vector<float>& height_data_out, shared_ptr<RHI_Texture> height_texture, float min_y, float max_y)
         {
-            if (height_texture->LoadFromFile(height_texture->GetResourceFilePath()))
-            {
-                height_data = height_texture->GetMip(0, 0).bytes;
+            vector<byte> height_data = height_texture->GetMip(0, 0).bytes;
 
-                if (height_data.empty())
+            // if the data is not there, load it
+            if (height_data.empty())
+            {
+                if (height_texture->LoadFromFile(height_texture->GetResourceFilePath()))
                 {
-                    SP_LOG_ERROR("Failed to load height map");
-                    return false;
+                    height_data = height_texture->GetMip(0, 0).bytes;
+
+                    if (height_data.empty())
+                    {
+                        SP_LOG_ERROR("Failed to load height map");
+                        return false;
+                    }
                 }
             }
+
+            // bytes per pixel
+            uint32_t bytes_per_pixel = (height_texture->GetChannelCount() * height_texture->GetBitsPerChannel()) / 8;
+
+            // normalize and scale height data
+            height_data_out.resize(height_data.size() / bytes_per_pixel);
+            for (uint32_t i = 0; i < height_data.size(); i += bytes_per_pixel)
+            {
+                // assuming the height is stored in the red channel (first channel)
+                height_data_out[i / bytes_per_pixel] = min_y + (static_cast<float>(height_data[i]) / 255.0f) * (max_y - min_y);
+            }
+
+            return true;
         }
 
-        // bytes per pixel
-        uint32_t bytes_per_pixel = (height_texture->GetChannelCount() * height_texture->GetBitsPerChannel()) / 8;
-
-        // normalize and scale height data
-        height_data_out.resize(height_data.size() / bytes_per_pixel);
-        for (uint32_t i = 0; i < height_data.size(); i += bytes_per_pixel)
-        {
-            // assuming the height is stored in the red channel (first channel)
-            height_data_out[i / bytes_per_pixel] = min_y + (static_cast<float>(height_data[i]) / 255.0f) * (max_y - min_y);
-        }
-
-        return true;
-    }
-
-        static void generate_positions(vector<Vector3>& positions, const vector<float>& height_map, const uint32_t width, const uint32_t height)
+        void generate_positions(vector<Vector3>& positions, const vector<float>& height_map, const uint32_t width, const uint32_t height)
         {
             SP_ASSERT_MSG(!height_map.empty(), "Height map is empty");
 
@@ -96,7 +95,7 @@ namespace Spartan
             }
         }
 
-        static void generate_vertices_and_indices(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const vector<Vector3>& positions, const uint32_t width, const uint32_t height)
+        void generate_vertices_and_indices(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const vector<Vector3>& positions, const uint32_t width, const uint32_t height)
         {
             SP_ASSERT_MSG(!positions.empty(), "Positions are empty");
 
@@ -141,23 +140,23 @@ namespace Spartan
                     vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v + 1.0f / (height - 1)));
 
                     // bottom left of quad
-                    index = index_bottom_left;
-                    indices[k + 1] = index;
+                    index           = index_bottom_left;
+                    indices[k + 1]  = index;
                     vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v + 1.0f / (height - 1)));
 
                     // top left of quad
-                    index = index_top_left;
-                    indices[k + 2] = index;
+                    index           = index_top_left;
+                    indices[k + 2]  = index;
                     vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v));
 
                     // bottom right of quad
-                    index = index_bottom_right;
-                    indices[k + 3] = index;
+                    index           = index_bottom_right;
+                    indices[k + 3]  = index;
                     vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v + 1.0f / (height - 1)));
 
                     // top left of quad
-                    index = index_top_left;
-                    indices[k + 4] = index;
+                    index           = index_top_left;
+                    indices[k + 4]  = index;
                     vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v));
 
                     // top right of quad
@@ -170,7 +169,7 @@ namespace Spartan
             }
         }
 
-        static void generate_normals(const vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
+        void generate_normals(const vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
         {
             SP_ASSERT_MSG(!indices.empty(), "Indices are empty");
             SP_ASSERT_MSG(!vertices.empty(), "Vertices are empty");
@@ -361,7 +360,7 @@ namespace Spartan
         m_height_texture = height_map;
     }
 
-    void Terrain::GenerateAsync(std::function<void()> on_complete)
+    void Terrain::GenerateAsync(function<void()> on_complete)
     {
         if (m_is_generating)
         {
@@ -387,7 +386,7 @@ namespace Spartan
         {
             m_is_generating = true;
 
-            if (!load_and_normalize_height_data(m_height_data, m_height_texture, m_min_y, m_max_y))
+            if (!generate_height_points_from_height_map(m_height_data, m_height_texture, m_min_y, m_max_y))
             {
                 m_is_generating = false;
                 return;
