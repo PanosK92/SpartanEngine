@@ -176,7 +176,7 @@ namespace Spartan
         // options
         m_options.clear();
         SetOption(Renderer_Option::Hdr,                           swap_chain->IsHdr() ? 1.0f : 0.0f);                    // hdr is enabled by default if the swapchain is hdr
-        SetOption(Renderer_Option::Bloom,                         0.05f);                                                // non-zero values activate it and define the blend factor
+        SetOption(Renderer_Option::Bloom,                         0.03f);                                                // non-zero values activate it and define the blend factor
         SetOption(Renderer_Option::MotionBlur,                    1.0f);                                                 
         SetOption(Renderer_Option::ScreenSpaceGlobalIllumination, 1.0f);                                                 
         SetOption(Renderer_Option::ScreenSpaceShadows,            static_cast<float>(Renderer_ScreenspaceShadow::Bend)); 
