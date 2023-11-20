@@ -215,7 +215,7 @@ namespace Spartan
                         if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
                         {
                             material->SetColor(Color::material_aluminum);
-                            material->SetProperty(MaterialProperty::MultiplierRoughness, 0.1f);
+                            material->SetProperty(MaterialProperty::MultiplierRoughness, 0.5f);
                             material->SetProperty(MaterialProperty::MultiplierMetalness, 0.15f);
                             material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
                             material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f);
