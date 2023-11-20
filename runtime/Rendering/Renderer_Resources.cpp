@@ -248,11 +248,11 @@ namespace Spartan
         if (create_fixed)
         {
             // brdf
-            render_target(Renderer_RenderTexture::brdf_specular_lut) = make_unique<RHI_Texture2D>(400, 400, 1, RHI_Format::R8G8_Unorm, RHI_Texture_Uav | RHI_Texture_Srv, "rt_brdf_specular_lut");
+            render_target(Renderer_RenderTexture::brdf_specular_lut) = make_unique<RHI_Texture2D>(512, 512, 1, RHI_Format::R8G8_Unorm, RHI_Texture_Uav | RHI_Texture_Srv, "rt_brdf_specular_lut");
             m_brdf_specular_lut_rendered = false;
 
             // atmospheric scattering
-            render_target(Renderer_RenderTexture::atmospheric_scattering) = make_unique<RHI_Texture2D>(3840, 2160, mip_count, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_atmospheric_scattering");
+            render_target(Renderer_RenderTexture::atmospheric_scattering) = make_unique<RHI_Texture2D>(2048, 2048, mip_count, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_atmospheric_scattering");
         }
 
         // dynamic resolution
