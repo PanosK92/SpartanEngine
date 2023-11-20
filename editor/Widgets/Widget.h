@@ -35,6 +35,15 @@ namespace Spartan { class Context; }
 
 constexpr float k_widget_default_property = -1.0f;
 
+enum class BorderDirection
+{
+    None,
+    Left,
+    Right,
+    Top,
+    Bottom
+};
+
 class Widget
 {
 public:
@@ -58,6 +67,7 @@ public:
     // Called just before ImGui::Begin()
     virtual void OnPreBegin();
 
+
     // Use this to push style variables. They will be automatically popped.
     template<typename T>
     void PushStyleVar(ImGuiStyleVar idx, T val) { ImGui::PushStyleVar(idx, val); m_var_push_count++; }
@@ -69,6 +79,7 @@ public:
     const auto& GetTitle()             const { return m_title; }
     bool& GetVisible()                       { return m_visible; }
     void SetVisible(bool is_visible)         { m_visible = is_visible; }
+
 
 protected:
     // Properties
@@ -82,6 +93,11 @@ protected:
     Spartan::Math::Vector2 m_size_max     = FLT_MAX;
     Spartan::Math::Vector2 m_padding      = k_widget_default_property;
     std::string m_title                   = "Title";
+
+    bool m_change_cursor_on_border        = true;
+
+    // Check if Cursor is near Widget's border (in order to override the cursor icon)
+    BorderDirection IsCursorHoveringWindowBorder();
 
     // The ImGui window this widget corresponds to
     ImGuiWindow* m_window = nullptr;
