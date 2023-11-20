@@ -153,7 +153,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // convert spherical map UV to direction
     float2 uv             = (float2(thread_id.xy) + 0.5f) / resolution;
-    float phi             = uv.x * 2.0 * PI;
+    float phi             = uv.x * 2.0 * PI - 0.1f;
     float theta           = (1.0f - uv.y) * PI;
     float3 view_direction = normalize(float3(sin(theta) * cos(phi), cos(theta), sin(theta) * sin(phi)));
 
