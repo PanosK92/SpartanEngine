@@ -115,6 +115,7 @@ namespace Spartan
                 light->SetTemperature(2300.0f);
                 light->SetIntensity(sun_intensity);
                 light->SetShadowsEnabled(shadows_enabled ? (light->GetIntensityLumens() > 0.0f) : false);
+                light->SetShadowsTransparentEnabled(false);
             }
 
             // music
