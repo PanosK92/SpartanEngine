@@ -859,10 +859,10 @@ namespace Spartan
                         material->SetObjectName("material_water");
                         material->SetColor(Color(0.0f, 48.0f / 255.0f, 75.0f / 255.0f, 50.0f / 255.0f));
                         material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\water_normal_2.jpeg");
-                        material->SetProperty(MaterialProperty::MultiplierRoughness, 0.2f); // just a bit of roughness to diffuse the sun a little
+                        material->SetProperty(MaterialProperty::MultiplierRoughness, 0.3f); // just a bit of roughness to diffuse the sun a little
                         material->SetProperty(MaterialProperty::MultiplierNormal,    0.3f);
-                        material->SetProperty(MaterialProperty::TextureTilingX,      250.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingY,      250.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingX,      500.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingY,      500.0f);
                         material->SetProperty(MaterialProperty::TextureAnimate,      1.0f);
                         material->SetProperty(MaterialProperty::VertexAnimateWater,  1.0f);
 
