@@ -473,7 +473,7 @@ namespace Spartan
             m_cb_frame_cpu.delta_time          = static_cast<float>(Timer::GetDeltaTimeSmoothedSec()); // removes stutters from motion related code
             m_cb_frame_cpu.frame               = static_cast<uint32_t>(frame_num);
             m_cb_frame_cpu.gamma               = GetOption<float>(Renderer_Option::Gamma);
-
+            m_cb_frame_cpu.water_level         = 10.0f; // needs to be read from the terrain component
 
             // these must match what common_buffer.hlsl is reading
             m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections),        1 << 0);

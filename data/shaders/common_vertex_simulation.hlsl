@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 struct vertex_simulation
 {
-    struct wind
+    struct vegetation
     {
         static float hash(float n)
         {
@@ -37,7 +37,7 @@ struct vertex_simulation
             return lerp(hash(i), hash(i + 1.0), f);
         }
 
-        static float3 apply(uint instance_id, float3 position_vertex, float3 animation_pivot, float time)
+        static float3 apply_wind(uint instance_id, float3 position_vertex, float3 animation_pivot, float time)
         {
             static const float3 base_wind_direction     = float3(1, 0, 0);
             static const float  wind_vertex_sway_extent = 0.4f; // oscillation amplitude
@@ -74,11 +74,8 @@ struct vertex_simulation
             
             return position_vertex;
         }
-    };
 
-    struct player_interaction
-    {
-        static float3 apply(float3 position_vertex, float3 animation_pivot)
+        static float3 apply_player_bend(float3 position_vertex, float3 animation_pivot)
         {
             // calculate horizontal distance to player
             float distance = length(float2(position_vertex.x - buffer_frame.camera_position.x, position_vertex.z - buffer_frame.camera_position.z));
@@ -95,18 +92,18 @@ struct vertex_simulation
         
             // apply rotational bending
             float3 bending_offset = float3(direction_away_from_player * bending_strength * height_factor, bending_strength * height_factor * 0.5f);
-        
+       
             // adjust position
             position_vertex.xz += bending_offset.xz * 0.2f; // reduced horizontal effect
-            position_vertex.y  += bending_offset.y  * 1.0f;  // vertical leaning effect
+            position_vertex.y += bending_offset.y * 1.0f; // vertical leaning effect
         
             return position_vertex;
         }
     };
-
-    struct water_wave
+    
+    struct water
     {
-        static float3 apply(float3 position_vertex, float time)
+        static float3 apply_wave(float3 position_vertex, float time)
         {
             static const float base_wave_height    = 0.06f;
             static const float base_wave_frequency = 20.0f;
@@ -145,5 +142,25 @@ struct vertex_simulation
     
             return position_vertex;
         }
+
+        static float3 apply_ripple(float3 position_vertex, float time)
+        {
+            static const float ripple_speed      = 5.0f;
+            static const float ripple_max_height = 0.25f;
+            static const float ripple_frequency  = 3.0f;
+            static const float ripple_decay_rate = 0.2f;
+
+            if (abs(buffer_frame.camera_position.y - buffer_frame.water_level) < 2.0f)
+            {
+                float distance      = length(position_vertex.xz - buffer_frame.camera_position.xz);
+                float ripple_phase  = time * ripple_speed - ripple_frequency * distance;
+                float ripple_height = ripple_max_height * sin(ripple_phase) * exp(-ripple_decay_rate * distance);
+
+                position_vertex.y += ripple_height;
+            }
+
+            return position_vertex;
+        }
+
     };
 };

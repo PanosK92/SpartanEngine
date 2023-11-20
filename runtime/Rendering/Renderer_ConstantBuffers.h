@@ -59,7 +59,8 @@ namespace Spartan
         float camera_far;
 
         float gamma;
-        Math::Vector3 padding;
+        float water_level;
+        Math::Vector2 padding;
 
         void set_bit(const bool set, const uint32_t bit)
         {
@@ -88,6 +89,7 @@ namespace Spartan
                 resolution_render          == rhs.resolution_render          &&
                 taa_jitter_current         == rhs.taa_jitter_current         &&
                 taa_jitter_previous        == rhs.taa_jitter_previous        &&
+                water_level                == rhs.water_level &&
                 options                    == rhs.options;
         }
 

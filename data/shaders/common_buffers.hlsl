@@ -47,7 +47,8 @@ struct FrameBufferData
     float camera_far;
 
     float gamma;
-    float3 padding;
+    float water_level;
+    float2 padding;
 };
 
 struct LightBufferData
