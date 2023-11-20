@@ -146,11 +146,11 @@ struct vertex_simulation
         static float3 apply_ripple(float3 position_vertex, float time)
         {
             static const float ripple_speed      = 5.0f;
-            static const float ripple_max_height = 0.25f;
+            static const float ripple_max_height = 0.5f;
             static const float ripple_frequency  = 3.0f;
-            static const float ripple_decay_rate = 0.2f;
+            static const float ripple_decay_rate = 0.1f;
 
-            if (abs(buffer_frame.camera_position.y - buffer_frame.water_level) < 2.0f)
+            if (abs(buffer_frame.camera_position.y - buffer_frame.water_level) < 4.0f)
             {
                 float distance      = length(position_vertex.xz - buffer_frame.camera_position.xz);
                 float ripple_phase  = time * ripple_speed - ripple_frequency * distance;
