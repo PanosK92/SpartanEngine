@@ -31,10 +31,12 @@ float4 compute_screen_space_position(Vertex_PosUvNorTan input, uint instance_id,
     #if INSTANCED
     matrix instance = input.instance_transform;
     world_position  = mul(float4(world_position, 1.0f), instance).xyz;
-    if (material_vertex_animate_wind())
+    if (material_vertex_animate_wind()) // vegetation
     {
         float3 animation_pivot = float3(instance._31, instance._32, instance._33); // position
         world_position = vertex_simulation::wind::apply(instance_id, world_position, animation_pivot, time);
+
+        world_position = vertex_simulation::player_interaction::apply(world_position, animation_pivot);
     }
     #endif
 

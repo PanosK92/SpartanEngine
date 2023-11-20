@@ -76,6 +76,34 @@ struct vertex_simulation
         }
     };
 
+    struct player_interaction
+    {
+        static float3 apply(float3 position_vertex, float3 animation_pivot)
+        {
+            // calculate horizontal distance to player
+            float distance = length(float2(position_vertex.x - buffer_frame.camera_position.x, position_vertex.z - buffer_frame.camera_position.z));
+        
+            // determine bending strength (inverse square law)
+            float bending_strength = saturate(1.0f / (distance * distance + 1.0f));
+        
+            // direction away from player
+            float2 direction_away_from_player = normalize(position_vertex.xz - buffer_frame.camera_position.xz);
+        
+            // calculate height factor (more bending at the top)
+            float height_factor = (position_vertex.y - animation_pivot.y) / buffer_material.world_space_height;
+            height_factor = saturate(height_factor);
+        
+            // apply rotational bending
+            float3 bending_offset = float3(direction_away_from_player * bending_strength * height_factor, bending_strength * height_factor * 0.5f);
+        
+            // adjust position
+            position_vertex.xz += bending_offset.xz * 0.2f; // reduced horizontal effect
+            position_vertex.y  += bending_offset.y  * 1.0f;  // vertical leaning effect
+        
+            return position_vertex;
+        }
+    };
+
     struct water_wave
     {
         static float3 apply(float3 position_vertex, float time)
