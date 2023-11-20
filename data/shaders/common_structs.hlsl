@@ -226,10 +226,9 @@ struct Light
         if (light_is_directional())
         {
             float2 uv      = direction_sphere_uv(-forward);
-            uint mip_level = ENVIRONMENT_MAX_MIP - 3; // instead of taking multiple samples around the direction of the
-                                                      // sun, we'll use a blurry mip to "capture" more light from that direction
-            color     = tex_environment.SampleLevel(samplers[sampler_trilinear_clamp], uv, mip_level).rgb;
-            intensity = luminance(color) * 20.0f;
+            uint mip_level = 8; // sample higher mip to capture more light along that direction
+            color          = tex_environment.SampleLevel(samplers[sampler_trilinear_clamp], uv, mip_level).rgb;
+            intensity      = luminance(color) * 10.0f;
         }
 
         // apply occlusion

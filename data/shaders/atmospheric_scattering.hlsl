@@ -87,7 +87,7 @@ struct space
 
 struct sun
 {
-    static float3 compute_mie_scatter_color(float3 view_direction, float3 sun_direction, float mie = 0.01f, float mie_g = -0.9f)
+    static float3 compute_mie_scatter_color(float3 view_direction, float3 sun_direction, float mie = 0.01f, float mie_g = -0.95f)
     {
         const float mie_g2 = mie_g * mie_g;
 
@@ -133,7 +133,7 @@ struct atmosphere
         float3 p1              = position + view_dir * (hm - h);
         float3 view_ray_length = p1 - p0;
         float cos_theta        = dot(view_dir, sun_dir);
-        float phase            = 0.75f * (1.0f + cos_theta * cos_theta);
+        float phase            = (1.0f + cos_theta * cos_theta) * 2.2f; // 2.2 is empirically chosen, it looks good
         float optical_depth_r  = exp(-h / h0) * length(view_ray_length) / dot(view_dir, float3(0, -1, 0));
         float3 scatter         = rayleigh_beta * phase * optical_depth_r;
     
