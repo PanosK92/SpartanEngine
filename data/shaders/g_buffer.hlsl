@@ -42,6 +42,47 @@ struct PixelOutputType
     float2 velocity   : SV_Target4;
 };
 
+struct water
+{
+    float3 combine_normals(float3 normal1, float3 normal2)
+    {
+        // separate components
+        float nx1 = normal1.x, ny1 = normal1.y, nz1 = normal1.z;
+        float nx2 = normal2.x, ny2 = normal2.y, nz2 = normal2.z;
+
+        // combine components with interference pattern
+        // here, simply adding the components, but consider more complex functions for realistic interference
+        float combinedX = nx1 + nx2;
+        float combinedY = ny1 + ny2;
+        float combinedZ = nz1 + nz2;
+
+        // normalize to ensure the result is a valid normal
+        return normalize(float3(combinedX, combinedY, combinedZ));
+    }
+    
+    float3 sample_interleaved_normal(float2 uv)
+    {
+        // constants for scale and direction of the normal map movement
+        float2 direction1 = float2(1.0, 0.5);
+        float2 direction2 = float2(-0.5, 1.0);
+        float scale1      = 0.5;
+        float scale2      = 0.5;
+        float speed1      = 0.2;
+        float speed2      = 0.15;
+
+        // calculate unique UV offsets for the two normal maps
+        float2 uv1 = uv + buffer_frame.time * speed1 * direction1;
+        float2 uv2 = uv + buffer_frame.time * speed2 * direction2;
+
+        // sample the normal maps
+        float3 normal1 = tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], uv1 * scale1).xyz;
+        float3 normal2 = tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], uv2 * scale2).xyz;
+
+        // blend the normals
+        return normalize(normal1 + normal2);
+    }
+};
+
 float compute_slope(float3 normal)
 {
     float bias  = -0.1f; // increase the bias to favour the slope/rock texture
@@ -65,35 +106,12 @@ float4 sample_albedo(float2 uv, float slope)
     return albedo;
 }
 
-float3 sample_interleaved_normal(float2 uv)
-{
-    // constants for scale and direction of the normal map movement
-    float2 direction1 = float2(1.0, 0.5);
-    float2 direction2 = float2(-0.5, 1.0);
-    float scale1      = 0.5;
-    float scale2      = 0.5;
-    float speed1      = 0.2;
-    float speed2      = 0.15;
-
-    // Calculate unique UV offsets for the two normal maps
-    float2 uv1 = uv + buffer_frame.time * speed1 * direction1;
-    float2 uv2 = uv + buffer_frame.time * speed2 * direction2;
-
-    // Sample the normal maps
-    float3 normal1 = tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], uv1 * scale1).xyz;
-    float3 normal2 = tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], uv2 * scale2).xyz;
-
-    // Blend the normals
-    float3 blendedNormal = normalize(normal1 + normal2);
-
-    return blendedNormal;
-}
 
 float3 smaple_normal(float2 uv, float slope)
 {
     if (material_vertex_animate_water())
     {
-        return sample_interleaved_normal(uv);
+        return water::sample_interleaved_normal(uv);
     }
     
     float3 normal = tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], uv).xyz;
