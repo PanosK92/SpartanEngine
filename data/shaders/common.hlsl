@@ -668,7 +668,7 @@ static const float3 hemisphere_samples[64] =
 
 //= INCLUDES ===========================
 #include "common_structs.hlsl"
-#include "common_vertex_simulation.hlsl"
+#include "common_vertex_processing.hlsl"
 #include "common_vertex_operations.hlsl"
 //======================================
 
