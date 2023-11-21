@@ -96,8 +96,8 @@ protected:
 
     bool m_change_cursor_on_border        = true;
 
-    // Check if Cursor is near Widget's border (in order to override the cursor icon)
-    BorderDirection IsCursorHoveringWindowBorder();
+    // Called when cursor gets near a border and returns border's direction (in order to change cursor)
+    BorderDirection HoveredBorderDirection();
 
     // The ImGui window this widget corresponds to
     ImGuiWindow* m_window = nullptr;

@@ -35,7 +35,7 @@ Widget::Widget(Editor* editor)
     m_window = nullptr;
 }
 
-BorderDirection Widget::IsCursorHoveringWindowBorder()
+BorderDirection Widget::HoveredBorderDirection()
 {
     if (m_change_cursor_on_border)
     {
@@ -121,7 +121,7 @@ void Widget::Tick()
         }
 
         // Cursor Change Logic
-        BorderDirection borderDir = IsCursorHoveringWindowBorder();
+        BorderDirection borderDir = HoveredBorderDirection();
         if (ImGui::IsWindowHovered())
         {
             switch (borderDir)
@@ -129,7 +129,7 @@ void Widget::Tick()
             case BorderDirection::Left:
             case BorderDirection::Right:
                 SP_LOG_INFO("EW");
-                ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW); // Horizontal resize
+               ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW); // Horizontal resize
                 break;
 
             case BorderDirection::Top:

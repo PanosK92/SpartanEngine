@@ -38,10 +38,11 @@ namespace
 
 ProgressDialog::ProgressDialog(Editor* editor) : Widget(editor)
 {
-    m_title         = "Hold on...";
-    m_visible       = false;
-    m_size_initial  = Vector2(500.0f, 83.0f);
-    m_flags        |= ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize;
+    m_title                   = "Hold on...";
+    m_visible                 = false;
+    m_size_initial            = Vector2(500.0f, 83.0f);
+    m_flags                  |= ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize;
+    m_change_cursor_on_border = false;
 }
 
 void ProgressDialog::OnTick()
