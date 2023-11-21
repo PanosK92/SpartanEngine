@@ -857,13 +857,12 @@ namespace Spartan
                         // set material
                         shared_ptr<Material> material = make_shared<Material>();
                         material->SetObjectName("material_water");
-                        material->SetColor(Color(0.0f, 48.0f / 255.0f, 75.0f / 255.0f, 50.0f / 255.0f));
-                        material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\water_normal_2.jpeg");
+                        material->SetColor(Color(0.0f, 60.0f / 255.0f, 75.0f / 255.0f, 60.0f / 255.0f));
+                        material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\water_normal.jpeg");
                         material->SetProperty(MaterialProperty::MultiplierRoughness, 0.3f); // just a bit of roughness to diffuse the sun a little
-                        material->SetProperty(MaterialProperty::MultiplierNormal,    0.3f);
-                        material->SetProperty(MaterialProperty::TextureTilingX,      500.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingY,      500.0f);
-                        material->SetProperty(MaterialProperty::TextureAnimate,      1.0f);
+                        material->SetProperty(MaterialProperty::MultiplierNormal,    0.8f);
+                        material->SetProperty(MaterialProperty::TextureTilingX,      1000.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingY,      1000.0f);
                         material->SetProperty(MaterialProperty::VertexAnimateWater,  1.0f);
 
                         // create a file path for this material (required for the material to be able to be cached by the resource cache)

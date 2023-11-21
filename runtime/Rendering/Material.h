@@ -69,7 +69,6 @@ namespace Spartan
         TextureTilingY,
         TextureOffsetX,
         TextureOffsetY,
-        TextureAnimate,
         TextureSlopeBased,
         VertexAnimateWind,
         VertexAnimateWater,
