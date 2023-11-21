@@ -445,6 +445,15 @@ namespace Spartan
                 if (Input::GetKey(KeyCode::A)) movement_direction += GetTransform()->GetLeft();
                 if (Input::GetKey(KeyCode::Q)) movement_direction += GetTransform()->GetDown();
                 if (Input::GetKey(KeyCode::E)) movement_direction += GetTransform()->GetUp();
+
+                // when in game mode and controlling a physics based camera ignore the pitch
+                // this is so the view direction (forward) is never pointing towards the ground or sky
+                // cause movement to come a stop
+                if (m_physics_body_to_control && Engine::IsFlagSet(EngineMode::Game))
+                {
+                    movement_direction.y = 0.0f;
+                }
+
                 movement_direction.Normalize();
             }
 
@@ -555,7 +564,7 @@ namespace Spartan
             FocusOnSelectedEntity();
         }
 
-        // Set bookmark as a lerp target
+        // set bookmark as a lerp target
         bool lerp_to_bookmark = false;
         if (lerp_to_bookmark = m_lerpt_to_bookmark && m_target_bookmark_index >= 0 && m_target_bookmark_index < m_bookmarks.size())
         {
@@ -569,7 +578,7 @@ namespace Spartan
             m_lerpt_to_bookmark     = false;
         }
 
-        // Lerp
+        // lerp
         if (m_lerp_to_target_p || m_lerp_to_target_r || lerp_to_bookmark)
         {
             // Lerp duration in seconds
