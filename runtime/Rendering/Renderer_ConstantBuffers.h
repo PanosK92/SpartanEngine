@@ -63,7 +63,7 @@ namespace Spartan
         Math::Vector2 padding;
 
         Math::Vector3 camera_position_previous;
-        float padding2;
+        float camera_last_movement_time;
 
         void set_bit(const bool set, const uint32_t bit)
         {
@@ -88,6 +88,7 @@ namespace Spartan
                 camera_position            == rhs.camera_position            &&
                 camera_position_previous   == rhs.camera_position_previous   &&
                 camera_direction           == rhs.camera_direction           &&
+                camera_last_movement_time  == rhs.camera_last_movement_time  &&
                 gamma                      == rhs.gamma                      &&
                 resolution_output          == rhs.resolution_output          &&
                 resolution_render          == rhs.resolution_render          &&

@@ -465,6 +465,9 @@ namespace Spartan
                 m_cb_frame_cpu.camera_position_previous   = m_cb_frame_cpu.camera_position;
                 m_cb_frame_cpu.camera_position            = m_camera->GetTransform()->GetPosition();
                 m_cb_frame_cpu.camera_direction           = m_camera->GetTransform()->GetForward();
+                m_cb_frame_cpu.camera_last_movement_time  = (m_cb_frame_cpu.camera_position - m_cb_frame_cpu.camera_position_previous).LengthSquared() != 0.0f
+                    ? static_cast<float>(Timer::GetTimeSec()) : m_cb_frame_cpu.camera_last_movement_time;
+
             }
             m_cb_frame_cpu.resolution_output   = m_resolution_output;
             m_cb_frame_cpu.resolution_render   = m_resolution_render;
