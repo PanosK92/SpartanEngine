@@ -50,8 +50,7 @@ struct water
         float nx1 = normal1.x, ny1 = normal1.y, nz1 = normal1.z;
         float nx2 = normal2.x, ny2 = normal2.y, nz2 = normal2.z;
 
-        // combine components with interference pattern
-        // here, simply adding the components, but consider more complex functions for realistic interference
+        // combine components with interference pattern (basic)
         float combinedX = nx1 + nx2;
         float combinedY = ny1 + ny2;
         float combinedZ = nz1 + nz2;
