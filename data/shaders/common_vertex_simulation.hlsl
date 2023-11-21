@@ -148,12 +148,18 @@ struct vertex_simulation
 
         static float3 apply_ripple(float3 position_vertex, float time)
         {
-            static const float ripple_speed      = 5.0f;
-            static const float ripple_max_height = 0.5f;
-            static const float ripple_frequency  = 3.0f;
-            static const float ripple_decay_rate = 0.1f;
+            static const float ripple_speed       = 5.0f;
+            static const float ripple_max_height  = 0.5f;
+            static const float ripple_frequency   = 3.0f;
+            static const float ripple_decay_rate  = 0.1f;
+            static const float movement_threshold = 0.01f; // threshold for detecting movement
 
-            if (abs(buffer_frame.camera_position.y - buffer_frame.water_level) < 4.0f)
+            // calculate player movement
+            float3 movement = buffer_frame.camera_position - buffer_frame.camera_position_previous;
+            bool is_moving  = length(movement) > movement_threshold;
+
+            // check if the camera (player) is near the water level and moving
+            if (abs(buffer_frame.camera_position.y - buffer_frame.water_level) < 4.0f && is_moving)
             {
                 float distance      = length(position_vertex.xz - buffer_frame.camera_position.xz);
                 float ripple_phase  = time * ripple_speed - ripple_frequency * distance;
@@ -164,6 +170,5 @@ struct vertex_simulation
 
             return position_vertex;
         }
-
     };
 };

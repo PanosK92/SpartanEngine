@@ -62,6 +62,9 @@ namespace Spartan
         float water_level;
         Math::Vector2 padding;
 
+        Math::Vector3 camera_position_previous;
+        float padding2;
+
         void set_bit(const bool set, const uint32_t bit)
         {
             options = set ? (options |= bit) : (options & ~bit);
@@ -83,6 +86,7 @@ namespace Spartan
                 camera_near                == rhs.camera_near                &&
                 camera_far                 == rhs.camera_far                 &&
                 camera_position            == rhs.camera_position            &&
+                camera_position_previous   == rhs.camera_position_previous   &&
                 camera_direction           == rhs.camera_direction           &&
                 gamma                      == rhs.gamma                      &&
                 resolution_output          == rhs.resolution_output          &&

@@ -462,6 +462,7 @@ namespace Spartan
                 m_cb_frame_cpu.view_projection_unjittered = m_cb_frame_cpu.view * m_camera->GetProjectionMatrix();
                 m_cb_frame_cpu.camera_near                = m_camera->GetNearPlane();
                 m_cb_frame_cpu.camera_far                 = m_camera->GetFarPlane();
+                m_cb_frame_cpu.camera_position_previous   = m_cb_frame_cpu.camera_position;
                 m_cb_frame_cpu.camera_position            = m_camera->GetTransform()->GetPosition();
                 m_cb_frame_cpu.camera_direction           = m_camera->GetTransform()->GetForward();
             }
