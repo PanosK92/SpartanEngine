@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-struct vertex_simulation
+struct vertex_processing
 {
     struct vegetation
     {
@@ -113,7 +113,7 @@ struct vertex_simulation
             static const float base_wave_speed     = 0.5f;
 
             // interleave 4 waves to have a more complex wave pattern
-            float3 offset = float3(0.0f, 0.0f, 0.0f);
+            float3 offset = 0.0f;
             for (int i = 0; i < 4; i++)
             {
                 // modulate base wave parameters based on index
@@ -148,9 +148,9 @@ struct vertex_simulation
 
         static float3 apply_ripple(float3 position_vertex, float time)
         {
-            static const float ripple_speed                = 5.0f;
-            static const float ripple_max_height           = 0.5f;
-            static const float ripple_frequency            = 3.0f;
+            static const float ripple_speed                = 2.0f;
+            static const float ripple_max_height           = 0.2f;
+            static const float ripple_frequency            = 5.0f;
             static const float ripple_decay_rate           = 0.1f;
             static const float ripple_decay_after_movement = 2.0f; // time for ripples to decay after movement stops
 
