@@ -92,10 +92,13 @@ struct vertex_simulation
         
             // apply rotational bending
             float3 bending_offset = float3(direction_away_from_player * bending_strength * height_factor, bending_strength * height_factor * 0.5f);
-       
+        
             // adjust position
-            position_vertex.xz += bending_offset.xz * 0.2f; // reduced horizontal effect
-            position_vertex.y += bending_offset.y * 1.0f; // vertical leaning effect
+            position_vertex.xz += bending_offset.xz * 0.5f; // horizontal effect
+            float proposed_y_position = position_vertex.y + bending_offset.y * 1.0f; // vertical effect
+        
+            // ensure vegetation doesn't bend below the ground
+            position_vertex.y = max(proposed_y_position, animation_pivot.y);
         
             return position_vertex;
         }
