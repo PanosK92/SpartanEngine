@@ -51,7 +51,7 @@ struct FrameBufferData
     float2 padding;
 
     float3 camera_position_previous;
-    float padding2;
+    float camera_last_movement_time;
 };
 
 struct LightBufferData

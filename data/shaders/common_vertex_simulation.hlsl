@@ -148,27 +148,30 @@ struct vertex_simulation
 
         static float3 apply_ripple(float3 position_vertex, float time)
         {
-            static const float ripple_speed       = 5.0f;
-            static const float ripple_max_height  = 0.5f;
-            static const float ripple_frequency   = 3.0f;
-            static const float ripple_decay_rate  = 0.1f;
-            static const float movement_threshold = 0.01f; // threshold for detecting movement
+            static const float ripple_speed = 5.0f;
+            static const float ripple_max_height = 0.5f;
+            static const float ripple_frequency = 3.0f;
+            static const float ripple_decay_rate = 0.1f;
+            static const float ripple_decay_after_movement = 2.0f; // Time for ripples to decay after movement stops
 
-            // calculate player movement
-            float3 movement = buffer_frame.camera_position - buffer_frame.camera_position_previous;
-            bool is_moving  = length(movement) > movement_threshold;
+    // Calculate time since the player last moved
+            float time_since_last_movement = time - buffer_frame.camera_last_movement_time;
 
-            // check if the camera (player) is near the water level and moving
-            if (abs(buffer_frame.camera_position.y - buffer_frame.water_level) < 4.0f && is_moving)
+    // Check if the camera (player) is near the water level
+            if (abs(buffer_frame.camera_position.y - buffer_frame.water_level) < 4.0f)
             {
-                float distance      = length(position_vertex.xz - buffer_frame.camera_position.xz);
-                float ripple_phase  = time * ripple_speed - ripple_frequency * distance;
-                float ripple_height = ripple_max_height * sin(ripple_phase) * exp(-ripple_decay_rate * distance);
+                float distance = length(position_vertex.xz - buffer_frame.camera_position.xz);
+                float ripple_phase = time * ripple_speed - ripple_frequency * distance;
+
+        // Adjust the ripple height based on time since last movement
+                float decay_factor = max(1.0f - (time_since_last_movement / ripple_decay_after_movement), 0.0f);
+                float ripple_height = ripple_max_height * sin(ripple_phase) * exp(-ripple_decay_rate * distance) * decay_factor;
 
                 position_vertex.y += ripple_height;
             }
 
             return position_vertex;
         }
+
     };
 };
