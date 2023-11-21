@@ -39,37 +39,35 @@ BorderDirection Widget::HoveredBorderDirection()
 {
     if (m_change_cursor_on_border)
     {
-        const float borderThreshold = 5.0f; // Pixels near border considered as hovering
+        const float borderThreshold = 10.0f; // Pixels near border considered as hovering
 
         // Get the current position of the cursor
-        ImVec2 cursorPos = ImGui::GetMousePos();
+        ImVec2 cursorPos  = ImGui::GetMousePos();
 
         // Calculate the edges of the window
-        ImVec2 windowPos = m_window->Pos;
+        ImVec2 windowPos  = m_window->Pos;
         ImVec2 windowSize = m_window->Size;
-        ImVec2 windowMin = windowPos;
-        ImVec2 windowMax = ImVec2(windowPos.x + windowSize.x, windowPos.y + windowSize.y);
+        ImVec2 windowMin  = windowPos;
+        ImVec2 windowMax  = ImVec2(windowPos.x + windowSize.x, windowPos.y + windowSize.y);
 
         // Check if the cursor is within the border threshold of any window edge
-        bool isNearLeftBorder = (cursorPos.x >= windowMin.x && cursorPos.x <= windowMin.x + borderThreshold);
-        bool isNearRightBorder = (cursorPos.x <= windowMax.x && cursorPos.x >= windowMax.x - borderThreshold);
-        bool isNearTopBorder = (cursorPos.y >= windowMin.y && cursorPos.y <= windowMin.y + borderThreshold);
+        bool isNearLeftBorder   = (cursorPos.x >= windowMin.x && cursorPos.x <= windowMin.x + borderThreshold);
+        bool isNearRightBorder  = (cursorPos.x <= windowMax.x && cursorPos.x >= windowMax.x - borderThreshold);
+        bool isNearTopBorder    = (cursorPos.y >= windowMin.y && cursorPos.y <= windowMin.y + borderThreshold);
         bool isNearBottomBorder = (cursorPos.y <= windowMax.y && cursorPos.y >= windowMax.y - borderThreshold);
 
-        if (isNearLeftBorder) {
+        if (isNearLeftBorder)
             return BorderDirection::Left;
-        }
-        else if (isNearRightBorder) {
+        
+        if (isNearRightBorder)
             return BorderDirection::Right;
-        }
-        else if (isNearTopBorder) {
+        
+        if (isNearTopBorder)
             return BorderDirection::Top;
-        }
-        else if (isNearBottomBorder) {
-            return BorderDirection::Bottom;
-        }
-    }
 
+        if (isNearBottomBorder)
+            return BorderDirection::Bottom;
+    }
     return BorderDirection::None;
 }
 
@@ -128,25 +126,19 @@ void Widget::Tick()
             {
             case BorderDirection::Left:
             case BorderDirection::Right:
-                SP_LOG_INFO("EW");
-               ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW); // Horizontal resize
+                ImGui::SetMouseCursor(4); // Horizontal resize
                 break;
 
             case BorderDirection::Top:
             case BorderDirection::Bottom:
-                SP_LOG_INFO("NS");
-                ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS); // Vertical resize
+                ImGui::SetMouseCursor(3); // Vertical resize
                 break;
 
             case BorderDirection::None:
             default:
-                ImGui::SetMouseCursor(ImGuiMouseCursor_Arrow); // Reset to default cursor
+                ImGui::SetMouseCursor(0); // Reset to default cursor
                 break;
             }
-        }
-        else
-        {
-            ImGui::SetMouseCursor(ImGuiMouseCursor_Arrow); // Reset to default cursor when not hovered over window
         }
 
         // Callbacks
