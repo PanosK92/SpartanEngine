@@ -148,11 +148,11 @@ struct vertex_simulation
 
         static float3 apply_ripple(float3 position_vertex, float time)
         {
-            static const float ripple_speed = 5.0f;
-            static const float ripple_max_height = 0.5f;
-            static const float ripple_frequency = 3.0f;
-            static const float ripple_decay_rate = 0.1f;
-            static const float ripple_decay_after_movement = 2.0f; // Time for ripples to decay after movement stops
+            static const float ripple_speed                = 5.0f;
+            static const float ripple_max_height           = 0.5f;
+            static const float ripple_frequency            = 3.0f;
+            static const float ripple_decay_rate           = 0.1f;
+            static const float ripple_decay_after_movement = 2.0f; // time for ripples to decay after movement stops
 
             // calculate time since the player last moved
             float time_since_last_movement = time - buffer_frame.camera_last_movement_time;
@@ -161,10 +161,12 @@ struct vertex_simulation
             if (abs(buffer_frame.camera_position.y - buffer_frame.water_level) < 4.0f)
             {
                 float distance = length(position_vertex.xz - buffer_frame.camera_position.xz);
-                float ripple_phase = time * ripple_speed - ripple_frequency * distance;
+                
+                // the ripple phase should consider the distance from the player
+                float ripple_phase = ripple_frequency * (time * ripple_speed - distance);
 
                 // adjust the ripple height based on time since last movement
-                float decay_factor = max(1.0f - (time_since_last_movement / ripple_decay_after_movement), 0.0f);
+                float decay_factor  = max(1.0f - (time_since_last_movement / ripple_decay_after_movement), 0.0f);
                 float ripple_height = ripple_max_height * sin(ripple_phase) * exp(-ripple_decay_rate * distance) * decay_factor;
 
                 position_vertex.y += ripple_height;
