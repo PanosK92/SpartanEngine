@@ -560,9 +560,8 @@ namespace Spartan
         m_cb_material_cpu.properties           |= material->HasTexture(MaterialTexture::Emission)                          ? (1U << 7) : 0;
         m_cb_material_cpu.properties           |= material->HasTexture(MaterialTexture::Occlusion)                         ? (1U << 8) : 0;
         m_cb_material_cpu.properties           |= material->GetProperty(MaterialProperty::TextureSlopeBased)               ? (1U << 9) : 0;
-        m_cb_material_cpu.properties           |= material->GetProperty(MaterialProperty::TextureAnimate)                  ? (1U << 10) : 0;
-        m_cb_material_cpu.properties           |= material->GetProperty(MaterialProperty::VertexAnimateWind)               ? (1U << 11) : 0;
-        m_cb_material_cpu.properties           |= material->GetProperty(MaterialProperty::VertexAnimateWater)              ? (1U << 12) : 0;
+        m_cb_material_cpu.properties           |= material->GetProperty(MaterialProperty::VertexAnimateWind)               ? (1U << 10) : 0;
+        m_cb_material_cpu.properties           |= material->GetProperty(MaterialProperty::VertexAnimateWater)              ? (1U << 11) : 0;
 
         GetConstantBuffer(Renderer_ConstantBuffer::Material)->Update(&m_cb_material_cpu);
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::material, GetConstantBuffer(Renderer_ConstantBuffer::Material));
