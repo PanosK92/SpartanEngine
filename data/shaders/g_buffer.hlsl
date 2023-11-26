@@ -44,7 +44,7 @@ struct PixelOutputType
 
 struct water
 {
-    float3 combine_normals(float3 normal1, float3 normal2)
+    static float3 combine_normals(float3 normal1, float3 normal2)
     {
         // separate components
         float nx1 = normal1.x, ny1 = normal1.y, nz1 = normal1.z;
@@ -59,7 +59,7 @@ struct water
         return normalize(float3(combinedX, combinedY, combinedZ));
     }
     
-    float3 sample_interleaved_normal(float2 uv)
+    static float3 sample_interleaved_normal(float2 uv)
     {
         // constants for scale and direction of the normal map movement
         float2 direction1 = float2(1.0, 0.5);
