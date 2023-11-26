@@ -67,6 +67,7 @@ namespace Spartan
         static shared_ptr<Mesh> m_default_model_wheel           = nullptr;
         static shared_ptr<Mesh> m_default_model_helmet_flight   = nullptr;
         static shared_ptr<Mesh> m_default_model_helmet_damaged  = nullptr;
+        static shared_ptr<Mesh> m_default_model_doom            = nullptr;
 
         static void create_default_world_common(
             const Math::Vector3& camera_position = Vector3(0.0f, 2.0f, -10.0f),
@@ -989,20 +990,57 @@ namespace Spartan
 
     void World::CreateDefaultWorldDoomE1M1()
     {
-        Vector3 camera_position = Vector3(-134.9146f, 11.6170f, -31.7093f);
+        Vector3 camera_position = Vector3(-120.0f, 10.0f, -30.0f);
         Vector3 camera_rotation = Vector3(0.0f, 90.0f, 0.0f);
-        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\doom_e1m1.mp3", false);
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\doom_e1m1.mp3", false, false);
 
         // doom level
-        if (m_default_model_helmet_flight = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
+        if (m_default_model_doom = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
         {
-            Entity* entity = m_default_model_helmet_flight->GetRootEntity();
+            Entity* entity = m_default_model_doom->GetRootEntity();
             entity->SetObjectName("doom_e1m1");
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 1.8f, -355.5300f));
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 1.5f, -355.5300f));
             entity->GetTransform()->SetScale(Vector3(0.1f, 0.1f, 0.1f));
+
+            // add physics to certain meshes
+            {
+                // floor
+                {
+                    if (Entity* child = entity->GetTransform()->GetDescendantPtrByName("E1M1_47"))
+                    {
+                        PhysicsBody* physics_body = child->AddComponent<PhysicsBody>().get();
+                        physics_body->SetShapeType(PhysicsShape::Mesh);
+                        physics_body->SetMass(0.0f); // static
+                    }
+
+                    if (Entity* child = entity->GetTransform()->GetDescendantPtrByName("E1M1_39"))
+                    {
+                        PhysicsBody* physics_body = child->AddComponent<PhysicsBody>().get();
+                        physics_body->SetShapeType(PhysicsShape::Mesh);
+                        physics_body->SetMass(0.0f); // static
+                    }
+                }
+
+                // walls
+                {
+                    if (Entity* child = entity->GetTransform()->GetDescendantPtrByName("E1M1_3"))
+                    {
+                        PhysicsBody* physics_body = child->AddComponent<PhysicsBody>().get();
+                        physics_body->SetShapeType(PhysicsShape::Mesh);
+                        physics_body->SetMass(0.0f); // static
+                    }
+
+                    if (Entity* child = entity->GetTransform()->GetDescendantPtrByName("E1M1_6"))
+                    {
+                        PhysicsBody* physics_body = child->AddComponent<PhysicsBody>().get();
+                        physics_body->SetShapeType(PhysicsShape::Mesh);
+                        physics_body->SetMass(0.0f); // static
+                    }
+                }
+            }
         }
 
-        // Start simulating (for the physics and the music to work)
+        // start simulating (for the physics and the music to work)
         Engine::AddFlag(EngineMode::Game);
     }
 
