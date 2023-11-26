@@ -1,48 +1,16 @@
 // *** THIS FILE IS GENERATED - DO NOT EDIT ***
 // See enum_string_helper_generator.py for modifications
+// Copyright 2023 The Khronos Group Inc.
+// Copyright 2023 Valve Corporation
+// Copyright 2023 LunarG, Inc.
+//
+// SPDX-License-Identifier: Apache-2.0
 
-/***************************************************************************
-*
-* Copyright (c) 2015-2023 The Khronos Group Inc.
-* Copyright (c) 2015-2023 Valve Corporation
-* Copyright (c) 2015-2023 LunarG, Inc.
-* Copyright (c) 2015-2023 Google Inc.
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
-// NOLINTBEGIN
 #pragma once
+#ifdef __cplusplus
 #include <string>
+#endif
 #include <vulkan/vulkan.h>
-
-static inline bool IsDuplicatePnext(VkStructureType input_value) {
-    switch (input_value) {
-        case VK_STRUCTURE_TYPE_DEVICE_PRIVATE_DATA_CREATE_INFO:
-        case VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT:
-        case VK_STRUCTURE_TYPE_DEVICE_DEVICE_MEMORY_REPORT_CREATE_INFO_EXT:
-        case VK_STRUCTURE_TYPE_EXPORT_METAL_OBJECT_CREATE_INFO_EXT:
-        case VK_STRUCTURE_TYPE_EXPORT_METAL_COMMAND_QUEUE_INFO_EXT:
-        case VK_STRUCTURE_TYPE_EXPORT_METAL_BUFFER_INFO_EXT:
-        case VK_STRUCTURE_TYPE_EXPORT_METAL_TEXTURE_INFO_EXT:
-        case VK_STRUCTURE_TYPE_IMPORT_METAL_TEXTURE_INFO_EXT:
-        case VK_STRUCTURE_TYPE_EXPORT_METAL_IO_SURFACE_INFO_EXT:
-        case VK_STRUCTURE_TYPE_EXPORT_METAL_SHARED_EVENT_INFO_EXT:
-            return true;
-        default:
-            return false;
-    }
-}
-
 static inline const char* string_VkResult(VkResult input_value) {
     switch (input_value) {
         case VK_SUCCESS:
@@ -1641,6 +1609,10 @@ static inline const char* string_VkStructureType(VkStructureType input_value) {
             return "VK_STRUCTURE_TYPE_PIPELINE_PROPERTIES_IDENTIFIER_EXT";
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_PROPERTIES_FEATURES_EXT:
             return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_PROPERTIES_FEATURES_EXT";
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAME_BOUNDARY_FEATURES_EXT:
+            return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAME_BOUNDARY_FEATURES_EXT";
+        case VK_STRUCTURE_TYPE_FRAME_BOUNDARY_EXT:
+            return "VK_STRUCTURE_TYPE_FRAME_BOUNDARY_EXT";
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_FEATURES_EXT:
             return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_FEATURES_EXT";
         case VK_STRUCTURE_TYPE_SUBPASS_RESOLVE_PERFORMANCE_QUERY_EXT:
@@ -1761,6 +1733,10 @@ static inline const char* string_VkStructureType(VkStructureType input_value) {
             return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_PROPERTIES_QCOM";
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_SAMPLE_WEIGHT_CREATE_INFO_QCOM:
             return "VK_STRUCTURE_TYPE_IMAGE_VIEW_SAMPLE_WEIGHT_CREATE_INFO_QCOM";
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_FEATURES_EXT:
+            return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_FEATURES_EXT";
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_PROPERTIES_EXT:
+            return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_PROPERTIES_EXT";
         case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_ACQUIRE_UNMODIFIED_EXT:
             return "VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_ACQUIRE_UNMODIFIED_EXT";
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT:
@@ -1807,6 +1783,12 @@ static inline const char* string_VkStructureType(VkStructureType input_value) {
             return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LEGACY_DITHERING_FEATURES_EXT";
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_PROTECTED_ACCESS_FEATURES_EXT:
             return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_PROTECTED_ACCESS_FEATURES_EXT";
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_FORMAT_RESOLVE_FEATURES_ANDROID:
+            return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_FORMAT_RESOLVE_FEATURES_ANDROID";
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_FORMAT_RESOLVE_PROPERTIES_ANDROID:
+            return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_FORMAT_RESOLVE_PROPERTIES_ANDROID";
+        case VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_FORMAT_RESOLVE_PROPERTIES_ANDROID:
+            return "VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_FORMAT_RESOLVE_PROPERTIES_ANDROID";
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR:
             return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR";
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_PROPERTIES_KHR:
@@ -1845,6 +1827,10 @@ static inline const char* string_VkStructureType(VkStructureType input_value) {
             return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_FEATURES_NV";
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_PROPERTIES_NV:
             return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_PROPERTIES_NV";
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_SPARSE_ADDRESS_SPACE_FEATURES_NV:
+            return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_SPARSE_ADDRESS_SPACE_FEATURES_NV";
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_SPARSE_ADDRESS_SPACE_PROPERTIES_NV:
+            return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_SPARSE_ADDRESS_SPACE_PROPERTIES_NV";
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT:
             return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT";
         case VK_STRUCTURE_TYPE_MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_EXT:
@@ -1857,6 +1843,24 @@ static inline const char* string_VkStructureType(VkStructureType input_value) {
             return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_LIBRARY_GROUP_HANDLES_FEATURES_EXT";
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_FEATURES_EXT:
             return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_FEATURES_EXT";
+        case VK_STRUCTURE_TYPE_LATENCY_SLEEP_MODE_INFO_NV:
+            return "VK_STRUCTURE_TYPE_LATENCY_SLEEP_MODE_INFO_NV";
+        case VK_STRUCTURE_TYPE_LATENCY_SLEEP_INFO_NV:
+            return "VK_STRUCTURE_TYPE_LATENCY_SLEEP_INFO_NV";
+        case VK_STRUCTURE_TYPE_SET_LATENCY_MARKER_INFO_NV:
+            return "VK_STRUCTURE_TYPE_SET_LATENCY_MARKER_INFO_NV";
+        case VK_STRUCTURE_TYPE_GET_LATENCY_MARKER_INFO_NV:
+            return "VK_STRUCTURE_TYPE_GET_LATENCY_MARKER_INFO_NV";
+        case VK_STRUCTURE_TYPE_LATENCY_TIMINGS_FRAME_REPORT_NV:
+            return "VK_STRUCTURE_TYPE_LATENCY_TIMINGS_FRAME_REPORT_NV";
+        case VK_STRUCTURE_TYPE_LATENCY_SUBMISSION_PRESENT_ID_NV:
+            return "VK_STRUCTURE_TYPE_LATENCY_SUBMISSION_PRESENT_ID_NV";
+        case VK_STRUCTURE_TYPE_OUT_OF_BAND_QUEUE_TYPE_INFO_NV:
+            return "VK_STRUCTURE_TYPE_OUT_OF_BAND_QUEUE_TYPE_INFO_NV";
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_LATENCY_CREATE_INFO_NV:
+            return "VK_STRUCTURE_TYPE_SWAPCHAIN_LATENCY_CREATE_INFO_NV";
+        case VK_STRUCTURE_TYPE_LATENCY_SURFACE_CAPABILITIES_NV:
+            return "VK_STRUCTURE_TYPE_LATENCY_SURFACE_CAPABILITIES_NV";
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_KHR:
             return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_KHR";
         case VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_KHR:
@@ -1867,6 +1871,24 @@ static inline const char* string_VkStructureType(VkStructureType input_value) {
             return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PER_VIEW_RENDER_AREAS_FEATURES_QCOM";
         case VK_STRUCTURE_TYPE_MULTIVIEW_PER_VIEW_RENDER_AREAS_RENDER_PASS_BEGIN_INFO_QCOM:
             return "VK_STRUCTURE_TYPE_MULTIVIEW_PER_VIEW_RENDER_AREAS_RENDER_PASS_BEGIN_INFO_QCOM";
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_2_FEATURES_QCOM:
+            return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_2_FEATURES_QCOM";
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_2_PROPERTIES_QCOM:
+            return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_2_PROPERTIES_QCOM";
+        case VK_STRUCTURE_TYPE_SAMPLER_BLOCK_MATCH_WINDOW_CREATE_INFO_QCOM:
+            return "VK_STRUCTURE_TYPE_SAMPLER_BLOCK_MATCH_WINDOW_CREATE_INFO_QCOM";
+        case VK_STRUCTURE_TYPE_SAMPLER_CUBIC_WEIGHTS_CREATE_INFO_QCOM:
+            return "VK_STRUCTURE_TYPE_SAMPLER_CUBIC_WEIGHTS_CREATE_INFO_QCOM";
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUBIC_WEIGHTS_FEATURES_QCOM:
+            return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUBIC_WEIGHTS_FEATURES_QCOM";
+        case VK_STRUCTURE_TYPE_BLIT_IMAGE_CUBIC_WEIGHTS_INFO_QCOM:
+            return "VK_STRUCTURE_TYPE_BLIT_IMAGE_CUBIC_WEIGHTS_INFO_QCOM";
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_DEGAMMA_FEATURES_QCOM:
+            return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_DEGAMMA_FEATURES_QCOM";
+        case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_YCBCR_DEGAMMA_CREATE_INFO_QCOM:
+            return "VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_YCBCR_DEGAMMA_CREATE_INFO_QCOM";
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUBIC_CLAMP_FEATURES_QCOM:
+            return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUBIC_CLAMP_FEATURES_QCOM";
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_DYNAMIC_STATE_FEATURES_EXT:
             return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_DYNAMIC_STATE_FEATURES_EXT";
         case VK_STRUCTURE_TYPE_SCREEN_BUFFER_PROPERTIES_QNX:
@@ -1879,6 +1901,10 @@ static inline const char* string_VkStructureType(VkStructureType input_value) {
             return "VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_QNX";
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_SCREEN_BUFFER_FEATURES_QNX:
             return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_SCREEN_BUFFER_FEATURES_QNX";
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LAYERED_DRIVER_PROPERTIES_MSFT:
+            return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LAYERED_DRIVER_PROPERTIES_MSFT";
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_POOL_OVERALLOCATION_FEATURES_NV:
+            return "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_POOL_OVERALLOCATION_FEATURES_NV";
         default:
             return "Unhandled VkStructureType";
     }
@@ -3365,6 +3391,8 @@ static inline const char* string_VkSubpassContents(VkSubpassContents input_value
             return "VK_SUBPASS_CONTENTS_INLINE";
         case VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS:
             return "VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS";
+        case VK_SUBPASS_CONTENTS_INLINE_AND_SECONDARY_COMMAND_BUFFERS_EXT:
+            return "VK_SUBPASS_CONTENTS_INLINE_AND_SECONDARY_COMMAND_BUFFERS_EXT";
         default:
             return "Unhandled VkSubpassContents";
     }
@@ -3487,6 +3515,8 @@ static inline const char* string_VkDriverId(VkDriverId input_value) {
             return "VK_DRIVER_ID_MESA_NVK";
         case VK_DRIVER_ID_IMAGINATION_OPEN_SOURCE_MESA:
             return "VK_DRIVER_ID_IMAGINATION_OPEN_SOURCE_MESA";
+        case VK_DRIVER_ID_MESA_AGXV:
+            return "VK_DRIVER_ID_MESA_AGXV";
         default:
             return "Unhandled VkDriverId";
     }
@@ -3511,6 +3541,8 @@ static inline const char* string_VkSamplerReductionMode(VkSamplerReductionMode i
             return "VK_SAMPLER_REDUCTION_MODE_MIN";
         case VK_SAMPLER_REDUCTION_MODE_MAX:
             return "VK_SAMPLER_REDUCTION_MODE_MAX";
+        case VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE_RANGECLAMP_QCOM:
+            return "VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE_RANGECLAMP_QCOM";
         default:
             return "Unhandled VkSamplerReductionMode";
     }
@@ -3589,6 +3621,8 @@ static inline const char* string_VkQueryResultStatusKHR(VkQueryResultStatusKHR i
             return "VK_QUERY_RESULT_STATUS_NOT_READY_KHR";
         case VK_QUERY_RESULT_STATUS_COMPLETE_KHR:
             return "VK_QUERY_RESULT_STATUS_COMPLETE_KHR";
+        case VK_QUERY_RESULT_STATUS_INSUFFICIENT_BITSTREAM_BUFFER_RANGE_KHR:
+            return "VK_QUERY_RESULT_STATUS_INSUFFICIENT_BITSTREAM_BUFFER_RANGE_KHR";
         default:
             return "Unhandled VkQueryResultStatusKHR";
     }
@@ -4619,6 +4653,80 @@ static inline const char* string_VkRayTracingInvocationReorderModeNV(VkRayTracin
             return "Unhandled VkRayTracingInvocationReorderModeNV";
     }
 }
+static inline const char* string_VkLatencyMarkerNV(VkLatencyMarkerNV input_value) {
+    switch (input_value) {
+        case VK_LATENCY_MARKER_SIMULATION_START_NV:
+            return "VK_LATENCY_MARKER_SIMULATION_START_NV";
+        case VK_LATENCY_MARKER_SIMULATION_END_NV:
+            return "VK_LATENCY_MARKER_SIMULATION_END_NV";
+        case VK_LATENCY_MARKER_RENDERSUBMIT_START_NV:
+            return "VK_LATENCY_MARKER_RENDERSUBMIT_START_NV";
+        case VK_LATENCY_MARKER_RENDERSUBMIT_END_NV:
+            return "VK_LATENCY_MARKER_RENDERSUBMIT_END_NV";
+        case VK_LATENCY_MARKER_PRESENT_START_NV:
+            return "VK_LATENCY_MARKER_PRESENT_START_NV";
+        case VK_LATENCY_MARKER_PRESENT_END_NV:
+            return "VK_LATENCY_MARKER_PRESENT_END_NV";
+        case VK_LATENCY_MARKER_INPUT_SAMPLE_NV:
+            return "VK_LATENCY_MARKER_INPUT_SAMPLE_NV";
+        case VK_LATENCY_MARKER_TRIGGER_FLASH_NV:
+            return "VK_LATENCY_MARKER_TRIGGER_FLASH_NV";
+        case VK_LATENCY_MARKER_OUT_OF_BAND_RENDERSUBMIT_START_NV:
+            return "VK_LATENCY_MARKER_OUT_OF_BAND_RENDERSUBMIT_START_NV";
+        case VK_LATENCY_MARKER_OUT_OF_BAND_RENDERSUBMIT_END_NV:
+            return "VK_LATENCY_MARKER_OUT_OF_BAND_RENDERSUBMIT_END_NV";
+        case VK_LATENCY_MARKER_OUT_OF_BAND_PRESENT_START_NV:
+            return "VK_LATENCY_MARKER_OUT_OF_BAND_PRESENT_START_NV";
+        case VK_LATENCY_MARKER_OUT_OF_BAND_PRESENT_END_NV:
+            return "VK_LATENCY_MARKER_OUT_OF_BAND_PRESENT_END_NV";
+        default:
+            return "Unhandled VkLatencyMarkerNV";
+    }
+}
+static inline const char* string_VkOutOfBandQueueTypeNV(VkOutOfBandQueueTypeNV input_value) {
+    switch (input_value) {
+        case VK_OUT_OF_BAND_QUEUE_TYPE_RENDER_NV:
+            return "VK_OUT_OF_BAND_QUEUE_TYPE_RENDER_NV";
+        case VK_OUT_OF_BAND_QUEUE_TYPE_PRESENT_NV:
+            return "VK_OUT_OF_BAND_QUEUE_TYPE_PRESENT_NV";
+        default:
+            return "Unhandled VkOutOfBandQueueTypeNV";
+    }
+}
+static inline const char* string_VkBlockMatchWindowCompareModeQCOM(VkBlockMatchWindowCompareModeQCOM input_value) {
+    switch (input_value) {
+        case VK_BLOCK_MATCH_WINDOW_COMPARE_MODE_MIN_QCOM:
+            return "VK_BLOCK_MATCH_WINDOW_COMPARE_MODE_MIN_QCOM";
+        case VK_BLOCK_MATCH_WINDOW_COMPARE_MODE_MAX_QCOM:
+            return "VK_BLOCK_MATCH_WINDOW_COMPARE_MODE_MAX_QCOM";
+        default:
+            return "Unhandled VkBlockMatchWindowCompareModeQCOM";
+    }
+}
+static inline const char* string_VkCubicFilterWeightsQCOM(VkCubicFilterWeightsQCOM input_value) {
+    switch (input_value) {
+        case VK_CUBIC_FILTER_WEIGHTS_CATMULL_ROM_QCOM:
+            return "VK_CUBIC_FILTER_WEIGHTS_CATMULL_ROM_QCOM";
+        case VK_CUBIC_FILTER_WEIGHTS_ZERO_TANGENT_CARDINAL_QCOM:
+            return "VK_CUBIC_FILTER_WEIGHTS_ZERO_TANGENT_CARDINAL_QCOM";
+        case VK_CUBIC_FILTER_WEIGHTS_B_SPLINE_QCOM:
+            return "VK_CUBIC_FILTER_WEIGHTS_B_SPLINE_QCOM";
+        case VK_CUBIC_FILTER_WEIGHTS_MITCHELL_NETRAVALI_QCOM:
+            return "VK_CUBIC_FILTER_WEIGHTS_MITCHELL_NETRAVALI_QCOM";
+        default:
+            return "Unhandled VkCubicFilterWeightsQCOM";
+    }
+}
+static inline const char* string_VkLayeredDriverUnderlyingApiMSFT(VkLayeredDriverUnderlyingApiMSFT input_value) {
+    switch (input_value) {
+        case VK_LAYERED_DRIVER_UNDERLYING_API_NONE_MSFT:
+            return "VK_LAYERED_DRIVER_UNDERLYING_API_NONE_MSFT";
+        case VK_LAYERED_DRIVER_UNDERLYING_API_D3D12_MSFT:
+            return "VK_LAYERED_DRIVER_UNDERLYING_API_D3D12_MSFT";
+        default:
+            return "Unhandled VkLayeredDriverUnderlyingApiMSFT";
+    }
+}
 static inline const char* string_VkBuildAccelerationStructureModeKHR(VkBuildAccelerationStructureModeKHR input_value) {
     switch (input_value) {
         case VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR:
@@ -4709,6 +4817,7 @@ static inline const char* string_VkAccessFlagBits(VkAccessFlagBits input_value) 
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkAccessFlags(VkAccessFlags input_value) {
     std::string ret;
     int index = 0;
@@ -4723,6 +4832,7 @@ static inline std::string string_VkAccessFlags(VkAccessFlags input_value) {
     if (ret.empty()) ret.append("VkAccessFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkImageAspectFlagBits(VkImageAspectFlagBits input_value) {
     switch (input_value) {
         case VK_IMAGE_ASPECT_COLOR_BIT:
@@ -4754,6 +4864,7 @@ static inline const char* string_VkImageAspectFlagBits(VkImageAspectFlagBits inp
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkImageAspectFlags(VkImageAspectFlags input_value) {
     std::string ret;
     int index = 0;
@@ -4768,6 +4879,7 @@ static inline std::string string_VkImageAspectFlags(VkImageAspectFlags input_val
     if (ret.empty()) ret.append("VkImageAspectFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkFormatFeatureFlagBits(VkFormatFeatureFlagBits input_value) {
     switch (input_value) {
         case VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT:
@@ -4841,6 +4953,7 @@ static inline const char* string_VkFormatFeatureFlagBits(VkFormatFeatureFlagBits
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkFormatFeatureFlags(VkFormatFeatureFlags input_value) {
     std::string ret;
     int index = 0;
@@ -4855,6 +4968,7 @@ static inline std::string string_VkFormatFeatureFlags(VkFormatFeatureFlags input
     if (ret.empty()) ret.append("VkFormatFeatureFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkImageCreateFlagBits(VkImageCreateFlagBits input_value) {
     switch (input_value) {
         case VK_IMAGE_CREATE_SPARSE_BINDING_BIT:
@@ -4900,6 +5014,7 @@ static inline const char* string_VkImageCreateFlagBits(VkImageCreateFlagBits inp
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkImageCreateFlags(VkImageCreateFlags input_value) {
     std::string ret;
     int index = 0;
@@ -4914,6 +5029,7 @@ static inline std::string string_VkImageCreateFlags(VkImageCreateFlags input_val
     if (ret.empty()) ret.append("VkImageCreateFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkSampleCountFlagBits(VkSampleCountFlagBits input_value) {
     switch (input_value) {
         case VK_SAMPLE_COUNT_1_BIT:
@@ -4935,6 +5051,7 @@ static inline const char* string_VkSampleCountFlagBits(VkSampleCountFlagBits inp
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkSampleCountFlags(VkSampleCountFlags input_value) {
     std::string ret;
     int index = 0;
@@ -4949,6 +5066,7 @@ static inline std::string string_VkSampleCountFlags(VkSampleCountFlags input_val
     if (ret.empty()) ret.append("VkSampleCountFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkImageUsageFlagBits(VkImageUsageFlagBits input_value) {
     switch (input_value) {
         case VK_IMAGE_USAGE_TRANSFER_SRC_BIT:
@@ -5004,6 +5122,7 @@ static inline const char* string_VkImageUsageFlagBits(VkImageUsageFlagBits input
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkImageUsageFlags(VkImageUsageFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5018,6 +5137,7 @@ static inline std::string string_VkImageUsageFlags(VkImageUsageFlags input_value
     if (ret.empty()) ret.append("VkImageUsageFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkInstanceCreateFlagBits(VkInstanceCreateFlagBits input_value) {
     switch (input_value) {
         case VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR:
@@ -5027,6 +5147,7 @@ static inline const char* string_VkInstanceCreateFlagBits(VkInstanceCreateFlagBi
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkInstanceCreateFlags(VkInstanceCreateFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5041,6 +5162,7 @@ static inline std::string string_VkInstanceCreateFlags(VkInstanceCreateFlags inp
     if (ret.empty()) ret.append("VkInstanceCreateFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkMemoryHeapFlagBits(VkMemoryHeapFlagBits input_value) {
     switch (input_value) {
         case VK_MEMORY_HEAP_DEVICE_LOCAL_BIT:
@@ -5052,6 +5174,7 @@ static inline const char* string_VkMemoryHeapFlagBits(VkMemoryHeapFlagBits input
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkMemoryHeapFlags(VkMemoryHeapFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5066,6 +5189,7 @@ static inline std::string string_VkMemoryHeapFlags(VkMemoryHeapFlags input_value
     if (ret.empty()) ret.append("VkMemoryHeapFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkMemoryPropertyFlagBits(VkMemoryPropertyFlagBits input_value) {
     switch (input_value) {
         case VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT:
@@ -5091,6 +5215,7 @@ static inline const char* string_VkMemoryPropertyFlagBits(VkMemoryPropertyFlagBi
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkMemoryPropertyFlags(VkMemoryPropertyFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5105,6 +5230,7 @@ static inline std::string string_VkMemoryPropertyFlags(VkMemoryPropertyFlags inp
     if (ret.empty()) ret.append("VkMemoryPropertyFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkQueueFlagBits(VkQueueFlagBits input_value) {
     switch (input_value) {
         case VK_QUEUE_GRAPHICS_BIT:
@@ -5130,6 +5256,7 @@ static inline const char* string_VkQueueFlagBits(VkQueueFlagBits input_value) {
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkQueueFlags(VkQueueFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5144,6 +5271,7 @@ static inline std::string string_VkQueueFlags(VkQueueFlags input_value) {
     if (ret.empty()) ret.append("VkQueueFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkDeviceQueueCreateFlagBits(VkDeviceQueueCreateFlagBits input_value) {
     switch (input_value) {
         case VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT:
@@ -5153,6 +5281,7 @@ static inline const char* string_VkDeviceQueueCreateFlagBits(VkDeviceQueueCreate
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkDeviceQueueCreateFlags(VkDeviceQueueCreateFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5167,6 +5296,7 @@ static inline std::string string_VkDeviceQueueCreateFlags(VkDeviceQueueCreateFla
     if (ret.empty()) ret.append("VkDeviceQueueCreateFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkPipelineStageFlagBits(VkPipelineStageFlagBits input_value) {
     switch (input_value) {
         case VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT:
@@ -5228,6 +5358,7 @@ static inline const char* string_VkPipelineStageFlagBits(VkPipelineStageFlagBits
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkPipelineStageFlags(VkPipelineStageFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5242,6 +5373,7 @@ static inline std::string string_VkPipelineStageFlags(VkPipelineStageFlags input
     if (ret.empty()) ret.append("VkPipelineStageFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkSparseMemoryBindFlagBits(VkSparseMemoryBindFlagBits input_value) {
     switch (input_value) {
         case VK_SPARSE_MEMORY_BIND_METADATA_BIT:
@@ -5251,6 +5383,7 @@ static inline const char* string_VkSparseMemoryBindFlagBits(VkSparseMemoryBindFl
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkSparseMemoryBindFlags(VkSparseMemoryBindFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5265,6 +5398,7 @@ static inline std::string string_VkSparseMemoryBindFlags(VkSparseMemoryBindFlags
     if (ret.empty()) ret.append("VkSparseMemoryBindFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkSparseImageFormatFlagBits(VkSparseImageFormatFlagBits input_value) {
     switch (input_value) {
         case VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT:
@@ -5278,6 +5412,7 @@ static inline const char* string_VkSparseImageFormatFlagBits(VkSparseImageFormat
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkSparseImageFormatFlags(VkSparseImageFormatFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5292,6 +5427,7 @@ static inline std::string string_VkSparseImageFormatFlags(VkSparseImageFormatFla
     if (ret.empty()) ret.append("VkSparseImageFormatFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkFenceCreateFlagBits(VkFenceCreateFlagBits input_value) {
     switch (input_value) {
         case VK_FENCE_CREATE_SIGNALED_BIT:
@@ -5301,6 +5437,7 @@ static inline const char* string_VkFenceCreateFlagBits(VkFenceCreateFlagBits inp
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkFenceCreateFlags(VkFenceCreateFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5315,6 +5452,7 @@ static inline std::string string_VkFenceCreateFlags(VkFenceCreateFlags input_val
     if (ret.empty()) ret.append("VkFenceCreateFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkEventCreateFlagBits(VkEventCreateFlagBits input_value) {
     switch (input_value) {
         case VK_EVENT_CREATE_DEVICE_ONLY_BIT:
@@ -5324,6 +5462,7 @@ static inline const char* string_VkEventCreateFlagBits(VkEventCreateFlagBits inp
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkEventCreateFlags(VkEventCreateFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5338,6 +5477,7 @@ static inline std::string string_VkEventCreateFlags(VkEventCreateFlags input_val
     if (ret.empty()) ret.append("VkEventCreateFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkQueryPipelineStatisticFlagBits(VkQueryPipelineStatisticFlagBits input_value) {
     switch (input_value) {
         case VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT:
@@ -5373,6 +5513,7 @@ static inline const char* string_VkQueryPipelineStatisticFlagBits(VkQueryPipelin
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkQueryPipelineStatisticFlags(VkQueryPipelineStatisticFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5387,6 +5528,7 @@ static inline std::string string_VkQueryPipelineStatisticFlags(VkQueryPipelineSt
     if (ret.empty()) ret.append("VkQueryPipelineStatisticFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkQueryResultFlagBits(VkQueryResultFlagBits input_value) {
     switch (input_value) {
         case VK_QUERY_RESULT_64_BIT:
@@ -5404,6 +5546,7 @@ static inline const char* string_VkQueryResultFlagBits(VkQueryResultFlagBits inp
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkQueryResultFlags(VkQueryResultFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5418,6 +5561,7 @@ static inline std::string string_VkQueryResultFlags(VkQueryResultFlags input_val
     if (ret.empty()) ret.append("VkQueryResultFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkBufferCreateFlagBits(VkBufferCreateFlagBits input_value) {
     switch (input_value) {
         case VK_BUFFER_CREATE_SPARSE_BINDING_BIT:
@@ -5437,6 +5581,7 @@ static inline const char* string_VkBufferCreateFlagBits(VkBufferCreateFlagBits i
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkBufferCreateFlags(VkBufferCreateFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5451,6 +5596,7 @@ static inline std::string string_VkBufferCreateFlags(VkBufferCreateFlags input_v
     if (ret.empty()) ret.append("VkBufferCreateFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkBufferUsageFlagBits(VkBufferUsageFlagBits input_value) {
     switch (input_value) {
         case VK_BUFFER_USAGE_TRANSFER_SRC_BIT:
@@ -5516,6 +5662,7 @@ static inline const char* string_VkBufferUsageFlagBits(VkBufferUsageFlagBits inp
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkBufferUsageFlags(VkBufferUsageFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5530,6 +5677,7 @@ static inline std::string string_VkBufferUsageFlags(VkBufferUsageFlags input_val
     if (ret.empty()) ret.append("VkBufferUsageFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkImageViewCreateFlagBits(VkImageViewCreateFlagBits input_value) {
     switch (input_value) {
         case VK_IMAGE_VIEW_CREATE_FRAGMENT_DENSITY_MAP_DYNAMIC_BIT_EXT:
@@ -5543,6 +5691,7 @@ static inline const char* string_VkImageViewCreateFlagBits(VkImageViewCreateFlag
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkImageViewCreateFlags(VkImageViewCreateFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5557,6 +5706,7 @@ static inline std::string string_VkImageViewCreateFlags(VkImageViewCreateFlags i
     if (ret.empty()) ret.append("VkImageViewCreateFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkPipelineCacheCreateFlagBits(VkPipelineCacheCreateFlagBits input_value) {
     switch (input_value) {
         case VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT:
@@ -5566,6 +5716,7 @@ static inline const char* string_VkPipelineCacheCreateFlagBits(VkPipelineCacheCr
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkPipelineCacheCreateFlags(VkPipelineCacheCreateFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5580,6 +5731,7 @@ static inline std::string string_VkPipelineCacheCreateFlags(VkPipelineCacheCreat
     if (ret.empty()) ret.append("VkPipelineCacheCreateFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkColorComponentFlagBits(VkColorComponentFlagBits input_value) {
     switch (input_value) {
         case VK_COLOR_COMPONENT_R_BIT:
@@ -5595,6 +5747,7 @@ static inline const char* string_VkColorComponentFlagBits(VkColorComponentFlagBi
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkColorComponentFlags(VkColorComponentFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5609,6 +5762,7 @@ static inline std::string string_VkColorComponentFlags(VkColorComponentFlags inp
     if (ret.empty()) ret.append("VkColorComponentFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkPipelineCreateFlagBits(VkPipelineCreateFlagBits input_value) {
     switch (input_value) {
         case VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT:
@@ -5680,6 +5834,7 @@ static inline const char* string_VkPipelineCreateFlagBits(VkPipelineCreateFlagBi
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkPipelineCreateFlags(VkPipelineCreateFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5694,6 +5849,7 @@ static inline std::string string_VkPipelineCreateFlags(VkPipelineCreateFlags inp
     if (ret.empty()) ret.append("VkPipelineCreateFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkPipelineShaderStageCreateFlagBits(VkPipelineShaderStageCreateFlagBits input_value) {
     switch (input_value) {
         case VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT:
@@ -5705,6 +5861,7 @@ static inline const char* string_VkPipelineShaderStageCreateFlagBits(VkPipelineS
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkPipelineShaderStageCreateFlags(VkPipelineShaderStageCreateFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5719,6 +5876,7 @@ static inline std::string string_VkPipelineShaderStageCreateFlags(VkPipelineShad
     if (ret.empty()) ret.append("VkPipelineShaderStageCreateFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkShaderStageFlagBits(VkShaderStageFlagBits input_value) {
     switch (input_value) {
         case VK_SHADER_STAGE_VERTEX_BIT:
@@ -5758,6 +5916,7 @@ static inline const char* string_VkShaderStageFlagBits(VkShaderStageFlagBits inp
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkShaderStageFlags(VkShaderStageFlags input_value) {
     if (input_value == VK_SHADER_STAGE_ALL_GRAPHICS) { return "VK_SHADER_STAGE_ALL_GRAPHICS"; }
     if (input_value == VK_SHADER_STAGE_ALL) { return "VK_SHADER_STAGE_ALL"; }
@@ -5774,6 +5933,7 @@ static inline std::string string_VkShaderStageFlags(VkShaderStageFlags input_val
     if (ret.empty()) ret.append("VkShaderStageFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkCullModeFlagBits(VkCullModeFlagBits input_value) {
     switch (input_value) {
         case VK_CULL_MODE_NONE:
@@ -5787,6 +5947,7 @@ static inline const char* string_VkCullModeFlagBits(VkCullModeFlagBits input_val
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkCullModeFlags(VkCullModeFlags input_value) {
     if (input_value == VK_CULL_MODE_FRONT_AND_BACK) { return "VK_CULL_MODE_FRONT_AND_BACK"; }
     std::string ret;
@@ -5802,6 +5963,7 @@ static inline std::string string_VkCullModeFlags(VkCullModeFlags input_value) {
     if (ret.empty()) ret.append("VkCullModeFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkPipelineDepthStencilStateCreateFlagBits(VkPipelineDepthStencilStateCreateFlagBits input_value) {
     switch (input_value) {
         case VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_DEPTH_ACCESS_BIT_EXT:
@@ -5813,6 +5975,7 @@ static inline const char* string_VkPipelineDepthStencilStateCreateFlagBits(VkPip
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkPipelineDepthStencilStateCreateFlags(VkPipelineDepthStencilStateCreateFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5827,6 +5990,7 @@ static inline std::string string_VkPipelineDepthStencilStateCreateFlags(VkPipeli
     if (ret.empty()) ret.append("VkPipelineDepthStencilStateCreateFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkPipelineColorBlendStateCreateFlagBits(VkPipelineColorBlendStateCreateFlagBits input_value) {
     switch (input_value) {
         case VK_PIPELINE_COLOR_BLEND_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_BIT_EXT:
@@ -5836,6 +6000,7 @@ static inline const char* string_VkPipelineColorBlendStateCreateFlagBits(VkPipel
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkPipelineColorBlendStateCreateFlags(VkPipelineColorBlendStateCreateFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5850,6 +6015,7 @@ static inline std::string string_VkPipelineColorBlendStateCreateFlags(VkPipeline
     if (ret.empty()) ret.append("VkPipelineColorBlendStateCreateFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkPipelineLayoutCreateFlagBits(VkPipelineLayoutCreateFlagBits input_value) {
     switch (input_value) {
         case VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT:
@@ -5859,6 +6025,7 @@ static inline const char* string_VkPipelineLayoutCreateFlagBits(VkPipelineLayout
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkPipelineLayoutCreateFlags(VkPipelineLayoutCreateFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5873,6 +6040,7 @@ static inline std::string string_VkPipelineLayoutCreateFlags(VkPipelineLayoutCre
     if (ret.empty()) ret.append("VkPipelineLayoutCreateFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkSamplerCreateFlagBits(VkSamplerCreateFlagBits input_value) {
     switch (input_value) {
         case VK_SAMPLER_CREATE_SUBSAMPLED_BIT_EXT:
@@ -5890,6 +6058,7 @@ static inline const char* string_VkSamplerCreateFlagBits(VkSamplerCreateFlagBits
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkSamplerCreateFlags(VkSamplerCreateFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5904,6 +6073,7 @@ static inline std::string string_VkSamplerCreateFlags(VkSamplerCreateFlags input
     if (ret.empty()) ret.append("VkSamplerCreateFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkDescriptorPoolCreateFlagBits(VkDescriptorPoolCreateFlagBits input_value) {
     switch (input_value) {
         case VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT:
@@ -5912,11 +6082,16 @@ static inline const char* string_VkDescriptorPoolCreateFlagBits(VkDescriptorPool
             return "VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT";
         case VK_DESCRIPTOR_POOL_CREATE_HOST_ONLY_BIT_EXT:
             return "VK_DESCRIPTOR_POOL_CREATE_HOST_ONLY_BIT_EXT";
+        case VK_DESCRIPTOR_POOL_CREATE_ALLOW_OVERALLOCATION_SETS_BIT_NV:
+            return "VK_DESCRIPTOR_POOL_CREATE_ALLOW_OVERALLOCATION_SETS_BIT_NV";
+        case VK_DESCRIPTOR_POOL_CREATE_ALLOW_OVERALLOCATION_POOLS_BIT_NV:
+            return "VK_DESCRIPTOR_POOL_CREATE_ALLOW_OVERALLOCATION_POOLS_BIT_NV";
         default:
             return "Unhandled VkDescriptorPoolCreateFlagBits";
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkDescriptorPoolCreateFlags(VkDescriptorPoolCreateFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5931,6 +6106,7 @@ static inline std::string string_VkDescriptorPoolCreateFlags(VkDescriptorPoolCre
     if (ret.empty()) ret.append("VkDescriptorPoolCreateFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkDescriptorSetLayoutCreateFlagBits(VkDescriptorSetLayoutCreateFlagBits input_value) {
     switch (input_value) {
         case VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT:
@@ -5950,6 +6126,7 @@ static inline const char* string_VkDescriptorSetLayoutCreateFlagBits(VkDescripto
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkDescriptorSetLayoutCreateFlags(VkDescriptorSetLayoutCreateFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5964,6 +6141,7 @@ static inline std::string string_VkDescriptorSetLayoutCreateFlags(VkDescriptorSe
     if (ret.empty()) ret.append("VkDescriptorSetLayoutCreateFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkAttachmentDescriptionFlagBits(VkAttachmentDescriptionFlagBits input_value) {
     switch (input_value) {
         case VK_ATTACHMENT_DESCRIPTION_MAY_ALIAS_BIT:
@@ -5973,6 +6151,7 @@ static inline const char* string_VkAttachmentDescriptionFlagBits(VkAttachmentDes
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkAttachmentDescriptionFlags(VkAttachmentDescriptionFlags input_value) {
     std::string ret;
     int index = 0;
@@ -5987,6 +6166,7 @@ static inline std::string string_VkAttachmentDescriptionFlags(VkAttachmentDescri
     if (ret.empty()) ret.append("VkAttachmentDescriptionFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkDependencyFlagBits(VkDependencyFlagBits input_value) {
     switch (input_value) {
         case VK_DEPENDENCY_BY_REGION_BIT:
@@ -6002,6 +6182,7 @@ static inline const char* string_VkDependencyFlagBits(VkDependencyFlagBits input
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkDependencyFlags(VkDependencyFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6016,6 +6197,7 @@ static inline std::string string_VkDependencyFlags(VkDependencyFlags input_value
     if (ret.empty()) ret.append("VkDependencyFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkFramebufferCreateFlagBits(VkFramebufferCreateFlagBits input_value) {
     switch (input_value) {
         case VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT:
@@ -6025,6 +6207,7 @@ static inline const char* string_VkFramebufferCreateFlagBits(VkFramebufferCreate
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkFramebufferCreateFlags(VkFramebufferCreateFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6039,6 +6222,7 @@ static inline std::string string_VkFramebufferCreateFlags(VkFramebufferCreateFla
     if (ret.empty()) ret.append("VkFramebufferCreateFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkRenderPassCreateFlagBits(VkRenderPassCreateFlagBits input_value) {
     switch (input_value) {
         case VK_RENDER_PASS_CREATE_TRANSFORM_BIT_QCOM:
@@ -6048,6 +6232,7 @@ static inline const char* string_VkRenderPassCreateFlagBits(VkRenderPassCreateFl
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkRenderPassCreateFlags(VkRenderPassCreateFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6062,6 +6247,7 @@ static inline std::string string_VkRenderPassCreateFlags(VkRenderPassCreateFlags
     if (ret.empty()) ret.append("VkRenderPassCreateFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkSubpassDescriptionFlagBits(VkSubpassDescriptionFlagBits input_value) {
     switch (input_value) {
         case VK_SUBPASS_DESCRIPTION_PER_VIEW_ATTRIBUTES_BIT_NVX:
@@ -6085,6 +6271,7 @@ static inline const char* string_VkSubpassDescriptionFlagBits(VkSubpassDescripti
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkSubpassDescriptionFlags(VkSubpassDescriptionFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6099,6 +6286,7 @@ static inline std::string string_VkSubpassDescriptionFlags(VkSubpassDescriptionF
     if (ret.empty()) ret.append("VkSubpassDescriptionFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkCommandPoolCreateFlagBits(VkCommandPoolCreateFlagBits input_value) {
     switch (input_value) {
         case VK_COMMAND_POOL_CREATE_TRANSIENT_BIT:
@@ -6112,6 +6300,7 @@ static inline const char* string_VkCommandPoolCreateFlagBits(VkCommandPoolCreate
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkCommandPoolCreateFlags(VkCommandPoolCreateFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6126,6 +6315,7 @@ static inline std::string string_VkCommandPoolCreateFlags(VkCommandPoolCreateFla
     if (ret.empty()) ret.append("VkCommandPoolCreateFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkCommandPoolResetFlagBits(VkCommandPoolResetFlagBits input_value) {
     switch (input_value) {
         case VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT:
@@ -6135,6 +6325,7 @@ static inline const char* string_VkCommandPoolResetFlagBits(VkCommandPoolResetFl
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkCommandPoolResetFlags(VkCommandPoolResetFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6149,6 +6340,7 @@ static inline std::string string_VkCommandPoolResetFlags(VkCommandPoolResetFlags
     if (ret.empty()) ret.append("VkCommandPoolResetFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkCommandBufferUsageFlagBits(VkCommandBufferUsageFlagBits input_value) {
     switch (input_value) {
         case VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT:
@@ -6162,6 +6354,7 @@ static inline const char* string_VkCommandBufferUsageFlagBits(VkCommandBufferUsa
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkCommandBufferUsageFlags(VkCommandBufferUsageFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6176,6 +6369,7 @@ static inline std::string string_VkCommandBufferUsageFlags(VkCommandBufferUsageF
     if (ret.empty()) ret.append("VkCommandBufferUsageFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkQueryControlFlagBits(VkQueryControlFlagBits input_value) {
     switch (input_value) {
         case VK_QUERY_CONTROL_PRECISE_BIT:
@@ -6185,6 +6379,7 @@ static inline const char* string_VkQueryControlFlagBits(VkQueryControlFlagBits i
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkQueryControlFlags(VkQueryControlFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6199,6 +6394,7 @@ static inline std::string string_VkQueryControlFlags(VkQueryControlFlags input_v
     if (ret.empty()) ret.append("VkQueryControlFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkCommandBufferResetFlagBits(VkCommandBufferResetFlagBits input_value) {
     switch (input_value) {
         case VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT:
@@ -6208,6 +6404,7 @@ static inline const char* string_VkCommandBufferResetFlagBits(VkCommandBufferRes
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkCommandBufferResetFlags(VkCommandBufferResetFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6222,6 +6419,7 @@ static inline std::string string_VkCommandBufferResetFlags(VkCommandBufferResetF
     if (ret.empty()) ret.append("VkCommandBufferResetFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkStencilFaceFlagBits(VkStencilFaceFlagBits input_value) {
     switch (input_value) {
         case VK_STENCIL_FACE_FRONT_BIT:
@@ -6233,6 +6431,7 @@ static inline const char* string_VkStencilFaceFlagBits(VkStencilFaceFlagBits inp
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkStencilFaceFlags(VkStencilFaceFlags input_value) {
     if (input_value == VK_STENCIL_FACE_FRONT_AND_BACK) { return "VK_STENCIL_FACE_FRONT_AND_BACK"; }
     std::string ret;
@@ -6248,6 +6447,7 @@ static inline std::string string_VkStencilFaceFlags(VkStencilFaceFlags input_val
     if (ret.empty()) ret.append("VkStencilFaceFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkSubgroupFeatureFlagBits(VkSubgroupFeatureFlagBits input_value) {
     switch (input_value) {
         case VK_SUBGROUP_FEATURE_BASIC_BIT:
@@ -6273,6 +6473,7 @@ static inline const char* string_VkSubgroupFeatureFlagBits(VkSubgroupFeatureFlag
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkSubgroupFeatureFlags(VkSubgroupFeatureFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6287,6 +6488,7 @@ static inline std::string string_VkSubgroupFeatureFlags(VkSubgroupFeatureFlags i
     if (ret.empty()) ret.append("VkSubgroupFeatureFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkPeerMemoryFeatureFlagBits(VkPeerMemoryFeatureFlagBits input_value) {
     switch (input_value) {
         case VK_PEER_MEMORY_FEATURE_COPY_SRC_BIT:
@@ -6302,6 +6504,7 @@ static inline const char* string_VkPeerMemoryFeatureFlagBits(VkPeerMemoryFeature
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkPeerMemoryFeatureFlags(VkPeerMemoryFeatureFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6316,6 +6519,7 @@ static inline std::string string_VkPeerMemoryFeatureFlags(VkPeerMemoryFeatureFla
     if (ret.empty()) ret.append("VkPeerMemoryFeatureFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkMemoryAllocateFlagBits(VkMemoryAllocateFlagBits input_value) {
     switch (input_value) {
         case VK_MEMORY_ALLOCATE_DEVICE_MASK_BIT:
@@ -6329,6 +6533,7 @@ static inline const char* string_VkMemoryAllocateFlagBits(VkMemoryAllocateFlagBi
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkMemoryAllocateFlags(VkMemoryAllocateFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6343,6 +6548,7 @@ static inline std::string string_VkMemoryAllocateFlags(VkMemoryAllocateFlags inp
     if (ret.empty()) ret.append("VkMemoryAllocateFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkExternalMemoryHandleTypeFlagBits(VkExternalMemoryHandleTypeFlagBits input_value) {
     switch (input_value) {
         case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
@@ -6378,6 +6584,7 @@ static inline const char* string_VkExternalMemoryHandleTypeFlagBits(VkExternalMe
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkExternalMemoryHandleTypeFlags(VkExternalMemoryHandleTypeFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6392,6 +6599,7 @@ static inline std::string string_VkExternalMemoryHandleTypeFlags(VkExternalMemor
     if (ret.empty()) ret.append("VkExternalMemoryHandleTypeFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkExternalMemoryFeatureFlagBits(VkExternalMemoryFeatureFlagBits input_value) {
     switch (input_value) {
         case VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT:
@@ -6405,6 +6613,7 @@ static inline const char* string_VkExternalMemoryFeatureFlagBits(VkExternalMemor
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkExternalMemoryFeatureFlags(VkExternalMemoryFeatureFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6419,6 +6628,7 @@ static inline std::string string_VkExternalMemoryFeatureFlags(VkExternalMemoryFe
     if (ret.empty()) ret.append("VkExternalMemoryFeatureFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkExternalFenceHandleTypeFlagBits(VkExternalFenceHandleTypeFlagBits input_value) {
     switch (input_value) {
         case VK_EXTERNAL_FENCE_HANDLE_TYPE_OPAQUE_FD_BIT:
@@ -6434,6 +6644,7 @@ static inline const char* string_VkExternalFenceHandleTypeFlagBits(VkExternalFen
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkExternalFenceHandleTypeFlags(VkExternalFenceHandleTypeFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6448,6 +6659,7 @@ static inline std::string string_VkExternalFenceHandleTypeFlags(VkExternalFenceH
     if (ret.empty()) ret.append("VkExternalFenceHandleTypeFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkExternalFenceFeatureFlagBits(VkExternalFenceFeatureFlagBits input_value) {
     switch (input_value) {
         case VK_EXTERNAL_FENCE_FEATURE_EXPORTABLE_BIT:
@@ -6459,6 +6671,7 @@ static inline const char* string_VkExternalFenceFeatureFlagBits(VkExternalFenceF
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkExternalFenceFeatureFlags(VkExternalFenceFeatureFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6473,6 +6686,7 @@ static inline std::string string_VkExternalFenceFeatureFlags(VkExternalFenceFeat
     if (ret.empty()) ret.append("VkExternalFenceFeatureFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkFenceImportFlagBits(VkFenceImportFlagBits input_value) {
     switch (input_value) {
         case VK_FENCE_IMPORT_TEMPORARY_BIT:
@@ -6482,6 +6696,7 @@ static inline const char* string_VkFenceImportFlagBits(VkFenceImportFlagBits inp
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkFenceImportFlags(VkFenceImportFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6496,6 +6711,7 @@ static inline std::string string_VkFenceImportFlags(VkFenceImportFlags input_val
     if (ret.empty()) ret.append("VkFenceImportFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkSemaphoreImportFlagBits(VkSemaphoreImportFlagBits input_value) {
     switch (input_value) {
         case VK_SEMAPHORE_IMPORT_TEMPORARY_BIT:
@@ -6505,6 +6721,7 @@ static inline const char* string_VkSemaphoreImportFlagBits(VkSemaphoreImportFlag
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkSemaphoreImportFlags(VkSemaphoreImportFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6519,6 +6736,7 @@ static inline std::string string_VkSemaphoreImportFlags(VkSemaphoreImportFlags i
     if (ret.empty()) ret.append("VkSemaphoreImportFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkExternalSemaphoreHandleTypeFlagBits(VkExternalSemaphoreHandleTypeFlagBits input_value) {
     switch (input_value) {
         case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT:
@@ -6538,6 +6756,7 @@ static inline const char* string_VkExternalSemaphoreHandleTypeFlagBits(VkExterna
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkExternalSemaphoreHandleTypeFlags(VkExternalSemaphoreHandleTypeFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6552,6 +6771,7 @@ static inline std::string string_VkExternalSemaphoreHandleTypeFlags(VkExternalSe
     if (ret.empty()) ret.append("VkExternalSemaphoreHandleTypeFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkExternalSemaphoreFeatureFlagBits(VkExternalSemaphoreFeatureFlagBits input_value) {
     switch (input_value) {
         case VK_EXTERNAL_SEMAPHORE_FEATURE_EXPORTABLE_BIT:
@@ -6563,6 +6783,7 @@ static inline const char* string_VkExternalSemaphoreFeatureFlagBits(VkExternalSe
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkExternalSemaphoreFeatureFlags(VkExternalSemaphoreFeatureFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6577,6 +6798,7 @@ static inline std::string string_VkExternalSemaphoreFeatureFlags(VkExternalSemap
     if (ret.empty()) ret.append("VkExternalSemaphoreFeatureFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkResolveModeFlagBits(VkResolveModeFlagBits input_value) {
     switch (input_value) {
         case VK_RESOLVE_MODE_NONE:
@@ -6589,11 +6811,14 @@ static inline const char* string_VkResolveModeFlagBits(VkResolveModeFlagBits inp
             return "VK_RESOLVE_MODE_MIN_BIT";
         case VK_RESOLVE_MODE_MAX_BIT:
             return "VK_RESOLVE_MODE_MAX_BIT";
+        case VK_RESOLVE_MODE_EXTERNAL_FORMAT_DOWNSAMPLE_ANDROID:
+            return "VK_RESOLVE_MODE_EXTERNAL_FORMAT_DOWNSAMPLE_ANDROID";
         default:
             return "Unhandled VkResolveModeFlagBits";
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkResolveModeFlags(VkResolveModeFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6608,6 +6833,7 @@ static inline std::string string_VkResolveModeFlags(VkResolveModeFlags input_val
     if (ret.empty()) ret.append("VkResolveModeFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkDescriptorBindingFlagBits(VkDescriptorBindingFlagBits input_value) {
     switch (input_value) {
         case VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT:
@@ -6623,6 +6849,7 @@ static inline const char* string_VkDescriptorBindingFlagBits(VkDescriptorBinding
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkDescriptorBindingFlags(VkDescriptorBindingFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6637,6 +6864,7 @@ static inline std::string string_VkDescriptorBindingFlags(VkDescriptorBindingFla
     if (ret.empty()) ret.append("VkDescriptorBindingFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkSemaphoreWaitFlagBits(VkSemaphoreWaitFlagBits input_value) {
     switch (input_value) {
         case VK_SEMAPHORE_WAIT_ANY_BIT:
@@ -6646,6 +6874,7 @@ static inline const char* string_VkSemaphoreWaitFlagBits(VkSemaphoreWaitFlagBits
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkSemaphoreWaitFlags(VkSemaphoreWaitFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6660,6 +6889,7 @@ static inline std::string string_VkSemaphoreWaitFlags(VkSemaphoreWaitFlags input
     if (ret.empty()) ret.append("VkSemaphoreWaitFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkPipelineCreationFeedbackFlagBits(VkPipelineCreationFeedbackFlagBits input_value) {
     switch (input_value) {
         case VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT:
@@ -6673,6 +6903,7 @@ static inline const char* string_VkPipelineCreationFeedbackFlagBits(VkPipelineCr
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkPipelineCreationFeedbackFlags(VkPipelineCreationFeedbackFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6687,6 +6918,7 @@ static inline std::string string_VkPipelineCreationFeedbackFlags(VkPipelineCreat
     if (ret.empty()) ret.append("VkPipelineCreationFeedbackFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkToolPurposeFlagBits(VkToolPurposeFlagBits input_value) {
     switch (input_value) {
         case VK_TOOL_PURPOSE_VALIDATION_BIT:
@@ -6708,6 +6940,7 @@ static inline const char* string_VkToolPurposeFlagBits(VkToolPurposeFlagBits inp
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkToolPurposeFlags(VkToolPurposeFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6722,99 +6955,56 @@ static inline std::string string_VkToolPurposeFlags(VkToolPurposeFlags input_val
     if (ret.empty()) ret.append("VkToolPurposeFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkPipelineStageFlagBits2(uint64_t input_value) {
-    switch (input_value) {
-        case VK_PIPELINE_STAGE_2_NONE:
-            return "VK_PIPELINE_STAGE_2_NONE";
-        case VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT:
-            return "VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT";
-        case VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT:
-            return "VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT";
-        case VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT:
-            return "VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT";
-        case VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT:
-            return "VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT";
-        case VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT:
-            return "VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT";
-        case VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT:
-            return "VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT";
-        case VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT:
-            return "VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT";
-        case VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT:
-            return "VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT";
-        case VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT:
-            return "VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT";
-        case VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT:
-            return "VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT";
-        case VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT:
-            return "VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT";
-        case VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT:
-            return "VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT";
-        case VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT:
-            return "VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT";
-        case VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT:
-            return "VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT";
-        case VK_PIPELINE_STAGE_2_HOST_BIT:
-            return "VK_PIPELINE_STAGE_2_HOST_BIT";
-        case VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT:
-            return "VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT";
-        case VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT:
-            return "VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT";
-        case VK_PIPELINE_STAGE_2_COPY_BIT:
-            return "VK_PIPELINE_STAGE_2_COPY_BIT";
-        case VK_PIPELINE_STAGE_2_RESOLVE_BIT:
-            return "VK_PIPELINE_STAGE_2_RESOLVE_BIT";
-        case VK_PIPELINE_STAGE_2_BLIT_BIT:
-            return "VK_PIPELINE_STAGE_2_BLIT_BIT";
-        case VK_PIPELINE_STAGE_2_CLEAR_BIT:
-            return "VK_PIPELINE_STAGE_2_CLEAR_BIT";
-        case VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT:
-            return "VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT";
-        case VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT:
-            return "VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT";
-        case VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT:
-            return "VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT";
-        case VK_PIPELINE_STAGE_2_VIDEO_DECODE_BIT_KHR:
-            return "VK_PIPELINE_STAGE_2_VIDEO_DECODE_BIT_KHR";
+    if (input_value == VK_PIPELINE_STAGE_2_NONE) return "VK_PIPELINE_STAGE_2_NONE";
+    if (input_value == VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT) return "VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT) return "VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT) return "VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT) return "VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT) return "VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT) return "VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT) return "VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT) return "VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT) return "VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT) return "VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT) return "VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT) return "VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT) return "VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT) return "VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_HOST_BIT) return "VK_PIPELINE_STAGE_2_HOST_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT) return "VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT) return "VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_COPY_BIT) return "VK_PIPELINE_STAGE_2_COPY_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_RESOLVE_BIT) return "VK_PIPELINE_STAGE_2_RESOLVE_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_BLIT_BIT) return "VK_PIPELINE_STAGE_2_BLIT_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_CLEAR_BIT) return "VK_PIPELINE_STAGE_2_CLEAR_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT) return "VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT) return "VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT) return "VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT";
+    if (input_value == VK_PIPELINE_STAGE_2_VIDEO_DECODE_BIT_KHR) return "VK_PIPELINE_STAGE_2_VIDEO_DECODE_BIT_KHR";
 #ifdef VK_ENABLE_BETA_EXTENSIONS
-        case VK_PIPELINE_STAGE_2_VIDEO_ENCODE_BIT_KHR:
-            return "VK_PIPELINE_STAGE_2_VIDEO_ENCODE_BIT_KHR";
+    if (input_value == VK_PIPELINE_STAGE_2_VIDEO_ENCODE_BIT_KHR) return "VK_PIPELINE_STAGE_2_VIDEO_ENCODE_BIT_KHR";
 #endif //VK_ENABLE_BETA_EXTENSIONS
-        case VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT:
-            return "VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT";
-        case VK_PIPELINE_STAGE_2_CONDITIONAL_RENDERING_BIT_EXT:
-            return "VK_PIPELINE_STAGE_2_CONDITIONAL_RENDERING_BIT_EXT";
-        case VK_PIPELINE_STAGE_2_COMMAND_PREPROCESS_BIT_NV:
-            return "VK_PIPELINE_STAGE_2_COMMAND_PREPROCESS_BIT_NV";
-        case VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR:
-            return "VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR";
-        case VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR:
-            return "VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR";
-        case VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR:
-            return "VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR";
-        case VK_PIPELINE_STAGE_2_FRAGMENT_DENSITY_PROCESS_BIT_EXT:
-            return "VK_PIPELINE_STAGE_2_FRAGMENT_DENSITY_PROCESS_BIT_EXT";
-        case VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT:
-            return "VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT";
-        case VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT:
-            return "VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT";
-        case VK_PIPELINE_STAGE_2_SUBPASS_SHADER_BIT_HUAWEI:
-            return "VK_PIPELINE_STAGE_2_SUBPASS_SHADER_BIT_HUAWEI";
-        case VK_PIPELINE_STAGE_2_INVOCATION_MASK_BIT_HUAWEI:
-            return "VK_PIPELINE_STAGE_2_INVOCATION_MASK_BIT_HUAWEI";
-        case VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR:
-            return "VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR";
-        case VK_PIPELINE_STAGE_2_MICROMAP_BUILD_BIT_EXT:
-            return "VK_PIPELINE_STAGE_2_MICROMAP_BUILD_BIT_EXT";
-        case VK_PIPELINE_STAGE_2_CLUSTER_CULLING_SHADER_BIT_HUAWEI:
-            return "VK_PIPELINE_STAGE_2_CLUSTER_CULLING_SHADER_BIT_HUAWEI";
-        case VK_PIPELINE_STAGE_2_OPTICAL_FLOW_BIT_NV:
-            return "VK_PIPELINE_STAGE_2_OPTICAL_FLOW_BIT_NV";
-        default:
-            return "Unhandled VkPipelineStageFlagBits2";
-    }
+    if (input_value == VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT) return "VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT";
+    if (input_value == VK_PIPELINE_STAGE_2_CONDITIONAL_RENDERING_BIT_EXT) return "VK_PIPELINE_STAGE_2_CONDITIONAL_RENDERING_BIT_EXT";
+    if (input_value == VK_PIPELINE_STAGE_2_COMMAND_PREPROCESS_BIT_NV) return "VK_PIPELINE_STAGE_2_COMMAND_PREPROCESS_BIT_NV";
+    if (input_value == VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR) return "VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR";
+    if (input_value == VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR) return "VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR";
+    if (input_value == VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR) return "VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR";
+    if (input_value == VK_PIPELINE_STAGE_2_FRAGMENT_DENSITY_PROCESS_BIT_EXT) return "VK_PIPELINE_STAGE_2_FRAGMENT_DENSITY_PROCESS_BIT_EXT";
+    if (input_value == VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT) return "VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT";
+    if (input_value == VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT) return "VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT";
+    if (input_value == VK_PIPELINE_STAGE_2_SUBPASS_SHADER_BIT_HUAWEI) return "VK_PIPELINE_STAGE_2_SUBPASS_SHADER_BIT_HUAWEI";
+    if (input_value == VK_PIPELINE_STAGE_2_INVOCATION_MASK_BIT_HUAWEI) return "VK_PIPELINE_STAGE_2_INVOCATION_MASK_BIT_HUAWEI";
+    if (input_value == VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR) return "VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR";
+    if (input_value == VK_PIPELINE_STAGE_2_MICROMAP_BUILD_BIT_EXT) return "VK_PIPELINE_STAGE_2_MICROMAP_BUILD_BIT_EXT";
+    if (input_value == VK_PIPELINE_STAGE_2_CLUSTER_CULLING_SHADER_BIT_HUAWEI) return "VK_PIPELINE_STAGE_2_CLUSTER_CULLING_SHADER_BIT_HUAWEI";
+    if (input_value == VK_PIPELINE_STAGE_2_OPTICAL_FLOW_BIT_NV) return "VK_PIPELINE_STAGE_2_OPTICAL_FLOW_BIT_NV";
+    return "Unhandled VkPipelineStageFlagBits2";
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkPipelineStageFlags2(VkPipelineStageFlags2 input_value) {
     std::string ret;
     int index = 0;
@@ -6829,103 +7019,59 @@ static inline std::string string_VkPipelineStageFlags2(VkPipelineStageFlags2 inp
     if (ret.empty()) ret.append("VkPipelineStageFlags2(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkAccessFlagBits2(uint64_t input_value) {
-    switch (input_value) {
-        case VK_ACCESS_2_NONE:
-            return "VK_ACCESS_2_NONE";
-        case VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT:
-            return "VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT";
-        case VK_ACCESS_2_INDEX_READ_BIT:
-            return "VK_ACCESS_2_INDEX_READ_BIT";
-        case VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT:
-            return "VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT";
-        case VK_ACCESS_2_UNIFORM_READ_BIT:
-            return "VK_ACCESS_2_UNIFORM_READ_BIT";
-        case VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT:
-            return "VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT";
-        case VK_ACCESS_2_SHADER_READ_BIT:
-            return "VK_ACCESS_2_SHADER_READ_BIT";
-        case VK_ACCESS_2_SHADER_WRITE_BIT:
-            return "VK_ACCESS_2_SHADER_WRITE_BIT";
-        case VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT:
-            return "VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT";
-        case VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT:
-            return "VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT";
-        case VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT:
-            return "VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT";
-        case VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT:
-            return "VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT";
-        case VK_ACCESS_2_TRANSFER_READ_BIT:
-            return "VK_ACCESS_2_TRANSFER_READ_BIT";
-        case VK_ACCESS_2_TRANSFER_WRITE_BIT:
-            return "VK_ACCESS_2_TRANSFER_WRITE_BIT";
-        case VK_ACCESS_2_HOST_READ_BIT:
-            return "VK_ACCESS_2_HOST_READ_BIT";
-        case VK_ACCESS_2_HOST_WRITE_BIT:
-            return "VK_ACCESS_2_HOST_WRITE_BIT";
-        case VK_ACCESS_2_MEMORY_READ_BIT:
-            return "VK_ACCESS_2_MEMORY_READ_BIT";
-        case VK_ACCESS_2_MEMORY_WRITE_BIT:
-            return "VK_ACCESS_2_MEMORY_WRITE_BIT";
-        case VK_ACCESS_2_SHADER_SAMPLED_READ_BIT:
-            return "VK_ACCESS_2_SHADER_SAMPLED_READ_BIT";
-        case VK_ACCESS_2_SHADER_STORAGE_READ_BIT:
-            return "VK_ACCESS_2_SHADER_STORAGE_READ_BIT";
-        case VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT:
-            return "VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT";
-        case VK_ACCESS_2_VIDEO_DECODE_READ_BIT_KHR:
-            return "VK_ACCESS_2_VIDEO_DECODE_READ_BIT_KHR";
-        case VK_ACCESS_2_VIDEO_DECODE_WRITE_BIT_KHR:
-            return "VK_ACCESS_2_VIDEO_DECODE_WRITE_BIT_KHR";
+    if (input_value == VK_ACCESS_2_NONE) return "VK_ACCESS_2_NONE";
+    if (input_value == VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT) return "VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT";
+    if (input_value == VK_ACCESS_2_INDEX_READ_BIT) return "VK_ACCESS_2_INDEX_READ_BIT";
+    if (input_value == VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT) return "VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT";
+    if (input_value == VK_ACCESS_2_UNIFORM_READ_BIT) return "VK_ACCESS_2_UNIFORM_READ_BIT";
+    if (input_value == VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT) return "VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT";
+    if (input_value == VK_ACCESS_2_SHADER_READ_BIT) return "VK_ACCESS_2_SHADER_READ_BIT";
+    if (input_value == VK_ACCESS_2_SHADER_WRITE_BIT) return "VK_ACCESS_2_SHADER_WRITE_BIT";
+    if (input_value == VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT) return "VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT";
+    if (input_value == VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT) return "VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT";
+    if (input_value == VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT) return "VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT";
+    if (input_value == VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT) return "VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT";
+    if (input_value == VK_ACCESS_2_TRANSFER_READ_BIT) return "VK_ACCESS_2_TRANSFER_READ_BIT";
+    if (input_value == VK_ACCESS_2_TRANSFER_WRITE_BIT) return "VK_ACCESS_2_TRANSFER_WRITE_BIT";
+    if (input_value == VK_ACCESS_2_HOST_READ_BIT) return "VK_ACCESS_2_HOST_READ_BIT";
+    if (input_value == VK_ACCESS_2_HOST_WRITE_BIT) return "VK_ACCESS_2_HOST_WRITE_BIT";
+    if (input_value == VK_ACCESS_2_MEMORY_READ_BIT) return "VK_ACCESS_2_MEMORY_READ_BIT";
+    if (input_value == VK_ACCESS_2_MEMORY_WRITE_BIT) return "VK_ACCESS_2_MEMORY_WRITE_BIT";
+    if (input_value == VK_ACCESS_2_SHADER_SAMPLED_READ_BIT) return "VK_ACCESS_2_SHADER_SAMPLED_READ_BIT";
+    if (input_value == VK_ACCESS_2_SHADER_STORAGE_READ_BIT) return "VK_ACCESS_2_SHADER_STORAGE_READ_BIT";
+    if (input_value == VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT) return "VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT";
+    if (input_value == VK_ACCESS_2_VIDEO_DECODE_READ_BIT_KHR) return "VK_ACCESS_2_VIDEO_DECODE_READ_BIT_KHR";
+    if (input_value == VK_ACCESS_2_VIDEO_DECODE_WRITE_BIT_KHR) return "VK_ACCESS_2_VIDEO_DECODE_WRITE_BIT_KHR";
 #ifdef VK_ENABLE_BETA_EXTENSIONS
-        case VK_ACCESS_2_VIDEO_ENCODE_READ_BIT_KHR:
-            return "VK_ACCESS_2_VIDEO_ENCODE_READ_BIT_KHR";
+    if (input_value == VK_ACCESS_2_VIDEO_ENCODE_READ_BIT_KHR) return "VK_ACCESS_2_VIDEO_ENCODE_READ_BIT_KHR";
 #endif //VK_ENABLE_BETA_EXTENSIONS
 #ifdef VK_ENABLE_BETA_EXTENSIONS
-        case VK_ACCESS_2_VIDEO_ENCODE_WRITE_BIT_KHR:
-            return "VK_ACCESS_2_VIDEO_ENCODE_WRITE_BIT_KHR";
+    if (input_value == VK_ACCESS_2_VIDEO_ENCODE_WRITE_BIT_KHR) return "VK_ACCESS_2_VIDEO_ENCODE_WRITE_BIT_KHR";
 #endif //VK_ENABLE_BETA_EXTENSIONS
-        case VK_ACCESS_2_TRANSFORM_FEEDBACK_WRITE_BIT_EXT:
-            return "VK_ACCESS_2_TRANSFORM_FEEDBACK_WRITE_BIT_EXT";
-        case VK_ACCESS_2_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT:
-            return "VK_ACCESS_2_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT";
-        case VK_ACCESS_2_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT:
-            return "VK_ACCESS_2_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT";
-        case VK_ACCESS_2_CONDITIONAL_RENDERING_READ_BIT_EXT:
-            return "VK_ACCESS_2_CONDITIONAL_RENDERING_READ_BIT_EXT";
-        case VK_ACCESS_2_COMMAND_PREPROCESS_READ_BIT_NV:
-            return "VK_ACCESS_2_COMMAND_PREPROCESS_READ_BIT_NV";
-        case VK_ACCESS_2_COMMAND_PREPROCESS_WRITE_BIT_NV:
-            return "VK_ACCESS_2_COMMAND_PREPROCESS_WRITE_BIT_NV";
-        case VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR:
-            return "VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR";
-        case VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR:
-            return "VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR";
-        case VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR:
-            return "VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR";
-        case VK_ACCESS_2_FRAGMENT_DENSITY_MAP_READ_BIT_EXT:
-            return "VK_ACCESS_2_FRAGMENT_DENSITY_MAP_READ_BIT_EXT";
-        case VK_ACCESS_2_COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT:
-            return "VK_ACCESS_2_COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT";
-        case VK_ACCESS_2_DESCRIPTOR_BUFFER_READ_BIT_EXT:
-            return "VK_ACCESS_2_DESCRIPTOR_BUFFER_READ_BIT_EXT";
-        case VK_ACCESS_2_INVOCATION_MASK_READ_BIT_HUAWEI:
-            return "VK_ACCESS_2_INVOCATION_MASK_READ_BIT_HUAWEI";
-        case VK_ACCESS_2_SHADER_BINDING_TABLE_READ_BIT_KHR:
-            return "VK_ACCESS_2_SHADER_BINDING_TABLE_READ_BIT_KHR";
-        case VK_ACCESS_2_MICROMAP_READ_BIT_EXT:
-            return "VK_ACCESS_2_MICROMAP_READ_BIT_EXT";
-        case VK_ACCESS_2_MICROMAP_WRITE_BIT_EXT:
-            return "VK_ACCESS_2_MICROMAP_WRITE_BIT_EXT";
-        case VK_ACCESS_2_OPTICAL_FLOW_READ_BIT_NV:
-            return "VK_ACCESS_2_OPTICAL_FLOW_READ_BIT_NV";
-        case VK_ACCESS_2_OPTICAL_FLOW_WRITE_BIT_NV:
-            return "VK_ACCESS_2_OPTICAL_FLOW_WRITE_BIT_NV";
-        default:
-            return "Unhandled VkAccessFlagBits2";
-    }
+    if (input_value == VK_ACCESS_2_TRANSFORM_FEEDBACK_WRITE_BIT_EXT) return "VK_ACCESS_2_TRANSFORM_FEEDBACK_WRITE_BIT_EXT";
+    if (input_value == VK_ACCESS_2_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT) return "VK_ACCESS_2_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT";
+    if (input_value == VK_ACCESS_2_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT) return "VK_ACCESS_2_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT";
+    if (input_value == VK_ACCESS_2_CONDITIONAL_RENDERING_READ_BIT_EXT) return "VK_ACCESS_2_CONDITIONAL_RENDERING_READ_BIT_EXT";
+    if (input_value == VK_ACCESS_2_COMMAND_PREPROCESS_READ_BIT_NV) return "VK_ACCESS_2_COMMAND_PREPROCESS_READ_BIT_NV";
+    if (input_value == VK_ACCESS_2_COMMAND_PREPROCESS_WRITE_BIT_NV) return "VK_ACCESS_2_COMMAND_PREPROCESS_WRITE_BIT_NV";
+    if (input_value == VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR) return "VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR";
+    if (input_value == VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR) return "VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR";
+    if (input_value == VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR) return "VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR";
+    if (input_value == VK_ACCESS_2_FRAGMENT_DENSITY_MAP_READ_BIT_EXT) return "VK_ACCESS_2_FRAGMENT_DENSITY_MAP_READ_BIT_EXT";
+    if (input_value == VK_ACCESS_2_COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT) return "VK_ACCESS_2_COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT";
+    if (input_value == VK_ACCESS_2_DESCRIPTOR_BUFFER_READ_BIT_EXT) return "VK_ACCESS_2_DESCRIPTOR_BUFFER_READ_BIT_EXT";
+    if (input_value == VK_ACCESS_2_INVOCATION_MASK_READ_BIT_HUAWEI) return "VK_ACCESS_2_INVOCATION_MASK_READ_BIT_HUAWEI";
+    if (input_value == VK_ACCESS_2_SHADER_BINDING_TABLE_READ_BIT_KHR) return "VK_ACCESS_2_SHADER_BINDING_TABLE_READ_BIT_KHR";
+    if (input_value == VK_ACCESS_2_MICROMAP_READ_BIT_EXT) return "VK_ACCESS_2_MICROMAP_READ_BIT_EXT";
+    if (input_value == VK_ACCESS_2_MICROMAP_WRITE_BIT_EXT) return "VK_ACCESS_2_MICROMAP_WRITE_BIT_EXT";
+    if (input_value == VK_ACCESS_2_OPTICAL_FLOW_READ_BIT_NV) return "VK_ACCESS_2_OPTICAL_FLOW_READ_BIT_NV";
+    if (input_value == VK_ACCESS_2_OPTICAL_FLOW_WRITE_BIT_NV) return "VK_ACCESS_2_OPTICAL_FLOW_WRITE_BIT_NV";
+    return "Unhandled VkAccessFlagBits2";
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkAccessFlags2(VkAccessFlags2 input_value) {
     std::string ret;
     int index = 0;
@@ -6940,6 +7086,7 @@ static inline std::string string_VkAccessFlags2(VkAccessFlags2 input_value) {
     if (ret.empty()) ret.append("VkAccessFlags2(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkSubmitFlagBits(VkSubmitFlagBits input_value) {
     switch (input_value) {
         case VK_SUBMIT_PROTECTED_BIT:
@@ -6949,6 +7096,7 @@ static inline const char* string_VkSubmitFlagBits(VkSubmitFlagBits input_value) 
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkSubmitFlags(VkSubmitFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6963,6 +7111,7 @@ static inline std::string string_VkSubmitFlags(VkSubmitFlags input_value) {
     if (ret.empty()) ret.append("VkSubmitFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkRenderingFlagBits(VkRenderingFlagBits input_value) {
     switch (input_value) {
         case VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT:
@@ -6971,6 +7120,8 @@ static inline const char* string_VkRenderingFlagBits(VkRenderingFlagBits input_v
             return "VK_RENDERING_SUSPENDING_BIT";
         case VK_RENDERING_RESUMING_BIT:
             return "VK_RENDERING_RESUMING_BIT";
+        case VK_RENDERING_CONTENTS_INLINE_BIT_EXT:
+            return "VK_RENDERING_CONTENTS_INLINE_BIT_EXT";
         case VK_RENDERING_ENABLE_LEGACY_DITHERING_BIT_EXT:
             return "VK_RENDERING_ENABLE_LEGACY_DITHERING_BIT_EXT";
         default:
@@ -6978,6 +7129,7 @@ static inline const char* string_VkRenderingFlagBits(VkRenderingFlagBits input_v
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkRenderingFlags(VkRenderingFlags input_value) {
     std::string ret;
     int index = 0;
@@ -6992,103 +7144,59 @@ static inline std::string string_VkRenderingFlags(VkRenderingFlags input_value) 
     if (ret.empty()) ret.append("VkRenderingFlags(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkFormatFeatureFlagBits2(uint64_t input_value) {
-    switch (input_value) {
-        case VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT:
-            return "VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT";
-        case VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT:
-            return "VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT";
-        case VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT:
-            return "VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT";
-        case VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT:
-            return "VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT";
-        case VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT:
-            return "VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT";
-        case VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT:
-            return "VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT";
-        case VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT:
-            return "VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT";
-        case VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT:
-            return "VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT";
-        case VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT:
-            return "VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT";
-        case VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT:
-            return "VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT";
-        case VK_FORMAT_FEATURE_2_BLIT_SRC_BIT:
-            return "VK_FORMAT_FEATURE_2_BLIT_SRC_BIT";
-        case VK_FORMAT_FEATURE_2_BLIT_DST_BIT:
-            return "VK_FORMAT_FEATURE_2_BLIT_DST_BIT";
-        case VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT:
-            return "VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT";
-        case VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_CUBIC_BIT:
-            return "VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_CUBIC_BIT";
-        case VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT:
-            return "VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT";
-        case VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT:
-            return "VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT";
-        case VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT:
-            return "VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT";
-        case VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT:
-            return "VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT";
-        case VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT:
-            return "VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT";
-        case VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT:
-            return "VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT";
-        case VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_BIT:
-            return "VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_BIT";
-        case VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT:
-            return "VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT";
-        case VK_FORMAT_FEATURE_2_DISJOINT_BIT:
-            return "VK_FORMAT_FEATURE_2_DISJOINT_BIT";
-        case VK_FORMAT_FEATURE_2_COSITED_CHROMA_SAMPLES_BIT:
-            return "VK_FORMAT_FEATURE_2_COSITED_CHROMA_SAMPLES_BIT";
-        case VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT:
-            return "VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT";
-        case VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT:
-            return "VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT";
-        case VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT:
-            return "VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT";
-        case VK_FORMAT_FEATURE_2_VIDEO_DECODE_OUTPUT_BIT_KHR:
-            return "VK_FORMAT_FEATURE_2_VIDEO_DECODE_OUTPUT_BIT_KHR";
-        case VK_FORMAT_FEATURE_2_VIDEO_DECODE_DPB_BIT_KHR:
-            return "VK_FORMAT_FEATURE_2_VIDEO_DECODE_DPB_BIT_KHR";
-        case VK_FORMAT_FEATURE_2_ACCELERATION_STRUCTURE_VERTEX_BUFFER_BIT_KHR:
-            return "VK_FORMAT_FEATURE_2_ACCELERATION_STRUCTURE_VERTEX_BUFFER_BIT_KHR";
-        case VK_FORMAT_FEATURE_2_FRAGMENT_DENSITY_MAP_BIT_EXT:
-            return "VK_FORMAT_FEATURE_2_FRAGMENT_DENSITY_MAP_BIT_EXT";
-        case VK_FORMAT_FEATURE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR:
-            return "VK_FORMAT_FEATURE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR";
-        case VK_FORMAT_FEATURE_2_HOST_IMAGE_TRANSFER_BIT_EXT:
-            return "VK_FORMAT_FEATURE_2_HOST_IMAGE_TRANSFER_BIT_EXT";
+    if (input_value == VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT) return "VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT) return "VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT) return "VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT) return "VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT) return "VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT) return "VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT) return "VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT) return "VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT) return "VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT) return "VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_BLIT_SRC_BIT) return "VK_FORMAT_FEATURE_2_BLIT_SRC_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_BLIT_DST_BIT) return "VK_FORMAT_FEATURE_2_BLIT_DST_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT) return "VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_CUBIC_BIT) return "VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_CUBIC_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT) return "VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT) return "VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT) return "VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT) return "VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT) return "VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT) return "VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_BIT) return "VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT) return "VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_DISJOINT_BIT) return "VK_FORMAT_FEATURE_2_DISJOINT_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_COSITED_CHROMA_SAMPLES_BIT) return "VK_FORMAT_FEATURE_2_COSITED_CHROMA_SAMPLES_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT) return "VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT) return "VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT) return "VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT";
+    if (input_value == VK_FORMAT_FEATURE_2_VIDEO_DECODE_OUTPUT_BIT_KHR) return "VK_FORMAT_FEATURE_2_VIDEO_DECODE_OUTPUT_BIT_KHR";
+    if (input_value == VK_FORMAT_FEATURE_2_VIDEO_DECODE_DPB_BIT_KHR) return "VK_FORMAT_FEATURE_2_VIDEO_DECODE_DPB_BIT_KHR";
+    if (input_value == VK_FORMAT_FEATURE_2_ACCELERATION_STRUCTURE_VERTEX_BUFFER_BIT_KHR) return "VK_FORMAT_FEATURE_2_ACCELERATION_STRUCTURE_VERTEX_BUFFER_BIT_KHR";
+    if (input_value == VK_FORMAT_FEATURE_2_FRAGMENT_DENSITY_MAP_BIT_EXT) return "VK_FORMAT_FEATURE_2_FRAGMENT_DENSITY_MAP_BIT_EXT";
+    if (input_value == VK_FORMAT_FEATURE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR) return "VK_FORMAT_FEATURE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR";
+    if (input_value == VK_FORMAT_FEATURE_2_HOST_IMAGE_TRANSFER_BIT_EXT) return "VK_FORMAT_FEATURE_2_HOST_IMAGE_TRANSFER_BIT_EXT";
 #ifdef VK_ENABLE_BETA_EXTENSIONS
-        case VK_FORMAT_FEATURE_2_VIDEO_ENCODE_INPUT_BIT_KHR:
-            return "VK_FORMAT_FEATURE_2_VIDEO_ENCODE_INPUT_BIT_KHR";
+    if (input_value == VK_FORMAT_FEATURE_2_VIDEO_ENCODE_INPUT_BIT_KHR) return "VK_FORMAT_FEATURE_2_VIDEO_ENCODE_INPUT_BIT_KHR";
 #endif //VK_ENABLE_BETA_EXTENSIONS
 #ifdef VK_ENABLE_BETA_EXTENSIONS
-        case VK_FORMAT_FEATURE_2_VIDEO_ENCODE_DPB_BIT_KHR:
-            return "VK_FORMAT_FEATURE_2_VIDEO_ENCODE_DPB_BIT_KHR";
+    if (input_value == VK_FORMAT_FEATURE_2_VIDEO_ENCODE_DPB_BIT_KHR) return "VK_FORMAT_FEATURE_2_VIDEO_ENCODE_DPB_BIT_KHR";
 #endif //VK_ENABLE_BETA_EXTENSIONS
-        case VK_FORMAT_FEATURE_2_LINEAR_COLOR_ATTACHMENT_BIT_NV:
-            return "VK_FORMAT_FEATURE_2_LINEAR_COLOR_ATTACHMENT_BIT_NV";
-        case VK_FORMAT_FEATURE_2_WEIGHT_IMAGE_BIT_QCOM:
-            return "VK_FORMAT_FEATURE_2_WEIGHT_IMAGE_BIT_QCOM";
-        case VK_FORMAT_FEATURE_2_WEIGHT_SAMPLED_IMAGE_BIT_QCOM:
-            return "VK_FORMAT_FEATURE_2_WEIGHT_SAMPLED_IMAGE_BIT_QCOM";
-        case VK_FORMAT_FEATURE_2_BLOCK_MATCHING_BIT_QCOM:
-            return "VK_FORMAT_FEATURE_2_BLOCK_MATCHING_BIT_QCOM";
-        case VK_FORMAT_FEATURE_2_BOX_FILTER_SAMPLED_BIT_QCOM:
-            return "VK_FORMAT_FEATURE_2_BOX_FILTER_SAMPLED_BIT_QCOM";
-        case VK_FORMAT_FEATURE_2_OPTICAL_FLOW_IMAGE_BIT_NV:
-            return "VK_FORMAT_FEATURE_2_OPTICAL_FLOW_IMAGE_BIT_NV";
-        case VK_FORMAT_FEATURE_2_OPTICAL_FLOW_VECTOR_BIT_NV:
-            return "VK_FORMAT_FEATURE_2_OPTICAL_FLOW_VECTOR_BIT_NV";
-        case VK_FORMAT_FEATURE_2_OPTICAL_FLOW_COST_BIT_NV:
-            return "VK_FORMAT_FEATURE_2_OPTICAL_FLOW_COST_BIT_NV";
-        default:
-            return "Unhandled VkFormatFeatureFlagBits2";
-    }
+    if (input_value == VK_FORMAT_FEATURE_2_LINEAR_COLOR_ATTACHMENT_BIT_NV) return "VK_FORMAT_FEATURE_2_LINEAR_COLOR_ATTACHMENT_BIT_NV";
+    if (input_value == VK_FORMAT_FEATURE_2_WEIGHT_IMAGE_BIT_QCOM) return "VK_FORMAT_FEATURE_2_WEIGHT_IMAGE_BIT_QCOM";
+    if (input_value == VK_FORMAT_FEATURE_2_WEIGHT_SAMPLED_IMAGE_BIT_QCOM) return "VK_FORMAT_FEATURE_2_WEIGHT_SAMPLED_IMAGE_BIT_QCOM";
+    if (input_value == VK_FORMAT_FEATURE_2_BLOCK_MATCHING_BIT_QCOM) return "VK_FORMAT_FEATURE_2_BLOCK_MATCHING_BIT_QCOM";
+    if (input_value == VK_FORMAT_FEATURE_2_BOX_FILTER_SAMPLED_BIT_QCOM) return "VK_FORMAT_FEATURE_2_BOX_FILTER_SAMPLED_BIT_QCOM";
+    if (input_value == VK_FORMAT_FEATURE_2_OPTICAL_FLOW_IMAGE_BIT_NV) return "VK_FORMAT_FEATURE_2_OPTICAL_FLOW_IMAGE_BIT_NV";
+    if (input_value == VK_FORMAT_FEATURE_2_OPTICAL_FLOW_VECTOR_BIT_NV) return "VK_FORMAT_FEATURE_2_OPTICAL_FLOW_VECTOR_BIT_NV";
+    if (input_value == VK_FORMAT_FEATURE_2_OPTICAL_FLOW_COST_BIT_NV) return "VK_FORMAT_FEATURE_2_OPTICAL_FLOW_COST_BIT_NV";
+    return "Unhandled VkFormatFeatureFlagBits2";
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkFormatFeatureFlags2(VkFormatFeatureFlags2 input_value) {
     std::string ret;
     int index = 0;
@@ -7103,6 +7211,7 @@ static inline std::string string_VkFormatFeatureFlags2(VkFormatFeatureFlags2 inp
     if (ret.empty()) ret.append("VkFormatFeatureFlags2(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkSurfaceTransformFlagBitsKHR(VkSurfaceTransformFlagBitsKHR input_value) {
     switch (input_value) {
         case VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR:
@@ -7128,6 +7237,7 @@ static inline const char* string_VkSurfaceTransformFlagBitsKHR(VkSurfaceTransfor
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkSurfaceTransformFlagsKHR(VkSurfaceTransformFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -7142,6 +7252,7 @@ static inline std::string string_VkSurfaceTransformFlagsKHR(VkSurfaceTransformFl
     if (ret.empty()) ret.append("VkSurfaceTransformFlagsKHR(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkCompositeAlphaFlagBitsKHR(VkCompositeAlphaFlagBitsKHR input_value) {
     switch (input_value) {
         case VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR:
@@ -7157,6 +7268,7 @@ static inline const char* string_VkCompositeAlphaFlagBitsKHR(VkCompositeAlphaFla
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkCompositeAlphaFlagsKHR(VkCompositeAlphaFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -7171,6 +7283,7 @@ static inline std::string string_VkCompositeAlphaFlagsKHR(VkCompositeAlphaFlagsK
     if (ret.empty()) ret.append("VkCompositeAlphaFlagsKHR(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkSwapchainCreateFlagBitsKHR(VkSwapchainCreateFlagBitsKHR input_value) {
     switch (input_value) {
         case VK_SWAPCHAIN_CREATE_SPLIT_INSTANCE_BIND_REGIONS_BIT_KHR:
@@ -7186,6 +7299,7 @@ static inline const char* string_VkSwapchainCreateFlagBitsKHR(VkSwapchainCreateF
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkSwapchainCreateFlagsKHR(VkSwapchainCreateFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -7200,6 +7314,7 @@ static inline std::string string_VkSwapchainCreateFlagsKHR(VkSwapchainCreateFlag
     if (ret.empty()) ret.append("VkSwapchainCreateFlagsKHR(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkDeviceGroupPresentModeFlagBitsKHR(VkDeviceGroupPresentModeFlagBitsKHR input_value) {
     switch (input_value) {
         case VK_DEVICE_GROUP_PRESENT_MODE_LOCAL_BIT_KHR:
@@ -7215,6 +7330,7 @@ static inline const char* string_VkDeviceGroupPresentModeFlagBitsKHR(VkDeviceGro
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkDeviceGroupPresentModeFlagsKHR(VkDeviceGroupPresentModeFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -7229,6 +7345,7 @@ static inline std::string string_VkDeviceGroupPresentModeFlagsKHR(VkDeviceGroupP
     if (ret.empty()) ret.append("VkDeviceGroupPresentModeFlagsKHR(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkDisplayPlaneAlphaFlagBitsKHR(VkDisplayPlaneAlphaFlagBitsKHR input_value) {
     switch (input_value) {
         case VK_DISPLAY_PLANE_ALPHA_OPAQUE_BIT_KHR:
@@ -7244,6 +7361,7 @@ static inline const char* string_VkDisplayPlaneAlphaFlagBitsKHR(VkDisplayPlaneAl
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkDisplayPlaneAlphaFlagsKHR(VkDisplayPlaneAlphaFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -7258,6 +7376,7 @@ static inline std::string string_VkDisplayPlaneAlphaFlagsKHR(VkDisplayPlaneAlpha
     if (ret.empty()) ret.append("VkDisplayPlaneAlphaFlagsKHR(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkVideoCodecOperationFlagBitsKHR(VkVideoCodecOperationFlagBitsKHR input_value) {
     switch (input_value) {
         case VK_VIDEO_CODEC_OPERATION_NONE_KHR:
@@ -7279,6 +7398,7 @@ static inline const char* string_VkVideoCodecOperationFlagBitsKHR(VkVideoCodecOp
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoCodecOperationFlagsKHR(VkVideoCodecOperationFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -7293,6 +7413,7 @@ static inline std::string string_VkVideoCodecOperationFlagsKHR(VkVideoCodecOpera
     if (ret.empty()) ret.append("VkVideoCodecOperationFlagsKHR(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkVideoChromaSubsamplingFlagBitsKHR(VkVideoChromaSubsamplingFlagBitsKHR input_value) {
     switch (input_value) {
         case VK_VIDEO_CHROMA_SUBSAMPLING_INVALID_KHR:
@@ -7310,6 +7431,7 @@ static inline const char* string_VkVideoChromaSubsamplingFlagBitsKHR(VkVideoChro
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoChromaSubsamplingFlagsKHR(VkVideoChromaSubsamplingFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -7324,6 +7446,7 @@ static inline std::string string_VkVideoChromaSubsamplingFlagsKHR(VkVideoChromaS
     if (ret.empty()) ret.append("VkVideoChromaSubsamplingFlagsKHR(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkVideoComponentBitDepthFlagBitsKHR(VkVideoComponentBitDepthFlagBitsKHR input_value) {
     switch (input_value) {
         case VK_VIDEO_COMPONENT_BIT_DEPTH_INVALID_KHR:
@@ -7339,6 +7462,7 @@ static inline const char* string_VkVideoComponentBitDepthFlagBitsKHR(VkVideoComp
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoComponentBitDepthFlagsKHR(VkVideoComponentBitDepthFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -7353,6 +7477,7 @@ static inline std::string string_VkVideoComponentBitDepthFlagsKHR(VkVideoCompone
     if (ret.empty()) ret.append("VkVideoComponentBitDepthFlagsKHR(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkVideoCapabilityFlagBitsKHR(VkVideoCapabilityFlagBitsKHR input_value) {
     switch (input_value) {
         case VK_VIDEO_CAPABILITY_PROTECTED_CONTENT_BIT_KHR:
@@ -7364,6 +7489,7 @@ static inline const char* string_VkVideoCapabilityFlagBitsKHR(VkVideoCapabilityF
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoCapabilityFlagsKHR(VkVideoCapabilityFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -7378,6 +7504,7 @@ static inline std::string string_VkVideoCapabilityFlagsKHR(VkVideoCapabilityFlag
     if (ret.empty()) ret.append("VkVideoCapabilityFlagsKHR(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkVideoSessionCreateFlagBitsKHR(VkVideoSessionCreateFlagBitsKHR input_value) {
     switch (input_value) {
         case VK_VIDEO_SESSION_CREATE_PROTECTED_CONTENT_BIT_KHR:
@@ -7391,6 +7518,7 @@ static inline const char* string_VkVideoSessionCreateFlagBitsKHR(VkVideoSessionC
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoSessionCreateFlagsKHR(VkVideoSessionCreateFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -7405,6 +7533,7 @@ static inline std::string string_VkVideoSessionCreateFlagsKHR(VkVideoSessionCrea
     if (ret.empty()) ret.append("VkVideoSessionCreateFlagsKHR(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkVideoCodingControlFlagBitsKHR(VkVideoCodingControlFlagBitsKHR input_value) {
     switch (input_value) {
         case VK_VIDEO_CODING_CONTROL_RESET_BIT_KHR:
@@ -7422,6 +7551,7 @@ static inline const char* string_VkVideoCodingControlFlagBitsKHR(VkVideoCodingCo
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoCodingControlFlagsKHR(VkVideoCodingControlFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -7436,6 +7566,7 @@ static inline std::string string_VkVideoCodingControlFlagsKHR(VkVideoCodingContr
     if (ret.empty()) ret.append("VkVideoCodingControlFlagsKHR(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkVideoDecodeCapabilityFlagBitsKHR(VkVideoDecodeCapabilityFlagBitsKHR input_value) {
     switch (input_value) {
         case VK_VIDEO_DECODE_CAPABILITY_DPB_AND_OUTPUT_COINCIDE_BIT_KHR:
@@ -7447,6 +7578,7 @@ static inline const char* string_VkVideoDecodeCapabilityFlagBitsKHR(VkVideoDecod
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoDecodeCapabilityFlagsKHR(VkVideoDecodeCapabilityFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -7461,6 +7593,7 @@ static inline std::string string_VkVideoDecodeCapabilityFlagsKHR(VkVideoDecodeCa
     if (ret.empty()) ret.append("VkVideoDecodeCapabilityFlagsKHR(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkVideoDecodeUsageFlagBitsKHR(VkVideoDecodeUsageFlagBitsKHR input_value) {
     switch (input_value) {
         case VK_VIDEO_DECODE_USAGE_DEFAULT_KHR:
@@ -7476,6 +7609,7 @@ static inline const char* string_VkVideoDecodeUsageFlagBitsKHR(VkVideoDecodeUsag
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoDecodeUsageFlagsKHR(VkVideoDecodeUsageFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -7490,6 +7624,7 @@ static inline std::string string_VkVideoDecodeUsageFlagsKHR(VkVideoDecodeUsageFl
     if (ret.empty()) ret.append("VkVideoDecodeUsageFlagsKHR(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkVideoDecodeH264PictureLayoutFlagBitsKHR(VkVideoDecodeH264PictureLayoutFlagBitsKHR input_value) {
     switch (input_value) {
         case VK_VIDEO_DECODE_H264_PICTURE_LAYOUT_PROGRESSIVE_KHR:
@@ -7503,6 +7638,7 @@ static inline const char* string_VkVideoDecodeH264PictureLayoutFlagBitsKHR(VkVid
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoDecodeH264PictureLayoutFlagsKHR(VkVideoDecodeH264PictureLayoutFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -7517,6 +7653,7 @@ static inline std::string string_VkVideoDecodeH264PictureLayoutFlagsKHR(VkVideoD
     if (ret.empty()) ret.append("VkVideoDecodeH264PictureLayoutFlagsKHR(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkPerformanceCounterDescriptionFlagBitsKHR(VkPerformanceCounterDescriptionFlagBitsKHR input_value) {
     switch (input_value) {
         case VK_PERFORMANCE_COUNTER_DESCRIPTION_PERFORMANCE_IMPACTING_BIT_KHR:
@@ -7528,6 +7665,7 @@ static inline const char* string_VkPerformanceCounterDescriptionFlagBitsKHR(VkPe
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkPerformanceCounterDescriptionFlagsKHR(VkPerformanceCounterDescriptionFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -7542,16 +7680,20 @@ static inline std::string string_VkPerformanceCounterDescriptionFlagsKHR(VkPerfo
     if (ret.empty()) ret.append("VkPerformanceCounterDescriptionFlagsKHR(0)");
     return ret;
 }
+#endif // __cplusplus
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 static inline const char* string_VkVideoEncodeCapabilityFlagBitsKHR(VkVideoEncodeCapabilityFlagBitsKHR input_value) {
     switch (input_value) {
         case VK_VIDEO_ENCODE_CAPABILITY_PRECEDING_EXTERNALLY_ENCODED_BYTES_BIT_KHR:
             return "VK_VIDEO_ENCODE_CAPABILITY_PRECEDING_EXTERNALLY_ENCODED_BYTES_BIT_KHR";
+        case VK_VIDEO_ENCODE_CAPABILITY_INSUFFICIENT_BITSTREAM_BUFFER_RANGE_DETECTION_BIT_KHR:
+            return "VK_VIDEO_ENCODE_CAPABILITY_INSUFFICIENT_BITSTREAM_BUFFER_RANGE_DETECTION_BIT_KHR";
         default:
             return "Unhandled VkVideoEncodeCapabilityFlagBitsKHR";
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoEncodeCapabilityFlagsKHR(VkVideoEncodeCapabilityFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -7567,6 +7709,7 @@ static inline std::string string_VkVideoEncodeCapabilityFlagsKHR(VkVideoEncodeCa
     return ret;
 }
 #endif //VK_ENABLE_BETA_EXTENSIONS
+#endif // __cplusplus
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 static inline const char* string_VkVideoEncodeRateControlModeFlagBitsKHR(VkVideoEncodeRateControlModeFlagBitsKHR input_value) {
     switch (input_value) {
@@ -7583,6 +7726,7 @@ static inline const char* string_VkVideoEncodeRateControlModeFlagBitsKHR(VkVideo
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoEncodeRateControlModeFlagsKHR(VkVideoEncodeRateControlModeFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -7598,6 +7742,7 @@ static inline std::string string_VkVideoEncodeRateControlModeFlagsKHR(VkVideoEnc
     return ret;
 }
 #endif //VK_ENABLE_BETA_EXTENSIONS
+#endif // __cplusplus
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 static inline const char* string_VkVideoEncodeFeedbackFlagBitsKHR(VkVideoEncodeFeedbackFlagBitsKHR input_value) {
     switch (input_value) {
@@ -7612,6 +7757,7 @@ static inline const char* string_VkVideoEncodeFeedbackFlagBitsKHR(VkVideoEncodeF
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoEncodeFeedbackFlagsKHR(VkVideoEncodeFeedbackFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -7627,6 +7773,7 @@ static inline std::string string_VkVideoEncodeFeedbackFlagsKHR(VkVideoEncodeFeed
     return ret;
 }
 #endif //VK_ENABLE_BETA_EXTENSIONS
+#endif // __cplusplus
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 static inline const char* string_VkVideoEncodeUsageFlagBitsKHR(VkVideoEncodeUsageFlagBitsKHR input_value) {
     switch (input_value) {
@@ -7645,6 +7792,7 @@ static inline const char* string_VkVideoEncodeUsageFlagBitsKHR(VkVideoEncodeUsag
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoEncodeUsageFlagsKHR(VkVideoEncodeUsageFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -7660,6 +7808,7 @@ static inline std::string string_VkVideoEncodeUsageFlagsKHR(VkVideoEncodeUsageFl
     return ret;
 }
 #endif //VK_ENABLE_BETA_EXTENSIONS
+#endif // __cplusplus
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 static inline const char* string_VkVideoEncodeContentFlagBitsKHR(VkVideoEncodeContentFlagBitsKHR input_value) {
     switch (input_value) {
@@ -7676,6 +7825,7 @@ static inline const char* string_VkVideoEncodeContentFlagBitsKHR(VkVideoEncodeCo
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoEncodeContentFlagsKHR(VkVideoEncodeContentFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -7691,75 +7841,43 @@ static inline std::string string_VkVideoEncodeContentFlagsKHR(VkVideoEncodeConte
     return ret;
 }
 #endif //VK_ENABLE_BETA_EXTENSIONS
+#endif // __cplusplus
 static inline const char* string_VkPipelineCreateFlagBits2KHR(uint64_t input_value) {
-    switch (input_value) {
-        case VK_PIPELINE_CREATE_2_DISABLE_OPTIMIZATION_BIT_KHR:
-            return "VK_PIPELINE_CREATE_2_DISABLE_OPTIMIZATION_BIT_KHR";
-        case VK_PIPELINE_CREATE_2_ALLOW_DERIVATIVES_BIT_KHR:
-            return "VK_PIPELINE_CREATE_2_ALLOW_DERIVATIVES_BIT_KHR";
-        case VK_PIPELINE_CREATE_2_DERIVATIVE_BIT_KHR:
-            return "VK_PIPELINE_CREATE_2_DERIVATIVE_BIT_KHR";
-        case VK_PIPELINE_CREATE_2_VIEW_INDEX_FROM_DEVICE_INDEX_BIT_KHR:
-            return "VK_PIPELINE_CREATE_2_VIEW_INDEX_FROM_DEVICE_INDEX_BIT_KHR";
-        case VK_PIPELINE_CREATE_2_DISPATCH_BASE_BIT_KHR:
-            return "VK_PIPELINE_CREATE_2_DISPATCH_BASE_BIT_KHR";
-        case VK_PIPELINE_CREATE_2_DEFER_COMPILE_BIT_NV:
-            return "VK_PIPELINE_CREATE_2_DEFER_COMPILE_BIT_NV";
-        case VK_PIPELINE_CREATE_2_CAPTURE_STATISTICS_BIT_KHR:
-            return "VK_PIPELINE_CREATE_2_CAPTURE_STATISTICS_BIT_KHR";
-        case VK_PIPELINE_CREATE_2_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR:
-            return "VK_PIPELINE_CREATE_2_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR";
-        case VK_PIPELINE_CREATE_2_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_KHR:
-            return "VK_PIPELINE_CREATE_2_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_KHR";
-        case VK_PIPELINE_CREATE_2_EARLY_RETURN_ON_FAILURE_BIT_KHR:
-            return "VK_PIPELINE_CREATE_2_EARLY_RETURN_ON_FAILURE_BIT_KHR";
-        case VK_PIPELINE_CREATE_2_LINK_TIME_OPTIMIZATION_BIT_EXT:
-            return "VK_PIPELINE_CREATE_2_LINK_TIME_OPTIMIZATION_BIT_EXT";
-        case VK_PIPELINE_CREATE_2_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT:
-            return "VK_PIPELINE_CREATE_2_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT";
-        case VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR:
-            return "VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR";
-        case VK_PIPELINE_CREATE_2_RAY_TRACING_SKIP_TRIANGLES_BIT_KHR:
-            return "VK_PIPELINE_CREATE_2_RAY_TRACING_SKIP_TRIANGLES_BIT_KHR";
-        case VK_PIPELINE_CREATE_2_RAY_TRACING_SKIP_AABBS_BIT_KHR:
-            return "VK_PIPELINE_CREATE_2_RAY_TRACING_SKIP_AABBS_BIT_KHR";
-        case VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_ANY_HIT_SHADERS_BIT_KHR:
-            return "VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_ANY_HIT_SHADERS_BIT_KHR";
-        case VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_CLOSEST_HIT_SHADERS_BIT_KHR:
-            return "VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_CLOSEST_HIT_SHADERS_BIT_KHR";
-        case VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_MISS_SHADERS_BIT_KHR:
-            return "VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_MISS_SHADERS_BIT_KHR";
-        case VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_INTERSECTION_SHADERS_BIT_KHR:
-            return "VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_INTERSECTION_SHADERS_BIT_KHR";
-        case VK_PIPELINE_CREATE_2_RAY_TRACING_SHADER_GROUP_HANDLE_CAPTURE_REPLAY_BIT_KHR:
-            return "VK_PIPELINE_CREATE_2_RAY_TRACING_SHADER_GROUP_HANDLE_CAPTURE_REPLAY_BIT_KHR";
-        case VK_PIPELINE_CREATE_2_INDIRECT_BINDABLE_BIT_NV:
-            return "VK_PIPELINE_CREATE_2_INDIRECT_BINDABLE_BIT_NV";
-        case VK_PIPELINE_CREATE_2_RAY_TRACING_ALLOW_MOTION_BIT_NV:
-            return "VK_PIPELINE_CREATE_2_RAY_TRACING_ALLOW_MOTION_BIT_NV";
-        case VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR:
-            return "VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR";
-        case VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT:
-            return "VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT";
-        case VK_PIPELINE_CREATE_2_RAY_TRACING_OPACITY_MICROMAP_BIT_EXT:
-            return "VK_PIPELINE_CREATE_2_RAY_TRACING_OPACITY_MICROMAP_BIT_EXT";
-        case VK_PIPELINE_CREATE_2_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT:
-            return "VK_PIPELINE_CREATE_2_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT";
-        case VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT:
-            return "VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT";
-        case VK_PIPELINE_CREATE_2_NO_PROTECTED_ACCESS_BIT_EXT:
-            return "VK_PIPELINE_CREATE_2_NO_PROTECTED_ACCESS_BIT_EXT";
-        case VK_PIPELINE_CREATE_2_PROTECTED_ACCESS_ONLY_BIT_EXT:
-            return "VK_PIPELINE_CREATE_2_PROTECTED_ACCESS_ONLY_BIT_EXT";
-        case VK_PIPELINE_CREATE_2_RAY_TRACING_DISPLACEMENT_MICROMAP_BIT_NV:
-            return "VK_PIPELINE_CREATE_2_RAY_TRACING_DISPLACEMENT_MICROMAP_BIT_NV";
-        case VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT:
-            return "VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT";
-        default:
-            return "Unhandled VkPipelineCreateFlagBits2KHR";
-    }
+    if (input_value == VK_PIPELINE_CREATE_2_DISABLE_OPTIMIZATION_BIT_KHR) return "VK_PIPELINE_CREATE_2_DISABLE_OPTIMIZATION_BIT_KHR";
+    if (input_value == VK_PIPELINE_CREATE_2_ALLOW_DERIVATIVES_BIT_KHR) return "VK_PIPELINE_CREATE_2_ALLOW_DERIVATIVES_BIT_KHR";
+    if (input_value == VK_PIPELINE_CREATE_2_DERIVATIVE_BIT_KHR) return "VK_PIPELINE_CREATE_2_DERIVATIVE_BIT_KHR";
+    if (input_value == VK_PIPELINE_CREATE_2_VIEW_INDEX_FROM_DEVICE_INDEX_BIT_KHR) return "VK_PIPELINE_CREATE_2_VIEW_INDEX_FROM_DEVICE_INDEX_BIT_KHR";
+    if (input_value == VK_PIPELINE_CREATE_2_DISPATCH_BASE_BIT_KHR) return "VK_PIPELINE_CREATE_2_DISPATCH_BASE_BIT_KHR";
+    if (input_value == VK_PIPELINE_CREATE_2_DEFER_COMPILE_BIT_NV) return "VK_PIPELINE_CREATE_2_DEFER_COMPILE_BIT_NV";
+    if (input_value == VK_PIPELINE_CREATE_2_CAPTURE_STATISTICS_BIT_KHR) return "VK_PIPELINE_CREATE_2_CAPTURE_STATISTICS_BIT_KHR";
+    if (input_value == VK_PIPELINE_CREATE_2_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR) return "VK_PIPELINE_CREATE_2_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR";
+    if (input_value == VK_PIPELINE_CREATE_2_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_KHR) return "VK_PIPELINE_CREATE_2_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_KHR";
+    if (input_value == VK_PIPELINE_CREATE_2_EARLY_RETURN_ON_FAILURE_BIT_KHR) return "VK_PIPELINE_CREATE_2_EARLY_RETURN_ON_FAILURE_BIT_KHR";
+    if (input_value == VK_PIPELINE_CREATE_2_LINK_TIME_OPTIMIZATION_BIT_EXT) return "VK_PIPELINE_CREATE_2_LINK_TIME_OPTIMIZATION_BIT_EXT";
+    if (input_value == VK_PIPELINE_CREATE_2_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT) return "VK_PIPELINE_CREATE_2_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT";
+    if (input_value == VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR) return "VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR";
+    if (input_value == VK_PIPELINE_CREATE_2_RAY_TRACING_SKIP_TRIANGLES_BIT_KHR) return "VK_PIPELINE_CREATE_2_RAY_TRACING_SKIP_TRIANGLES_BIT_KHR";
+    if (input_value == VK_PIPELINE_CREATE_2_RAY_TRACING_SKIP_AABBS_BIT_KHR) return "VK_PIPELINE_CREATE_2_RAY_TRACING_SKIP_AABBS_BIT_KHR";
+    if (input_value == VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_ANY_HIT_SHADERS_BIT_KHR) return "VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_ANY_HIT_SHADERS_BIT_KHR";
+    if (input_value == VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_CLOSEST_HIT_SHADERS_BIT_KHR) return "VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_CLOSEST_HIT_SHADERS_BIT_KHR";
+    if (input_value == VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_MISS_SHADERS_BIT_KHR) return "VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_MISS_SHADERS_BIT_KHR";
+    if (input_value == VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_INTERSECTION_SHADERS_BIT_KHR) return "VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_INTERSECTION_SHADERS_BIT_KHR";
+    if (input_value == VK_PIPELINE_CREATE_2_RAY_TRACING_SHADER_GROUP_HANDLE_CAPTURE_REPLAY_BIT_KHR) return "VK_PIPELINE_CREATE_2_RAY_TRACING_SHADER_GROUP_HANDLE_CAPTURE_REPLAY_BIT_KHR";
+    if (input_value == VK_PIPELINE_CREATE_2_INDIRECT_BINDABLE_BIT_NV) return "VK_PIPELINE_CREATE_2_INDIRECT_BINDABLE_BIT_NV";
+    if (input_value == VK_PIPELINE_CREATE_2_RAY_TRACING_ALLOW_MOTION_BIT_NV) return "VK_PIPELINE_CREATE_2_RAY_TRACING_ALLOW_MOTION_BIT_NV";
+    if (input_value == VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR) return "VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR";
+    if (input_value == VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT) return "VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT";
+    if (input_value == VK_PIPELINE_CREATE_2_RAY_TRACING_OPACITY_MICROMAP_BIT_EXT) return "VK_PIPELINE_CREATE_2_RAY_TRACING_OPACITY_MICROMAP_BIT_EXT";
+    if (input_value == VK_PIPELINE_CREATE_2_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT) return "VK_PIPELINE_CREATE_2_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT";
+    if (input_value == VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT) return "VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT";
+    if (input_value == VK_PIPELINE_CREATE_2_NO_PROTECTED_ACCESS_BIT_EXT) return "VK_PIPELINE_CREATE_2_NO_PROTECTED_ACCESS_BIT_EXT";
+    if (input_value == VK_PIPELINE_CREATE_2_PROTECTED_ACCESS_ONLY_BIT_EXT) return "VK_PIPELINE_CREATE_2_PROTECTED_ACCESS_ONLY_BIT_EXT";
+    if (input_value == VK_PIPELINE_CREATE_2_RAY_TRACING_DISPLACEMENT_MICROMAP_BIT_NV) return "VK_PIPELINE_CREATE_2_RAY_TRACING_DISPLACEMENT_MICROMAP_BIT_NV";
+    if (input_value == VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT) return "VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT";
+    return "Unhandled VkPipelineCreateFlagBits2KHR";
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkPipelineCreateFlags2KHR(VkPipelineCreateFlags2KHR input_value) {
     std::string ret;
     int index = 0;
@@ -7774,69 +7892,42 @@ static inline std::string string_VkPipelineCreateFlags2KHR(VkPipelineCreateFlags
     if (ret.empty()) ret.append("VkPipelineCreateFlags2KHR(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkBufferUsageFlagBits2KHR(uint64_t input_value) {
-    switch (input_value) {
-        case VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT_KHR:
-            return "VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT_KHR";
-        case VK_BUFFER_USAGE_2_TRANSFER_DST_BIT_KHR:
-            return "VK_BUFFER_USAGE_2_TRANSFER_DST_BIT_KHR";
-        case VK_BUFFER_USAGE_2_UNIFORM_TEXEL_BUFFER_BIT_KHR:
-            return "VK_BUFFER_USAGE_2_UNIFORM_TEXEL_BUFFER_BIT_KHR";
-        case VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT_KHR:
-            return "VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT_KHR";
-        case VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT_KHR:
-            return "VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT_KHR";
-        case VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT_KHR:
-            return "VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT_KHR";
-        case VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT_KHR:
-            return "VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT_KHR";
-        case VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT_KHR:
-            return "VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT_KHR";
-        case VK_BUFFER_USAGE_2_INDIRECT_BUFFER_BIT_KHR:
-            return "VK_BUFFER_USAGE_2_INDIRECT_BUFFER_BIT_KHR";
-        case VK_BUFFER_USAGE_2_EXECUTION_GRAPH_SCRATCH_BIT_AMDX:
-            return "VK_BUFFER_USAGE_2_EXECUTION_GRAPH_SCRATCH_BIT_AMDX";
-        case VK_BUFFER_USAGE_2_CONDITIONAL_RENDERING_BIT_EXT:
-            return "VK_BUFFER_USAGE_2_CONDITIONAL_RENDERING_BIT_EXT";
-        case VK_BUFFER_USAGE_2_SHADER_BINDING_TABLE_BIT_KHR:
-            return "VK_BUFFER_USAGE_2_SHADER_BINDING_TABLE_BIT_KHR";
-        case VK_BUFFER_USAGE_2_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT:
-            return "VK_BUFFER_USAGE_2_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT";
-        case VK_BUFFER_USAGE_2_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT:
-            return "VK_BUFFER_USAGE_2_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT";
-        case VK_BUFFER_USAGE_2_VIDEO_DECODE_SRC_BIT_KHR:
-            return "VK_BUFFER_USAGE_2_VIDEO_DECODE_SRC_BIT_KHR";
-        case VK_BUFFER_USAGE_2_VIDEO_DECODE_DST_BIT_KHR:
-            return "VK_BUFFER_USAGE_2_VIDEO_DECODE_DST_BIT_KHR";
+    if (input_value == VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT_KHR) return "VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT_KHR";
+    if (input_value == VK_BUFFER_USAGE_2_TRANSFER_DST_BIT_KHR) return "VK_BUFFER_USAGE_2_TRANSFER_DST_BIT_KHR";
+    if (input_value == VK_BUFFER_USAGE_2_UNIFORM_TEXEL_BUFFER_BIT_KHR) return "VK_BUFFER_USAGE_2_UNIFORM_TEXEL_BUFFER_BIT_KHR";
+    if (input_value == VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT_KHR) return "VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT_KHR";
+    if (input_value == VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT_KHR) return "VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT_KHR";
+    if (input_value == VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT_KHR) return "VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT_KHR";
+    if (input_value == VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT_KHR) return "VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT_KHR";
+    if (input_value == VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT_KHR) return "VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT_KHR";
+    if (input_value == VK_BUFFER_USAGE_2_INDIRECT_BUFFER_BIT_KHR) return "VK_BUFFER_USAGE_2_INDIRECT_BUFFER_BIT_KHR";
+    if (input_value == VK_BUFFER_USAGE_2_EXECUTION_GRAPH_SCRATCH_BIT_AMDX) return "VK_BUFFER_USAGE_2_EXECUTION_GRAPH_SCRATCH_BIT_AMDX";
+    if (input_value == VK_BUFFER_USAGE_2_CONDITIONAL_RENDERING_BIT_EXT) return "VK_BUFFER_USAGE_2_CONDITIONAL_RENDERING_BIT_EXT";
+    if (input_value == VK_BUFFER_USAGE_2_SHADER_BINDING_TABLE_BIT_KHR) return "VK_BUFFER_USAGE_2_SHADER_BINDING_TABLE_BIT_KHR";
+    if (input_value == VK_BUFFER_USAGE_2_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT) return "VK_BUFFER_USAGE_2_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT";
+    if (input_value == VK_BUFFER_USAGE_2_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT) return "VK_BUFFER_USAGE_2_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT";
+    if (input_value == VK_BUFFER_USAGE_2_VIDEO_DECODE_SRC_BIT_KHR) return "VK_BUFFER_USAGE_2_VIDEO_DECODE_SRC_BIT_KHR";
+    if (input_value == VK_BUFFER_USAGE_2_VIDEO_DECODE_DST_BIT_KHR) return "VK_BUFFER_USAGE_2_VIDEO_DECODE_DST_BIT_KHR";
 #ifdef VK_ENABLE_BETA_EXTENSIONS
-        case VK_BUFFER_USAGE_2_VIDEO_ENCODE_DST_BIT_KHR:
-            return "VK_BUFFER_USAGE_2_VIDEO_ENCODE_DST_BIT_KHR";
+    if (input_value == VK_BUFFER_USAGE_2_VIDEO_ENCODE_DST_BIT_KHR) return "VK_BUFFER_USAGE_2_VIDEO_ENCODE_DST_BIT_KHR";
 #endif //VK_ENABLE_BETA_EXTENSIONS
 #ifdef VK_ENABLE_BETA_EXTENSIONS
-        case VK_BUFFER_USAGE_2_VIDEO_ENCODE_SRC_BIT_KHR:
-            return "VK_BUFFER_USAGE_2_VIDEO_ENCODE_SRC_BIT_KHR";
+    if (input_value == VK_BUFFER_USAGE_2_VIDEO_ENCODE_SRC_BIT_KHR) return "VK_BUFFER_USAGE_2_VIDEO_ENCODE_SRC_BIT_KHR";
 #endif //VK_ENABLE_BETA_EXTENSIONS
-        case VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT_KHR:
-            return "VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT_KHR";
-        case VK_BUFFER_USAGE_2_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR:
-            return "VK_BUFFER_USAGE_2_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR";
-        case VK_BUFFER_USAGE_2_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR:
-            return "VK_BUFFER_USAGE_2_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR";
-        case VK_BUFFER_USAGE_2_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT:
-            return "VK_BUFFER_USAGE_2_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT";
-        case VK_BUFFER_USAGE_2_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT:
-            return "VK_BUFFER_USAGE_2_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT";
-        case VK_BUFFER_USAGE_2_PUSH_DESCRIPTORS_DESCRIPTOR_BUFFER_BIT_EXT:
-            return "VK_BUFFER_USAGE_2_PUSH_DESCRIPTORS_DESCRIPTOR_BUFFER_BIT_EXT";
-        case VK_BUFFER_USAGE_2_MICROMAP_BUILD_INPUT_READ_ONLY_BIT_EXT:
-            return "VK_BUFFER_USAGE_2_MICROMAP_BUILD_INPUT_READ_ONLY_BIT_EXT";
-        case VK_BUFFER_USAGE_2_MICROMAP_STORAGE_BIT_EXT:
-            return "VK_BUFFER_USAGE_2_MICROMAP_STORAGE_BIT_EXT";
-        default:
-            return "Unhandled VkBufferUsageFlagBits2KHR";
-    }
+    if (input_value == VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT_KHR) return "VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT_KHR";
+    if (input_value == VK_BUFFER_USAGE_2_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR) return "VK_BUFFER_USAGE_2_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR";
+    if (input_value == VK_BUFFER_USAGE_2_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) return "VK_BUFFER_USAGE_2_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR";
+    if (input_value == VK_BUFFER_USAGE_2_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT) return "VK_BUFFER_USAGE_2_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT";
+    if (input_value == VK_BUFFER_USAGE_2_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT) return "VK_BUFFER_USAGE_2_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT";
+    if (input_value == VK_BUFFER_USAGE_2_PUSH_DESCRIPTORS_DESCRIPTOR_BUFFER_BIT_EXT) return "VK_BUFFER_USAGE_2_PUSH_DESCRIPTORS_DESCRIPTOR_BUFFER_BIT_EXT";
+    if (input_value == VK_BUFFER_USAGE_2_MICROMAP_BUILD_INPUT_READ_ONLY_BIT_EXT) return "VK_BUFFER_USAGE_2_MICROMAP_BUILD_INPUT_READ_ONLY_BIT_EXT";
+    if (input_value == VK_BUFFER_USAGE_2_MICROMAP_STORAGE_BIT_EXT) return "VK_BUFFER_USAGE_2_MICROMAP_STORAGE_BIT_EXT";
+    return "Unhandled VkBufferUsageFlagBits2KHR";
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkBufferUsageFlags2KHR(VkBufferUsageFlags2KHR input_value) {
     std::string ret;
     int index = 0;
@@ -7851,6 +7942,7 @@ static inline std::string string_VkBufferUsageFlags2KHR(VkBufferUsageFlags2KHR i
     if (ret.empty()) ret.append("VkBufferUsageFlags2KHR(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkDebugReportFlagBitsEXT(VkDebugReportFlagBitsEXT input_value) {
     switch (input_value) {
         case VK_DEBUG_REPORT_INFORMATION_BIT_EXT:
@@ -7868,6 +7960,7 @@ static inline const char* string_VkDebugReportFlagBitsEXT(VkDebugReportFlagBitsE
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkDebugReportFlagsEXT(VkDebugReportFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -7882,6 +7975,7 @@ static inline std::string string_VkDebugReportFlagsEXT(VkDebugReportFlagsEXT inp
     if (ret.empty()) ret.append("VkDebugReportFlagsEXT(0)");
     return ret;
 }
+#endif // __cplusplus
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 static inline const char* string_VkVideoEncodeH264CapabilityFlagBitsEXT(VkVideoEncodeH264CapabilityFlagBitsEXT input_value) {
     switch (input_value) {
@@ -7908,6 +8002,7 @@ static inline const char* string_VkVideoEncodeH264CapabilityFlagBitsEXT(VkVideoE
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoEncodeH264CapabilityFlagsEXT(VkVideoEncodeH264CapabilityFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -7923,6 +8018,7 @@ static inline std::string string_VkVideoEncodeH264CapabilityFlagsEXT(VkVideoEnco
     return ret;
 }
 #endif //VK_ENABLE_BETA_EXTENSIONS
+#endif // __cplusplus
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 static inline const char* string_VkVideoEncodeH264StdFlagBitsEXT(VkVideoEncodeH264StdFlagBitsEXT input_value) {
     switch (input_value) {
@@ -7962,11 +8058,16 @@ static inline const char* string_VkVideoEncodeH264StdFlagBitsEXT(VkVideoEncodeH2
             return "VK_VIDEO_ENCODE_H264_STD_DEBLOCKING_FILTER_ENABLED_BIT_EXT";
         case VK_VIDEO_ENCODE_H264_STD_DEBLOCKING_FILTER_PARTIAL_BIT_EXT:
             return "VK_VIDEO_ENCODE_H264_STD_DEBLOCKING_FILTER_PARTIAL_BIT_EXT";
+        case VK_VIDEO_ENCODE_H264_STD_SLICE_QP_DELTA_BIT_EXT:
+            return "VK_VIDEO_ENCODE_H264_STD_SLICE_QP_DELTA_BIT_EXT";
+        case VK_VIDEO_ENCODE_H264_STD_DIFFERENT_SLICE_QP_DELTA_BIT_EXT:
+            return "VK_VIDEO_ENCODE_H264_STD_DIFFERENT_SLICE_QP_DELTA_BIT_EXT";
         default:
             return "Unhandled VkVideoEncodeH264StdFlagBitsEXT";
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoEncodeH264StdFlagsEXT(VkVideoEncodeH264StdFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -7982,6 +8083,7 @@ static inline std::string string_VkVideoEncodeH264StdFlagsEXT(VkVideoEncodeH264S
     return ret;
 }
 #endif //VK_ENABLE_BETA_EXTENSIONS
+#endif // __cplusplus
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 static inline const char* string_VkVideoEncodeH264RateControlFlagBitsEXT(VkVideoEncodeH264RateControlFlagBitsEXT input_value) {
     switch (input_value) {
@@ -8000,6 +8102,7 @@ static inline const char* string_VkVideoEncodeH264RateControlFlagBitsEXT(VkVideo
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoEncodeH264RateControlFlagsEXT(VkVideoEncodeH264RateControlFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -8015,6 +8118,7 @@ static inline std::string string_VkVideoEncodeH264RateControlFlagsEXT(VkVideoEnc
     return ret;
 }
 #endif //VK_ENABLE_BETA_EXTENSIONS
+#endif // __cplusplus
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 static inline const char* string_VkVideoEncodeH265CapabilityFlagBitsEXT(VkVideoEncodeH265CapabilityFlagBitsEXT input_value) {
     switch (input_value) {
@@ -8043,6 +8147,7 @@ static inline const char* string_VkVideoEncodeH265CapabilityFlagBitsEXT(VkVideoE
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoEncodeH265CapabilityFlagsEXT(VkVideoEncodeH265CapabilityFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -8058,6 +8163,7 @@ static inline std::string string_VkVideoEncodeH265CapabilityFlagsEXT(VkVideoEnco
     return ret;
 }
 #endif //VK_ENABLE_BETA_EXTENSIONS
+#endif // __cplusplus
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 static inline const char* string_VkVideoEncodeH265StdFlagBitsEXT(VkVideoEncodeH265StdFlagBitsEXT input_value) {
     switch (input_value) {
@@ -8099,11 +8205,16 @@ static inline const char* string_VkVideoEncodeH265StdFlagBitsEXT(VkVideoEncodeH2
             return "VK_VIDEO_ENCODE_H265_STD_DEPENDENT_SLICE_SEGMENTS_ENABLED_FLAG_SET_BIT_EXT";
         case VK_VIDEO_ENCODE_H265_STD_DEPENDENT_SLICE_SEGMENT_FLAG_SET_BIT_EXT:
             return "VK_VIDEO_ENCODE_H265_STD_DEPENDENT_SLICE_SEGMENT_FLAG_SET_BIT_EXT";
+        case VK_VIDEO_ENCODE_H265_STD_SLICE_QP_DELTA_BIT_EXT:
+            return "VK_VIDEO_ENCODE_H265_STD_SLICE_QP_DELTA_BIT_EXT";
+        case VK_VIDEO_ENCODE_H265_STD_DIFFERENT_SLICE_QP_DELTA_BIT_EXT:
+            return "VK_VIDEO_ENCODE_H265_STD_DIFFERENT_SLICE_QP_DELTA_BIT_EXT";
         default:
             return "Unhandled VkVideoEncodeH265StdFlagBitsEXT";
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoEncodeH265StdFlagsEXT(VkVideoEncodeH265StdFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -8119,6 +8230,7 @@ static inline std::string string_VkVideoEncodeH265StdFlagsEXT(VkVideoEncodeH265S
     return ret;
 }
 #endif //VK_ENABLE_BETA_EXTENSIONS
+#endif // __cplusplus
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 static inline const char* string_VkVideoEncodeH265CtbSizeFlagBitsEXT(VkVideoEncodeH265CtbSizeFlagBitsEXT input_value) {
     switch (input_value) {
@@ -8133,6 +8245,7 @@ static inline const char* string_VkVideoEncodeH265CtbSizeFlagBitsEXT(VkVideoEnco
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoEncodeH265CtbSizeFlagsEXT(VkVideoEncodeH265CtbSizeFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -8148,6 +8261,7 @@ static inline std::string string_VkVideoEncodeH265CtbSizeFlagsEXT(VkVideoEncodeH
     return ret;
 }
 #endif //VK_ENABLE_BETA_EXTENSIONS
+#endif // __cplusplus
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 static inline const char* string_VkVideoEncodeH265TransformBlockSizeFlagBitsEXT(VkVideoEncodeH265TransformBlockSizeFlagBitsEXT input_value) {
     switch (input_value) {
@@ -8164,6 +8278,7 @@ static inline const char* string_VkVideoEncodeH265TransformBlockSizeFlagBitsEXT(
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoEncodeH265TransformBlockSizeFlagsEXT(VkVideoEncodeH265TransformBlockSizeFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -8179,6 +8294,7 @@ static inline std::string string_VkVideoEncodeH265TransformBlockSizeFlagsEXT(VkV
     return ret;
 }
 #endif //VK_ENABLE_BETA_EXTENSIONS
+#endif // __cplusplus
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 static inline const char* string_VkVideoEncodeH265RateControlFlagBitsEXT(VkVideoEncodeH265RateControlFlagBitsEXT input_value) {
     switch (input_value) {
@@ -8197,6 +8313,7 @@ static inline const char* string_VkVideoEncodeH265RateControlFlagBitsEXT(VkVideo
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkVideoEncodeH265RateControlFlagsEXT(VkVideoEncodeH265RateControlFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -8212,6 +8329,7 @@ static inline std::string string_VkVideoEncodeH265RateControlFlagsEXT(VkVideoEnc
     return ret;
 }
 #endif //VK_ENABLE_BETA_EXTENSIONS
+#endif // __cplusplus
 static inline const char* string_VkExternalMemoryHandleTypeFlagBitsNV(VkExternalMemoryHandleTypeFlagBitsNV input_value) {
     switch (input_value) {
         case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_NV:
@@ -8227,6 +8345,7 @@ static inline const char* string_VkExternalMemoryHandleTypeFlagBitsNV(VkExternal
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkExternalMemoryHandleTypeFlagsNV(VkExternalMemoryHandleTypeFlagsNV input_value) {
     std::string ret;
     int index = 0;
@@ -8241,6 +8360,7 @@ static inline std::string string_VkExternalMemoryHandleTypeFlagsNV(VkExternalMem
     if (ret.empty()) ret.append("VkExternalMemoryHandleTypeFlagsNV(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkExternalMemoryFeatureFlagBitsNV(VkExternalMemoryFeatureFlagBitsNV input_value) {
     switch (input_value) {
         case VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT_NV:
@@ -8254,6 +8374,7 @@ static inline const char* string_VkExternalMemoryFeatureFlagBitsNV(VkExternalMem
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkExternalMemoryFeatureFlagsNV(VkExternalMemoryFeatureFlagsNV input_value) {
     std::string ret;
     int index = 0;
@@ -8268,6 +8389,7 @@ static inline std::string string_VkExternalMemoryFeatureFlagsNV(VkExternalMemory
     if (ret.empty()) ret.append("VkExternalMemoryFeatureFlagsNV(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkConditionalRenderingFlagBitsEXT(VkConditionalRenderingFlagBitsEXT input_value) {
     switch (input_value) {
         case VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT:
@@ -8277,6 +8399,7 @@ static inline const char* string_VkConditionalRenderingFlagBitsEXT(VkConditional
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkConditionalRenderingFlagsEXT(VkConditionalRenderingFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -8291,6 +8414,7 @@ static inline std::string string_VkConditionalRenderingFlagsEXT(VkConditionalRen
     if (ret.empty()) ret.append("VkConditionalRenderingFlagsEXT(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkSurfaceCounterFlagBitsEXT(VkSurfaceCounterFlagBitsEXT input_value) {
     switch (input_value) {
         case VK_SURFACE_COUNTER_VBLANK_BIT_EXT:
@@ -8300,6 +8424,7 @@ static inline const char* string_VkSurfaceCounterFlagBitsEXT(VkSurfaceCounterFla
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkSurfaceCounterFlagsEXT(VkSurfaceCounterFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -8314,6 +8439,7 @@ static inline std::string string_VkSurfaceCounterFlagsEXT(VkSurfaceCounterFlagsE
     if (ret.empty()) ret.append("VkSurfaceCounterFlagsEXT(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkDebugUtilsMessageSeverityFlagBitsEXT(VkDebugUtilsMessageSeverityFlagBitsEXT input_value) {
     switch (input_value) {
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
@@ -8329,6 +8455,7 @@ static inline const char* string_VkDebugUtilsMessageSeverityFlagBitsEXT(VkDebugU
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkDebugUtilsMessageSeverityFlagsEXT(VkDebugUtilsMessageSeverityFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -8343,6 +8470,7 @@ static inline std::string string_VkDebugUtilsMessageSeverityFlagsEXT(VkDebugUtil
     if (ret.empty()) ret.append("VkDebugUtilsMessageSeverityFlagsEXT(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkDebugUtilsMessageTypeFlagBitsEXT(VkDebugUtilsMessageTypeFlagBitsEXT input_value) {
     switch (input_value) {
         case VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT:
@@ -8358,6 +8486,7 @@ static inline const char* string_VkDebugUtilsMessageTypeFlagBitsEXT(VkDebugUtils
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkDebugUtilsMessageTypeFlagsEXT(VkDebugUtilsMessageTypeFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -8372,6 +8501,7 @@ static inline std::string string_VkDebugUtilsMessageTypeFlagsEXT(VkDebugUtilsMes
     if (ret.empty()) ret.append("VkDebugUtilsMessageTypeFlagsEXT(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkGeometryFlagBitsKHR(VkGeometryFlagBitsKHR input_value) {
     switch (input_value) {
         case VK_GEOMETRY_OPAQUE_BIT_KHR:
@@ -8383,6 +8513,7 @@ static inline const char* string_VkGeometryFlagBitsKHR(VkGeometryFlagBitsKHR inp
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkGeometryFlagsKHR(VkGeometryFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -8397,6 +8528,7 @@ static inline std::string string_VkGeometryFlagsKHR(VkGeometryFlagsKHR input_val
     if (ret.empty()) ret.append("VkGeometryFlagsKHR(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkGeometryInstanceFlagBitsKHR(VkGeometryInstanceFlagBitsKHR input_value) {
     switch (input_value) {
         case VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR:
@@ -8416,6 +8548,7 @@ static inline const char* string_VkGeometryInstanceFlagBitsKHR(VkGeometryInstanc
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkGeometryInstanceFlagsKHR(VkGeometryInstanceFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -8430,6 +8563,7 @@ static inline std::string string_VkGeometryInstanceFlagsKHR(VkGeometryInstanceFl
     if (ret.empty()) ret.append("VkGeometryInstanceFlagsKHR(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkBuildAccelerationStructureFlagBitsKHR(VkBuildAccelerationStructureFlagBitsKHR input_value) {
     switch (input_value) {
         case VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR:
@@ -8461,6 +8595,7 @@ static inline const char* string_VkBuildAccelerationStructureFlagBitsKHR(VkBuild
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkBuildAccelerationStructureFlagsKHR(VkBuildAccelerationStructureFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -8475,6 +8610,7 @@ static inline std::string string_VkBuildAccelerationStructureFlagsKHR(VkBuildAcc
     if (ret.empty()) ret.append("VkBuildAccelerationStructureFlagsKHR(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkHostImageCopyFlagBitsEXT(VkHostImageCopyFlagBitsEXT input_value) {
     switch (input_value) {
         case VK_HOST_IMAGE_COPY_MEMCPY_EXT:
@@ -8484,6 +8620,7 @@ static inline const char* string_VkHostImageCopyFlagBitsEXT(VkHostImageCopyFlagB
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkHostImageCopyFlagsEXT(VkHostImageCopyFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -8498,6 +8635,7 @@ static inline std::string string_VkHostImageCopyFlagsEXT(VkHostImageCopyFlagsEXT
     if (ret.empty()) ret.append("VkHostImageCopyFlagsEXT(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkPresentScalingFlagBitsEXT(VkPresentScalingFlagBitsEXT input_value) {
     switch (input_value) {
         case VK_PRESENT_SCALING_ONE_TO_ONE_BIT_EXT:
@@ -8511,6 +8649,7 @@ static inline const char* string_VkPresentScalingFlagBitsEXT(VkPresentScalingFla
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkPresentScalingFlagsEXT(VkPresentScalingFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -8525,6 +8664,7 @@ static inline std::string string_VkPresentScalingFlagsEXT(VkPresentScalingFlagsE
     if (ret.empty()) ret.append("VkPresentScalingFlagsEXT(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkPresentGravityFlagBitsEXT(VkPresentGravityFlagBitsEXT input_value) {
     switch (input_value) {
         case VK_PRESENT_GRAVITY_MIN_BIT_EXT:
@@ -8538,6 +8678,7 @@ static inline const char* string_VkPresentGravityFlagBitsEXT(VkPresentGravityFla
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkPresentGravityFlagsEXT(VkPresentGravityFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -8552,6 +8693,7 @@ static inline std::string string_VkPresentGravityFlagsEXT(VkPresentGravityFlagsE
     if (ret.empty()) ret.append("VkPresentGravityFlagsEXT(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkIndirectStateFlagBitsNV(VkIndirectStateFlagBitsNV input_value) {
     switch (input_value) {
         case VK_INDIRECT_STATE_FLAG_FRONTFACE_BIT_NV:
@@ -8561,6 +8703,7 @@ static inline const char* string_VkIndirectStateFlagBitsNV(VkIndirectStateFlagBi
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkIndirectStateFlagsNV(VkIndirectStateFlagsNV input_value) {
     std::string ret;
     int index = 0;
@@ -8575,6 +8718,7 @@ static inline std::string string_VkIndirectStateFlagsNV(VkIndirectStateFlagsNV i
     if (ret.empty()) ret.append("VkIndirectStateFlagsNV(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkIndirectCommandsLayoutUsageFlagBitsNV(VkIndirectCommandsLayoutUsageFlagBitsNV input_value) {
     switch (input_value) {
         case VK_INDIRECT_COMMANDS_LAYOUT_USAGE_EXPLICIT_PREPROCESS_BIT_NV:
@@ -8588,6 +8732,7 @@ static inline const char* string_VkIndirectCommandsLayoutUsageFlagBitsNV(VkIndir
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkIndirectCommandsLayoutUsageFlagsNV(VkIndirectCommandsLayoutUsageFlagsNV input_value) {
     std::string ret;
     int index = 0;
@@ -8602,6 +8747,7 @@ static inline std::string string_VkIndirectCommandsLayoutUsageFlagsNV(VkIndirect
     if (ret.empty()) ret.append("VkIndirectCommandsLayoutUsageFlagsNV(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkDeviceDiagnosticsConfigFlagBitsNV(VkDeviceDiagnosticsConfigFlagBitsNV input_value) {
     switch (input_value) {
         case VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_SHADER_DEBUG_INFO_BIT_NV:
@@ -8617,6 +8763,7 @@ static inline const char* string_VkDeviceDiagnosticsConfigFlagBitsNV(VkDeviceDia
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkDeviceDiagnosticsConfigFlagsNV(VkDeviceDiagnosticsConfigFlagsNV input_value) {
     std::string ret;
     int index = 0;
@@ -8631,6 +8778,7 @@ static inline std::string string_VkDeviceDiagnosticsConfigFlagsNV(VkDeviceDiagno
     if (ret.empty()) ret.append("VkDeviceDiagnosticsConfigFlagsNV(0)");
     return ret;
 }
+#endif // __cplusplus
 #ifdef VK_USE_PLATFORM_METAL_EXT
 static inline const char* string_VkExportMetalObjectTypeFlagBitsEXT(VkExportMetalObjectTypeFlagBitsEXT input_value) {
     switch (input_value) {
@@ -8651,6 +8799,7 @@ static inline const char* string_VkExportMetalObjectTypeFlagBitsEXT(VkExportMeta
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkExportMetalObjectTypeFlagsEXT(VkExportMetalObjectTypeFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -8666,6 +8815,7 @@ static inline std::string string_VkExportMetalObjectTypeFlagsEXT(VkExportMetalOb
     return ret;
 }
 #endif //VK_USE_PLATFORM_METAL_EXT
+#endif // __cplusplus
 static inline const char* string_VkGraphicsPipelineLibraryFlagBitsEXT(VkGraphicsPipelineLibraryFlagBitsEXT input_value) {
     switch (input_value) {
         case VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT:
@@ -8681,6 +8831,7 @@ static inline const char* string_VkGraphicsPipelineLibraryFlagBitsEXT(VkGraphics
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkGraphicsPipelineLibraryFlagsEXT(VkGraphicsPipelineLibraryFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -8695,6 +8846,7 @@ static inline std::string string_VkGraphicsPipelineLibraryFlagsEXT(VkGraphicsPip
     if (ret.empty()) ret.append("VkGraphicsPipelineLibraryFlagsEXT(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkImageCompressionFlagBitsEXT(VkImageCompressionFlagBitsEXT input_value) {
     switch (input_value) {
         case VK_IMAGE_COMPRESSION_DEFAULT_EXT:
@@ -8710,6 +8862,7 @@ static inline const char* string_VkImageCompressionFlagBitsEXT(VkImageCompressio
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkImageCompressionFlagsEXT(VkImageCompressionFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -8724,6 +8877,7 @@ static inline std::string string_VkImageCompressionFlagsEXT(VkImageCompressionFl
     if (ret.empty()) ret.append("VkImageCompressionFlagsEXT(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkImageCompressionFixedRateFlagBitsEXT(VkImageCompressionFixedRateFlagBitsEXT input_value) {
     switch (input_value) {
         case VK_IMAGE_COMPRESSION_FIXED_RATE_NONE_EXT:
@@ -8781,6 +8935,7 @@ static inline const char* string_VkImageCompressionFixedRateFlagBitsEXT(VkImageC
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkImageCompressionFixedRateFlagsEXT(VkImageCompressionFixedRateFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -8795,6 +8950,7 @@ static inline std::string string_VkImageCompressionFixedRateFlagsEXT(VkImageComp
     if (ret.empty()) ret.append("VkImageCompressionFixedRateFlagsEXT(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkDeviceAddressBindingFlagBitsEXT(VkDeviceAddressBindingFlagBitsEXT input_value) {
     switch (input_value) {
         case VK_DEVICE_ADDRESS_BINDING_INTERNAL_OBJECT_BIT_EXT:
@@ -8804,6 +8960,7 @@ static inline const char* string_VkDeviceAddressBindingFlagBitsEXT(VkDeviceAddre
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkDeviceAddressBindingFlagsEXT(VkDeviceAddressBindingFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -8818,6 +8975,7 @@ static inline std::string string_VkDeviceAddressBindingFlagsEXT(VkDeviceAddressB
     if (ret.empty()) ret.append("VkDeviceAddressBindingFlagsEXT(0)");
     return ret;
 }
+#endif // __cplusplus
 #ifdef VK_USE_PLATFORM_FUCHSIA
 static inline const char* string_VkImageConstraintsInfoFlagBitsFUCHSIA(VkImageConstraintsInfoFlagBitsFUCHSIA input_value) {
     switch (input_value) {
@@ -8836,6 +8994,7 @@ static inline const char* string_VkImageConstraintsInfoFlagBitsFUCHSIA(VkImageCo
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkImageConstraintsInfoFlagsFUCHSIA(VkImageConstraintsInfoFlagsFUCHSIA input_value) {
     std::string ret;
     int index = 0;
@@ -8851,6 +9010,32 @@ static inline std::string string_VkImageConstraintsInfoFlagsFUCHSIA(VkImageConst
     return ret;
 }
 #endif //VK_USE_PLATFORM_FUCHSIA
+#endif // __cplusplus
+static inline const char* string_VkFrameBoundaryFlagBitsEXT(VkFrameBoundaryFlagBitsEXT input_value) {
+    switch (input_value) {
+        case VK_FRAME_BOUNDARY_FRAME_END_BIT_EXT:
+            return "VK_FRAME_BOUNDARY_FRAME_END_BIT_EXT";
+        default:
+            return "Unhandled VkFrameBoundaryFlagBitsEXT";
+    }
+}
+
+#ifdef __cplusplus
+static inline std::string string_VkFrameBoundaryFlagsEXT(VkFrameBoundaryFlagsEXT input_value) {
+    std::string ret;
+    int index = 0;
+    while(input_value) {
+        if (input_value & 1) {
+            if( !ret.empty()) ret.append("|");
+            ret.append(string_VkFrameBoundaryFlagBitsEXT(static_cast<VkFrameBoundaryFlagBitsEXT>(1U << index)));
+        }
+        ++index;
+        input_value >>= 1;
+    }
+    if (ret.empty()) ret.append("VkFrameBoundaryFlagsEXT(0)");
+    return ret;
+}
+#endif // __cplusplus
 static inline const char* string_VkBuildMicromapFlagBitsEXT(VkBuildMicromapFlagBitsEXT input_value) {
     switch (input_value) {
         case VK_BUILD_MICROMAP_PREFER_FAST_TRACE_BIT_EXT:
@@ -8864,6 +9049,7 @@ static inline const char* string_VkBuildMicromapFlagBitsEXT(VkBuildMicromapFlagB
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkBuildMicromapFlagsEXT(VkBuildMicromapFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -8878,6 +9064,7 @@ static inline std::string string_VkBuildMicromapFlagsEXT(VkBuildMicromapFlagsEXT
     if (ret.empty()) ret.append("VkBuildMicromapFlagsEXT(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkMicromapCreateFlagBitsEXT(VkMicromapCreateFlagBitsEXT input_value) {
     switch (input_value) {
         case VK_MICROMAP_CREATE_DEVICE_ADDRESS_CAPTURE_REPLAY_BIT_EXT:
@@ -8887,6 +9074,7 @@ static inline const char* string_VkMicromapCreateFlagBitsEXT(VkMicromapCreateFla
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkMicromapCreateFlagsEXT(VkMicromapCreateFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -8901,15 +9089,13 @@ static inline std::string string_VkMicromapCreateFlagsEXT(VkMicromapCreateFlagsE
     if (ret.empty()) ret.append("VkMicromapCreateFlagsEXT(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkMemoryDecompressionMethodFlagBitsNV(uint64_t input_value) {
-    switch (input_value) {
-        case VK_MEMORY_DECOMPRESSION_METHOD_GDEFLATE_1_0_BIT_NV:
-            return "VK_MEMORY_DECOMPRESSION_METHOD_GDEFLATE_1_0_BIT_NV";
-        default:
-            return "Unhandled VkMemoryDecompressionMethodFlagBitsNV";
-    }
+    if (input_value == VK_MEMORY_DECOMPRESSION_METHOD_GDEFLATE_1_0_BIT_NV) return "VK_MEMORY_DECOMPRESSION_METHOD_GDEFLATE_1_0_BIT_NV";
+    return "Unhandled VkMemoryDecompressionMethodFlagBitsNV";
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkMemoryDecompressionMethodFlagsNV(VkMemoryDecompressionMethodFlagsNV input_value) {
     std::string ret;
     int index = 0;
@@ -8924,6 +9110,7 @@ static inline std::string string_VkMemoryDecompressionMethodFlagsNV(VkMemoryDeco
     if (ret.empty()) ret.append("VkMemoryDecompressionMethodFlagsNV(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkOpticalFlowGridSizeFlagBitsNV(VkOpticalFlowGridSizeFlagBitsNV input_value) {
     switch (input_value) {
         case VK_OPTICAL_FLOW_GRID_SIZE_UNKNOWN_NV:
@@ -8941,6 +9128,7 @@ static inline const char* string_VkOpticalFlowGridSizeFlagBitsNV(VkOpticalFlowGr
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkOpticalFlowGridSizeFlagsNV(VkOpticalFlowGridSizeFlagsNV input_value) {
     std::string ret;
     int index = 0;
@@ -8955,6 +9143,7 @@ static inline std::string string_VkOpticalFlowGridSizeFlagsNV(VkOpticalFlowGridS
     if (ret.empty()) ret.append("VkOpticalFlowGridSizeFlagsNV(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkOpticalFlowUsageFlagBitsNV(VkOpticalFlowUsageFlagBitsNV input_value) {
     switch (input_value) {
         case VK_OPTICAL_FLOW_USAGE_UNKNOWN_NV:
@@ -8974,6 +9163,7 @@ static inline const char* string_VkOpticalFlowUsageFlagBitsNV(VkOpticalFlowUsage
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkOpticalFlowUsageFlagsNV(VkOpticalFlowUsageFlagsNV input_value) {
     std::string ret;
     int index = 0;
@@ -8988,6 +9178,7 @@ static inline std::string string_VkOpticalFlowUsageFlagsNV(VkOpticalFlowUsageFla
     if (ret.empty()) ret.append("VkOpticalFlowUsageFlagsNV(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkOpticalFlowSessionCreateFlagBitsNV(VkOpticalFlowSessionCreateFlagBitsNV input_value) {
     switch (input_value) {
         case VK_OPTICAL_FLOW_SESSION_CREATE_ENABLE_HINT_BIT_NV:
@@ -9005,6 +9196,7 @@ static inline const char* string_VkOpticalFlowSessionCreateFlagBitsNV(VkOpticalF
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkOpticalFlowSessionCreateFlagsNV(VkOpticalFlowSessionCreateFlagsNV input_value) {
     std::string ret;
     int index = 0;
@@ -9019,6 +9211,7 @@ static inline std::string string_VkOpticalFlowSessionCreateFlagsNV(VkOpticalFlow
     if (ret.empty()) ret.append("VkOpticalFlowSessionCreateFlagsNV(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkOpticalFlowExecuteFlagBitsNV(VkOpticalFlowExecuteFlagBitsNV input_value) {
     switch (input_value) {
         case VK_OPTICAL_FLOW_EXECUTE_DISABLE_TEMPORAL_HINTS_BIT_NV:
@@ -9028,6 +9221,7 @@ static inline const char* string_VkOpticalFlowExecuteFlagBitsNV(VkOpticalFlowExe
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkOpticalFlowExecuteFlagsNV(VkOpticalFlowExecuteFlagsNV input_value) {
     std::string ret;
     int index = 0;
@@ -9042,6 +9236,7 @@ static inline std::string string_VkOpticalFlowExecuteFlagsNV(VkOpticalFlowExecut
     if (ret.empty()) ret.append("VkOpticalFlowExecuteFlagsNV(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkShaderCreateFlagBitsEXT(VkShaderCreateFlagBitsEXT input_value) {
     switch (input_value) {
         case VK_SHADER_CREATE_LINK_STAGE_BIT_EXT:
@@ -9063,6 +9258,7 @@ static inline const char* string_VkShaderCreateFlagBitsEXT(VkShaderCreateFlagBit
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkShaderCreateFlagsEXT(VkShaderCreateFlagsEXT input_value) {
     std::string ret;
     int index = 0;
@@ -9077,6 +9273,7 @@ static inline std::string string_VkShaderCreateFlagsEXT(VkShaderCreateFlagsEXT i
     if (ret.empty()) ret.append("VkShaderCreateFlagsEXT(0)");
     return ret;
 }
+#endif // __cplusplus
 static inline const char* string_VkAccelerationStructureCreateFlagBitsKHR(VkAccelerationStructureCreateFlagBitsKHR input_value) {
     switch (input_value) {
         case VK_ACCELERATION_STRUCTURE_CREATE_DEVICE_ADDRESS_CAPTURE_REPLAY_BIT_KHR:
@@ -9090,6 +9287,7 @@ static inline const char* string_VkAccelerationStructureCreateFlagBitsKHR(VkAcce
     }
 }
 
+#ifdef __cplusplus
 static inline std::string string_VkAccelerationStructureCreateFlagsKHR(VkAccelerationStructureCreateFlagsKHR input_value) {
     std::string ret;
     int index = 0;
@@ -9104,4 +9302,5 @@ static inline std::string string_VkAccelerationStructureCreateFlagsKHR(VkAcceler
     if (ret.empty()) ret.append("VkAccelerationStructureCreateFlagsKHR(0)");
     return ret;
 }
-// NOLINTEND
+#endif // __cplusplus
+
