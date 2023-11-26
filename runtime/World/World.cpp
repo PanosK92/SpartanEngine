@@ -442,6 +442,7 @@ namespace Spartan
         m_default_cube                  = nullptr;
         m_default_physics_body_camera   = nullptr;
         m_default_terrain               = nullptr;
+        m_default_model_doom            = nullptr;
     }
 
     void World::PreTick()
@@ -1002,40 +1003,16 @@ namespace Spartan
             entity->GetTransform()->SetPosition(Vector3(0.0f, 1.5f, -355.5300f));
             entity->GetTransform()->SetScale(Vector3(0.1f, 0.1f, 0.1f));
 
-            // add physics to certain meshes
+            // enable physics for all meshes
+            vector<Transform*> transforms;
+            entity->GetTransform()->GetDescendants(&transforms);
+            for (Transform* transfom : transforms)
             {
-                // floor
+                if (transfom->GetEntityPtr()->GetComponent<Renderable>() != nullptr)
                 {
-                    if (Entity* child = entity->GetTransform()->GetDescendantPtrByName("E1M1_47"))
-                    {
-                        PhysicsBody* physics_body = child->AddComponent<PhysicsBody>().get();
-                        physics_body->SetShapeType(PhysicsShape::Mesh);
-                        physics_body->SetMass(0.0f); // static
-                    }
-
-                    if (Entity* child = entity->GetTransform()->GetDescendantPtrByName("E1M1_39"))
-                    {
-                        PhysicsBody* physics_body = child->AddComponent<PhysicsBody>().get();
-                        physics_body->SetShapeType(PhysicsShape::Mesh);
-                        physics_body->SetMass(0.0f); // static
-                    }
-                }
-
-                // walls
-                {
-                    if (Entity* child = entity->GetTransform()->GetDescendantPtrByName("E1M1_3"))
-                    {
-                        PhysicsBody* physics_body = child->AddComponent<PhysicsBody>().get();
-                        physics_body->SetShapeType(PhysicsShape::Mesh);
-                        physics_body->SetMass(0.0f); // static
-                    }
-
-                    if (Entity* child = entity->GetTransform()->GetDescendantPtrByName("E1M1_6"))
-                    {
-                        PhysicsBody* physics_body = child->AddComponent<PhysicsBody>().get();
-                        physics_body->SetShapeType(PhysicsShape::Mesh);
-                        physics_body->SetMass(0.0f); // static
-                    }
+                    PhysicsBody* physics_body = transfom->GetEntityPtr()->AddComponent<PhysicsBody>().get();
+                    physics_body->SetShapeType(PhysicsShape::Mesh);
+                    physics_body->SetMass(0.0f); // static
                 }
             }
         }
