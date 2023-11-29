@@ -188,7 +188,7 @@ namespace Spartan
         }
     }
 
-    vector<btRigidBody*> Physics::RayCast(Vector3 start, Vector3 end)
+    vector<btRigidBody*> Physics::RayCast(const Vector3& start, const Vector3& end)
     {
         btVector3 bt_start = ToBtVector3(start);
         btVector3 bt_end   = ToBtVector3(end);
@@ -211,7 +211,23 @@ namespace Spartan
         return hit_bodies;
     }
 
-	void Physics::AddBody(btRigidBody* body)
+    Vector3 Physics::RayCastFirstHitPosition(const Math::Vector3& start, const Math::Vector3& end)
+    {
+        btVector3 bt_start = ToBtVector3(start);
+        btVector3 bt_end   = ToBtVector3(end);
+
+        btCollisionWorld::ClosestRayResultCallback ray_callback(bt_start, bt_end);
+        m_world->rayTest(bt_start, bt_end, ray_callback);
+
+        if (ray_callback.hasHit())
+        {
+            return ToVector3(ray_callback.m_hitPointWorld);
+        }
+
+        return Vector3::Infinity;
+    }
+
+    void Physics::AddBody(btRigidBody* body)
     {
         m_world->addRigidBody(body);
     }

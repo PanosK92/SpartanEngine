@@ -529,7 +529,7 @@ namespace Spartan
                 {
                     if (Engine::IsFlagSet(EngineMode::Game))
                     {
-                        if (m_physics_body_to_control->IsGrounded())
+                        if (m_physics_body_to_control->RayTraceIsGrounded())
                         {
                             Vector3 velocity_current = m_physics_body_to_control->GetLinearVelocity();
                             Vector3 velocity_new     = Vector3(m_movement_speed.x * 50.0f, velocity_current.y, m_movement_speed.z * 50.0f);
@@ -541,6 +541,17 @@ namespace Spartan
                                 m_physics_body_to_control->ApplyForce(Vector3::Up * 500.0f, PhysicsForce::Impulse);
                             }
                         }
+
+                        // scale stairs
+                        //Vector3 forward = GetEntity()->GetForward();
+                        //forward.y = 0.0f;
+                        //forward.Normalize();
+                        //Vector3 position_stair_step = m_physics_body_to_control->RayTraceIsNearStairStep(forward);
+                        //if (position_stair_step != Vector3::Infinity)
+                        //{
+                        //    Renderer::DrawSphere(position_stair_step, 0.2f, 32);
+                        //    m_physics_body_to_control->SetPosition(position_stair_step);
+                        //}
                     }
                     else
                     {

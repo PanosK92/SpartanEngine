@@ -57,9 +57,9 @@ namespace Spartan
         // 2. all the values are based on the toyota ae86 sprinter trueno, when literature was not available, values were approximated based on a typical mid-size car
 
         // engine
-        constexpr float engine_torque_max                  = 147.1f;                                    // maximum torque output of the engine
-        constexpr float engine_max_rpm                     = 7600.0f;                                   // maximum engine rpm - redline
-        constexpr float engine_idle_rpm                    = 900.0f;                                    // idle engine rpm
+        constexpr float engine_torque_max                  = 147.1f;  // maximum torque output of the engine
+        constexpr float engine_max_rpm                     = 7600.0f; // maximum engine rpm - redline
+        constexpr float engine_idle_rpm                    = 900.0f;  // idle engine rpm
         vector<pair<float, float>> engine_torque_map       =
         {
             { 1000.0f, 20.0f  },

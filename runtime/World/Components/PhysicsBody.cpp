@@ -43,6 +43,7 @@ SP_WARNINGS_OFF
 #include <BulletCollision/CollisionShapes/btTriangleMesh.h>
 #include <BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h>
 #include <BulletCollision/CollisionShapes/btConvexHullShape.h>
+#include "../Rendering/Renderer.h"
 SP_WARNINGS_ON
 //====================================================================
 
@@ -707,7 +708,7 @@ namespace Spartan
         AddBodyToWorld();
     }
     
-    bool PhysicsBody::IsGrounded() const
+    bool PhysicsBody::RayTraceIsGrounded() const
     {
         // get the lowest point of the AABB
         btVector3 aabb_min, aabb_max;
@@ -716,21 +717,48 @@ namespace Spartan
 
         // get the lowest point of the body
         Vector3 ray_start = ToVector3(rigid_body->getWorldTransform().getOrigin());
-        ray_start.y       = min_y + 0.1f; // the 0.1f is to avoid being inside another body, say a height field
+        ray_start.y       = min_y + 0.1f; // offset of 0.1f to avoid starting inside/at the ground
 
-        // perform the ray cast a little bit below the lowest point
+        // return the first hit
         vector<btRigidBody*> hit_bodies = Physics::RayCast(ray_start, ray_start - Vector3(0.0f, 0.2f, 0.0f));
-
         for (btRigidBody* hit_body : hit_bodies)
         {
             // ensure we are not hitting ourselves
             if (hit_body != rigid_body)
-            {
                 return true;
-            }
         }
 
         return false;
+    }
+
+    Vector3 PhysicsBody::RayTraceIsNearStairStep(const Vector3& forward) const
+    {
+        const float ray_length          = 5.0f;
+        const float max_scalable_height = 0.5f;
+        const float forward_distance    = 0.5f;
+
+        // get the lowest point of the AABB
+        btVector3 aabb_min, aabb_max;
+        shape->getAabb(rigid_body->getWorldTransform(), aabb_min, aabb_max);
+        float min_y = aabb_min.y();
+
+        // get the starting position
+        Vector3 ray_start = ToVector3(rigid_body->getWorldTransform().getOrigin());
+        ray_start.y       = min_y + ray_length;                     // raise it
+        ray_start         = ray_start + forward * forward_distance; // move it forward
+        // at this point, ray_start is likely to be above the stair step
+
+        // the end position is just going down
+        Vector3 ray_end = ray_start + Vector3(0.0f, -ray_length * 2.0f, 0.0f);
+
+        Renderer::DrawDirectionalArrow(ray_start, ray_end, 0.1f);
+
+        Vector3 hit_position = Physics::RayCastFirstHitPosition(ray_start, ray_end);
+
+        bool is_scalable = Helper::Abs(hit_position.y - min_y) <= max_scalable_height;
+        bool is_above    = hit_position.y > min_y;
+
+        return (is_scalable && is_above) ? hit_position : Vector3::Infinity;
     }
 
     void PhysicsBody::UpdateShape()
