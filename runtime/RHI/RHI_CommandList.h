@@ -148,21 +148,21 @@ namespace Spartan
         void BeginRenderPass();
         void EndRenderPass();
 
-        // Sync
+        // sync
         std::shared_ptr<RHI_Fence> m_proccessed_fence;
         std::shared_ptr<RHI_Semaphore> m_proccessed_semaphore;
 
-        // Profiling
+        // profiling
         const char* m_timeblock_active         = nullptr;
         uint32_t m_timestamp_index             = 0;
         static const uint32_t m_max_timestamps = 512;
         std::array<uint64_t, m_max_timestamps> m_timestamps;
 
-        // Variables to minimise state changes
+        // variables to minimise state changes
         uint64_t m_vertex_buffer_id = 0;
         uint64_t m_index_buffer_id  = 0;
 
-        // Misc
+        // misc
         RHI_Pipeline* m_pipeline                             = nullptr;
         bool m_render_pass_active                            = false;
         bool m_pipeline_dirty                                = false;
@@ -174,7 +174,7 @@ namespace Spartan
         std::mutex m_mutex_reset;
         RHI_PipelineState m_pso;
 
-        // RHI Resources
+        // rhi resources
         void* m_rhi_resource          = nullptr;
         void* m_rhi_cmd_pool_resource = nullptr;
         void* m_rhi_query_pool        = nullptr;

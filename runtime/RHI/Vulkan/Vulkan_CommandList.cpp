@@ -313,30 +313,24 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
         // get queries
-        if (m_queue_type != RHI_Queue_Type::Copy)
+        if (RHI_Context::gpu_profiling && m_queue_type != RHI_Queue_Type::Copy)
         {
-            if (RHI_Context::gpu_profiling)
+            if (m_timestamp_index != 0)
             {
-                if (m_rhi_query_pool)
-                {
-                    if (m_timestamp_index != 0)
-                    {
-                        const uint32_t query_count     = m_timestamp_index * 2;
-                        const size_t stride            = sizeof(uint64_t);
-                        const VkQueryResultFlags flags = VK_QUERY_RESULT_64_BIT;
+                const uint32_t query_count     = m_timestamp_index;
+                const size_t stride            = sizeof(uint64_t);
+                const VkQueryResultFlags flags = VK_QUERY_RESULT_64_BIT;
 
-                        vkGetQueryPoolResults(
-                            RHI_Context::device,                    // device
-                            static_cast<VkQueryPool>(m_rhi_query_pool), // queryPool
-                            0,                                      // firstQuery
-                            query_count,                            // queryCount
-                            query_count * stride,                   // dataSize
-                            m_timestamps.data(),                    // pData
-                            stride,                                 // stride
-                            flags                                   // flags
-                        );
-                    }
-                }
+                vkGetQueryPoolResults(
+                    RHI_Context::device,                        // device
+                    static_cast<VkQueryPool>(m_rhi_query_pool), // queryPool
+                    0,                                          // firstQuery
+                    query_count,                                // queryCount
+                    query_count * stride,                       // dataSize
+                    m_timestamps.data(),                        // pData
+                    stride,                                     // stride
+                    flags                                       // flags
+                );
             }
 
             m_timestamp_index = 0;
@@ -348,8 +342,8 @@ namespace Spartan
         begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         SP_ASSERT_MSG(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource), &begin_info) == VK_SUCCESS, "Failed to begin command buffer");
 
-        // Reset query pool - Has to be done after vkBeginCommandBuffer or a VK_DEVICE_LOST will occur
-        if (m_queue_type != RHI_Queue_Type::Copy)
+        // reset query pool - has to be done after vkBeginCommandBuffer or a VK_DEVICE_LOST will occur
+        if (RHI_Context::gpu_profiling && m_queue_type != RHI_Queue_Type::Copy)
         {
             vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkQueryPool>(m_rhi_query_pool), 0, m_max_timestamps);
         }
@@ -1243,11 +1237,9 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(RHI_Context::gpu_profiling);
-        SP_ASSERT(m_rhi_query_pool != nullptr);
 
         uint32_t timestamp_index = m_timestamp_index;
-        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_rhi_query_pool), timestamp_index);
-        m_timestamp_index++;
+        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_rhi_query_pool), m_timestamp_index++);
 
         return timestamp_index;
     }
@@ -1256,7 +1248,6 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(RHI_Context::gpu_profiling);
-        SP_ASSERT(m_rhi_query_pool != nullptr);
 
         vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_rhi_query_pool), m_timestamp_index++);
     }
