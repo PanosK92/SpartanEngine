@@ -34,7 +34,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_FidelityFX.h"
 #include "../RHI/RHI_StructuredBuffer.h"
 #include "../World/Entity.h"
-#include "../World/Components/Transform.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/AudioSource.h"
@@ -103,7 +102,7 @@ namespace Spartan
                 if (!renderable)
                     return 0.0f;
 
-                return (renderable->GetBoundingBox().GetCenter() - camera->GetTransform()->GetPosition()).LengthSquared();
+                return (renderable->GetBoundingBox().GetCenter() - camera->GetEntity()->GetPosition()).LengthSquared();
             };
 
             // sort by depth
@@ -463,8 +462,8 @@ namespace Spartan
                 m_cb_frame_cpu.camera_near                = m_camera->GetNearPlane();
                 m_cb_frame_cpu.camera_far                 = m_camera->GetFarPlane();
                 m_cb_frame_cpu.camera_position_previous   = m_cb_frame_cpu.camera_position;
-                m_cb_frame_cpu.camera_position            = m_camera->GetTransform()->GetPosition();
-                m_cb_frame_cpu.camera_direction           = m_camera->GetTransform()->GetForward();
+                m_cb_frame_cpu.camera_position            = m_camera->GetEntity()->GetPosition();
+                m_cb_frame_cpu.camera_direction           = m_camera->GetEntity()->GetForward();
                 m_cb_frame_cpu.camera_last_movement_time  = (m_cb_frame_cpu.camera_position - m_cb_frame_cpu.camera_position_previous).LengthSquared() != 0.0f
                     ? static_cast<float>(Timer::GetTimeSec()) : m_cb_frame_cpu.camera_last_movement_time;
 
@@ -512,8 +511,8 @@ namespace Spartan
         m_cb_light_cpu.bias         = light->GetBias();
         m_cb_light_cpu.color        = light->GetColor();
         m_cb_light_cpu.normal_bias  = light->GetNormalBias();
-        m_cb_light_cpu.position     = light->GetTransform()->GetPosition();
-        m_cb_light_cpu.direction    = light->GetTransform()->GetForward();
+        m_cb_light_cpu.position     = light->GetEntity()->GetPosition();
+        m_cb_light_cpu.direction    = light->GetEntity()->GetForward();
         m_cb_light_cpu.options      = 0;
         m_cb_light_cpu.options     |= light->GetLightType() == LightType::Directional ? (1 << 0) : 0;
         m_cb_light_cpu.options     |= light->GetLightType() == LightType::Point       ? (1 << 1) : 0;

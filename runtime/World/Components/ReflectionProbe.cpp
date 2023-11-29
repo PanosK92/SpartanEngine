@@ -22,13 +22,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "pch.h"
 #include "ReflectionProbe.h"
-#include "Transform.h"
 #include "Renderable.h"
 #include "../../RHI/RHI_TextureCube.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../Rendering/Renderer.h"
 #include "../../IO/FileStream.h"
 #include "../../RHI/RHI_Device.h"
+#include "../Entity.h"
 //====================================
 
 //= NAMESPACES ===============
@@ -85,10 +85,10 @@ namespace Spartan
 
         ComputeProjectionMatrix();
 
-        if (GetTransform()->HasPositionChangedThisFrame())
+        if (m_entity_ptr->HasPositionChangedThisFrame())
         { 
             // Compute view for each side of the cube map
-            const Vector3 position = GetTransform()->GetPosition();
+            const Vector3 position = m_entity_ptr->GetPosition();
             m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Right,    Vector3::Up);       // x+
             m_matrix_view[1] = Matrix::CreateLookAtLH(position, position + Vector3::Left,     Vector3::Up);       // x-
             m_matrix_view[2] = Matrix::CreateLookAtLH(position, position + Vector3::Up,       Vector3::Backward); // y+
@@ -99,7 +99,7 @@ namespace Spartan
             m_aabb = BoundingBox(position - m_extents, position + m_extents);
         }
 
-        if (GetTransform()->HasPositionChangedThisFrame())
+        if (m_entity_ptr->HasPositionChangedThisFrame())
         {
             // Compute frustum
             for (uint32_t i = 0; i < m_texture_color->GetArrayLength(); i++)

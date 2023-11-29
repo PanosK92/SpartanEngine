@@ -34,7 +34,6 @@ namespace Spartan
         // system
         static void Initialize();
         static void Shutdown();
-        static void PreTick();
         static void Tick();
 
         // io
@@ -58,7 +57,7 @@ namespace Spartan
         // entities
         static std::shared_ptr<Entity> CreateEntity();
         static bool EntityExists(Entity* entity);
-        static void RemoveEntity(std::shared_ptr<Entity> entity);
+        static void RemoveEntity(Entity* entity);
         static std::vector<std::shared_ptr<Entity>> GetRootEntities();
         static const std::shared_ptr<Entity>& GetEntityByName(const std::string& name);
         static const std::shared_ptr<Entity>& GetEntityById(uint64_t id);

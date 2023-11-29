@@ -61,7 +61,7 @@ public:
     static std::weak_ptr<Spartan::Material> m_inspected_material;
 
 private:
-    void ShowTransform(std::shared_ptr<Spartan::Transform> transform) const;
+    void ShowTransform(std::shared_ptr<Spartan::Entity> transform) const;
     void ShowLight(std::shared_ptr<Spartan::Light> light) const;
     void ShowRenderable(std::shared_ptr<Spartan::Renderable> renderable) const;
     void ShowPhysicsBody(std::shared_ptr<Spartan::PhysicsBody> rigid_body) const;

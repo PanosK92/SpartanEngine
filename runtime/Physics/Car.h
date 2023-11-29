@@ -71,8 +71,8 @@ namespace Spartan
         CarMovementState movement_direction = CarMovementState::Stationary;
         btRaycastVehicle* vehicle           = nullptr;
         btRigidBody* body                   = nullptr;
-        Transform* transform_steering_wheel = nullptr;
-        std::vector<Transform*> transform_wheels;
+        Entity* transform_steering_wheel    = nullptr;
+        std::vector<Entity*> transform_wheels;
     };
 
     class SP_CLASS Car
@@ -86,8 +86,8 @@ namespace Spartan
         void Tick();
 
         // transforms
-        void SetWheelTransform(Transform* transform, uint32_t wheel_index);
-        void SetSteeringWheelTransform(Transform* transform) { m_parameters.transform_steering_wheel = transform; }
+        void SetWheelTransform(Entity* transform, uint32_t wheel_index);
+        void SetSteeringWheelTransform(Entity* transform) { m_parameters.transform_steering_wheel = transform; }
 
         // speed
         float GetSpeedKilometersPerHour() const;

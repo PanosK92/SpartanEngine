@@ -28,11 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Camera.h"
 #include "AudioSource.h"
 #include "AudioListener.h"
-#include "Renderable.h"
-#include "Transform.h"
 #include "Terrain.h"
 #include "ReflectionProbe.h"
-#include "../Entity.h"
 //==========================
 
 //= NAMESPACES =====
@@ -43,26 +40,20 @@ namespace Spartan
 {
     Component::Component(weak_ptr<Entity> entity)
     {
-        m_entity_ptr_weak = entity;
-        m_entity_ptr      = entity.lock().get();
-        m_enabled         = true;
+        m_entity_ptr = entity.lock().get();
+        m_enabled    = true;
     }
 
     template <typename T>
     inline constexpr ComponentType Component::TypeToEnum() { return ComponentType::Undefined; }
 
-    shared_ptr<Transform> Component::GetTransform() const
-    {
-        return GetEntityPtr()->GetComponent<Transform>();
-    }
-
     template<typename T>
     inline constexpr void validate_component_type() { static_assert(is_base_of<Component, T>::value, "Provided type does not implement IComponent"); }
 
-    // Explicit template instantiation
+    // explicit template instantiation
     #define REGISTER_COMPONENT(T, enumT) template<> SP_CLASS ComponentType Component::TypeToEnum<T>() { validate_component_type<T>(); return enumT; }
 
-    // To add a new component to the engine, simply register it here
+    // to add a new component to the engine, simply register it here
     REGISTER_COMPONENT(AudioListener,   ComponentType::AudioListener)
     REGISTER_COMPONENT(AudioSource,     ComponentType::AudioSource)
     REGISTER_COMPONENT(Camera,          ComponentType::Camera)
@@ -71,6 +62,5 @@ namespace Spartan
     REGISTER_COMPONENT(Renderable,      ComponentType::Renderable)
     REGISTER_COMPONENT(PhysicsBody,     ComponentType::PhysicsBody)
     REGISTER_COMPONENT(Terrain,         ComponentType::Terrain)
-    REGISTER_COMPONENT(Transform,       ComponentType::Transform)
     REGISTER_COMPONENT(ReflectionProbe, ComponentType::ReflectionProbe)
 }

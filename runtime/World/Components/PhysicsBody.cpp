@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================================================
 #include "pch.h"
 #include "PhysicsBody.h"
-#include "Transform.h"
 #include "Constraint.h"
 #include "Renderable.h"
 #include "Terrain.h"
@@ -44,7 +43,6 @@ SP_WARNINGS_OFF
 #include <BulletCollision/CollisionShapes/btTriangleMesh.h>
 #include <BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h>
 #include <BulletCollision/CollisionShapes/btConvexHullShape.h>
-
 SP_WARNINGS_ON
 //====================================================================
 
@@ -57,11 +55,11 @@ namespace Spartan
 {
     namespace
     {
-        constexpr float k_default_deactivation_time = 2000;
-        constexpr float k_default_mass              = 1.0f;
-        constexpr float k_default_restitution       = 0.0f;
-        constexpr float k_default_friction          = 0.5f;
-        constexpr float k_default_friction_rolling  = 0.0f;
+        const float k_default_deactivation_time = 2000;
+        const float k_default_mass              = 1.0f;
+        const float k_default_restitution       = 0.0f;
+        const float k_default_friction          = 0.5f;
+        const float k_default_friction_rolling  = 0.0f;
     }
 
     #define shape static_cast<btCollisionShape*>(m_shape)
@@ -76,8 +74,8 @@ namespace Spartan
         // engine -> bullet
         void getWorldTransform(btTransform& worldTrans) const override
         {
-            const Vector3 last_position    = m_rigidBody->GetTransform()->GetPosition();
-            const Quaternion last_rotation = m_rigidBody->GetTransform()->GetRotation();
+            const Vector3 last_position    = m_rigidBody->GetEntity()->GetPosition();
+            const Quaternion last_rotation = m_rigidBody->GetEntity()->GetRotation();
 
             worldTrans.setOrigin(ToBtVector3(last_position + last_rotation * m_rigidBody->GetCenterOfMass()));
             worldTrans.setRotation(ToBtQuaternion(last_rotation));
@@ -89,8 +87,8 @@ namespace Spartan
             const Quaternion new_rotation = ToQuaternion(worldTrans.getRotation());
             const Vector3 new_position    = ToVector3(worldTrans.getOrigin()) - new_rotation * m_rigidBody->GetCenterOfMass();
 
-            m_rigidBody->GetTransform()->SetPosition(new_position);
-            m_rigidBody->GetTransform()->SetRotation(new_rotation);
+            m_rigidBody->GetEntity()->SetPosition(new_position);
+            m_rigidBody->GetEntity()->SetRotation(new_rotation);
         }
     private:
         PhysicsBody* m_rigidBody;
@@ -128,12 +126,12 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_size, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_shape_type, SetShapeType, PhysicsShape);
 
-        if (GetEntityPtr()->GetComponent<Renderable>())
+        if (GetEntity()->GetComponent<Renderable>())
         {
             m_shape_type = PhysicsShape::MeshConvexHull;
         }
 
-        if (GetEntityPtr()->GetComponent<Terrain>())
+        if (GetEntity()->GetComponent<Terrain>())
         {
             m_shape_type = PhysicsShape::Terrain;
         }
@@ -170,16 +168,16 @@ namespace Spartan
         // when the rigid body is inactive or we are in editor mode, allow the user to move/rotate it
         if (!Engine::IsFlagSet(EngineMode::Game))
         {
-            if (GetPosition() != GetTransform()->GetPosition())
+            if (GetPosition() != GetEntity()->GetPosition())
             {
-                SetPosition(GetTransform()->GetPosition(), false);
+                SetPosition(GetEntity()->GetPosition(), false);
                 SetLinearVelocity(Vector3::Zero, false);
                 SetAngularVelocity(Vector3::Zero, false);
             }
 
-            if (GetRotation() != GetTransform()->GetRotation())
+            if (GetRotation() != GetEntity()->GetRotation())
             {
-                SetRotation(GetTransform()->GetRotation(), false);
+                SetRotation(GetEntity()->GetRotation(), false);
                 SetLinearVelocity(Vector3::Zero, false);
                 SetAngularVelocity(Vector3::Zero, false);
             }
@@ -620,8 +618,8 @@ namespace Spartan
 
         // set transform
         {
-            SetPosition(GetTransform()->GetPosition());
-            SetRotation(GetTransform()->GetRotation());
+            SetPosition(GetEntity()->GetPosition());
+            SetRotation(GetEntity()->GetRotation());
 
             SetPositionLock(m_position_lock);
             SetRotationLock(m_rotation_lock);
@@ -750,7 +748,7 @@ namespace Spartan
         if (m_shape_type == PhysicsShape::Mesh || m_shape_type == PhysicsShape::MeshConvexHull)
         {
             // get renderable
-            renderable = GetEntityPtr()->GetComponent<Renderable>();
+            renderable = GetEntity()->GetComponent<Renderable>();
             if (!renderable)
             {
                 SP_LOG_WARNING("For a mesh shape to be constructed, there needs to be a Renderable component");
@@ -766,7 +764,7 @@ namespace Spartan
             }
         }
 
-        Vector3 size = m_size * m_entity_ptr->GetTransform()->GetScale();
+        Vector3 size = m_size * GetEntity()->GetScale();
 
         // construct new shape
         switch (m_shape_type)
@@ -801,7 +799,7 @@ namespace Spartan
 
             case PhysicsShape::Terrain:
             {
-                Terrain* terrain = GetEntityPtr()->GetComponent<Terrain>().get();
+                Terrain* terrain = GetEntity()->GetComponent<Terrain>().get();
                 if (!terrain)
                 {
                     SP_LOG_WARNING("For a terrain shape to be constructed, there needs to be a Terrain component");

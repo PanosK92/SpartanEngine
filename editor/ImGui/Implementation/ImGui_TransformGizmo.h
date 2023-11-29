@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include "../Source/ImGuizmo/ImGuizmo.h"
 #include "../Source/imgui.h"
-#include "World/Components/Transform.h"
 #include "World/Entity.h"
 #include "Rendering/Renderer.h"
 #include "Input/Input.h"
@@ -95,7 +94,6 @@ namespace ImGui::TransformGizmo
         // Get some data
         const Spartan::Math::Matrix& matrix_projection = camera->GetProjectionMatrix().Transposed();
         const Spartan::Math::Matrix& matrix_view       = camera->GetViewMatrix().Transposed();
-        std::shared_ptr<Spartan::Transform> transform  = entity->GetComponent<Spartan::Transform>();
 
         // begin
         const bool is_orthographic = false;
@@ -103,9 +101,9 @@ namespace ImGui::TransformGizmo
         ImGuizmo::BeginFrame();
 
         // map transform to ImGuizmo
-        Spartan::Math::Vector3 position    = transform->GetPosition();
-        Spartan::Math::Vector3 scale       = transform->GetScale();
-        Spartan::Math::Quaternion rotation = transform->GetRotation();
+        Spartan::Math::Vector3 position    = entity->GetPosition();
+        Spartan::Math::Vector3 scale       = entity->GetScale();
+        Spartan::Math::Quaternion rotation = entity->GetRotation();
 
         Spartan::Math::Matrix transform_matrix = Spartan::Math::Matrix::GenerateRowFirst(position, rotation, scale);
 
@@ -121,17 +119,17 @@ namespace ImGui::TransformGizmo
             // start of handling - save the initial transform
             if (first_use)
             {
-                position_previous = transform->GetPosition();
-                rotation_previous = transform->GetRotation();
-                scale_previous    = transform->GetScale();
+                position_previous = entity->GetPosition();
+                rotation_previous = entity->GetRotation();
+                scale_previous    = entity->GetScale();
 
                 first_use = false;
             }
 
             transform_matrix.Transposed().Decompose(scale, rotation, position);
-            transform->SetPosition(position);
-            transform->SetRotation(rotation);
-            transform->SetScale(scale);
+            entity->SetPosition(position);
+            entity->SetRotation(rotation);
+            entity->SetScale(scale);
 
             // end of handling - add the current and previous transforms to the command stack
             if (Spartan::Input::GetKeyUp(Spartan::KeyCode::Click_Left))

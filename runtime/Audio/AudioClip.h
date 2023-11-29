@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =============================
 #include "../Resource/IResource.h"
 #include "../Math/Vector3.h"
-#include "../World/Components/Transform.h"
 //========================================
 
 namespace Spartan
@@ -70,7 +69,7 @@ namespace Spartan
         bool SetPan(float pan);
 
         // Makes the audio use the 3D attributes of the transform
-        void SetTransform(std::shared_ptr<Transform> transform) { m_transform = transform.get(); }
+        void SetTransform(Entity* entity) { m_entity = entity; }
 
         // 3D audio
         void Set3d(const bool enabled);
@@ -89,11 +88,11 @@ namespace Spartan
         //==============================================
         int GetSoundMode() const;
 
-        Transform* m_transform = nullptr;
-        void* m_fmod_sound     = nullptr;
-        void* m_fmod_channel   = nullptr;
-        PlayMode m_playMode    = PlayMode::Memory;
-        float m_distance_min   = 0.1f;
-        float m_distance_max   = 1000.0f;
+        Entity* m_entity     = nullptr;
+        void* m_fmod_sound   = nullptr;
+        void* m_fmod_channel = nullptr;
+        PlayMode m_playMode  = PlayMode::Memory;
+        float m_distance_min = 0.1f;
+        float m_distance_max = 1000.0f;
     };
 }

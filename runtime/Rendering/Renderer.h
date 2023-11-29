@@ -59,7 +59,6 @@ namespace Spartan
         // primitive rendering (useful for debugging)
         static void DrawLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& color_from = debug_color, const Math::Vector4& color_to = debug_color, const float duration = 0.0f, const bool depth = true);
         static void DrawTriangle(const Math::Vector3& v0, const Math::Vector3& v1, const Math::Vector3& v2, const Math::Vector4& color = debug_color, const float duration = 0.0f, const bool depth = true);
-        static void DrawRectangle(const Math::Rectangle& rectangle, const Math::Vector4& color = debug_color, const float duration = 0.0f, const bool depth = true);
         static void DrawBox(const Math::BoundingBox& box, const Math::Vector4& color = debug_color, const float duration = 0.0f, const bool depth = true);
         static void DrawCircle(const Math::Vector3& center, const Math::Vector3& axis, const float radius, uint32_t segment_count, const Math::Vector4& color = debug_color, const float duration = 0.0f, const bool depth = true);
         static void DrawSphere(const Math::Vector3& center, float radius, uint32_t segment_count, const Math::Vector4& color = debug_color, const float duration = 0.0f, const bool depth = true);

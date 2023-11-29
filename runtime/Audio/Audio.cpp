@@ -20,19 +20,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 
-//= INCLUDES =============================
+//= INCLUDES ======================
 #include "pch.h"
 #include "Audio.h"
 #include "../Profiling/Profiler.h"
-#include "../World/Components/Transform.h"
 SP_WARNINGS_OFF
 #if defined(_MSC_VER)
 #include <fmod.hpp>
 #include <fmod_errors.h>
 #endif
-
 SP_WARNINGS_ON
-//========================================
+//=================================
 
 //= NAMESPACES ======
 using namespace std;
@@ -46,14 +44,13 @@ namespace Spartan
     namespace
     { 
         #if defined(_MSC_VER)
-        static FMOD::System* fmod_system  = nullptr;
-        static uint32_t fmod_result       = 0;
-        static uint32_t fmod_max_channels = 32;
-        static float fmod_distance_entity = 1.0f;
-        static Transform* m_listener      = nullptr;
+        FMOD::System* fmod_system  = nullptr;
+        uint32_t fmod_result       = 0;
+        uint32_t fmod_max_channels = 32;
+        float fmod_distance_entity = 1.0f;
+        Entity* m_listener         = nullptr;
         #endif
     }
-
 
     void Audio::Initialize()
     {
@@ -138,10 +135,10 @@ namespace Spartan
         #endif
     }
 
-    void Audio::SetListenerTransform(shared_ptr<Transform> transform)
+    void Audio::SetListenerEntity(Entity* entity)
     {
         #if defined(_MSC_VER)
-        m_listener = transform.get();
+        m_listener = entity;
         #endif
     }
 

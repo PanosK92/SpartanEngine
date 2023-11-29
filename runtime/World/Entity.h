@@ -23,12 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================
 #include "Components/Component.h"
-#include "Event.h"
 //===============================
 
 namespace Spartan
 {
-    class Transform;
+    class FileStream;
     class Renderable;
     
     class SP_CLASS Entity : public SpObject, public std::enable_shared_from_this<Entity>
@@ -40,31 +39,25 @@ namespace Spartan
         void Initialize();
         Entity* Clone();
 
-        // Runs once, before the simulation ends.
-        void OnStart();
+        // core
+        void OnStart(); // runs once, before the simulation ends
+        void OnStop();  // runs once, after the simulation ends
+        void Tick();    // runs every frame
 
-        // Runs once, after the simulation ends.
-        void OnStop();
-
-        // Runs every frame, before any subsystem or entity ticks.
-        void OnPreTick();
-
-        // Runs every frame.
-        void Tick();
-
+        // io
         void Serialize(FileStream* stream);
-        void Deserialize(FileStream* stream, std::shared_ptr<Transform> parent);
+        void Deserialize(FileStream* stream, Entity* parent);
 
-        // Active
+        // active
         bool IsActive() const             { return m_is_active; }
         void SetActive(const bool active) { m_is_active = active; }
         bool IsActiveRecursively();
 
-        // Visible
+        // visible
         bool IsVisibleInHierarchy() const                            { return m_hierarchy_visibility; }
         void SetHierarchyVisibility(const bool hierarchy_visibility) { m_hierarchy_visibility = hierarchy_visibility; }
 
-        // Adds a component of type T
+        // adds a component of type T
         template <class T>
         std::shared_ptr<T> AddComponent()
         {
@@ -90,10 +83,10 @@ namespace Spartan
             return component;
         }
 
-        // Adds a component of ComponentType 
+        // adds a component of ComponentType 
         std::shared_ptr<Component> AddComponent(ComponentType type);
 
-        // Returns a component of type T
+        // returns a component of type T
         template <class T>
         std::shared_ptr<T> GetComponent()
         {
@@ -101,7 +94,7 @@ namespace Spartan
             return std::static_pointer_cast<T>(m_components[static_cast<uint32_t>(component_type)]);
         }
 
-        // Removes a component
+        // removes a component
         template <class T>
         void RemoveComponent()
         {
@@ -113,11 +106,100 @@ namespace Spartan
 
         void RemoveComponentById(uint64_t id);
         const auto& GetAllComponents() const { return m_components; }
-        std::shared_ptr<Transform> GetTransform();
+
+        //= POSITION ======================================================================
+        Math::Vector3 GetPosition()             const { return m_matrix.GetTranslation(); }
+        const Math::Vector3& GetPositionLocal() const { return m_position_local; }
+        void SetPosition(const Math::Vector3& position);
+        void SetPositionLocal(const Math::Vector3& position);
+        //=================================================================================
+
+        //= ROTATION ======================================================================
+        Math::Quaternion GetRotation()             const { return m_matrix.GetRotation(); }
+        const Math::Quaternion& GetRotationLocal() const { return m_rotation_local; }
+        void SetRotation(const Math::Quaternion& rotation);
+        void SetRotationLocal(const Math::Quaternion& rotation);
+        //=================================================================================
+
+        //= SCALE ================================================================
+        Math::Vector3 GetScale()             const { return m_matrix.GetScale(); }
+        const Math::Vector3& GetScaleLocal() const { return m_scale_local; }
+        void SetScale(const Math::Vector3& scale);
+        void SetScaleLocal(const Math::Vector3& scale);
+        //========================================================================
+
+        //= TRANSLATION/ROTATION ==================
+        void Translate(const Math::Vector3& delta);
+        void Rotate(const Math::Quaternion& delta);
+        //=========================================
+
+        //= DIRECTIONS ===================
+        Math::Vector3 GetUp()       const;
+        Math::Vector3 GetDown()     const;
+        Math::Vector3 GetForward()  const;
+        Math::Vector3 GetBackward() const;
+        Math::Vector3 GetRight()    const;
+        Math::Vector3 GetLeft()     const;
+        //================================
+
+        //= DIRTY CHECKS =================================================================
+        bool HasPositionChangedThisFrame() const { return m_position_changed_this_frame; }
+        bool HasRotationChangedThisFrame() const { return m_rotation_changed_this_frame; }
+        //================================================================================
+
+        //= HIERARCHY ======================================================================================
+        void SetParent(Entity* new_parent);
+        Entity* GetChildByIndex(uint32_t index);
+        Entity* GetChildByName(const std::string& name);
+        void AcquireChildren();
+        void RemoveChild(Entity* child);
+        void AddChild(Entity* child);
+        bool IsDescendantOf(Entity* transform) const;
+        void GetDescendants(std::vector<Entity*>* descendants);
+        Entity* GetDescendantByName(const std::string& name);
+        bool IsRoot()                          const { return m_parent == nullptr; }
+        bool HasParent()                       const { return m_parent != nullptr; }
+        bool HasChildren()                     const { return GetChildrenCount() > 0 ? true : false; }
+        uint32_t GetChildrenCount()            const { return static_cast<uint32_t>(m_children.size()); }
+        Entity* GetRoot()                            { return HasParent() ? GetParent()->GetRoot() : this; }
+        Entity* GetParent()                    const { return m_parent; }
+        std::vector<Entity*>& GetChildren()          { return m_children; }
+        //==================================================================================================
+
+        const Math::Matrix& GetMatrix()              const { return m_matrix; }
+        const Math::Matrix& GetLocalMatrix()         const { return m_matrix_local; }
+        const Math::Matrix& GetMatrixPrevious()      const { return m_matrix_previous; }
+        void SetMatrixPrevious(const Math::Matrix& matrix) { m_matrix_previous = matrix; }
 
     private:
         std::atomic<bool> m_is_active = true;
         bool m_hierarchy_visibility   = true;
-        std::array<std::shared_ptr<Component>, 14> m_components;
+        std::array<std::shared_ptr<Component>, 13> m_components;
+
+        // internal functions don't propagate changes throughout the hierarchy
+        // They just make enough changes so that the hierarchy can be resolved later (in one go)
+        void SetParent_Internal(Entity* parent);
+        void AddChild_Internal(Entity* child);
+        void RemoveChild_Internal(Entity* child);
+
+        void UpdateTransform();
+        Math::Matrix GetParentTransformMatrix() const;
+
+        // local
+        Math::Vector3 m_position_local    = Math::Vector3::Zero;
+        Math::Quaternion m_rotation_local = Math::Quaternion::Identity;
+        Math::Vector3 m_scale_local       = Math::Vector3::One;
+
+        Math::Matrix m_matrix          = Math::Matrix::Identity;
+        Math::Matrix m_matrix_previous = Math::Matrix::Identity;
+        Math::Matrix m_matrix_local    = Math::Matrix::Identity;
+
+        Entity* m_parent = nullptr;      // the parent of this entity
+        std::vector<Entity*> m_children; // the children of this entity
+
+        // misc
+        bool m_position_changed_this_frame = false;
+        bool m_rotation_changed_this_frame = false;
+        std::mutex m_child_add_remove_mutex;
     };
 }

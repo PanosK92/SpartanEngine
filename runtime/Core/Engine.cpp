@@ -100,7 +100,6 @@ namespace Spartan
     {
         // pre-tick
         Profiler::PreTick();
-        World::PreTick();
 
         // tick
         Window::Tick();

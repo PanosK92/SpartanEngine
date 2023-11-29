@@ -129,15 +129,16 @@ namespace Spartan::Math
         {
             const Vector3 scale = GetScale();
 
-            // Avoid division by zero (we'll divide to remove scaling)
-            if (scale.x == 0.0f || scale.y == 0.0f || scale.z == 0.0f) { return Quaternion(0, 0, 0, 1); }
+            // avoid division by zero (we'll divide to remove scaling)
+            if (scale.x == 0.0f || scale.y == 0.0f || scale.z == 0.0f)
+                return Quaternion::Identity;
 
-            // Extract rotation and remove scaling
+            // extract rotation and remove scaling
             Matrix normalized;
             normalized.m00 = m00 / scale.x; normalized.m01 = m01 / scale.x; normalized.m02 = m02 / scale.x; normalized.m03 = 0.0f;
             normalized.m10 = m10 / scale.y; normalized.m11 = m11 / scale.y; normalized.m12 = m12 / scale.y; normalized.m13 = 0.0f;
             normalized.m20 = m20 / scale.z; normalized.m21 = m21 / scale.z; normalized.m22 = m22 / scale.z; normalized.m23 = 0.0f;
-            normalized.m30 = 0; normalized.m31 = 0; normalized.m32 = 0; normalized.m33 = 1.0f;
+            normalized.m30 = 0;             normalized.m31 = 0;             normalized.m32 = 0;             normalized.m33 = 1.0f;
 
             return RotationMatrixToQuaternion(normalized);
         }

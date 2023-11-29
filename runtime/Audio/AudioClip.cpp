@@ -19,16 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============================
+//= INCLUDES ================
 #include "pch.h"
 #include "AudioClip.h"
 #if defined(_MSC_VER)
 #include <fmod.hpp>
 #endif
 #include "Audio.h"
-#include "../World/Components/Transform.h"
 #include "../IO/FileStream.h"
-//========================================
+//===========================
 
 //= NAMESPACES ================
 using namespace std;
@@ -262,10 +261,10 @@ namespace Spartan
     bool AudioClip::Update()
     {
         #if defined(_MSC_VER)
-        if (!m_transform)
+        if (!m_entity)
             return true;
 
-        const Vector3 pos = m_transform->GetPosition();
+        const Vector3 pos = m_entity->GetPosition();
 
         FMOD_VECTOR f_mod_pos = { pos.x, pos.y, pos.z };
         FMOD_VECTOR f_mod_vel = { 0, 0, 0 };

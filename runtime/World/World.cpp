@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "World.h"
 #include "Entity.h"
-#include "Components/Transform.h"
 #include "Components/Camera.h"
 #include "Components/Light.h"
 #include "Components/AudioListener.h"
@@ -83,7 +82,7 @@ namespace Spartan
                 // create the camera's root (which will be used for movement)
                 m_default_physics_body_camera = World::CreateEntity();
                 m_default_physics_body_camera->SetObjectName("physics_body_camera");
-                m_default_physics_body_camera->GetTransform()->SetPosition(camera_position);
+                m_default_physics_body_camera->SetPosition(camera_position);
 
                 // add a physics body so that the camera can move through the environment in a physical manner
                 PhysicsBody* physics_body = m_default_physics_body_camera->AddComponent<PhysicsBody>().get();
@@ -99,9 +98,9 @@ namespace Spartan
                 camera->SetObjectName("component_camera");
                 camera->AddComponent<Camera>()->SetPhysicsBodyToControl(physics_body);
                 camera->AddComponent<AudioListener>();
-                camera->GetTransform()->SetParent(m_default_physics_body_camera->GetTransform());
-                camera->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f)); // place it at the top of the capsule
-                camera->GetTransform()->SetRotation(Quaternion::FromEulerAngles(camera_rotation));
+                camera->SetParent(m_default_physics_body_camera.get());
+                camera->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f)); // place it at the top of the capsule
+                camera->SetRotation(Quaternion::FromEulerAngles(camera_rotation));
             }
 
             // light - directional
@@ -109,7 +108,7 @@ namespace Spartan
                 shared_ptr<Entity> entity = World::CreateEntity();
                 entity->SetObjectName("light_directional");
 
-                entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(35.0f, 90.0f, 0.0f));
+                entity->SetRotation(Quaternion::FromEulerAngles(35.0f, 90.0f, 0.0f));
 
                 shared_ptr<Light> light = entity->AddComponent<Light>();
                 light->SetLightType(LightType::Directional);
@@ -134,8 +133,8 @@ namespace Spartan
             {
                 m_default_model_floor = World::CreateEntity();
                 m_default_model_floor->SetObjectName("floor");
-                m_default_model_floor->GetTransform()->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise it a bit to avoid z-fighting with world grid
-                m_default_model_floor->GetTransform()->SetScale(Vector3(256.0f, 1.0f, 256.0f));
+                m_default_model_floor->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise it a bit to avoid z-fighting with world grid
+                m_default_model_floor->SetScale(Vector3(256.0f, 1.0f, 256.0f));
 
                 // add a renderable component
                 shared_ptr<Renderable> renderable = m_default_model_floor->AddComponent<Renderable>();
@@ -160,8 +159,8 @@ namespace Spartan
             // create entity
             m_default_cube = World::CreateEntity();
             m_default_cube->SetObjectName("cube");
-            m_default_cube->GetTransform()->SetPosition(position);
-            m_default_cube->GetTransform()->SetScale(scale);
+            m_default_cube->SetPosition(position);
+            m_default_cube->SetScale(scale);
             
             // create material
             shared_ptr<Material> material = make_shared<Material>();
@@ -199,20 +198,20 @@ namespace Spartan
                 Entity* entity_car = m_default_model_car->GetRootEntity();
                 entity_car->SetObjectName("geometry");
 
-                entity_car->GetTransform()->SetPosition(Vector3(0.05f, 0.0f, 0.0f)); // compensation for model offset
-                entity_car->GetTransform()->SetRotation(Quaternion::FromEulerAngles(90.0f, 0.0f, -180.0f));
-                entity_car->GetTransform()->SetScale(Vector3(car_scale));
+                entity_car->SetPosition(Vector3(0.05f, 0.0f, 0.0f)); // compensation for model offset
+                entity_car->SetRotation(Quaternion::FromEulerAngles(90.0f, 0.0f, -180.0f));
+                entity_car->SetScale(Vector3(car_scale));
 
                 // the car is defined with a weird rotation (probably a bug with sketchfab auto converting to gltf)
                 // so we create a root which has no rotation and we parent the car to it, then attach the physics body to the root
                 Entity* entity_root = World::CreateEntity().get();
                 entity_root->SetObjectName("toyota_ae86_sprinter_trueno");
-                entity_root->GetTransform()->SetPosition(position);
-                entity_car->GetTransform()->SetParent(entity_root->GetTransform());
+                entity_root->SetPosition(position);
+                entity_car->SetParent(entity_root);
 
                 // body
                 {
-                    if (Entity* body = entity_car->GetTransform()->GetDescendantPtrByName("CarBody_Primary_0"))
+                    if (Entity* body = entity_car->GetDescendantByName("CarBody_Primary_0"))
                     {
                         if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
                         {
@@ -226,7 +225,7 @@ namespace Spartan
 
                     // plastic
                     {
-                        if (Entity* body = entity_car->GetTransform()->GetDescendantPtrByName("CarBody_Secondary_0"))
+                        if (Entity* body = entity_car->GetDescendantByName("CarBody_Secondary_0"))
                         {
                             if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
                             {
@@ -235,7 +234,7 @@ namespace Spartan
                             }
                         }
 
-                        if (Entity* body = entity_car->GetTransform()->GetDescendantPtrByName("CarBody_Trim1_0"))
+                        if (Entity* body = entity_car->GetDescendantByName("CarBody_Trim1_0"))
                         {
                             if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
                             {
@@ -248,7 +247,7 @@ namespace Spartan
 
                 // interior
                 {
-                    if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("Interior_InteriorPlastic_0")->GetComponent<Renderable>()->GetMaterial())
+                    if (Material* material = entity_car->GetDescendantByName("Interior_InteriorPlastic_0")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetColor(Color::material_tire);
                         material->SetTexture(MaterialTexture::Roughness, nullptr);
@@ -256,7 +255,7 @@ namespace Spartan
                         material->SetProperty(MaterialProperty::MultiplierMetalness, 0.0f);
                     }
 
-                    if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("Interior_InteriorPlastic2_0")->GetComponent<Renderable>()->GetMaterial())
+                    if (Material* material = entity_car->GetDescendantByName("Interior_InteriorPlastic2_0")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetColor(Color::material_tire);
                         material->SetProperty(MaterialProperty::MultiplierRoughness, 0.8f);
@@ -267,7 +266,7 @@ namespace Spartan
 
                 // lights
                 {
-                    if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("CarBody_LampCovers_0")->GetComponent<Renderable>()->GetMaterial())
+                    if (Material* material = entity_car->GetDescendantByName("CarBody_LampCovers_0")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetColor(Color::material_glass);
                         material->SetProperty(MaterialProperty::MultiplierRoughness, 0.2f);
@@ -275,7 +274,7 @@ namespace Spartan
                     }
 
                     // plastic covers
-                    if (Material* material = entity_car->GetTransform()->GetDescendantPtrByName("Headlights_Trim2_0")->GetComponent<Renderable>()->GetMaterial())
+                    if (Material* material = entity_car->GetDescendantByName("Headlights_Trim2_0")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::MultiplierRoughness, 0.35f);
                         material->SetColor(Color::material_tire);
@@ -294,41 +293,41 @@ namespace Spartan
                     physics_body->SetMass(960.0f); // http://www.j-garage.com/toyota/ae86.html
 
                     // set the steering wheel to the physics body so that it can rotate it
-                    if (Entity* entity_steering_wheel = entity_car->GetTransform()->GetDescendantPtrByName("SteeringWheel_SteeringWheel_0"))
+                    if (Entity* entity_steering_wheel = entity_car->GetDescendantByName("SteeringWheel_SteeringWheel_0"))
                     {
-                        physics_body->GetCar()->SetSteeringWheelTransform(entity_steering_wheel->GetTransform().get());
+                        physics_body->GetCar()->SetSteeringWheelTransform(entity_steering_wheel);
                     }
 
                     // remove all the wheels since they have weird rotations, we will add our own
                     {
-                        World::RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("FL_Wheel_RimMaterial_0").lock());
-                        World::RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("FL_Wheel_Brake Disc_0").lock());
-                        World::RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("FL_Wheel_TireMaterial_0").lock());
-                        World::RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("FL_Caliper_BrakeCaliper_0").lock());
+                        World::RemoveEntity(entity_car->GetDescendantByName("FL_Wheel_RimMaterial_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("FL_Wheel_Brake Disc_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("FL_Wheel_TireMaterial_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("FL_Caliper_BrakeCaliper_0"));
 
-                        World::RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("FR_Wheel_RimMaterial_0").lock());
-                        World::RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("FR_Wheel_Brake Disc_0").lock());
-                        World::RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("FR_Wheel_TireMaterial_0").lock());
-                        World::RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("FR_Caliper_BrakeCaliper_0").lock());
+                        World::RemoveEntity(entity_car->GetDescendantByName("FR_Wheel_RimMaterial_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("FR_Wheel_Brake Disc_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("FR_Wheel_TireMaterial_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("FR_Caliper_BrakeCaliper_0"));
 
-                        World::RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("RL_Wheel_RimMaterial_0").lock());
-                        World::RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("RL_Wheel_Brake Disc_0").lock());
-                        World::RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("RL_Wheel_TireMaterial_0").lock());
-                        World::RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("RL_Caliper_BrakeCaliper_0").lock());
+                        World::RemoveEntity(entity_car->GetDescendantByName("RL_Wheel_RimMaterial_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("RL_Wheel_Brake Disc_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("RL_Wheel_TireMaterial_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("RL_Caliper_BrakeCaliper_0"));
 
-                        World::RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("RR_Wheel_RimMaterial_0").lock());
-                        World::RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("RR_Wheel_Brake Disc_0").lock());
-                        World::RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("RR_Wheel_TireMaterial_0").lock());
-                        World::RemoveEntity(entity_car->GetTransform()->GetDescendantPtrWeakByName("RR_Caliper_BrakeCaliper_0").lock());
+                        World::RemoveEntity(entity_car->GetDescendantByName("RR_Wheel_RimMaterial_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("RR_Wheel_Brake Disc_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("RR_Wheel_TireMaterial_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0"));
                     }
 
                     // load our own wheel
                     if (m_default_model_wheel = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend"))
                     {
                         Entity* entity_wheel_root = m_default_model_wheel->GetRootEntity();
-                        entity_wheel_root->GetTransform()->SetScale(Vector3(wheel_scale));
+                        entity_wheel_root->SetScale(Vector3(wheel_scale));
 
-                        if (Entity* entity_wheel = entity_wheel_root->GetTransform()->GetDescendantPtrByName("wheel Low"))
+                        if (Entity* entity_wheel = entity_wheel_root->GetDescendantByName("wheel Low"))
                         {
                             // create material
                             shared_ptr<Material> material = make_shared<Material>();
@@ -349,27 +348,27 @@ namespace Spartan
                         {
                             Entity* wheel = entity_wheel_root;
                             wheel->SetObjectName("wheel_fl");
-                            wheel->GetTransform()->SetParent(entity_root->GetTransform());
-                            physics_body->GetCar()->SetWheelTransform(wheel->GetTransform().get(), 0);
+                            wheel->SetParent(entity_root);
+                            physics_body->GetCar()->SetWheelTransform(wheel, 0);
 
                             wheel = entity_wheel_root->Clone();
                             wheel->SetObjectName("wheel_fr");
-                            wheel->GetTransform()->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
-                            wheel->GetTransform()->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
-                            wheel->GetTransform()->SetParent(entity_root->GetTransform());
-                            physics_body->GetCar()->SetWheelTransform(wheel->GetTransform().get(), 1);
+                            wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
+                            wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
+                            wheel->SetParent(entity_root);
+                            physics_body->GetCar()->SetWheelTransform(wheel, 1);
 
                             wheel = entity_wheel_root->Clone();
                             wheel->SetObjectName("wheel_rl");
-                            wheel->GetTransform()->SetParent(entity_root->GetTransform());
-                            physics_body->GetCar()->SetWheelTransform(wheel->GetTransform().get(), 2);
+                            wheel->SetParent(entity_root);
+                            physics_body->GetCar()->SetWheelTransform(wheel, 2);
 
                             wheel = entity_wheel_root->Clone();
                             wheel->SetObjectName("wheel_rr");
-                            wheel->GetTransform()->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
-                            wheel->GetTransform()->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
-                            wheel->GetTransform()->SetParent(entity_root->GetTransform());
-                            physics_body->GetCar()->SetWheelTransform(wheel->GetTransform().get(), 3);
+                            wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
+                            wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
+                            wheel->SetParent(entity_root);
+                            physics_body->GetCar()->SetWheelTransform(wheel, 3);
                         }
                     }
                 }
@@ -380,9 +379,9 @@ namespace Spartan
                     {
                         shared_ptr<Entity> entity_light_left = World::CreateEntity();
                         entity_light_left->SetObjectName("light_left");
-                        entity_light_left->GetTransform()->SetParent(entity_car->GetTransform());
-                        entity_light_left->GetTransform()->SetPositionLocal(Vector3(-50.0f, -185.0f, -70.0f));
-                        entity_light_left->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(80.0f, 0.0f, 0.0));
+                        entity_light_left->SetParent(entity_car);
+                        entity_light_left->SetPositionLocal(Vector3(-50.0f, -185.0f, -70.0f));
+                        entity_light_left->SetRotationLocal(Quaternion::FromEulerAngles(80.0f, 0.0f, 0.0));
 
                         shared_ptr<Light> light = entity_light_left->AddComponent<Light>();
                         light->SetLightType(LightType::Spot);
@@ -394,17 +393,17 @@ namespace Spartan
 
                         Entity* entity_light_right = entity_light_left->Clone();
                         entity_light_right->SetObjectName("light_right");
-                        entity_light_right->GetTransform()->SetParent(entity_car->GetTransform());
-                        entity_light_right->GetTransform()->SetPositionLocal(Vector3(50.0f, -185.0f, -70.0f));
+                        entity_light_right->SetParent(entity_car);
+                        entity_light_right->SetPositionLocal(Vector3(50.0f, -185.0f, -70.0f));
                     }
 
                     // taillights
                     {
                         shared_ptr<Entity> entity_light_left = World::CreateEntity();
                         entity_light_left->SetObjectName("light_back");
-                        entity_light_left->GetTransform()->SetParent(entity_car->GetTransform());
-                        entity_light_left->GetTransform()->SetPositionLocal(Vector3(0.0f, 190.0f, -70.0f));
-                        entity_light_left->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(-70.0f, 0.0f, 0.0));
+                        entity_light_left->SetParent(entity_car);
+                        entity_light_left->SetPositionLocal(Vector3(0.0f, 190.0f, -70.0f));
+                        entity_light_left->SetRotationLocal(Quaternion::FromEulerAngles(-70.0f, 0.0f, 0.0));
 
                         shared_ptr<Light> light = entity_light_left->AddComponent<Light>();
                         light->SetLightType(LightType::Spot);
@@ -443,14 +442,6 @@ namespace Spartan
         m_default_physics_body_camera   = nullptr;
         m_default_terrain               = nullptr;
         m_default_model_doom            = nullptr;
-    }
-
-    void World::PreTick()
-    {
-        for (shared_ptr<Entity>& entity : m_entities)
-        {
-            entity->OnPreTick();
-        }
     }
 
     void World::Tick()
@@ -602,8 +593,7 @@ namespace Spartan
         // Serialize root entities
         for (uint32_t i = 0; i < root_entity_count; i++)
         {
-            static shared_ptr<Transform> empty;
-            m_entities[i]->Deserialize(file.get(), empty);
+            m_entities[i]->Deserialize(file.get(), nullptr);
             ProgressTracker::GetProgress(ProgressType::World).JobDone();
         }
 
@@ -637,7 +627,7 @@ namespace Spartan
         return GetEntityById(entity->GetObjectId()) != nullptr;
     }
 
-    void World::RemoveEntity(shared_ptr<Entity> entity_to_remove)
+    void World::RemoveEntity(Entity* entity_to_remove)
     {
         SP_ASSERT_MSG(entity_to_remove != nullptr, "Entity is null");
 
@@ -646,15 +636,15 @@ namespace Spartan
         // Remove the entity and all of its children
         {
             // Get the root entity and its descendants
-            vector<Transform*> entities_to_remove;
-            entities_to_remove.push_back(entity_to_remove->GetTransform().get());  // Add the root entity
-            entity_to_remove->GetTransform()->GetDescendants(&entities_to_remove); // Get descendants 
+            vector<Entity*> entities_to_remove;
+            entities_to_remove.push_back(entity_to_remove);  // Add the root entity
+            entity_to_remove->GetDescendants(&entities_to_remove); // Get descendants 
 
             // Create a set containing the object IDs of entities to remove
             set<uint64_t> ids_to_remove;
-            for (Transform* transform : entities_to_remove)
+            for (Entity* entity : entities_to_remove)
             {
-                ids_to_remove.insert(transform->GetEntityPtr()->GetObjectId());
+                ids_to_remove.insert(entity->GetObjectId());
             }
 
             // Remove entities using a single loop
@@ -666,7 +656,7 @@ namespace Spartan
                 m_entities.end());
 
             // If there was a parent, update it
-            if (Transform* parent = entity_to_remove->GetTransform()->GetParent())
+            if (Entity* parent = entity_to_remove->GetParent())
             {
                 parent->AcquireChildren();
             }
@@ -682,7 +672,7 @@ namespace Spartan
         vector<shared_ptr<Entity>> root_entities;
         for (const shared_ptr<Entity>& entity : m_entities)
         {
-            if (entity->GetTransform()->IsRoot())
+            if (entity->IsRoot())
             {
                 root_entities.emplace_back(entity);
             }
@@ -757,7 +747,7 @@ namespace Spartan
         {
             shared_ptr<Entity> entity = CreateEntity();
             entity->SetObjectName("light_point");
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 2.0f, -1.5f));
+            entity->SetPosition(Vector3(0.0f, 2.0f, -1.5f));
 
             shared_ptr<Light> light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
@@ -771,8 +761,8 @@ namespace Spartan
         {
             Entity* entity = m_default_model_helmet_flight->GetRootEntity();
             entity->SetObjectName("flight_helmet");
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.1f, 0.0f));
-            entity->GetTransform()->SetScale(Vector3(2.0f, 2.0f, 2.0f));
+            entity->SetPosition(Vector3(0.0f, 0.1f, 0.0f));
+            entity->SetScale(Vector3(2.0f, 2.0f, 2.0f));
         }
 
         // damaged helmet
@@ -780,8 +770,8 @@ namespace Spartan
         {
             Entity* entity = m_default_model_helmet_damaged->GetRootEntity();
             entity->SetObjectName("damaged_helmet");
-            entity->GetTransform()->SetPosition(Vector3(1.1713f, 0.4747f, -0.1711f));
-            entity->GetTransform()->SetScale(Vector3(0.4343f, 0.4343f, 0.4343f));
+            entity->SetPosition(Vector3(1.1713f, 0.4747f, -0.1711f));
+            entity->SetScale(Vector3(0.4343f, 0.4343f, 0.4343f));
 
             PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
             physics_body->SetMass(8.0f);
@@ -848,8 +838,8 @@ namespace Spartan
                 {
                     shared_ptr<Entity> water = CreateEntity();
                     water->SetObjectName("water");
-                    water->GetTransform()->SetPosition(Vector3(0.0f, terrain->GetWaterLevel(), 0.0f));
-                    water->GetTransform()->SetScale(Vector3(1100.0f, 1.0f, 1100.0f));
+                    water->SetPosition(Vector3(0.0f, terrain->GetWaterLevel(), 0.0f));
+                    water->SetScale(Vector3(1100.0f, 1.0f, 1100.0f));
 
                     Renderable* renderable = water->AddComponent<Renderable>().get();
                     renderable->SetGeometry(Renderer_MeshType::Grid);
@@ -880,16 +870,16 @@ namespace Spartan
                 {
                     Entity* entity = tree->GetRootEntity();
                     entity->SetObjectName("tree_1");
-                    entity->GetTransform()->SetScale(Vector3(0.01f, 0.01f, 0.01f));
+                    entity->SetScale(Vector3(0.01f, 0.01f, 0.01f));
 
-                    if (Entity* bark = entity->GetTransform()->GetDescendantPtrByName("Mobile_Tree_1_1"))
+                    if (Entity* bark = entity->GetDescendantByName("Mobile_Tree_1_1"))
                     {
                         Renderable* renderable = bark->GetComponent<Renderable>().get();
                         renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\vegetation_tree_1\\bark.png");
                         renderable->SetInstances(terrain->GetTransformsTree());
                     }
 
-                    if (Entity* leafs = entity->GetTransform()->GetDescendantPtrByName("Mobile_Tree_1_2"))
+                    if (Entity* leafs = entity->GetDescendantByName("Mobile_Tree_1_2"))
                     {
                         // enable instancing
                         Renderable* renderable = leafs->GetComponent<Renderable>().get();
@@ -908,9 +898,9 @@ namespace Spartan
                 {
                     Entity* entity = plant->GetRootEntity();
                     entity->SetObjectName("plant_1");
-                    entity->GetTransform()->SetScale(Vector3(1.0f, 1.0f, 1.0f));
+                    entity->SetScale(Vector3(1.0f, 1.0f, 1.0f));
 
-                    if (Entity* child = entity->GetTransform()->GetDescendantPtrByName("Plane.010"))
+                    if (Entity* child = entity->GetDescendantByName("Plane.010"))
                     {
                         // enable instancing
                         Renderable* renderable = child->GetComponent<Renderable>().get();
@@ -946,7 +936,7 @@ namespace Spartan
         {
             shared_ptr<Entity> entity = CreateEntity();
             entity->SetObjectName("light_point");
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 7.5f, 0.0f));
+            entity->SetPosition(Vector3(0.0f, 7.5f, 0.0f));
 
             shared_ptr<Light> light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
@@ -960,28 +950,28 @@ namespace Spartan
         {
             Entity* entity = m_default_model_sponza->GetRootEntity();
             entity->SetObjectName("sponza");
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.15f, 0.0f));
-            entity->GetTransform()->SetScale(Vector3(2.0f, 2.0f, 2.0f)); // I actually walked in Sponza, it's that big
+            entity->SetPosition(Vector3(0.0f, 0.15f, 0.0f));
+            entity->SetScale(Vector3(2.0f, 2.0f, 2.0f)); // I actually walked in Sponza, it's that big
 
             // make the lamp frame not cast shadows, so we can place a light within it
-            if (shared_ptr<Renderable> renderable = entity->GetTransform()->GetDescendantPtrByName("lamp_1stfloor_entrance_1")->GetComponent<Renderable>())
+            if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("lamp_1stfloor_entrance_1")->GetComponent<Renderable>())
             {
                 renderable->SetCastShadows(false);
             }
 
             // Delete dirt decals since they look bad.
             // They are hovering over the surfaces, to avoid z-fighting, and they also cast shadows underneath them.
-            RemoveEntity(entity->GetTransform()->GetDescendantPtrWeakByName("decals_1st_floor").lock());
-            RemoveEntity(entity->GetTransform()->GetDescendantPtrWeakByName("decals_2nd_floor").lock());
-            RemoveEntity(entity->GetTransform()->GetDescendantPtrWeakByName("decals_3rd_floor").lock());
+            RemoveEntity(entity->GetDescendantByName("decals_1st_floor"));
+            RemoveEntity(entity->GetDescendantByName("decals_2nd_floor"));
+            RemoveEntity(entity->GetDescendantByName("decals_3rd_floor"));
 
             // 3d model - sponza curtains
             if (m_default_model_sponza_curtains = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
             {
                 Entity* entity = m_default_model_sponza_curtains->GetRootEntity();
                 entity->SetObjectName("sponza_curtains");
-                entity->GetTransform()->SetPosition(Vector3(0.0f, 0.15f, 0.0f));
-                entity->GetTransform()->SetScale(Vector3(2.0f, 2.0f, 2.0f)); // I actually walked in Sponza, it's that big
+                entity->SetPosition(Vector3(0.0f, 0.15f, 0.0f));
+                entity->SetScale(Vector3(2.0f, 2.0f, 2.0f)); // I actually walked in Sponza, it's that big
             }
         }
 
@@ -1000,17 +990,17 @@ namespace Spartan
         {
             Entity* entity = m_default_model_doom->GetRootEntity();
             entity->SetObjectName("doom_e1m1");
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 1.5f, -355.5300f));
-            entity->GetTransform()->SetScale(Vector3(0.1f, 0.1f, 0.1f));
+            entity->SetPosition(Vector3(0.0f, 1.5f, -355.5300f));
+            entity->SetScale(Vector3(0.1f, 0.1f, 0.1f));
 
             // enable physics for all meshes
-            vector<Transform*> transforms;
-            entity->GetTransform()->GetDescendants(&transforms);
-            for (Transform* transfom : transforms)
+            vector<Entity*> entities;
+            entity->GetDescendants(&entities);
+            for (Entity* entity : entities)
             {
-                if (transfom->GetEntityPtr()->GetComponent<Renderable>() != nullptr)
+                if (entity->GetComponent<Renderable>() != nullptr)
                 {
-                    PhysicsBody* physics_body = transfom->GetEntityPtr()->AddComponent<PhysicsBody>().get();
+                    PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
                     physics_body->SetShapeType(PhysicsShape::Mesh);
                     physics_body->SetMass(0.0f); // static
                 }

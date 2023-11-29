@@ -38,6 +38,6 @@ namespace Spartan
 
     void AudioListener::OnTick()
     {
-        Audio::SetListenerTransform(GetTransform());
+        Audio::SetListenerEntity(m_entity_ptr);
     }
 }
