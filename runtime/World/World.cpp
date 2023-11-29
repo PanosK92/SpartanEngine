@@ -633,21 +633,21 @@ namespace Spartan
 
         lock_guard<mutex> lock(m_entity_access_mutex);
 
-        // Remove the entity and all of its children
+        // remove the entity and all of its children
         {
-            // Get the root entity and its descendants
+            // get the root entity and its descendants
             vector<Entity*> entities_to_remove;
-            entities_to_remove.push_back(entity_to_remove);  // Add the root entity
-            entity_to_remove->GetDescendants(&entities_to_remove); // Get descendants 
+            entities_to_remove.push_back(entity_to_remove);        // add the root entity
+            entity_to_remove->GetDescendants(&entities_to_remove); // get descendants 
 
-            // Create a set containing the object IDs of entities to remove
+            // create a set containing the object IDs of entities to remove
             set<uint64_t> ids_to_remove;
             for (Entity* entity : entities_to_remove)
             {
                 ids_to_remove.insert(entity->GetObjectId());
             }
 
-            // Remove entities using a single loop
+            // remove entities using a single loop
             m_entities.erase(remove_if(m_entities.begin(), m_entities.end(),
                 [&](const shared_ptr<Entity>& entity)
                 {
@@ -655,7 +655,7 @@ namespace Spartan
                 }),
                 m_entities.end());
 
-            // If there was a parent, update it
+            // if there was a parent, update it
             if (Entity* parent = entity_to_remove->GetParent())
             {
                 parent->AcquireChildren();
@@ -786,7 +786,7 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(8.7844f, 2.0f, -4.1412f);
         Vector3 camera_rotation = Vector3(7.4f, -65.5f, 0.0f);
-        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\riders_on_the_storm_fredwreck_remix.mp3");
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\car.mp3");
         create_default_car();
 
         Engine::AddFlag(EngineMode::Game);
