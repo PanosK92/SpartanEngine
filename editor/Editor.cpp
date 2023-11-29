@@ -157,6 +157,7 @@ Editor::Editor()
 {
     // initialize the engine
     Spartan::Engine::Initialize();
+
     // initialize ImGui
     ImGui::CreateContext();
 
