@@ -176,12 +176,7 @@ namespace Spartan
         bool m_hierarchy_visibility   = true;
         std::array<std::shared_ptr<Component>, 13> m_components;
 
-        // internal functions don't propagate changes throughout the hierarchy
-        // They just make enough changes so that the hierarchy can be resolved later (in one go)
         void SetParent_Internal(Entity* parent);
-        void AddChild_Internal(Entity* child);
-        void RemoveChild_Internal(Entity* child);
-
         void UpdateTransform();
         Math::Matrix GetParentTransformMatrix() const;
 
@@ -200,6 +195,6 @@ namespace Spartan
         // misc
         bool m_position_changed_this_frame = false;
         bool m_rotation_changed_this_frame = false;
-        std::mutex m_child_add_remove_mutex;
+        std::mutex m_child_mutex;
     };
 }

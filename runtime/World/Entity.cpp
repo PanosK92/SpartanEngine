@@ -540,13 +540,13 @@ namespace Spartan
         // remove this child from it's previous parent
         if (m_parent)
         {
-            m_parent->RemoveChild_Internal(this);
+            m_parent->RemoveChild(this);
         }
 
         // add this child to the new parent
         if (new_parent)
         {
-            new_parent->AddChild_Internal(this);
+            new_parent->AddChild(this);
             new_parent->UpdateTransform();
         }
 
@@ -564,7 +564,13 @@ namespace Spartan
         if (child->GetObjectId() == GetObjectId())
             return;
 
-        child->SetParent(this);
+        lock_guard lock(m_child_mutex);
+
+        // if this is not already a child, add it
+        if (!(find(m_children.begin(), m_children.end(), child) != m_children.end()))
+        {
+            m_children.emplace_back(child);
+        }
     }
 
     void Entity::RemoveChild(Entity* child)
@@ -574,6 +580,8 @@ namespace Spartan
         // ensure the transform is not itself
         if (child->GetObjectId() == GetObjectId())
             return;
+
+        lock_guard lock(m_child_mutex);
 
         // remove the child
         m_children.erase(remove_if(m_children.begin(), m_children.end(), [child](Entity* vec_transform) { return vec_transform->GetObjectId() == child->GetObjectId(); }), m_children.end());
@@ -601,43 +609,14 @@ namespace Spartan
         m_parent = new_parent;
     }
 
-    void Entity::AddChild_Internal(Entity* child)
-    {
-        SP_ASSERT(child != nullptr);
-
-        // ensure that the child is not this transform
-        if (child->GetObjectId() == GetObjectId())
-            return;
-
-        lock_guard lock(m_child_add_remove_mutex);
-
-        // if this is not already a child, add it
-        if (!(find(m_children.begin(), m_children.end(), child) != m_children.end()))
-        {
-            m_children.emplace_back(child);
-        }
-    }
-
-    void Entity::RemoveChild_Internal(Entity* child)
-    {
-        SP_ASSERT(child != nullptr);
-
-        // ensure the transform is not itself
-        if (child->GetObjectId() == GetObjectId())
-            return;
-
-        lock_guard lock(m_child_add_remove_mutex);
-
-        // remove the child
-        m_children.erase(remove_if(m_children.begin(), m_children.end(), [child](Entity* vec_transform) { return vec_transform->GetObjectId() == child->GetObjectId(); }), m_children.end());
-    }
-
     // searches the entire hierarchy, finds any children and saves them in m_children
     // this is a recursive function, the children will also find their own children and so on
     void Entity::AcquireChildren()
     {
+        m_child_mutex.lock();
         m_children.clear();
         m_children.shrink_to_fit();
+        m_child_mutex.unlock();
 
         auto entities = World::GetAllEntities();
         for (const auto& entity : entities)
