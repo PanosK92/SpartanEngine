@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============================
+//= INCLUDES ===============
 #include "Definitions.h"
-#include "../World/Components/Transform.h"
-//========================================
+#include "../World/Entity.h"
+//==========================
 
 namespace Spartan
 {
@@ -34,7 +34,7 @@ namespace Spartan
         static void Initialize();
         static void Tick();
         static void Shutdown();
-        static void SetListenerTransform(std::shared_ptr<Transform> transform);
+        static void SetListenerEntity(Entity* entity);
         static bool HandleErrorFmod(int result);
         static bool CreateSound(const std::string& file_path, int sound_mode, void*& sound);
         static bool CreateStream(const std::string& file_path, int sound_mode, void*& sound);

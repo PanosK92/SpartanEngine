@@ -33,7 +33,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
     class Entity;
-    class Transform;
     class FileStream;
 
     enum class ComponentType : uint32_t
@@ -45,7 +44,6 @@ namespace Spartan
         Light,
         Renderable,
         PhysicsBody,
-        Transform,
         Terrain,
         ReflectionProbe,
         Undefined
@@ -90,7 +88,6 @@ namespace Spartan
         //==========================================
 
         //= PROPERTIES ==============================================================
-        std::shared_ptr<Transform> GetTransform() const;
         ComponentType GetType()          const { return m_type; }
         void SetType(ComponentType type)       { m_type = type; }
 
@@ -103,9 +100,7 @@ namespace Spartan
             }
         }
 
-        // Entity
-        Entity* GetEntityPtr() const { return m_entity_ptr; }
-        std::weak_ptr<Entity> GetEntityPtrWeak() { return m_entity_ptr_weak; }
+        Entity* GetEntity() const { return m_entity_ptr; }
         //===========================================================================
         
     protected:
@@ -135,7 +130,6 @@ namespace Spartan
         // The state of the component
         bool m_enabled       = false;
         // The owner of the component
-        std::weak_ptr<Entity> m_entity_ptr_weak;
         Entity* m_entity_ptr = nullptr;
 
     private:

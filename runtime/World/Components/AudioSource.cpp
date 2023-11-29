@@ -51,7 +51,7 @@ namespace Spartan
         if (!m_audio_clip)
             return;
         
-        m_audio_clip->SetTransform(GetTransform());
+        m_audio_clip->SetTransform(GetEntity());
     }
     
     void AudioSource::OnStart()

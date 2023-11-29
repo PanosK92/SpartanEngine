@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Mesh.h"
 #include "../../World/World.h"
 #include "../../World/Entity.h"
-#include "../../World/Components/Transform.h"
 #include "../World/Components/Light.h"
 SP_WARNINGS_OFF
 #include "assimp/scene.h"
@@ -101,9 +100,9 @@ namespace Spartan
         const Matrix matrix_engine = convert_matrix(node->mTransformation);
 
         // Apply position, rotation and scale
-        entity->GetTransform()->SetPositionLocal(matrix_engine.GetTranslation());
-        entity->GetTransform()->SetRotationLocal(matrix_engine.GetRotation());
-        entity->GetTransform()->SetScaleLocal(matrix_engine.GetScale());
+        entity->SetPositionLocal(matrix_engine.GetTranslation());
+        entity->SetRotationLocal(matrix_engine.GetRotation());
+        entity->SetScaleLocal(matrix_engine.GetScale());
     }
 
     constexpr void compute_node_count(const aiNode* node, uint32_t* count)
@@ -442,7 +441,7 @@ namespace Spartan
                 if (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportNormalizeScale))
                 {
                     float normalized_scale = mesh->ComputeNormalizedScale();
-                    mesh->GetRootEntity()->GetTransform()->SetScale(normalized_scale);
+                    mesh->GetRootEntity()->SetScale(normalized_scale);
                 }
 
                 mesh->CreateGpuBuffers();
@@ -487,8 +486,7 @@ namespace Spartan
         ProgressTracker::GetProgress(ProgressType::ModelImporter).SetText("Creating entity for " + entity->GetObjectName());
 
         // Set the transform of parent_node as the parent of the new_entity's transform
-        shared_ptr<Transform> parent_trans = parent_entity ? parent_entity->GetTransform() : nullptr;
-        entity->GetTransform()->SetParent(parent_trans);
+        entity->SetParent(parent_entity.get());
 
         // Apply node transformation
         set_entity_transform(node, entity.get());
@@ -535,7 +533,7 @@ namespace Spartan
                 entity = World::CreateEntity().get();
 
                 // Set parent
-                entity->GetTransform()->SetParent(node_entity->GetTransform());
+                entity->SetParent(node_entity);
 
                 // Set name
                 node_name += "_" + to_string(i + 1); // set name
@@ -566,8 +564,8 @@ namespace Spartan
                 light->SetShadowsTransparentEnabled(false);
 
                 // local transform
-                light->GetTransform()->SetPositionLocal(convert_vector3(light_assimp->mPosition));
-                light->GetTransform()->SetRotationLocal(Quaternion::FromLookRotation(convert_vector3(light_assimp->mDirection)));
+                light->GetEntity()->SetPositionLocal(convert_vector3(light_assimp->mPosition));
+                light->GetEntity()->SetRotationLocal(Quaternion::FromLookRotation(convert_vector3(light_assimp->mDirection)));
 
                 // color
                 light->SetColor(convert_color(light_assimp->mColorDiffuse));

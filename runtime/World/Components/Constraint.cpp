@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Constraint.h"
 #include "PhysicsBody.h"
-#include "Transform.h"
 #include "../Entity.h"
 #include "../World.h"
 #include "../../IO/FileStream.h"
@@ -226,8 +225,8 @@ namespace Spartan
         btRigidBody* bt_own_body                 = rigid_body_own ? static_cast<btRigidBody*>(rigid_body_own->GetBtRigidBody()) : nullptr;
         btRigidBody* bt_other_body               = rigid_body_other ? static_cast<btRigidBody*>(rigid_body_other->GetBtRigidBody()) : nullptr;
 
-        Vector3 own_body_scaled_position    = m_position * GetTransform()->GetScale() - rigid_body_own->GetCenterOfMass();
-        Vector3 other_body_scaled_position  = !m_bodyOther.expired() ? m_positionOther * rigid_body_other->GetTransform()->GetScale() - rigid_body_other->GetCenterOfMass() : m_positionOther;
+        Vector3 own_body_scaled_position    = m_position * GetEntity()->GetScale() - rigid_body_own->GetCenterOfMass();
+        Vector3 other_body_scaled_position  = !m_bodyOther.expired() ? m_positionOther * rigid_body_other->GetEntity()->GetScale() - rigid_body_other->GetCenterOfMass() : m_positionOther;
 
         switch (m_constraint->getConstraintType())
         {
@@ -304,8 +303,8 @@ namespace Spartan
             bt_other_body = &btTypedConstraint::getFixedBody();
         }    
         
-        Vector3 own_body_scaled_position   = m_position * GetTransform()->GetScale() - rigid_body_own->GetCenterOfMass();
-        Vector3 other_body_scaled_position = rigid_body_other ? m_positionOther * rigid_body_other->GetTransform()->GetScale() - rigid_body_other->GetCenterOfMass() : m_positionOther;
+        Vector3 own_body_scaled_position   = m_position * GetEntity()->GetScale() - rigid_body_own->GetCenterOfMass();
+        Vector3 other_body_scaled_position = rigid_body_other ? m_positionOther * rigid_body_other->GetEntity()->GetScale() - rigid_body_other->GetCenterOfMass() : m_positionOther;
 
         switch (m_constraintType)
         {

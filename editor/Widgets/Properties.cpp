@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../WidgetsDeferred/ButtonColorPicker.h"
 #include "Core/Engine.h"
 #include "World/Entity.h"
-#include "World/Components/Transform.h"
 #include "World/Components/Renderable.h"
 #include "World/Components/PhysicsBody.h"
 #include "World/Components/Constraint.h"
@@ -118,9 +117,12 @@ namespace
                 ImGui::OpenPopup(context_menu_id.c_str());
             }
 
-            if (context_menu_id == name)
+            if (component_instance)
             {
-                component_context_menu_options(context_menu_id, component_instance, removable);
+                if (context_menu_id == name)
+                {
+                    component_context_menu_options(context_menu_id, component_instance, removable);
+                }
             }
         }
 
@@ -153,7 +155,7 @@ void Properties::OnTickVisible()
         shared_ptr<Renderable> renderable = entity_ptr->GetComponent<Renderable>();
         Material* material                = renderable ? renderable->GetMaterial() : nullptr;
 
-        ShowTransform(entity_ptr->GetComponent<Transform>());
+        ShowTransform(entity_ptr);
         ShowLight(entity_ptr->GetComponent<Light>());
         ShowCamera(entity_ptr->GetComponent<Camera>());
         ShowTerrain(entity_ptr->GetComponent<Terrain>());
@@ -193,14 +195,14 @@ void Properties::Inspect(const shared_ptr<Material> material)
     m_inspected_material = material;
 }
 
-void Properties::ShowTransform(shared_ptr<Transform> transform) const
+void Properties::ShowTransform(shared_ptr<Entity> entity) const
 {
-    if (component_begin("Transform", IconType::Component_Transform, transform, true, false))
+    if (component_begin("Transform", IconType::Component_Transform, nullptr, true, false))
     {
         //= REFLECT =====================================================
-        Vector3 position = transform->GetPositionLocal();
-        Vector3 rotation = transform->GetRotationLocal().ToEulerAngles();
-        Vector3 scale    = transform->GetScaleLocal();
+        Vector3 position = entity->GetPositionLocal();
+        Vector3 rotation = entity->GetRotationLocal().ToEulerAngles();
+        Vector3 scale    = entity->GetScaleLocal();
         //===============================================================
 
         ImGuiSp::vector3("Position", position);
@@ -210,9 +212,9 @@ void Properties::ShowTransform(shared_ptr<Transform> transform) const
         ImGuiSp::vector3("Scale", scale);
 
         //= MAP ===========================================================
-        transform->SetPositionLocal(position);
-        transform->SetScaleLocal(scale);
-        transform->SetRotationLocal(Quaternion::FromEulerAngles(rotation));
+        entity->SetPositionLocal(position);
+        entity->SetScaleLocal(scale);
+        entity->SetRotationLocal(Quaternion::FromEulerAngles(rotation));
         //=================================================================
     }
     component_end();

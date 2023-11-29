@@ -26,10 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BulletPhysicsHelper.h"
 #include "../Rendering/Renderer.h"
 #include "../Input/Input.h"
-#include "../World/Components/Transform.h"
 SP_WARNINGS_OFF
 #include <BulletDynamics/Vehicle/btRaycastVehicle.h>
 #include "LinearMath/btVector3.h"
+#include "../World/Entity.h"
 SP_WARNINGS_ON
 //==================================================
 
@@ -626,7 +626,7 @@ namespace Spartan
         }
     }
 
-    void Car::SetWheelTransform(Transform* transform, uint32_t wheel_index)
+    void Car::SetWheelTransform(Entity* transform, uint32_t wheel_index)
     {
         if (wheel_index >= m_parameters.transform_wheels.size())
         {
@@ -794,7 +794,7 @@ namespace Spartan
         // wheels
         for (uint32_t wheel_index = 0; wheel_index < static_cast<uint32_t>(m_parameters.transform_wheels.size()); wheel_index++)
         {
-            if (Transform* transform = m_parameters.transform_wheels[wheel_index])
+            if (Entity* transform = m_parameters.transform_wheels[wheel_index])
             {
                 // update and get the wheel transform from bullet
                 m_parameters.vehicle->updateWheelTransform(wheel_index, true);

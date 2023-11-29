@@ -22,11 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============================
 #include "pch.h"
 #include "Renderable.h"
-#include "Transform.h"
 #include "../Rendering/Renderer.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
+#include "../Entity.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -151,9 +151,9 @@ namespace Spartan
     const BoundingBox& Renderable::GetBoundingBox()
     {
         // either the bounding box is dirty, or the transform has changed, or the instances have changed
-        if (m_bounding_box_dirty || m_last_transform != GetTransform()->GetMatrix())
+        if (m_bounding_box_dirty || m_last_transform != GetEntity()->GetMatrix())
         {
-            m_bounding_box = m_bounding_box_mesh.Transform(GetTransform()->GetMatrix());
+            m_bounding_box = m_bounding_box_mesh.Transform(GetEntity()->GetMatrix());
 
             // loop through each instance and expand the bounding box
             for (const Matrix& instance_transform : m_instances)
@@ -163,7 +163,7 @@ namespace Spartan
                 m_bounding_box.Merge(m_bounding_box_mesh.Transform(Matrix::CreateTranslation(transposed.GetTranslation())));
             }
 
-            m_last_transform     = GetTransform()->GetMatrix();
+            m_last_transform     = GetEntity()->GetMatrix();
             m_bounding_box_dirty = false;
         }
 
@@ -173,7 +173,7 @@ namespace Spartan
 
     const Spartan::Math::BoundingBox Renderable::GetBoundingBoxNoInstancing()
     {
-        return m_bounding_box_mesh.Transform(GetTransform()->GetMatrix());
+        return m_bounding_box_mesh.Transform(GetEntity()->GetMatrix());
     }
 
     shared_ptr<Material> Renderable::SetMaterial(const shared_ptr<Material>& material)

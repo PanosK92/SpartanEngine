@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/ReflectionProbe.h"
-#include "../World/Components/Transform.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_Shader.h"
@@ -288,7 +287,7 @@ namespace Spartan
                                 material->GetProperty(MaterialProperty::ColorA)
                             );
                             m_cb_pass_cpu.set_f3_value2(static_cast<float>(array_index), 0.0f, 0.0f);
-                            m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix();
+                            m_cb_pass_cpu.transform = entity->GetMatrix();
                             PushPassConstants(cmd_list);
                         }
 
@@ -406,7 +405,7 @@ namespace Spartan
                                 SetTexturesMaterial(cmd_list, material);
 
                                 // set pass constants with cascade transform
-                                m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
+                                m_cb_pass_cpu.transform = entity->GetMatrix() * view_projection;
                                 PushPassConstants(cmd_list);
 
                                 // update light buffer
@@ -503,7 +502,7 @@ namespace Spartan
 
                 // set pass constants
                 {
-                    m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix();
+                    m_cb_pass_cpu.transform = entity->GetMatrix();
                     m_cb_pass_cpu.set_f3_value(
                         material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
                         material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
@@ -636,9 +635,9 @@ namespace Spartan
                     m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
 
                     // update transform
-                    m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix();
-                    m_cb_pass_cpu.set_transform_previous(entity->GetTransform()->GetMatrixPrevious());
-                    entity->GetTransform()->SetMatrixPrevious(m_cb_pass_cpu.transform);
+                    m_cb_pass_cpu.transform = entity->GetMatrix();
+                    m_cb_pass_cpu.set_transform_previous(entity->GetMatrixPrevious());
+                    entity->SetMatrixPrevious(m_cb_pass_cpu.transform);
 
                     PushPassConstants(cmd_list);
                 }
@@ -830,11 +829,11 @@ namespace Spartan
                     if (light->GetLightType() == LightType::Directional)
                     {
                         // TODO: Why do we need to flip sign?
-                        p = Vector4(-light->GetTransform()->GetForward().Normalized(), 0.0f) * view_projection;
+                        p = Vector4(-light->GetEntity()->GetForward().Normalized(), 0.0f) * view_projection;
                     }
                     else
                     {
-                        p = Vector4(light->GetTransform()->GetPosition(), 1.0f) * view_projection;
+                        p = Vector4(light->GetEntity()->GetPosition(), 1.0f) * view_projection;
                     }
 
                     float in_light_projection[]      = { p.x, p.y, p.z, p.w };
@@ -1109,7 +1108,7 @@ namespace Spartan
             shared_ptr<ReflectionProbe> probe = probes[0]->GetComponent<ReflectionProbe>();
 
             cmd_list->SetTexture(Renderer_BindingsSrv::reflection_probe, probe->GetColorTexture());
-            m_cb_pass_cpu.set_f3_value(probe->GetTransform()->GetPosition());
+            m_cb_pass_cpu.set_f3_value(probe->GetEntity()->GetPosition());
             m_cb_pass_cpu.set_f3_value2(probe->GetExtents());
         }
 
@@ -1904,26 +1903,26 @@ namespace Spartan
         // set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        auto draw_icon = [&cmd_list](Transform* transform, RHI_Texture* texture)
+        auto draw_icon = [&cmd_list](Entity* entity, RHI_Texture* texture)
         {
-            const Vector3 pos_world        = transform->GetPosition();
-            const Vector3 pos_world_camera = GetCamera()->GetTransform()->GetPosition();
+            const Vector3 pos_world        = entity->GetPosition();
+            const Vector3 pos_world_camera = GetCamera()->GetEntity()->GetPosition();
             const Vector3 camera_to_light  = (pos_world - pos_world_camera).Normalized();
-            const float v_dot_l            = Vector3::Dot(GetCamera()->GetTransform()->GetForward(), camera_to_light);
+            const float v_dot_l            = Vector3::Dot(GetCamera()->GetEntity()->GetForward(), camera_to_light);
 
             // only draw if it's inside our view
             if (v_dot_l > 0.5f)
             {
                 // compute transform
                 {
-                    // Use the distance from the camera to scale the icon, this will
-                    // cancel out perspective scaling, hence keeping the icon scale constant.
+                    // use the distance from the camera to scale the icon, this will
+                    // cancel out perspective scaling, hence keeping the icon scale constant
                     const float distance = (pos_world_camera - pos_world).Length();
                     const float scale = distance * 0.04f;
 
-                    // 1st rotation: The quad's normal is parallel to the world's Y axis, so we rotate to make it camera facing.
+                    // 1st rotation: The quad's normal is parallel to the world's Y axis, so we rotate to make it camera facing
                     Quaternion rotation_reorient_quad = Quaternion::FromEulerAngles(-90.0f, 0.0f, 0.0f);
-                    // 2nd rotation: Rotate the camera facing quad with the camera, so that it remains a camera facing quad.
+                    // 2nd rotation: Rotate the camera facing quad with the camera, so that it remains a camera facing quad
                     Quaternion rotation_camera_billboard = Quaternion::FromLookRotation(pos_world - pos_world_camera);
 
                     Matrix transform = Matrix(pos_world, rotation_camera_billboard * rotation_reorient_quad, scale);
@@ -1944,7 +1943,7 @@ namespace Spartan
         // draw audio source icons
         for (shared_ptr<Entity> entity : audio_sources)
         {
-            draw_icon(entity->GetTransform().get(), GetStandardTexture(Renderer_StandardTexture::Gizmo_audio_source).get());
+            draw_icon(entity.get(), GetStandardTexture(Renderer_StandardTexture::Gizmo_audio_source).get());
         }
 
         // draw light icons
@@ -1961,7 +1960,7 @@ namespace Spartan
                 else if (light->GetLightType() == LightType::Spot)   texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_spot).get();
             }
 
-            draw_icon(entity->GetTransform().get(), texture);
+            draw_icon(entity.get(), texture);
         }
 
         cmd_list->EndTimeblock();
@@ -1997,7 +1996,7 @@ namespace Spartan
         {
             // follow camera in world unit increments so that the grid appears stationary in relation to the camera
             const float grid_spacing       = 1.0f;
-            const Vector3& camera_position = m_camera->GetTransform()->GetPosition();
+            const Vector3& camera_position = m_camera->GetEntity()->GetPosition();
             const Vector3 translation      = Vector3(
                 floor(camera_position.x / grid_spacing) * grid_spacing,
                 0.0f,
@@ -2141,14 +2140,14 @@ namespace Spartan
                 if (shared_ptr<ReflectionProbe> probe = probes[probe_index]->GetComponent<ReflectionProbe>())
                 {
                     // Set pass constants
-                    m_cb_pass_cpu.transform = probe->GetTransform()->GetMatrix();
+                    m_cb_pass_cpu.transform = probe->GetEntity()->GetMatrix();
                     PushPassConstants(cmd_list);
 
                     cmd_list->SetTexture(Renderer_BindingsSrv::reflection_probe, probe->GetColorTexture());
                     cmd_list->DrawIndexed(GetStandardMesh(Renderer_MeshType::Sphere)->GetIndexCount());
 
                     // Draw a box which represents the extents of the reflection probe (which is used as a geometry proxy for parallax corrected cubemap reflections)
-                    BoundingBox extents = BoundingBox(probe->GetTransform()->GetPosition() - probe->GetExtents(), probe->GetTransform()->GetPosition() + probe->GetExtents());
+                    BoundingBox extents = BoundingBox(probe->GetEntity()->GetPosition() - probe->GetExtents(), probe->GetEntity()->GetPosition() + probe->GetExtents());
                     DrawBox(extents);
                 }
             }
@@ -2204,7 +2203,7 @@ namespace Spartan
                                     {
                                         // push draw data
                                         m_cb_pass_cpu.set_f4_value(debug_color);
-                                        m_cb_pass_cpu.transform = entity_selected->GetTransform()->GetMatrix();
+                                        m_cb_pass_cpu.transform = entity_selected->GetMatrix();
                                         PushPassConstants(cmd_list);
 
                                         cmd_list->SetBufferVertex(mesh->GetVertexBuffer());

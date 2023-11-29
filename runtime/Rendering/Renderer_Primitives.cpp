@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Renderer.h"
 #include "../World/Components/Camera.h"
-#include "../World/Components/Transform.h"
 #include "../World/Components/Light.h"
 #include "../World/Entity.h"
 #include "../World/Components/Renderable.h"
@@ -86,16 +85,6 @@ namespace Spartan
         DrawLine(v0, v1, color, color, duration, depth);
         DrawLine(v1, v2, color, color, duration, depth);
         DrawLine(v2, v0, color, color, duration, depth);
-    }
-
-    void Renderer::DrawRectangle(const Rectangle& rectangle, const Vector4& color /*= DebugColor*/, const float duration /*= 0.0f*/, bool depth /*= true*/)
-    {
-        const float cam_z = GetCamera()->GetTransform()->GetPosition().z + GetCamera()->GetNearPlane() + 5.0f;
-
-        DrawLine(Vector3(rectangle.left,  rectangle.top,    cam_z), Vector3(rectangle.right, rectangle.top,    cam_z), color, color, duration, depth);
-        DrawLine(Vector3(rectangle.right, rectangle.top,    cam_z), Vector3(rectangle.right, rectangle.bottom, cam_z), color, color, duration, depth);
-        DrawLine(Vector3(rectangle.right, rectangle.bottom, cam_z), Vector3(rectangle.left,  rectangle.bottom, cam_z), color, color, duration, depth);
-        DrawLine(Vector3(rectangle.left,  rectangle.bottom, cam_z), Vector3(rectangle.left,  rectangle.top,    cam_z), color, color, duration, depth);
     }
 
     void Renderer::DrawBox(const BoundingBox& box, const Vector4& color, const float duration /*= 0.0f*/, const bool depth /*= true*/)
@@ -287,7 +276,7 @@ namespace Spartan
             DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * GetCamera()->GetFarPlane(), Vector4(0, 1, 0, 1));
         }
         
-        // Lights
+        // lights
         if (GetOption<bool>(Renderer_Option::Debug_Lights))
         {
             auto& lights = GetEntities()[Renderer_Entity::Light];
@@ -302,13 +291,13 @@ namespace Spartan
 
                         if (light->GetLightType() == LightType::Directional)
                         {
-                            Vector3 pos = light->GetTransform()->GetPosition() - light->GetTransform()->GetForward() * 1000.0f;
+                            Vector3 pos = light->GetEntity()->GetPosition() - light->GetEntity()->GetForward() * 1000.0f;
                             DrawDirectionalArrow(pos, Vector3::Zero, 2.5f);
                         }
                         else if (light->GetLightType() == LightType::Point)
                         {
-                            Vector3 center = light->GetTransform()->GetPosition();
-                            float radius = light->GetRange();
+                            Vector3 center = light->GetEntity()->GetPosition();
+                            float radius   = light->GetRange();
                             uint32_t segment_count = 64;
 
                             DrawCircle(center, Vector3::Up, radius, segment_count);
@@ -321,13 +310,13 @@ namespace Spartan
                             // opposite = adjacent * tan(angle)
                             float opposite = light->GetRange() * Math::Helper::Tan(light->GetAngle());
 
-                            Vector3 pos_end_center = light->GetTransform()->GetForward() * light->GetRange();
-                            Vector3 pos_end_up     = pos_end_center + light->GetTransform()->GetUp() * opposite;
-                            Vector3 pos_end_right  = pos_end_center + light->GetTransform()->GetRight() * opposite;
-                            Vector3 pos_end_down   = pos_end_center + light->GetTransform()->GetDown() * opposite;
-                            Vector3 pos_end_left   = pos_end_center + light->GetTransform()->GetLeft() * opposite;
+                            Vector3 pos_end_center = light->GetEntity()->GetForward() * light->GetRange();
+                            Vector3 pos_end_up     = pos_end_center + light->GetEntity()->GetUp() * opposite;
+                            Vector3 pos_end_right  = pos_end_center + light->GetEntity()->GetRight() * opposite;
+                            Vector3 pos_end_down   = pos_end_center + light->GetEntity()->GetDown() * opposite;
+                            Vector3 pos_end_left   = pos_end_center + light->GetEntity()->GetLeft() * opposite;
 
-                            Vector3 pos_start = light->GetTransform()->GetPosition();
+                            Vector3 pos_start = light->GetEntity()->GetPosition();
                             DrawLine(pos_start, pos_start + pos_end_center);
                             DrawLine(pos_start, pos_start + pos_end_up);
                             DrawLine(pos_start, pos_start + pos_end_right);

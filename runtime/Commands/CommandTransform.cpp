@@ -32,7 +32,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    CommandTransform::CommandTransform(Entity* entity,Vector3 old_position, Quaternion old_rotation, Vector3 old_scale)
+    CommandTransform::CommandTransform(Entity* entity, Vector3 old_position, Quaternion old_rotation, Vector3 old_scale)
     {
         SP_ASSERT(entity);
 
@@ -46,9 +46,9 @@ namespace Spartan
         m_old_rotation = old_rotation;
         m_old_scale    = old_scale;
 
-        m_new_position = entity->GetTransform()->GetPosition();
-        m_new_rotation = entity->GetTransform()->GetRotation();
-        m_new_scale    = entity->GetTransform()->GetScale();
+        m_new_position = entity->GetPosition();
+        m_new_rotation = entity->GetRotation();
+        m_new_scale    = entity->GetScale();
     }
 
     void CommandTransform::OnApply()
@@ -57,9 +57,9 @@ namespace Spartan
         if (!entity)
             return;
 
-        entity->GetTransform()->SetPosition(m_new_position);
-        entity->GetTransform()->SetRotation(m_new_rotation);
-        entity->GetTransform()->SetScale(m_new_scale);
+        entity->SetPosition(m_new_position);
+        entity->SetRotation(m_new_rotation);
+        entity->SetScale(m_new_scale);
     }
 
     void CommandTransform::OnRevert()
@@ -68,8 +68,8 @@ namespace Spartan
         if (!entity)
             return;
 
-        entity->GetTransform()->SetPosition(m_old_position);
-        entity->GetTransform()->SetRotation(m_old_rotation);
-        entity->GetTransform()->SetScale(m_old_scale);
+        entity->SetPosition(m_old_position);
+        entity->SetRotation(m_old_rotation);
+        entity->SetScale(m_old_scale);
     }
 }

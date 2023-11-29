@@ -173,13 +173,13 @@ void WorldViewer::TreeShow()
 
     if (ImGui::TreeNodeEx("Root", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth))
     {
-        // Dropping on the scene node should unparent the entity
+        // dropping on the scene node should unparent the entity
         if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Entity))
         {
             const uint64_t entity_id = get<uint64_t>(payload->data);
             if (const shared_ptr<Spartan::Entity>& dropped_entity = Spartan::World::GetEntityById(entity_id))
             {
-                dropped_entity->GetTransform()->SetParent(nullptr);
+                dropped_entity->SetParent(nullptr);
             }
         }
 
@@ -192,8 +192,8 @@ void WorldViewer::TreeShow()
             }
         }
 
-        // If we have been expanding to show an entity and no more expansions are taking place, we reached it.
-        // So, we stop expanding and we bring it into view.
+        // if we have been expanding to show an entity and no more expansions are taking place, we reached it
+        // so, we stop expanding and we bring it into view
         if (m_expand_to_selection && !m_expanded_to_selection)
         {
             ImGui::ScrollToBringRectIntoView(m_window, m_selected_entity_rect);
@@ -233,10 +233,10 @@ void WorldViewer::TreeAddEntity(shared_ptr<Spartan::Entity> entity)
         return;
 
     // Determine children visibility
-    const vector<Spartan::Transform*>& children = entity->GetTransform()->GetChildren();
-    for (Spartan::Transform* child : children)
+    const vector<Spartan::Entity*>& children = entity->GetChildren();
+    for (Spartan::Entity* child : children)
     {
-        if (child->GetEntityPtr()->IsVisibleInHierarchy())
+        if (child->IsVisibleInHierarchy())
         {
             has_visible_children = true;
             break;
@@ -259,7 +259,7 @@ void WorldViewer::TreeAddEntity(shared_ptr<Spartan::Entity> entity)
             if (m_expand_to_selection)
             {
                 // If the selected entity is a descendant of the this entity, start expanding (this can happen if an entity is selected in the viewport)
-                if (selected_entity->GetTransform()->IsDescendantOf(entity->GetTransform().get()))
+                if (selected_entity->IsDescendantOf(entity.get()))
                 {
                     ImGui::SetNextItemOpen(true);
                     m_expanded_to_selection = true;
@@ -294,10 +294,10 @@ void WorldViewer::TreeAddEntity(shared_ptr<Spartan::Entity> entity)
         {
             for (const auto& child : children)
             {
-                if (!child->GetEntityPtr()->IsVisibleInHierarchy())
+                if (!child->IsVisibleInHierarchy())
                     continue;
 
-                TreeAddEntity(Spartan::World::GetEntityById(child->GetEntityPtr()->GetObjectId()));
+                TreeAddEntity(Spartan::World::GetEntityById(child->GetObjectId()));
             }
         }
 
@@ -358,7 +358,7 @@ void WorldViewer::EntityHandleDragDrop(shared_ptr<Spartan::Entity> entity_ptr) c
         {
             if (dropped_entity->GetObjectId() != entity_ptr->GetObjectId())
             {
-                dropped_entity->GetTransform()->SetParent(entity_ptr->GetTransform());
+                dropped_entity->SetParent(entity_ptr.get());
             }
         }
     }
@@ -614,7 +614,7 @@ void WorldViewer::ActionEntityDelete(const shared_ptr<Spartan::Entity> entity)
 {
     SP_ASSERT_MSG(entity != nullptr, "Entity is null");
 
-    Spartan::World::RemoveEntity(entity);
+    Spartan::World::RemoveEntity(entity.get());
 }
 
 Spartan::Entity* WorldViewer::ActionEntityCreateEmpty()
@@ -625,7 +625,7 @@ Spartan::Entity* WorldViewer::ActionEntityCreateEmpty()
     {
         if (shared_ptr<Spartan::Entity> selected_entity = camera->GetSelectedEntity())
         {
-            entity->GetTransform()->SetParent(selected_entity->GetTransform());
+            entity->SetParent(selected_entity.get());
         }
     }
 

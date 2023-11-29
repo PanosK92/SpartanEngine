@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============================
 #include "pch.h"
 #include "Light.h"
-#include "Transform.h"
 #include "Camera.h"
 #include "../World.h"
 #include "../../IO/FileStream.h"
@@ -30,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../RHI/RHI_TextureCube.h"
 #include "../../RHI/RHI_Texture2DArray.h"
+#include "../Entity.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -92,7 +92,7 @@ namespace Spartan
         // Dirty checks
         {
             // Position, rotation
-            if (GetTransform()->HasPositionChangedThisFrame() || GetTransform()->HasRotationChangedThisFrame())
+            if (m_entity_ptr->HasPositionChangedThisFrame() || m_entity_ptr->HasRotationChangedThisFrame())
             {
                 m_is_dirty = true;
             }
@@ -321,14 +321,14 @@ namespace Spartan
 
     void Light::ComputeViewMatrix()
     {
-        const Vector3 position = GetTransform()->GetPosition();
-        const Vector3 forward  = GetTransform()->GetForward();
+        const Vector3 position = GetEntity()->GetPosition();
+        const Vector3 forward  = GetEntity()->GetForward();
 
         if (m_light_type == LightType::Directional)
         {
             if (Camera* camera = Renderer::GetCamera().get())
             {
-                Vector3 target = camera->GetTransform()->GetPosition();
+                Vector3 target = camera->GetEntity()->GetPosition();
 
                 // near cascade
                 Vector3 position = target - forward * m_range * 0.5f; // center on camera

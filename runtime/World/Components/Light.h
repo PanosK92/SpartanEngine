@@ -77,6 +77,7 @@ namespace Spartan
         void Deserialize(FileStream* stream) override;
         //============================================
 
+        // type
         const LightType GetLightType() const { return m_light_type; }
         void SetLightType(LightType type);
 
@@ -105,18 +106,23 @@ namespace Spartan
         void SetNormalBias(float value)   { m_bias_normal = value; }
         auto GetNormalBias() const        { return m_bias_normal; }
 
+        // volumetric
         bool GetVolumetricEnabled() const             { return m_volumetric_enabled; }
         void SetVolumetricEnabled(bool is_volumetric) { m_volumetric_enabled = is_volumetric; }
 
+        // range
         void SetRange(float range);
         auto GetRange() const { return m_range; }
 
+        // angle
         void SetAngle(float angle_rad);
         auto GetAngle() const { return m_angle_rad; }
 
+        // matrices
         const Math::Matrix& GetViewMatrix(uint32_t index) const;
         const Math::Matrix& GetProjectionMatrix(uint32_t index) const;
 
+        // textures
         RHI_Texture* GetDepthTexture() const { return m_texture_depth.get(); }
         RHI_Texture* GetColorTexture() const { return m_texture_color.get(); }
         void CreateShadowMap();
@@ -147,7 +153,7 @@ namespace Spartan
         float m_temperature_kelvin = 0.0f;
         bool m_volumetric_enabled  = true;
         float m_range              = 0.0f;
-        float m_angle_rad          = 0.5f; // about 30 degrees
+        float m_angle_rad          = Math::Helper::DEG_TO_RAD * 30.0f;
         bool m_initialized         = false;
 
         // dirty checks
