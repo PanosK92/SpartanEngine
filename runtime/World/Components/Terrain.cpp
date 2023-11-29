@@ -72,7 +72,7 @@ namespace Spartan
 
             // smooth out the height map values, this will reduce hard terrain edges
             {
-                const uint32_t smoothing_iterations = 2;
+                const uint32_t smoothing_iterations = 1;
                 const uint32_t width                = height_texture->GetWidth();
                 const uint32_t height               = height_texture->GetHeight();
 
