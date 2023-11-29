@@ -467,10 +467,10 @@ void WriteScreenSpaceShadow(struct DispatchParameters inParameters, int3 inGroup
 		// If the first samples are always producing a hard shadow, then compute this value separately.
 		result = min(hard_shadow, result);
 
-        //= PANOS - SCREEN EDGE FADE ============================
+        //= PANOS - SCREEN EDGE FADE ===========================
         float2 uv = write_xy * inParameters.InvDepthTextureSize;
         result    = saturate(result + 1.0 - screen_fade(uv));
-        //=======================================================
+        //======================================================
 
 		//write the result
 		{

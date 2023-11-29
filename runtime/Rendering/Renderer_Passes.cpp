@@ -829,7 +829,7 @@ namespace Spartan
                     if (light->GetLightType() == LightType::Directional)
                     {
                         // TODO: Why do we need to flip sign?
-                        p = Vector4(-light->GetEntity()->GetForward().Normalized(), 0.0f) * view_projection;
+                        p = Vector4(-light->GetEntity()->GetForward(), 0.0f) * view_projection;
                     }
                     else
                     {
