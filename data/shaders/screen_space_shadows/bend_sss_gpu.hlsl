@@ -124,7 +124,7 @@ void WriteScreenSpaceShadow(struct DispatchParameters inParameters, int3 inGroup
 	// Set sensible starting tuning values
         void SetDefaults()
         {
-            SurfaceThickness = 0.02; // default: 0.005f
+            SurfaceThickness = 0.01; // default: 0.005f
             BilinearThreshold = 0.02; // default: 0.02f
             ShadowContrast = 4;
             IgnoreEdgePixels = false;
@@ -488,4 +488,3 @@ void WriteScreenSpaceShadow(struct DispatchParameters inParameters, int3 inGroup
 	}
 
 #endif // macro check
-
