@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <functional>
 #include "../ImGui/Source/imgui.h"
+#include "SDL_mouse.h"
 //================================
 
 //==================================
@@ -107,4 +108,6 @@ protected:
 
 private:
     uint8_t m_var_push_count = 0;
+
+    SDL_Cursor* cursor = nullptr;
 };

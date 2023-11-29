@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Display/Display.h"
 #include "Viewport.h"
 #include "Logging/Log.h"
+#include "SDL_events.h"
 //=========================================
 
 Widget::Widget(Editor* editor)
@@ -120,23 +121,28 @@ void Widget::Tick()
 
         // Cursor Change Logic
         BorderDirection borderDir = HoveredBorderDirection();
-        if (ImGui::IsWindowHovered())
+        if (ImGui::IsWindowHovered() && (SDL_ShowCursor(SDL_QUERY) == 1))
         {
+            cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW); // Vertical resize
+            SDL_SetCursor(cursor);
+
             switch (borderDir)
             {
             case BorderDirection::Left:
             case BorderDirection::Right:
-                ImGui::SetMouseCursor(4); // Horizontal resize
+                cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);// Horizontal resize
+                SDL_SetCursor(cursor);
                 break;
 
             case BorderDirection::Top:
             case BorderDirection::Bottom:
-                ImGui::SetMouseCursor(3); // Vertical resize
+                cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS); // Vertical resize
+                SDL_SetCursor(cursor);
                 break;
 
             case BorderDirection::None:
             default:
-                ImGui::SetMouseCursor(0); // Reset to default cursor
+                SDL_SetCursor(cursor); // Reset to default cursor
                 break;
             }
         }
