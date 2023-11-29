@@ -853,8 +853,8 @@ namespace Spartan
                         material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\water_normal.jpeg");
                         material->SetProperty(MaterialProperty::MultiplierRoughness, 0.3f); // just a bit of roughness to diffuse the sun a little
                         material->SetProperty(MaterialProperty::MultiplierNormal,    0.8f);
-                        material->SetProperty(MaterialProperty::TextureTilingX,      1000.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingY,      1000.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingX,      250.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingY,      250.0f);
                         material->SetProperty(MaterialProperty::VertexAnimateWater,  1.0f);
 
                         // create a file path for this material (required for the material to be able to be cached by the resource cache)
