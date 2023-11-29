@@ -59,15 +59,18 @@ namespace Spartan
                 }
             }
 
-            // bytes per pixel
-            uint32_t bytes_per_pixel = (height_texture->GetChannelCount() * height_texture->GetBitsPerChannel()) / 8;
-
-            // normalize and scale height data
-            height_data_out.resize(height_data.size() / bytes_per_pixel);
-            for (uint32_t i = 0; i < height_data.size(); i += bytes_per_pixel)
+            // read from the red channel and save a normalized height value
             {
-                // assuming the height is stored in the red channel (first channel)
-                height_data_out[i / bytes_per_pixel] = min_y + (static_cast<float>(height_data[i]) / 255.0f) * (max_y - min_y);
+                // bytes per pixel
+                uint32_t bytes_per_pixel = (height_texture->GetChannelCount() * height_texture->GetBitsPerChannel()) / 8;
+
+                // normalize and scale height data
+                height_data_out.resize(height_data.size() / bytes_per_pixel);
+                for (uint32_t i = 0; i < height_data.size(); i += bytes_per_pixel)
+                {
+                    // assuming the height is stored in the red channel (first channel)
+                    height_data_out[i / bytes_per_pixel] = min_y + (static_cast<float>(height_data[i]) / 255.0f) * (max_y - min_y);
+                }
             }
 
             // smooth out the height map values, this will reduce hard terrain edges
@@ -76,13 +79,13 @@ namespace Spartan
                 const uint32_t width                = height_texture->GetWidth();
                 const uint32_t height               = height_texture->GetHeight();
 
-                for (uint32_t iteration = 0; iteration < smoothing_iterations; ++iteration)
+                for (uint32_t iteration = 0; iteration < smoothing_iterations; iteration++)
                 {
                     vector<float> smoothed_height_data = height_data_out; // create a copy to store the smoothed data
 
-                    for (uint32_t y = 0; y < height; ++y)
+                    for (uint32_t y = 0; y < height; y++)
                     {
-                        for (uint32_t x = 0; x < width; ++x)
+                        for (uint32_t x = 0; x < width; x++)
                         {
                             float sum      = height_data_out[y * width + x];
                             uint32_t count = 1;
@@ -92,7 +95,9 @@ namespace Spartan
                             {
                                 for (int nx = -1; nx <= 1; ++nx)
                                 {
-                                    if (nx == 0 && ny == 0) continue; // skip the center pixel
+                                    // skip self/center pixel
+                                    if (nx == 0 && ny == 0)
+                                        continue;
 
                                     uint32_t neighbor_x = x + nx;
                                     uint32_t neighbor_y = y + ny;
@@ -101,7 +106,7 @@ namespace Spartan
                                     if (neighbor_x >= 0 && neighbor_x < width && neighbor_y >= 0 && neighbor_y < height)
                                     {
                                         sum += height_data_out[neighbor_y * width + neighbor_x];
-                                        ++count;
+                                        count++;
                                     }
                                 }
                             }

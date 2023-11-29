@@ -52,9 +52,9 @@ namespace Spartan
             clone->SetObjectName(entity->GetObjectName());
             clone->SetActive(entity->IsActive());
             clone->SetHierarchyVisibility(entity->IsVisibleInHierarchy());
-            clone->SetPosition(entity->GetPosition());
-            clone->SetRotation(entity->GetRotation());
-            clone->SetScale(entity->GetScale());
+            clone->SetPosition(entity->GetPositionLocal());
+            clone->SetRotation(entity->GetRotationLocal());
+            clone->SetScale(entity->GetScaleLocal());
 
             // clone all the components
             for (shared_ptr<Component> component_original : entity->GetAllComponents())
