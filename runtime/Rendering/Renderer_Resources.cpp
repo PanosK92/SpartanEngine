@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Window.h"
 #include "Renderer.h"
 #include "Geometry.h"
+#include "ThreadPool.h"
 #include "../World/Components/Light.h"
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture2D.h"
@@ -558,10 +559,15 @@ namespace Spartan
 
         create_mesh(Renderer_MeshType::Cube);
         create_mesh(Renderer_MeshType::Quad);
-        create_mesh(Renderer_MeshType::Grid);
         create_mesh(Renderer_MeshType::Sphere);
         create_mesh(Renderer_MeshType::Cylinder);
         create_mesh(Renderer_MeshType::Cone);
+
+        // most expensive, can delay engine startup so do it in a different thread
+        ThreadPool::AddTask([create_mesh]()
+        {
+            create_mesh(Renderer_MeshType::Grid);
+        });
 
         // this buffers holds all debug primitives that can be drawn
         m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(true, "lines");

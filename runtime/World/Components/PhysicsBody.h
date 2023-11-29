@@ -146,8 +146,11 @@ namespace Spartan
         PhysicsBodyType GetBodyType() const { return m_body_type; }
         void SetBodyType(const PhysicsBodyType type);
 
+        // ray tracing
+        bool RayTraceIsGrounded() const;
+        Math::Vector3 RayTraceIsNearStairStep(const Math::Vector3& forward) const;
+
         // misc
-        bool IsGrounded() const;
         void ClearForces() const;
         void Activate() const;
         void Deactivate() const;
