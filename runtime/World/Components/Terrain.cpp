@@ -70,6 +70,52 @@ namespace Spartan
                 height_data_out[i / bytes_per_pixel] = min_y + (static_cast<float>(height_data[i]) / 255.0f) * (max_y - min_y);
             }
 
+            // smooth out the height map values, this will reduce hard terrain edges
+            {
+                const uint32_t smoothing_iterations = 2;
+                const uint32_t width                = height_texture->GetWidth();
+                const uint32_t height               = height_texture->GetHeight();
+
+                for (uint32_t iteration = 0; iteration < smoothing_iterations; ++iteration)
+                {
+                    vector<float> smoothed_height_data = height_data_out; // create a copy to store the smoothed data
+
+                    for (uint32_t y = 0; y < height; ++y)
+                    {
+                        for (uint32_t x = 0; x < width; ++x)
+                        {
+                            float sum      = height_data_out[y * width + x];
+                            uint32_t count = 1;
+
+                            // iterate over neighboring pixels
+                            for (int ny = -1; ny <= 1; ++ny)
+                            {
+                                for (int nx = -1; nx <= 1; ++nx)
+                                {
+                                    if (nx == 0 && ny == 0) continue; // skip the center pixel
+
+                                    uint32_t neighbor_x = x + nx;
+                                    uint32_t neighbor_y = y + ny;
+
+                                    // check boundaries
+                                    if (neighbor_x >= 0 && neighbor_x < width && neighbor_y >= 0 && neighbor_y < height)
+                                    {
+                                        sum += height_data_out[neighbor_y * width + neighbor_x];
+                                        ++count;
+                                    }
+                                }
+                            }
+
+                            // average the sum
+                            smoothed_height_data[y * width + x] = sum / static_cast<float>(count);
+                        }
+                    }
+
+                    height_data_out = smoothed_height_data;
+                }
+
+            }
+
             return true;
         }
 
