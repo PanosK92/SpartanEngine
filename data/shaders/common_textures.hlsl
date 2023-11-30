@@ -88,7 +88,7 @@ struct MaterialProperties
 RWTexture2D<float4> tex_uav                                : register(u0);
 RWTexture2D<float4> tex_uav2                               : register(u1);
 RWTexture2D<float4> tex_uav3                               : register(u2);
-RWTexture2DArray<float4> tex_uav4                          : register(u3);
+RWTexture2DArray<float4> tex_uav_sss                       : register(u3);
 RWStructuredBuffer<MaterialProperties> material_properties : register(u4); // matches ID/index to material properties, used by the lighting pass
 globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u5); // used by FidelityFX SPD
 globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u6); // used by FidelityFX SPD

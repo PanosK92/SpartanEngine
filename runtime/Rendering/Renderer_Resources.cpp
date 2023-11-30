@@ -64,9 +64,9 @@ namespace Spartan
         array<shared_ptr<RHI_StructuredBuffer>, 2>          m_structured_buffers;
 
         // asset resources
-        array<shared_ptr<RHI_Texture>, 10> m_standard_textures;
-        array<shared_ptr<Mesh>, 7>         m_standard_meshes;
-        array<shared_ptr<Font>, 5> m_fonts; // as many as m_resources_frame_lifetime
+        array<shared_ptr<RHI_Texture>, 10>                m_standard_textures;
+        array<shared_ptr<Mesh>, 7>                        m_standard_meshes;
+        array<shared_ptr<Font>, resources_frame_lifetime> m_fonts;
     }
 
     void Renderer::CreateConstantBuffers()
@@ -88,7 +88,7 @@ namespace Spartan
         #define structured_buffer(x) m_structured_buffers[static_cast<uint8_t>(x)]
 
         uint32_t stride        = static_cast<uint32_t>(sizeof(uint32_t));
-        uint32_t element_count = 32 * resources_frame_lifetime;
+        uint32_t element_count = 16 * resources_frame_lifetime; // SPD is used less than 5 times per frame so 16 should cover it
         structured_buffer(Renderer_StructuredBuffer::Spd) = make_shared<RHI_StructuredBuffer>(stride, element_count, "spd_counter");
 
         stride        = static_cast<uint32_t>(sizeof(Sb_MaterialProperties)) * 1024;
