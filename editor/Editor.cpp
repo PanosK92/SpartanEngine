@@ -26,6 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ImGui/ImGuiExtension.h"
 #include "ImGui/Implementation/ImGui_RHI.h"
 #include "ImGui/Implementation/imgui_impl_sdl2.h"
+#include "ImGui/Source/imgui_test_engine/imgui_te_engine.h"
+#include "ImGui/Source/imgui_test_engine/imgui_te_ui.h"
 #include "Widgets/AssetBrowser.h"
 #include "Widgets/Console.h"
 #include "Widgets/MenuBar.h"
@@ -66,6 +68,9 @@ namespace
     
     MenuBar* widget_menu_bar = nullptr;
     Widget* widget_world     = nullptr;
+
+    // test engine
+    ImGuiTestEngine* testEngine = NULL;
 
     static void process_event(Spartan::sp_variant data)
     {
@@ -160,6 +165,10 @@ Editor::Editor()
     // initialize ImGui
     ImGui::CreateContext();
 
+    // initialize ImGui Test Engine
+    testEngine                  = ImGuiTestEngine_CreateContext();
+    ImGuiTestEngineIO& test_io  = ImGuiTestEngine_GetIO(testEngine);
+
     // configure ImGui
     ImGuiIO& io                      = ImGui::GetIO();
     io.ConfigFlags                  |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -170,6 +179,20 @@ Editor::Editor()
     io.ConfigViewportsNoTaskBarIcon  = true;
     io.ConfigViewportsNoDecoration   = true; // borderless child windows but with ImGui min, max and close buttons
     io.IniFilename                   = "editor.ini";
+
+    // configure test engine
+    test_io.ConfigVerboseLevel          = ImGuiTestVerboseLevel_Info;
+    test_io.ConfigVerboseLevelOnError   = ImGuiTestVerboseLevel_Debug;
+    test_io.ConfigRunSpeed              = ImGuiTestRunSpeed_Fast;
+    //test_io.screencapturefunc           = imguiapp_screencapturefunc;
+    //test_io.screencaptureuserdata       = (void*)app;
+
+    // start test engine
+    ImGuiTestEngine_Start(testEngine, ImGui::GetCurrentContext());
+    ImGuiTestEngine_InstallDefaultCrashHandler();
+
+    // register tests
+    // RegisterSpartanTests(engine);
 
     // load font
     string dir_fonts = Spartan::ResourceCache::GetResourceDirectory(Spartan::ResourceDirectory::Fonts) + "/";
@@ -209,12 +232,14 @@ Editor::Editor()
 
     // Register ImGui as a third party library (will show up in the about window)
     Spartan::Settings::RegisterThirdPartyLib("Dear ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
+    Spartan::Settings::RegisterThirdPartyLib("ImGui Test Engine", IMGUI_VERSION, "https://github.com/ocornut/imgui_test_engine");
 }
 
 Editor::~Editor()
 {
     if (ImGui::GetCurrentContext())
     {
+        ImGuiTestEngine_Stop(testEngine);
         ImGui::RHI::shutdown();
         ImGui_ImplSDL2_Shutdown();
         ImGui::DestroyContext();
