@@ -61,7 +61,8 @@ namespace Spartan
     RHI_CommandPool* Renderer::m_cmd_pool = nullptr;
     shared_ptr<Camera> Renderer::m_camera = nullptr;
     uint32_t Renderer::m_resource_index = 0;
-    array<Sb_MaterialProperties, 1024> m_materials;
+    array<Sb_MaterialProperties, 1024> materials;
+    bool materials_dirty = true;
 
     namespace
     {
@@ -535,6 +536,7 @@ namespace Spartan
         m_cb_material_cpu.properties = 0;
 
         // set
+        m_cb_material_cpu.id                  = static_cast<uint32_t>(material->GetObjectId());
         m_cb_material_cpu.world_space_height  = material->GetProperty(MaterialProperty::WorldSpaceHeight);
         m_cb_material_cpu.color.x             = material->GetProperty(MaterialProperty::ColorR);
         m_cb_material_cpu.color.y             = material->GetProperty(MaterialProperty::ColorG);
@@ -632,7 +634,7 @@ namespace Spartan
         if (!m_entities_to_add.empty())
         {
             // clear previous state
-            m_materials.fill(Sb_MaterialProperties{});
+            materials.fill(Sb_MaterialProperties{});
             m_renderables.clear();
             m_camera = nullptr;
 
@@ -658,8 +660,8 @@ namespace Spartan
                             material_properties.sheen                 = material->GetProperty(MaterialProperty::Sheen);
                             material_properties.sheen_tint            = material->GetProperty(MaterialProperty::SheenTint);
 
-                            uint32_t index = static_cast<uint32_t>(material->GetObjectId() % m_materials.size());
-                            m_materials[index] = material_properties;
+                            uint32_t index   = static_cast<uint32_t>(material->GetObjectId() % materials.size());
+                            materials[index] = material_properties;
                         }
                     }
 
@@ -704,6 +706,7 @@ namespace Spartan
             sort_renderables(m_camera.get(), &m_renderables[Renderer_Entity::GeometryTransparent], true);
 
             m_entities_to_add.clear();
+            materials_dirty = true;
         }
 
         // generate mips
@@ -917,7 +920,11 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity_previous, GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity_previous));
 
         // update material array
-        GetStructuredBuffer(Renderer_StructuredBuffer::Material)->Update(&m_materials[0]);
+        if (materials_dirty)
+        {
+            GetStructuredBuffer(Renderer_StructuredBuffer::Material)->Update(&materials[0]);
+            materials_dirty = false;
+        }
         cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_materials, GetStructuredBuffer(Renderer_StructuredBuffer::Material));
     }
 

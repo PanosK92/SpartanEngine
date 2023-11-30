@@ -87,11 +87,13 @@ namespace Spartan
     {
         #define structured_buffer(x) m_structured_buffers[static_cast<uint8_t>(x)]
 
-        const uint32_t element_count = 32;
-        structured_buffer(Renderer_StructuredBuffer::Spd) = make_shared<RHI_StructuredBuffer>(static_cast<uint32_t>(sizeof(uint32_t)), element_count, "spd_counter");
+        uint32_t stride        = static_cast<uint32_t>(sizeof(uint32_t));
+        uint32_t element_count = 32 * resources_frame_lifetime;
+        structured_buffer(Renderer_StructuredBuffer::Spd) = make_shared<RHI_StructuredBuffer>(stride, element_count, "spd_counter");
 
-        const uint32_t max_materials = 1024;
-        structured_buffer(Renderer_StructuredBuffer::Material) = make_shared<RHI_StructuredBuffer>(static_cast<uint32_t>(sizeof(Sb_MaterialProperties)), max_materials, "material_array");
+        stride        = static_cast<uint32_t>(sizeof(Sb_MaterialProperties)) * 1024;
+        element_count = resources_frame_lifetime;
+        structured_buffer(Renderer_StructuredBuffer::Material) = make_shared<RHI_StructuredBuffer>(stride, element_count, "material_array");
     }
 
     void Renderer::CreateDepthStencilStates()
