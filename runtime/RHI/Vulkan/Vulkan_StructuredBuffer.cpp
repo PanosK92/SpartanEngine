@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_StructuredBuffer.h"
-#include "../Rendering/Renderer.h"
 //==================================
 
 //= NAMESPACES =====
@@ -40,7 +39,7 @@ namespace Spartan
         m_element_count   = element_count;
         m_object_size_gpu = stride * element_count;
 
-        // Calculate required alignment based on minimum device offset alignment
+        // calculate required alignment based on minimum device offset alignment
         size_t min_alignment = RHI_Device::PropertyGetMinStorageBufferOffsetAllignment();
         if (min_alignment > 0)
         {
@@ -48,16 +47,16 @@ namespace Spartan
         }
         m_object_size_gpu = m_stride * m_element_count;
 
-        // Define memory properties
+        // define memory properties
         VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
 
         // Create buffer
         RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, flags, nullptr, name);
 
-        // Get mapped data pointer
+        // get mapped data pointer
         m_mapped_data = RHI_Device::MemoryGetMappedDataFromBuffer(m_rhi_resource);
 
-        // Set debug name
+        // set debug name
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::Buffer, name);
     }
 
@@ -74,9 +73,16 @@ namespace Spartan
         SP_ASSERT_MSG(m_offset + m_stride <= m_object_size_gpu, "Out of memory");
 
         // advance offset
-        m_offset += m_stride;
+        if (first_update)
+        {
+            first_update = false;
+        }
+        else
+        {
+            m_offset += m_stride;
+        }
 
-        // we are using persistent mapping, so we can only copy
+        // we are using persistent mapping, so we only copy (no need for map/unmap)
         memcpy(reinterpret_cast<std::byte*>(m_mapped_data) + m_offset, reinterpret_cast<std::byte*>(data_cpu), m_stride);
     }
 }
