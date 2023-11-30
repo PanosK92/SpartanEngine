@@ -659,6 +659,8 @@ namespace Spartan
                             material_properties.clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
                             material_properties.sheen                 = material->GetProperty(MaterialProperty::Sheen);
                             material_properties.sheen_tint            = material->GetProperty(MaterialProperty::SheenTint);
+                            material_properties.subsurface_scattering = material->GetProperty(MaterialProperty::MultiplierSubsurfaceScattering);
+                            material_properties.ior                   = material->GetProperty(MaterialProperty::Ior);
 
                             uint32_t index   = static_cast<uint32_t>(material->GetObjectId() % materials.size());
                             materials[index] = material_properties;
@@ -925,6 +927,7 @@ namespace Spartan
             GetStructuredBuffer(Renderer_StructuredBuffer::Material)->Update(&materials[0]);
             materials_dirty = false;
         }
+
         cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_materials, GetStructuredBuffer(Renderer_StructuredBuffer::Material));
     }
 

@@ -73,10 +73,15 @@ struct MaterialProperties
 {
     float sheen;
     float3 sheen_tint;
+    
     float anisotropic;
     float anisotropic_rotation;
     float clearcoat;
     float clearcoat_roughness;
+    
+    float subsurface_scattering;
+    float ior;
+    float2 padding;
 };
 
 // storage

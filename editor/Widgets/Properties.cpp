@@ -752,12 +752,6 @@ void Properties::ShowMaterial(Material* material) const
                     }
                 };
 
-                show_property("Clearcoat",            "Extra white specular layer on top of others",                                       MaterialTexture::Undefined,  MaterialProperty::Clearcoat);
-                show_property("Clearcoat roughness",  "Roughness of clearcoat specular",                                                   MaterialTexture::Undefined,  MaterialProperty::Clearcoat_Roughness);
-                show_property("Anisotropic",          "Amount of anisotropy for specular reflection",                                      MaterialTexture::Undefined,  MaterialProperty::Anisotropic);
-                show_property("Anisotropic rotation", "Rotates the direction of anisotropy, with 1.0 going full circle",                   MaterialTexture::Undefined,  MaterialProperty::AnisotropicRotation);
-                show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTexture::Undefined,  MaterialProperty::Sheen);
-                show_property("Sheen tint",           "Mix between white and using base color for sheen reflection",                       MaterialTexture::Undefined,  MaterialProperty::SheenTint);
                 show_property("Color",                "Surface color",                                                                     MaterialTexture::Color,      MaterialProperty::ColorTint);
                 show_property("Roughness",            "Specifies microfacet roughness of the surface for diffuse and specular reflection", MaterialTexture::Roughness,  MaterialProperty::MultiplierRoughness);
                 show_property("Metalness",            "Blends between a non-metallic and metallic material model",                         MaterialTexture::Metalness,  MaterialProperty::MultiplierMetalness);
@@ -766,6 +760,15 @@ void Properties::ShowMaterial(Material* material) const
                 show_property("Occlusion",            "Amount of light loss, can be complementary to SSAO",                                MaterialTexture::Occlusion,  MaterialProperty::Undefined);
                 show_property("Emission",             "Light emission from the surface, works nice with bloom",                            MaterialTexture::Emission,   MaterialProperty::Undefined);
                 show_property("Alpha mask",           "Discards pixels",                                                                   MaterialTexture::AlphaMask,  MaterialProperty::Undefined);
+                
+                show_property("Clearcoat",            "Extra white specular layer on top of others",                                       MaterialTexture::Undefined,  MaterialProperty::Clearcoat);
+                show_property("Clearcoat roughness",  "Roughness of clearcoat specular",                                                   MaterialTexture::Undefined,  MaterialProperty::Clearcoat_Roughness);
+                show_property("Anisotropic",          "Amount of anisotropy for specular reflection",                                      MaterialTexture::Undefined,  MaterialProperty::Anisotropic);
+                show_property("Anisotropic rotation", "Rotates the direction of anisotropy, with 1.0 going full circle",                   MaterialTexture::Undefined,  MaterialProperty::AnisotropicRotation);
+                show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTexture::Undefined,  MaterialProperty::Sheen);
+                show_property("Sheen tint",           "Mix between white and using base color for sheen reflection",                       MaterialTexture::Undefined,  MaterialProperty::SheenTint);
+                show_property("Subsurface scattering","Amount of translucency",                                                            MaterialTexture::Undefined, MaterialProperty::MultiplierSubsurfaceScattering);
+                show_property("IOR",                  "Index of refraction",                                                               MaterialTexture::Undefined, MaterialProperty::Ior);
             }
 
             // UV
