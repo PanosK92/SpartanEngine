@@ -21,17 +21,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================================
+//= INCLUDES ===========================
 #include <array>
 #include "ImGui_RHI.h"
+#include "../Source/imgui.h"
+#include "../../Widgets/TextureViewer.h"
 #include "Core/Event.h"
+#include "Rendering/Renderer_Buffers.h"
+#include "Rendering/Renderer.h"
 #include "RHI/RHI_Device.h"
 #include "RHI/RHI_Shader.h"
-#include "../Source/imgui.h"
 #include "RHI/RHI_Semaphore.h"
 #include "RHI/RHI_Texture2D.h"
 #include "RHI/RHI_SwapChain.h"
-#include "Rendering/Renderer.h"
 #include "RHI/RHI_BlendState.h"
 #include "RHI/RHI_CommandPool.h"
 #include "RHI/RHI_CommandList.h"
@@ -41,9 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_ConstantBuffer.h"
 #include "RHI/RHI_RasterizerState.h"
 #include "RHI/RHI_DepthStencilState.h"
-#include "../../Widgets/TextureViewer.h"
-#include "Rendering/Renderer_ConstantBuffers.h"
-//=============================================
+//======================================
 
 namespace ImGui::RHI
 {

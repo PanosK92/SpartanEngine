@@ -85,14 +85,9 @@ struct MaterialBufferData
     float height;
 
     uint properties;
-    float clearcoat;
-    float clearcoat_roughness;
-    float anisotropic;
-    
-    float anisotropic_rotation;
-    float sheen;
-    float sheen_tint;
     float world_space_height;
+    uint id;
+    float padding2;
 };
 
 cbuffer BufferFrame    : register(b0) { FrameBufferData buffer_frame;       }; // low frequency    - updates once per frame

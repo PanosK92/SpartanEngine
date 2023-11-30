@@ -40,7 +40,7 @@ struct Surface
     float  anisotropic;
     float  anisotropic_rotation;
     float  sheen;
-    float  sheen_tint;
+    float3 sheen_tint;
     float  occlusion;
     float3 gi;
     float3 emissive;
@@ -66,13 +66,17 @@ struct Surface
     
     void Build(uint2 position_screen, bool use_albedo, bool use_ssgi, bool replace_color_with_one)
     {
-        // Sample render targets
+        // sample render targets
         float4 sample_albedo     = use_albedo ? tex_albedo[position_screen] : 0.0f;
         float4 sample_normal     = tex_normal[position_screen];
         float4 sample_material   = tex_material[position_screen];
-        float4 sample_material_2 = tex_material_2[position_screen];
         float sample_depth       = get_depth(position_screen);
 
+        // access the material structured buffer to get additional properties
+        float material_id                 = sample_normal.w;
+        uint material_index               = (uint)material_id; 
+        MaterialProperties mat_properties = material_properties[material_index];
+        
         // misc
         uv     = (position_screen + 0.5f) / pass_get_resolution_out();
         depth  = sample_depth;
@@ -84,12 +88,12 @@ struct Surface
         metallic             = sample_material.g;
         emissive             = sample_material.b;
         F0                   = lerp(0.04f, albedo, metallic);
-        anisotropic          = sample_material_2.x;
-        anisotropic_rotation = sample_material_2.y;
-        clearcoat            = sample_material_2.z;
-        clearcoat_roughness  = sample_material_2.w;
-        sheen                = sample_normal.w;
-        sheen_tint           = 1.0f; // TODO
+        anisotropic          = mat_properties.anisotropic;
+        anisotropic_rotation = mat_properties.anisotropic_rotation;
+        clearcoat            = mat_properties.clearcoat;
+        clearcoat_roughness  = mat_properties.clearcoat_roughness;
+        sheen                = mat_properties.sheen;
+        sheen_tint           = mat_properties.sheen_tint;
         specular_energy      = 1.0f;
         diffuse_energy       = 1.0f;
 

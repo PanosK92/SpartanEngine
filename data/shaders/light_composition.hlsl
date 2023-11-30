@@ -26,8 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 struct refraction
 {
-    static const float depth_bias = 0.02f;
-
     static float compute_fade_factor(float2 uv)
     {
         float edge_threshold = 0.05f; // how close to the edge to start fading
@@ -60,7 +58,8 @@ struct refraction
         float3 color          = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level).rgb;
         
         // dont refract surfaces which are behind this surface
-        const bool is_behind = step(get_linear_depth(surface.depth) - depth_bias, get_linear_depth(refracted_uv)) == 1.0f;
+        const float depth_bias = 0.02f;
+        const bool is_behind   = step(get_linear_depth(surface.depth) - depth_bias, get_linear_depth(refracted_uv)) == 1.0f;
         if (is_behind)
         {
             // simulate light breaking off into individual color bands via chromatic aberration

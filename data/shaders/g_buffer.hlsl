@@ -35,11 +35,10 @@ struct PixelInputType
 
 struct PixelOutputType
 {
-    float4 albedo     : SV_Target0;
-    float4 normal     : SV_Target1;
-    float4 material   : SV_Target2;
-    float4 material_2 : SV_Target3;
-    float2 velocity   : SV_Target4;
+    float4 albedo   : SV_Target0;
+    float4 normal   : SV_Target1;
+    float4 material : SV_Target2;
+    float2 velocity : SV_Target3;
 };
 
 struct water
@@ -283,11 +282,10 @@ PixelOutputType mainPS(PixelInputType input)
 
     // write to g-buffer
     PixelOutputType g_buffer;
-    g_buffer.albedo     = albedo;
-    g_buffer.normal     = float4(normal, buffer_material.sheen);
-    g_buffer.material   = float4(roughness, metalness, emission, occlusion);
-    g_buffer.material_2 = float4(buffer_material.anisotropic, buffer_material.anisotropic_rotation, buffer_material.clearcoat, buffer_material.clearcoat_roughness);
-    g_buffer.velocity   = velocity;
+    g_buffer.albedo   = albedo;
+    g_buffer.normal   = float4(normal, buffer_material.id % 1024);
+    g_buffer.material = float4(roughness, metalness, emission, occlusion);
+    g_buffer.velocity = velocity;
 
     return g_buffer;
 }

@@ -1281,7 +1281,7 @@ namespace Spartan
             VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                descriptors::descriptor_pool_max_samplers },
             VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          descriptors::descriptor_pool_max_textures },
             VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          descriptors::descriptor_pool_max_storage_textures },
-            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, descriptors::descriptor_pool_max_storage_buffers_dynamic }, // aka structured buffer
+            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, descriptors::descriptor_pool_max_storage_buffers_dynamic }, // structured buffer
             VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, descriptors::descriptor_pool_max_constant_buffers_dynamic }
         };
 

@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES ====================
 #include "Renderer_Definitions.h"
 #include "../RHI/RHI_Texture.h"
 #include "../Math/Rectangle.h"
@@ -30,10 +30,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Plane.h"
 #include "Event.h"
 #include "Mesh.h"
-#include "Renderer_ConstantBuffers.h"
+#include "Renderer_Buffers.h"
 #include "Font/Font.h"
 #include <unordered_map>
-//===================================
+//===============================
 
 namespace Spartan
 {
@@ -114,6 +114,7 @@ namespace Spartan
         static std::array<std::shared_ptr<RHI_Texture>, render_target_count>& GetRenderTargets();
         static std::array<std::shared_ptr<RHI_Shader>, shader_count>& GetShaders();
         static std::array<std::shared_ptr<RHI_ConstantBuffer>, 3>& GetConstantBuffers();
+        static std::array<std::shared_ptr<RHI_StructuredBuffer>, 2>& GetStructuredBuffers();
 
         // get individual
         static std::shared_ptr<RHI_RasterizerState> GetRasterizerState(const Renderer_RasterizerState type);
@@ -123,7 +124,7 @@ namespace Spartan
         static std::shared_ptr<RHI_Shader> GetShader(const Renderer_Shader type);
         static std::shared_ptr<RHI_Sampler> GetSampler(const Renderer_Sampler type);
         static std::shared_ptr<RHI_ConstantBuffer> GetConstantBuffer(const Renderer_ConstantBuffer type);
-        static std::shared_ptr<RHI_StructuredBuffer> GetStructuredBuffer();
+        static std::shared_ptr<RHI_StructuredBuffer> GetStructuredBuffer(const Renderer_StructuredBuffer type);
         static std::shared_ptr<RHI_Texture> GetStandardTexture(const Renderer_StandardTexture type);
         static std::shared_ptr<Mesh> GetStandardMesh(const Renderer_MeshType type);
         static std::shared_ptr<Font> GetFont();

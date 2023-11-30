@@ -212,9 +212,9 @@ float3 BRDF_Specular_Clearcoat(inout Surface surface, AngularInfo angular_info)
 
 float3 BRDF_Specular_Sheen(inout Surface surface, AngularInfo angular_info)
 {
-    // Mix between white and using base color for sheen reflection
-    float tint = surface.sheen_tint * surface.sheen_tint;
-    float3 f0  = lerp(1.0f, surface.F0, tint);
+    // mix between white and using base color for sheen reflection
+    float3 tint = surface.sheen_tint * surface.sheen_tint;
+    float3 f0   = lerp(1.0f, surface.F0, tint);
     
     float D  = D_Charlie(surface.roughness, angular_info.n_dot_h);
     float V  = V_Neubelt(angular_info.n_dot_v, angular_info.n_dot_l);

@@ -153,34 +153,24 @@ namespace Spartan
         float normal_mul    = 0.0f;
         float height_mul    = 0.0f;
 
-        uint32_t properties       = 0;
-        float clearcoat           = 0.0f;
-        float clearcoat_roughness = 0.0f;
-        float anisotropic         = 0.0f;
-
-        float anisitropic_rotation = 0.0f;
-        float sheen                = 0.0f;
-        float sheen_tint           = 0.0f;
-        float world_space_height   = 0.0f;
+        uint32_t properties      = 0;
+        float world_space_height = 0.0f;
+        uint32_t id              = 0;
+        float padding            = 0.0f;
 
         bool operator==(const Cb_Material& rhs) const
         {
             return
-                color                == rhs.color                &&
-                tiling_uv            == rhs.tiling_uv            &&
-                offset_uv            == rhs.offset_uv            &&
-                roughness_mul        == rhs.roughness_mul        &&
-                metallic_mul         == rhs.metallic_mul         &&
-                normal_mul           == rhs.normal_mul           &&
-                height_mul           == rhs.height_mul           &&
-                properties           == rhs.properties           &&
-                clearcoat            == rhs.clearcoat            &&
-                clearcoat_roughness  == rhs.clearcoat_roughness  &&
-                anisotropic          == rhs.anisotropic          &&
-                anisitropic_rotation == rhs.anisitropic_rotation &&
-                sheen                == rhs.sheen                &&
-                sheen_tint           == rhs.sheen_tint           &&
-                world_space_height   == rhs.world_space_height;
+                color              == rhs.color         &&
+                tiling_uv          == rhs.tiling_uv     &&
+                offset_uv          == rhs.offset_uv     &&
+                roughness_mul      == rhs.roughness_mul &&
+                metallic_mul       == rhs.metallic_mul  &&
+                normal_mul         == rhs.normal_mul    &&
+                height_mul         == rhs.height_mul    &&
+                properties         == rhs.properties    &&
+                id                 == rhs.id            &&
+                world_space_height == rhs.world_space_height;
         }
     };
 
@@ -268,5 +258,15 @@ namespace Spartan
         }
 
         bool operator!=(const Pcb_Pass& rhs) const { return !(*this == rhs); }
+    };
+
+    struct Sb_MaterialProperties
+    {
+        float sheen;
+        Math::Vector3 sheen_tint;
+        float anisotropic;
+        float anisotropic_rotation;
+        float clearcoat;
+        float clearcoat_roughness;
     };
 }

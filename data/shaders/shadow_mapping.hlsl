@@ -302,8 +302,8 @@ float4 Shadow_Map(Surface surface, Light light)
     if (light.distance_to_pixel <= light.far)
     {
         // compute world position with normal offset bias to reduce shadow acne
-        float normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * light.normal_bias * get_shadow_texel_size();
-        float3 position_world    = surface.position + normal_offset_bias;
+        float3 normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * light.normal_bias * get_shadow_texel_size();
+        float3 position_world     = surface.position + normal_offset_bias;
 
         // project to light space
         uint slice_index = light_is_point() ? direction_to_cube_face_index(light.to_pixel) : 0;

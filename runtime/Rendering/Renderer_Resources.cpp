@@ -61,7 +61,7 @@ namespace Spartan
         array<shared_ptr<RHI_Shader>, shader_count>         m_shaders;
         array<shared_ptr<RHI_Sampler>, 7>                   m_samplers;
         array<shared_ptr<RHI_ConstantBuffer>, 3>            m_constant_buffers;
-        shared_ptr<RHI_StructuredBuffer>                    m_structured_buffer;
+        array<shared_ptr<RHI_StructuredBuffer>, 2>          m_structured_buffers;
 
         // asset resources
         array<shared_ptr<RHI_Texture>, 10> m_standard_textures;
@@ -85,8 +85,13 @@ namespace Spartan
 
     void Renderer::CreateStructuredBuffers()
     {
-        const uint32_t offset_count = 32;
-        m_structured_buffer = make_shared<RHI_StructuredBuffer>(static_cast<uint32_t>(sizeof(uint32_t)), offset_count, "spd_counter");
+        #define structured_buffer(x) m_structured_buffers[static_cast<uint8_t>(x)]
+
+        const uint32_t element_count = 32;
+        structured_buffer(Renderer_StructuredBuffer::Spd) = make_shared<RHI_StructuredBuffer>(static_cast<uint32_t>(sizeof(uint32_t)), element_count, "spd_counter");
+
+        const uint32_t max_materials = 1024;
+        structured_buffer(Renderer_StructuredBuffer::Material) = make_shared<RHI_StructuredBuffer>(static_cast<uint32_t>(sizeof(Sb_MaterialProperties)), max_materials, "material_array");
     }
 
     void Renderer::CreateDepthStencilStates()
@@ -199,7 +204,6 @@ namespace Spartan
                 render_target(Renderer_RenderTexture::gbuffer_color)             = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     g_buffer_flags,                         "rt_gbuffer_color");
                 render_target(Renderer_RenderTexture::gbuffer_normal)            = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, g_buffer_flags,                         "rt_gbuffer_normal");
                 render_target(Renderer_RenderTexture::gbuffer_material)          = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     g_buffer_flags,                         "rt_gbuffer_material");
-                render_target(Renderer_RenderTexture::gbuffer_material_2)        = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     g_buffer_flags,                         "rt_gbuffer_material_2");
                 render_target(Renderer_RenderTexture::gbuffer_velocity)          = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16_Float,       g_buffer_flags | RHI_Texture_ClearBlit, "rt_gbuffer_velocity");
                 render_target(Renderer_RenderTexture::gbuffer_depth)             = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          g_buffer_flags,                         "rt_gbuffer_depth");
 
@@ -626,7 +630,7 @@ namespace Spartan
         m_standard_textures.fill(nullptr);
         m_standard_meshes.fill(nullptr);
         m_constant_buffers.fill(nullptr);
-        m_structured_buffer = nullptr;
+        m_structured_buffers.fill(nullptr);
         m_fonts.fill(nullptr);
     }
 
@@ -643,6 +647,11 @@ namespace Spartan
     array<shared_ptr<RHI_ConstantBuffer>, 3>& Renderer::GetConstantBuffers()
     {
         return m_constant_buffers;
+    }
+
+    array<shared_ptr<RHI_StructuredBuffer>, 2>& Renderer::GetStructuredBuffers()
+    {
+        return m_structured_buffers;
     }
 
     shared_ptr<RHI_RasterizerState> Renderer::GetRasterizerState(const Renderer_RasterizerState type)
@@ -680,9 +689,9 @@ namespace Spartan
         return m_constant_buffers[static_cast<uint8_t>(type)];
     }
 
-    shared_ptr<RHI_StructuredBuffer> Renderer::GetStructuredBuffer()
+    shared_ptr<RHI_StructuredBuffer> Renderer::GetStructuredBuffer(const Renderer_StructuredBuffer type)
     {
-        return m_structured_buffer;
+        return m_structured_buffers[static_cast<uint8_t>(type)];
     }
 
     shared_ptr<RHI_Texture> Renderer::GetStandardTexture(const Renderer_StandardTexture type)
