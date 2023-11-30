@@ -30,7 +30,7 @@ using namespace std;
 
 namespace Spartan
 {
-// api specific
+    // api specific
 #if defined(API_GRAPHICS_D3D12)
     RHI_Api_Type  RHI_Context::api_type     = RHI_Api_Type::D3d12;
     string        RHI_Context::api_type_str = "D3D12";
@@ -55,7 +55,7 @@ namespace Spartan
     bool RHI_Context::validation    = true;
     bool RHI_Context::gpu_markers   = true;
     bool RHI_Context::gpu_profiling = true;
-    bool RHI_Context::renderdoc     = true;
+    bool RHI_Context::renderdoc     = false;
 #else
     bool RHI_Context::validation    = false;
     bool RHI_Context::gpu_markers   = false;

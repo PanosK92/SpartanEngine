@@ -39,13 +39,14 @@ Texture2D tex_velocity          : register(t13);
 Texture2D tex_velocity_previous : register(t14);
 Texture2D tex_depth             : register(t15);
 
+// lighting
 Texture2D tex_light_diffuse              : register(t16);
 Texture2D tex_light_diffuse_transparent  : register(t17);
 Texture2D tex_light_specular             : register(t18);
 Texture2D tex_light_specular_transparent : register(t19);
 Texture2D tex_light_volumetric           : register(t20);
 
-// light depth/color maps
+// shadow maps (depth and color)
 Texture2DArray tex_light_directional_depth : register(t21);
 Texture2DArray tex_light_directional_color : register(t22);
 TextureCube tex_light_point_depth          : register(t23);
@@ -89,6 +90,6 @@ RWTexture2D<float4> tex_uav                                : register(u0);
 RWTexture2D<float4> tex_uav2                               : register(u1);
 RWTexture2D<float4> tex_uav3                               : register(u2);
 RWTexture2DArray<float4> tex_uav_sss                       : register(u3);
-RWStructuredBuffer<MaterialProperties> material_properties : register(u4); // matches ID/index to material properties, used by the lighting pass
+RWStructuredBuffer<MaterialProperties> material_properties : register(u4); // matches ID/index to material properties, used for lighting
 globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u5); // used by FidelityFX SPD
 globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u6); // used by FidelityFX SPD
