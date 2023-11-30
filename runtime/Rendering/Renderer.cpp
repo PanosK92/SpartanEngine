@@ -61,8 +61,8 @@ namespace Spartan
     RHI_CommandPool* Renderer::m_cmd_pool = nullptr;
     shared_ptr<Camera> Renderer::m_camera = nullptr;
     uint32_t Renderer::m_resource_index = 0;
-    array<Sb_MaterialProperties, 1024> materials;
-    bool materials_dirty = true;
+    array<Sb_MaterialProperties, 1024> material_properties;
+    bool material_properties_dirty = true;
 
     namespace
     {
@@ -634,7 +634,7 @@ namespace Spartan
         if (!m_entities_to_add.empty())
         {
             // clear previous state
-            materials.fill(Sb_MaterialProperties{});
+            material_properties.fill(Sb_MaterialProperties{});
             m_renderables.clear();
             m_camera = nullptr;
 
@@ -650,20 +650,20 @@ namespace Spartan
                         is_transparent = material->GetProperty(MaterialProperty::ColorA) < 1.0f;
                         is_visible     = material->GetProperty(MaterialProperty::ColorA) != 0.0f;
 
-                        // save the material properties (used in the lighting pass)
+                        // save material properties - used in the lighting pass
                         {
-                            Sb_MaterialProperties material_properties = {};
-                            material_properties.anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
-                            material_properties.anisotropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
-                            material_properties.clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
-                            material_properties.clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
-                            material_properties.sheen                 = material->GetProperty(MaterialProperty::Sheen);
-                            material_properties.sheen_tint            = material->GetProperty(MaterialProperty::SheenTint);
-                            material_properties.subsurface_scattering = material->GetProperty(MaterialProperty::MultiplierSubsurfaceScattering);
-                            material_properties.ior                   = material->GetProperty(MaterialProperty::Ior);
+                            Sb_MaterialProperties properties = {};
+                            properties.anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
+                            properties.anisotropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
+                            properties.clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
+                            properties.clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
+                            properties.sheen                 = material->GetProperty(MaterialProperty::Sheen);
+                            properties.sheen_tint            = material->GetProperty(MaterialProperty::SheenTint);
+                            properties.subsurface_scattering = material->GetProperty(MaterialProperty::MultiplierSubsurfaceScattering);
+                            properties.ior                   = material->GetProperty(MaterialProperty::Ior);
 
-                            uint32_t index   = static_cast<uint32_t>(material->GetObjectId() % materials.size());
-                            materials[index] = material_properties;
+                            uint32_t index             = static_cast<uint32_t>(material->GetObjectId() % material_properties.size());
+                            material_properties[index] = properties;
                         }
                     }
 
@@ -708,7 +708,7 @@ namespace Spartan
             sort_renderables(m_camera.get(), &m_renderables[Renderer_Entity::GeometryTransparent], true);
 
             m_entities_to_add.clear();
-            materials_dirty = true;
+            material_properties_dirty = true;
         }
 
         // generate mips
@@ -922,10 +922,10 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity_previous, GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity_previous));
 
         // update material array
-        if (materials_dirty)
+        if (material_properties_dirty)
         {
-            GetStructuredBuffer(Renderer_StructuredBuffer::Material)->Update(&materials[0]);
-            materials_dirty = false;
+            GetStructuredBuffer(Renderer_StructuredBuffer::Material)->Update(&material_properties[0]);
+            material_properties_dirty = false;
         }
 
         cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_materials, GetStructuredBuffer(Renderer_StructuredBuffer::Material));

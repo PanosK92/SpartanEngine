@@ -47,17 +47,13 @@ namespace Spartan
         }
         m_object_size_gpu = m_stride * m_element_count;
 
-        // define memory properties
+        // create buffer
         VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
-
-        // Create buffer
         RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, flags, nullptr, name);
+        RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::Buffer, name); // name the resource
 
         // get mapped data pointer
-        m_mapped_data = RHI_Device::MemoryGetMappedDataFromBuffer(m_rhi_resource);
-
-        // set debug name
-        RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::Buffer, name);
+        m_mapped_data = RHI_Device::MemoryGetMappedDataFromBuffer(m_rhi_resource); 
     }
 
     RHI_StructuredBuffer::~RHI_StructuredBuffer()
