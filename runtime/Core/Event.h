@@ -76,7 +76,9 @@ namespace Spartan
         Sdl,                           // An SDL event
         // Window                      
         WindowResized,                 // The window has been resized
-        WindowFullScreenToggled        // The window has been toggled to fullscreen
+        WindowFullScreenToggled,       // The window has been toggled to fullscreen
+        // Material
+        MaterialOnChange
     };
 
     class Entity;

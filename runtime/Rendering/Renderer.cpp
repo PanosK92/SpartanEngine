@@ -61,8 +61,6 @@ namespace Spartan
     RHI_CommandPool* Renderer::m_cmd_pool = nullptr;
     shared_ptr<Camera> Renderer::m_camera = nullptr;
     uint32_t Renderer::m_resource_index = 0;
-    array<Sb_MaterialProperties, 1024> material_properties;
-    bool material_properties_dirty = true;
 
     namespace
     {
@@ -119,6 +117,52 @@ namespace Spartan
                     return comparison_op(a) < comparison_op(b); // front-to-back for opaque
                 }
             });
+        }
+
+        // material properties which are used for lighting but are not part of the g-buffer
+        // are set into a this array of structs, which is then accessed as a structured buffer from the GPU
+        namespace material_properties
+        {
+            array<Sb_MaterialProperties, 1024> properties;
+            bool is_dirty = true;
+
+            void update(const Material* material)
+            {
+                Sb_MaterialProperties mat = {};
+                mat.anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
+                mat.anisotropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
+                mat.clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
+                mat.clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
+                mat.sheen                 = material->GetProperty(MaterialProperty::Sheen);
+                mat.sheen_tint            = material->GetProperty(MaterialProperty::SheenTint);
+                mat.subsurface_scattering = material->GetProperty(MaterialProperty::MultiplierSubsurfaceScattering);
+                mat.ior                   = material->GetProperty(MaterialProperty::Ior);
+
+                uint32_t index    = static_cast<uint32_t>(material->GetObjectId() % properties.size());
+                properties[index] = mat;
+            }
+
+            void update(vector<shared_ptr<Entity>>& entities)
+            {
+                for (shared_ptr<Entity> entity : entities)
+                {
+                    if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
+                    {
+                        if (const Material* material = renderable->GetMaterial())
+                        {
+                            update(material);
+                        }
+                    }
+                }
+            }
+
+            void refresh(unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& renderables)
+            {
+                properties.fill(Sb_MaterialProperties{});
+                update(renderables[Renderer_Entity::Geometry]);
+                update(renderables[Renderer_Entity::GeometryTransparent]);
+                is_dirty = true;
+            }
         }
     }
 
@@ -220,6 +264,7 @@ namespace Spartan
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,           SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,              SP_EVENT_HANDLER_STATIC(OnClear));
             SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
+            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChange,        SP_EVENT_HANDLER_STATIC(OnMaterialChanged));
 
             // fire
             SP_FIRE_EVENT(EventType::RendererOnInitialized);
@@ -572,7 +617,12 @@ namespace Spartan
         cmd_list->PushConstants(0, sizeof(Pcb_Pass), &m_cb_pass_cpu);
     }
 
-	void Renderer::OnWorldResolved(sp_variant data)
+    void Renderer::OnMaterialChanged()
+    {
+        material_properties::refresh(m_renderables);
+    }
+
+    void Renderer::OnWorldResolved(sp_variant data)
     {
         // note: m_renderables is a vector of shared pointers.
         // this ensures that if any entities are deallocated by the world.
@@ -634,7 +684,6 @@ namespace Spartan
         if (!m_entities_to_add.empty())
         {
             // clear previous state
-            material_properties.fill(Sb_MaterialProperties{});
             m_renderables.clear();
             m_camera = nullptr;
 
@@ -649,22 +698,6 @@ namespace Spartan
                     {
                         is_transparent = material->GetProperty(MaterialProperty::ColorA) < 1.0f;
                         is_visible     = material->GetProperty(MaterialProperty::ColorA) != 0.0f;
-
-                        // save material properties - used in the lighting pass
-                        {
-                            Sb_MaterialProperties properties = {};
-                            properties.anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
-                            properties.anisotropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
-                            properties.clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
-                            properties.clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
-                            properties.sheen                 = material->GetProperty(MaterialProperty::Sheen);
-                            properties.sheen_tint            = material->GetProperty(MaterialProperty::SheenTint);
-                            properties.subsurface_scattering = material->GetProperty(MaterialProperty::MultiplierSubsurfaceScattering);
-                            properties.ior                   = material->GetProperty(MaterialProperty::Ior);
-
-                            uint32_t index             = static_cast<uint32_t>(material->GetObjectId() % material_properties.size());
-                            material_properties[index] = properties;
-                        }
                     }
 
                     if (is_visible)
@@ -707,8 +740,9 @@ namespace Spartan
             sort_renderables(m_camera.get(), &m_renderables[Renderer_Entity::Geometry], false);
             sort_renderables(m_camera.get(), &m_renderables[Renderer_Entity::GeometryTransparent], true);
 
+            material_properties::refresh(m_renderables);
+
             m_entities_to_add.clear();
-            material_properties_dirty = true;
         }
 
         // generate mips
@@ -922,10 +956,10 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity_previous, GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity_previous));
 
         // update material array
-        if (material_properties_dirty)
+        if (material_properties::is_dirty)
         {
-            GetStructuredBuffer(Renderer_StructuredBuffer::Material)->Update(&material_properties[0]);
-            material_properties_dirty = false;
+            GetStructuredBuffer(Renderer_StructuredBuffer::Material)->Update(&material_properties::properties[0]);
+            material_properties::is_dirty = false;
         }
 
         cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_materials, GetStructuredBuffer(Renderer_StructuredBuffer::Material));

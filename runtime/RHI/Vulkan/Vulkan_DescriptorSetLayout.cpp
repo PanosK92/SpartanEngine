@@ -47,7 +47,7 @@ namespace Spartan
 
         // remove push constants since they are not part of the descriptor set layout
         descriptors.erase(
-            std::remove_if(descriptors.begin(), descriptors.end(), [](RHI_Descriptor& descriptor)
+            remove_if(descriptors.begin(), descriptors.end(), [](RHI_Descriptor& descriptor)
                 { return descriptor.type == RHI_Descriptor_Type::PushConstantBuffer;}
             ),
             descriptors.end()

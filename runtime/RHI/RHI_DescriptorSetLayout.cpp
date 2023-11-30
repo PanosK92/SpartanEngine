@@ -84,8 +84,8 @@ namespace Spartan
 
                 // update
                 descriptor.data           = static_cast<void*>(structured_buffer);
-                descriptor.dynamic_offset = structured_buffer->GetOffset();
                 descriptor.range          = structured_buffer->GetStride();
+                descriptor.dynamic_offset = structured_buffer->GetOffset();
 
                 return;
             }

@@ -302,6 +302,18 @@ namespace Spartan
             m_properties[static_cast<uint32_t>(MaterialProperty::MultiplierRoughness)] = value * 0.5f;
         }
 
+        if (property_type == MaterialProperty::Anisotropic ||
+            property_type == MaterialProperty::AnisotropicRotation ||
+            property_type == MaterialProperty::Clearcoat ||
+            property_type == MaterialProperty::Clearcoat_Roughness ||
+            property_type == MaterialProperty::Sheen ||
+            property_type == MaterialProperty::SheenTint ||
+            property_type == MaterialProperty::MultiplierSubsurfaceScattering ||
+            property_type == MaterialProperty::Ior)
+        {
+            SP_FIRE_EVENT(EventType::MaterialOnChange);
+        }
+
         m_properties[static_cast<uint32_t>(property_type)] = value;
     }
 
