@@ -59,10 +59,12 @@ namespace Spartan
                 case MaterialProperty::ColorG:                          return "color_g";
                 case MaterialProperty::ColorB:                          return "color_b";
                 case MaterialProperty::ColorA:                          return "color_a";
+                case MaterialProperty::Ior:                             return "ior";
                 case MaterialProperty::MultiplierRoughness:             return "multiplier_roughness";
                 case MaterialProperty::MultiplierMetalness:             return "multiplier_metalness";
                 case MaterialProperty::MultiplierNormal:                return "multiplier_normal";
                 case MaterialProperty::MultiplierHeight:                return "multiplier_height";
+                case MaterialProperty::MultiplierSubsurfaceScattering:  return "multiplier_subsurface_scattering";
                 case MaterialProperty::TextureTilingX:                  return "texture_tiling_x";
                 case MaterialProperty::TextureTilingY:                  return "texture_tiling_y";
                 case MaterialProperty::TextureOffsetX:                  return "texture_offset_x";

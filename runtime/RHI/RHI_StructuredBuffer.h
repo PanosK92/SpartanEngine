@@ -34,7 +34,7 @@ namespace Spartan
         ~RHI_StructuredBuffer();
 
         void Update(void* data);
-        void ResetOffset()           { m_offset = 0; }
+        void ResetOffset()           { m_offset = 0; first_update = true; }
         uint32_t GetStride()   const { return m_stride; }
         uint32_t GetOffset()   const { return m_offset; }
         void* GetRhiResource() const { return m_rhi_resource; }

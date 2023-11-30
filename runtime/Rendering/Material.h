@@ -65,6 +65,8 @@ namespace Spartan
         MultiplierMetalness,
         MultiplierNormal,
         MultiplierHeight,
+        Ior,
+        MultiplierSubsurfaceScattering,
         TextureTilingX,
         TextureTilingY,
         TextureOffsetX,
@@ -107,6 +109,6 @@ namespace Spartan
  
     private:
         std::array<std::shared_ptr<RHI_Texture>, 11> m_textures;
-        std::array<float, 26> m_properties;
+        std::array<float, 28> m_properties;
     };
 }
