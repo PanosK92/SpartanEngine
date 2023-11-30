@@ -30,7 +30,7 @@ namespace Spartan
     #define debug_color Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
     constexpr uint8_t resources_frame_lifetime = 5;
     constexpr uint8_t shader_count             = 52;
-    constexpr uint8_t render_target_count      = 29;
+    constexpr uint8_t render_target_count      = 28;
 
     enum class Renderer_Option : uint32_t
     {
@@ -125,51 +125,51 @@ namespace Spartan
         gbuffer_albedo            = 10,
         gbuffer_normal            = 11,
         gbuffer_material          = 12,
-        gbuffer_material_2        = 13,
-        gbuffer_velocity          = 14,
-        gbuffer_velocity_previous = 15,
-        gbuffer_depth             = 16,
+        gbuffer_velocity          = 13,
+        gbuffer_velocity_previous = 14,
+        gbuffer_depth             = 15,
     
         // lighting
-        light_diffuse              = 17,
-        light_diffuse_transparent  = 18,
-        light_specular             = 19,
-        light_specular_transparent = 20,
-        light_volumetric           = 21,
+        light_diffuse              = 16,
+        light_diffuse_transparent  = 17,
+        light_specular             = 18,
+        light_specular_transparent = 19,
+        light_volumetric           = 20,
     
         // light depth/color maps
-        light_directional_depth = 22,
-        light_directional_color = 23,
-        light_point_depth       = 24,
-        light_point_color       = 25,
-        light_spot_depth        = 26,
-        light_spot_color        = 27,
+        light_directional_depth = 21,
+        light_directional_color = 22,
+        light_point_depth       = 23,
+        light_point_color       = 24,
+        light_spot_depth        = 25,
+        light_spot_color        = 26,
     
         // noise
-        noise_normal = 28,
-        noise_blue   = 29,
+        noise_normal = 27,
+        noise_blue   = 28,
     
         // misc
-        lutIbl           = 30,
-        environment      = 31,
-        ssgi             = 32,
-        ssr              = 33,
-        frame            = 34,
-        tex              = 35,
-        tex2             = 36,
-        font_atlas       = 37,
-        reflection_probe = 38,
-        sss              = 39
+        lutIbl           = 29,
+        environment      = 30,
+        ssgi             = 31,
+        ssr              = 32,
+        frame            = 33,
+        tex              = 34,
+        tex2             = 35,
+        font_atlas       = 36,
+        reflection_probe = 37,
+        sss              = 38
     };
 
     enum class Renderer_BindingsUav
     {
-        tex            = 0,
-        tex2           = 1,
-        tex3           = 2,
-        atomic_counter = 3,
-        tex_array      = 4,
-        tex_array2     = 5,
+        tex          = 0,
+        tex2         = 1,
+        tex3         = 2,
+        tex_sss      = 3,
+        sb_materials = 4,
+        sb_spd       = 5,
+        tex_spd      = 6,
     };
 
     enum class Renderer_Shader : uint8_t
@@ -234,7 +234,6 @@ namespace Spartan
         gbuffer_color,
         gbuffer_normal,
         gbuffer_material,
-        gbuffer_material_2,
         gbuffer_velocity,
         gbuffer_velocity_previous,
         gbuffer_depth,
@@ -288,6 +287,12 @@ namespace Spartan
     {
         Frame,
         Light,
+        Material
+    };
+
+    enum class Renderer_StructuredBuffer
+    {
+        Spd,
         Material
     };
 

@@ -50,7 +50,7 @@ namespace Spartan
         {
             // this only matters for textures
             RHI_Image_Layout layout = RHI_Image_Layout::Undefined;
-            layout                  = descriptor_type == RHI_Descriptor_Type::TextureStorage ? RHI_Image_Layout::General                  : layout;
+            layout                  = descriptor_type == RHI_Descriptor_Type::TextureStorage ? RHI_Image_Layout::General     : layout;
             layout                  = descriptor_type == RHI_Descriptor_Type::Texture        ? RHI_Image_Layout::Shader_Read : layout;
 
             for (const Resource& resource : resources)
@@ -59,6 +59,7 @@ namespace Spartan
                 SPIRType type         = compiler.get_type(resource.type_id);
                 uint32_t array_length = !type.array.empty() ? type.array[0] : 0;
                 uint32_t size         = 0;
+
                 if (descriptor_type == RHI_Descriptor_Type::ConstantBuffer || descriptor_type == RHI_Descriptor_Type::PushConstantBuffer)
                 {
                     size = static_cast<uint32_t>(compiler.get_declared_struct_size(type));

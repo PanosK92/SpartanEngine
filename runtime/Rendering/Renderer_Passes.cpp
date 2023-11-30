@@ -535,12 +535,11 @@ namespace Spartan
             return;
 
         // acquire render targets
-        RHI_Texture* tex_color      = GetRenderTarget(Renderer_RenderTexture::gbuffer_color).get();
-        RHI_Texture* tex_normal     = GetRenderTarget(Renderer_RenderTexture::gbuffer_normal).get();
-        RHI_Texture* tex_material   = GetRenderTarget(Renderer_RenderTexture::gbuffer_material).get();
-        RHI_Texture* tex_material_2 = GetRenderTarget(Renderer_RenderTexture::gbuffer_material_2).get();
-        RHI_Texture* tex_velocity   = GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity).get();
-        RHI_Texture* tex_depth      = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
+        RHI_Texture* tex_color    = GetRenderTarget(Renderer_RenderTexture::gbuffer_color).get();
+        RHI_Texture* tex_normal   = GetRenderTarget(Renderer_RenderTexture::gbuffer_normal).get();
+        RHI_Texture* tex_material = GetRenderTarget(Renderer_RenderTexture::gbuffer_material).get();
+        RHI_Texture* tex_velocity = GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity).get();
+        RHI_Texture* tex_depth    = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
 
@@ -580,10 +579,8 @@ namespace Spartan
             pso.clear_color[1]                  = pso.clear_color[0];
             pso.render_target_color_textures[2] = tex_material;
             pso.clear_color[2]                  = pso.clear_color[0];
-            pso.render_target_color_textures[3] = tex_material_2;
+            pso.render_target_color_textures[3] = tex_velocity;
             pso.clear_color[3]                  = pso.clear_color[0];
-            pso.render_target_color_textures[4] = tex_velocity;
-            pso.clear_color[4]                  = pso.clear_color[0];
             pso.render_target_depth_texture     = tex_depth;
             pso.clear_depth                     = rhi_depth_load;
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
@@ -804,8 +801,8 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // set textures
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));  // read from that
-            cmd_list->SetTexture(Renderer_BindingsUav::tex_array2, tex_sss); // write to that
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,  GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));  // read from that
+            cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, tex_sss); // write to that
 
             // iterate through all the lights
             static float array_slice_index = 0.0f;
@@ -1836,12 +1833,12 @@ namespace Spartan
 
         // update counter
         uint32_t counter_value = 0;
-        GetStructuredBuffer()->Update(&counter_value);
-        cmd_list->SetStructuredBuffer(Renderer_BindingsUav::atomic_counter, GetStructuredBuffer());
+        GetStructuredBuffer(Renderer_StructuredBuffer::Spd)->Update(&counter_value);
+        cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_spd, GetStructuredBuffer(Renderer_StructuredBuffer::Spd));
 
         // set textures
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex, 0, 1);                            // top mip
-        cmd_list->SetTexture(Renderer_BindingsUav::tex_array, tex, 1, tex->GetMipCount() - 1); // rest of the mips
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex, 0, 1);                          // top mip
+        cmd_list->SetTexture(Renderer_BindingsUav::tex_spd, tex, 1, tex->GetMipCount() - 1); // rest of the mips
 
         // render
         cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);

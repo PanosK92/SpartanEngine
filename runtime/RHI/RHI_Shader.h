@@ -68,7 +68,7 @@ namespace Spartan
         const std::vector<RHI_Descriptor>& GetDescriptors()      const { return m_descriptors; }
         const std::shared_ptr<RHI_InputLayout>& GetInputLayout() const { return m_input_layout; } // only valid for a vertex shader
         const auto& GetFilePath()                                const { return m_file_path; }
-        RHI_Shader_Stage GetShaderStage()                         const { return m_shader_type; }
+        RHI_Shader_Stage GetShaderStage()                        const { return m_shader_type; }
         uint64_t GetHash()                                       const { return m_hash; }
         const char* GetEntryPoint()                              const;
         const char* GetTargetProfile()                           const;
