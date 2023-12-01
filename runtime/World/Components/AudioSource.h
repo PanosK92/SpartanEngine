@@ -50,6 +50,7 @@ namespace Spartan
         void SetAudioClip(const std::string& file_path);
         std::string GetAudioClipName() const;
 
+        bool IsPlaying() const;
         void Play() const;
         void Stop() const;
 

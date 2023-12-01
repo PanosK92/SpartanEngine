@@ -135,7 +135,15 @@ namespace Spartan
         return m_audio_clip ? m_audio_clip->GetObjectName() : "";
     }
     
-    void AudioSource::Play() const
+	bool AudioSource::IsPlaying() const
+	{
+        if (!m_audio_clip)
+            return false;
+
+        return m_audio_clip->IsPlaying();
+	}
+
+	void AudioSource::Play() const
     {
         if (!m_audio_clip)
             return;

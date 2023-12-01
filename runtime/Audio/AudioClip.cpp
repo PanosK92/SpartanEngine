@@ -36,6 +36,30 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    namespace
+    {
+        FMOD_RESULT F_CALLBACK channel_callback(FMOD_CHANNELCONTROL* channelcontrol, FMOD_CHANNELCONTROL_TYPE controlType, FMOD_CHANNELCONTROL_CALLBACK_TYPE callbackType, void* commandData1, void* commandData2)
+        {
+            if (controlType == FMOD_CHANNELCONTROL_CHANNEL && callbackType == FMOD_CHANNELCONTROL_CALLBACK_END)
+            {
+                FMOD::Channel* channel = reinterpret_cast<FMOD::Channel*>(channelcontrol);
+
+                // retrieve the user data
+                AudioClip* audio_clip = nullptr;
+                channel->getUserData(reinterpret_cast<void**>(&audio_clip));
+
+                // nullify the channel
+                if (audio_clip)
+                {
+                    audio_clip->ResetChannel();
+                }
+            }
+
+            return FMOD_OK;
+        }
+
+    }
+
     AudioClip::AudioClip() : IResource(ResourceType::Audio)
     {
 
@@ -44,17 +68,20 @@ namespace Spartan
     AudioClip::~AudioClip()
     {
         #if defined(_MSC_VER)
+
         if (FMOD::Sound* sound = static_cast<FMOD::Sound*>(m_fmod_sound))
         {
             Audio::HandleErrorFmod(sound->release());
         }
+
         #endif
     }
 
     bool AudioClip::LoadFromFile(const string& file_path)
     {
         #if defined(_MSC_VER)
-        // Native
+
+        // native
         if (FileSystem::GetExtensionFromFilePath(file_path) == EXTENSION_AUDIO)
         {
             auto file = make_unique<FileStream>(file_path, FileStream_Read);
@@ -65,13 +92,14 @@ namespace Spartan
 
             file->Close();
         }
-        // Foreign
+        // foreign
         else
         {
             SetResourceFilePath(file_path);
         }
 
         return (m_playMode == PlayMode::Memory) ? CreateSound(GetResourceFilePath()) : CreateStream(GetResourceFilePath());
+
         #else
         return 0;
         #endif
@@ -80,6 +108,7 @@ namespace Spartan
     bool AudioClip::SaveToFile(const string& file_path)
     {
         #if defined(_MSC_VER)
+
         auto file = make_unique<FileStream>(file_path, FileStream_Write);
         if (!file->IsOpen())
             return false;
@@ -95,19 +124,29 @@ namespace Spartan
     void AudioClip::Play(const bool loop, const bool is_3d)
     {
         #if defined(_MSC_VER)
+
         if (IsPlaying())
             return;
-
+ 
         Audio::PlaySound(m_fmod_sound, m_fmod_channel);
+
+        // set callback
+        if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
+        {
+            channel->setUserData(this);
+            channel->setCallback(channel_callback);
+        }
 
         SetLoop(loop);
         Set3d(is_3d);
+
         #endif
     }
 
     void AudioClip::Pause()
     {
         #if defined(_MSC_VER)
+
         if (!IsPaused())
             return;
 
@@ -115,6 +154,7 @@ namespace Spartan
         {
             Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setPaused(true));
         }
+
         #endif
     }
 
