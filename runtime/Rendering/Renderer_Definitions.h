@@ -275,7 +275,8 @@ namespace Spartan
     enum class Renderer_Sampler
     {
         Compare_depth,
-        Point_clamp,
+        Point_clamp_edge,
+        Point_clamp_border,
         Point_wrap,
         Bilinear_clamp,
         Bilinear_wrap,

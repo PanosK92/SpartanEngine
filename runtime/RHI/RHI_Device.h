@@ -58,7 +58,7 @@ namespace Spartan
         static std::unordered_map<uint64_t, RHI_DescriptorSet>& GetDescriptorSets();
         static void* GetDescriptorSet(const RHI_Device_Resource resource_type);
         static void* GetDescriptorSetLayout(const RHI_Device_Resource resource_type);
-        static void SetBindlessSamplers(const std::array<std::shared_ptr<RHI_Sampler>, 7>& samplers);
+        static void SetBindlessSamplers(const std::array<std::shared_ptr<RHI_Sampler>, 8>& samplers);
 
         // Pipelines
         static void GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout);

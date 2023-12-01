@@ -59,7 +59,7 @@ namespace Spartan
         // renderer resources
         array<shared_ptr<RHI_Texture>, render_target_count> m_render_targets;
         array<shared_ptr<RHI_Shader>, shader_count>         m_shaders;
-        array<shared_ptr<RHI_Sampler>, 7>                   m_samplers;
+        array<shared_ptr<RHI_Sampler>, 8>                   m_samplers;
         array<shared_ptr<RHI_ConstantBuffer>, 3>            m_constant_buffers;
         array<shared_ptr<RHI_StructuredBuffer>, 2>          m_structured_buffers;
 
@@ -148,13 +148,14 @@ namespace Spartan
         #define sampler(x) m_samplers[static_cast<uint8_t>(x)]
         if (!create_only_anisotropic)
         {
-            // arguments:                                                         min,                 max,                 mip,                 address mode,                    comparison,                 anisotropy, comparison enabled
-            sampler(Renderer_Sampler::Compare_depth)   = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Filter::Nearest, RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Greater, 0.0f, true); // reverse-z
-            sampler(Renderer_Sampler::Point_clamp)     = make_shared<RHI_Sampler>(RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Always);
-            sampler(Renderer_Sampler::Point_wrap)      = make_shared<RHI_Sampler>(RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Address_Mode::Wrap,  RHI_Comparison_Function::Always);
-            sampler(Renderer_Sampler::Bilinear_clamp)  = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Filter::Nearest, RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Always);
-            sampler(Renderer_Sampler::Bilinear_wrap)   = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Filter::Nearest, RHI_Sampler_Address_Mode::Wrap,  RHI_Comparison_Function::Always);
-            sampler(Renderer_Sampler::Trilinear_clamp) = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Always);
+            // arguments:                                                            min,                 max,                 mip,                 address mode,                    comparison,                 anisotropy, comparison enabled
+            sampler(Renderer_Sampler::Compare_depth)      = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Filter::Nearest, RHI_Sampler_Address_Mode::ClampToEdge,   RHI_Comparison_Function::Greater, 0.0f, true); // reverse-z
+            sampler(Renderer_Sampler::Point_clamp_edge)   = make_shared<RHI_Sampler>(RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Address_Mode::ClampToEdge,   RHI_Comparison_Function::Always);
+            sampler(Renderer_Sampler::Point_clamp_border) = make_shared<RHI_Sampler>(RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Address_Mode::ClampToBorder, RHI_Comparison_Function::Always);
+            sampler(Renderer_Sampler::Point_wrap)         = make_shared<RHI_Sampler>(RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Address_Mode::Wrap,          RHI_Comparison_Function::Always);
+            sampler(Renderer_Sampler::Bilinear_clamp)     = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Filter::Nearest, RHI_Sampler_Address_Mode::ClampToEdge,   RHI_Comparison_Function::Always);
+            sampler(Renderer_Sampler::Bilinear_wrap)      = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Filter::Nearest, RHI_Sampler_Address_Mode::Wrap,          RHI_Comparison_Function::Always);
+            sampler(Renderer_Sampler::Trilinear_clamp)    = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Address_Mode::ClampToEdge,   RHI_Comparison_Function::Always);
         }
 
         float anisotropy = GetOption<float>(Renderer_Option::Anisotropy);

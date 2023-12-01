@@ -1401,7 +1401,7 @@ namespace Spartan
         return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
 
-    void RHI_Device::SetBindlessSamplers(const array<shared_ptr<RHI_Sampler>, 7>& samplers)
+    void RHI_Device::SetBindlessSamplers(const array<shared_ptr<RHI_Sampler>, 8>& samplers)
     {
         descriptors::pipelines.clear();
 
@@ -1431,12 +1431,13 @@ namespace Spartan
 
             vector<shared_ptr<RHI_Sampler>> samplers_regular =
             {
-                samplers[1], // point_clamp
-                samplers[2], // point_wrap
-                samplers[3], // bilinear_clamp
-                samplers[4], // bilinear_wrap
-                samplers[5], // trilinear_clamp
-                samplers[6]  // anisotropic_wrap
+                samplers[1], // point_clamp_edge
+                samplers[2], // point_clamp_border
+                samplers[3], // point_wrap
+                samplers[4], // bilinear_clamp
+                samplers[5], // bilinear_wrap
+                samplers[6], // trilinear_clamp
+                samplers[7]  // anisotropic_wrap
             };
 
             descriptors::create_descriptor_set_samplers(samplers_regular, 1, RHI_Device_Resource::sampler_regular);

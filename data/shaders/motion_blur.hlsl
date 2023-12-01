@@ -38,7 +38,7 @@ float2 get_velocity_3x3_average(float2 uv)
         for (int x = -1; x <= 1; ++x)
         {
             float2 offset = float2(x, y) * get_rt_texel_size();
-            float2 velocity = tex_velocity.SampleLevel(samplers[sampler_point_clamp], uv + offset, 0).xy;
+            float2 velocity = tex_velocity.SampleLevel(samplers[sampler_point_clamp_edge], uv + offset, 0).xy;
 
             total_velocity += velocity;
             ++sample_count;
