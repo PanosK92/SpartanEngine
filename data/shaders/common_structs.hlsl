@@ -41,6 +41,8 @@ struct Surface
     float  anisotropic_rotation;
     float  sheen;
     float3 sheen_tint;
+    float  subsurface_scattering;
+    float  ior;
     float  occlusion;
     float3 gi;
     float3 emissive;
@@ -82,20 +84,22 @@ struct Surface
         depth  = sample_depth;
         normal = sample_normal.xyz;
  
-        albedo               = replace_color_with_one ? 1.0f : sample_albedo.rgb;
-        alpha                = sample_albedo.a;
-        roughness            = sample_material.r;
-        metallic             = sample_material.g;
-        emissive             = sample_material.b;
-        F0                   = lerp(0.04f, albedo, metallic);
-        anisotropic          = mat_properties.anisotropic;
-        anisotropic_rotation = mat_properties.anisotropic_rotation;
-        clearcoat            = mat_properties.clearcoat;
-        clearcoat_roughness  = mat_properties.clearcoat_roughness;
-        sheen                = mat_properties.sheen;
-        sheen_tint           = mat_properties.sheen_tint;
-        specular_energy      = 1.0f;
-        diffuse_energy       = 1.0f;
+        albedo                = replace_color_with_one ? 1.0f : sample_albedo.rgb;
+        alpha                 = sample_albedo.a;
+        roughness             = sample_material.r;
+        metallic              = sample_material.g;
+        emissive              = sample_material.b;
+        F0                    = lerp(0.04f, albedo, metallic);
+        anisotropic           = mat_properties.anisotropic;
+        anisotropic_rotation  = mat_properties.anisotropic_rotation;
+        clearcoat             = mat_properties.clearcoat;
+        clearcoat_roughness   = mat_properties.clearcoat_roughness;
+        sheen                 = mat_properties.sheen;
+        sheen_tint            = mat_properties.sheen_tint;
+        subsurface_scattering = mat_properties.subsurface_scattering;
+        ior                   = mat_properties.ior;
+        specular_energy       = 1.0f;
+        diffuse_energy        = 1.0f;
 
         // Roughness is authored as perceptual roughness; as is convention,
         // convert to material roughness by squaring the perceptual roughness.
