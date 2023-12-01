@@ -343,7 +343,7 @@ namespace ImGuiSp
         static bool needs_to_wrap                 = false;
         ImGuiIO& imgui_io                         = ImGui::GetIO();
 
-        // Wrap
+        // wrap
         if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
         {
             ImVec2 position_cursor       = imgui_io.MousePos;
@@ -376,7 +376,9 @@ namespace ImGuiSp
             }
         }
 
+        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
         ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
+        ImGui::PopID();
     }
 
     static bool combo_box(const char* label, const std::vector<std::string>& options, uint32_t* selection_index)

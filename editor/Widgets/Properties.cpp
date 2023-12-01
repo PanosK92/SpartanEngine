@@ -674,7 +674,7 @@ void Properties::ShowMaterial(Material* material) const
 
         if (material->GetProperty(MaterialProperty::CanBeEdited) == 1.0f)
         {
-            // Texture slots
+            // texture slots
             {
                 const auto show_property = [this, &material](const char* name, const char* tooltip, const MaterialTexture mat_tex, const MaterialProperty mat_property)
                 {
@@ -697,7 +697,7 @@ void Properties::ShowMaterial(Material* material) const
                         }
                     }
 
-                    // Texture
+                    // texture
                     if (show_texture)
                     {
                         auto setter = [&material, &mat_tex](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(mat_tex, texture); };
@@ -723,7 +723,7 @@ void Properties::ShowMaterial(Material* material) const
                         }
                     }
 
-                    // Modifier
+                    // modifier/multiplier
                     if (show_modifier)
                     {
                         if (mat_property == MaterialProperty::ColorTint)
@@ -732,7 +732,6 @@ void Properties::ShowMaterial(Material* material) const
                         }
                         else
                         {
-                            ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
                             float value = material->GetProperty(mat_property);
 
                             if (mat_property != MaterialProperty::MultiplierMetalness)
@@ -751,12 +750,13 @@ void Properties::ShowMaterial(Material* material) const
                             else
                             {
                                 bool is_metallic = value != 0.0f;
+                                ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
                                 ImGui::Checkbox("##metalness", &is_metallic);
+                                ImGui::PopID();
                                 value = is_metallic ? 1.0f : 0.0f;
                             }
 
                             material->SetProperty(mat_property, value);
-                            ImGui::PopID();
                         }
                     }
                 };
