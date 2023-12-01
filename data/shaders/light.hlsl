@@ -28,8 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 float3 subsurface_scattering(Surface surface, Light light)
 {
-    float sss_strength = 0.05f * surface.subsurface_scattering;
-    float sss_width    = 4.0f;
+    float sss_strength = 2.0f * surface.subsurface_scattering;
+    float sss_width    = 1.0f;
 
     // calculate backlit effect - light penetrating through the surface
     float backlit    = max(dot(surface.normal, -light.to_pixel), 0);
@@ -40,8 +40,10 @@ float3 subsurface_scattering(Surface surface, Light light)
     float3 color_b     = float3(0.3, 0.6, 0.2);
     float angle_factor = pow(backlit, 1.5f);
     float3 sss_color   = lerp(color_a, color_b, angle_factor);
+
+    float fresnel = dot(surface.normal, -light.to_pixel);
     
-    return surface.albedo * sss_color * sss_effect * light.color * light.intensity;
+    return surface.albedo * sss_color * sss_effect * fresnel * light.radiance;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -141,8 +143,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     tex_uav[thread_id.xy] += float4(saturate_11(light_diffuse * light.radiance + emissive + light_subsurface), 1.0f);
     tex_uav2[thread_id.xy] += float4(saturate_11(light_specular * light.radiance), 1.0f);
 }
-
-
-
-
-
