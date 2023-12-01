@@ -5,7 +5,7 @@ Remember, neither this project nor you will be around forever. So seize the oppo
 # How to do it
 - Starting small: If it's your first time contributing, pick a small task and go through the process of cloning, working, and submitting. This will give you an idea of the workflow, the scale of the project, and maybe even how to have fun while doing it.
 - Task complexity: The bigger the task you choose, the higher the probability that you'll end up dropping it due to complexity, scale, or boredom. You might even feel stressed, which is the wrong way to go about it. If you are in this place, remember that I have zero expectations.
-- Enjoyment priority: Your first priority should be to have fun; your second priority should be to invest more grey matter in doing rather than planning. If you need help or guidance in the process, talk to me.
+- Your priorities: Your first priority should be to have fun. Secondly, prioritize practical action over extensive theorizing. For instance, spending four hours discussing a task that could be completed in 30 minutes is inefficient.
 - Workflow overview: The workflow is: clone/fork, work, submit a pull request.
 
 # Pull Request (PR) Guidelines
@@ -15,7 +15,6 @@ Remember, neither this project nor you will be around forever. So seize the oppo
 - Communication: If you're looking for collaboration on your PR, communicate this in your PR description or through our Discord community.
 
 # What to do
-I welcome anyone to contribute, and you can work on any aspect you prefer. If you need ideas on what to do:
 - Check out the [issues](https://github.com/PanosK92/SpartanEngine/issues) section. I regularly open issues myself to keep track of them and also for others to tackle them.
 - You can also [join our Discord server](https://discord.gg/TG5r2BS), a growing community of 300+ members, where you can ask for ideas on what to contribute.
 - The readme page has a [roadmap section](https://github.com/PanosK92/SpartanEngine#roadmap), which is another way to see how you could help.
