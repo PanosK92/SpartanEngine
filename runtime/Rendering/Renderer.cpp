@@ -123,23 +123,23 @@ namespace Spartan
         // are set into a this array of structs, which is then accessed as a structured buffer from the GPU
         namespace material_properties
         {
-            array<Sb_MaterialProperties, 1024> properties;
+            array<Sb_MaterialProperties, 1024> data;
             bool is_dirty = true;
 
             void update(const Material* material)
             {
-                Sb_MaterialProperties mat = {};
-                mat.anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
-                mat.anisotropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
-                mat.clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
-                mat.clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
-                mat.sheen                 = material->GetProperty(MaterialProperty::Sheen);
-                mat.sheen_tint            = material->GetProperty(MaterialProperty::SheenTint);
-                mat.subsurface_scattering = material->GetProperty(MaterialProperty::MultiplierSubsurfaceScattering);
-                mat.ior                   = material->GetProperty(MaterialProperty::Ior);
+                Sb_MaterialProperties properties = {};
+                properties.anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
+                properties.anisotropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
+                properties.clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
+                properties.clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
+                properties.sheen                 = material->GetProperty(MaterialProperty::Sheen);
+                properties.sheen_tint            = material->GetProperty(MaterialProperty::SheenTint);
+                properties.subsurface_scattering = material->GetProperty(MaterialProperty::MultiplierSubsurfaceScattering);
+                properties.ior                   = material->GetProperty(MaterialProperty::Ior);
 
-                uint32_t index    = static_cast<uint32_t>(material->GetObjectId() % properties.size());
-                properties[index] = mat;
+                uint32_t index = static_cast<uint32_t>(material->GetObjectId() % data.size());
+                data[index]    = properties;
             }
 
             void update(vector<shared_ptr<Entity>>& entities)
@@ -158,9 +158,13 @@ namespace Spartan
 
             void refresh(unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& renderables)
             {
-                properties.fill(Sb_MaterialProperties{});
+                data.fill(Sb_MaterialProperties{});
+
                 update(renderables[Renderer_Entity::Geometry]);
+                update(renderables[Renderer_Entity::GeometryInstanced]);
                 update(renderables[Renderer_Entity::GeometryTransparent]);
+                update(renderables[Renderer_Entity::GeometryTransparentInstanced]);
+
                 is_dirty = true;
             }
         }
@@ -958,7 +962,7 @@ namespace Spartan
         // update material array
         if (material_properties::is_dirty)
         {
-            GetStructuredBuffer(Renderer_StructuredBuffer::Material)->Update(&material_properties::properties[0]);
+            GetStructuredBuffer(Renderer_StructuredBuffer::Material)->Update(&material_properties::data[0]);
             material_properties::is_dirty = false;
         }
 

@@ -777,7 +777,7 @@ void Properties::ShowMaterial(Material* material) const
                 show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTexture::Undefined,  MaterialProperty::Sheen);
                 show_property("Sheen tint",           "Mix between white and using base color for sheen reflection",                       MaterialTexture::Undefined,  MaterialProperty::SheenTint);
                 show_property("Subsurface scattering","Amount of translucency",                                                            MaterialTexture::Undefined, MaterialProperty::MultiplierSubsurfaceScattering);
-                show_property("IOR",                  "Index of refraction",                                                               MaterialTexture::Undefined, MaterialProperty::Ior);
+                show_property("IOR",                  "Index of refraction, color must be transparent for this have any effect",           MaterialTexture::Undefined, MaterialProperty::Ior);
             }
 
             // UV

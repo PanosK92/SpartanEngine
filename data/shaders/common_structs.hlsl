@@ -101,8 +101,7 @@ struct Surface
         specular_energy       = 1.0f;
         diffuse_energy        = 1.0f;
 
-        // Roughness is authored as perceptual roughness; as is convention,
-        // convert to material roughness by squaring the perceptual roughness.
+        // roughness is authored as perceptual roughness, as is convention
         roughness_alpha         = roughness * roughness;
         roughness_alpha_squared = roughness_alpha * roughness_alpha;
 

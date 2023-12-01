@@ -165,12 +165,12 @@ float3 BRDF_Specular_Isotropic(inout Surface surface, AngularInfo angular_info)
 
 float3 BRDF_Specular_Anisotropic(inout Surface surface, AngularInfo angular_info)
 {
-    // Construct TBN from the normal
+    // construct TBN from the normal
     float3 t, b;
     find_best_axis_vectors(surface.normal, t, b);
     float3x3 TBN = float3x3(t, b, surface.normal);
 
-    // Rotate tangent and bitagent
+    // rotate tangent and bitagent
     float rotation   = max(surface.anisotropic_rotation * PI2, FLT_MIN); // convert material property to a full rotation
     float2 direction = float2(cos(rotation), sin(rotation));             // convert rotation to direction
     t                = normalize(mul(float3(direction, 0.0f), TBN).xyz); // compute direction derived tangent

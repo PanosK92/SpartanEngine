@@ -80,7 +80,7 @@ namespace Spartan
                 }
             }
         }
-     }
+    }
 
     Material::Material() : IResource(ResourceType::Material)
     {

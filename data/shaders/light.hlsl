@@ -26,16 +26,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fog.hlsl"
 //============================
 
-float3 SubsurfaceScattering(Surface surface, AngularInfo angular_info)
+float3 subsurface_scattering(Surface surface, Light light)
 {
-    float sss_strength = 0.2f * surface.subsurface_scattering;
-    float sss_width    = 0.5  * surface.subsurface_scattering;
+    float sss_strength = 0.05f * surface.subsurface_scattering;
+    float sss_width    = 4.0f;
 
-    float backlit    = max(dot(surface.normal, angular_info.l), 0);
+    // calculate backlit effect - light penetrating through the surface
+    float backlit    = max(dot(surface.normal, -light.to_pixel), 0);
     float sss_effect = exp(-backlit * sss_width) * sss_strength;
 
-    float3 sss_color = float3(0.8, 1.0, 0.7); // green-yellow color - vegetation
-    return surface.albedo * sss_color * sss_effect;
+    // angle based color
+    float3 color_a     = float3(0.6, 0.8, 0.5);
+    float3 color_b     = float3(0.3, 0.6, 0.2);
+    float angle_factor = pow(backlit, 1.5f);
+    float3 sss_color   = lerp(color_a, color_b, angle_factor);
+    
+    return surface.albedo * sss_color * sss_effect * light.color * light.intensity;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -88,56 +94,55 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float3 light_specular = 0.0f;
 
     // reflectance equation
+    float3 light_subsurface = 0.0f;
     if (!surface.is_sky())
     {
         AngularInfo angular_info;
         angular_info.Build(light, surface);
 
         // specular
-        if (surface.anisotropic == 0.0f)
-        {
-            light_specular += BRDF_Specular_Isotropic(surface, angular_info);
-        }
-        else
+        if (surface.anisotropic > 0.0f)
         {
             light_specular += BRDF_Specular_Anisotropic(surface, angular_info);
         }
+        else
+        {
+            light_specular += BRDF_Specular_Isotropic(surface, angular_info);
+        }
 
         // specular clearcoat
-        if (surface.clearcoat != 0.0f)
+        if (surface.clearcoat > 0.0f)
         {
             light_specular += BRDF_Specular_Clearcoat(surface, angular_info);
         }
 
         // sheen
-        if (surface.sheen != 0.0f)
+        if (surface.sheen > 0.0f)
         {
             light_specular += BRDF_Specular_Sheen(surface, angular_info);
         }
 
         // subsurface scattering
-        if (surface.subsurface_scattering != 0.0f)
+        if (surface.subsurface_scattering > 0.0f)
         {
-            light_diffuse += SubsurfaceScattering(surface, angular_info);
+            light_subsurface += subsurface_scattering(surface, light);
         }
         
         // diffuse
         light_diffuse += BRDF_Diffuse(surface, angular_info);
 
-        // tone down diffuse such as that only non metals have it
+        // energy conservation - only non metals have diffuse
         light_diffuse *= surface.diffuse_energy;
     }
 
     float3 emissive = surface.emissive * surface.albedo;
 
      // diffuse and specular
-    tex_uav[thread_id.xy]  += float4(saturate_11(light_diffuse * light.radiance + emissive), 1.0f);
+    tex_uav[thread_id.xy] += float4(saturate_11(light_diffuse * light.radiance + emissive + light_subsurface), 1.0f);
     tex_uav2[thread_id.xy] += float4(saturate_11(light_specular * light.radiance), 1.0f);
-
-    // volumetric
-    //if (light_is_volumetric() && is_fog_volumetric_enabled())
-    //{
-    //    float3 light_fog = VolumetricLighting(surface, light);
-    //    tex_uav3[thread_id.xy] += float4(saturate_11(light_fog), 1.0f);
-    //}
 }
+
+
+
+
+

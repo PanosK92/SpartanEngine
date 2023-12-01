@@ -40,29 +40,27 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 # Features
 #### Rendering
 - 128-byte push constant buffer for lightning fast CPU to GPU data transfer.
-- AMD FidelityFX suite for enhanced visuals and performance.
-- Bloom effect inspired by Resident Evil 2's RE Engine.
-- Unified deferred rendering with transparency (BSDF with same render path and shaders).
-- Camera-controlled depth of field, motion blur and chromatic aberration.
-- Comprehensive debug rendering options.
-- Frustum culling.
-- Physical light units (intensity from lumens and color from kelvin).
-- Physically based camera.
-- Atmospheric scattering.
-- GPU-based mip generation (single dispatch).
+- On the fly GPU-based mip generation - with only one dispatch.
+- Unified deferred rendering with transparency (BSDF with same render path).
+- Vulkan and DirectX 12 (WIP) backends with universal HLSL shaders.
 - Advanced shadow features with penumbra and colored translucency.
 - Screen space global illumination, reflections, and shadows.
+- Physical light units (intensity from lumens and color from kelvin).
+- Comprehensive debug rendering options.
+- Frustum culling.
+- Physically based camera.
+- Atmospheric scattering.
 - Temporal anti-aliasing for smooth visuals.
-- Vulkan and DirectX 12 backends with universal HLSL shaders.
-- Volumetric lighting for atmospheric effects.
-#### System
-- One-click build for easy setup.
-- Entity-component and event systems for flexible architecture.
+- Post-process effects like fxaa, bloom, motion-blur, depth of field, chromatic aberration etc.
+- AMD FidelityFX features like FSR 2, SPD, etc.
+#### General
+- One-click project generation for easy setup.
 - Universal input support, including mouse, keyboard, and controllers (tested with a PS5 controller).
 - Comprehensive physics features.
-- CPU & GPU profiling for performance tuning.
+- CPU & GPU profiling.
 - XML support for data handling.
-- Thread pool for efficient multitasking.
+- Thread pool for that can consume any workload.
+- Entity-component, event systems and most things you'll expect to find in a modern engine.
 #### Formats
 - Wide file format support: 10+ for fonts, 20+ for audio, 30+ for images, and 40+ for models.
 
