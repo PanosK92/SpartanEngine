@@ -86,4 +86,5 @@ Don't forget that there is a [wiki](https://github.com/PanosK92/SpartanEngine/wi
 - [Perks of a contributor](https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor)
 
 # Use cases
+Are you utilizing any components from the Spartan Engine, or has it inspired aspects of your work? If yes, I'd love to showcase your amazing project. Please reach out to me to feature your work inspired by or built using Spartan Engine.
 - Godot uses Spartan's TAA, see [here](https://github.com/godotengine/godot/blob/37d51d2cb7f6e47bef8329887e9e1740a914dc4e/servers/rendering/renderer_rd/shaders/effects/taa_resolve.glsl#L2)
