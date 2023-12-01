@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=======================
 
 #define WAVE_SIZE           64
-#define SAMPLE_COUNT        128
+#define SAMPLE_COUNT        256
 #define HARD_SHADOW_SAMPLES 16
 #define FADE_OUT_SAMPLES    8
 
@@ -56,4 +56,3 @@ void mainCS
 
 	WriteScreenSpaceShadow(in_parameters, Gid, GTid.x);
 }
-
