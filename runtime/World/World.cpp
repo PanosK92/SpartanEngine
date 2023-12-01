@@ -119,6 +119,7 @@ namespace Spartan
             }
 
             // music
+            if (soundtrack_file_path)
             {
                 shared_ptr<Entity> entity = World::CreateEntity();
                 entity->SetObjectName("audio_source");
@@ -458,14 +459,14 @@ namespace Spartan
 
         lock_guard<mutex> lock(m_entity_access_mutex);
 
-        // Tick entities
+        // tick entities
         {
-            // Detect game toggling
+            // detect game toggling
             const bool started   =  Engine::IsFlagSet(EngineMode::Game) &&  m_was_in_editor_mode;
             const bool stopped   = !Engine::IsFlagSet(EngineMode::Game) && !m_was_in_editor_mode;
             m_was_in_editor_mode = !Engine::IsFlagSet(EngineMode::Game);
 
-            // Start
+            // start
             if (started)
             {
                 for (shared_ptr<Entity>& entity : m_entities)
@@ -474,7 +475,7 @@ namespace Spartan
                 }
             }
 
-            // Stop
+            // stop
             if (stopped)
             {
                 for (shared_ptr<Entity>& entity : m_entities)
@@ -483,18 +484,46 @@ namespace Spartan
                 }
             }
 
-            // Tick
+            // tick
             for (shared_ptr<Entity>& entity : m_entities)
             {
                 entity->Tick();
             }
         }
 
-        // Notify Renderer
+        // notify Renderer
         if (m_resolve)
         {
             SP_FIRE_EVENT_DATA(EventType::WorldResolved, m_entities);
             m_resolve = false;
+        }
+
+        // default world logic
+        {
+            if (!m_default_terrain)
+                return;
+
+            Camera* camera = Renderer::GetCamera().get();
+            if (!camera)
+                return;
+
+            Terrain* terrain = m_default_terrain->GetComponent<Terrain>().get();
+            if (!terrain)
+                return;
+
+            AudioSource* audio_source = m_default_terrain->GetDescendantByName("underwater")->GetComponent<AudioSource>().get();
+            if (!audio_source)
+                return;
+
+            bool is_below_water_level = camera->GetEntity()->GetPosition().y < terrain->GetWaterLevel();
+            if (is_below_water_level && !audio_source->IsPlaying())
+            {
+                audio_source->Play();
+            }
+            else if (!is_below_water_level && audio_source->IsPlaying())
+            {
+                audio_source->Stop();
+            }
         }
     }
 
@@ -805,14 +834,55 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(6.9900f, 25.0f, 332.4628f);
         Vector3 camera_rotation = Vector3(0.0f, 180.0f, 0.0f);
-        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\forest_river.mp3", true, false);
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, nullptr, true, false);
+
+        // create
+        m_default_terrain = CreateEntity();
+        m_default_terrain->SetObjectName("terrain");
+
+        // sound
+        {
+            Entity* entity = World::CreateEntity().get();
+            entity->SetObjectName("audio");
+            entity->SetParent(m_default_terrain.get());
+
+            // forest and river sounds
+            {
+                shared_ptr<Entity> sound = World::CreateEntity();
+                sound->SetObjectName("forest_river");
+                sound->SetParent(entity);
+
+                shared_ptr<AudioSource> audio_source = sound->AddComponent<AudioSource>();
+                audio_source->SetAudioClip("project\\music\\forest_river.mp3");
+                audio_source->SetLoop(true);
+            }
+
+            // wind
+            {
+                shared_ptr<Entity> sound = World::CreateEntity();
+                sound->SetObjectName("wind");
+                sound->SetParent(entity);
+
+                shared_ptr<AudioSource> audio_source = sound->AddComponent<AudioSource>();
+                audio_source->SetAudioClip("project\\music\\wind.mp3");
+                audio_source->SetLoop(true);
+                audio_source->SetVolume(0.25f);
+            }
+
+            // underwater
+            {
+                shared_ptr<Entity> sound = World::CreateEntity();
+                sound->SetObjectName("underwater");
+                sound->SetParent(entity);
+
+                shared_ptr<AudioSource> audio_source = sound->AddComponent<AudioSource>();
+                audio_source->SetAudioClip("project\\music\\underwater.mp3");
+                audio_source->SetPlayOnStart(false);
+            }
+        }
 
         // terrain
         {
-            // create
-            m_default_terrain = CreateEntity();
-            m_default_terrain->SetObjectName("terrain");
-
             // add renderable component with a material
             {
                 m_default_terrain->AddComponent<Renderable>();
@@ -903,7 +973,7 @@ namespace Spartan
                     }
                 }
 
-                // plant_1
+                // plant_1 - a small plant
                 if (shared_ptr<Mesh> plant = ResourceCache::Load<Mesh>("project\\models\\vegetation_plant_1\\ormbunke.obj"))
                 {
                     Entity* entity = plant->GetRootEntity();
@@ -915,6 +985,7 @@ namespace Spartan
                         // enable instancing
                         Renderable* renderable = child->GetComponent<Renderable>().get();
                         renderable->SetInstances(terrain->GetTransformsPlant1());
+                        renderable->SetCastShadows(false); // cheaper and screen space shadows are enough
 
                         // tweak material
                         Material* material = renderable->GetMaterial();

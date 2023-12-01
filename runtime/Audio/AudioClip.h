@@ -81,6 +81,8 @@ namespace Spartan
         bool IsPlaying();
         bool IsPaused();
 
+        void ResetChannel() { m_fmod_channel = nullptr; }
+
     private:
         //= CREATION ===================================
         bool CreateSound(const std::string& file_path);
