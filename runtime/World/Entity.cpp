@@ -613,10 +613,9 @@ namespace Spartan
     // this is a recursive function, the children will also find their own children and so on
     void Entity::AcquireChildren()
     {
-        m_child_mutex.lock();
+        lock_guard lock(m_child_mutex);
         m_children.clear();
         m_children.shrink_to_fit();
-        m_child_mutex.unlock();
 
         auto entities = World::GetAllEntities();
         for (const auto& entity : entities)

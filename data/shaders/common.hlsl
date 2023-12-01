@@ -565,9 +565,9 @@ float draw_circle_view_space(float3 origin, float radius, float2 uv)
 ------------------------------------------------------------------------------*/
 float3 compute_diffuse_energy(float3 F, float metallic)
 {
-    float3 kS = F;          // The energy of light that gets reflected - Equal to Fresnel
-    float3 kD = 1.0f - kS;  // Remaining energy, light that gets refracted
-    kD *= 1.0f - metallic;  // Multiply kD by the inverse metalness such that only non-metals have diffuse lighting
+    float3 kS = F;          // the energy of light that gets reflected - equal to fresnel
+    float3 kD = 1.0f - kS;  // remaining energy, light that gets refracted
+    kD *= 1.0f - metallic;  // multiply kD by the inverse metalness such that only non-metals have diffuse lighting
     
     return kD;
 }
