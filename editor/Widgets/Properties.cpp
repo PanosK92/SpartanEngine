@@ -737,7 +737,16 @@ void Properties::ShowMaterial(Material* material) const
 
                             if (mat_property != MaterialProperty::MultiplierMetalness)
                             {
-                                ImGuiSp::draw_float_wrap("", &value, 0.004f, 0.0f, 1.0f);
+                                float min = 0.0f;
+                                float max = 1.0f;
+
+                                if (mat_property == MaterialProperty::Ior)
+                                {
+                                    min = 1.0f;
+                                    max = 2.4f; // diamond
+                                }
+
+                                ImGuiSp::draw_float_wrap("", &value, 0.004f, min, max);
                             }
                             else
                             {

@@ -211,6 +211,14 @@ namespace Spartan
 
                 // body
                 {
+                    if (Entity* body = entity_car->GetDescendantByName("CarBody_Windows_0"))
+                    {
+                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                        {
+                            material->SetProperty(MaterialProperty::Ior, 1.45f);
+                        }
+                    }
+
                     if (Entity* body = entity_car->GetDescendantByName("CarBody_Primary_0"))
                     {
                         if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
@@ -851,6 +859,7 @@ namespace Spartan
                         material->SetObjectName("material_water");
                         material->SetColor(Color(0.0f, 60.0f / 255.0f, 75.0f / 255.0f, 60.0f / 255.0f));
                         material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\water_normal.jpeg");
+                        material->SetProperty(MaterialProperty::Ior,                 1.33f); // water
                         material->SetProperty(MaterialProperty::MultiplierRoughness, 0.3f); // just a bit of roughness to diffuse the sun a little
                         material->SetProperty(MaterialProperty::MultiplierNormal,    0.8f);
                         material->SetProperty(MaterialProperty::TextureTilingX,      250.0f);

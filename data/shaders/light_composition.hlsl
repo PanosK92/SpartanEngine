@@ -40,7 +40,7 @@ struct refraction
         return eta * i + (eta * cosi - sqrt(abs(cost2))) * n;
     }
     
-    static float3 get_color(Surface surface, float ior, float scale)
+    static float3 get_color(Surface surface, float scale)
     {
         // comute view space data
         float3 view_pos    = world_to_view(surface.position);
@@ -48,7 +48,7 @@ struct refraction
         float3 view_dir    = normalize(view_pos);
         
         // compute refracted uv
-        float3 refracted_dir        = refract_vector(view_dir, view_normal, 1.0f / ior);
+        float3 refracted_dir        = refract_vector(view_dir, view_normal, 1.0f / surface.ior);
         float2 refraction_uv_offset = refracted_dir.xy * scale;
         float2 refracted_uv         = surface.uv + refraction_uv_offset;
 
@@ -60,12 +60,12 @@ struct refraction
         // dont refract surfaces which are behind this surface
         const float depth_bias = 0.02f;
         const bool is_behind   = step(get_linear_depth(surface.depth) - depth_bias, get_linear_depth(refracted_uv)) == 1.0f;
-        if (is_behind)
+        if (is_behind && surface.ior > 1.0f)
         {
             // simulate light breaking off into individual color bands via chromatic aberration
             float3 color_refracted = float3(0, 0, 0);
             {
-                float chromatic_aberration_strength  = ior * 0.0005f;
+                float chromatic_aberration_strength = surface.ior * 0.0005f;
                 chromatic_aberration_strength       *= (1.0f + surface.roughness_alpha);
                 
                 float2 ca_offsets[3];
@@ -120,11 +120,10 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
         // refraction
         float3 light_refraction = 0.0f;
-        if (surface.is_transparent())
+        if (surface.is_transparent() && surface.ior > 1.0f)
         {
-            float ior        = 1.33; // water
             float scale      = 0.05f;
-            light_refraction = refraction::get_color(surface, ior, scale); 
+            light_refraction = refraction::get_color(surface, scale); 
         }
         
         // compose

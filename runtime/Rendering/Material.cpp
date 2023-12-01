@@ -97,6 +97,7 @@ namespace Spartan
         SetProperty(MaterialProperty::TextureTilingX,      1.0f);
         SetProperty(MaterialProperty::TextureTilingY,      1.0f);
         SetProperty(MaterialProperty::WorldSpaceHeight,    1.0f);
+        SetProperty(MaterialProperty::Ior,                 1.33f); // water
     }
 
     bool Material::LoadFromFile(const std::string& file_path)
@@ -283,7 +284,7 @@ namespace Spartan
         return HasTexture(texture_type) ? m_textures[static_cast<uint32_t>(texture_type)] : texture_empty;
     }
 
-    void Material::SetProperty(const MaterialProperty property_type, const float value)
+    void Material::SetProperty(const MaterialProperty property_type, float value)
     {
         if (m_properties[static_cast<uint32_t>(property_type)] == value)
             return;
@@ -300,6 +301,12 @@ namespace Spartan
 
             // Transparent objects are typically see-through (low roughness) so use the alpha as the roughness multiplier.
             m_properties[static_cast<uint32_t>(MaterialProperty::MultiplierRoughness)] = value * 0.5f;
+        }
+
+        if (property_type == MaterialProperty::Ior)
+        {
+            // 2.4 - diamond
+            value = clamp(value, 1.0f, 2.4f);
         }
 
         if (property_type == MaterialProperty::Anisotropic ||
