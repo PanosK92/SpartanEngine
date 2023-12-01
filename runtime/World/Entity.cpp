@@ -618,16 +618,9 @@ namespace Spartan
         m_children.shrink_to_fit();
 
         auto entities = World::GetAllEntities();
-        for (const auto& entity : entities)
+        for (const auto& possible_child : entities)
         {
-            if (!entity)
-                continue;
-
-            // get the possible child
-            auto possible_child = entity;
-
-            // if it doesn't have a parent, forget about it
-            if (!possible_child->HasParent())
+            if (!possible_child || !possible_child->HasParent() || possible_child->GetObjectId() == GetObjectId())
                 continue;
 
             // if it's parent matches this transform
