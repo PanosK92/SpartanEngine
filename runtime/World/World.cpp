@@ -898,6 +898,7 @@ namespace Spartan
                         Material* material = renderable->GetMaterial();
                         material->SetTexture(MaterialTexture::Color, "project\\models\\vegetation_tree_1\\leaf.png");
                         material->SetProperty(MaterialProperty::VertexAnimateWind, 1.0f);
+                        material->SetProperty(MaterialProperty::MultiplierSubsurfaceScattering, 1.0f);
                         material->SetProperty(MaterialProperty::WorldSpaceHeight,  renderable->GetBoundingBoxNoInstancing().GetSize().y);
                     }
                 }
@@ -921,6 +922,7 @@ namespace Spartan
                         material->SetProperty(MaterialProperty::ColorR, 1.0f);
                         material->SetProperty(MaterialProperty::ColorG, 1.0f);
                         material->SetProperty(MaterialProperty::ColorB, 1.0f);
+                        material->SetProperty(MaterialProperty::MultiplierSubsurfaceScattering, 1.0f);
                         material->SetProperty(MaterialProperty::VertexAnimateWind, 1.0f);
                         material->SetProperty(MaterialProperty::WorldSpaceHeight,  renderable->GetBoundingBoxNoInstancing().GetSize().y);
                     }

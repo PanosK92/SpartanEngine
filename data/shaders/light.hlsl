@@ -26,6 +26,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fog.hlsl"
 //============================
 
+float3 SubsurfaceScattering(Surface surface, AngularInfo angular_info)
+{
+    float sss_strength = 0.2f * surface.subsurface_scattering;
+    float sss_width    = 0.5  * surface.subsurface_scattering;
+
+    float backlit    = max(dot(surface.normal, angular_info.l), 0);
+    float sss_effect = exp(-backlit * sss_width) * sss_strength;
+
+    float3 sss_color = float3(0.8, 1.0, 0.7); // green-yellow color - vegetation
+    return surface.albedo * sss_color * sss_effect;
+}
+
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -101,6 +113,12 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         if (surface.sheen != 0.0f)
         {
             light_specular += BRDF_Specular_Sheen(surface, angular_info);
+        }
+
+        // subsurface scattering
+        if (surface.subsurface_scattering != 0.0f)
+        {
+            light_diffuse += SubsurfaceScattering(surface, angular_info);
         }
         
         // diffuse
