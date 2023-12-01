@@ -5,7 +5,7 @@ Remember, neither this project nor you will be around forever. So seize the oppo
 # How to do it
 - Starting small: If it's your first time contributing, pick a small task and go through the process of cloning, working, and submitting. This will give you an idea of the workflow, the scale of the project, and maybe even how to have fun while doing it.
 - Task complexity: The bigger the task you choose, the higher the probability that you'll end up dropping it due to complexity, scale, or boredom. You might even feel stressed, which is the wrong way to go about it. If you are in this place, remember that I have zero expectations.
-- Your priorities: Your first priority should be be to have fun. Secondly, prioritize practical action over extensive theorizing. For instance, spending four hours discussing a task that could be completed in 30 minutes is inefficient.
+- Your priorities: Your first priority should be to have fun. Secondly, prioritize practical action over extensive theorizing. For instance, spending four hours discussing a task that could be completed in 30 minutes is inefficient.
 - Workflow overview: The workflow is: clone/fork, work, submit a pull request.
 
 # Pull Request (PR) Guidelines
