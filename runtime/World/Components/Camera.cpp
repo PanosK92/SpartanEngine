@@ -659,6 +659,14 @@ namespace Spartan
         m_physics_body_to_control = physics_body;
     }
 
+    bool Camera::IsWalking()
+    {
+        if (!m_physics_body_to_control || !m_physics_body_to_control->RayTraceIsGrounded())
+            return false;
+
+        return m_physics_body_to_control->GetLinearVelocity().LengthSquared() > 0.01f;
+    }
+
     Matrix Camera::ComputeViewMatrix() const
     {
         const auto position = GetEntity()->GetPosition();
