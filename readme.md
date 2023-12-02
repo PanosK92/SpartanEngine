@@ -89,7 +89,7 @@ Don't forget that there is a [wiki](https://github.com/PanosK92/SpartanEngine/wi
 # Interesting facts
 - This engine started as a way to enrich my portfolio while I was a university student, circa 2015.
 - It's one of the oldest, yet still active, one man game engines on GitHub.
-- It's one of the most rewarding projects in terms of the perks you receive should you become a contributor, more [Here](https://github.com/PanosK92/SpartanEngine/blob/master/contributing.md).
+- It's one of the most rewarding projects in terms of the perks you receive should you become a contributor, more [here](https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor).
 
 # Use cases
 Are you utilizing any components from the Spartan Engine, or has it inspired aspects of your work? If yes, then reach out to me, I'd love to showcase your project.
