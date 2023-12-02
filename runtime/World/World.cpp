@@ -498,7 +498,7 @@ namespace Spartan
             m_resolve = false;
         }
 
-        // default world logic
+        // forest default world logic (maybe we could create a default_world class to house all logic and objects)
         {
             if (!m_default_terrain)
                 return;
@@ -511,18 +511,40 @@ namespace Spartan
             if (!terrain)
                 return;
 
-            AudioSource* audio_source = m_default_terrain->GetDescendantByName("underwater")->GetComponent<AudioSource>().get();
-            if (!audio_source)
-                return;
-
             bool is_below_water_level = camera->GetEntity()->GetPosition().y < terrain->GetWaterLevel();
-            if (is_below_water_level && !audio_source->IsPlaying())
+
+            // underwater sound
             {
-                audio_source->Play();
+                AudioSource* audio_source = m_default_terrain->GetDescendantByName("underwater")->GetComponent<AudioSource>().get();
+                if (!audio_source)
+                    return;
+
+
+                if (is_below_water_level && !audio_source->IsPlaying())
+                {
+                    audio_source->Play();
+                }
+                else if (!is_below_water_level && audio_source->IsPlaying())
+                {
+                    audio_source->Stop();
+                }
             }
-            else if (!is_below_water_level && audio_source->IsPlaying())
+
+            // footsteps
+            if (!is_below_water_level)
             {
-                audio_source->Stop();
+                AudioSource* audio_source = m_default_terrain->GetDescendantByName("footsteps")->GetComponent<AudioSource>().get();
+                if (!audio_source)
+                    return;
+
+                if (camera->IsWalking() && !audio_source->IsPlaying())
+                {
+                    audio_source->Play();
+                }
+                else if (!camera->IsWalking() && audio_source->IsPlaying())
+                {
+                    audio_source->Stop();
+                }
             }
         }
     }
@@ -845,6 +867,17 @@ namespace Spartan
             Entity* entity = World::CreateEntity().get();
             entity->SetObjectName("audio");
             entity->SetParent(m_default_terrain.get());
+
+            // footsteps grass
+            {
+                shared_ptr<Entity> sound = World::CreateEntity();
+                sound->SetObjectName("footsteps");
+                sound->SetParent(entity);
+
+                shared_ptr<AudioSource> audio_source = sound->AddComponent<AudioSource>();
+                audio_source->SetAudioClip("project\\music\\footsteps_grass.mp3");
+                audio_source->SetPlayOnStart(false);
+            }
 
             // forest and river sounds
             {

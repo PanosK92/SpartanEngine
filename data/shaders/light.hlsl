@@ -39,11 +39,11 @@ float3 subsurface_scattering(Surface surface, Light light)
     float3 color_a     = float3(0.6, 0.8, 0.5);
     float3 color_b     = float3(0.3, 0.6, 0.2);
     float angle_factor = pow(backlit, 1.5f);
-    float3 sss_color   = lerp(color_a, color_b, angle_factor);
+    float3 sss_color   = lerp(color_a, color_b, angle_factor) * sss_effect;
 
     float fresnel = dot(surface.normal, -light.to_pixel);
     
-    return surface.albedo * sss_color * sss_effect * fresnel * light.radiance;
+    return surface.albedo * sss_color * fresnel * light.radiance;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]

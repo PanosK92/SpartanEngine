@@ -131,6 +131,7 @@ namespace Spartan
         void SetPhysicsBodyToControl(PhysicsBody* physics_body);
 
         // Misc
+        bool IsWalking();
         void MakeDirty() { m_is_dirty = true; }
         void SetSelectedEntity(std::shared_ptr<Spartan::Entity> entity) { m_selected_entity = entity; }
         std::shared_ptr<Spartan::Entity> GetSelectedEntity()            { return m_selected_entity.lock(); }
