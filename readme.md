@@ -43,8 +43,9 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - On the fly GPU-based mip generation - with only one dispatch.
 - Unified deferred rendering with transparency (BSDF with same render path).
 - Vulkan and DirectX 12 (WIP) backends with universal HLSL shaders.
+- Screen space shadows from Bend Studio's Days Gone.
+- Screen space global illumination, reflections.
 - Advanced shadow features with penumbra and colored translucency.
-- Screen space global illumination, reflections, and shadows.
 - Physical light units (intensity from lumens and color from kelvin).
 - Comprehensive debug rendering options.
 - Frustum culling.
@@ -84,6 +85,10 @@ Don't forget that there is a [wiki](https://github.com/PanosK92/SpartanEngine/wi
 - [Compiling](https://github.com/PanosK92/SpartanEngine/wiki/Compiling) 
 - [Contributing](https://github.com/PanosK92/SpartanEngine/blob/master/contributing.md)
 - [Perks of a contributor](https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor)
+
+# Interesting facts
+- This engine started as a way to enrich my portfolio while I was a university student, circa 2015.
+- It's one of the oldest, yet still active, one man game engines on GitHub.
 
 # Use cases
 Are you utilizing any components from the Spartan Engine, or has it inspired aspects of your work? If yes, I'd love to showcase your amazing project. Please reach out to me to feature your work inspired by or built using Spartan Engine.
