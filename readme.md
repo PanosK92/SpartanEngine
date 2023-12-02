@@ -89,7 +89,8 @@ Don't forget that there is a [wiki](https://github.com/PanosK92/SpartanEngine/wi
 # Interesting facts
 - This engine started as a way to enrich my portfolio while I was a university student, circa 2015.
 - It's one of the oldest, yet still active, one man game engines on GitHub.
+- It's one of the most rewarding projects in terms of the perks you receive should you become a contributor, more [Here](https://github.com/PanosK92/SpartanEngine/blob/master/contributing.md).
 
 # Use cases
-Are you utilizing any components from the Spartan Engine, or has it inspired aspects of your work? If yes, I'd love to showcase your amazing project. Please reach out to me to feature your work inspired by or built using Spartan Engine.
+Are you utilizing any components from the Spartan Engine, or has it inspired aspects of your work? If yes, then reach out to me, I'd love to showcase your project.
 - Godot uses Spartan's TAA, see [here](https://github.com/godotengine/godot/blob/37d51d2cb7f6e47bef8329887e9e1740a914dc4e/servers/rendering/renderer_rd/shaders/effects/taa_resolve.glsl#L2)
