@@ -664,7 +664,7 @@ namespace Spartan
         if (!m_physics_body_to_control || !m_physics_body_to_control->RayTraceIsGrounded())
             return false;
 
-        return m_physics_body_to_control->GetLinearVelocity().LengthSquared() > 0.01f;
+        return m_physics_body_to_control->GetLinearVelocity().LengthSquared() > 0.001f;
     }
 
     Matrix Camera::ComputeViewMatrix() const

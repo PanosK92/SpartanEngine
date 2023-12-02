@@ -899,7 +899,6 @@ namespace Spartan
                 shared_ptr<AudioSource> audio_source = sound->AddComponent<AudioSource>();
                 audio_source->SetAudioClip("project\\music\\wind.mp3");
                 audio_source->SetLoop(true);
-                audio_source->SetVolume(0.25f);
             }
 
             // underwater
@@ -948,6 +947,7 @@ namespace Spartan
                 // water
                 {
                     shared_ptr<Entity> water = CreateEntity();
+                    water->SetParent(m_default_terrain.get());
                     water->SetObjectName("water");
                     water->SetPosition(Vector3(0.0f, terrain->GetWaterLevel(), 0.0f));
                     water->SetScale(Vector3(1100.0f, 1.0f, 1100.0f));
@@ -963,7 +963,7 @@ namespace Spartan
                         material->SetColor(Color(0.0f, 60.0f / 255.0f, 75.0f / 255.0f, 60.0f / 255.0f));
                         material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\water_normal.jpeg");
                         material->SetProperty(MaterialProperty::Ior,                 1.33f); // water
-                        material->SetProperty(MaterialProperty::MultiplierRoughness, 0.3f); // just a bit of roughness to diffuse the sun a little
+                        material->SetProperty(MaterialProperty::MultiplierRoughness, 0.3f);  // just a bit of roughness to diffuse the sun a little
                         material->SetProperty(MaterialProperty::MultiplierNormal,    0.8f);
                         material->SetProperty(MaterialProperty::TextureTilingX,      250.0f);
                         material->SetProperty(MaterialProperty::TextureTilingY,      250.0f);
