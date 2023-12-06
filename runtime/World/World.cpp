@@ -1113,12 +1113,6 @@ namespace Spartan
                         audio_source->Stop();
                     }
                 }
-
-                // gravity
-                //if (PhysicsBody* physics_body = m_default_physics_body_camera->GetComponent<PhysicsBody>().get())
-                //{
-                //    physics_body->SetGravity(is_below_water_level ? Vector3::Zero : Physics::GetGravity());
-                //}
             }
 
             // footsteps
@@ -1148,5 +1142,17 @@ namespace Spartan
     const string& World::GetFilePath()
     {
         return m_file_path;
+    }
+
+    float World::GetWaterLevel()
+    {
+        if (!m_default_terrain)
+            return 0.0f;
+
+        Terrain* terrain = m_default_terrain->GetComponent<Terrain>().get();
+        if (!terrain)
+            return 0.0f;
+
+        return terrain->GetWaterLevel();
     }
 }

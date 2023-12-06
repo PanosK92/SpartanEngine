@@ -611,9 +611,7 @@ namespace Spartan
                 }
 
                 rigid_body->setFlags(flags);
-
-                btVector3 gravity = m_use_gravity ? ToBtVector3(m_gravity) : btVector3(0.0f, 0.0f, 0.0f);
-                rigid_body->setGravity(gravity);
+                rigid_body->setGravity(m_use_gravity ? ToBtVector3(m_gravity) : btVector3(0.0f, 0.0f, 0.0f));
             }
         }
 

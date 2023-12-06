@@ -40,12 +40,6 @@ namespace Spartan
         static bool SaveToFile(const std::string& filePath);
         static bool LoadFromFile(const std::string& file_path);
 
-        // misc
-        static void New();
-        static void Resolve();
-        static const std::string GetName();
-        static const std::string& GetFilePath();
-
         // default worlds
         static void CreateDefaultWorldCube();
         static void CreateDefaultWorldHelmets();
@@ -63,6 +57,13 @@ namespace Spartan
         static const std::shared_ptr<Entity>& GetEntityByName(const std::string& name);
         static const std::shared_ptr<Entity>& GetEntityById(uint64_t id);
         static const std::vector<std::shared_ptr<Entity>>& GetAllEntities();
+
+        // misc
+        static void New();
+        static void Resolve();
+        static const std::string GetName();
+        static const std::string& GetFilePath();
+        static float GetWaterLevel();
 
     private:
         static void Clear();
