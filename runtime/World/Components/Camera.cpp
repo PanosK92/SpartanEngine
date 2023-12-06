@@ -515,17 +515,37 @@ namespace Spartan
                 {
                     if (Engine::IsFlagSet(EngineMode::Game))
                     {
-                        if (m_physics_body_to_control->RayTraceIsGrounded())
+                        const bool is_grounded   = m_physics_body_to_control->RayTraceIsGrounded();
+                        const bool is_underwater = GetEntity()->GetPosition().y <= World::GetWaterLevel();
+
+                        // walk
+                        if (is_grounded)
                         {
                             Vector3 velocity_current = m_physics_body_to_control->GetLinearVelocity();
                             Vector3 velocity_new     = Vector3(m_movement_speed.x * 50.0f, velocity_current.y, m_movement_speed.z * 50.0f);
                             m_physics_body_to_control->SetLinearVelocity(velocity_new);
+                        }
 
-                            // jump
-                            if (Input::GetKeyDown(KeyCode::Space))
-                            {
-                                m_physics_body_to_control->ApplyForce(Vector3::Up * 500.0f, PhysicsForce::Impulse);
-                            }
+                        // swim
+                        if (is_underwater)
+                        {
+                            // buoyancy
+                            float distance_from_water_level = GetEntity()->GetPosition().y - World::GetWaterLevel();
+                            float depth_factor              = Helper::Max(1.0f, Helper::Abs(distance_from_water_level));
+                            float multiplier                = 2.0f * depth_factor;
+                            Vector3 buoyancy_force          = -m_physics_body_to_control->GetGravity() * m_physics_body_to_control->GetMass() * multiplier;
+                            m_physics_body_to_control->ApplyForce(buoyancy_force, PhysicsForce::Constant);
+
+                            // movement
+                            Vector3 velocity_current = m_physics_body_to_control->GetLinearVelocity();
+                            Vector3 velocity_new     = Vector3(m_movement_speed.x * 20.0f, velocity_current.y, m_movement_speed.z * 20.0f);
+                            m_physics_body_to_control->SetLinearVelocity(velocity_new);
+                        }
+
+                        // jump
+                        if (is_grounded && Input::GetKeyDown(KeyCode::Space))
+                        {
+                            m_physics_body_to_control->ApplyForce(Vector3::Up * 500.0f, PhysicsForce::Impulse);
                         }
                     }
                     else
