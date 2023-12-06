@@ -270,12 +270,12 @@ namespace Spartan
         AddBodyToWorld();
     }
 
-    void PhysicsBody::SetGravity(const Vector3& acceleration)
+    void PhysicsBody::SetGravity(const Vector3& gravity)
     {
-        if (m_gravity == acceleration)
+        if (m_gravity == gravity)
             return;
 
-        m_gravity = acceleration;
+        m_gravity = gravity;
         AddBodyToWorld();
     }
 

@@ -63,8 +63,8 @@ namespace Spartan
         Mesh* GetMesh()            const { return m_mesh; }
 
         // bounding box
-        const Math::BoundingBox& GetBoundingBox();
-        const Math::BoundingBox GetBoundingBoxNoInstancing();
+        const Math::BoundingBox& GetBoundingBoxInstance();
+        const Math::BoundingBox GetBoundingBoxMesh();
 
         //= MATERIAL ====================================================================
         // Sets a material from memory (adds it to the resource cache by default)

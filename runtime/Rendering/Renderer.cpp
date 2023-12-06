@@ -102,7 +102,7 @@ namespace Spartan
                 if (!renderable)
                     return 0.0f;
 
-                return (renderable->GetBoundingBox().GetCenter() - camera->GetEntity()->GetPosition()).LengthSquared();
+                return (renderable->GetBoundingBoxInstance().GetCenter() - camera->GetEntity()->GetPosition()).LengthSquared();
             };
 
             // sort by depth

@@ -64,7 +64,7 @@ namespace Spartan
         static void RemoveConstraint(btTypedConstraint*& constraint);
 
         // Misc
-        static Math::Vector3 GetGravity();
+        static Math::Vector3& GetGravity();
         static btSoftBodyWorldInfo& GetSoftWorldInfo();
         static void* GetPhysicsDebugDraw();
         static void* GetWorld();

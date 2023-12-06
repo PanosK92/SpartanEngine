@@ -148,7 +148,7 @@ namespace Spartan
         m_mesh->GetGeometry(m_geometry_index_offset, m_geometry_index_count, m_geometry_vertex_offset, m_geometry_vertex_count, indices, vertices);
     }
 
-    const BoundingBox& Renderable::GetBoundingBox()
+    const BoundingBox& Renderable::GetBoundingBoxInstance()
     {
         // either the bounding box is dirty, or the transform has changed, or the instances have changed
         if (m_bounding_box_dirty || m_last_transform != GetEntity()->GetMatrix())
@@ -171,7 +171,7 @@ namespace Spartan
     }
 
 
-    const Spartan::Math::BoundingBox Renderable::GetBoundingBoxNoInstancing()
+    const BoundingBox Renderable::GetBoundingBoxMesh()
     {
         return m_bounding_box_mesh.Transform(GetEntity()->GetMatrix());
     }
