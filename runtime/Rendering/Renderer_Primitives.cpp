@@ -331,19 +331,37 @@ namespace Spartan
         // bounding boxes
         if (GetOption<bool>(Renderer_Option::Debug_Aabb))
         {
+            static const Vector4 color = Vector4(0.41f, 0.86f, 1.0f, 1.0f);
+
             for (const auto& entity : GetEntities()[Renderer_Entity::Geometry])
             {
                 if (auto renderable = entity->GetComponent<Renderable>())
                 {
-                    DrawBox(renderable->GetBoundingBoxInstance(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+                    DrawBox(renderable->GetBoundingBoxMesh(), color);
                 }
             }
-        
+
+            for (const auto& entity : GetEntities()[Renderer_Entity::GeometryInstanced])
+            {
+                if (auto renderable = entity->GetComponent<Renderable>())
+                {
+                    DrawBox(renderable->GetBoundingBoxInstance(), color);
+                }
+            }
+
             for (const auto& entity : GetEntities()[Renderer_Entity::GeometryTransparent])
             {
                 if (auto renderable = entity->GetComponent<Renderable>())
                 {
-                    DrawBox(renderable->GetBoundingBoxInstance(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+                    DrawBox(renderable->GetBoundingBoxMesh(), color);
+                }
+            }
+
+            for (const auto& entity : GetEntities()[Renderer_Entity::GeometryTransparentInstanced])
+            {
+                if (auto renderable = entity->GetComponent<Renderable>())
+                {
+                    DrawBox(renderable->GetBoundingBoxInstance(), color);
                 }
             }
         }
