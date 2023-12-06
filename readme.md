@@ -65,26 +65,14 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 #### Formats
 - Wide file format support: 10+ for fonts, 20+ for audio, 30+ for images, and 40+ for models.
 
-# Roadmap
-- Continue switching to bindless.
-- Skeletal Animation.
-- Eye Adaptation.
-- Subsurface scattering.
-- Ray traced reflections & shadows.
-- Dynamic resolution scaling (and use FSR 2, to properly reconstuct).
-- Scripting.
-- Export on Windows.
-- Improved the editor style/theme.
-- Continue work on D3D12 (low priority since Vulkan is there).
-- Linux port (low priority since the target audience is small).
-  
-If you are looking at what to do, there are more ideas in the [issues]([https://github.com/PanosK92/SpartanEngine/wiki/Wiki](https://github.com/PanosK92/SpartanEngine/issues)) section.
-
 # Wiki
-Don't forget that there is a [wiki](https://github.com/PanosK92/SpartanEngine/wiki/Wiki) that can help answer some of your questions. Here are some of it's contents:
+The  [wiki](https://github.com/PanosK92/SpartanEngine/wiki/Wiki) can answer most of your questions, here are some of it's contents:
 - [Compiling](https://github.com/PanosK92/SpartanEngine/wiki/Compiling) 
 - [Contributing](https://github.com/PanosK92/SpartanEngine/blob/master/contributing.md)
 - [Perks of a contributor](https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor)
+
+If you are looking for what to do, read the contributing page.
+My AI replica, [Panos](https://chat.openai.com/g/g-etpaCChzi-spartan), can also answer most of your questions.
 
 # Interesting facts
 - This engine started as a way to enrich my portfolio while I was a university student, circa 2015.
