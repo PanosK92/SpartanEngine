@@ -62,7 +62,6 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - XML support for data handling.
 - Thread pool for that can consume any workload.
 - Entity-component, event systems and most things you'll expect to find in a modern engine.
-#### Formats
 - Wide file format support: 10+ for fonts, 20+ for audio, 30+ for images, and 40+ for models.
 
 # Wiki
