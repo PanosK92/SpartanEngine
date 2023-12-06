@@ -49,29 +49,29 @@ namespace Spartan
 {
     namespace
     { 
-        static btBroadphaseInterface* m_broadphase                        = nullptr;
-        static btCollisionDispatcher* m_collision_dispatcher              = nullptr;
-        static btSequentialImpulseConstraintSolver* m_constraint_solver   = nullptr;
-        static btDefaultCollisionConfiguration* m_collision_configuration = nullptr;
-        static btDiscreteDynamicsWorld* m_world                           = nullptr;
-        static btSoftBodyWorldInfo* m_world_info                          = nullptr;
-        static PhysicsDebugDraw* m_debug_draw                             = nullptr;
+        btBroadphaseInterface* m_broadphase                        = nullptr;
+        btCollisionDispatcher* m_collision_dispatcher              = nullptr;
+        btSequentialImpulseConstraintSolver* m_constraint_solver   = nullptr;
+        btDefaultCollisionConfiguration* m_collision_configuration = nullptr;
+        btDiscreteDynamicsWorld* m_world                           = nullptr;
+        btSoftBodyWorldInfo* m_world_info                          = nullptr;
+        PhysicsDebugDraw* m_debug_draw                             = nullptr;
 
         // world properties
-        static int m_max_sub_steps        = 1;
-        static int m_max_solve_iterations = 256;
-        static float m_internal_hz        = 200.0f; // almost mandatory for advanced car physics
-        static Math::Vector3 m_gravity    = Math::Vector3(0.0f, -9.81f, 0.0f);
+        int m_max_sub_steps        = 1;
+        int m_max_solve_iterations = 256;
+        float m_internal_hz        = 200.0f; // almost mandatory for advanced car physics
+        Math::Vector3 m_gravity    = Math::Vector3(0.0f, -9.81f, 0.0f);
 
         // picking
-        static btRigidBody* m_picked_body                = nullptr;
-        static btTypedConstraint* m_picked_constraint    = nullptr;
-        static int m_activation_state                    = 0;
-        static Math::Vector3 m_hit_position              = Math::Vector3::Zero;
-        static Math::Vector3 m_picking_position_previous = Math::Vector3::Zero;
-        static float m_picking_distance_previous         = 0.0f;
+        btRigidBody* m_picked_body                = nullptr;
+        btTypedConstraint* m_picked_constraint    = nullptr;
+        int m_activation_state                    = 0;
+        Math::Vector3 m_hit_position              = Math::Vector3::Zero;
+        Math::Vector3 m_picking_position_previous = Math::Vector3::Zero;
+        float m_picking_distance_previous         = 0.0f;
 
-        static const bool m_soft_body_support = true;
+        const bool m_soft_body_support = true;
     }
 
     void Physics::Initialize()
@@ -275,9 +275,9 @@ namespace Spartan
         }
     }
 
-    Vector3 Physics::GetGravity()
+    Vector3& Physics::GetGravity()
     {
-        return ToVector3(m_world->getGravity());
+        return m_gravity;
     }
 
     btSoftBodyWorldInfo& Physics::GetSoftWorldInfo()

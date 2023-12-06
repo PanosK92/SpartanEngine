@@ -94,7 +94,7 @@ namespace Spartan
         void SetUseGravity(bool gravity);
         bool GetUseGravity() const { return m_use_gravity; };
         Math::Vector3 GetGravity() const { return m_gravity; }
-        void SetGravity(const Math::Vector3& acceleration);
+        void SetGravity(const Math::Vector3& gravity);
 
         // kinematic
         void SetIsKinematic(bool kinematic);
@@ -154,8 +154,8 @@ namespace Spartan
         void ClearForces() const;
         void Activate() const;
         void Deactivate() const;
-        bool IsInWorld()       const { return m_in_world; }
-        void* GetBtRigidBody() const { return m_rigid_body; }
+        bool IsInWorld() const        { return m_in_world; }
+        void* GetBtRigidBody() const  { return m_rigid_body; }
         std::shared_ptr<Car> GetCar() { return m_car; }
 
     private:

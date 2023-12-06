@@ -53,6 +53,7 @@ namespace Spartan
         static void CreateDefaultWorldForest();
         static void CreateDefaultWorldSponza();
         static void CreateDefaultWorldDoomE1M1();
+        static void TickDefaultWorlds();
 
         // entities
         static std::shared_ptr<Entity> CreateEntity();

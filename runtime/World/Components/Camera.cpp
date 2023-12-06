@@ -151,7 +151,7 @@ namespace Spartan
 
     bool Camera::IsInViewFrustum(shared_ptr<Renderable> renderable) const
     {
-        const BoundingBox& box = renderable->GetBoundingBox();
+        const BoundingBox& box = renderable->GetBoundingBoxInstance();
         const Vector3 center   = box.GetCenter();
         const Vector3 extents  = box.GetExtents();
 
@@ -192,7 +192,7 @@ namespace Spartan
                     continue;
 
                 // Get object oriented bounding box
-                const BoundingBox& aabb = entity->GetComponent<Renderable>()->GetBoundingBox();
+                const BoundingBox& aabb = entity->GetComponent<Renderable>()->GetBoundingBoxInstance();
 
                 // Compute hit distance
                 float distance = m_ray.HitDistance(aabb);
@@ -327,18 +327,18 @@ namespace Spartan
 
     void Camera::ProcessInput()
     {
-        // FPS camera controls.
-        // X-axis movement: W, A, S, D.
-        // Y-axis movement: Q, E.
-        // Mouse look: Hold right click to enable.
+        // fps camera controls
+        // x-axis movement: w, a, s, d
+        // y-axis movement: q, e
+        // mouse look: hold right click to enable
         if (m_first_person_control_enabled)
         {
             ProcessInputFpsControl();
         }
 
-        // Shortcuts
+        // shortcuts
         {
-            // Focus on selected entity: F.
+            // focus on selected entity: f
             ProcessInputLerpToEntity();
         }
     }
@@ -365,7 +365,7 @@ namespace Spartan
 
         // cursor visibility and position
         {
-            // toggle mouse cursor and adjust mouse position
+            // when right clicking and moving the mouse over the viewport (hide the mouse)
             if (m_is_controlled_by_keyboard_mouse && !m_fps_control_cursor_hidden)
             {
                 m_mouse_last_position = Input::GetMousePosition();
@@ -377,6 +377,7 @@ namespace Spartan
 
                 m_fps_control_cursor_hidden = true;
             }
+            // when releasing the rick click, make the mouse visible and set it to the last visible position
             else if (!m_is_controlled_by_keyboard_mouse && m_fps_control_cursor_hidden)
             {
                 Input::SetMousePosition(m_mouse_last_position);
@@ -390,27 +391,29 @@ namespace Spartan
             }
         }
 
-        if (m_is_controlled_by_keyboard_mouse)
+        // mouse look
+        if (m_is_controlled_by_keyboard_mouse || Input::IsControllerConnected())
         {
-            // mouse look
+            // wrap around left and right screen edges (to allow for infinite scrolling)
+            if (m_is_controlled_by_keyboard_mouse)
             {
-                // wrap around left and right screen edges (to allow for infinite scrolling)
+                uint32_t edge_padding = 5;
+                Vector2 mouse_position = Input::GetMousePosition();
+                if (mouse_position.x >= Display::GetWidth() - edge_padding)
                 {
-                    uint32_t edge_padding = 5;
-                    Vector2 mouse_position = Input::GetMousePosition();
-                    if (mouse_position.x >= Display::GetWidth() - edge_padding)
-                    {
-                        mouse_position.x = static_cast<float>(edge_padding + 1);
-                        Input::SetMousePosition(mouse_position);
-                    }
-                    else if (mouse_position.x <= edge_padding)
-                    {
-                        mouse_position.x = static_cast<float>(Spartan::Display::GetWidth() - edge_padding - 1);
-                        Input::SetMousePosition(mouse_position);
-                    }
+                    mouse_position.x = static_cast<float>(edge_padding + 1);
+                    Input::SetMousePosition(mouse_position);
                 }
+                else if (mouse_position.x <= edge_padding)
+                {
+                    mouse_position.x = static_cast<float>(Spartan::Display::GetWidth() - edge_padding - 1);
+                    Input::SetMousePosition(mouse_position);
+                }
+            }
 
-                // get camera rotation
+            // get camera rotation
+            if (m_is_controlled_by_keyboard_mouse)
+            {
                 m_first_person_rotation.x = GetEntity()->GetRotation().Yaw();
                 m_first_person_rotation.y = GetEntity()->GetRotation().Pitch();
 
@@ -422,82 +425,65 @@ namespace Spartan
 
                 // accumulate rotation
                 m_first_person_rotation += m_mouse_smoothed;
-
-                // clamp rotation along the x-axis (but not exactly at 90 degrees, this is to avoid a gimbal lock)
-                m_first_person_rotation.y = Helper::Clamp(m_first_person_rotation.y, -80.0f, 80.0f);
-
-                // compute rotation.
-                const Quaternion xQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.x * Helper::DEG_TO_RAD, Vector3::Up);
-                const Quaternion yQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.y * Helper::DEG_TO_RAD, Vector3::Right);
-                const Quaternion rotation    = xQuaternion * yQuaternion;
-
-                // rotate
-                GetEntity()->SetRotationLocal(rotation);
+            }
+            else if (Input::IsControllerConnected())
+            {
+                m_first_person_rotation.x += Input::GetControllerThumbStickRight().x;
+                m_first_person_rotation.y += Input::GetControllerThumbStickRight().y;
             }
 
-            // keyboard movement direction
+            // clamp rotation along the x-axis (but not exactly at 90 degrees, this is to avoid a gimbal lock)
+            m_first_person_rotation.y = Helper::Clamp(m_first_person_rotation.y, -80.0f, 80.0f);
+
+            // compute rotation
+            const Quaternion xQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.x * Helper::DEG_TO_RAD, Vector3::Up);
+            const Quaternion yQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.y * Helper::DEG_TO_RAD, Vector3::Right);
+            const Quaternion rotation = xQuaternion * yQuaternion;
+
+            // rotate
+            GetEntity()->SetRotationLocal(rotation);
+        }
+
+        // directional movement
+        if (m_is_controlled_by_keyboard_mouse || Input::IsControllerConnected())
+        {
+            if (m_is_controlled_by_keyboard_mouse)
             {
-                // compute direction
                 if (Input::GetKey(KeyCode::W)) movement_direction += GetEntity()->GetForward();
                 if (Input::GetKey(KeyCode::S)) movement_direction += GetEntity()->GetBackward();
                 if (Input::GetKey(KeyCode::D)) movement_direction += GetEntity()->GetRight();
                 if (Input::GetKey(KeyCode::A)) movement_direction += GetEntity()->GetLeft();
                 if (Input::GetKey(KeyCode::Q)) movement_direction += GetEntity()->GetDown();
                 if (Input::GetKey(KeyCode::E)) movement_direction += GetEntity()->GetUp();
-
-                // when in game mode and controlling a physics based camera ignore the pitch
-                // this is so the view direction (forward) is never pointing towards the ground or sky
-                // cause movement to come a stop
-                if (m_physics_body_to_control && Engine::IsFlagSet(EngineMode::Game))
-                {
-                    movement_direction.y = 0.0f;
-                }
-
-                movement_direction.Normalize();
             }
-
-            // wheel delta (used to adjust movement speed)
+            else if (Input::IsControllerConnected())
             {
-                // accumulate
-                m_movement_scroll_accumulator += Input::GetMouseWheelDelta().y * 0.1f;
-
-                // Clamp
-                float min = -movement_acceleration + 0.1f; // prevent it from negating or zeroing the acceleration, see translation calculation
-                float max = movement_acceleration * 2.0f;  // an empirically chosen max
-                m_movement_scroll_accumulator = Helper::Clamp(m_movement_scroll_accumulator, min, max);
+                movement_direction += GetEntity()->GetForward() * -Input::GetControllerThumbStickLeft().y;
+                movement_direction += GetEntity()->GetRight()   * Input::GetControllerThumbStickLeft().x;
+                movement_direction += GetEntity()->GetDown()    * Input::GetControllerTriggerLeft();
+                movement_direction += GetEntity()->GetUp()      * Input::GetControllerTriggerRight();
             }
+
+            // when in game mode and controlling a physics based camera ignore the pitch
+            // this is so the view direction (forward) is never pointing towards the ground or sky
+            // cause movement to come a stop
+            if (m_physics_body_to_control && Engine::IsFlagSet(EngineMode::Game))
+            {
+                movement_direction.y = 0.0f;
+            }
+
+            movement_direction.Normalize();
         }
 
-        // controller movement
-        if (Input::IsControllerConnected())
+        // wheel delta (used to adjust movement speed)
         {
-            // look
-            {
-                // get camera rotation
-                m_first_person_rotation.x += Input::GetControllerThumbStickRight().x;
-                m_first_person_rotation.y += Input::GetControllerThumbStickRight().y;
+            // accumulate
+            m_movement_scroll_accumulator += Input::GetMouseWheelDelta().y * 0.1f;
 
-                // get mouse delta.
-                const Vector2 mouse_delta = Input::GetMouseDelta() * m_mouse_sensitivity;
-
-                // clamp rotation along the x-axis (but not exactly at 90 degrees, this is to avoid a gimbal lock).
-                m_first_person_rotation.y = Helper::Clamp(m_first_person_rotation.y, -80.0f, 80.0f);
-
-                // compute rotation.
-                const Quaternion xQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.x * Helper::DEG_TO_RAD, Vector3::Up);
-                const Quaternion yQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.y * Helper::DEG_TO_RAD, Vector3::Right);
-                const Quaternion rotation    = xQuaternion * yQuaternion;
-
-                // rotate
-                GetEntity()->SetRotationLocal(rotation);
-            }
-
-            // controller movement direction
-            movement_direction += GetEntity()->GetForward() * -Input::GetControllerThumbStickLeft().y;
-            movement_direction += GetEntity()->GetRight()   *  Input::GetControllerThumbStickLeft().x;
-            movement_direction += GetEntity()->GetDown()    *  Input::GetControllerTriggerLeft();
-            movement_direction += GetEntity()->GetUp()      *  Input::GetControllerTriggerRight();
-            movement_direction.Normalize();
+            // Clamp
+            float min = -movement_acceleration + 0.1f; // prevent it from negating or zeroing the acceleration, see translation calculation
+            float max = movement_acceleration * 2.0f;  // an empirically chosen max
+            m_movement_scroll_accumulator = Helper::Clamp(m_movement_scroll_accumulator, min, max);
         }
 
         // translation
@@ -541,17 +527,6 @@ namespace Spartan
                                 m_physics_body_to_control->ApplyForce(Vector3::Up * 500.0f, PhysicsForce::Impulse);
                             }
                         }
-
-                        // scale stairs
-                        //Vector3 forward = GetEntity()->GetForward();
-                        //forward.y = 0.0f;
-                        //forward.Normalize();
-                        //Vector3 position_stair_step = m_physics_body_to_control->RayTraceIsNearStairStep(forward);
-                        //if (position_stair_step != Vector3::Infinity)
-                        //{
-                        //    Renderer::DrawSphere(position_stair_step, 0.2f, 32);
-                        //    m_physics_body_to_control->SetPosition(position_stair_step);
-                        //}
                     }
                     else
                     {
@@ -637,7 +612,7 @@ namespace Spartan
             // ...otherwise we apply a simple offset so that the rotation vector doesn't suffer
             if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
             {
-                m_lerp_to_target_position -= target_direction * renderable->GetBoundingBox().GetExtents().Length() * 2.0f;
+                m_lerp_to_target_position -= target_direction * renderable->GetBoundingBoxInstance().GetExtents().Length() * 2.0f;
             }
             else
             {

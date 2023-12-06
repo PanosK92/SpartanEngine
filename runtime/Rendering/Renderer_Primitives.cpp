@@ -335,7 +335,7 @@ namespace Spartan
             {
                 if (auto renderable = entity->GetComponent<Renderable>())
                 {
-                    DrawBox(renderable->GetBoundingBox(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+                    DrawBox(renderable->GetBoundingBoxInstance(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
                 }
             }
         
@@ -343,7 +343,7 @@ namespace Spartan
             {
                 if (auto renderable = entity->GetComponent<Renderable>())
                 {
-                    DrawBox(renderable->GetBoundingBox(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+                    DrawBox(renderable->GetBoundingBoxInstance(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
                 }
             }
         }

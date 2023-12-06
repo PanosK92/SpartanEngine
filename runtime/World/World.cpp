@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Texture2D.h"
 #include "../Rendering/Mesh.h"
 #include "../Rendering/Renderer.h"
+#include "../Physics/Physics.h"
 //====================================
 
 //= NAMESPACES ================
@@ -47,26 +48,26 @@ namespace Spartan
 {
     namespace
     {
-        static vector<shared_ptr<Entity>> m_entities;
-        static string m_name;
-        static string m_file_path;
-        static mutex m_entity_access_mutex;
-        static bool m_resolve            = false;
-        static bool m_was_in_editor_mode = false;
+        vector<shared_ptr<Entity>> m_entities;
+        string m_name;
+        string m_file_path;
+        mutex m_entity_access_mutex;
+        bool m_resolve            = false;
+        bool m_was_in_editor_mode = false;
 
         // default worlds resources
-        static shared_ptr<Entity> m_default_terrain             = nullptr;
-        static shared_ptr<Entity> m_default_cube                = nullptr;
-        static shared_ptr<Entity> m_default_physics_body_camera = nullptr;
-        static shared_ptr<Entity> m_default_environment         = nullptr;
-        static shared_ptr<Entity> m_default_model_floor         = nullptr;
-        static shared_ptr<Mesh> m_default_model_sponza          = nullptr;
-        static shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
-        static shared_ptr<Mesh> m_default_model_car             = nullptr;
-        static shared_ptr<Mesh> m_default_model_wheel           = nullptr;
-        static shared_ptr<Mesh> m_default_model_helmet_flight   = nullptr;
-        static shared_ptr<Mesh> m_default_model_helmet_damaged  = nullptr;
-        static shared_ptr<Mesh> m_default_model_doom            = nullptr;
+        shared_ptr<Entity> m_default_terrain             = nullptr;
+        shared_ptr<Entity> m_default_cube                = nullptr;
+        shared_ptr<Entity> m_default_physics_body_camera = nullptr;
+        shared_ptr<Entity> m_default_environment         = nullptr;
+        shared_ptr<Entity> m_default_model_floor         = nullptr;
+        shared_ptr<Mesh> m_default_model_sponza          = nullptr;
+        shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
+        shared_ptr<Mesh> m_default_model_car             = nullptr;
+        shared_ptr<Mesh> m_default_model_wheel           = nullptr;
+        shared_ptr<Mesh> m_default_model_helmet_flight   = nullptr;
+        shared_ptr<Mesh> m_default_model_helmet_damaged  = nullptr;
+        shared_ptr<Mesh> m_default_model_doom            = nullptr;
 
         static void create_default_world_common(
             const Math::Vector3& camera_position = Vector3(0.0f, 2.0f, -10.0f),
@@ -498,55 +499,7 @@ namespace Spartan
             m_resolve = false;
         }
 
-        // forest default world logic (maybe we could create a default_world class to house all logic and objects)
-        {
-            if (!m_default_terrain)
-                return;
-
-            Camera* camera = Renderer::GetCamera().get();
-            if (!camera)
-                return;
-
-            Terrain* terrain = m_default_terrain->GetComponent<Terrain>().get();
-            if (!terrain)
-                return;
-
-            bool is_below_water_level = camera->GetEntity()->GetPosition().y < terrain->GetWaterLevel();
-
-            // underwater sound
-            {
-                AudioSource* audio_source = m_default_terrain->GetDescendantByName("underwater")->GetComponent<AudioSource>().get();
-                if (!audio_source)
-                    return;
-
-
-                if (is_below_water_level && !audio_source->IsPlaying())
-                {
-                    audio_source->Play();
-                }
-                else if (!is_below_water_level && audio_source->IsPlaying())
-                {
-                    audio_source->Stop();
-                }
-            }
-
-            // footsteps
-            if (!is_below_water_level)
-            {
-                AudioSource* audio_source = m_default_terrain->GetDescendantByName("footsteps")->GetComponent<AudioSource>().get();
-                if (!audio_source)
-                    return;
-
-                if (camera->IsWalking() && !audio_source->IsPlaying())
-                {
-                    audio_source->Play();
-                }
-                else if (!camera->IsWalking() && audio_source->IsPlaying())
-                {
-                    audio_source->Stop();
-                }
-            }
-        }
+        TickDefaultWorlds();
     }
 
     void World::New()
@@ -1002,7 +955,7 @@ namespace Spartan
                         material->SetTexture(MaterialTexture::Color, "project\\models\\vegetation_tree_1\\leaf.png");
                         material->SetProperty(MaterialProperty::VertexAnimateWind, 1.0f);
                         material->SetProperty(MaterialProperty::MultiplierSubsurfaceScattering, 1.0f);
-                        material->SetProperty(MaterialProperty::WorldSpaceHeight,  renderable->GetBoundingBoxNoInstancing().GetSize().y);
+                        material->SetProperty(MaterialProperty::WorldSpaceHeight,  renderable->GetBoundingBoxMesh().GetSize().y);
                     }
                 }
 
@@ -1028,7 +981,7 @@ namespace Spartan
                         material->SetProperty(MaterialProperty::ColorB, 1.0f);
                         material->SetProperty(MaterialProperty::MultiplierSubsurfaceScattering, 1.0f);
                         material->SetProperty(MaterialProperty::VertexAnimateWind, 1.0f);
-                        material->SetProperty(MaterialProperty::WorldSpaceHeight,  renderable->GetBoundingBoxNoInstancing().GetSize().y);
+                        material->SetProperty(MaterialProperty::WorldSpaceHeight,  renderable->GetBoundingBoxMesh().GetSize().y);
                     }
                 }
 
@@ -1124,6 +1077,67 @@ namespace Spartan
 
         // start simulating (for the physics and the music to work)
         Engine::AddFlag(EngineMode::Game);
+    }
+
+    void World::TickDefaultWorlds()
+    {
+        // forest default world logic
+        {
+            if (!m_default_terrain)
+                return;
+
+            Camera* camera = Renderer::GetCamera().get();
+            if (!camera)
+                return;
+
+            Terrain* terrain = m_default_terrain->GetComponent<Terrain>().get();
+            if (!terrain)
+                return;
+
+            bool is_below_water_level = camera->GetEntity()->GetPosition().y < terrain->GetWaterLevel();
+
+            // underwater
+            {
+                // sound
+                {
+                    AudioSource* audio_source = m_default_terrain->GetDescendantByName("underwater")->GetComponent<AudioSource>().get();
+                    if (!audio_source)
+                        return;
+
+                    if (is_below_water_level && !audio_source->IsPlaying())
+                    {
+                        audio_source->Play();
+                    }
+                    else if (!is_below_water_level && audio_source->IsPlaying())
+                    {
+                        audio_source->Stop();
+                    }
+                }
+
+                // gravity
+                //if (PhysicsBody* physics_body = m_default_physics_body_camera->GetComponent<PhysicsBody>().get())
+                //{
+                //    physics_body->SetGravity(is_below_water_level ? Vector3::Zero : Physics::GetGravity());
+                //}
+            }
+
+            // footsteps
+            if (!is_below_water_level)
+            {
+                AudioSource* audio_source = m_default_terrain->GetDescendantByName("footsteps")->GetComponent<AudioSource>().get();
+                if (!audio_source)
+                    return;
+
+                if (camera->IsWalking() && !audio_source->IsPlaying())
+                {
+                    audio_source->Play();
+                }
+                else if (!camera->IsWalking() && audio_source->IsPlaying())
+                {
+                    audio_source->Stop();
+                }
+            }
+        }
     }
 
     const string World::GetName()
