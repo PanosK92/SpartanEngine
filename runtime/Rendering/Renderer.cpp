@@ -135,7 +135,7 @@ namespace Spartan
                 properties.clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
                 properties.sheen                 = material->GetProperty(MaterialProperty::Sheen);
                 properties.sheen_tint            = material->GetProperty(MaterialProperty::SheenTint);
-                properties.subsurface_scattering = material->GetProperty(MaterialProperty::MultiplierSubsurfaceScattering);
+                properties.subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
                 properties.ior                   = material->GetProperty(MaterialProperty::Ior);
 
                 uint32_t index = static_cast<uint32_t>(material->GetObjectId() % data.size());
@@ -595,10 +595,10 @@ namespace Spartan
         m_cb_material_cpu.tiling_uv.y         = material->GetProperty(MaterialProperty::TextureTilingY);
         m_cb_material_cpu.offset_uv.x         = material->GetProperty(MaterialProperty::TextureOffsetX);
         m_cb_material_cpu.offset_uv.y         = material->GetProperty(MaterialProperty::TextureOffsetY);
-        m_cb_material_cpu.roughness_mul       = material->GetProperty(MaterialProperty::MultiplierRoughness);
-        m_cb_material_cpu.metallic_mul        = material->GetProperty(MaterialProperty::MultiplierMetalness);
-        m_cb_material_cpu.normal_mul          = material->GetProperty(MaterialProperty::MultiplierNormal);
-        m_cb_material_cpu.height_mul          = material->GetProperty(MaterialProperty::MultiplierHeight);
+        m_cb_material_cpu.roughness_mul       = material->GetProperty(MaterialProperty::Roughness);
+        m_cb_material_cpu.metallic_mul        = material->GetProperty(MaterialProperty::Metalness);
+        m_cb_material_cpu.normal_mul          = material->GetProperty(MaterialProperty::Normal);
+        m_cb_material_cpu.height_mul          = material->GetProperty(MaterialProperty::Height);
         m_cb_material_cpu.properties         |= material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness) ? (1U << 0)  : 0;
         m_cb_material_cpu.properties         |= material->HasTexture(MaterialTexture::Height)                            ? (1U << 1)  : 0;
         m_cb_material_cpu.properties         |= material->HasTexture(MaterialTexture::Normal)                            ? (1U << 2)  : 0;

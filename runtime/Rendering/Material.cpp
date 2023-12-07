@@ -48,23 +48,23 @@ namespace Spartan
                 case MaterialProperty::CanBeEdited:                     return "can_be_edited";
                 case MaterialProperty::SingleTextureRoughnessMetalness: return "single_texture_roughness_metalness";
                 case MaterialProperty::WorldSpaceHeight:                return "world_space_height";
-                case MaterialProperty::Clearcoat:                       return "clearcoat_multiplier";
-                case MaterialProperty::Clearcoat_Roughness:             return "clearcoat_roughness_multiplier";
-                case MaterialProperty::Anisotropic:                     return "anisotropic_multiplier";
-                case MaterialProperty::AnisotropicRotation:             return "anisotropic_rotation_multiplier";
-                case MaterialProperty::Sheen:                           return "sheen_multiplier";
-                case MaterialProperty::SheenTint:                       return "sheen_tint_multiplier";
+                case MaterialProperty::Clearcoat:                       return "clearcoat";
+                case MaterialProperty::Clearcoat_Roughness:             return "clearcoat_roughness";
+                case MaterialProperty::Anisotropic:                     return "anisotropic";
+                case MaterialProperty::AnisotropicRotation:             return "anisotropic_rotation";
+                case MaterialProperty::Sheen:                           return "sheen";
+                case MaterialProperty::SheenTint:                       return "sheen_tint";
                 case MaterialProperty::ColorTint:                       return "color_tint";
                 case MaterialProperty::ColorR:                          return "color_r";
                 case MaterialProperty::ColorG:                          return "color_g";
                 case MaterialProperty::ColorB:                          return "color_b";
                 case MaterialProperty::ColorA:                          return "color_a";
                 case MaterialProperty::Ior:                             return "ior";
-                case MaterialProperty::MultiplierRoughness:             return "multiplier_roughness";
-                case MaterialProperty::MultiplierMetalness:             return "multiplier_metalness";
-                case MaterialProperty::MultiplierNormal:                return "multiplier_normal";
-                case MaterialProperty::MultiplierHeight:                return "multiplier_height";
-                case MaterialProperty::MultiplierSubsurfaceScattering:  return "multiplier_subsurface_scattering";
+                case MaterialProperty::Roughness:                       return "roughness";
+                case MaterialProperty::Metalness:                       return "metalness";
+                case MaterialProperty::Normal:                          return "normal";
+                case MaterialProperty::Height:                          return "height";
+                case MaterialProperty::SubsurfaceScattering:            return "subsurface_scattering";
                 case MaterialProperty::TextureTilingX:                  return "texture_tiling_x";
                 case MaterialProperty::TextureTilingY:                  return "texture_tiling_y";
                 case MaterialProperty::TextureOffsetX:                  return "texture_offset_x";
@@ -93,7 +93,7 @@ namespace Spartan
         SetProperty(MaterialProperty::ColorG,              1.0f);
         SetProperty(MaterialProperty::ColorB,              1.0f);
         SetProperty(MaterialProperty::ColorA,              1.0f);
-        SetProperty(MaterialProperty::MultiplierRoughness, 1.0f);
+        SetProperty(MaterialProperty::Roughness, 1.0f);
         SetProperty(MaterialProperty::TextureTilingX,      1.0f);
         SetProperty(MaterialProperty::TextureTilingY,      1.0f);
         SetProperty(MaterialProperty::WorldSpaceHeight,    1.0f);
@@ -196,19 +196,19 @@ namespace Spartan
         float multiplier = texture != nullptr;
         if (texture_type == MaterialTexture::Roughness)
         {
-            SetProperty(MaterialProperty::MultiplierRoughness, multiplier);
+            SetProperty(MaterialProperty::Roughness, multiplier);
         }
         else if (texture_type == MaterialTexture::Metalness)
         {
-            SetProperty(MaterialProperty::MultiplierMetalness, multiplier);
+            SetProperty(MaterialProperty::Metalness, multiplier);
         }
         else if (texture_type == MaterialTexture::Normal)
         {
-            SetProperty(MaterialProperty::MultiplierNormal, multiplier);
+            SetProperty(MaterialProperty::Normal, multiplier);
         }
         else if (texture_type == MaterialTexture::Height)
         {
-            SetProperty(MaterialProperty::MultiplierHeight, multiplier);
+            SetProperty(MaterialProperty::Height, multiplier);
         }
     }
 
@@ -300,7 +300,7 @@ namespace Spartan
             }
 
             // Transparent objects are typically see-through (low roughness) so use the alpha as the roughness multiplier.
-            m_properties[static_cast<uint32_t>(MaterialProperty::MultiplierRoughness)] = value * 0.5f;
+            m_properties[static_cast<uint32_t>(MaterialProperty::Roughness)] = value * 0.5f;
         }
 
         if (property_type == MaterialProperty::Ior)
@@ -315,7 +315,7 @@ namespace Spartan
             property_type == MaterialProperty::Clearcoat_Roughness ||
             property_type == MaterialProperty::Sheen ||
             property_type == MaterialProperty::SheenTint ||
-            property_type == MaterialProperty::MultiplierSubsurfaceScattering ||
+            property_type == MaterialProperty::SubsurfaceScattering ||
             property_type == MaterialProperty::Ior)
         {
             SP_FIRE_EVENT(EventType::MaterialOnChange);
