@@ -35,8 +35,6 @@ struct sp_info
     #if SPARTAN_RUNTIME_SHARED == 1
         #ifdef SPARTAN_RUNTIME
         #define SP_CLASS __declspec(dllexport)
-    #else
-        #define SP_CLASS __declspec(dllimport)
     #endif
 #endif
 #elif defined(__clang__) || defined(__GNUC__) || defined(__GNUG__)
