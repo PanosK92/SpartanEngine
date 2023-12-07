@@ -226,8 +226,8 @@ namespace Spartan
                         if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
                         {
                             material->SetColor(Color::material_aluminum);
-                            material->SetProperty(MaterialProperty::MultiplierRoughness, 0.5f);
-                            material->SetProperty(MaterialProperty::MultiplierMetalness, 0.15f);
+                            material->SetProperty(MaterialProperty::Roughness, 0.5f);
+                            material->SetProperty(MaterialProperty::Metalness, 0.15f);
                             material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
                             material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f);
                         }
@@ -240,7 +240,7 @@ namespace Spartan
                             if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
                             {
                                 material->SetColor(Color::material_tire);
-                                material->SetProperty(MaterialProperty::MultiplierRoughness, 0.35f);
+                                material->SetProperty(MaterialProperty::Roughness, 0.35f);
                             }
                         }
 
@@ -249,7 +249,7 @@ namespace Spartan
                             if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
                             {
                                 material->SetColor(Color::material_tire);
-                                material->SetProperty(MaterialProperty::MultiplierRoughness, 0.35f);
+                                material->SetProperty(MaterialProperty::Roughness, 0.35f);
                             }
                         }
                     }
@@ -261,15 +261,15 @@ namespace Spartan
                     {
                         material->SetColor(Color::material_tire);
                         material->SetTexture(MaterialTexture::Roughness, nullptr);
-                        material->SetProperty(MaterialProperty::MultiplierRoughness, 0.8f);
-                        material->SetProperty(MaterialProperty::MultiplierMetalness, 0.0f);
+                        material->SetProperty(MaterialProperty::Roughness, 0.8f);
+                        material->SetProperty(MaterialProperty::Metalness, 0.0f);
                     }
 
                     if (Material* material = entity_car->GetDescendantByName("Interior_InteriorPlastic2_0")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetColor(Color::material_tire);
-                        material->SetProperty(MaterialProperty::MultiplierRoughness, 0.8f);
-                        material->SetProperty(MaterialProperty::MultiplierMetalness, 0.0f);
+                        material->SetProperty(MaterialProperty::Roughness, 0.8f);
+                        material->SetProperty(MaterialProperty::Metalness, 0.0f);
                     }
 
                 }
@@ -279,14 +279,14 @@ namespace Spartan
                     if (Material* material = entity_car->GetDescendantByName("CarBody_LampCovers_0")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetColor(Color::material_glass);
-                        material->SetProperty(MaterialProperty::MultiplierRoughness, 0.2f);
+                        material->SetProperty(MaterialProperty::Roughness, 0.2f);
                         material->SetTexture(MaterialTexture::Emission, material->GetTexture_PtrShared(MaterialTexture::Color));
                     }
 
                     // plastic covers
                     if (Material* material = entity_car->GetDescendantByName("Headlights_Trim2_0")->GetComponent<Renderable>()->GetMaterial())
                     {
-                        material->SetProperty(MaterialProperty::MultiplierRoughness, 0.35f);
+                        material->SetProperty(MaterialProperty::Roughness, 0.35f);
                         material->SetColor(Color::material_tire);
                     }
                 }
@@ -916,8 +916,8 @@ namespace Spartan
                         material->SetColor(Color(0.0f, 60.0f / 255.0f, 75.0f / 255.0f, 60.0f / 255.0f));
                         material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\water_normal.jpeg");
                         material->SetProperty(MaterialProperty::Ior,                 1.33f); // water
-                        material->SetProperty(MaterialProperty::MultiplierRoughness, 0.3f);  // just a bit of roughness to diffuse the sun a little
-                        material->SetProperty(MaterialProperty::MultiplierNormal,    0.8f);
+                        material->SetProperty(MaterialProperty::Roughness,           0.3f);  // just a bit of roughness to diffuse the sun a little
+                        material->SetProperty(MaterialProperty::Normal,              0.8f);
                         material->SetProperty(MaterialProperty::TextureTilingX,      250.0f);
                         material->SetProperty(MaterialProperty::TextureTilingY,      250.0f);
                         material->SetProperty(MaterialProperty::VertexAnimateWater,  1.0f);
@@ -954,7 +954,7 @@ namespace Spartan
                         Material* material = renderable->GetMaterial();
                         material->SetTexture(MaterialTexture::Color, "project\\models\\vegetation_tree_1\\leaf.png");
                         material->SetProperty(MaterialProperty::VertexAnimateWind, 1.0f);
-                        material->SetProperty(MaterialProperty::MultiplierSubsurfaceScattering, 1.0f);
+                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                         material->SetProperty(MaterialProperty::WorldSpaceHeight,  renderable->GetBoundingBoxMesh().GetSize().y);
                     }
                 }
@@ -979,7 +979,7 @@ namespace Spartan
                         material->SetProperty(MaterialProperty::ColorR, 1.0f);
                         material->SetProperty(MaterialProperty::ColorG, 1.0f);
                         material->SetProperty(MaterialProperty::ColorB, 1.0f);
-                        material->SetProperty(MaterialProperty::MultiplierSubsurfaceScattering, 1.0f);
+                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                         material->SetProperty(MaterialProperty::VertexAnimateWind, 1.0f);
                         material->SetProperty(MaterialProperty::WorldSpaceHeight,  renderable->GetBoundingBoxMesh().GetSize().y);
                     }

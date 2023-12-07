@@ -35,15 +35,13 @@ struct sp_info
     #if SPARTAN_RUNTIME_SHARED == 1
         #ifdef SPARTAN_RUNTIME
         #define SP_CLASS __declspec(dllexport)
+        #endif
     #endif
-#endif
 #elif defined(__clang__) || defined(__GNUC__) || defined(__GNUG__)
     #define SP_CLASS
     #if SPARTAN_RUNTIME_SHARED == 1
         #ifdef SPARTAN_RUNTIME
             #define SP_CLASS __attribute__((visibility("default")))
-        #else
-            #define SP_CLASS
         #endif
     #endif
 #else
