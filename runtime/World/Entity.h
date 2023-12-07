@@ -134,12 +134,12 @@ namespace Spartan
         //=========================================
 
         //= DIRECTIONS ===================
-        Math::Vector3 GetUp()       const;
-        Math::Vector3 GetDown()     const;
-        Math::Vector3 GetForward()  const;
+        Math::Vector3 GetUp() const;
+        Math::Vector3 GetDown() const;
+        Math::Vector3 GetForward() const;
         Math::Vector3 GetBackward() const;
-        Math::Vector3 GetRight()    const;
-        Math::Vector3 GetLeft()     const;
+        Math::Vector3 GetRight() const;
+        Math::Vector3 GetLeft() const;
         //================================
 
         //= DIRTY CHECKS =================================================================
@@ -147,7 +147,7 @@ namespace Spartan
         bool HasRotationChangedThisFrame() const { return m_rotation_changed_this_frame; }
         //================================================================================
 
-        //= HIERARCHY ======================================================================================
+        //= HIERARCHY =============================================================================
         void SetParent(Entity* new_parent);
         Entity* GetChildByIndex(uint32_t index);
         Entity* GetChildByName(const std::string& name);
@@ -157,18 +157,18 @@ namespace Spartan
         bool IsDescendantOf(Entity* transform) const;
         void GetDescendants(std::vector<Entity*>* descendants);
         Entity* GetDescendantByName(const std::string& name);
-        bool IsRoot()                          const { return m_parent == nullptr; }
-        bool HasParent()                       const { return m_parent != nullptr; }
-        bool HasChildren()                     const { return GetChildrenCount() > 0 ? true : false; }
-        uint32_t GetChildrenCount()            const { return static_cast<uint32_t>(m_children.size()); }
-        Entity* GetRoot()                            { return HasParent() ? GetParent()->GetRoot() : this; }
-        Entity* GetParent()                    const { return m_parent; }
-        std::vector<Entity*>& GetChildren()          { return m_children; }
-        //==================================================================================================
+        bool IsRoot() const                 { return m_parent == nullptr; }
+        bool HasParent() const              { return m_parent != nullptr; }
+        bool HasChildren() const            { return GetChildrenCount() > 0 ? true : false; }
+        uint32_t GetChildrenCount() const   { return static_cast<uint32_t>(m_children.size()); }
+        Entity* GetRoot()                   { return HasParent() ? GetParent()->GetRoot() : this; }
+        Entity* GetParent() const           { return m_parent; }
+        std::vector<Entity*>& GetChildren() { return m_children; }
+        //=========================================================================================
 
-        const Math::Matrix& GetMatrix()              const { return m_matrix; }
-        const Math::Matrix& GetLocalMatrix()         const { return m_matrix_local; }
-        const Math::Matrix& GetMatrixPrevious()      const { return m_matrix_previous; }
+        const Math::Matrix& GetMatrix() const              { return m_matrix; }
+        const Math::Matrix& GetLocalMatrix() const         { return m_matrix_local; }
+        const Math::Matrix& GetMatrixPrevious() const      { return m_matrix_previous; }
         void SetMatrixPrevious(const Math::Matrix& matrix) { m_matrix_previous = matrix; }
 
     private:
@@ -195,6 +195,7 @@ namespace Spartan
         // misc
         bool m_position_changed_this_frame = false;
         bool m_rotation_changed_this_frame = false;
-        std::recursive_mutex m_child_mutex;
+        std::mutex m_mutex_child;
+        std::mutex m_mutex_parent;
     };
 }

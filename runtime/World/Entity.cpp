@@ -510,6 +510,8 @@ namespace Spartan
 
     void Entity::SetParent(Entity* new_parent)
     {
+        lock_guard lock(m_mutex_parent);
+
         // early exit if the parent is this transform (which is invalid)
         if (new_parent)
         {
@@ -564,7 +566,7 @@ namespace Spartan
         if (child->GetObjectId() == GetObjectId())
             return;
 
-        lock_guard lock(m_child_mutex);
+        lock_guard lock(m_mutex_child);
 
         // if this is not already a child, add it
         if (!(find(m_children.begin(), m_children.end(), child) != m_children.end()))
@@ -581,7 +583,7 @@ namespace Spartan
         if (child->GetObjectId() == GetObjectId())
             return;
 
-        lock_guard lock(m_child_mutex);
+        lock_guard lock(m_mutex_child);
 
         // remove the child
         m_children.erase(remove_if(m_children.begin(), m_children.end(), [child](Entity* vec_transform) { return vec_transform->GetObjectId() == child->GetObjectId(); }), m_children.end());
@@ -592,6 +594,8 @@ namespace Spartan
 
     void Entity::SetParent_Internal(Entity* new_parent)
     {
+        lock_guard lock(m_mutex_parent);
+
         // ensure that parent is not this transform
         if (new_parent)
         {
@@ -613,7 +617,7 @@ namespace Spartan
     // this is a recursive function, the children will also find their own children and so on
     void Entity::AcquireChildren()
     {
-        lock_guard lock(m_child_mutex);
+        lock_guard lock(m_mutex_child);
         m_children.clear();
         m_children.shrink_to_fit();
 
