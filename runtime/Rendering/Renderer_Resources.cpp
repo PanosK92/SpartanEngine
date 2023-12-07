@@ -92,7 +92,7 @@ namespace Spartan
         structured_buffer(Renderer_StructuredBuffer::Spd) = make_shared<RHI_StructuredBuffer>(stride, element_count, "spd_counter");
 
         stride        = static_cast<uint32_t>(sizeof(Sb_MaterialProperties)) * 1024;
-        element_count = 2 * resources_frame_lifetime; // car default world requires that 2, possibly because it does some material updates
+        element_count = 3 * resources_frame_lifetime; // car default world requires that 2, possibly because it does some material updates
         structured_buffer(Renderer_StructuredBuffer::Material) = make_shared<RHI_StructuredBuffer>(stride, element_count, "material_array");
     }
 
