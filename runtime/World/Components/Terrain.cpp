@@ -518,7 +518,8 @@ namespace Spartan
 
     void Terrain::UpdateFromMesh(const shared_ptr<Mesh> mesh) const
     {
-        if (shared_ptr<Renderable> renderable = m_entity_ptr->GetComponent<Renderable>())
+        // A renderable is needed, so add it, if it's already there it will just be returned
+        if (shared_ptr<Renderable> renderable = m_entity_ptr->AddComponent<Renderable>())
         {
             renderable->SetGeometry(
                 mesh.get(),
@@ -528,10 +529,6 @@ namespace Spartan
                 0,                     // vertex offset
                 mesh->GetVertexCount() // vertex count
             );
-        }
-        else
-        {
-            SP_LOG_ERROR("Failed to update, there is no Renderable component");
         }
     }
 

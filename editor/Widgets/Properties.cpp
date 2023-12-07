@@ -1118,13 +1118,21 @@ void Properties::ComponentContextMenu_Add() const
     {
         if (auto entity = m_inspected_entity.lock())
         {
-            // CAMERA
             if (ImGui::MenuItem("Camera"))
             {
                 entity->AddComponent<Camera>();
             }
 
-            // LIGHT
+            if (ImGui::MenuItem("Renderable"))
+            {
+                entity->AddComponent<Renderable>();
+            }
+
+            if (ImGui::MenuItem("Terrain"))
+            {
+                entity->AddComponent<Terrain>();
+            }
+
             if (ImGui::BeginMenu("Light"))
             {
                 if (ImGui::MenuItem("Directional"))
@@ -1143,7 +1151,6 @@ void Properties::ComponentContextMenu_Add() const
                 ImGui::EndMenu();
             }
 
-            // PHYSICS
             if (ImGui::BeginMenu("Physics"))
             {
                 if (ImGui::MenuItem("Physics Body"))
@@ -1158,7 +1165,6 @@ void Properties::ComponentContextMenu_Add() const
                 ImGui::EndMenu();
             }
 
-            // AUDIO
             if (ImGui::BeginMenu("Audio"))
             {
                 if (ImGui::MenuItem("Audio Source"))
@@ -1173,13 +1179,6 @@ void Properties::ComponentContextMenu_Add() const
                 ImGui::EndMenu();
             }
 
-            // TERRAIN
-            if (ImGui::MenuItem("Terrain"))
-            {
-                entity->AddComponent<Terrain>();
-            }
-
-            // PROBE
             if (ImGui::BeginMenu("Probe"))
             {
                 if (ImGui::MenuItem("Reflection Probe"))
