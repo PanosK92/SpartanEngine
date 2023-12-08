@@ -37,8 +37,9 @@ namespace Spartan
 
     enum class BoundingBoxType
     {
-        Mesh,     // the bounding box of the mesh
-        Instances // the bounding box of all the instances combined
+        Mesh,                // the bounding box of the mesh
+        Transformed,         // the transformed bounding box of the mesh
+        TransformedInstances // the transformed bounding box of all the instances
     };
 
     class SP_CLASS Renderable : public Component
@@ -62,11 +63,11 @@ namespace Spartan
         void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
 
         // properties
-        uint32_t GetIndexOffset()  const { return m_geometry_index_offset; }
-        uint32_t GetIndexCount()   const { return m_geometry_index_count; }
+        uint32_t GetIndexOffset() const  { return m_geometry_index_offset; }
+        uint32_t GetIndexCount() const   { return m_geometry_index_count; }
         uint32_t GetVertexOffset() const { return m_geometry_vertex_offset; }
-        uint32_t GetVertexCount()  const { return m_geometry_vertex_count; }
-        Mesh* GetMesh()            const { return m_mesh; }
+        uint32_t GetVertexCount() const  { return m_geometry_vertex_count; }
+        Mesh* GetMesh() const            { return m_mesh; }
 
         // bounding box
         const Math::BoundingBox& GetBoundingBox(const BoundingBoxType type);
@@ -80,8 +81,8 @@ namespace Spartan
 
         void SetDefaultMaterial();
         std::string GetMaterialName() const;
-        Material* GetMaterial()       const { return m_material; }
-        auto HasMaterial()            const { return m_material != nullptr; }
+        Material* GetMaterial() const { return m_material; }
+        auto HasMaterial() const      { return m_material != nullptr; }
         //===============================================================================
 
         // shadows
@@ -103,7 +104,8 @@ namespace Spartan
         Mesh* m_mesh                      = nullptr;
         bool m_bounding_box_dirty         = true;
         Math::BoundingBox m_bounding_box_mesh;
-        Math::BoundingBox m_bounding_box_instance;
+        Math::BoundingBox m_bounding_box_transformed;
+        Math::BoundingBox m_bounding_box_transformed_instances;
 
         // material
         bool m_material_default = false;
@@ -114,7 +116,7 @@ namespace Spartan
         std::shared_ptr<RHI_VertexBuffer> m_instance_buffer;
 
         // misc
-        Math::Matrix m_last_transform = Math::Matrix::Identity;
-        bool m_cast_shadows = true;
+        Math::Matrix m_transform_previous = Math::Matrix::Identity;
+        bool m_cast_shadows               = true;
     };
 }

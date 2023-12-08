@@ -914,13 +914,13 @@ namespace Spartan
                         shared_ptr<Material> material = make_shared<Material>();
                         material->SetObjectName("material_water");
                         material->SetColor(Color(0.0f, 60.0f / 255.0f, 75.0f / 255.0f, 60.0f / 255.0f));
-                        material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\water_normal.jpeg");
-                        material->SetProperty(MaterialProperty::Ior,                 1.33f); // water
-                        material->SetProperty(MaterialProperty::Roughness,           0.3f);  // just a bit of roughness to diffuse the sun a little
-                        material->SetProperty(MaterialProperty::Normal,              0.8f);
-                        material->SetProperty(MaterialProperty::TextureTilingX,      250.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingY,      250.0f);
-                        material->SetProperty(MaterialProperty::VertexAnimateWater,  1.0f);
+                        material->SetTexture(MaterialTexture::Normal,               "project\\terrain\\water_normal.jpeg");
+                        material->SetProperty(MaterialProperty::Ior,                1.33f); // water
+                        material->SetProperty(MaterialProperty::Roughness,          0.3f);  // just a bit of roughness to diffuse the sun a little
+                        material->SetProperty(MaterialProperty::Normal,             0.8f);
+                        material->SetProperty(MaterialProperty::TextureTilingX,     250.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingY,     250.0f);
+                        material->SetProperty(MaterialProperty::VertexAnimateWater, 1.0f);
 
                         // create a file path for this material (required for the material to be able to be cached by the resource cache)
                         const string file_path = "project\\terrain\\water_material" + string(EXTENSION_MATERIAL);
@@ -936,6 +936,7 @@ namespace Spartan
                     Entity* entity = tree->GetRootEntity();
                     entity->SetObjectName("tree_1");
                     entity->SetScale(Vector3(0.01f, 0.01f, 0.01f));
+                    entity->SetParent(m_default_terrain.get());
 
                     if (Entity* bark = entity->GetDescendantByName("Mobile_Tree_1_1"))
                     {
@@ -955,7 +956,7 @@ namespace Spartan
                         material->SetTexture(MaterialTexture::Color, "project\\models\\vegetation_tree_1\\leaf.png");
                         material->SetProperty(MaterialProperty::VertexAnimateWind, 1.0f);
                         material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
-                        material->SetProperty(MaterialProperty::WorldSpaceHeight,  renderable->GetBoundingBox(BoundingBoxType::Mesh).GetSize().y);
+                        material->SetProperty(MaterialProperty::WorldSpaceHeight,  renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
                     }
                 }
 
@@ -965,6 +966,7 @@ namespace Spartan
                     Entity* entity = plant->GetRootEntity();
                     entity->SetObjectName("plant_1");
                     entity->SetScale(Vector3(1.0f, 1.0f, 1.0f));
+                    entity->SetParent(m_default_terrain.get());
 
                     if (Entity* child = entity->GetDescendantByName("Plane.010"))
                     {
@@ -980,8 +982,8 @@ namespace Spartan
                         material->SetProperty(MaterialProperty::ColorG, 1.0f);
                         material->SetProperty(MaterialProperty::ColorB, 1.0f);
                         material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
-                        material->SetProperty(MaterialProperty::VertexAnimateWind, 1.0f);
-                        material->SetProperty(MaterialProperty::WorldSpaceHeight,  renderable->GetBoundingBox(BoundingBoxType::Mesh).GetSize().y);
+                        material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
+                        material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
                     }
                 }
 

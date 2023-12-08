@@ -337,7 +337,7 @@ namespace Spartan
             {
                 if (auto renderable = entity->GetComponent<Renderable>())
                 {
-                    DrawBox(renderable->GetBoundingBox(BoundingBoxType::Mesh), color);
+                    DrawBox(renderable->GetBoundingBox(BoundingBoxType::Transformed), color);
                 }
             }
 
@@ -345,7 +345,7 @@ namespace Spartan
             {
                 if (auto renderable = entity->GetComponent<Renderable>())
                 {
-                    DrawBox(renderable->GetBoundingBox(BoundingBoxType::Instances), color);
+                    DrawBox(renderable->GetBoundingBox(BoundingBoxType::TransformedInstances), color);
                 }
             }
 
@@ -353,7 +353,7 @@ namespace Spartan
             {
                 if (auto renderable = entity->GetComponent<Renderable>())
                 {
-                    DrawBox(renderable->GetBoundingBox(BoundingBoxType::Mesh), color);
+                    DrawBox(renderable->GetBoundingBox(BoundingBoxType::Transformed), color);
                 }
             }
 
@@ -361,7 +361,7 @@ namespace Spartan
             {
                 if (auto renderable = entity->GetComponent<Renderable>())
                 {
-                    DrawBox(renderable->GetBoundingBox(BoundingBoxType::Instances), color);
+                    DrawBox(renderable->GetBoundingBox(BoundingBoxType::TransformedInstances), color);
                 }
             }
         }
