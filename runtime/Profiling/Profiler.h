@@ -87,9 +87,6 @@ namespace Spartan
         static uint32_t m_rhi_pipeline_barriers;
         static uint32_t m_rhi_timeblock_count;
 
-        // metrics - renderer
-        static uint32_t m_renderer_meshes_rendered;
-
         // metrics - time
         static float m_time_frame_avg ;
         static float m_time_frame_min ;
@@ -118,7 +115,6 @@ namespace Spartan
         {
             m_rhi_draw                       = 0;
             m_rhi_dispatch                   = 0;
-            m_renderer_meshes_rendered       = 0;
             m_rhi_bindings_buffer_index      = 0;
             m_rhi_bindings_buffer_vertex     = 0;
             m_rhi_bindings_buffer_constant   = 0;

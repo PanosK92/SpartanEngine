@@ -56,9 +56,6 @@ namespace Spartan
     uint32_t Profiler::m_rhi_pipeline_barriers          = 0;
     uint32_t Profiler::m_rhi_timeblock_count            = 0;
 
-    // metrics - renderer
-    uint32_t Profiler::m_renderer_meshes_rendered = 0;
-
     // metrics - time
     float Profiler::m_time_frame_avg  = 0.0f;
     float Profiler::m_time_frame_min  = numeric_limits<float>::max();
@@ -77,7 +74,7 @@ namespace Spartan
     uint32_t Profiler::m_descriptor_set_count    = 0;
     uint32_t Profiler::m_descriptor_set_capacity = 0;
 
-    ProfilerGranularity Profiler::m_granularity = ProfilerGranularity::Light;
+    ProfilerGranularity Profiler::m_granularity = ProfilerGranularity::Full;
 
     namespace
     {
@@ -428,17 +425,17 @@ namespace Spartan
     {
         std::stringstream ss;
 
-        // Clamp to a certain range to avoid padding and alignment headaches
+        // clamp to a certain range to avoid padding and alignment headaches
         value = Math::Helper::Clamp(value, 0.0f, 99.99f);
 
-        // Set fixed-point notation with 2 decimal places
+        // set fixed-point notation with 2 decimal places
         ss << std::fixed << std::setprecision(2);
 
-        // Output the integer part with the fill character '0' and the minimum width of 2 characters
+        // output the integer part with the fill character '0' and the minimum width of 2 characters
         int integer_part = static_cast<int>(value);
         ss << std::setfill('0') << std::setw(2) << integer_part;
 
-        // Output the decimal point and decimal part
+        // output the decimal point and decimal part
         float decimal_part = value - integer_part;
         ss << "." << std::setfill('0') << std::setw(2) << static_cast<int>(round(decimal_part * 100));
 
@@ -460,10 +457,10 @@ namespace Spartan
         const uint32_t pipeline_count = RHI_Device::GetPipelineCount();
 
         // get the graphics driver vendor
-        string api_vendor_name = "AMD";
-        if (RHI_Device::GetPrimaryPhysicalDevice()->IsNvidia())
+        string api_vendor_name = "NVIDIA";
+        if (RHI_Device::GetPrimaryPhysicalDevice()->IsAmd())
         {
-            api_vendor_name = "NVIDIA";
+            api_vendor_name = "AMD";
         }
 
         // clear
@@ -471,7 +468,7 @@ namespace Spartan
         oss_metrics.clear();
 
         // set fixed-point notation with 2 decimal places
-        oss_metrics << std::fixed << std::setprecision(2);
+        oss_metrics << fixed << setprecision(2);
 
         // overview
         oss_metrics
@@ -490,7 +487,7 @@ namespace Spartan
         oss_metrics << endl << "GPU" << endl
             << "Name:\t\t\t"   << gpu_name << endl
             << "Memory:\t"     << gpu_memory_used << "/" << gpu_memory_available << " MB" << endl
-            << "API:\t\t\t\t"  << RHI_Context::api_type_str << "\t\t" << gpu_api << endl
+            << "API:\t\t\t\t"  << RHI_Context::api_type_str << "\t" << gpu_api << endl
             << "Driver:\t\t"   << RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName() << "\t\t" << gpu_driver << endl;
 
         // display
@@ -506,24 +503,23 @@ namespace Spartan
 
         // api calls
         oss_metrics << "\nAPI calls" << endl;
-        if (Profiler::m_granularity == ProfilerGranularity::Full)
-        {
-            oss_metrics  << "Draw:\t\t\t\t\t\t\t\t\t" << m_rhi_draw << endl;
-        }
+            if (m_granularity == ProfilerGranularity::Full)
+            {
+                oss_metrics << "Draw:\t\t\t\t\t\t\t\t\t" << m_rhi_draw << endl;
+            }
         oss_metrics
             << "Dispatch:\t\t\t\t\t\t\t"     << m_rhi_dispatch                << endl
             << "Index buffer bindings:\t\t"  << m_rhi_bindings_buffer_index   << endl
-            << "Vertex buffer bindings:\t\t" << m_rhi_bindings_buffer_vertex  << endl
+            << "Vertex buffer bindings:\t"   << m_rhi_bindings_buffer_vertex  << endl
             << "Descriptor set bindings:\t"  << m_rhi_bindings_descriptor_set << endl
             << "Pipeline bindings:\t\t\t\t"  << m_rhi_bindings_pipeline       << endl
             << "Pipeline barriers:\t\t\t\t"  << m_rhi_pipeline_barriers       << endl;
 
         // resources
         oss_metrics << "\nResources\n"
-            << "Meshes rendered:\t\t\t\t"   << m_renderer_meshes_rendered << endl
-            << "Textures:\t\t\t\t\t\t\t"    << texture_count              << endl
-            << "Materials:\t\t\t\t\t\t\t"   << material_count             << endl
-            << "Pipelines:\t\t\t\t\t\t\t"   << pipeline_count             << endl
+            << "Textures:\t\t\t\t\t\t\t"    << texture_count          << endl
+            << "Materials:\t\t\t\t\t\t\t"   << material_count         << endl
+            << "Pipelines:\t\t\t\t\t\t\t"   << pipeline_count         << endl
             << "Descriptor set capacity:\t" << m_descriptor_set_count << "/" << m_descriptor_set_capacity;
 
         // draw at the top-left of the screen
