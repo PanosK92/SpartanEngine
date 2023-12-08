@@ -648,7 +648,6 @@ namespace Spartan
                 );
 
                 is_first_pass = false;
-                Profiler::m_renderer_meshes_rendered++;
             }
         }
 
