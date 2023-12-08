@@ -35,6 +35,12 @@ namespace Spartan
     class Material;
     class RHI_VertexBuffer;
 
+    enum class BoundingBoxType
+    {
+        Mesh,     // the bounding box of the mesh
+        Instances // the bounding box of all the instances combined
+    };
+
     class SP_CLASS Renderable : public Component
     {
     public:
@@ -63,8 +69,7 @@ namespace Spartan
         Mesh* GetMesh()            const { return m_mesh; }
 
         // bounding box
-        const Math::BoundingBox& GetBoundingBoxInstance();
-        const Math::BoundingBox GetBoundingBoxMesh();
+        const Math::BoundingBox& GetBoundingBox(const BoundingBoxType type);
 
         //= MATERIAL ====================================================================
         // Sets a material from memory (adds it to the resource cache by default)
@@ -98,7 +103,7 @@ namespace Spartan
         Mesh* m_mesh                      = nullptr;
         bool m_bounding_box_dirty         = true;
         Math::BoundingBox m_bounding_box_mesh;
-        Math::BoundingBox m_bounding_box;
+        Math::BoundingBox m_bounding_box_instance;
 
         // material
         bool m_material_default = false;

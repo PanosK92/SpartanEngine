@@ -132,7 +132,7 @@ namespace Spartan
 
     bool ReflectionProbe::IsInViewFrustum(shared_ptr<Renderable> renderable, uint32_t index) const
     {
-        const auto box     = renderable->GetBoundingBoxInstance();
+        const auto box     = renderable->GetBoundingBox(BoundingBoxType::Instances);
         const auto center  = box.GetCenter();
         const auto extents = box.GetExtents();
 
