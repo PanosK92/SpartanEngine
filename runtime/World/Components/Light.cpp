@@ -412,7 +412,7 @@ namespace Spartan
 
     bool Light::IsInViewFrustum(shared_ptr<Renderable> renderable, uint32_t index) const
     {
-        const BoundingBox box = renderable->GetBoundingBox(BoundingBoxType::Instances);
+        const BoundingBox box = renderable->GetBoundingBox(BoundingBoxType::TransformedInstances);
         const Vector3 center  = box.GetCenter();
         const Vector3 extents = box.GetExtents();
 

@@ -23,10 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const float g_ssr_max_distance        = 100.0f;
-static const uint g_ssr_max_steps            = 16;
-static const uint g_ssr_binary_search_steps  = 12;
-static const float g_ssr_thickness           = 0.01f;
+static const float g_ssr_max_distance        = 200.0f;
+static const uint g_ssr_max_steps            = 32;
+static const uint g_ssr_binary_search_steps  = 25;
+static const float g_ssr_thickness           = 0.001f;
 static const float g_ssr_roughness_threshold = 0.8f;
 
 float compute_alpha(uint2 screen_pos, float2 hit_uv, float v_dot_r)
@@ -160,3 +160,4 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = float4(color, alpha);
 }
+

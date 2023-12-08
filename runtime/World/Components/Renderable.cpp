@@ -22,11 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============================
 #include "pch.h"
 #include "Renderable.h"
+#include "../Entity.h"
 #include "../Rendering/Renderer.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
-#include "../Entity.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -150,30 +150,48 @@ namespace Spartan
 
 	const BoundingBox& Renderable::GetBoundingBox(const BoundingBoxType type)
 	{
-        if (type == BoundingBoxType::Mesh)
+        // compute if dirty
+        if (m_bounding_box_dirty || m_transform_previous != GetEntity()->GetMatrix())
         {
-            return m_bounding_box_mesh.Transform(GetEntity()->GetMatrix());
-        }
-        else if (type == BoundingBoxType::Instances)
-        {
-            // either the bounding box is dirty, or the transform has changed, or the instances have changed
-            if (m_bounding_box_dirty || m_last_transform != GetEntity()->GetMatrix())
+            // transformed
             {
-                m_bounding_box_instance = m_bounding_box_mesh.Transform(GetEntity()->GetMatrix());
+                m_bounding_box_transformed = m_bounding_box_mesh.Transform(GetEntity()->GetMatrix());
+            }
+
+            // transformed instances
+            {
+                // start with the default transformed bounding box
+                m_bounding_box_transformed_instances = m_bounding_box_transformed;
 
                 // loop through each instance and expand the bounding box
                 for (const Matrix& instance_transform : m_instances)
                 {
                     // the instance transforms are transposed (see terrain.cpp), so we need to transpose them back
-                    Matrix transposed = instance_transform.Transposed();
-                    m_bounding_box_instance.Merge(m_bounding_box_mesh.Transform(Matrix::CreateTranslation(transposed.GetTranslation())));
+                    Matrix transform                  = instance_transform.Transposed();
+                    Matrix translation                = Matrix::CreateTranslation(transform.GetTranslation());
+                    BoundingBox bounding_box_instance = m_bounding_box_mesh.Transform(translation);
+                    m_bounding_box_transformed_instances.Merge(bounding_box_instance);
                 }
-
-                m_last_transform = GetEntity()->GetMatrix();
-                m_bounding_box_dirty = false;
             }
 
-            return m_bounding_box_instance;
+            m_transform_previous = GetEntity()->GetMatrix();
+            m_bounding_box_dirty = false;
+        }
+
+        // return
+        if (type == BoundingBoxType::Mesh)
+        {
+            return m_bounding_box_mesh;
+        }
+        else if (type == BoundingBoxType::Transformed)
+        {
+            
+            return m_bounding_box_transformed;
+        }
+        else if (type == BoundingBoxType::TransformedInstances)
+        {
+          
+            return m_bounding_box_transformed_instances;
         }
 
         return BoundingBox::Undefined;
@@ -217,13 +235,13 @@ namespace Spartan
         // create material
         shared_ptr<Material> material = make_shared<Material>();
         material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard" + EXTENSION_MATERIAL); // Set resource file path so it can be used by the resource cache
-        material->SetProperty(MaterialProperty::CanBeEdited, 0.0f);
+        material->SetProperty(MaterialProperty::CanBeEdited,    0.0f);
         material->SetProperty(MaterialProperty::TextureTilingX, 10.0f);
         material->SetProperty(MaterialProperty::TextureTilingY, 10.0f);
-        material->SetProperty(MaterialProperty::ColorR, 1.0f);
-        material->SetProperty(MaterialProperty::ColorG, 1.0f);
-        material->SetProperty(MaterialProperty::ColorB, 1.0f);
-        material->SetProperty(MaterialProperty::ColorA, 1.0f);
+        material->SetProperty(MaterialProperty::ColorR,         1.0f);
+        material->SetProperty(MaterialProperty::ColorG,         1.0f);
+        material->SetProperty(MaterialProperty::ColorB,         1.0f);
+        material->SetProperty(MaterialProperty::ColorA,         1.0f);
 
         // set default texture
         material->SetTexture(MaterialTexture::Color, Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard));
