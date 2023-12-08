@@ -998,7 +998,7 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(-27.405f, 2.0f, -0.07f);
         Vector3 camera_rotation = Vector3(-8.5f, 90.0f, 0.0f);
-        create_default_world_common(camera_position, camera_rotation, LightIntensity::black_hole, "project\\music\\jake_chudnow_olive.mp3");
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::black_hole, "project\\music\\jake_chudnow_olive.mp3", false, false);
 
         // point light
         {
@@ -1033,10 +1033,23 @@ namespace Spartan
             RemoveEntity(entity->GetDescendantByName("decals_2nd_floor"));
             RemoveEntity(entity->GetDescendantByName("decals_3rd_floor"));
 
+            // enable physics for all meshes
+            vector<Entity*> entities;
+            entity->GetDescendants(&entities);
+            for (Entity* entity : entities)
+            {
+                if (entity->GetComponent<Renderable>() != nullptr)
+                {
+                    PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                    physics_body->SetShapeType(PhysicsShape::Mesh);
+                    physics_body->SetMass(0.0f); // static
+                }
+            }
+
             // 3d model - sponza curtains
             if (m_default_model_sponza_curtains = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
             {
-                Entity* entity = m_default_model_sponza_curtains->GetRootEntity();
+                entity = m_default_model_sponza_curtains->GetRootEntity();
                 entity->SetObjectName("sponza_curtains");
                 entity->SetPosition(Vector3(0.0f, 0.15f, 0.0f));
                 entity->SetScale(Vector3(2.0f, 2.0f, 2.0f)); // I actually walked in Sponza, it's that big
