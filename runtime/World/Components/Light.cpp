@@ -41,9 +41,9 @@ namespace Spartan
 {
     namespace
     {
-        float orthographic_depth  = 512.0; // depth of the near cascade
-        float orthographic_extent = 30.0f; // size of the near cascade
-        float far_cascade_scale   = 8.0f;  // size of the far cascade compared to the near one
+        float orthographic_depth  = 1024.0; // depth of all cascades
+        float orthographic_extent = 20.0f;  // size of the near cascade
+        float far_cascade_scale   = 5.0f;   // size of the far cascade compared to the near one
     }
 
     Light::Light(weak_ptr<Entity> entity) : Component(entity)

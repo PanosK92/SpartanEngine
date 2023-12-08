@@ -175,6 +175,8 @@ namespace Spartan
 
             return m_bounding_box_instance;
         }
+
+        return BoundingBox::Undefined;
 	}
 
 	shared_ptr<Material> Renderable::SetMaterial(const shared_ptr<Material>& material)

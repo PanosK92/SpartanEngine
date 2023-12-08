@@ -149,7 +149,7 @@ namespace Spartan
         if (!create_only_anisotropic)
         {
             // arguments:                                                            min,                 max,                 mip,                 address mode,                            comparison,                 anisotropy, comparison enabled
-            sampler(Renderer_Sampler::Compare_depth)      = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Filter::Nearest, RHI_Sampler_Address_Mode::ClampToEdge,   RHI_Comparison_Function::Greater, 0.0f, true); // reverse-z
+            sampler(Renderer_Sampler::Compare_depth)      = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Filter::Nearest, RHI_Sampler_Address_Mode::ClampToBorder, RHI_Comparison_Function::Greater, 0.0f, true); // reverse-z
             sampler(Renderer_Sampler::Point_clamp_edge)   = make_shared<RHI_Sampler>(RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Address_Mode::ClampToEdge,   RHI_Comparison_Function::Always);
             sampler(Renderer_Sampler::Point_clamp_border) = make_shared<RHI_Sampler>(RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Address_Mode::ClampToBorder, RHI_Comparison_Function::Always);
             sampler(Renderer_Sampler::Point_wrap)         = make_shared<RHI_Sampler>(RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Address_Mode::Wrap,          RHI_Comparison_Function::Always);
