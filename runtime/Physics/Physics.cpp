@@ -49,69 +49,68 @@ namespace Spartan
 {
     namespace
     { 
-        btBroadphaseInterface* m_broadphase                        = nullptr;
-        btCollisionDispatcher* m_collision_dispatcher              = nullptr;
-        btSequentialImpulseConstraintSolver* m_constraint_solver   = nullptr;
-        btDefaultCollisionConfiguration* m_collision_configuration = nullptr;
-        btDiscreteDynamicsWorld* m_world                           = nullptr;
-        btSoftBodyWorldInfo* m_world_info                          = nullptr;
-        PhysicsDebugDraw* m_debug_draw                             = nullptr;
+        btBroadphaseInterface* broadphase                        = nullptr;
+        btCollisionDispatcher* collision_dispatcher              = nullptr;
+        btSequentialImpulseConstraintSolver* constraint_solver   = nullptr;
+        btDefaultCollisionConfiguration* collision_configuration = nullptr;
+        btDiscreteDynamicsWorld* world                           = nullptr;
+        btSoftBodyWorldInfo* world_info                          = nullptr;
+        PhysicsDebugDraw* debug_draw                             = nullptr;
 
         // world properties
-        int m_max_sub_steps        = 1;
-        int m_max_solve_iterations = 256;
-        float m_internal_hz        = 200.0f; // almost mandatory for advanced car physics
-        Math::Vector3 m_gravity    = Math::Vector3(0.0f, -9.81f, 0.0f);
+        int max_sub_steps        = 1;
+        int max_solve_iterations = 256;
+        float internal_hz        = 200.0f; // almost mandatory for advanced car physics
+        Math::Vector3 gravity    = Math::Vector3(0.0f, -9.81f, 0.0f);
 
         // picking
-        btRigidBody* m_picked_body                = nullptr;
-        btTypedConstraint* m_picked_constraint    = nullptr;
-        int m_activation_state                    = 0;
-        Math::Vector3 m_hit_position              = Math::Vector3::Zero;
-        Math::Vector3 m_picking_position_previous = Math::Vector3::Zero;
-        float m_picking_distance_previous         = 0.0f;
+        btRigidBody* picked_body                = nullptr;
+        btTypedConstraint* picked_constraint    = nullptr;
+        int activation_state                    = 0;
+        Math::Vector3 hit_position              = Math::Vector3::Zero;
+        Math::Vector3 picking_position_previous = Math::Vector3::Zero;
+        float picking_distance_previous         = 0.0f;
 
-        const bool m_soft_body_support = true;
+        const bool soft_body_support = true;
     }
 
     void Physics::Initialize()
     {
-        m_broadphase        = new btDbvtBroadphase();
-        m_constraint_solver = new btSequentialImpulseConstraintSolver();
+        broadphase        = new btDbvtBroadphase();
+        constraint_solver = new btSequentialImpulseConstraintSolver();
 
-        if (m_soft_body_support)
+        if (soft_body_support)
         {
             // create
-            m_collision_configuration = new btSoftBodyRigidBodyCollisionConfiguration();
-            m_collision_dispatcher    = new btCollisionDispatcher(m_collision_configuration);
-            m_world                   = new btSoftRigidDynamicsWorld(m_collision_dispatcher, m_broadphase, m_constraint_solver, m_collision_configuration);
+            collision_configuration = new btSoftBodyRigidBodyCollisionConfiguration();
+            collision_dispatcher    = new btCollisionDispatcher(collision_configuration);
+            world                   = new btSoftRigidDynamicsWorld(collision_dispatcher, broadphase, constraint_solver, collision_configuration);
 
             // setup         
-            m_world_info = new btSoftBodyWorldInfo();
-            m_world_info->m_sparsesdf.Initialize();
-            m_world->getDispatchInfo().m_enableSPU = true;
-            m_world_info->m_dispatcher             = m_collision_dispatcher;
-            m_world_info->m_broadphase             = m_broadphase;
-            m_world_info->air_density              = (btScalar)1.2;
-            m_world_info->water_density            = 0;
-            m_world_info->water_offset             = 0;
-            m_world_info->water_normal             = btVector3(0, 0, 0);
-            m_world_info->m_gravity                = ToBtVector3(m_gravity);
-
+            world_info = new btSoftBodyWorldInfo();
+            world_info->m_sparsesdf.Initialize();
+            world->getDispatchInfo().m_enableSPU = true;
+            world_info->m_dispatcher             = collision_dispatcher;
+            world_info->m_broadphase             = broadphase;
+            world_info->air_density              = (btScalar)1.2;
+            world_info->water_density            = 0;
+            world_info->water_offset             = 0;
+            world_info->water_normal             = btVector3(0, 0, 0);
+            world_info->m_gravity                = ToBtVector3(gravity);
         }
         else
         {
             // create
-            m_collision_configuration = new btDefaultCollisionConfiguration();
-            m_collision_dispatcher    = new btCollisionDispatcher(m_collision_configuration);
-            m_world                   = new btDiscreteDynamicsWorld(m_collision_dispatcher, m_broadphase, m_constraint_solver, m_collision_configuration);
+            collision_configuration = new btDefaultCollisionConfiguration();
+            collision_dispatcher    = new btCollisionDispatcher(collision_configuration);
+            world                   = new btDiscreteDynamicsWorld(collision_dispatcher, broadphase, constraint_solver, collision_configuration);
         }
 
         // setup
-        m_world->setGravity(ToBtVector3(m_gravity));
-        m_world->getDispatchInfo().m_useContinuous = true;
-        m_world->getSolverInfo().m_splitImpulse    = false;
-        m_world->getSolverInfo().m_numIterations   = m_max_solve_iterations;
+        world->setGravity(ToBtVector3(gravity));
+        world->getDispatchInfo().m_useContinuous = true;
+        world->getSolverInfo().m_splitImpulse    = false;
+        world->getSolverInfo().m_numIterations   = max_solve_iterations;
 
         // get version
         const string major = to_string(btGetVersion() / 100);
@@ -120,24 +119,24 @@ namespace Spartan
 
         // enabled debug drawing
         {
-            m_debug_draw = new PhysicsDebugDraw();
+            debug_draw = new PhysicsDebugDraw();
 
-            if (m_world)
+            if (world)
             {
-                m_world->setDebugDrawer(m_debug_draw);
+                world->setDebugDrawer(debug_draw);
             }
         }
     }
 
     void Physics::Shutdown()
     {
-        delete m_world;
-        delete m_constraint_solver;
-        delete m_collision_dispatcher;
-        delete m_collision_configuration;
-        delete m_broadphase;
-        delete m_world_info;
-        delete m_debug_draw;
+        delete world;
+        delete constraint_solver;
+        delete collision_dispatcher;
+        delete collision_configuration;
+        delete broadphase;
+        delete world_info;
+        delete debug_draw;
     }
 
     void Physics::Tick()
@@ -171,7 +170,7 @@ namespace Spartan
 
             // determine the internal time step and max sub-steps based on the internal frequency
             float real_world_elapsed_time = static_cast<float>(Timer::GetDeltaTimeSec());
-            float internal_time_step      = 1.0f / m_internal_hz;
+            float internal_time_step      = 1.0f / internal_hz;
             uint32_t max_substeps         = static_cast<uint32_t>(real_world_elapsed_time / internal_time_step);
 
             // if max_substeps is zero, it means the internal frequency is too high for the elapsed real-world time.
@@ -179,12 +178,12 @@ namespace Spartan
             max_substeps = max_substeps > 0 ? max_substeps : 1;
 
             // step the physics world
-            m_world->stepSimulation(real_world_elapsed_time, max_substeps, internal_time_step);
+            world->stepSimulation(real_world_elapsed_time, max_substeps, internal_time_step);
         }
 
         if (debug_draw)
         {
-            m_world->debugDrawWorld();
+            world->debugDrawWorld();
         }
     }
 
@@ -194,7 +193,7 @@ namespace Spartan
         btVector3 bt_end   = ToBtVector3(end);
 
         btCollisionWorld::AllHitsRayResultCallback ray_callback(bt_start, bt_end);
-        m_world->rayTest(bt_start, bt_end, ray_callback);
+        world->rayTest(bt_start, bt_end, ray_callback);
 
         vector<btRigidBody*> hit_bodies;
         if (ray_callback.hasHit())
@@ -217,7 +216,7 @@ namespace Spartan
         btVector3 bt_end   = ToBtVector3(end);
 
         btCollisionWorld::ClosestRayResultCallback ray_callback(bt_start, bt_end);
-        m_world->rayTest(bt_start, bt_end, ray_callback);
+        world->rayTest(bt_start, bt_end, ray_callback);
 
         if (ray_callback.hasHit())
         {
@@ -229,38 +228,38 @@ namespace Spartan
 
     void Physics::AddBody(btRigidBody* body)
     {
-        m_world->addRigidBody(body);
+        world->addRigidBody(body);
     }
 
     void Physics::RemoveBody(btRigidBody*& body)
     {
-        m_world->removeRigidBody(body);
+        world->removeRigidBody(body);
     }
 
     void Physics::AddBody(btRaycastVehicle* body)
     {
-        m_world->addVehicle(body);
+        world->addVehicle(body);
     }
 
     void Physics::RemoveBody(btRaycastVehicle*& body)
     {
-        m_world->removeVehicle(body);
+        world->removeVehicle(body);
     }
 
     void Physics::AddConstraint(btTypedConstraint* constraint, bool collision_with_linked_body /*= true*/)
     {
-        m_world->addConstraint(constraint, !collision_with_linked_body);
+        world->addConstraint(constraint, !collision_with_linked_body);
     }
 
     void Physics::RemoveConstraint(btTypedConstraint*& constraint)
     {
-        m_world->removeConstraint(constraint);
+        world->removeConstraint(constraint);
         delete constraint;
     }
 
     void Physics::AddBody(btSoftBody* body)
     {
-        if (btSoftRigidDynamicsWorld* world = static_cast<btSoftRigidDynamicsWorld*>(m_world))
+        if (btSoftRigidDynamicsWorld* world = static_cast<btSoftRigidDynamicsWorld*>(world))
         {
             world->addSoftBody(body);
         }
@@ -268,7 +267,7 @@ namespace Spartan
 
     void Physics::RemoveBody(btSoftBody*& body)
     {
-        if (btSoftRigidDynamicsWorld* world = static_cast<btSoftRigidDynamicsWorld*>(m_world))
+        if (btSoftRigidDynamicsWorld* world = static_cast<btSoftRigidDynamicsWorld*>(world))
         {
             world->removeSoftBody(body);
             delete body;
@@ -277,22 +276,22 @@ namespace Spartan
 
     Vector3& Physics::GetGravity()
     {
-        return m_gravity;
+        return gravity;
     }
 
     btSoftBodyWorldInfo& Physics::GetSoftWorldInfo()
     {
-        return *m_world_info;
+        return *world_info;
     }
 
     void* Physics::GetPhysicsDebugDraw()
     {
-        return static_cast<void*>(m_debug_draw);
+        return static_cast<void*>(debug_draw);
     }
 
     void* Physics::GetWorld()
     {
-        return static_cast<void*>(m_world);
+        return static_cast<void*>(world);
     }
 
     void Physics::PickBody()
@@ -313,7 +312,7 @@ namespace Spartan
                 btCollisionWorld::ClosestRayResultCallback rayCallback(bt_ray_start, bt_ray_end);
 
                 rayCallback.m_flags |= btTriangleRaycastCallback::kF_UseGjkConvexCastRaytest;
-                m_world->rayTest(bt_ray_start, bt_ray_end, rayCallback);
+                world->rayTest(bt_ray_start, bt_ray_end, rayCallback);
 
                 if (rayCallback.hasHit())
                 {
@@ -323,21 +322,22 @@ namespace Spartan
                     {
                         if (!(body->isStaticObject() || body->isKinematicObject()))
                         {
-                            m_picked_body                 = body;
-                            m_activation_state            = m_picked_body->getActivationState();
-                            m_picked_body->setActivationState(DISABLE_DEACTIVATION);
+                            picked_body                 = body;
+                            activation_state            = picked_body->getActivationState();
+                            picked_body->setActivationState(DISABLE_DEACTIVATION);
                             btVector3 localPivot          = body->getCenterOfMassTransform().inverse() * pick_position;
                             btPoint2PointConstraint* p2p  = new btPoint2PointConstraint(*body, localPivot);
-                            m_world->addConstraint(p2p, true);
-                            m_picked_constraint           = p2p;
+                            world->addConstraint(p2p, true);
+                            picked_constraint           = p2p;
                             btScalar mouse_pick_clamping  = 30.0f;
                             p2p->m_setting.m_impulseClamp = mouse_pick_clamping;
-                            p2p->m_setting.m_tau          = 0.001f; // very weak constraint for picking
+                            p2p->m_setting.m_tau          = 0.3f;
+                            p2p->m_setting.m_damping      = 0.3f;
                         }
                     }
 
-                    m_hit_position              = ToVector3(pick_position);
-                    m_picking_distance_previous = (m_hit_position - ray_start).Length();
+                    hit_position              = ToVector3(pick_position);
+                    picking_distance_previous = (hit_position - ray_start).Length();
                 }
             }
         }
@@ -345,14 +345,14 @@ namespace Spartan
 
     void Physics::UnpickBody()
     {
-        if (m_picked_constraint)
+        if (picked_constraint)
         {
-            m_picked_body->forceActivationState(m_activation_state);
-            m_picked_body->activate();
-            m_world->removeConstraint(m_picked_constraint);
-            delete m_picked_constraint;
-            m_picked_constraint = nullptr;
-            m_picked_body       = nullptr;
+            picked_body->forceActivationState(activation_state);
+            picked_body->activate();
+            world->removeConstraint(picked_constraint);
+            delete picked_constraint;
+            picked_constraint = nullptr;
+            picked_body       = nullptr;
         }
     }
 
@@ -364,12 +364,12 @@ namespace Spartan
             Vector3 ray_start     = picking_ray.GetStart();
             Vector3 ray_direction = picking_ray.GetDirection();
 
-            if (m_picked_body && m_picked_constraint)
+            if (picked_body && picked_constraint)
             {
-                if (btPoint2PointConstraint* pick_constraint = static_cast<btPoint2PointConstraint*>(m_picked_constraint))
+                if (btPoint2PointConstraint* pick_constraint = static_cast<btPoint2PointConstraint*>(picked_constraint))
                 {
                     // keep it at the same picking distance
-                    ray_direction *= m_picking_distance_previous;
+                    ray_direction *= picking_distance_previous;
                     Vector3 new_pivot_b = ray_start + ray_direction;
                     pick_constraint->setPivotB(ToBtVector3(new_pivot_b));
                 }

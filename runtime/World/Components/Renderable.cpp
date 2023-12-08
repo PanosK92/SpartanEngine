@@ -148,35 +148,36 @@ namespace Spartan
         m_mesh->GetGeometry(m_geometry_index_offset, m_geometry_index_count, m_geometry_vertex_offset, m_geometry_vertex_count, indices, vertices);
     }
 
-    const BoundingBox& Renderable::GetBoundingBoxInstance()
-    {
-        // either the bounding box is dirty, or the transform has changed, or the instances have changed
-        if (m_bounding_box_dirty || m_last_transform != GetEntity()->GetMatrix())
+	const BoundingBox& Renderable::GetBoundingBox(const BoundingBoxType type)
+	{
+        if (type == BoundingBoxType::Mesh)
         {
-            m_bounding_box = m_bounding_box_mesh.Transform(GetEntity()->GetMatrix());
-
-            // loop through each instance and expand the bounding box
-            for (const Matrix& instance_transform : m_instances)
+            return m_bounding_box_mesh.Transform(GetEntity()->GetMatrix());
+        }
+        else if (type == BoundingBoxType::Instances)
+        {
+            // either the bounding box is dirty, or the transform has changed, or the instances have changed
+            if (m_bounding_box_dirty || m_last_transform != GetEntity()->GetMatrix())
             {
-                // the instance transforms are transposed (see terrain.cpp), so we need to transpose them back
-                Matrix transposed = instance_transform.Transposed();
-                m_bounding_box.Merge(m_bounding_box_mesh.Transform(Matrix::CreateTranslation(transposed.GetTranslation())));
+                m_bounding_box_instance = m_bounding_box_mesh.Transform(GetEntity()->GetMatrix());
+
+                // loop through each instance and expand the bounding box
+                for (const Matrix& instance_transform : m_instances)
+                {
+                    // the instance transforms are transposed (see terrain.cpp), so we need to transpose them back
+                    Matrix transposed = instance_transform.Transposed();
+                    m_bounding_box_instance.Merge(m_bounding_box_mesh.Transform(Matrix::CreateTranslation(transposed.GetTranslation())));
+                }
+
+                m_last_transform = GetEntity()->GetMatrix();
+                m_bounding_box_dirty = false;
             }
 
-            m_last_transform     = GetEntity()->GetMatrix();
-            m_bounding_box_dirty = false;
+            return m_bounding_box_instance;
         }
+	}
 
-        return m_bounding_box;
-    }
-
-
-    const BoundingBox Renderable::GetBoundingBoxMesh()
-    {
-        return m_bounding_box_mesh.Transform(GetEntity()->GetMatrix());
-    }
-
-    shared_ptr<Material> Renderable::SetMaterial(const shared_ptr<Material>& material)
+	shared_ptr<Material> Renderable::SetMaterial(const shared_ptr<Material>& material)
     {
         SP_ASSERT(material != nullptr);
 

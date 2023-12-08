@@ -33,7 +33,7 @@ namespace Spartan
     namespace
     {
         // accumulation
-        const uint32_t frames_to_accumulate = 30;
+        const uint32_t frames_to_accumulate = 15;
         const double weight_delta           = 1.0 / static_cast<float>(frames_to_accumulate);
 
         // frame time

@@ -89,7 +89,7 @@ namespace Spartan
         float profiling_interval_sec    = 0.25f;
         float time_since_profiling_sec  = profiling_interval_sec;
 
-        const uint32_t frames_to_accumulate = static_cast<uint32_t>(7.5f / profiling_interval_sec);
+        const uint32_t frames_to_accumulate = static_cast<uint32_t>(4.0f / profiling_interval_sec);
         const float weight_delta            = 1.0f / static_cast<float>(frames_to_accumulate);
         const float weight_history          = (1.0f - weight_delta);
 

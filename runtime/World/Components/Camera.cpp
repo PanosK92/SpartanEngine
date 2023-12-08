@@ -151,7 +151,7 @@ namespace Spartan
 
     bool Camera::IsInViewFrustum(shared_ptr<Renderable> renderable) const
     {
-        const BoundingBox& box = renderable->GetBoundingBoxInstance();
+        const BoundingBox& box = renderable->GetBoundingBox(BoundingBoxType::Instances);
         const Vector3 center   = box.GetCenter();
         const Vector3 extents  = box.GetExtents();
 
@@ -192,7 +192,7 @@ namespace Spartan
                     continue;
 
                 // Get object oriented bounding box
-                const BoundingBox& aabb = entity->GetComponent<Renderable>()->GetBoundingBoxInstance();
+                const BoundingBox& aabb = entity->GetComponent<Renderable>()->GetBoundingBox(BoundingBoxType::Instances);
 
                 // Compute hit distance
                 float distance = m_ray.HitDistance(aabb);
@@ -632,7 +632,7 @@ namespace Spartan
             // ...otherwise we apply a simple offset so that the rotation vector doesn't suffer
             if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
             {
-                m_lerp_to_target_position -= target_direction * renderable->GetBoundingBoxInstance().GetExtents().Length() * 2.0f;
+                m_lerp_to_target_position -= target_direction * renderable->GetBoundingBox(BoundingBoxType::Instances).GetExtents().Length() * 2.0f;
             }
             else
             {
