@@ -43,7 +43,7 @@ namespace Spartan
         sampler_info.maxAnisotropy       = m_anisotropy;
         sampler_info.compareEnable       = m_comparison_enabled ? VK_TRUE : VK_FALSE;
         sampler_info.compareOp           = vulkan_compare_operator[static_cast<uint32_t>(m_comparison_function)];
-        sampler_info.borderColor         = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+        sampler_info.borderColor         = VK_BORDER_COLOR_INT_TRANSPARENT_BLACK;
         sampler_info.mipLodBias          = m_mip_lod_bias;
         sampler_info.minLod              = 0.0f;
         sampler_info.maxLod              = FLT_MAX;
