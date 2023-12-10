@@ -104,7 +104,6 @@ float4 sample_albedo(float2 uv, float slope)
     return albedo;
 }
 
-
 float3 smaple_normal(float2 uv, float slope)
 {
     if (material_vertex_animate_water())
@@ -289,3 +288,4 @@ PixelOutputType mainPS(PixelInputType input)
 
     return g_buffer;
 }
+
