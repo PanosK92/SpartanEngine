@@ -149,17 +149,12 @@ namespace Spartan
         m_is_dirty           = true;
     }
 
-    bool Camera::IsInViewFrustum(const Vector3& center, const Vector3& extents) const
-    {
-        return m_frustum.IsVisible(center, extents);
-    }
-
     bool Camera::IsInViewFrustum(const Math::BoundingBox& bounding_box) const
     {
         const Vector3 center  = bounding_box.GetCenter();
         const Vector3 extents = bounding_box.GetExtents();
 
-        return IsInViewFrustum(center, extents);
+        return m_frustum.IsVisible(center, extents);
     }
 
     bool Camera::IsInViewFrustum(shared_ptr<Renderable> renderable) const

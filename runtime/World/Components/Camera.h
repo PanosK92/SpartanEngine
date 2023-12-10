@@ -59,50 +59,50 @@ namespace Spartan
         Camera(std::weak_ptr<Entity> entity);
         ~Camera() = default;
 
-        // Component
+        // component
         void OnInitialize() override;
         void OnTick() override;
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
 
-        // Matrices
-        const Math::Matrix& GetViewMatrix()           const { return m_view; }
-        const Math::Matrix& GetProjectionMatrix()     const { return m_projection; }
+        // matrices
+        const Math::Matrix& GetViewMatrix() const           { return m_view; }
+        const Math::Matrix& GetProjectionMatrix() const     { return m_projection; }
         const Math::Matrix& GetViewProjectionMatrix() const { return m_view_projection; }
 
-        // Raycasting
+        // raycasting
         const Math::Ray ComputePickingRay();
         const Math::Ray& GetPickingRay() const { return m_ray; }
 
-        // Picks the nearest entity under the mouse cursor
+        // picks the nearest entity under the mouse cursor
         void Pick();
 
-        // Converts a world point to a screen point
+        // converts a world point to a screen point
         Math::Vector2 WorldToScreenCoordinates(const Math::Vector3& position_world) const;
 
-        // Converts a world bounding box to a screen rectangle
+        // converts a world bounding box to a screen rectangle
         Math::Rectangle WorldToScreenCoordinates(const Math::BoundingBox& bounding_box) const;
 
-        // Converts a screen point to a world point. Z can be 0.0f to 1.0f and it will lerp between the near and far plane.
+        // converts a screen point to a world point. Z can be 0.0f to 1.0f and it will lerp between the near and far plane.
         Math::Vector3 ScreenToWorldCoordinates(const Math::Vector2& position_screen, const float z) const;
         //=================================================================================================================
 
-        // Aperture
+        // aperture
         float GetAperture() const              { return m_aperture; }
         void SetAperture(const float aperture) { m_aperture = aperture; }
 
-        // Shutter speed
+        // shutter speed
         float GetShutterSpeed() const                   { return m_shutter_speed; }
         void SetShutterSpeed(const float shutter_speed) { m_shutter_speed = shutter_speed; }
 
-        // ISO
+        // iso
         float GetIso() const         { return m_iso; }
         void SetIso(const float iso) { m_iso = iso; }
 
-        // Exposure
+        // exposure
         float GetEv100()    const { return std::log2(m_aperture / m_shutter_speed * 100.0f / m_iso); }
         float GetExposure() const { return 1.0f / (std::pow(2.0f, GetEv100())); }
-        // Planes/projection
+        // planes/projection
         void SetNearPlane(float near_plane);
         void SetFarPlane(float far_plane);
         void SetProjection(ProjectionType projection);
@@ -116,22 +116,21 @@ namespace Spartan
         float GetFovHorizontalDeg() const;
         void SetFovHorizontalDeg(float fov);
   
-        // Frustum
-        bool IsInViewFrustum(const Math::Vector3& center, const Math::Vector3& extents) const;
+        // frustum
         bool IsInViewFrustum(const Math::BoundingBox& bounding_box) const;
         bool IsInViewFrustum(std::shared_ptr<Renderable> renderable) const;
 
-        // Bookmarks
+        // bookmarks
         void AddBookmark(camera_bookmark bookmark)               { m_bookmarks.emplace_back(bookmark); };
         const std::vector<camera_bookmark>& GetBookmarks() const { return m_bookmarks; };
 
-        // First person control
+        // first person control
         bool GetIsControlEnabled()             const { return m_first_person_control_enabled; }
         void SetIsControlEnalbed(const bool enabled) { m_first_person_control_enabled = enabled; }
         bool IsActivelyControlled()            const { return m_is_controlled_by_keyboard_mouse; }
         void SetPhysicsBodyToControl(PhysicsBody* physics_body);
 
-        // Misc
+        // misc
         bool IsWalking();
         void MakeDirty() { m_is_dirty = true; }
         void SetSelectedEntity(std::shared_ptr<Entity> entity) { m_selected_entity = entity; }
