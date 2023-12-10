@@ -128,8 +128,9 @@ namespace Spartan::Math
         m_min.x = Helper::Min(m_min.x, box.m_min.x);
         m_min.y = Helper::Min(m_min.y, box.m_min.y);
         m_min.z = Helper::Min(m_min.z, box.m_min.z);
+
         m_max.x = Helper::Max(m_max.x, box.m_max.x);
-        m_max.y = Helper::Max(m_max.x, box.m_max.x);
-        m_max.z = Helper::Max(m_max.x, box.m_max.x);
+        m_max.y = Helper::Max(m_max.y, box.m_max.y);
+        m_max.z = Helper::Max(m_max.z, box.m_max.z);
     }
 }
