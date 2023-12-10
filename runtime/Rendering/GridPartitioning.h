@@ -32,7 +32,7 @@ namespace grid_partitioning
     // this namespace organizes 3D objects into a grid layout, grouping instances into grid cells
     // it enables optimized rendering by allowing culling of non-visible chunks efficiently
 
-    const uint32_t physical_cell_size = 100;
+    const uint32_t physical_cell_size = 125;
 
     struct GridKey
     {
