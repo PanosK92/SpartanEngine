@@ -37,10 +37,10 @@ namespace Spartan
         class SP_CLASS BoundingBox
         {
         public:
-            // Construct with zero size.
+            // Construct with zero size
             BoundingBox();
 
-            // Construct from minimum and maximum vectors.
+            // Construct from minimum and maximum vectors
             BoundingBox(const Vector3& min, const Vector3& max);
 
             // Construct from points

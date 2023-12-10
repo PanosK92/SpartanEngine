@@ -361,9 +361,7 @@ namespace Spartan
                     Quaternion rotate_to_normal = rotate_to_match_surface_normal ? Quaternion::FromToRotation(Vector3::Up, normal) : Quaternion::Identity;
                     Quaternion rotation         = rotate_to_normal * Quaternion::FromEulerAngles(0.0f, get_random_float(0.0f, 360.0f), 0.0f);
 
-                    // we are mapping 4 vector4 (c++ side, see vulka_pipeline.cpp) to 1 matrix (HLSL side), and the matrix
-                    // memory layout is column-major, so we need to transpose to get it as row-major
-                    transforms.push_back(Matrix(position, rotation, scale).Transposed());
+                    transforms.emplace_back(position, rotation, scale);
                 }
                 else
                 {

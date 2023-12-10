@@ -69,12 +69,12 @@ namespace Spartan
                 {
                     SP_ASSERT(descriptor.struct_size <= RHI_Device::PropertyGetMaxPushConstantSize());
 
-                    VkPushConstantRange push_constant_range = {};
-                    push_constant_range.offset = 0;
-                    push_constant_range.size = descriptor.struct_size;
-                    push_constant_range.stageFlags = (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Vertex) ? VK_SHADER_STAGE_VERTEX_BIT : 0;
-                    push_constant_range.stageFlags |= (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Pixel) ? VK_SHADER_STAGE_FRAGMENT_BIT : 0;
-                    push_constant_range.stageFlags |= (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Compute) ? VK_SHADER_STAGE_COMPUTE_BIT : 0;
+                    VkPushConstantRange push_constant_range  = {};
+                    push_constant_range.offset               = 0;
+                    push_constant_range.size                 = descriptor.struct_size;
+                    push_constant_range.stageFlags           = (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Vertex) ? VK_SHADER_STAGE_VERTEX_BIT : 0;
+                    push_constant_range.stageFlags          |= (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Pixel) ? VK_SHADER_STAGE_FRAGMENT_BIT : 0;
+                    push_constant_range.stageFlags          |= (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Compute) ? VK_SHADER_STAGE_COMPUTE_BIT : 0;
 
                     push_constant_ranges.emplace_back(push_constant_range);
                 }
@@ -82,12 +82,12 @@ namespace Spartan
 
             // pipeline layout
             VkPipelineLayoutCreateInfo pipeline_layout_info = {};
-            pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipeline_layout_info.pushConstantRangeCount = 0;
-            pipeline_layout_info.setLayoutCount = static_cast<uint32_t>(layouts.size());
-            pipeline_layout_info.pSetLayouts = reinterpret_cast<VkDescriptorSetLayout*>(layouts.data());
-            pipeline_layout_info.pushConstantRangeCount = static_cast<uint32_t>(push_constant_ranges.size());
-            pipeline_layout_info.pPushConstantRanges = push_constant_ranges.data();
+            pipeline_layout_info.sType                      = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            pipeline_layout_info.pushConstantRangeCount     = 0;
+            pipeline_layout_info.setLayoutCount             = static_cast<uint32_t>(layouts.size());
+            pipeline_layout_info.pSetLayouts                = reinterpret_cast<VkDescriptorSetLayout*>(layouts.data());
+            pipeline_layout_info.pushConstantRangeCount     = static_cast<uint32_t>(push_constant_ranges.size());
+            pipeline_layout_info.pPushConstantRanges        = push_constant_ranges.data();
 
             // create
             SP_VK_ASSERT_MSG(vkCreatePipelineLayout(RHI_Context::device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_resource_pipeline_layout)),
@@ -98,10 +98,10 @@ namespace Spartan
         }
 
         // viewport & scissor
-        vector<VkDynamicState> dynamic_states = {};
-        VkPipelineDynamicStateCreateInfo dynamic_state = {};
-        VkViewport vkViewport = {};
-        VkRect2D scissor = {};
+        vector<VkDynamicState> dynamic_states            = {};
+        VkPipelineDynamicStateCreateInfo dynamic_state   = {};
+        VkViewport vkViewport                            = {};
+        VkRect2D scissor                                 = {};
         VkPipelineViewportStateCreateInfo viewport_state = {};
         {
             // always allow dynamic viewport

@@ -145,7 +145,7 @@ namespace Spartan
     
     void Renderable::GetGeometry(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
     {
-        SP_ASSERT_MSG(m_mesh != nullptr, "Invalid mesh");
+        SP_ASSERT_MSG(m_mesh != nullptr, "invalid mesh");
         m_mesh->GetGeometry(m_geometry_index_offset, m_geometry_index_count, m_geometry_vertex_offset, m_geometry_vertex_count, indices, vertices);
     }
 
@@ -162,14 +162,12 @@ namespace Spartan
             // transformed instances
             {
                 // start with the default transformed bounding box
-                m_bounding_box_instances = m_bounding_box;
+                m_bounding_box_instances = BoundingBox::Undefined;
 
                 // loop through each instance and expand the bounding box
                 for (const Matrix& instance_transform : m_instances)
                 {
-                    // the instance transforms are transposed (see terrain.cpp), so we need to transpose them back
-                    Matrix transform                  = instance_transform.Transposed();
-                    Matrix translation                = Matrix::CreateTranslation(transform.GetTranslation());
+                    Matrix translation                = Matrix::CreateTranslation(instance_transform.GetTranslation());
                     BoundingBox bounding_box_instance = m_bounding_box_untransformed.Transform(translation);
                     m_bounding_box_instances.Merge(bounding_box_instance);
                 }
@@ -183,16 +181,12 @@ namespace Spartan
                 // loop through each group end index
                 for (const uint32_t group_end_index : m_instance_group_end_indices)
                 {
-                    BoundingBox bounding_box_group;
+                    BoundingBox bounding_box_group = BoundingBox::Undefined;
 
                     // loop through the instances in this group
                     for (uint32_t i = start_index; i < group_end_index; ++i)
                     {
-                        const Matrix& instance_transform = m_instances[i];
-
-                        // the instance transforms are transposed (see terrain.cpp), so we need to transpose them back
-                        Matrix transform                  = instance_transform.Transposed();
-                        Matrix translation                = Matrix::CreateTranslation(transform.GetTranslation());
+                        Matrix translation                = Matrix::CreateTranslation(m_instances[i].GetTranslation());
                         BoundingBox bounding_box_instance = m_bounding_box_untransformed.Transform(translation);
 
                         bounding_box_group.Merge(bounding_box_instance);
@@ -292,10 +286,18 @@ namespace Spartan
         m_instances = instances;
 
         grid_partitioning::reorder_instances_into_cell_chunks(m_instances, m_instance_group_end_indices);
-        SP_ASSERT_MSG(m_instance_group_end_indices.size() < 200, "Too many instance groups, increase the physical cell size");
+
+        // we are mapping 4 vector4 (c++ side, see vulka_pipeline.cpp) to 1 matrix (HLSL side), and the matrix
+        // memory layout is column-major, so we need to transpose to get it as row-major
+        vector<Matrix> instances_transposed;
+        instances_transposed.reserve(m_instances.size());
+        for (const auto& instance : m_instances)
+        {
+            instances_transposed.push_back(instance.Transposed());
+        }
 
         m_instance_buffer = make_shared<RHI_VertexBuffer>(false, "instance_buffer");
-        m_instance_buffer->Create<Matrix>(m_instances);
+        m_instance_buffer->Create<Matrix>(instances_transposed);
 
         m_bounding_box_dirty = true;
     }
