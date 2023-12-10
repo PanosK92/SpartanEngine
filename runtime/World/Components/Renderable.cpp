@@ -167,9 +167,9 @@ namespace Spartan
                 m_bounding_box_instances = BoundingBox::Undefined;
                 for (const Matrix& instance_transform : m_instances)
                 {
-                    Matrix translation                = Matrix::CreateTranslation(instance_transform.GetTranslation());
-                    BoundingBox bounding_box_instance = m_bounding_box_untransformed.Transform(translation * transform);
-
+                    // transform * instance_transform, this is not the order of operation the engine is using but in this case it works
+                    // possibly due to how the transform is calculated, the space it's in and relative to what
+                    BoundingBox bounding_box_instance = m_bounding_box_untransformed.Transform(transform * instance_transform);
                     m_bounding_box_instances.Merge(bounding_box_instance);
                 }
             }
@@ -185,9 +185,7 @@ namespace Spartan
                     BoundingBox bounding_box_group = BoundingBox::Undefined;
                     for (uint32_t i = start_index; i < group_end_index; i++)
                     {
-                        Matrix translation                = Matrix::CreateTranslation(m_instances[i].GetTranslation());
-                        BoundingBox bounding_box_instance = m_bounding_box_untransformed.Transform(translation * transform);
-
+                        BoundingBox bounding_box_instance = m_bounding_box_untransformed.Transform(transform * m_instances[i]);
                         bounding_box_group.Merge(bounding_box_instance);
                     }
 
