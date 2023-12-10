@@ -154,40 +154,39 @@ namespace Spartan
         // compute if dirty
         if (m_bounding_box_dirty || m_transform_previous != GetEntity()->GetMatrix())
         {
+            Matrix transform = GetEntity()->GetMatrix();
+
             // transformed
             {
-                m_bounding_box = m_bounding_box_untransformed.Transform(GetEntity()->GetMatrix());
+                m_bounding_box = m_bounding_box_untransformed.Transform(transform);
             }
 
             // transformed instances
             {
-                // start with the default transformed bounding box
-                m_bounding_box_instances = BoundingBox::Undefined;
-
                 // loop through each instance and expand the bounding box
+                m_bounding_box_instances = BoundingBox::Undefined;
                 for (const Matrix& instance_transform : m_instances)
                 {
                     Matrix translation                = Matrix::CreateTranslation(instance_transform.GetTranslation());
-                    BoundingBox bounding_box_instance = m_bounding_box_untransformed.Transform(translation);
+                    BoundingBox bounding_box_instance = m_bounding_box_untransformed.Transform(translation * transform);
+
                     m_bounding_box_instances.Merge(bounding_box_instance);
                 }
             }
 
             // transformed instance groups
             {
+                // loop through each group end index
                 m_bounding_box_instance_group.clear();
                 uint32_t start_index = 0;
-
-                // loop through each group end index
                 for (const uint32_t group_end_index : m_instance_group_end_indices)
                 {
-                    BoundingBox bounding_box_group = BoundingBox::Undefined;
-
                     // loop through the instances in this group
-                    for (uint32_t i = start_index; i < group_end_index; ++i)
+                    BoundingBox bounding_box_group = BoundingBox::Undefined;
+                    for (uint32_t i = start_index; i < group_end_index; i++)
                     {
                         Matrix translation                = Matrix::CreateTranslation(m_instances[i].GetTranslation());
-                        BoundingBox bounding_box_instance = m_bounding_box_untransformed.Transform(translation);
+                        BoundingBox bounding_box_instance = m_bounding_box_untransformed.Transform(translation * transform);
 
                         bounding_box_group.Merge(bounding_box_instance);
                     }
@@ -197,7 +196,7 @@ namespace Spartan
                 }
             }
 
-            m_transform_previous = GetEntity()->GetMatrix();
+            m_transform_previous = transform;
             m_bounding_box_dirty = false;
         }
 
@@ -287,8 +286,8 @@ namespace Spartan
 
         grid_partitioning::reorder_instances_into_cell_chunks(m_instances, m_instance_group_end_indices);
 
-        // we are mapping 4 vector4 (c++ side, see vulka_pipeline.cpp) to 1 matrix (HLSL side), and the matrix
-        // memory layout is column-major, so we need to transpose to get it as row-major
+        // we are mapping 4 Vector4s as 4 rows (see vulkan_pipeline.cpp, line 246) in order to get 1 matrix (HLSL side)
+        // but the matrix memory layout is column-major, so we need to transpose to get it as row-major
         vector<Matrix> instances_transposed;
         instances_transposed.reserve(m_instances.size());
         for (const auto& instance : m_instances)
