@@ -759,6 +759,27 @@ namespace Spartan
         return (is_scalable && is_above) ? hit_position : Vector3::Infinity;
     }
 
+    float PhysicsBody::GetVolume()
+	{
+        btCapsuleShape* capsule_shape = static_cast<btCapsuleShape*>(m_shape);
+
+        // Get the radius of the capsule
+        float radius = capsule_shape->getRadius();
+
+        // get the height of the cylindrical part of the capsule
+        // for a btCapsuleShape, the height is the distance between the centers of the end caps.
+        float cylinder_height = capsule_shape->getHalfHeight() * 2;
+
+        // compute the volume of the cylindrical part
+        float cylinder_volume = Math::Helper::PI * radius * radius * cylinder_height;
+
+        // compute the volume of the hemispherical ends
+        float hemisphere_volume = (4.0 / 3.0) * Math::Helper::PI * std::pow(radius, 3);
+
+        // total volume is the sum of the cylinder and two hemispheres
+        return cylinder_volume + hemisphere_volume;
+	}
+    
     void PhysicsBody::UpdateShape()
     {
         if (shape)

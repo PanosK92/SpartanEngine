@@ -150,6 +150,9 @@ namespace Spartan
         bool RayTraceIsGrounded() const;
         Math::Vector3 RayTraceIsNearStairStep(const Math::Vector3& forward) const;
 
+        // volume
+        float GetVolume();
+        
         // misc
         void ClearForces() const;
         void Activate() const;
