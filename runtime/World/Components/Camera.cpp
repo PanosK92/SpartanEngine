@@ -531,18 +531,29 @@ namespace Spartan
                         if (is_underwater)
                         {
                             // buoyancy
-                            float distance_from_water_level = GetEntity()->GetPosition().y - World::GetWaterLevel();
-                            float depth_factor              = Helper::Max(1.0f, Helper::Abs(distance_from_water_level));
-                            float multiplier                = 2.0f * depth_factor;
-                            Vector3 buoyancy_force          = -m_physics_body_to_control->GetGravity() * m_physics_body_to_control->GetMass() * multiplier;
-                            m_physics_body_to_control->ApplyForce(buoyancy_force, PhysicsForce::Constant);
+                            {
+                                float water_density  = 1.03f * 0.001f; // to newton
+                                float object_density = 0.8f  * 0.001f; // to newton
+                                float total_volume   = m_physics_body_to_control->GetVolume();
 
+                                // calculate the submerged portion
+                                float submerged_height   = World::GetWaterLevel() - GetEntity()->GetPosition().y;
+                                float total_height       = 1.8f;
+                                float submerged_fraction = std::min(std::max(submerged_height / total_height, 0.0f), 1.0f);
+
+                                // compute the displacement volume based on the submerged fraction
+                                float displacement_volume = total_volume * submerged_fraction * (object_density / water_density);
+                                Vector3 buoyancy_force    = -(water_density * m_physics_body_to_control->GetGravity() * displacement_volume);
+
+                                m_physics_body_to_control->ApplyForce(buoyancy_force * 1000000.0f, PhysicsForce::Constant);
+                            }
+                            
                             // movement
                             Vector3 velocity_current = m_physics_body_to_control->GetLinearVelocity();
                             Vector3 velocity_new     = Vector3(m_movement_speed.x * 20.0f, velocity_current.y, m_movement_speed.z * 20.0f);
                             m_physics_body_to_control->SetLinearVelocity(velocity_new);
                         }
-
+                        
                         // jump
                         if (is_grounded && Input::GetKeyDown(KeyCode::Space))
                         {
