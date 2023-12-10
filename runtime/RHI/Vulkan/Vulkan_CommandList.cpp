@@ -694,7 +694,7 @@ namespace Spartan
     void RHI_CommandList::Draw(const uint32_t vertex_count, const uint32_t vertex_start_index /*= 0*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        OnDraw();
+        OnPreDrawDispatch();
 
         vkCmdDraw(
             static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
@@ -710,10 +710,10 @@ namespace Spartan
         }
     }
 
-    void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset, const uint32_t instance_count)
+    void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset, const uint32_t instance_start_index, const uint32_t instance_count)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        OnDraw();
+        OnPreDrawDispatch();
 
         vkCmdDrawIndexed(
             static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
@@ -721,7 +721,7 @@ namespace Spartan
             instance_count,                               // instanceCount
             index_offset,                                 // firstIndex
             vertex_offset,                                // vertexOffset
-            0                                             // firstInstance
+            instance_start_index                          // firstInstance
         );
 
         if (Profiler::m_granularity == ProfilerGranularity::Full)
@@ -733,11 +733,8 @@ namespace Spartan
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/, bool async /*= false*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        OnPreDrawDispatch();
 
-        // Ensure correct state before attempting to dispatch
-        OnDraw();
-
-        // Dispatch
         vkCmdDispatch(static_cast<VkCommandBuffer>(m_rhi_resource), x, y, z);
 
         Profiler::m_rhi_dispatch++;
@@ -1314,7 +1311,7 @@ namespace Spartan
         m_timeblock_active = nullptr;
     }
 
-    void RHI_CommandList::OnDraw()
+    void RHI_CommandList::OnPreDrawDispatch()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 

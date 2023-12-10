@@ -953,14 +953,14 @@ namespace Spartan
 
                         // tweak material
                         Material* material = renderable->GetMaterial();
-                        material->SetTexture(MaterialTexture::Color, "project\\models\\vegetation_tree_1\\leaf.png");
-                        material->SetProperty(MaterialProperty::VertexAnimateWind, 1.0f);
+                        material->SetTexture(MaterialTexture::Color,                  "project\\models\\vegetation_tree_1\\leaf.png");
+                        material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
                         material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
-                        material->SetProperty(MaterialProperty::WorldSpaceHeight,  renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
+                        material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
                     }
                 }
 
-                // plant_1 - a small plant
+                // small plant
                 if (shared_ptr<Mesh> plant = ResourceCache::Load<Mesh>("project\\models\\vegetation_plant_1\\ormbunke.obj"))
                 {
                     Entity* entity = plant->GetRootEntity();
@@ -977,10 +977,10 @@ namespace Spartan
 
                         // tweak material
                         Material* material = renderable->GetMaterial();
-                        material->SetTexture(MaterialTexture::Color,    "project\\models\\vegetation_plant_1\\ormbunke.png");
-                        material->SetProperty(MaterialProperty::ColorR, 1.0f);
-                        material->SetProperty(MaterialProperty::ColorG, 1.0f);
-                        material->SetProperty(MaterialProperty::ColorB, 1.0f);
+                        material->SetTexture(MaterialTexture::Color,                  "project\\models\\vegetation_plant_1\\ormbunke.png");
+                        material->SetProperty(MaterialProperty::ColorR,               1.0f);
+                        material->SetProperty(MaterialProperty::ColorG,               1.0f);
+                        material->SetProperty(MaterialProperty::ColorB,               1.0f);
                         material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                         material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
                         material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);

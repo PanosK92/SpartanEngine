@@ -149,21 +149,27 @@ namespace Spartan
         m_is_dirty           = true;
     }
 
-    bool Camera::IsInViewFrustum(shared_ptr<Renderable> renderable) const
-    {
-        const BoundingBox& box = renderable->GetBoundingBox(BoundingBoxType::TransformedInstances);
-        const Vector3 center   = box.GetCenter();
-        const Vector3 extents  = box.GetExtents();
-
-        return m_frustum.IsVisible(center, extents);
-    }
-
     bool Camera::IsInViewFrustum(const Vector3& center, const Vector3& extents) const
     {
         return m_frustum.IsVisible(center, extents);
     }
 
-	const Spartan::Math::Ray Camera::ComputePickingRay()
+    bool Camera::IsInViewFrustum(const Math::BoundingBox& bounding_box) const
+    {
+        const Vector3 center  = bounding_box.GetCenter();
+        const Vector3 extents = bounding_box.GetExtents();
+
+        return IsInViewFrustum(center, extents);
+    }
+
+    bool Camera::IsInViewFrustum(shared_ptr<Renderable> renderable) const
+    {
+        const BoundingBox& box = renderable->GetBoundingBox(BoundingBoxType::TransformedInstances);
+
+        return IsInViewFrustum(box);
+    }
+
+	const Math::Ray Camera::ComputePickingRay()
 	{
         Vector3 ray_start     = GetEntity()->GetPosition();
         Vector3 ray_direction = ScreenToWorldCoordinates(Input::GetMousePositionRelativeToEditorViewport(), 1.0f);

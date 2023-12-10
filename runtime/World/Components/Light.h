@@ -127,7 +127,8 @@ namespace Spartan
         RHI_Texture* GetColorTexture() const { return m_texture_color.get(); }
         void CreateShadowMap();
 
-        bool IsInViewFrustum(std::shared_ptr<Renderable> renderable, const uint32_t index) const;
+        bool IsInViewFrustum(const Math::BoundingBox& bounding_box, const uint32_t index) const;
+        bool IsInViewFrustum(Renderable* renderable, const uint32_t index) const;
 
     private:
         void ComputeViewMatrix();

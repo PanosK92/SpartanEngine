@@ -117,8 +117,9 @@ namespace Spartan
         void SetFovHorizontalDeg(float fov);
   
         // Frustum
-        bool IsInViewFrustum(std::shared_ptr<Renderable> renderable) const;
         bool IsInViewFrustum(const Math::Vector3& center, const Math::Vector3& extents) const;
+        bool IsInViewFrustum(const Math::BoundingBox& bounding_box) const;
+        bool IsInViewFrustum(std::shared_ptr<Renderable> renderable) const;
 
         // Bookmarks
         void AddBookmark(camera_bookmark bookmark)               { m_bookmarks.emplace_back(bookmark); };
@@ -133,8 +134,8 @@ namespace Spartan
         // Misc
         bool IsWalking();
         void MakeDirty() { m_is_dirty = true; }
-        void SetSelectedEntity(std::shared_ptr<Spartan::Entity> entity) { m_selected_entity = entity; }
-        std::shared_ptr<Spartan::Entity> GetSelectedEntity()            { return m_selected_entity.lock(); }
+        void SetSelectedEntity(std::shared_ptr<Entity> entity) { m_selected_entity = entity; }
+        std::shared_ptr<Entity> GetSelectedEntity()            { return m_selected_entity.lock(); }
 
         Math::Matrix ComputeViewMatrix() const;
         Math::Matrix ComputeProjection(const float near_plane, const float far_plane);

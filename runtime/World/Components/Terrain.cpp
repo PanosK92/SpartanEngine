@@ -502,11 +502,6 @@ namespace Spartan
             terrain_offset              = 0.0f;
             m_plants_1                  = generate_transforms(vertices, indices, plant_count, max_slope, rotate_match_surface_normal, m_water_level, terrain_offset);
 
-            //// compute plant 2 positions
-            //plant_count = 1000000;
-            //max_slope   = 20.0f * Math::Helper::DEG_TO_RAD;
-            //m_plants_2 = generate_transforms(vertices, indices, plant_count, max_slope, rotate_match_surface_normal, m_water_level, terrain_offset);
-
             if (on_complete)
             {
                 on_complete();

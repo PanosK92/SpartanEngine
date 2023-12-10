@@ -61,7 +61,6 @@ namespace Spartan
         float* GetHeightData()                                       { return &m_height_data[0]; }
         const std::vector<Math::Matrix>& GetTransformsTree()   const { return m_trees; }
         const std::vector<Math::Matrix>& GetTransformsPlant1() const { return m_plants_1; }
-        const std::vector<Math::Matrix>& GetTransformsPlant2() const { return m_plants_2; }
         float GetWaterLevel()                                  const { return m_water_level; }
 
         void GenerateAsync(std::function<void()> on_complete = nullptr);
@@ -84,6 +83,5 @@ namespace Spartan
         std::shared_ptr<Mesh> m_mesh;
         std::vector<Math::Matrix> m_trees;
         std::vector<Math::Matrix> m_plants_1;
-        std::vector<Math::Matrix> m_plants_2;
     };
 }

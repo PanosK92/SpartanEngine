@@ -24,9 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================================
 #include "Component.h"
 #include <vector>
+#include "../Rendering/Renderer_Definitions.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/BoundingBox.h"
-#include "../Rendering/Renderer_Definitions.h"
 //============================================
 
 namespace Spartan
@@ -37,9 +37,10 @@ namespace Spartan
 
     enum class BoundingBoxType
     {
-        Mesh,                // the bounding box of the mesh
-        Transformed,         // the transformed bounding box of the mesh
-        TransformedInstances // the transformed bounding box of all the instances
+        Untransformed,            // the bounding box of the mesh
+        Transformed,              // the transformed bounding box of the mesh
+        TransformedInstances,     // the transformed bounding box of all the instances
+        TransformedInstanceGroup, // the transformed bounding box of an instance group
     };
 
     class SP_CLASS Renderable : public Component
@@ -68,9 +69,10 @@ namespace Spartan
         uint32_t GetVertexOffset() const { return m_geometry_vertex_offset; }
         uint32_t GetVertexCount() const  { return m_geometry_vertex_count; }
         Mesh* GetMesh() const            { return m_mesh; }
+        const std::vector<uint32_t>& GetBoundingBoxGroupEndIndices() const { return m_instance_group_end_indices; }
 
         // bounding box
-        const Math::BoundingBox& GetBoundingBox(const BoundingBoxType type);
+        const Math::BoundingBox& GetBoundingBox(const BoundingBoxType type, const uint32_t instance_group_index = 0);
 
         //= MATERIAL ====================================================================
         // Sets a material from memory (adds it to the resource cache by default)
@@ -103,9 +105,10 @@ namespace Spartan
         uint32_t m_geometry_vertex_count  = 0;
         Mesh* m_mesh                      = nullptr;
         bool m_bounding_box_dirty         = true;
-        Math::BoundingBox m_bounding_box_mesh;
-        Math::BoundingBox m_bounding_box_transformed;
-        Math::BoundingBox m_bounding_box_transformed_instances;
+        Math::BoundingBox m_bounding_box_untransformed;
+        Math::BoundingBox m_bounding_box;
+        Math::BoundingBox m_bounding_box_instances;
+        std::vector<Math::BoundingBox> m_bounding_box_instance_group;
 
         // material
         bool m_material_default = false;
@@ -113,6 +116,7 @@ namespace Spartan
 
         // instancing
         std::vector<Math::Matrix> m_instances;
+        std::vector<uint32_t> m_instance_group_end_indices;
         std::shared_ptr<RHI_VertexBuffer> m_instance_buffer;
 
         // misc
