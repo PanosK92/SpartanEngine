@@ -36,7 +36,7 @@ namespace grid_partitioning
 
     struct GridKey
     {
-        int x, y, z;
+        uint32_t x, y, z;
 
         bool operator==(const GridKey& other) const
         {
@@ -54,7 +54,7 @@ namespace grid_partitioning
 
             size_t result = 0;
 
-            for (int i = 0; i < (sizeof(int) * 8); i++) // for each bit in the integers
+            for (uint32_t i = 0; i < (sizeof(uint32_t) * 8); i++) // for each bit in the integers
             {
                 result |= ((k.x & (1 << i)) << (2 * i)) | ((k.y & (1 << i)) << ((2 * i) + 1)) | ((k.z & (1 << i)) << ((2 * i) + 2));
             }
@@ -66,9 +66,9 @@ namespace grid_partitioning
         {
             return
             {
-                static_cast<int>(std::floor(position.x / static_cast<float>(physical_cell_size))),
-                static_cast<int>(std::floor(position.y / static_cast<float>(physical_cell_size))),
-                static_cast<int>(std::floor(position.z / static_cast<float>(physical_cell_size)))
+                static_cast<uint32_t>(std::floor(position.x / static_cast<float>(physical_cell_size))),
+                static_cast<uint32_t>(std::floor(position.y / static_cast<float>(physical_cell_size))),
+                static_cast<uint32_t>(std::floor(position.z / static_cast<float>(physical_cell_size)))
             };
         }
     };
