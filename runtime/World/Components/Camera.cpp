@@ -532,8 +532,8 @@ namespace Spartan
                         {
                             // buoyancy
                             {
-                                float water_density  = 1.03 * 0.001f; // to newton
-                                float object_density = 0.8f * 0.001f; // to newton
+                                float water_density  = 1.03f * 0.001f; // to newton
+                                float object_density = 0.8f  * 0.001f; // to newton
                                 float total_volume   = m_physics_body_to_control->GetVolume();
 
                                 // calculate the submerged portion
