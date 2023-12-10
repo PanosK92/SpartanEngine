@@ -41,87 +41,75 @@ struct PixelOutputType
     float2 velocity : SV_Target3;
 };
 
-struct water
+struct sampling
 {
-    static float3 combine_normals(float3 normal1, float3 normal2)
-    {
-        // separate components
-        float nx1 = normal1.x, ny1 = normal1.y, nz1 = normal1.z;
-        float nx2 = normal2.x, ny2 = normal2.y, nz2 = normal2.z;
-
-        // combine components with interference pattern (basic)
-        float combinedX = nx1 + nx2;
-        float combinedY = ny1 + ny2;
-        float combinedZ = nz1 + nz2;
-
-        // normalize to ensure the result is a valid normal
-        return normalize(float3(combinedX, combinedY, combinedZ));
-    }
-    
-    static float3 sample_interleaved_normal(float2 uv)
+    static float4 interleaved(Texture2D _tex, float2 uv)
     {
         // constants for scale and direction of the normal map movement
-        float2 direction1 = float2(1.0, 0.5);
-        float2 direction2 = float2(-0.5, 1.0);
-        float scale1      = 0.5;
-        float scale2      = 0.5;
-        float speed1      = 0.2;
-        float speed2      = 0.15;
+        float2 direction_1 = float2(1.0, 0.5);
+        float2 direction_2 = float2(-0.5, 1.0);
+        float scale_1      = 0.5;
+        float scale_2      = 0.5;
+        float speed_1      = 0.2;
+        float speed_2      = 0.15;
 
         // calculate unique UV offsets for the two normal maps
-        float2 uv1 = uv + buffer_frame.time * speed1 * direction1;
-        float2 uv2 = uv + buffer_frame.time * speed2 * direction2;
+        float2 uv1 = uv + buffer_frame.time * speed_1 * direction_1;
+        float2 uv2 = uv + buffer_frame.time * speed_2 * direction_2;
 
-        // sample the normal maps
-        float3 normal1 = tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], uv1 * scale1).xyz;
-        float3 normal2 = tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], uv2 * scale2).xyz;
+        // sample the textures
+        float4 sample_1 = _tex.Sample(samplers[sampler_anisotropic_wrap], uv1 * scale_1);
+        float4 sample_2 = _tex.Sample(samplers[sampler_anisotropic_wrap], uv2 * scale_2);
 
-        // blend the normals
-        return normalize(normal1 + normal2);
+        // blend the samples
+        return sample_1 + sample_2;
+    }
+    
+    static float4 no_tiling(Texture2D _tex, float2 uv, float variation)
+    {
+        // use a low-frequency texture for cache-friendly lookups
+        float k = tex_noise_blue.Sample(samplers[sampler_bilinear_wrap], float3(uv * 0.005f, 0)).x;
+
+        float l = k * 8.0;
+        float f = frac(l);
+
+        float ia = floor(l);
+        float ib = ia + 1.0;
+
+        // generating offsets
+        float2 offa = sin(float2(3.0, 7.0) * ia); // hash function
+        float2 offb = sin(float2(3.0, 7.0) * ib); // hash function
+
+        // sampling texture with offsets
+        float4 cola = _tex.SampleGrad(samplers[sampler_anisotropic_wrap], uv + variation * offa, ddx(uv), ddy(uv));
+        float4 colb = _tex.SampleGrad(samplers[sampler_anisotropic_wrap], uv + variation * offb, ddx(uv), ddy(uv));
+
+        // interpolating between two textures based on the noise texture
+        return lerp(cola, colb, smoothstep(0.2, 0.8, f - 0.1 * dot(cola - colb, cola - colb)));
+    }
+
+    static float4 slope_based_no_tiling(Texture2D tex_1, Texture2D tex_2, float2 uv, float slope)
+    {
+        // if this is a water material,we only use a normal map, so interleave that
+        if (material_vertex_animate_water())
+        {
+            float4 normal = interleaved(tex_1, uv);
+            return float4(normalize(normal.xyz), 0.0f);
+        }
+
+        // if this is a slope based material, sample and blend with the second texture
+        if (material_texture_slope_based())
+        {
+            float variation  = 0.5f;
+            float4 tex_flat  = no_tiling(tex_1, uv, variation);
+            float4 tex_slope = no_tiling(tex_2, uv * 0.3f, variation);
+            return lerp(tex_slope, tex_flat, slope);
+        }
+
+        // just a regular sample
+        return tex_1.Sample(samplers[sampler_anisotropic_wrap], uv);
     }
 };
-
-float compute_slope(float3 normal)
-{
-    float bias  = -0.1f; // increase the bias to favour the slope/rock texture
-    float slope = saturate(dot(normal, float3(0.0f, 1.0f, 0.0f)) - bias);
-    slope       = pow(slope, 16.0f); // increase the exponent to sharpen the transition
-
-    return slope;
-}
-
-float4 sample_albedo(float2 uv, float slope)
-{
-    float4 albedo = tex_material_albedo.Sample(samplers[sampler_anisotropic_wrap], uv);
-    
-    if (material_texture_slope_based())
-    {
-        float4 tex_flat  = albedo;
-        float4 tex_slope = tex_material_albedo_2.Sample(samplers[sampler_anisotropic_wrap], uv * 0.3f);
-        albedo           = lerp(tex_slope, tex_flat, slope);
-    }
-
-    return albedo;
-}
-
-float3 smaple_normal(float2 uv, float slope)
-{
-    if (material_vertex_animate_water())
-    {
-        return water::sample_interleaved_normal(uv);
-    }
-    
-    float3 normal = tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], uv).xyz;
-
-    if (material_texture_slope_based())
-    {
-        float3 tex_flat  = normal;
-        float3 tex_slope = tex_material_normal2.Sample(samplers[sampler_anisotropic_wrap], uv * 0.3f).rgb;
-        normal           = lerp(tex_slope, tex_flat, slope);
-    }
-
-    return normal;
-}
 
 PixelInputType mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
@@ -168,19 +156,30 @@ PixelOutputType mainPS(PixelInputType input)
     // uv
     float2 uv  = input.uv;
     uv         = float2(uv.x * buffer_material.tiling.x + buffer_material.offset.x, uv.y * buffer_material.tiling.y + buffer_material.offset.y);
-    
+        
     // alpha mask
     float alpha_mask = 1.0f;
     if (has_texture_alpha_mask())
     {
         alpha_mask = tex_material_mask.Sample(samplers[sampler_anisotropic_wrap], uv).r;
     }
-    
+
+    // slope
+    float slope = 0.0f;
+    {
+        float bias = -0.1f; // increase the bias to favour the slope/rock texture
+        slope      = saturate(dot(normal, float3(0.0f, 1.0f, 0.0f)) - bias);
+        slope      = pow(slope, 16.0f); // increase the exponent to sharpen the transition
+    }
+
+    // pixel distance
+    float3 camera_to_pixel_world = buffer_frame.camera_position - input.position_world.xyz;
+    float pixel_distance         = length(camera_to_pixel_world);
+
     // albedo
-    float slope = compute_slope(normal);
     if (has_texture_albedo())
     {
-        float4 albedo_sample = sample_albedo(uv, slope);
+        float4 albedo_sample = sampling::slope_based_no_tiling(tex_material_albedo, tex_material_albedo_2, uv, slope);
 
         // read albedo's alpha channel as an alpha mask as well
         alpha_mask      = min(alpha_mask, albedo_sample.a);
@@ -193,13 +192,8 @@ PixelOutputType mainPS(PixelInputType input)
     // discard masked pixels
     if (alpha_mask <= ALPHA_THRESHOLD)
         discard;
-
-    // determine shading quality
-    float3 camera_to_pixel_world = buffer_frame.camera_position - input.position_world.xyz;
-    float pixel_distance         = length(camera_to_pixel_world);
-    bool high_quality            = pixel_distance < g_quality_distance_low;
     
-    if (high_quality)
+    if (pixel_distance < g_quality_distance_low)
     {
         // parallax mapping
         if (has_texture_height())
@@ -216,7 +210,8 @@ PixelOutputType mainPS(PixelInputType input)
         if (has_texture_normal())
         {
             // get tangent space normal and apply the user defined intensity, then transform it to world space
-            float3 tangent_normal      = normalize(unpack(smaple_normal(uv, slope)));
+            float3 normal_sample       = sampling::slope_based_no_tiling(tex_material_normal, tex_material_normal2, uv, slope).xyz;
+            float3 tangent_normal      = normalize(unpack(normal_sample));
             float normal_intensity     = clamp(buffer_material.normal, 0.012f, buffer_material.normal);
             tangent_normal.xy         *= saturate(normal_intensity);
             float3x3 tangent_to_world  = make_tangent_to_world_matrix(input.normal_world, input.tangent_world);
