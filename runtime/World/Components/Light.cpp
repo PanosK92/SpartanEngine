@@ -410,16 +410,20 @@ namespace Spartan
         return m_matrix_projection[index];
     }
 
-    bool Light::IsInViewFrustum(shared_ptr<Renderable> renderable, uint32_t index) const
+    bool Light::IsInViewFrustum(const BoundingBox& bounding_box, const uint32_t index) const
     {
-        const BoundingBox box = renderable->GetBoundingBox(BoundingBoxType::TransformedInstances);
-        const Vector3 center  = box.GetCenter();
-        const Vector3 extents = box.GetExtents();
+        const Vector3 center  = bounding_box.GetCenter();
+        const Vector3 extents = bounding_box.GetExtents();
 
         // ensure that potential shadow casters from behind the near plane are not rejected
         const bool ignore_near_plane = (m_light_type == LightType::Directional) ? true : false;
 
         return m_frustums[index].IsVisible(center, extents, ignore_near_plane);
+    }
+
+    bool Light::IsInViewFrustum(Renderable* renderable, uint32_t index) const
+    {
+        return IsInViewFrustum(renderable->GetBoundingBox(BoundingBoxType::TransformedInstances), index);
     }
 
     void Light::CreateShadowMap()

@@ -49,6 +49,67 @@ namespace Spartan
         const float thread_group_count = 8.0f;
         #define thread_group_count_x(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetWidth())  / thread_group_count))
         #define thread_group_count_y(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetHeight()) / thread_group_count))
+
+        // called by: Pass_ShadowMaps(), Pass_Depth_Prepass(), Pass_GBuffer()
+        void draw_renderable(RHI_CommandList* cmd_list, RHI_PipelineState& pso, Camera* camera, Renderable* renderable, Light* light, uint32_t& instance_start_index, uint32_t array_index = 0)
+        {
+            bool draw_instanced = pso.instancing && renderable->HasInstancing();
+
+            if (draw_instanced)
+            {
+                for (uint32_t group_index = 0; group_index < static_cast<uint32_t>(renderable->GetBoundingBoxGroupEndIndices().size()); group_index++)
+                {
+                    uint32_t group_end_index = renderable->GetBoundingBoxGroupEndIndices()[group_index];
+                    uint32_t instance_count  = group_end_index - instance_start_index;
+
+                    // skip instance groups outside of the view frustum
+                    {
+                        const Math::BoundingBox& bounding_box_group = renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
+
+                        if (light)
+                        {
+                            if (!light->IsInViewFrustum(renderable, array_index))
+                            {
+                                instance_start_index = group_end_index;
+                                continue;
+                            }
+                        }
+                        else if (!camera->IsInViewFrustum(bounding_box_group))
+                        {
+                            instance_start_index = group_end_index;
+                            continue;
+                        }
+                    }
+
+                    // skip this iteration if we've reached the total number of instances
+                    if (instance_start_index + instance_count >= renderable->GetInstanceCount())
+                        continue;
+
+                    if (instance_count > 0)
+                    {
+                        SP_ASSERT(instance_start_index + instance_count < renderable->GetInstanceCount());
+
+                        cmd_list->DrawIndexed(
+                            renderable->GetIndexCount(),
+                            renderable->GetIndexOffset(),
+                            renderable->GetVertexOffset(),
+                            instance_start_index,
+                            instance_count
+                        );
+                    }
+
+                    instance_start_index = group_end_index;
+                }
+            }
+            else 
+            {
+                cmd_list->DrawIndexed(
+                    renderable->GetIndexCount(),
+                    renderable->GetIndexOffset(),
+                    renderable->GetVertexOffset()
+                );
+            }
+        }
     }
 
     void Renderer::SetGlobalShaderResources(RHI_CommandList* cmd_list)
@@ -251,6 +312,8 @@ namespace Spartan
                     // go through all of the entities
                     for (shared_ptr<Entity> entity : entities)
                     {
+                        uint32_t instance_start_index = 0;
+
                         // acquire renderable component
                         shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
                         Mesh* mesh         = renderable->GetMesh();
@@ -259,7 +322,7 @@ namespace Spartan
                             continue;
 
                         // skip objects outside of the view frustum
-                        if (!light->IsInViewFrustum(renderable, array_index))
+                        if (!light->IsInViewFrustum(renderable.get(), array_index))
                             continue;
 
                         // set vertex, index and instance buffers
@@ -291,13 +354,7 @@ namespace Spartan
                             PushPassConstants(cmd_list);
                         }
 
-                        // draw
-                        cmd_list->DrawIndexed(
-                            renderable->GetIndexCount(),
-                            renderable->GetIndexOffset(),
-                            renderable->GetVertexOffset(),
-                            pso.instancing ? renderable->GetInstanceCount() : 1
-                        );
+                        draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get(), light.get(), instance_start_index, array_index);
                     }
                 }
             }
@@ -462,6 +519,8 @@ namespace Spartan
             uint64_t bound_material_id = 0;
             for (shared_ptr<Entity> entity : entities)
             {
+                uint32_t instance_start_index = 0;
+
                 // get renderable
                 shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
                 if (!renderable)
@@ -512,13 +571,7 @@ namespace Spartan
                     PushPassConstants(cmd_list);
                 }
 
-                // draw
-                cmd_list->DrawIndexed(
-                    renderable->GetIndexCount(),
-                    renderable->GetIndexOffset(),
-                    renderable->GetVertexOffset(),
-                    pso.instancing ? renderable->GetInstanceCount() : 1
-                );
+                draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get(), nullptr, instance_start_index);
             }
         }
 
@@ -591,12 +644,15 @@ namespace Spartan
             uint64_t bound_material_id = 0;
             for (shared_ptr<Entity> entity : entities)
             {
+                uint32_t instance_start_index = 0;
+
                 // get renderable
                 shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
                 if (!renderable)
                     continue;
 
-                // skip objects outside of the view frustum
+                // skip entities outside of the view frustum
+                // for instanced entities, the total bounding box will be used
                 if (!GetCamera()->IsInViewFrustum(renderable))
                     continue;
 
@@ -639,13 +695,7 @@ namespace Spartan
                     PushPassConstants(cmd_list);
                 }
 
-                // draw
-                cmd_list->DrawIndexed(
-                    renderable->GetIndexCount(),
-                    renderable->GetIndexOffset(),
-                    renderable->GetVertexOffset(),
-                    pso.instancing ? renderable->GetInstanceCount() : 1
-                );
+                draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get(), nullptr, instance_start_index);
 
                 is_first_pass = false;
             }

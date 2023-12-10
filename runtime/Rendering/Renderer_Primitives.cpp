@@ -341,14 +341,6 @@ namespace Spartan
                 }
             }
 
-            for (const auto& entity : GetEntities()[Renderer_Entity::GeometryInstanced])
-            {
-                if (auto renderable = entity->GetComponent<Renderable>())
-                {
-                    DrawBox(renderable->GetBoundingBox(BoundingBoxType::TransformedInstances), color);
-                }
-            }
-
             for (const auto& entity : GetEntities()[Renderer_Entity::GeometryTransparent])
             {
                 if (auto renderable = entity->GetComponent<Renderable>())
@@ -357,13 +349,26 @@ namespace Spartan
                 }
             }
 
-            for (const auto& entity : GetEntities()[Renderer_Entity::GeometryTransparentInstanced])
+            // function to draw bounding boxes for instanced groups
+            auto drawInstanceGroupBoundingBoxes = [&](const auto& entities)
             {
-                if (auto renderable = entity->GetComponent<Renderable>())
+                for (const auto& entity : entities)
                 {
-                    DrawBox(renderable->GetBoundingBox(BoundingBoxType::TransformedInstances), color);
+                    if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
+                    {
+                        uint32_t groupCount = static_cast<uint32_t>(renderable->GetBoundingBoxGroupEndIndices().size()); // Assuming this method exists
+                        for (uint32_t group_index = 0; group_index < groupCount; group_index++)
+                        {
+                            const Math::BoundingBox& bounding_box_group = renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
+                            DrawBox(bounding_box_group, color);
+                        }
+                    }
                 }
-            }
+            };
+
+            // draw bounding boxes for different entity types
+            drawInstanceGroupBoundingBoxes(GetEntities()[Renderer_Entity::GeometryInstanced]);
+            drawInstanceGroupBoundingBoxes(GetEntities()[Renderer_Entity::GeometryTransparentInstanced]);
         }
     }
 }

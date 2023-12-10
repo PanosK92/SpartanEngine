@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================
+//= INCLUDES ================================
 #include "pch.h"
 #include "Renderable.h"
 #include "../Entity.h"
@@ -27,7 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
-//=======================================
+#include "../../Rendering/GridPartitioning.h"
+//===========================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -38,15 +39,15 @@ namespace Spartan
 {
     Renderable::Renderable(weak_ptr<Entity> entity) : Component(entity)
     {
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,       bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,               Material*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_cast_shadows,           bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_offset,  uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_count,   uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_offset, uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_count,  uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,                   Mesh*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box_mesh,      BoundingBox);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,           bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,                   Material*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_cast_shadows,               bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_offset,      uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_count,       uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_offset,     uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_count,      uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,                       Mesh*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box_untransformed, BoundingBox);
     }
 
     Renderable::~Renderable()
@@ -61,7 +62,7 @@ namespace Spartan
         stream->Write(m_geometry_index_count);
         stream->Write(m_geometry_vertex_offset);
         stream->Write(m_geometry_vertex_count);
-        stream->Write(m_bounding_box_mesh);
+        stream->Write(m_bounding_box_untransformed);
         stream->Write(m_mesh ? m_mesh->GetObjectName() : "");
 
         // material
@@ -80,7 +81,7 @@ namespace Spartan
         m_geometry_index_count   = stream->ReadAs<uint32_t>();
         m_geometry_vertex_offset = stream->ReadAs<uint32_t>();
         m_geometry_vertex_count  = stream->ReadAs<uint32_t>();
-        stream->Read(&m_bounding_box_mesh);
+        stream->Read(&m_bounding_box_untransformed);
         string model_name;
         stream->Read(&model_name);
         m_mesh = ResourceCache::GetByName<Mesh>(model_name).get();
@@ -107,12 +108,12 @@ namespace Spartan
         uint32_t vertex_offset /*= 0*/, uint32_t vertex_count /*= 0 */
     )
     {
-        m_mesh                   = mesh;
-        m_bounding_box_mesh      = aabb;
-        m_geometry_index_offset  = index_offset;
-        m_geometry_index_count   = index_count;
-        m_geometry_vertex_offset = vertex_offset;
-        m_geometry_vertex_count  = vertex_count;
+        m_mesh                       = mesh;
+        m_bounding_box_untransformed = aabb;
+        m_geometry_index_offset      = index_offset;
+        m_geometry_index_count       = index_count;
+        m_geometry_vertex_offset     = vertex_offset;
+        m_geometry_vertex_count      = vertex_count;
 
         if (!m_mesh)
             return;
@@ -127,14 +128,14 @@ namespace Spartan
             m_geometry_vertex_count = m_mesh->GetVertexCount();
         }
 
-        if (m_bounding_box_mesh == BoundingBox::Undefined)
+        if (m_bounding_box_untransformed == BoundingBox::Undefined)
         {
-            m_bounding_box_mesh = m_mesh->GetAabb();
+            m_bounding_box_untransformed = m_mesh->GetAabb();
         }
 
-        SP_ASSERT(m_geometry_index_count  != 0);
-        SP_ASSERT(m_geometry_vertex_count != 0);
-        SP_ASSERT(m_bounding_box_mesh     != BoundingBox::Undefined);
+        SP_ASSERT(m_geometry_index_count       != 0);
+        SP_ASSERT(m_geometry_vertex_count      != 0);
+        SP_ASSERT(m_bounding_box_untransformed != BoundingBox::Undefined);
     }
 
     void Renderable::SetGeometry(const Renderer_MeshType mesh_type)
@@ -148,20 +149,20 @@ namespace Spartan
         m_mesh->GetGeometry(m_geometry_index_offset, m_geometry_index_count, m_geometry_vertex_offset, m_geometry_vertex_count, indices, vertices);
     }
 
-	const BoundingBox& Renderable::GetBoundingBox(const BoundingBoxType type)
+	const BoundingBox& Renderable::GetBoundingBox(const BoundingBoxType type, const uint32_t instance_group_index)
 	{
         // compute if dirty
         if (m_bounding_box_dirty || m_transform_previous != GetEntity()->GetMatrix())
         {
             // transformed
             {
-                m_bounding_box_transformed = m_bounding_box_mesh.Transform(GetEntity()->GetMatrix());
+                m_bounding_box = m_bounding_box_untransformed.Transform(GetEntity()->GetMatrix());
             }
 
             // transformed instances
             {
                 // start with the default transformed bounding box
-                m_bounding_box_transformed_instances = m_bounding_box_transformed;
+                m_bounding_box_instances = m_bounding_box;
 
                 // loop through each instance and expand the bounding box
                 for (const Matrix& instance_transform : m_instances)
@@ -169,8 +170,36 @@ namespace Spartan
                     // the instance transforms are transposed (see terrain.cpp), so we need to transpose them back
                     Matrix transform                  = instance_transform.Transposed();
                     Matrix translation                = Matrix::CreateTranslation(transform.GetTranslation());
-                    BoundingBox bounding_box_instance = m_bounding_box_mesh.Transform(translation);
-                    m_bounding_box_transformed_instances.Merge(bounding_box_instance);
+                    BoundingBox bounding_box_instance = m_bounding_box_untransformed.Transform(translation);
+                    m_bounding_box_instances.Merge(bounding_box_instance);
+                }
+            }
+
+            // transformed instance groups
+            {
+                m_bounding_box_instance_group.clear();
+                uint32_t start_index = 0;
+
+                // loop through each group end index
+                for (const uint32_t group_end_index : m_instance_group_end_indices)
+                {
+                    BoundingBox bounding_box_group;
+
+                    // loop through the instances in this group
+                    for (uint32_t i = start_index; i < group_end_index; ++i)
+                    {
+                        const Matrix& instance_transform = m_instances[i];
+
+                        // the instance transforms are transposed (see terrain.cpp), so we need to transpose them back
+                        Matrix transform                  = instance_transform.Transposed();
+                        Matrix translation                = Matrix::CreateTranslation(transform.GetTranslation());
+                        BoundingBox bounding_box_instance = m_bounding_box_untransformed.Transform(translation);
+
+                        bounding_box_group.Merge(bounding_box_instance);
+                    }
+
+                    m_bounding_box_instance_group.push_back(bounding_box_group);
+                    start_index = group_end_index;
                 }
             }
 
@@ -179,19 +208,21 @@ namespace Spartan
         }
 
         // return
-        if (type == BoundingBoxType::Mesh)
+        if (type == BoundingBoxType::Untransformed)
         {
-            return m_bounding_box_mesh;
+            return m_bounding_box_untransformed;
         }
         else if (type == BoundingBoxType::Transformed)
         {
-            
-            return m_bounding_box_transformed;
+            return m_bounding_box;
         }
         else if (type == BoundingBoxType::TransformedInstances)
+        {        
+            return m_bounding_box_instances;
+        }
+        else if (type == BoundingBoxType::TransformedInstanceGroup)
         {
-          
-            return m_bounding_box_transformed_instances;
+            return m_bounding_box_instance_group[instance_group_index];
         }
 
         return BoundingBox::Undefined;
@@ -258,10 +289,14 @@ namespace Spartan
 
     void Renderable::SetInstances(const vector<Matrix>& instances)
     {
-        m_instance_buffer = make_shared<RHI_VertexBuffer>(false, "instance_buffer");
-        m_instance_buffer->Create<Matrix>(instances);
+        m_instances = instances;
 
-        m_instances          = instances;
+        grid_partitioning::reorder_instances_into_cell_chunks(m_instances, m_instance_group_end_indices);
+        SP_ASSERT_MSG(m_instance_group_end_indices.size() < 200, "Too many instance groups, increase the physical cell size");
+
+        m_instance_buffer = make_shared<RHI_VertexBuffer>(false, "instance_buffer");
+        m_instance_buffer->Create<Matrix>(m_instances);
+
         m_bounding_box_dirty = true;
     }
 }
