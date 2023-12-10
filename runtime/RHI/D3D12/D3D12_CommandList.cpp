@@ -153,57 +153,40 @@ namespace Spartan
 
     void RHI_CommandList::Draw(const uint32_t vertex_count, uint32_t vertex_start_index /*= 0*/)
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        OnPreDrawDispatch();
 
-        // Ensure correct state before attempting to draw
-        OnDraw();
-
-        // Draw
         static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->DrawInstanced(
             vertex_count,       // VertexCountPerInstance
             1,                  // InstanceCount
             vertex_start_index, // StartVertexLocation
             0                   // StartInstanceLocation
         );
-
-        // Profiler
         Profiler::m_rhi_draw++;
     }
     
-    void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset, const uint32_t instance_count)
+    void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset, const uint32_t instance_start_index, const uint32_t instance_count)
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        OnPreDrawDispatch();
 
-        // Ensure correct state before attempting to draw
-        OnDraw();
-
-        // Draw
         static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->DrawIndexedInstanced(
-            index_count,   // IndexCountPerInstance
-            1,             // InstanceCount
-            index_offset,  // StartIndexLocation
-            vertex_offset, // BaseVertexLocation
-            0              // StartInstanceLocation
+            index_count,         // IndexCountPerInstance
+            instance_count,      // InstanceCount
+            index_offset,        // StartIndexLocation
+            vertex_offset,       // BaseVertexLocation
+            instance_start_index // StartInstanceLocation
         );
 
-        // Profile
         Profiler::m_rhi_draw++;
     }
   
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        OnPreDrawDispatch();
 
-        // Ensure correct state before attempting to draw
-        OnDraw();
-
-        // Dispatch
         static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->Dispatch(x, y, z);
-
-        // Profiler
         Profiler::m_rhi_dispatch++;
     }
 
@@ -372,7 +355,7 @@ namespace Spartan
         SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
-    void RHI_CommandList::OnDraw()
+    void RHI_CommandList::OnPreDrawDispatch()
     {
         SP_ASSERT_MSG(false, "Function is not implemented");
     }
