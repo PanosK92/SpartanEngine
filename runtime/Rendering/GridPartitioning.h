@@ -29,10 +29,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace grid_partitioning
 {
-    // This namespace organizes 3D objects into a grid layout, grouping instances into grid cells.
-    // It enables optimized rendering by allowing culling of non-visible chunks efficiently.
+    // this namespace organizes 3D objects into a grid layout, grouping instances into grid cells
+    // it enables optimized rendering by allowing culling of non-visible chunks efficiently
 
-    const uint32_t physical_cell_Size = 200;
+    const uint32_t physical_cell_size = 150;
 
     struct GridKey
     {
@@ -48,19 +48,30 @@ namespace grid_partitioning
     {
         size_t operator()(const GridKey& k) const
         {
-            return ((std::hash<int>()(k.x) ^ (std::hash<int>()(k.y) << 1)) >> 1) ^ (std::hash<int>()(k.z) << 1);
+            // interleave the bits of the x, y, and z coordinates
+            // this approach tends to maintain spatial locality better, as nearby
+            // coordinates will result in hash values that are also close to each other
+
+            size_t result = 0;
+
+            for (int i = 0; i < (sizeof(int) * 8); i++) // for each bit in the integers
+            {
+                result |= ((k.x & (1 << i)) << (2 * i)) | ((k.y & (1 << i)) << ((2 * i) + 1)) | ((k.z & (1 << i)) << ((2 * i) + 2));
+            }
+
+            return result;
+        }
+
+        static GridKey get_key(const Spartan::Math::Vector3& position)
+        {
+            return
+            {
+                static_cast<int>(std::floor(position.x / static_cast<float>(physical_cell_size))),
+                static_cast<int>(std::floor(position.y / static_cast<float>(physical_cell_size))),
+                static_cast<int>(std::floor(position.z / static_cast<float>(physical_cell_size)))
+            };
         }
     };
-
-    GridKey get_key(const Spartan::Math::Vector3& position)
-    {
-        return
-        {
-            static_cast<int>(std::floor(position.x / physical_cell_Size)),
-            static_cast<int>(std::floor(position.y / physical_cell_Size)),
-            static_cast<int>(std::floor(position.z / physical_cell_Size))
-        };
-    }
 
     void reorder_instances_into_cell_chunks(std::vector<Spartan::Math::Matrix>& instance_transforms, std::vector<uint32_t>& cell_end_indices)
     {
@@ -68,19 +79,16 @@ namespace grid_partitioning
         std::unordered_map<GridKey, std::vector<Spartan::Math::Matrix>, GridKeyHash> grid_map;
         for (const auto& instance : instance_transforms)
         {
-            // the instance transforms are transposed (see terrain.cpp), so we need to transpose them back
-            Spartan::Math::Matrix transform = instance.Transposed();
-            Spartan::Math::Vector3 position = transform.GetTranslation();
+            Spartan::Math::Vector3 position = instance.GetTranslation();
 
-            GridKey key = get_key(position);
+            GridKey key = GridKeyHash::get_key(position);
             grid_map[key].push_back(instance);
         }
 
+        // reorder instances based on grid map
         instance_transforms.clear();
         cell_end_indices.clear();
         uint32_t index = 0;
-
-        // reorder instances based on grid map
         for (const auto& [key, transforms] : grid_map)
         {
             instance_transforms.insert(instance_transforms.end(), transforms.begin(), transforms.end());

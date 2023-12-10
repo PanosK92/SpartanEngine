@@ -362,14 +362,15 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
 
     if (component_begin("Renderable", IconType::Component_Renderable, renderable))
     {
-        //= REFLECT ===========================================================
-        Mesh* mesh              = renderable->GetMesh();
-        Material* material      = renderable->GetMaterial();
+        //= REFLECT =============================================================================================
+        Mesh* mesh = renderable->GetMesh();
+        Material* material = renderable->GetMaterial();
         uint32_t instance_count = renderable->GetInstanceCount();
-        string name_mesh        = mesh ? mesh->GetObjectName() : "N/A";
-        string name_material    = material ? material->GetObjectName() : "N/A";
-        bool cast_shadows       = renderable->GetCastShadows();
-        //=====================================================================
+        uint32_t instance_partitions = static_cast<uint32_t>(renderable->GetBoundingBoxGroupEndIndices().size());
+        string name_mesh = mesh ? mesh->GetObjectName() : "N/A";
+        string name_material = material ? material->GetObjectName() : "N/A";
+        bool cast_shadows = renderable->GetCastShadows();
+        //=======================================================================================================
 
         // mesh
         ImGui::Text("Mesh");
@@ -382,6 +383,10 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
             ImGui::Text("Instances");
             ImGui::SameLine(column_pos_x);
             ImGui::LabelText("##renderable_mesh", to_string(instance_count).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
+
+            ImGui::Text("Partitions");
+            ImGui::SameLine(column_pos_x);
+            ImGui::LabelText("##renderable_mesh", to_string(instance_partitions).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
         }
 
         // material

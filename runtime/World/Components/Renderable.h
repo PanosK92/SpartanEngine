@@ -53,7 +53,7 @@ namespace Spartan
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
 
-        // geometry/mesh
+        // geometry
         void SetGeometry(
             Mesh* mesh,
             const Math::BoundingBox aabb = Math::BoundingBox::Undefined,
@@ -63,15 +63,8 @@ namespace Spartan
         void SetGeometry(const Renderer_MeshType mesh_type);
         void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
 
-        // properties
-        uint32_t GetIndexOffset() const  { return m_geometry_index_offset; }
-        uint32_t GetIndexCount() const   { return m_geometry_index_count; }
-        uint32_t GetVertexOffset() const { return m_geometry_vertex_offset; }
-        uint32_t GetVertexCount() const  { return m_geometry_vertex_count; }
-        Mesh* GetMesh() const            { return m_mesh; }
-        const std::vector<uint32_t>& GetBoundingBoxGroupEndIndices() const { return m_instance_group_end_indices; }
-
         // bounding box
+        const std::vector<uint32_t>& GetBoundingBoxGroupEndIndices() const { return m_instance_group_end_indices; }
         const Math::BoundingBox& GetBoundingBox(const BoundingBoxType type, const uint32_t instance_group_index = 0);
 
         //= MATERIAL ====================================================================
@@ -92,10 +85,17 @@ namespace Spartan
         bool GetCastShadows() const                  { return m_cast_shadows; }
 
         // instancing
-        bool HasInstancing()                  const { return !m_instances.empty(); }
+        bool HasInstancing() const                  { return !m_instances.empty(); }
         RHI_VertexBuffer* GetInstanceBuffer() const { return m_instance_buffer.get(); }
-        uint32_t GetInstanceCount()           const { return static_cast<uint32_t>(m_instances.size()); }
+        uint32_t GetInstanceCount()  const          { return static_cast<uint32_t>(m_instances.size()); }
         void SetInstances(const std::vector<Math::Matrix>& instances);
+
+        // properties
+        uint32_t GetIndexOffset() const  { return m_geometry_index_offset; }
+        uint32_t GetIndexCount() const   { return m_geometry_index_count; }
+        uint32_t GetVertexOffset() const { return m_geometry_vertex_offset; }
+        uint32_t GetVertexCount() const  { return m_geometry_vertex_count; }
+        Mesh* GetMesh() const            { return m_mesh; }
 
     private:
         // geometry/mesh
