@@ -52,11 +52,11 @@ namespace
     vector<string> contributors =
     {
         // format: name,country,button text,button url,contribution, steam cd key
-        "Apostolos Bouzalas,  Greece,         LinkedIn, https://www.linkedin.com/in/apostolos-bouzalas,           Bug Fixes,       N/A",
-        "Iker Galardi,        Basque Country, LinkedIn, https://www.linkedin.com/in/iker-galardi/,                Linux Port,      N/A",
-        "Jesse Guerrero,      US,             LinkedIn, https://www.linkedin.com/in/jguer,                        UX Improvements, N/A",
-        "Konstantinos Benos,  Greece,         Twitter,  https://twitter.com/deg3x,                                Bug Fixes,       N/A",
-        "Nick Polyderopoulos, Greece,         LinkedIn, https://www.linkedin.com/in/nick-polyderopoulos-21742397, UX Improvements, N/A",
+        "Apostolos Bouzalas,  Greece,         LinkedIn, https://www.linkedin.com/in/apostolos-bouzalas,           Bug Fixes,                      N/A",
+        "Iker Galardi,        Basque Country, LinkedIn, https://www.linkedin.com/in/iker-galardi/,                Linux Port,                     N/A",
+        "Jesse Guerrero,      US,             LinkedIn, https://www.linkedin.com/in/jguer,                        UX Improvements,                N/A",
+        "Konstantinos Benos,  Greece,         Twitter,  https://twitter.com/deg3x,                                Bug Fixes,                      N/A",
+        "Nick Polyderopoulos, Greece,         LinkedIn, https://www.linkedin.com/in/nick-polyderopoulos-21742397, UX Improvements,                N/A",
         "Panos Kolyvakis,     Greece,         LinkedIn, https://www.linkedin.com/in/panos-kolyvakis-66863421a/,   Improved water buoyancy,        N/A",
         "Tri Tran,            Belgium,        LinkedIn, https://www.linkedin.com/in/mtrantr/,                     Days Gone Screen Space Shadows, Starfield"
     };
