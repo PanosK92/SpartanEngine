@@ -807,7 +807,7 @@ namespace Spartan
 
     void World::CreateDefaultWorldForest()
     {
-        Vector3 camera_position = Vector3(15.0, 4.0f, 330.0f);
+        Vector3 camera_position = Vector3(-263.7308f, 73.8641f, 440.0755f);
         Vector3 camera_rotation = Vector3(0.0f, 180.0f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, nullptr, true, false);
 
@@ -945,7 +945,7 @@ namespace Spartan
                         renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\vegetation_tree_1\\bark.png");
 
                         // generate instances
-                        terrain->GenerateTransforms(&instances, 5000, TerrainProp::Tree);
+                        terrain->GenerateTransforms(&instances, 10000, TerrainProp::Tree);
                         renderable->SetInstances(instances);
                     }
 
@@ -1038,7 +1038,7 @@ namespace Spartan
 
     void World::CreateDefaultWorldSponza()
     {
-        Vector3 camera_position = Vector3(-27.405f, 2.0f, -0.07f);
+        Vector3 camera_position = Vector3(-27.405f, 3.5f, -0.07f);
         Vector3 camera_rotation = Vector3(-8.5f, 90.0f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::black_hole, "project\\music\\jake_chudnow_olive.mp3", false, false);
 
@@ -1060,7 +1060,7 @@ namespace Spartan
         {
             Entity* entity = m_default_model_sponza->GetRootEntity();
             entity->SetObjectName("sponza");
-            entity->SetPosition(Vector3(0.0f, 0.15f, 0.0f));
+            entity->SetPosition(Vector3(0.0f, 1.5f, 0.0f));
             entity->SetScale(Vector3(2.0f, 2.0f, 2.0f)); // I actually walked in Sponza, it's that big
 
             // make the lamp frame not cast shadows, so we can place a light within it
@@ -1104,7 +1104,7 @@ namespace Spartan
 
     void World::CreateDefaultWorldDoomE1M1()
     {
-        Vector3 camera_position = Vector3(-120.0f, 10.0f, -30.0f);
+        Vector3 camera_position = Vector3(-120.0f, 23.0f, -30.0f);
         Vector3 camera_rotation = Vector3(0.0f, 90.0f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\doom_e1m1.mp3", false, false);
 
@@ -1113,7 +1113,7 @@ namespace Spartan
         {
             Entity* entity = m_default_model_doom->GetRootEntity();
             entity->SetObjectName("doom_e1m1");
-            entity->SetPosition(Vector3(0.0f, 1.5f, -355.5300f));
+            entity->SetPosition(Vector3(0.0f, 14.0f, -355.5300f));
             entity->SetScale(Vector3(0.1f, 0.1f, 0.1f));
 
             // enable physics for all meshes

@@ -424,7 +424,7 @@ namespace Spartan
 
         if (terrain_prop == TerrainProp::Plant)
         {
-            max_slope                   = 35.0f * Math::Helper::DEG_TO_RAD;
+            max_slope                   = 40.0f * Math::Helper::DEG_TO_RAD;
             rotate_match_surface_normal = true; // small plants tend to grow towards the sun but they can have some wonky angles due to low mass
             terrain_offset              = 0.0f;
         }
