@@ -930,7 +930,7 @@ namespace Spartan
                     }
                 }
 
-                // tree
+                // vegetation_tree_1
                 if (shared_ptr<Mesh> tree = ResourceCache::Load<Mesh>("project\\models\\vegetation_tree_1\\tree.fbx"))
                 {
                     Entity* entity = tree->GetRootEntity();
@@ -964,7 +964,7 @@ namespace Spartan
                     }
                 }
 
-                // small plant
+                // vegetation_plant_1
                 if (shared_ptr<Mesh> plant = ResourceCache::Load<Mesh>("project\\models\\vegetation_plant_1\\ormbunke.obj"))
                 {
                     Entity* entity = plant->GetRootEntity();
@@ -993,6 +993,37 @@ namespace Spartan
                         renderable->SetInstances(instances);
                     }
                 }
+
+                // vegetation_plant_2
+                //if (shared_ptr<Mesh> plant = ResourceCache::Load<Mesh>("project\\models\\vegetation_plant_2\\trawa01.obj"))
+                //{
+                //    Entity* entity = plant->GetRootEntity();
+                //    entity->SetObjectName("plant_2");
+                //    entity->SetScale(Vector3(1.0f, 1.0f, 1.0f));
+                //    entity->SetParent(m_default_terrain.get());
+
+                //    if (Entity* child = entity->GetDescendantByName("trawa01_wip.001_NaturePlants0014_1_alphamasked_S.005"))
+                //    {
+                //        Renderable* renderable = child->GetComponent<Renderable>().get();
+                //        renderable->SetCastShadows(false); // cheaper and screen space shadows are enough
+
+                //        // tweak material
+                //        Material* material = renderable->GetMaterial();
+                //        material->SetTexture(MaterialTexture::Color,                  "project\\models\\vegetation_plant_2\\grass02_albedo.png");
+                //        material->SetTexture(MaterialTexture::AlphaMask,              "project\\models\\vegetation_plant_2\\grass02_mask02.png");
+                //        material->SetProperty(MaterialProperty::ColorR,               1.0f);
+                //        material->SetProperty(MaterialProperty::ColorG,               1.0f);
+                //        material->SetProperty(MaterialProperty::ColorB,               1.0f);
+                //        material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                //        material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
+                //        material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
+
+                //        // generate instances
+                //        vector<Matrix> instances;
+                //        terrain->GenerateTransforms(&instances, 1000000, TerrainProp::Plant);
+                //        renderable->SetInstances(instances);
+                //    }
+                //}
 
                 // because this is loading in a different thread, we need to resolve the world after we enable instancing
                 World::Resolve();
