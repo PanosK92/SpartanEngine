@@ -798,7 +798,7 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(8.7844f, 2.0f, -4.1412f);
         Vector3 camera_rotation = Vector3(7.4f, -65.5f, 0.0f);
-        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\car.mp3");
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, "project\\music\\car.mp3");
         create_default_car();
 
         Engine::AddFlag(EngineMode::Game);
@@ -809,7 +809,7 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(6.9900f, 25.0f, 332.4628f);
         Vector3 camera_rotation = Vector3(0.0f, 180.0f, 0.0f);
-        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, nullptr, true, false);
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, nullptr, true, false);
 
         // create
         m_default_terrain = CreateEntity();
