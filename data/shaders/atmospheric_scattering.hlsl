@@ -72,7 +72,7 @@ struct space
         float stars_noise = pow(clamp(noise(view_direction * 200.0f), 0.0f, 1.0f), probability) * exposure;
         stars_noise *= lerp(0.4, 1.4, noise(view_direction * 100.0f + time * flicker_speed));
 
-        float intensity = saturate(1.0f - luminance(atmosphere_color) - 0.8f);
+        float intensity = saturate(1.0f - luminance(atmosphere_color) - 0.9f);
         return float3(stars_noise, stars_noise, stars_noise) * intensity;
     }
 
@@ -139,7 +139,7 @@ struct atmosphere
     
         // weaken as the sun approaches the horizon
         float sun_elevation   = 1.0f - saturate(1.0f - dot(sun_dir, float3(0, -1, 0)));
-        float fade_out_factor = saturate(sun_elevation / 0.1f); // adjust 0.1f for fade speed
+        float fade_out_factor = saturate(sun_elevation / 0.2f); // adjust 0.1f for fade speed
         return scatter * fade_out_factor;
     }
 };
