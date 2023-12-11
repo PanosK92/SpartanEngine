@@ -315,7 +315,6 @@ namespace Spartan
             uint32_t tree_count,
             float max_slope_radians,
             bool rotate_to_match_surface_normal,
-            float water_level,
             float terrain_offset
         )
         {
@@ -339,6 +338,7 @@ namespace Spartan
                 float slope_radians = acos(Vector3::Dot(normal, Vector3::Up));
 
                 bool is_relatively_flat = slope_radians <= max_slope_radians;
+                float water_level       = 0.0f; // this is a fact across the engine
                 bool is_above_water     = ((v0.y + v1.y + v2.y) / 3.0f) > water_level + 0.5f;
                 if (is_relatively_flat && is_above_water)
                 {
@@ -411,14 +411,14 @@ namespace Spartan
 
 	void Terrain::GenerateTransforms(std::vector<Math::Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop)
 	{
-        float max_slope                  = 0.0f;
         bool rotate_match_surface_normal = false;
+        float max_slope                  = 0.0f;
         float terrain_offset             = 0.0f;
 
         if (terrain_prop == TerrainProp::Tree)
         {
             max_slope                   = 30.0f * Math::Helper::DEG_TO_RAD;
-            rotate_match_surface_normal = false; // trees tend to grow upwards (they go for the sun)
+            rotate_match_surface_normal = false; // trees tend to grow upwards, towards the sun
             terrain_offset              = -0.2f;
         }
 
@@ -429,7 +429,7 @@ namespace Spartan
             terrain_offset              = 0.0f;
         }
 
-        *transforms = generate_transforms(m_mesh->GetVertices(), m_mesh->GetIndices(), count, max_slope, rotate_match_surface_normal, m_water_level, terrain_offset);
+        *transforms = generate_transforms(m_mesh->GetVertices(), m_mesh->GetIndices(), count, max_slope, rotate_match_surface_normal, terrain_offset);
 	}
 
 	void Terrain::GenerateAsync(function<void()> on_complete)
