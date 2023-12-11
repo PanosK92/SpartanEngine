@@ -807,7 +807,7 @@ namespace Spartan
 
     void World::CreateDefaultWorldForest()
     {
-        Vector3 camera_position = Vector3(6.9900f, 25.0f, 332.4628f);
+        Vector3 camera_position = Vector3(15.0, 4.0f, 330.0f);
         Vector3 camera_rotation = Vector3(0.0f, 180.0f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, nullptr, true, false);
 
@@ -900,9 +900,8 @@ namespace Spartan
                 // water
                 {
                     shared_ptr<Entity> water = CreateEntity();
-                    water->SetParent(m_default_terrain.get());
                     water->SetObjectName("water");
-                    water->SetPosition(Vector3(0.0f, terrain->GetWaterLevel(), 0.0f));
+                    water->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
                     water->SetScale(Vector3(1100.0f, 1.0f, 1100.0f));
 
                     Renderable* renderable = water->AddComponent<Renderable>().get();
@@ -1024,6 +1023,9 @@ namespace Spartan
                 //        renderable->SetInstances(instances);
                 //    }
                 //}
+
+
+                Renderer::SetOption(Renderer_Option::Debug_Grid, 0.0f);
 
                 // because this is loading in a different thread, we need to resolve the world after we enable instancing
                 World::Resolve();
@@ -1147,7 +1149,7 @@ namespace Spartan
             if (!terrain)
                 return;
 
-            bool is_below_water_level = camera->GetEntity()->GetPosition().y < terrain->GetWaterLevel();
+            bool is_below_water_level = camera->GetEntity()->GetPosition().y < 0.0f;
 
             // underwater
             {
@@ -1195,17 +1197,5 @@ namespace Spartan
     const string& World::GetFilePath()
     {
         return m_file_path;
-    }
-
-    float World::GetWaterLevel()
-    {
-        if (!m_default_terrain)
-            return 0.0f;
-
-        Terrain* terrain = m_default_terrain->GetComponent<Terrain>().get();
-        if (!terrain)
-            return 0.0f;
-
-        return terrain->GetWaterLevel();
     }
 }

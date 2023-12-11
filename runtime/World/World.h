@@ -63,7 +63,6 @@ namespace Spartan
         static void Resolve();
         static const std::string GetName();
         static const std::string& GetFilePath();
-        static float GetWaterLevel();
 
     private:
         static void Clear();

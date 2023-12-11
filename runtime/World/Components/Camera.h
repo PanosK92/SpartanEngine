@@ -120,10 +120,6 @@ namespace Spartan
         bool IsInViewFrustum(const Math::BoundingBox& bounding_box) const;
         bool IsInViewFrustum(std::shared_ptr<Renderable> renderable) const;
 
-        // bookmarks
-        void AddBookmark(camera_bookmark bookmark)               { m_bookmarks.emplace_back(bookmark); };
-        const std::vector<camera_bookmark>& GetBookmarks() const { return m_bookmarks; };
-
         // first person control
         bool GetIsControlEnabled()             const { return m_first_person_control_enabled; }
         void SetIsControlEnalbed(const bool enabled) { m_first_person_control_enabled = enabled; }
@@ -138,8 +134,6 @@ namespace Spartan
 
         Math::Matrix ComputeViewMatrix() const;
         Math::Matrix ComputeProjection(const float near_plane, const float far_plane);
-
-        void GoToCameraBookmark(int bookmark_index);
         void FocusOnSelectedEntity();
 
     private:
@@ -172,8 +166,6 @@ namespace Spartan
         float m_mouse_smoothing                    = 0.5f;
         bool m_lerp_to_target_p                    = false;
         bool m_lerp_to_target_r                    = false;
-        bool m_lerpt_to_bookmark                   = false;
-        int m_target_bookmark_index                = -1;
         float m_lerp_to_target_alpha               = 0.0f;
         float m_lerp_to_target_distance            = 0.0f;
         Math::Vector3 m_lerp_to_target_position    = Math::Vector3::Zero;
@@ -182,7 +174,6 @@ namespace Spartan
         RHI_Viewport m_last_known_viewport;
         Math::Ray m_ray;
         Math::Frustum m_frustum;
-        std::vector<camera_bookmark> m_bookmarks;
         std::weak_ptr<Spartan::Entity> m_selected_entity;
     };
 }

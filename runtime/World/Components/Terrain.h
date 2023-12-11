@@ -47,7 +47,7 @@ namespace Spartan
         Terrain(std::weak_ptr<Entity> entity);
         ~Terrain();
 
-        //= IComponent ===============================
+        //= Component ================================
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
         //============================================
@@ -55,19 +55,18 @@ namespace Spartan
         const std::shared_ptr<RHI_Texture> GetHeightMap() const { return m_height_texture; }
         void SetHeightMap(const std::shared_ptr<RHI_Texture>& height_map);
 
-        float GetMinY()     const { return m_min_y; }
+        float GetMinY() const     { return m_min_y; }
         void SetMinY(float min_z) { m_min_y = min_z; }
 
-        float GetMaxY()     const { return m_max_y; }
+        float GetMaxY() const     { return m_max_y; }
         void SetMaxY(float max_z) { m_max_y = max_z; }
 
         void GenerateTransforms(std::vector<Math::Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop);
 
-        uint32_t GetVertexCount()       const { return m_vertex_count; }
-        uint32_t GetIndexCount()        const { return m_index_count; }
+        uint32_t GetVertexCount() const       { return m_vertex_count; }
+        uint32_t GetIndexCount() const        { return m_index_count; }
         uint64_t GetHeightSampleCount() const { return m_height_samples; }
         float* GetHeightData()                { return &m_height_data[0]; }
-        float GetWaterLevel()           const { return m_water_level; }
 
         void GenerateAsync(std::function<void()> on_complete = nullptr);
 
@@ -75,9 +74,8 @@ namespace Spartan
         void UpdateFromMesh(const std::shared_ptr<Mesh> mesh) const;
         void UpdateFromVertices(const std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices);
 
-        float m_min_y                     = 0.0f;
-        float m_max_y                     = 100.0f;
-        float m_water_level               = 10.0f;
+        float m_min_y                     = -20.0f; // everything below 0.0 is assumed to be below sea level
+        float m_max_y                     = 80.0f;
         float m_vertex_density            = 1.0f;
         std::atomic<bool> m_is_generating = false;
         uint32_t m_height_samples         = 0;

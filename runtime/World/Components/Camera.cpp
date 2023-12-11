@@ -517,7 +517,7 @@ namespace Spartan
                     if (Engine::IsFlagSet(EngineMode::Game))
                     {
                         const bool is_grounded   = m_physics_body_to_control->RayTraceIsGrounded();
-                        const bool is_underwater = GetEntity()->GetPosition().y <= World::GetWaterLevel();
+                        const bool is_underwater = GetEntity()->GetPosition().y <= 0.0f;
 
                         // walk
                         if (is_grounded)
@@ -537,7 +537,7 @@ namespace Spartan
                                 float total_volume   = m_physics_body_to_control->GetVolume();
 
                                 // calculate the submerged portion
-                                float submerged_height   = World::GetWaterLevel() - GetEntity()->GetPosition().y;
+                                float submerged_height   = -GetEntity()->GetPosition().y;
                                 float total_height       = 1.8f;
                                 float submerged_fraction = std::min(std::max(submerged_height / total_height, 0.0f), 1.0f);
 
@@ -581,22 +581,8 @@ namespace Spartan
             FocusOnSelectedEntity();
         }
 
-        // set bookmark as a lerp target
-        bool lerp_to_bookmark = false;
-        if (lerp_to_bookmark = m_lerpt_to_bookmark && m_target_bookmark_index >= 0 && m_target_bookmark_index < m_bookmarks.size())
-        {
-            m_lerp_to_target_position = m_bookmarks[m_target_bookmark_index].position;
-
-            // Compute lerp speed based on how far the entity is from the camera.
-            m_lerp_to_target_distance = Vector3::Distance(m_lerp_to_target_position, GetEntity()->GetPosition());
-            m_lerp_to_target_p        = true;
-
-            m_target_bookmark_index = -1;
-            m_lerpt_to_bookmark     = false;
-        }
-
         // lerp
-        if (m_lerp_to_target_p || m_lerp_to_target_r || lerp_to_bookmark)
+        if (m_lerp_to_target_p || m_lerp_to_target_r)
         {
             // Lerp duration in seconds
             // 2.0 seconds + [0.0 - 2.0] seconds based on distance
@@ -699,14 +685,5 @@ namespace Spartan
         }
 
         return Matrix::Identity;
-    }
-
-    void Camera::GoToCameraBookmark(int bookmark_index)
-    {
-        if (bookmark_index >= 0)
-        {
-            m_target_bookmark_index = bookmark_index;
-            m_lerpt_to_bookmark     = true;
-        }
     }
 }
