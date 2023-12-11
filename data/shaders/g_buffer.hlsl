@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const float g_quality_distance_low = 200.0f;
+static const float g_quality_distance_low = 500.0f;
 
 struct PixelInputType
 {
