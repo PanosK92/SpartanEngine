@@ -27,8 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class Context;
-
     struct third_party_lib
     {
         third_party_lib(const std::string& name, const std::string& version, const std::string& url)

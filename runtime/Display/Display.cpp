@@ -41,101 +41,101 @@ namespace Spartan
 {
     namespace
     {
-        static vector<DisplayMode> display_modes;
-        static bool is_hdr_capable      = false;
-        static float max_luminance_nits = 0;
-    }
+        vector<DisplayMode> display_modes;
+        bool is_hdr_capable      = false;
+        float max_luminance_nits = 0;
 
-    static void get_hdr_capabilities(bool* is_hdr_capable, float* max_luminance)
-    {
-        *is_hdr_capable = false;
-        *max_luminance  = 0.0f;
+        void get_hdr_capabilities(bool* is_hdr_capable, float* max_luminance)
+        {
+            *is_hdr_capable = false;
+            *max_luminance  = 0.0f;
 
-        #if defined(_MSC_VER)
-            // Create DXGI factory
-            Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
-            if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory))))
-            {
-                SP_LOG_ERROR("Failed to create DXGI factory");
-                return;
-            }
-
-            // Enumerate and get the primary adapter (GPU)
-            Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
-            for (UINT i = 0; DXGI_ERROR_NOT_FOUND != factory->EnumAdapters1(i, &adapter); ++i)
-            {
-                DXGI_ADAPTER_DESC1 desc;
-                adapter->GetDesc1(&desc);
-                if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
+            #if defined(_MSC_VER)
+                // create DXGI factory
+                Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
+                if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory))))
                 {
-                    continue;
+                    SP_LOG_ERROR("Failed to create DXGI factory");
+                    return;
                 }
 
-                break;
-            }
-
-            if (!adapter)
-            {
-                SP_LOG_ERROR("No DXGI adapter found");
-                return;
-            }
-
-            // Find primary display by detecting which display is being intersected the most by the engine window
-            Microsoft::WRL::ComPtr<IDXGIOutput> output_primary;
-            {
-                UINT i = 0;
-                Microsoft::WRL::ComPtr<IDXGIOutput> output_current;
-                float best_intersection_area = -1;
-                RECT window_rect;
-                GetWindowRect(static_cast<HWND>(Window::GetHandleRaw()), &window_rect);
-                while (adapter->EnumOutputs(i, &output_current) != DXGI_ERROR_NOT_FOUND)
+                // enumerate and get the primary adapter (GPU)
+                Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
+                for (UINT i = 0; DXGI_ERROR_NOT_FOUND != factory->EnumAdapters1(i, &adapter); ++i)
                 {
-                    // Get the rectangle bounds of the app window
-                    int ax1 = window_rect.left;
-                    int ay1 = window_rect.top;
-                    int ax2 = window_rect.right;
-                    int ay2 = window_rect.bottom;
-
-                    // Get the rectangle bounds of current output
-                    DXGI_OUTPUT_DESC desc;
-                    if (FAILED(output_current->GetDesc(&desc)))
+                    DXGI_ADAPTER_DESC1 desc;
+                    adapter->GetDesc1(&desc);
+                    if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
                     {
-                        SP_LOG_ERROR("Failed to get output description");
-                        return;
+                        continue;
                     }
 
-                    RECT r = desc.DesktopCoordinates;
-                    int bx1 = r.left;
-                    int by1 = r.top;
-                    int bx2 = r.right;
-                    int by2 = r.bottom;
-
-                    // Compute the intersection
-                    int intersectArea = max(0, min(ax2, bx2) - max(ax1, bx1)) * max(0, min(ay2, by2) - max(ay1, by1));
-                    if (intersectArea > best_intersection_area)
-                    {
-                        output_primary = output_current;
-                        best_intersection_area = static_cast<float>(intersectArea);
-                    }
-
-                    i++;
+                    break;
                 }
-            }
 
-            // Get display capabilities
-            Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
-            if (SUCCEEDED(output_primary.As(&output6)))
-            {
-                DXGI_OUTPUT_DESC1 desc;
-                if (SUCCEEDED(output6->GetDesc1(&desc)))
+                if (!adapter)
                 {
-                    *is_hdr_capable = desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
-                    *max_luminance  = desc.MaxLuminance;
+                    SP_LOG_ERROR("No DXGI adapter found");
+                    return;
                 }
-            }
-        #else
-            SP_ASSERT_MSG(false, "HDR support detection not implemented");
-        #endif
+
+                // find primary display by detecting which display is being intersected the most by the engine window
+                Microsoft::WRL::ComPtr<IDXGIOutput> output_primary;
+                {
+                    UINT i = 0;
+                    Microsoft::WRL::ComPtr<IDXGIOutput> output_current;
+                    float best_intersection_area = -1;
+                    RECT window_rect;
+                    GetWindowRect(static_cast<HWND>(Window::GetHandleRaw()), &window_rect);
+                    while (adapter->EnumOutputs(i, &output_current) != DXGI_ERROR_NOT_FOUND)
+                    {
+                        // get the rectangle bounds of the app window
+                        int ax1 = window_rect.left;
+                        int ay1 = window_rect.top;
+                        int ax2 = window_rect.right;
+                        int ay2 = window_rect.bottom;
+
+                        // get the rectangle bounds of current output
+                        DXGI_OUTPUT_DESC desc;
+                        if (FAILED(output_current->GetDesc(&desc)))
+                        {
+                            SP_LOG_ERROR("Failed to get output description");
+                            return;
+                        }
+
+                        RECT r  = desc.DesktopCoordinates;
+                        int bx1 = r.left;
+                        int by1 = r.top;
+                        int bx2 = r.right;
+                        int by2 = r.bottom;
+
+                        // compute the intersection
+                        int intersectArea = max(0, min(ax2, bx2) - max(ax1, bx1)) * max(0, min(ay2, by2) - max(ay1, by1));
+                        if (intersectArea > best_intersection_area)
+                        {
+                            output_primary = output_current;
+                            best_intersection_area = static_cast<float>(intersectArea);
+                        }
+
+                        i++;
+                    }
+                }
+
+                // get display capabilities
+                Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
+                if (SUCCEEDED(output_primary.As(&output6)))
+                {
+                    DXGI_OUTPUT_DESC1 desc;
+                    if (SUCCEEDED(output6->GetDesc1(&desc)))
+                    {
+                        *is_hdr_capable = desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
+                        *max_luminance  = desc.MaxLuminance;
+                    }
+                }
+            #else
+                SP_ASSERT_MSG(false, "HDR support detection not implemented");
+            #endif
+        }
     }
 
     void Display::RegisterDisplayMode(const uint32_t width, const uint32_t height, uint32_t hz, uint8_t display_index)
@@ -162,12 +162,6 @@ namespace Spartan
         {
             return display_mode_a.width > display_mode_b.width;
         });
-
-        // Set the FPS limit to the HZ corresponding to our optimal display mode
-        if (GetRefreshRate() > Timer::GetFpsLimit())
-        {
-            Timer::SetFpsLimit(static_cast<float>(GetRefreshRate()));
-        }
     }
 
     void Display::DetectDisplayModes()

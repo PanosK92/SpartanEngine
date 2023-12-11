@@ -411,7 +411,6 @@ namespace Spartan
 
 	void Terrain::GenerateTransforms(std::vector<Math::Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop)
 	{
-        uint32_t tree_count              = 0.0f;
         float max_slope                  = 0.0f;
         bool rotate_match_surface_normal = false;
         float terrain_offset             = 0.0f;

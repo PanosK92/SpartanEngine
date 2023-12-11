@@ -37,6 +37,7 @@ namespace Spartan
     class SP_CLASS Timer
     {
     public:
+        static void Initialize();
         static void PostTick();
 
         // FPS Limit

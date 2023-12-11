@@ -44,11 +44,16 @@ namespace Spartan
         // fps
         float fps_min            = 30.0f;
         float fps_max            = 10000.0f;
-        float fps_limit          = fps_min; // if it's lower than the monitor's hz, it will be updated to match it, so start with something low.
+        float fps_limit          = fps_min;
         float fps_limit_previous = fps_limit;
 
         // misc
         chrono::steady_clock::time_point last_tick_time;
+    }
+
+    void Timer::Initialize()
+    {
+        fps_limit = Display::GetRefreshRate();
     }
 
     void Timer::PostTick()
@@ -67,7 +72,7 @@ namespace Spartan
         }
 
         // Compute delta time based timings
-        delta_time_smoothed_ms = delta_time_smoothed_ms * (1.0 - weight_delta) + delta_time_ms * weight_delta;
+        delta_time_smoothed_ms  = delta_time_smoothed_ms * (1.0 - weight_delta) + delta_time_ms * weight_delta;
         time_ms                += delta_time_ms;
 
         // End
