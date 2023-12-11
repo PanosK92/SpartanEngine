@@ -503,7 +503,7 @@ namespace Spartan
             pso.instancing                  = i == 1 || i == 3;
             pso.shader_vertex               = !pso.instancing ? shader_v : shader_instanced_v;
             pso.shader_pixel                = shader_p; // alpha testing
-            pso.rasterizer_state            = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
+            pso.rasterizer_state            = is_transparent_pass ? GetRasterizerState(Renderer_RasterizerState::Solid_cull_none).get() : GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
             pso.blend_state                 = GetBlendState(Renderer_BlendState::Disabled).get();
             pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
             pso.render_target_depth_texture = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();

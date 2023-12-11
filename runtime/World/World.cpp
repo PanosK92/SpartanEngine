@@ -807,8 +807,8 @@ namespace Spartan
 
     void World::CreateDefaultWorldForest()
     {
-        Vector3 camera_position = Vector3(-263.7308f, 73.8641f, 440.0755f);
-        Vector3 camera_rotation = Vector3(0.0f, 180.0f, 0.0f);
+        Vector3 camera_position = Vector3(-261.7231f, 70.7239f, 436.0732f);
+        Vector3 camera_rotation = Vector3(0.0f, 144.0f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, nullptr, true, false);
 
         // create
@@ -912,11 +912,11 @@ namespace Spartan
                         // set material
                         shared_ptr<Material> material = make_shared<Material>();
                         material->SetObjectName("material_water");
-                        material->SetColor(Color(0.0f, 60.0f / 255.0f, 75.0f / 255.0f, 60.0f / 255.0f));
+                        material->SetColor(Color(0.0f, 70.0f / 255.0f, 80.0f / 255.0f, 120.0f / 255.0f));
                         material->SetTexture(MaterialTexture::Normal,               "project\\terrain\\water_normal.jpeg");
                         material->SetProperty(MaterialProperty::Ior,                1.33f); // water
-                        material->SetProperty(MaterialProperty::Roughness,          0.3f);  // just a bit of roughness to diffuse the sun a little
-                        material->SetProperty(MaterialProperty::Normal,             0.8f);
+                        material->SetProperty(MaterialProperty::Roughness,          0.1f);  // just a bit of roughness to diffuse the sun a little
+                        material->SetProperty(MaterialProperty::Normal,             0.2f);
                         material->SetProperty(MaterialProperty::TextureTilingX,     250.0f);
                         material->SetProperty(MaterialProperty::TextureTilingY,     250.0f);
                         material->SetProperty(MaterialProperty::VertexAnimateWater, 1.0f);
