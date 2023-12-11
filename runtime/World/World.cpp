@@ -938,18 +938,22 @@ namespace Spartan
                     entity->SetScale(Vector3(0.01f, 0.01f, 0.01f));
                     entity->SetParent(m_default_terrain.get());
 
+                    vector<Matrix> instances;
+
                     if (Entity* bark = entity->GetDescendantByName("Mobile_Tree_1_1"))
                     {
                         Renderable* renderable = bark->GetComponent<Renderable>().get();
                         renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\vegetation_tree_1\\bark.png");
-                        renderable->SetInstances(terrain->GetTransformsTree());
+
+                        // generate instances
+                        terrain->GenerateTransforms(&instances, 5000, TerrainProp::Tree);
+                        renderable->SetInstances(instances);
                     }
 
                     if (Entity* leafs = entity->GetDescendantByName("Mobile_Tree_1_2"))
                     {
-                        // enable instancing
                         Renderable* renderable = leafs->GetComponent<Renderable>().get();
-                        renderable->SetInstances(terrain->GetTransformsTree());
+                        renderable->SetInstances(instances);
 
                         // tweak material
                         Material* material = renderable->GetMaterial();
@@ -970,9 +974,7 @@ namespace Spartan
 
                     if (Entity* child = entity->GetDescendantByName("Plane.010"))
                     {
-                        // enable instancing
                         Renderable* renderable = child->GetComponent<Renderable>().get();
-                        renderable->SetInstances(terrain->GetTransformsPlant1());
                         renderable->SetCastShadows(false); // cheaper and screen space shadows are enough
 
                         // tweak material
@@ -984,6 +986,11 @@ namespace Spartan
                         material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                         material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
                         material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
+
+                        // generate instances
+                        vector<Matrix> instances;
+                        terrain->GenerateTransforms(&instances, 20000, TerrainProp::Plant);
+                        renderable->SetInstances(instances);
                     }
                 }
 

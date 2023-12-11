@@ -35,6 +35,12 @@ namespace Spartan
         class Vector3;
     }
 
+    enum class TerrainProp
+    {
+        Tree,
+        Plant
+    };
+
     class SP_CLASS Terrain : public Component
     {
     public:
@@ -55,13 +61,13 @@ namespace Spartan
         float GetMaxY()     const { return m_max_y; }
         void SetMaxY(float max_z) { m_max_y = max_z; }
 
-        uint32_t GetVertexCount()                              const { return m_vertex_count; }
-        uint32_t GetIndexCount()                               const { return m_index_count; }
-        uint64_t GetHeightSampleCount()                        const { return m_height_samples; }
-        float* GetHeightData()                                       { return &m_height_data[0]; }
-        const std::vector<Math::Matrix>& GetTransformsTree()   const { return m_trees; }
-        const std::vector<Math::Matrix>& GetTransformsPlant1() const { return m_plants_1; }
-        float GetWaterLevel()                                  const { return m_water_level; }
+        void GenerateTransforms(std::vector<Math::Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop);
+
+        uint32_t GetVertexCount()       const { return m_vertex_count; }
+        uint32_t GetIndexCount()        const { return m_index_count; }
+        uint64_t GetHeightSampleCount() const { return m_height_samples; }
+        float* GetHeightData()                { return &m_height_data[0]; }
+        float GetWaterLevel()           const { return m_water_level; }
 
         void GenerateAsync(std::function<void()> on_complete = nullptr);
 
@@ -81,7 +87,5 @@ namespace Spartan
         std::shared_ptr<RHI_Texture> m_height_texture;
         std::vector<float> m_height_data;
         std::shared_ptr<Mesh> m_mesh;
-        std::vector<Math::Matrix> m_trees;
-        std::vector<Math::Matrix> m_plants_1;
     };
 }
