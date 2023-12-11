@@ -93,7 +93,7 @@ struct sampling
         return blended_color;
     }
 
-    static float4 smart(Texture2D texture_1, Texture2D texture_2, float2 uv, float slope)
+    static float4 smart(Texture2D texture_1, Texture2D texture_2, float2 uv, float slope, float3 position_world)
     {
         // in case of water, we just interleave the normal
         if (material_vertex_animate_water())
@@ -108,7 +108,9 @@ struct sampling
             float variation  = 1.0f;
             float4 tex_flat  = reduce_tiling(texture_1, uv, variation);
             float4 tex_slope = reduce_tiling(texture_2, uv * 0.3f, variation);
-            return lerp(tex_slope, tex_flat, slope);
+            float4 color     = lerp(tex_slope, tex_flat, slope);
+
+            return color;
         }
 
         // this is a regular sample
@@ -182,7 +184,7 @@ PixelOutputType mainPS(PixelInputType input)
     float slope = compute_slope(normal);
     if (has_texture_albedo())
     {
-        float4 albedo_sample = sampling::smart(tex_material_albedo, tex_material_albedo_2, uv, slope);
+        float4 albedo_sample = sampling::smart(tex_material_albedo, tex_material_albedo_2, uv, slope, input.position_world);
 
         // read albedo's alpha channel as an alpha mask as well
         alpha_mask      = min(alpha_mask, albedo_sample.a);
@@ -217,7 +219,7 @@ PixelOutputType mainPS(PixelInputType input)
         if (has_texture_normal())
         {
             // get tangent space normal and apply the user defined intensity, then transform it to world space
-            float3 normal_sample       = sampling::smart(tex_material_normal, tex_material_normal2, uv, slope).xyz;
+            float3 normal_sample       = sampling::smart(tex_material_normal, tex_material_normal2, uv, slope, input.position_world).xyz;
             float3 tangent_normal      = normalize(unpack(normal_sample));
             float normal_intensity     = clamp(buffer_material.normal, 0.012f, buffer_material.normal);
             tangent_normal.xy         *= saturate(normal_intensity);
