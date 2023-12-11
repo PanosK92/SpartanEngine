@@ -768,13 +768,13 @@ namespace Spartan
 
         // get the height of the cylindrical part of the capsule
         // for a btCapsuleShape, the height is the distance between the centers of the end caps.
-        float cylinder_height = capsule_shape->getHalfHeight() * 2;
+        float cylinder_height = capsule_shape->getHalfHeight() * 2.0f;
 
         // compute the volume of the cylindrical part
         float cylinder_volume = Math::Helper::PI * radius * radius * cylinder_height;
 
         // compute the volume of the hemispherical ends
-        float hemisphere_volume = (4.0 / 3.0) * Math::Helper::PI * std::pow(radius, 3);
+        float hemisphere_volume = (4.0f / 3.0f) * Math::Helper::PI * std::pow(radius, 3.0f);
 
         // total volume is the sum of the cylinder and two hemispheres
         return cylinder_volume + hemisphere_volume;

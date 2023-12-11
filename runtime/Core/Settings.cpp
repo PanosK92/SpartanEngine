@@ -43,7 +43,7 @@ namespace Spartan
         bool m_is_mouse_visible         = false;
         Vector2 m_resolution_output     = Vector2::Zero;
         Vector2 m_resolution_render     = Vector2::Zero;
-        double fps_limit                = 0;
+        float fps_limit                 = 0.0f;
         bool m_has_loaded_user_settings = false;
         string file_path                = "spartan.xml";
         unordered_map<Renderer_Option, float> m_render_options;
@@ -139,7 +139,7 @@ namespace Spartan
                 m_resolution_output.y = root.child("ResolutionOutputHeight").text().as_float();
                 m_resolution_render.x = root.child("ResolutionRenderWidth").text().as_float();
                 m_resolution_render.y = root.child("ResolutionRenderHeight").text().as_float();
-                fps_limit             = root.child("FPSLimit").text().as_int();
+                fps_limit             = root.child("FPSLimit").text().as_float();
 
                 m_render_options.clear();
                 for (uint32_t i = 0; i < static_cast<uint32_t>(Renderer_Option::Max); i++)
@@ -160,7 +160,7 @@ namespace Spartan
             if (!m_has_loaded_user_settings)
                 return;
 
-            Timer::SetFpsLimit(static_cast<float>(fps_limit));
+            Timer::SetFpsLimit(fps_limit);
             Input::SetMouseCursorVisible(m_is_mouse_visible);
             Renderer::SetResolutionOutput(static_cast<uint32_t>(m_resolution_output.x), static_cast<uint32_t>(m_resolution_output.y));
             Renderer::SetResolutionRender(static_cast<uint32_t>(m_resolution_render.x), static_cast<uint32_t>(m_resolution_render.y));
@@ -185,9 +185,9 @@ namespace Spartan
 
     void Settings::Initialize()
     {
-        // Register third party libs which don't register on their own as they are not part of some other initialization procedure
-        RegisterThirdPartyLib("pugixml", "1.11.4", "https://github.com/zeux/pugixml");
-        RegisterThirdPartyLib("SPIRV-Cross", "03-06-2022", "https://github.com/KhronosGroup/SPIRV-Cross");
+        // register third party libs which don't register on their own as they are not part of some other initialization procedure
+        RegisterThirdPartyLib("pugixml",               "1.11.4",    "https://github.com/zeux/pugixml");
+        RegisterThirdPartyLib("SPIRV-Cross",           "03-06-2022", "https://github.com/KhronosGroup/SPIRV-Cross");
         RegisterThirdPartyLib("DirectXShaderCompiler", "1.7.2207.3", "https://github.com/microsoft/DirectXShaderCompiler");
 
         if (FileSystem::Exists(file_path))

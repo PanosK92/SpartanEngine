@@ -62,6 +62,7 @@ namespace Spartan
             ImageImporterExporter::Initialize();
             ModelImporter::Initialize();
             Window::Initialize();
+            Timer::Initialize();
             Input::Initialize();
             ThreadPool::Initialize();
             ResourceCache::Initialize();
