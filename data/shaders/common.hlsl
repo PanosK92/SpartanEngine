@@ -43,7 +43,6 @@ static const float FLT_MAX_11          = 1023.0f;
 static const float FLT_MAX_14          = 8191.0f;
 static const float FLT_MAX_16          = 32767.0f;
 static const float FLT_MAX_16U         = 65535.0f;
-static const float ALPHA_THRESHOLD     = 0.6f;
 static const float RPC_9               = 0.11111111111f;
 static const float RPC_16              = 0.0625f;
 static const float RPC_32              = 0.03125f;
@@ -154,7 +153,6 @@ void unpack_float_int(float val, uint numBitI, uint numBitTarget, out float f, o
 /*------------------------------------------------------------------------------
     FAST MATH APPROXIMATIONS
 ------------------------------------------------------------------------------*/
-
 // Relative error : < 0.7% over full
 // Precise format : ~small float
 // 1 ALU
@@ -665,6 +663,17 @@ static const float3 hemisphere_samples[64] =
     float3(0.41729, -0.15485, 0.46251),
     float3(-0.44272, -0.67928, 0.1865)
 };
+
+static const float ALPHA_THRESHOLD_DEFAULT = 0.6f;
+float get_alpha_threshold(float3 world_position)
+{
+    // closer objects have a lower threshold, while distant objects have a higher threshold
+    float pixel_distance          = length(world_position - buffer_frame.camera_position);
+    float alpha_threshold_dynamic = ALPHA_THRESHOLD_DEFAULT - (pixel_distance * 0.001f) * (1.0f - ALPHA_THRESHOLD_DEFAULT);
+    alpha_threshold_dynamic       = saturate(alpha_threshold_dynamic);
+
+    return alpha_threshold_dynamic;
+}
 
 //= INCLUDES ===========================
 #include "common_structs.hlsl"

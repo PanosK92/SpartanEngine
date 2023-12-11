@@ -72,7 +72,7 @@ namespace Spartan
         static void create_default_world_common(
             const Math::Vector3& camera_position = Vector3(0.0f, 2.0f, -10.0f),
             const Math::Vector3& camera_rotation = Vector3(0.0f, 0.0f, 0.0f),
-            const LightIntensity sun_intensity   = LightIntensity::sky_sunlight_noon,
+            const LightIntensity sun_intensity   = LightIntensity::sky_sunlight_morning_evening,
             const char* soundtrack_file_path     = "project\\music\\jake_chudnow_shona.mp3",
             const bool shadows_enabled           = true,
             const bool load_floor                = true

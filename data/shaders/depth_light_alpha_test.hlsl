@@ -30,8 +30,8 @@ void mainPS(Pixel_PosUv input)
     const bool has_albedo     = f3_value.y == 1.0f;
     const float alpha         = f3_value.z;
 
-    bool mask_alpha  = has_alpha_mask && tex_material_mask.Sample(samplers[sampler_anisotropic_wrap], input.uv).r <= ALPHA_THRESHOLD;
-    bool mask_albedo = alpha == 1.0f && has_albedo && tex_material_albedo.Sample(samplers[sampler_anisotropic_wrap], input.uv).a <= ALPHA_THRESHOLD;
+    bool mask_alpha  = has_alpha_mask && tex_material_mask.Sample(samplers[sampler_anisotropic_wrap], input.uv).r <= ALPHA_THRESHOLD_DEFAULT;
+    bool mask_albedo = alpha == 1.0f && has_albedo && tex_material_albedo.Sample(samplers[sampler_anisotropic_wrap], input.uv).a <= ALPHA_THRESHOLD_DEFAULT;
     
     if (mask_alpha || mask_albedo)
         discard;

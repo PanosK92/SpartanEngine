@@ -23,26 +23,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-Pixel_PosUv mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
+struct PixelIn
 {
-    Pixel_PosUv output;
+    float4 position       : SV_POSITION;
+    float2 uv             : TEXCOORD;
+    float3 world_position : TEXCOORD1;
+};
+
+PixelIn mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
+{
+    PixelIn output;
     
-    output.position = compute_screen_space_position(input, instance_id, buffer_pass.transform, buffer_frame.view_projection, buffer_frame.time);
+    output.position = compute_screen_space_position(input, instance_id, buffer_pass.transform, buffer_frame.view_projection, buffer_frame.time, output.world_position);
     output.uv       = input.uv;
     
     return output;
 }
 
 // alpha test
-void mainPS(Pixel_PosUv input)
+void mainPS(PixelIn input)
 {
     const float3 f3_value     = pass_get_f3_value();
     const bool has_alpha_mask = f3_value.x == 1.0f;
     const bool has_albedo     = f3_value.y == 1.0f;
     const float alpha         = f3_value.z;
 
-    bool mask_alpha  = has_alpha_mask && tex_material_mask.Sample(samplers[sampler_anisotropic_wrap], input.uv).r <= ALPHA_THRESHOLD;
-    bool mask_albedo = alpha == 1.0f && has_albedo && tex_material_albedo.Sample(samplers[sampler_anisotropic_wrap], input.uv).a <= ALPHA_THRESHOLD;
+    float alpha_threshold = get_alpha_threshold(input.world_position);
+    bool mask_alpha       = has_alpha_mask && tex_material_mask.Sample(samplers[sampler_anisotropic_wrap], input.uv).r <= alpha_threshold;
+    bool mask_albedo      = alpha == 1.0f && has_albedo && tex_material_albedo.Sample(samplers[sampler_anisotropic_wrap], input.uv).a <= alpha_threshold;
     
     if (mask_alpha || mask_albedo)
         discard;
