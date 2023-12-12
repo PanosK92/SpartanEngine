@@ -530,7 +530,7 @@ namespace Spartan
                   VkDescriptorSetLayoutBinding layout_binding = {};
                   layout_binding.binding                      = binding;
                   layout_binding.descriptorType               = resource_type == RHI_Device_Resource::textures_material ? VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLER;
-                  layout_binding.descriptorCount              = rhi_dynamic_array_max;
+                  layout_binding.descriptorCount              = rhi_max_dynamic_array_size;
                   layout_binding.stageFlags                   = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
                   layout_binding.pImmutableSamplers           = nullptr;
                   
@@ -614,7 +614,7 @@ namespace Spartan
                 }
             }
 
-            void create_descriptor_set_textures(const vector<RHI_Texture*>* textures, const uint32_t binding_slot)
+            void create_descriptor_set_textures(const array<RHI_Texture*, rhi_max_dynamic_array_size>* textures, const uint32_t binding_slot)
             {
                 string debug_name                            = "textures_material";
                 VkDescriptorSet* descriptor_set              = &sets[static_cast<uint32_t>(RHI_Device_Resource::textures_material)];
@@ -1501,7 +1501,7 @@ namespace Spartan
         return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
 
-    void RHI_Device::UpdateBindlessResources(const array<shared_ptr<RHI_Sampler>, 8>* samplers, vector<RHI_Texture*>* textures)
+    void RHI_Device::UpdateBindlessResources(const array<shared_ptr<RHI_Sampler>, 8>* samplers, array<RHI_Texture*, rhi_max_dynamic_array_size>* textures)
     {
         if (samplers)
         {
@@ -1543,18 +1543,14 @@ namespace Spartan
 
                 if (first_run && no_textures)
                 {
-                    vector<RHI_Texture*> dummy_texture = { nullptr };
-                    descriptors::bindless::create_descriptor_set_textures(&dummy_texture, bindig_slot);
+                    array<RHI_Texture*, rhi_max_dynamic_array_size> array_dummy;
+                    array_dummy.fill(nullptr);
+                    descriptors::bindless::create_descriptor_set_textures(&array_dummy, bindig_slot);
                 }
             }
 
             if (textures)
             {
-                if (textures->size() == 0)
-                {
-                    textures->push_back(nullptr);
-                }
-
                 descriptors::bindless::create_descriptor_set_textures(textures, bindig_slot);
             }
         }

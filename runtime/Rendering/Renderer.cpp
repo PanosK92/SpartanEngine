@@ -121,8 +121,8 @@ namespace Spartan
 
         namespace world_materials
         {
-            vector<RHI_Texture*> textures;                 // this is a bindless array on the GPU side
-            array<Sb_MaterialProperties, 1024> properties; // this is a structured buffer on the GPU side
+            array<RHI_Texture*, rhi_max_dynamic_array_size> textures;  // this is a bindless array on the GPU side
+            array<Sb_MaterialProperties, 1024> properties;             // this is a structured buffer on the GPU side
             bool dirty = true;
 
             void update(vector<shared_ptr<Entity>>& entities)
@@ -151,16 +151,20 @@ namespace Spartan
                             }
 
                             // textures
-                            textures.push_back(material->GetTexture(MaterialTexture::Color));
-                            textures.push_back(material->GetTexture(MaterialTexture::Color2));
-                            textures.push_back(material->GetTexture(MaterialTexture::Roughness));
-                            textures.push_back(material->GetTexture(MaterialTexture::Metalness));
-                            textures.push_back(material->GetTexture(MaterialTexture::Normal));
-                            textures.push_back(material->GetTexture(MaterialTexture::Normal2));
-                            textures.push_back(material->GetTexture(MaterialTexture::Height));
-                            textures.push_back(material->GetTexture(MaterialTexture::Occlusion));
-                            textures.push_back(material->GetTexture(MaterialTexture::Emission));
-                            textures.push_back(material->GetTexture(MaterialTexture::AlphaMask));
+                            {
+                                uint32_t index = static_cast<uint32_t>(material->GetObjectId() % textures.size());
+
+                                textures[index + 0]  = material->GetTexture(MaterialTexture::Color);
+                                textures[index + 1]  = material->GetTexture(MaterialTexture::Color2);
+                                textures[index + 2]  = material->GetTexture(MaterialTexture::Roughness);
+                                textures[index + 3]  = material->GetTexture(MaterialTexture::Metalness);
+                                textures[index + 4]  = material->GetTexture(MaterialTexture::Normal);
+                                textures[index + 5]  = material->GetTexture(MaterialTexture::Normal2);
+                                textures[index + 6]  = material->GetTexture(MaterialTexture::Height);
+                                textures[index + 7]  = material->GetTexture(MaterialTexture::Occlusion);
+                                textures[index + 8]  = material->GetTexture(MaterialTexture::Emission);
+                                textures[index + 9]  = material->GetTexture(MaterialTexture::AlphaMask);
+                            }
                         }
                     }
                 }
@@ -168,7 +172,7 @@ namespace Spartan
 
             void refresh(unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& renderables)
             {
-                textures.clear();
+                textures.fill(nullptr);
                 properties.fill(Sb_MaterialProperties{});
 
                 update(renderables[Renderer_Entity::Geometry]);
@@ -596,7 +600,7 @@ namespace Spartan
 
         // set
         m_cb_material_cpu.id                  = static_cast<uint32_t>(material->GetObjectId());
-        m_cb_material_cpu.index               = 0;
+        m_cb_material_cpu.index               = m_cb_material_cpu.id % rhi_max_dynamic_array_size;
         m_cb_material_cpu.world_space_height  = material->GetProperty(MaterialProperty::WorldSpaceHeight);
         m_cb_material_cpu.color.x             = material->GetProperty(MaterialProperty::ColorR);
         m_cb_material_cpu.color.y             = material->GetProperty(MaterialProperty::ColorG);
