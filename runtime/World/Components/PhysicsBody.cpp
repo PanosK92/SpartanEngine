@@ -763,7 +763,7 @@ namespace Spartan
 	{
         btCapsuleShape* capsule_shape = static_cast<btCapsuleShape*>(m_shape);
 
-        // Get the radius of the capsule
+        // get the radius of the capsule
         float radius = capsule_shape->getRadius();
 
         // get the height of the cylindrical part of the capsule

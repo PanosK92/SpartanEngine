@@ -48,11 +48,12 @@ namespace Spartan
         // pipeline layout
         {
             // order is important here, as it will be used to index the descriptor sets
-            array<void*, 3> layouts =
+            array<void*, 4> layouts =
             {
                 descriptor_set_layout->GetRhiResource(),
                 RHI_Device::GetDescriptorSetLayout(RHI_Device_Resource::sampler_comparison),
-                RHI_Device::GetDescriptorSetLayout(RHI_Device_Resource::sampler_regular)
+                RHI_Device::GetDescriptorSetLayout(RHI_Device_Resource::sampler_regular),
+                RHI_Device::GetDescriptorSetLayout(RHI_Device_Resource::textures_material)
             };
 
             // validate descriptor set layouts
@@ -72,9 +73,9 @@ namespace Spartan
                     VkPushConstantRange push_constant_range  = {};
                     push_constant_range.offset               = 0;
                     push_constant_range.size                 = descriptor.struct_size;
-                    push_constant_range.stageFlags           = (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Vertex) ? VK_SHADER_STAGE_VERTEX_BIT : 0;
-                    push_constant_range.stageFlags          |= (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Pixel) ? VK_SHADER_STAGE_FRAGMENT_BIT : 0;
-                    push_constant_range.stageFlags          |= (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Compute) ? VK_SHADER_STAGE_COMPUTE_BIT : 0;
+                    push_constant_range.stageFlags           = (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Vertex)  ? VK_SHADER_STAGE_VERTEX_BIT   : 0;
+                    push_constant_range.stageFlags          |= (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Pixel)   ? VK_SHADER_STAGE_FRAGMENT_BIT : 0;
+                    push_constant_range.stageFlags          |= (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Compute) ? VK_SHADER_STAGE_COMPUTE_BIT  : 0;
 
                     push_constant_ranges.emplace_back(push_constant_range);
                 }
@@ -290,7 +291,7 @@ namespace Spartan
             rasterizer_state.depthBiasSlopeFactor    = m_state.rasterizer_state->GetDepthBiasSlopeScaled();
         }
         
-        // mutlisampling
+        // multisampling
         VkPipelineMultisampleStateCreateInfo multisampling_state = {};
         {
             multisampling_state.sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;

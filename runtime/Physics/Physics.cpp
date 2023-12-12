@@ -259,17 +259,17 @@ namespace Spartan
 
     void Physics::AddBody(btSoftBody* body)
     {
-        if (btSoftRigidDynamicsWorld* world = static_cast<btSoftRigidDynamicsWorld*>(world))
+        if (btSoftRigidDynamicsWorld* _world = static_cast<btSoftRigidDynamicsWorld*>(world))
         {
-            world->addSoftBody(body);
+            _world->addSoftBody(body);
         }
     }
 
     void Physics::RemoveBody(btSoftBody*& body)
     {
-        if (btSoftRigidDynamicsWorld* world = static_cast<btSoftRigidDynamicsWorld*>(world))
+        if (btSoftRigidDynamicsWorld* _world = static_cast<btSoftRigidDynamicsWorld*>(world))
         {
-            world->removeSoftBody(body);
+            _world->removeSoftBody(body);
             delete body;
         }
     }

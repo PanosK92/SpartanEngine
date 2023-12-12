@@ -84,12 +84,12 @@ namespace Spartan
         unordered_map<Renderer_Option, float> m_options;
         mutex mutex_entity_addition;
         vector<shared_ptr<Entity>> m_entities_to_add;
-        uint64_t frame_num                       = 0;
-        Math::Vector2 jitter_offset              = Math::Vector2::Zero;
-        const uint32_t resolution_shadow_min     = 128;
-        float near_plane                         = 0.0f;
-        float far_plane                          = 1.0f;
-        bool dirty_orthographic_projection       = true;
+        uint64_t frame_num                   = 0;
+        Math::Vector2 jitter_offset          = Math::Vector2::Zero;
+        const uint32_t resolution_shadow_min = 128;
+        float near_plane                     = 0.0f;
+        float far_plane                      = 1.0f;
+        bool dirty_orthographic_projection   = true;
 
         void sort_renderables(Camera* camera, vector<shared_ptr<Entity>>* renderables, const bool are_transparent)
         {
@@ -119,28 +119,11 @@ namespace Spartan
             });
         }
 
-        // material properties which are used for lighting but are not part of the g-buffer
-        // are set into a this array of structs, which is then accessed as a structured buffer from the GPU
-        namespace material_properties
+        namespace world_materials
         {
-            array<Sb_MaterialProperties, 1024> data;
-            bool is_dirty = true;
-
-            void update(const Material* material)
-            {
-                Sb_MaterialProperties properties = {};
-                properties.anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
-                properties.anisotropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
-                properties.clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
-                properties.clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
-                properties.sheen                 = material->GetProperty(MaterialProperty::Sheen);
-                properties.sheen_tint            = material->GetProperty(MaterialProperty::SheenTint);
-                properties.subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
-                properties.ior                   = material->GetProperty(MaterialProperty::Ior);
-
-                uint32_t index = static_cast<uint32_t>(material->GetObjectId() % data.size());
-                data[index]    = properties;
-            }
+            vector<RHI_Texture*> textures;                 // this is a bindless array on the GPU side
+            array<Sb_MaterialProperties, 1024> properties; // this is a structured buffer on the GPU side
+            bool dirty = true;
 
             void update(vector<shared_ptr<Entity>>& entities)
             {
@@ -148,9 +131,36 @@ namespace Spartan
                 {
                     if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
                     {
-                        if (const Material* material = renderable->GetMaterial())
+                        if (Material* material = renderable->GetMaterial())
                         {
-                            update(material);
+
+                            // properties
+                            {
+                                Sb_MaterialProperties _properties = {};
+                                _properties.anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
+                                _properties.anisotropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
+                                _properties.clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
+                                _properties.clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
+                                _properties.sheen                 = material->GetProperty(MaterialProperty::Sheen);
+                                _properties.sheen_tint            = material->GetProperty(MaterialProperty::SheenTint);
+                                _properties.subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
+                                _properties.ior                   = material->GetProperty(MaterialProperty::Ior);
+
+                                uint32_t index = static_cast<uint32_t>(material->GetObjectId() % properties.size());
+                                properties[index] = _properties;
+                            }
+
+                            // textures
+                            textures.push_back(material->GetTexture(MaterialTexture::Color));
+                            textures.push_back(material->GetTexture(MaterialTexture::Color2));
+                            textures.push_back(material->GetTexture(MaterialTexture::Roughness));
+                            textures.push_back(material->GetTexture(MaterialTexture::Metalness));
+                            textures.push_back(material->GetTexture(MaterialTexture::Normal));
+                            textures.push_back(material->GetTexture(MaterialTexture::Normal2));
+                            textures.push_back(material->GetTexture(MaterialTexture::Height));
+                            textures.push_back(material->GetTexture(MaterialTexture::Occlusion));
+                            textures.push_back(material->GetTexture(MaterialTexture::Emission));
+                            textures.push_back(material->GetTexture(MaterialTexture::AlphaMask));
                         }
                     }
                 }
@@ -158,14 +168,15 @@ namespace Spartan
 
             void refresh(unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& renderables)
             {
-                data.fill(Sb_MaterialProperties{});
+                textures.clear();
+                properties.fill(Sb_MaterialProperties{});
 
                 update(renderables[Renderer_Entity::Geometry]);
                 update(renderables[Renderer_Entity::GeometryInstanced]);
                 update(renderables[Renderer_Entity::GeometryTransparent]);
                 update(renderables[Renderer_Entity::GeometryTransparentInstanced]);
 
-                is_dirty = true;
+                dirty = true;
             }
         }
     }
@@ -250,6 +261,8 @@ namespace Spartan
         SetOption(Renderer_Option::Debug_PerformanceMetrics,      1.0f);
 
         // resources
+        CreateStandardTextures();
+        CreateStandardMeshes();
         CreateConstantBuffers();
         CreateShaders();
         CreateDepthStencilStates();
@@ -259,8 +272,6 @@ namespace Spartan
         CreateFonts();
         CreateSamplers(false);
         CreateStructuredBuffers();
-        CreateStandardTextures();
-        CreateStandardMeshes();
 
         // events
         {
@@ -620,9 +631,10 @@ namespace Spartan
         cmd_list->PushConstants(0, sizeof(Pcb_Pass), &m_cb_pass_cpu);
     }
 
+
     void Renderer::OnMaterialChanged()
     {
-        material_properties::refresh(m_renderables);
+        world_materials::refresh(m_renderables);
     }
 
     void Renderer::OnWorldResolved(sp_variant data)
@@ -743,7 +755,7 @@ namespace Spartan
             sort_renderables(m_camera.get(), &m_renderables[Renderer_Entity::Geometry], false);
             sort_renderables(m_camera.get(), &m_renderables[Renderer_Entity::GeometryTransparent], true);
 
-            material_properties::refresh(m_renderables);
+            world_materials::refresh(m_renderables);
 
             m_entities_to_add.clear();
         }
@@ -958,28 +970,24 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity,          GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity_previous, GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity_previous));
 
-        // update material array
-        if (material_properties::is_dirty)
+        if (world_materials::dirty)
         {
-            GetStructuredBuffer(Renderer_StructuredBuffer::Material)->Update(&material_properties::data[0]);
-            material_properties::is_dirty = false;
+            MapMaterialsToGpu();
+            world_materials::dirty = false;
         }
 
         cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_materials, GetStructuredBuffer(Renderer_StructuredBuffer::Material));
     }
 
-    void Renderer::SetTexturesMaterial(RHI_CommandList* cmd_list, Material* material)
+    void Renderer::MapMaterialsToGpu()
     {
-        cmd_list->SetTexture(Renderer_BindingsSrv::material_albedo,    material->GetTexture(MaterialTexture::Color));
-        cmd_list->SetTexture(Renderer_BindingsSrv::material_albedo2,   material->GetTexture(MaterialTexture::Color2));
-        cmd_list->SetTexture(Renderer_BindingsSrv::material_roughness, material->GetTexture(MaterialTexture::Roughness));
-        cmd_list->SetTexture(Renderer_BindingsSrv::material_metallic,  material->GetTexture(MaterialTexture::Metalness));
-        cmd_list->SetTexture(Renderer_BindingsSrv::material_normal,    material->GetTexture(MaterialTexture::Normal));
-        cmd_list->SetTexture(Renderer_BindingsSrv::material_normal2,   material->GetTexture(MaterialTexture::Normal2));
-        cmd_list->SetTexture(Renderer_BindingsSrv::material_height,    material->GetTexture(MaterialTexture::Height));
-        cmd_list->SetTexture(Renderer_BindingsSrv::material_occlusion, material->GetTexture(MaterialTexture::Occlusion));
-        cmd_list->SetTexture(Renderer_BindingsSrv::material_emission,  material->GetTexture(MaterialTexture::Emission));
-        cmd_list->SetTexture(Renderer_BindingsSrv::material_mask,      material->GetTexture(MaterialTexture::AlphaMask));
+        // write all world materials to the gpu
+
+        // structured buffer, this is a buffer of X elements, where each element holds various material properties
+        GetStructuredBuffer(Renderer_StructuredBuffer::Material)->Update(&world_materials::properties[0]);
+
+        // texture array, these are the material textures
+        RHI_Device::UpdateBindlessResources(nullptr, &world_materials::textures);
     }
 
     void Renderer::Screenshot(const string& file_path)

@@ -1314,6 +1314,7 @@ namespace Spartan
     void RHI_CommandList::OnPreDrawDispatch()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_pipeline != nullptr);
 
         // begin new render pass
         if (!m_render_pass_active && m_pso.IsGraphics())
@@ -1323,40 +1324,31 @@ namespace Spartan
 
         Renderer::SetGlobalShaderResources(this);
 
-        // bind descriptor sets - If the descriptor set is null, it means we don't need to bind anything.
-        if (RHI_DescriptorSet* descriptor_set = m_descriptor_layout_current->GetDescriptorSet())
+        array<void*, 4> descriptor_sets =
         {
-            // get descriptor sets
-            array<void*, 3> descriptor_sets =
-            {
-                descriptor_set->GetResource(),
-                RHI_Device::GetDescriptorSet(RHI_Device_Resource::sampler_comparison),
-                RHI_Device::GetDescriptorSet(RHI_Device_Resource::sampler_regular)
-            };
-
-            // get dynamic offsets
-            vector<uint32_t> dynamic_offsets;
-            m_descriptor_layout_current->GetDynamicOffsets(&dynamic_offsets);
-
-            VkPipelineBindPoint bind_point = m_pso.IsCompute() ?
-                VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE :
-                VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
-
-            // bind descriptor set
-            vkCmdBindDescriptorSets
-            (
-                static_cast<VkCommandBuffer>(m_rhi_resource),                            // commandBuffer
-                bind_point,                                                              // pipelineBindPoint
-                static_cast<VkPipelineLayout>(m_pipeline->GetResource_PipelineLayout()), // layout
-                0,                                                                       // firstSet
-                static_cast<uint32_t>(descriptor_sets.size()),                           // descriptorSetCount
-                reinterpret_cast<VkDescriptorSet*>(descriptor_sets.data()),              // pDescriptorSets
-                static_cast<uint32_t>(dynamic_offsets.size()),                           // dynamicOffsetCount
-                dynamic_offsets.data()                                                   // pDynamicOffsets
-            );
-
-            Profiler::m_rhi_bindings_descriptor_set++;
-        }
+            m_descriptor_layout_current->GetDescriptorSet()->GetResource(),
+            RHI_Device::GetDescriptorSet(RHI_Device_Resource::sampler_comparison),
+            RHI_Device::GetDescriptorSet(RHI_Device_Resource::sampler_regular),
+            RHI_Device::GetDescriptorSet(RHI_Device_Resource::textures_material)
+        };
+        
+        // get dynamic offsets
+        vector<uint32_t> dynamic_offsets;
+        m_descriptor_layout_current->GetDynamicOffsets(&dynamic_offsets);
+        
+        vkCmdBindDescriptorSets
+        (
+            static_cast<VkCommandBuffer>(m_rhi_resource),                                                                                   // commandBuffer
+            m_pso.IsCompute() ? VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE : VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, // pipelineBindPoint
+            static_cast<VkPipelineLayout>(m_pipeline->GetResource_PipelineLayout()),                                                        // layout
+            0,                                                                                                                              // firstSet
+            static_cast<uint32_t>(descriptor_sets.size()),                                                                                  // descriptorSetCount
+            reinterpret_cast<VkDescriptorSet*>(descriptor_sets.data()),                                                                     // pDescriptorSets
+            static_cast<uint32_t>(dynamic_offsets.size()),                                                                                  // dynamicOffsetCount
+            dynamic_offsets.data()                                                                                                          // pDynamicOffsets
+        );
+        
+        Profiler::m_rhi_bindings_descriptor_set++;
     }
 
     void RHI_CommandList::InsertMemoryBarrierImage(void* image, const uint32_t aspect_mask,

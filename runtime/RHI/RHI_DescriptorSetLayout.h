@@ -44,29 +44,27 @@ namespace Spartan
         RHI_DescriptorSetLayout(const std::vector<RHI_Descriptor>& descriptors, const std::string& name);
         ~RHI_DescriptorSetLayout();
 
-        // Set
+        // set
         void SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer);
         void SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer);
         void SetSampler(const uint32_t slot, RHI_Sampler* sampler);
         void SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index, const uint32_t mip_range);
 
-        // Dynamic offsets
+        // dynamic offsets
         void GetDynamicOffsets(std::vector<uint32_t>* offsets);
 
-        // Misc
+        // misc
         void ClearDescriptorData();
         RHI_DescriptorSet* GetDescriptorSet();
         const std::vector<RHI_Descriptor>& GetDescriptors() const { return m_descriptors; }
-        void NeedsToBind()                                        { m_needs_to_bind = true; }
-        uint64_t GetHash()                                  const { return m_hash; }
-        void* GetRhiResource()                              const { return m_rhi_resource; }
+        uint64_t GetHash() const                                  { return m_hash; }
+        void* GetRhiResource() const                              { return m_rhi_resource; }
 
     private:
         void CreateRhiResource(std::vector<RHI_Descriptor> descriptors);
 
         void* m_rhi_resource = nullptr;
         uint64_t m_hash      = 0;
-        bool m_needs_to_bind = false;
         std::vector<RHI_Descriptor> m_descriptors;
     };
 }

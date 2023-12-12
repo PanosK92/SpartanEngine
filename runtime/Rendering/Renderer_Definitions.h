@@ -109,56 +109,44 @@ namespace Spartan
     
     enum class Renderer_BindingsSrv
     {
-        // material
-        material_albedo    = 0,
-        material_albedo2   = 1,
-        material_roughness = 2,
-        material_metallic  = 3,
-        material_normal    = 4,
-        material_normal2   = 5,
-        material_height    = 6,
-        material_occlusion = 7,
-        material_emission  = 8,
-        material_mask      = 9,
-    
         // g-buffer
-        gbuffer_albedo            = 10,
-        gbuffer_normal            = 11,
-        gbuffer_material          = 12,
-        gbuffer_velocity          = 13,
-        gbuffer_velocity_previous = 14,
-        gbuffer_depth             = 15,
+        gbuffer_albedo            = 0,
+        gbuffer_normal            = 1,
+        gbuffer_material          = 2,
+        gbuffer_velocity          = 3,
+        gbuffer_velocity_previous = 4,
+        gbuffer_depth             = 5,
     
         // lighting
-        light_diffuse              = 16,
-        light_diffuse_transparent  = 17,
-        light_specular             = 18,
-        light_specular_transparent = 19,
-        light_volumetric           = 20,
+        light_diffuse              = 6,
+        light_diffuse_transparent  = 7,
+        light_specular             = 8,
+        light_specular_transparent = 9,
+        light_volumetric           = 10,
     
         // light depth/color maps
-        light_directional_depth = 21,
-        light_directional_color = 22,
-        light_point_depth       = 23,
-        light_point_color       = 24,
-        light_spot_depth        = 25,
-        light_spot_color        = 26,
+        light_directional_depth = 11,
+        light_directional_color = 12,
+        light_point_depth       = 13,
+        light_point_color       = 14,
+        light_spot_depth        = 15,
+        light_spot_color        = 16,
     
         // noise
-        noise_normal = 27,
-        noise_blue   = 28,
+        noise_normal = 17,
+        noise_blue   = 18,
     
         // misc
-        lutIbl           = 29,
-        environment      = 30,
-        ssgi             = 31,
-        ssr              = 32,
-        frame            = 33,
-        tex              = 34,
-        tex2             = 35,
-        font_atlas       = 36,
-        reflection_probe = 37,
-        sss              = 38
+        lutIbl           = 19,
+        environment      = 20,
+        ssgi             = 21,
+        ssr              = 22,
+        frame            = 23,
+        tex              = 24,
+        tex2             = 25,
+        font_atlas       = 26,
+        reflection_probe = 27,
+        sss              = 28
     };
 
     enum class Renderer_BindingsUav

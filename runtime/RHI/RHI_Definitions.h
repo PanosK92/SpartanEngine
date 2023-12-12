@@ -304,25 +304,6 @@ namespace Spartan
         RHI_Shader_Compute = 1 << 2,
     };
 
-    const uint32_t rhi_all_mips = std::numeric_limits<uint32_t>::max();
-
-    // shader register slot shifts (required to produce spirv from hlsl)
-    const uint32_t rhi_shader_shift_register_u = 100;
-    const uint32_t rhi_shader_shift_register_b = 200;
-    const uint32_t rhi_shader_shift_register_s = 300;
-    const uint32_t rhi_shader_shift_register_t = 400;
-
-    const Color    rhi_color_dont_care           = Color(std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f);
-    const Color    rhi_color_load                = Color(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
-    const float    rhi_depth_dont_care           = std::numeric_limits<float>::max();
-    const float    rhi_depth_load                = std::numeric_limits<float>::infinity();
-    const uint32_t rhi_stencil_dont_care         = std::numeric_limits<uint32_t>::max();
-    const uint32_t rhi_stencil_load              = std::numeric_limits<uint32_t>::infinity();
-    const uint8_t  rhi_max_render_target_count   = 8;
-    const uint8_t  rhi_max_constant_buffer_count = 8;
-    const uint32_t rhi_dynamic_offset_empty      = std::numeric_limits<uint32_t>::max();
-    const uint8_t  rhi_max_mip_count             = 13;
-
     static uint64_t rhi_hash_combine(uint64_t seed, uint64_t x)
     {
         // xxHash is probably the best hashing lib out there.
@@ -423,4 +404,23 @@ namespace Spartan
     {
         return static_cast<uint32_t>(format);
     }
+
+    // shader register slot shifts (required to produce spirv from hlsl)
+    const uint32_t rhi_shader_shift_register_u = 100;
+    const uint32_t rhi_shader_shift_register_b = 200;
+    const uint32_t rhi_shader_shift_register_s = 300;
+    const uint32_t rhi_shader_shift_register_t = 400;
+
+    const Color    rhi_color_dont_care           = Color(std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f);
+    const Color    rhi_color_load                = Color(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
+    const float    rhi_depth_dont_care           = std::numeric_limits<float>::max();
+    const float    rhi_depth_load                = std::numeric_limits<float>::infinity();
+    const uint32_t rhi_stencil_dont_care         = std::numeric_limits<uint32_t>::max();
+    const uint32_t rhi_stencil_load              = std::numeric_limits<uint32_t>::infinity();
+    const uint8_t  rhi_max_render_target_count   = 8;
+    const uint8_t  rhi_max_constant_buffer_count = 8;
+    const uint32_t rhi_dynamic_offset_empty      = std::numeric_limits<uint32_t>::max();
+    const uint8_t  rhi_max_mip_count             = 13;
+    const uint32_t rhi_all_mips                  = std::numeric_limits<uint32_t>::max();
+    const uint32_t rhi_dynamic_array_max         = 256;
 }

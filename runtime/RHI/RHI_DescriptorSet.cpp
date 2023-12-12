@@ -42,4 +42,15 @@ namespace Spartan
 
         Update(descriptors);
     }
+
+    bool RHI_DescriptorSet::IsReferingToResource(void* resource)
+    {
+        for (RHI_Descriptor& descriptor : m_descriptors)
+        {
+            if (descriptor.data == resource)
+                return true;
+        }
+
+        return false;
+    }
 }

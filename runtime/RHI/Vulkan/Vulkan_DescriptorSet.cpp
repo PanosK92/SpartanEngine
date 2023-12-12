@@ -39,7 +39,9 @@ namespace Spartan
 {
     void RHI_DescriptorSet::Update(const vector<RHI_Descriptor>& descriptors)
     {
-        // Validate descriptor set
+        m_descriptors = descriptors;
+
+        // validate descriptor set
         SP_ASSERT(m_resource != nullptr);
 
         static const uint32_t descriptor_count = 256;
@@ -81,7 +83,7 @@ namespace Spartan
                 const bool mip_specified = descriptor.mip != rhi_all_mips;
                 uint32_t mip_start       = mip_specified ? descriptor.mip : 0;
 
-                if (!descriptor.IsArray())
+                if (!descriptor.as_array)
                 {
                     image_index++;
 
@@ -133,12 +135,12 @@ namespace Spartan
                 SP_ASSERT_MSG(false, "Unhandled descriptor type");
             }
 
-            // Write descriptor set
+            // wWrite descriptor set
             descriptor_sets[index].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             descriptor_sets[index].pNext            = nullptr;
             descriptor_sets[index].dstSet           = static_cast<VkDescriptorSet>(m_resource);
             descriptor_sets[index].dstBinding       = descriptor.slot;
-            descriptor_sets[index].dstArrayElement  = 0; // The starting element in that array
+            descriptor_sets[index].dstArrayElement  = 0; // starting element in that array
             descriptor_sets[index].descriptorCount  = descriptor_count;
             descriptor_sets[index].descriptorType   = static_cast<VkDescriptorType>(RHI_Device::GetDescriptorType(descriptor));
             descriptor_sets[index].pImageInfo       = &info_images[descriptor_index_start];
