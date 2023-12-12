@@ -634,14 +634,32 @@ namespace Spartan
                 // update
                 {
                     vector<VkDescriptorImageInfo> image_infos(texture_count);
-                    for (uint32_t i = 0; i < texture_count; i++)
-                    {
-                        RHI_Texture* texture = (*textures)[i];
-                        void* resource       = texture ? texture->GetRhiSrv() : Renderer::GetStandardTexture(Renderer_StandardTexture::Black)->GetRhiSrv();
 
-                        image_infos[i].sampler     = nullptr;
-                        image_infos[i].imageView   = static_cast<VkImageView>(resource);
-                        image_infos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                    // initialize all slots to a default texture
+                    for (auto& info : image_infos)
+                    {
+                        info.sampler     = nullptr;
+                        info.imageView   = static_cast<VkImageView>(Renderer::GetStandardTexture(Renderer_StandardTexture::Black)->GetRhiSrv());
+                        info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                    }
+
+                    // assign textures based on their calculated position in the 'textures' array
+                    for (uint32_t i = 0; i < texture_count; ++i)
+                    {
+                        RHI_Texture* texture= (*textures)[i];
+                        if (!texture)
+                            continue;
+
+                        void* resource = texture ? texture->GetRhiSrv() : Renderer::GetStandardTexture(Renderer_StandardTexture::Black)->GetRhiSrv();
+
+                        uint32_t textures_per_material = 10;
+                        uint32_t material_index        = texture->GetMaterialIndex();
+                        uint32_t texture_type_index    = texture->GetMaterialIndexTexture();
+                        uint32_t descriptor_index      = material_index * textures_per_material + texture_type_index;
+
+                        image_infos[descriptor_index].sampler     = nullptr;
+                        image_infos[descriptor_index].imageView   = static_cast<VkImageView>(resource);
+                        image_infos[descriptor_index].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                     }
 
                     VkWriteDescriptorSet descriptor_write = {};

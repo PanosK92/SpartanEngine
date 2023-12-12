@@ -106,9 +106,13 @@ namespace Spartan
 
         // properties - color
         void SetColor(const Color& color);
+
+        uint32_t GetIndex() { return m_index; }
  
     private:
         std::array<std::shared_ptr<RHI_Texture>, 11> m_textures;
         std::array<float, 28> m_properties;
+
+        uint32_t m_index = 0;
     };
 }

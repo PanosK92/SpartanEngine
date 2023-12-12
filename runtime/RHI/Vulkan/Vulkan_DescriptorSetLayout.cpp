@@ -51,7 +51,7 @@ namespace Spartan
             remove_if(descriptors.begin(), descriptors.end(), [](RHI_Descriptor& descriptor)
             { 
                 return  descriptor.type == RHI_Descriptor_Type::PushConstantBuffer ||                  // push constants are not part of the descriptor set layout
-                       (descriptor.as_array && descriptor.array_length == rhi_max_dynamic_array_size); // binldess arrays
+                       (descriptor.as_array && descriptor.array_length == rhi_max_dynamic_array_size); // binldess arrays have their own layout
             }),
             descriptors.end()
         );

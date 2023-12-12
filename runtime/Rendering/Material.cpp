@@ -80,6 +80,8 @@ namespace Spartan
                 }
             }
         }
+
+        uint32_t index_global = 0;
     }
 
     Material::Material() : IResource(ResourceType::Material)
@@ -98,6 +100,8 @@ namespace Spartan
         SetProperty(MaterialProperty::TextureTilingY,      1.0f);
         SetProperty(MaterialProperty::WorldSpaceHeight,    1.0f);
         SetProperty(MaterialProperty::Ior,                 1.33f); // water
+
+        m_index = index_global++;
     }
 
     bool Material::LoadFromFile(const std::string& file_path)
@@ -186,6 +190,10 @@ namespace Spartan
         {
             // cache the texture to ensure scene serialization/deserialization
             m_textures[type_int] = ResourceCache::Cache(texture->GetSharedPtr());
+
+            // assign indices (helps to get it in the right array slot - bindless)
+            texture->SetMaterialIndex(m_index);
+            texture->SetMaterialIndexTexture(static_cast<uint32_t>(texture_type));
         }
         else
         {
