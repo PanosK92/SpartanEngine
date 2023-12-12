@@ -56,23 +56,22 @@ Texture2D tex_font_atlas         : register(t26);
 TextureCube tex_reflection_probe : register(t27);
 Texture2DArray tex_sss			 : register(t28);
 
-//= MATERIAL TEXTURES =====================================================================================================
-static const uint index_albedo    = 0;
-static const uint index_albedo_2  = 1;
-static const uint index_roughness = 2;
-static const uint index_metalness = 3;
-static const uint index_normal    = 4;
-static const uint index_normal_2  = 5;
-static const uint index_occlusion = 6;
-static const uint index_emission  = 7;
-static const uint index_height    = 8;
-static const uint index_mask      = 9;
+//= MATERIAL TEXTURES =================================================================
+static const uint material_albedo    = 0;
+static const uint material_albedo_2  = 1;
+static const uint material_roughness = 2;
+static const uint material_metalness = 3;
+static const uint material_normal    = 4;
+static const uint material_normal_2  = 5;
+static const uint material_occlusion = 6;
+static const uint material_emission  = 7;
+static const uint material_height    = 8;
+static const uint material_mask      = 9;
 
-Texture2D tex_materials[] : register(t29, space3);
+Texture2D tex_materials[] : register(t29, space1);
 
-static const uint material_texture_count = 10; // must match textures_per_material in Vulkan_Device.cpp
-#define GET_MATERIAL_TEXTURE(index_texture) tex_materials[buffer_material.index * material_texture_count + (index_texture)]
-//=========================================================================================================================
+#define GET_TEXTURE(index_texture) tex_materials[buffer_material.index + index_texture]
+//=====================================================================================
 
 struct MaterialProperties
 {

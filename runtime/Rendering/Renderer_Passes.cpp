@@ -1,4 +1,4 @@
-/*
+#/*
 Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -309,7 +309,6 @@ namespace Spartan
                     }
 
                     // go through all of the entities
-                    uint64_t bound_material_id = 0;
                     for (shared_ptr<Entity> entity : entities)
                     {
                         // acquire renderable component
@@ -335,11 +334,7 @@ namespace Spartan
                         }
 
                         // set material
-                        if (bound_material_id != material->GetObjectId())
-                        {
-                            UpdateConstantBufferMaterial(cmd_list, material);
-                            bound_material_id = material->GetObjectId();
-                        }
+                        UpdateConstantBufferMaterial(cmd_list, material);
 
                         // set pass constants
                         {
@@ -512,7 +507,6 @@ namespace Spartan
             // set pso
             cmd_list->SetPipelineState(pso);
 
-            uint64_t bound_material_id = 0;
             for (shared_ptr<Entity> entity : entities)
             {
                 // get renderable
@@ -546,11 +540,7 @@ namespace Spartan
                 }
 
                 // set alpha testing textures
-                if (bound_material_id != material->GetObjectId())
-                {
-                    UpdateConstantBufferMaterial(cmd_list, material);
-                    bound_material_id = material->GetObjectId();
-                }
+                UpdateConstantBufferMaterial(cmd_list, material);
 
                 // set pass constants
                 {
@@ -634,7 +624,6 @@ namespace Spartan
             // set pso
             cmd_list->SetPipelineState(pso);
 
-            uint64_t bound_material_id = 0;
             for (shared_ptr<Entity> entity : entities)
             {
                 // get renderable
@@ -665,11 +654,7 @@ namespace Spartan
                 // set material
                 if (Material* material = renderable->GetMaterial())
                 {
-                    if (bound_material_id != material->GetObjectId())
-                    {
-                        UpdateConstantBufferMaterial(cmd_list, material);
-                        bound_material_id = material->GetObjectId();
-                    }
+                    UpdateConstantBufferMaterial(cmd_list, material);
                 }
 
                 // push pass constants

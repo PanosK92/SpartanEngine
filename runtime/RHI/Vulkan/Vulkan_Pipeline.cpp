@@ -51,9 +51,9 @@ namespace Spartan
             array<void*, 4> layouts =
             {
                 descriptor_set_layout->GetRhiResource(),
+                RHI_Device::GetDescriptorSetLayout(RHI_Device_Resource::textures_material),
                 RHI_Device::GetDescriptorSetLayout(RHI_Device_Resource::sampler_comparison),
-                RHI_Device::GetDescriptorSetLayout(RHI_Device_Resource::sampler_regular),
-                RHI_Device::GetDescriptorSetLayout(RHI_Device_Resource::textures_material)
+                RHI_Device::GetDescriptorSetLayout(RHI_Device_Resource::sampler_regular)
             };
 
             // validate descriptor set layouts

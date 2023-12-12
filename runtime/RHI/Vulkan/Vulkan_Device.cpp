@@ -636,21 +636,21 @@ namespace Spartan
                     vector<VkDescriptorImageInfo> image_infos(texture_count);
 
                     // initialize all slots to a default texture
-                    for (auto& info : image_infos)
+                    for (VkDescriptorImageInfo& info : image_infos)
                     {
                         info.sampler     = nullptr;
-                        info.imageView   = static_cast<VkImageView>(Renderer::GetStandardTexture(Renderer_StandardTexture::Black)->GetRhiSrv());
+                        info.imageView   = static_cast<VkImageView>(Renderer::GetStandardTexture(Renderer_StandardTexture::Transparent)->GetRhiSrv());
                         info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                     }
 
-                    // assign textures based on their calculated position in the 'textures' array
+                    // assign textures to their material based index (bindless)
                     for (uint32_t i = 0; i < texture_count; ++i)
                     {
-                        RHI_Texture* texture= (*textures)[i];
+                        RHI_Texture* texture = (*textures)[i];
                         if (!texture)
                             continue;
 
-                        void* resource = texture ? texture->GetRhiSrv() : Renderer::GetStandardTexture(Renderer_StandardTexture::Black)->GetRhiSrv();
+                        void* resource = texture ? texture->GetRhiSrv() : Renderer::GetStandardTexture(Renderer_StandardTexture::Transparent)->GetRhiSrv();
 
                         uint32_t textures_per_material = 10;
                         uint32_t material_index        = texture->GetMaterialIndex();

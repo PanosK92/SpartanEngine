@@ -32,5 +32,7 @@ static const uint sampler_trilinear_clamp    = 5;
 static const uint sampler_anisotropic_wrap   = 6;
 
 // samplers
-SamplerComparisonState samplers_comparison[] : register(s0, space1);
-SamplerState samplers[]                      : register(s1, space2);
+SamplerComparisonState samplers_comparison[] : register(s0, space2);
+SamplerState samplers[]                      : register(s1, space3);
+
+#define GET_SAMPLER(index_sampler) samplers[index_sampler]

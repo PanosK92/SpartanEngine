@@ -43,7 +43,7 @@ struct PixelOutputType
 
 struct sampling
 {
-    static float4 interleave(Texture2D texture_1, Texture2D texture_2, float2 uv)
+    static float4 interleave(uint texture_1, uint texture_2, float2 uv)
     {
         // constants for scale and direction of the normal map movement
         float2 direction_1 = float2(1.0, 0.5);
@@ -58,14 +58,14 @@ struct sampling
         float2 uv_2 = uv + buffer_frame.time * speed_2 * direction_2;
 
         // sample
-        float4 sample_1 = texture_1.Sample(samplers[sampler_anisotropic_wrap], uv_1 * scale_1);
-        float4 sample_2 = texture_2.Sample(samplers[sampler_anisotropic_wrap], uv_2 * scale_2);
+        float4 sample_1 = GET_TEXTURE(texture_1).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_1 * scale_1);
+        float4 sample_2 = GET_TEXTURE(texture_2).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_2 * scale_2);
 
         // blend
         return sample_1 + sample_2;
     }
 
-    static float4 reduce_tiling(Texture2D _tex, float2 uv, float variation)
+    static float4 reduce_tiling(uint _tex, float2 uv, float variation)
     {
         float random_value = tex_noise_blue.Sample(samplers[sampler_anisotropic_wrap], float3(uv * 0.005f, 0)).x; // low frequency lookup
 
@@ -83,8 +83,8 @@ struct sampling
         float2 off_b = sin(float2(3.0f, 7.0f) * ib);
 
         // sample the texture with offsets and gradients
-        float4 col_a = _tex.SampleGrad(samplers[sampler_anisotropic_wrap], uv + variation * off_a, duvdx, duvdy);
-        float4 col_b = _tex.SampleGrad(samplers[sampler_anisotropic_wrap], uv + variation * off_b, duvdx, duvdy);
+        float4 col_a = GET_TEXTURE(_tex).SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv + variation * off_a, duvdx, duvdy);
+        float4 col_b = GET_TEXTURE(_tex).SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv + variation * off_b, duvdx, duvdy);
 
         // blend the samples
         float blend_factor   = smoothstep(0.2f, 0.8f, f - 0.1f * ((col_a.x - col_b.x) + (col_a.y - col_b.y) + (col_a.z - col_b.z)+ (col_a.w - col_b.w)));
@@ -93,7 +93,7 @@ struct sampling
         return blended_color;
     }
 
-    static float4 smart(Texture2D texture_1, Texture2D texture_2, float2 uv, float slope, float3 position_world)
+    static float4 smart(uint texture_1, uint texture_2, float2 uv, float slope, float3 position_world)
     {
         // in case of water, we just interleave the normal
         if (material_vertex_animate_water())
@@ -114,7 +114,7 @@ struct sampling
         }
 
         // this is a regular sample
-        return texture_1.Sample(samplers[sampler_anisotropic_wrap], uv);
+        return GET_TEXTURE(texture_1).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
     }
 };
 
@@ -135,9 +135,11 @@ PixelInputType mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID
     output.position             = compute_screen_space_position(input, instance_id, buffer_pass.transform, buffer_frame.view_projection, buffer_frame.time);
     output.position_ss_current  = output.position;
     output.position_ss_previous = compute_screen_space_position(input, instance_id, pass_get_transform_previous(), buffer_frame.view_projection_previous, buffer_frame.time - buffer_frame.delta_time, output.position_world);
+    
     // normals
     output.normal_world  = normalize(mul(input.normal,  (float3x3)buffer_pass.transform)).xyz;
     output.tangent_world = normalize(mul(input.tangent, (float3x3)buffer_pass.transform)).xyz;
+    
     // uv
     output.uv = input.uv;
     
@@ -178,14 +180,14 @@ PixelOutputType mainPS(PixelInputType input)
     float alpha_mask = 1.0f;
     if (has_texture_alpha_mask())
     {
-        alpha_mask = GET_MATERIAL_TEXTURE(index_mask).Sample(samplers[sampler_anisotropic_wrap], uv).r;
+        alpha_mask = GET_TEXTURE(material_mask).Sample(samplers[sampler_anisotropic_wrap], uv).r;
     }
     
     // albedo
     float slope = compute_slope(normal);
     if (has_texture_albedo())
     {
-        float4 albedo_sample = sampling::smart(GET_MATERIAL_TEXTURE(index_albedo), GET_MATERIAL_TEXTURE(index_albedo_2), uv, slope, input.position_world);
+        float4 albedo_sample = sampling::smart(material_albedo, material_albedo_2, uv, slope, input.position_world);
 
         // read albedo's alpha channel as an alpha mask as well
         alpha_mask      = min(alpha_mask, albedo_sample.a);
@@ -212,7 +214,7 @@ PixelOutputType mainPS(PixelInputType input)
 
             float3x3 world_to_tangent       = make_world_to_tangent_matrix(input.normal_world, input.tangent_world);
             float3 camera_to_pixel_tangent  = normalize(mul(normalize(camera_to_pixel_world), world_to_tangent));
-            float height                    = GET_MATERIAL_TEXTURE(index_height).Sample(samplers[sampler_anisotropic_wrap], uv).r - 0.5f;
+            float height                    = GET_TEXTURE(material_height).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).r - 0.5f;
             uv                             += (camera_to_pixel_tangent.xy / camera_to_pixel_tangent.z) * height * scale;
         }
         
@@ -220,7 +222,7 @@ PixelOutputType mainPS(PixelInputType input)
         if (has_texture_normal())
         {
             // get tangent space normal and apply the user defined intensity, then transform it to world space
-            float3 normal_sample       = sampling::smart(GET_MATERIAL_TEXTURE(index_normal), GET_MATERIAL_TEXTURE(index_normal_2), uv, slope, input.position_world).xyz;
+            float3 normal_sample       = sampling::smart(material_normal, material_normal_2, uv, slope, input.position_world).xyz;
             float3 tangent_normal      = normalize(unpack(normal_sample));
             float normal_intensity     = clamp(buffer_material.normal, 0.012f, buffer_material.normal);
             tangent_normal.xy         *= saturate(normal_intensity);
@@ -234,24 +236,24 @@ PixelOutputType mainPS(PixelInputType input)
             {
                 if (has_texture_roughness())
                 {
-                    roughness *= GET_MATERIAL_TEXTURE(index_roughness).Sample(samplers[sampler_anisotropic_wrap], uv).r;
+                    roughness *= GET_TEXTURE(material_roughness).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).r;
                 }
 
                 if (has_texture_metalness())
                 {
-                    metalness *= GET_MATERIAL_TEXTURE(index_metalness).Sample(samplers[sampler_anisotropic_wrap], uv).r;
+                    metalness *= GET_TEXTURE(material_metalness).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).r;
                 }
             }
             else
             {
                 if (has_texture_roughness())
                 {
-                    roughness *= GET_MATERIAL_TEXTURE(index_roughness).Sample(samplers[sampler_anisotropic_wrap], uv).g;
+                    roughness *= GET_TEXTURE(material_roughness).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).g;
                 }
 
                 if (has_texture_metalness())
                 {
-                    metalness *= GET_MATERIAL_TEXTURE(index_metalness).Sample(samplers[sampler_anisotropic_wrap], uv).b;
+                    metalness *= GET_TEXTURE(material_metalness).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).b;
                 }
             }
         }
@@ -259,13 +261,13 @@ PixelOutputType mainPS(PixelInputType input)
         // occlusion
         if (has_texture_occlusion())
         {
-            occlusion = GET_MATERIAL_TEXTURE(index_occlusion).Sample(samplers[sampler_anisotropic_wrap], uv).r;
+            occlusion = GET_TEXTURE(material_occlusion).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).r;
         }
 
         // emission
         if (has_texture_emissive())
         {
-            float3 emissive_color = GET_MATERIAL_TEXTURE(index_emission).Sample(samplers[sampler_anisotropic_wrap], uv).rgb;
+            float3 emissive_color  = GET_TEXTURE(material_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).rgb;
             emission               = luminance(emissive_color);
             albedo.rgb            += emissive_color;
         }
