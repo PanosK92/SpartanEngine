@@ -173,7 +173,7 @@ namespace Spartan
 
 	void Camera::Pick()
     {
-        // Ensure the mouse is inside the viewport
+        // ensure the mouse is inside the viewport
         if (!Input::GetMouseIsInViewport())
         {
             m_selected_entity.reset();
@@ -182,7 +182,7 @@ namespace Spartan
 
         m_ray = ComputePickingRay();
 
-        // Traces ray against all AABBs in the world
+        // traces ray against all AABBs in the world
         vector<RayHit> hits;
         {
             const vector<shared_ptr<Entity>>& entities = World::GetAllEntities();
@@ -193,7 +193,7 @@ namespace Spartan
                     continue;
 
                 // Get object oriented bounding box
-                const BoundingBox& aabb = entity->GetComponent<Renderable>()->GetBoundingBox(BoundingBoxType::TransformedInstances);
+                const BoundingBox& aabb = entity->GetComponent<Renderable>()->GetBoundingBox(BoundingBoxType::Transformed);
 
                 // Compute hit distance
                 float distance = m_ray.HitDistance(aabb);
@@ -210,25 +210,25 @@ namespace Spartan
                 );
             }
 
-            // Sort by distance (ascending)
+            // sort by distance (ascending)
             sort(hits.begin(), hits.end(), [](const RayHit& a, const RayHit& b) { return a.m_distance < b.m_distance; });
         }
 
-        // Check if there are any hits
+        // check if there are any hits
         if (hits.empty())
         {
             m_selected_entity.reset();
             return;
         }
 
-        // If there is a single hit, return that
+        // if there is a single hit, return that
         if (hits.size() == 1)
         {
             m_selected_entity = hits.front().m_entity;
             return;
         }
 
-        // If there are more hits, perform triangle intersection
+        // if there are more hits, perform triangle intersection
         float distance_min = numeric_limits<float>::max();
         for (RayHit& hit : hits)
         {

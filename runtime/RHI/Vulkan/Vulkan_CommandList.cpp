@@ -1327,9 +1327,9 @@ namespace Spartan
         array<void*, 4> descriptor_sets =
         {
             m_descriptor_layout_current->GetDescriptorSet()->GetResource(),
+            RHI_Device::GetDescriptorSet(RHI_Device_Resource::textures_material),
             RHI_Device::GetDescriptorSet(RHI_Device_Resource::sampler_comparison),
-            RHI_Device::GetDescriptorSet(RHI_Device_Resource::sampler_regular),
-            RHI_Device::GetDescriptorSet(RHI_Device_Resource::textures_material)
+            RHI_Device::GetDescriptorSet(RHI_Device_Resource::sampler_regular)
         };
         
         // get dynamic offsets
