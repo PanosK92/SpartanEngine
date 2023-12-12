@@ -309,6 +309,7 @@ namespace Spartan
                     }
 
                     // go through all of the entities
+                    uint32_t bound_material_id = 0;
                     for (shared_ptr<Entity> entity : entities)
                     {
                         // acquire renderable component
@@ -334,8 +335,10 @@ namespace Spartan
                         }
 
                         // set material
+                        if (bound_material_id != material->GetObjectId())
                         {
                             UpdateConstantBufferMaterial(cmd_list, material);
+                            bound_material_id = material->GetObjectId();
                         }
 
                         // set pass constants

@@ -593,7 +593,6 @@ namespace Spartan
 
                 // update
                 {
-                    // update descriptor set with samplers
                     vector<VkDescriptorImageInfo> image_infos(sampler_count);
                     for (uint32_t i = 0; i < sampler_count; i++)
                     {
@@ -617,7 +616,6 @@ namespace Spartan
 
             void create_descriptor_set_textures(const vector<RHI_Texture*>* textures, const uint32_t binding_slot)
             {
-                // debug name for resource tracking
                 string debug_name                            = "textures_material";
                 VkDescriptorSet* descriptor_set              = &sets[static_cast<uint32_t>(RHI_Device_Resource::textures_material)];
                 VkDescriptorSetLayout* descriptor_set_layout = &layouts[static_cast<uint32_t>(RHI_Device_Resource::textures_material)];
@@ -635,7 +633,6 @@ namespace Spartan
 
                 // update
                 {
-                    // update descriptor set with textures
                     vector<VkDescriptorImageInfo> image_infos(texture_count);
                     for (uint32_t i = 0; i < texture_count; i++)
                     {

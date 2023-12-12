@@ -596,6 +596,7 @@ namespace Spartan
 
         // set
         m_cb_material_cpu.id                  = static_cast<uint32_t>(material->GetObjectId());
+        m_cb_material_cpu.index               = 0;
         m_cb_material_cpu.world_space_height  = material->GetProperty(MaterialProperty::WorldSpaceHeight);
         m_cb_material_cpu.color.x             = material->GetProperty(MaterialProperty::ColorR);
         m_cb_material_cpu.color.y             = material->GetProperty(MaterialProperty::ColorG);
