@@ -133,7 +133,6 @@ namespace Spartan
                     {
                         if (Material* material = renderable->GetMaterial())
                         {
-
                             // properties
                             {
                                 Sb_MaterialProperties _properties = {};
@@ -152,7 +151,7 @@ namespace Spartan
 
                             // textures
                             {
-                                uint32_t index = static_cast<uint32_t>(material->GetObjectId() % textures.size());
+                                uint32_t index = material->GetIndex();
 
                                 textures[index + 0]  = material->GetTexture(MaterialTexture::Color);
                                 textures[index + 1]  = material->GetTexture(MaterialTexture::Color2);
@@ -160,9 +159,9 @@ namespace Spartan
                                 textures[index + 3]  = material->GetTexture(MaterialTexture::Metalness);
                                 textures[index + 4]  = material->GetTexture(MaterialTexture::Normal);
                                 textures[index + 5]  = material->GetTexture(MaterialTexture::Normal2);
-                                textures[index + 6]  = material->GetTexture(MaterialTexture::Height);
-                                textures[index + 7]  = material->GetTexture(MaterialTexture::Occlusion);
-                                textures[index + 8]  = material->GetTexture(MaterialTexture::Emission);
+                                textures[index + 6]  = material->GetTexture(MaterialTexture::Occlusion);
+                                textures[index + 7]  = material->GetTexture(MaterialTexture::Emission);
+                                textures[index + 8]  = material->GetTexture(MaterialTexture::Height);
                                 textures[index + 9]  = material->GetTexture(MaterialTexture::AlphaMask);
                             }
                         }
@@ -600,7 +599,7 @@ namespace Spartan
 
         // set
         m_cb_material_cpu.id                  = static_cast<uint32_t>(material->GetObjectId());
-        m_cb_material_cpu.index               = m_cb_material_cpu.id % rhi_max_dynamic_array_size;
+        m_cb_material_cpu.index               = material->GetIndex();
         m_cb_material_cpu.world_space_height  = material->GetProperty(MaterialProperty::WorldSpaceHeight);
         m_cb_material_cpu.color.x             = material->GetProperty(MaterialProperty::ColorR);
         m_cb_material_cpu.color.y             = material->GetProperty(MaterialProperty::ColorG);

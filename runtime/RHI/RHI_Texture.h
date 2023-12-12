@@ -92,11 +92,11 @@ namespace Spartan
         RHI_Format GetFormat()                             const { return m_format; }
         void SetFormat(const RHI_Format format)                  { m_format = format; }
 
-        // Misc
+        // misc
         std::shared_ptr<RHI_Texture> GetSharedPtr() { return shared_from_this(); }
         void SaveAsImage(const std::string& file_path);
 
-        // Data
+        // data
         uint32_t GetArrayLength()                          const { return m_array_length; }
         uint32_t GetMipCount()                             const { return m_mip_count; }
         bool HasData()                                     const { return !m_slices.empty() && !m_slices[0].mips.empty() && !m_slices[0].mips[0].bytes.empty(); };
@@ -105,7 +105,7 @@ namespace Spartan
         RHI_Texture_Mip& GetMip(const uint32_t array_index, const uint32_t mip_index);
         RHI_Texture_Slice& GetSlice(const uint32_t array_index);
 
-        // Flags
+        // flags
         bool IsSrv()                      const { return m_flags & RHI_Texture_Srv; }
         bool IsUav()                      const { return m_flags & RHI_Texture_Uav; }
         bool IsRenderTarget()             const { return m_flags & RHI_Texture_Rtv; }
@@ -116,21 +116,27 @@ namespace Spartan
         bool IsGrayscale()                const { return m_flags & RHI_Texture_Greyscale; }
         bool IsTransparent()              const { return m_flags & RHI_Texture_Transparent; }
 
-        // Format type
+        // format type
         bool IsDepthFormat()        const { return m_format == RHI_Format::D16_Unorm || m_format == RHI_Format::D32_Float || m_format == RHI_Format::D32_Float_S8X24_Uint; }
         bool IsStencilFormat()      const { return m_format == RHI_Format::D32_Float_S8X24_Uint; }
         bool IsDepthStencilFormat() const { return IsDepthFormat() || IsStencilFormat(); }
         bool IsColorFormat()        const { return !IsDepthStencilFormat(); }
 
-        // Layout
+        // layout
         void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* cmd_list, uint32_t mip_index = rhi_all_mips,  uint32_t mip_range = 0);
         RHI_Image_Layout GetLayout(const uint32_t mip) const { return m_layout[mip]; }
         std::array<RHI_Image_Layout, rhi_max_mip_count> GetLayouts()  const { return m_layout; }
 
-        // Viewport
+        // material
+        uint32_t GetMaterialIndex()                          { return m_material_index; }
+        void SetMaterialIndex(uint32_t index)                { m_material_index = index; }
+        uint32_t GetMaterialIndexTexture()                   { return m_material_index_texture; }
+        void SetMaterialIndexTexture(uint32_t index_texture) { m_material_index_texture = index_texture; }
+
+        // viewport
         const auto& GetViewport() const { return m_viewport; }
 
-        // GPU resources
+        // gpu resources
         void*& GetRhiResource()                             { return m_rhi_resource; }
         void* GetRhiSrv()                             const { return m_rhi_srv; }
         void* GetRhiUav()                             const { return m_rhi_uav; }
@@ -157,7 +163,7 @@ namespace Spartan
         std::vector<RHI_Texture_Slice> m_slices;
         std::array<RHI_Image_Layout, rhi_max_mip_count> m_layout;
 
-        // API resources
+        // api resources
         void* m_rhi_resource = nullptr;
         void* m_rhi_srv      = nullptr;
         void* m_rhi_uav      = nullptr;
@@ -170,5 +176,8 @@ namespace Spartan
 
     private:
         void ComputeMemoryUsage();
+
+        uint32_t m_material_index         = 0;
+        uint32_t m_material_index_texture = 0;
     };
 }

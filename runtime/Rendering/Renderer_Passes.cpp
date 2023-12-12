@@ -309,7 +309,7 @@ namespace Spartan
                     }
 
                     // go through all of the entities
-                    uint32_t bound_material_id = 0;
+                    uint64_t bound_material_id = 0;
                     for (shared_ptr<Entity> entity : entities)
                     {
                         // acquire renderable component

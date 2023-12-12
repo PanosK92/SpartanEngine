@@ -111,6 +111,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (surface.is_sky()) 
     {
         color.rgb += tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(surface.camera_to_pixel), 0).rgb;
+        color.a    = 1.0f;
+
     }
     else // anything else
     {
