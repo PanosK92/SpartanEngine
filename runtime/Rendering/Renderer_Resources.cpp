@@ -161,8 +161,7 @@ namespace Spartan
         float anisotropy = GetOption<float>(Renderer_Option::Anisotropy);
         sampler(Renderer_Sampler::Anisotropic_wrap) = make_shared<RHI_Sampler>(RHI_Filter::Linear, RHI_Filter::Linear, RHI_Filter::Linear, RHI_Sampler_Address_Mode::Wrap, RHI_Comparison_Function::Always, anisotropy, false, mip_bias);
 
-        // Make the samplers bindless and always present in the shaders
-        RHI_Device::SetBindlessSamplers(m_samplers);
+        RHI_Device::UpdateBindlessResources(&m_samplers, nullptr);
     }
 
     void Renderer::CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic)

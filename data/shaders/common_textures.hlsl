@@ -19,56 +19,57 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// material
-Texture2D tex_material_albedo     : register (t0);
-Texture2D tex_material_albedo_2   : register (t1);
-Texture2D tex_material_roughness  : register (t2);
-Texture2D tex_material_metallness : register (t3);
-Texture2D tex_material_normal     : register (t4);
-Texture2D tex_material_normal2    : register (t5);
-Texture2D tex_material_height     : register (t6);
-Texture2D tex_material_occlusion  : register (t7);
-Texture2D tex_material_emission   : register (t8);
-Texture2D tex_material_mask       : register (t9);
-
 // g-buffer
-Texture2D tex_albedo            : register(t10);
-Texture2D tex_normal            : register(t11);
-Texture2D tex_material          : register(t12);
-Texture2D tex_velocity          : register(t13);
-Texture2D tex_velocity_previous : register(t14);
-Texture2D tex_depth             : register(t15);
+Texture2D tex_albedo            : register(t0);
+Texture2D tex_normal            : register(t1);
+Texture2D tex_material          : register(t2);
+Texture2D tex_velocity          : register(t3);
+Texture2D tex_velocity_previous : register(t4);
+Texture2D tex_depth             : register(t5);
 
 // lighting
-Texture2D tex_light_diffuse              : register(t16);
-Texture2D tex_light_diffuse_transparent  : register(t17);
-Texture2D tex_light_specular             : register(t18);
-Texture2D tex_light_specular_transparent : register(t19);
-Texture2D tex_light_volumetric           : register(t20);
+Texture2D tex_light_diffuse              : register(t6);
+Texture2D tex_light_diffuse_transparent  : register(t7);
+Texture2D tex_light_specular             : register(t8);
+Texture2D tex_light_specular_transparent : register(t9);
+Texture2D tex_light_volumetric           : register(t10);
 
 // shadow maps (depth and color)
-Texture2DArray tex_light_directional_depth : register(t21);
-Texture2DArray tex_light_directional_color : register(t22);
-TextureCube tex_light_point_depth          : register(t23);
-TextureCube tex_light_point_color          : register(t24);
-Texture2D tex_light_spot_depth             : register(t25);
-Texture2D tex_light_spot_color             : register(t26);
-
-// noise
-Texture2D tex_noise_normal    : register(t27);
-Texture2DArray tex_noise_blue : register(t28);
+Texture2DArray tex_light_directional_depth : register(t11);
+Texture2DArray tex_light_directional_color : register(t12);
+TextureCube tex_light_point_depth          : register(t13);
+TextureCube tex_light_point_color          : register(t14);
+Texture2D tex_light_spot_depth             : register(t15);
+Texture2D tex_light_spot_color             : register(t16);
 
 // misc
-Texture2D tex_lut_ibl            : register(t29);
-Texture2D tex_environment        : register(t30);
-Texture2D tex_ssgi               : register(t31);
-Texture2D tex_ssr                : register(t32);
-Texture2D tex_frame              : register(t33);
-Texture2D tex                    : register(t34);
-Texture2D tex2                   : register(t35);
-Texture2D tex_font_atlas         : register(t36);
-TextureCube tex_reflection_probe : register(t37);
-Texture2DArray tex_sss			 : register(t38);
+Texture2D tex_noise_normal       : register(t17);
+Texture2DArray tex_noise_blue    : register(t18);
+Texture2D tex_lut_ibl            : register(t19);
+Texture2D tex_environment        : register(t20);
+Texture2D tex_ssgi               : register(t21);
+Texture2D tex_ssr                : register(t22);
+Texture2D tex_frame              : register(t23);
+Texture2D tex                    : register(t24);
+Texture2D tex2                   : register(t25);
+Texture2D tex_font_atlas         : register(t26);
+TextureCube tex_reflection_probe : register(t27);
+Texture2DArray tex_sss			 : register(t28);
+
+//= MATERIAL TEXTURES ============================
+static const uint index_albedo     = 0;
+static const uint index_albedo_2   = 1;
+static const uint index_roughness  = 2;
+static const uint index_metallness = 3;
+static const uint index_normal     = 4;
+static const uint index_normal_2   = 5;
+static const uint index_height     = 6;
+static const uint index_occlusion  = 7;
+static const uint index_emission   = 8;
+static const uint index_mask       = 9;
+
+Texture2D tex_materials[] : register(t29, space3);
+//================================================
 
 struct MaterialProperties
 {

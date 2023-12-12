@@ -57,12 +57,18 @@ namespace Spartan
             {
                 uint32_t slot         = compiler.get_decoration(resource.id, spv::DecorationBinding);
                 SPIRType type         = compiler.get_type(resource.type_id);
-                uint32_t array_length = !type.array.empty() ? type.array[0] : 0;
                 uint32_t size         = 0;
+                bool is_array         = !type.array.empty();
+                uint32_t array_length = is_array ? type.array[0] : 0;
 
                 if (descriptor_type == RHI_Descriptor_Type::ConstantBuffer || descriptor_type == RHI_Descriptor_Type::PushConstantBuffer)
                 {
                     size = static_cast<uint32_t>(compiler.get_declared_struct_size(type));
+                }
+
+                if (is_array && array_length == 0)
+                {
+                    array_length = rhi_dynamic_array_max;
                 }
 
                 descriptors.emplace_back
@@ -70,10 +76,11 @@ namespace Spartan
                     resource.name,   // name
                     descriptor_type, // type
                     layout,          // layout
-                    slot,            // slot
-                    array_length,    // array length
+                    slot,            // slot      
                     shader_stage,    // stage
-                    size             // struct size
+                    size,            // struct size
+                    is_array,        // is array
+                    array_length     // array length
                 );
             }
         };
@@ -158,7 +165,7 @@ namespace Spartan
 
             SP_VK_ASSERT_MSG(vkCreateShaderModule(RHI_Context::device, &create_info, nullptr, &shader_module), "Failed to create shader module");
 
-            // name the shader module (useful for GPU-based validation)
+            // name the shader module (useful for gpu-based validation)
             RHI_Device::SetResourceName(static_cast<void*>(shader_module), RHI_Resource_Type::Shader, m_object_name.c_str());
 
             // reflect shader resources (so that descriptor sets can be created later)

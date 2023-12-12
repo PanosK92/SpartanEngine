@@ -33,7 +33,8 @@ namespace Spartan
     enum class RHI_Device_Resource
     {
         sampler_comparison,
-        sampler_regular
+        sampler_regular,
+        textures_material
     };
 
     class SP_CLASS RHI_Device
@@ -58,7 +59,7 @@ namespace Spartan
         static std::unordered_map<uint64_t, RHI_DescriptorSet>& GetDescriptorSets();
         static void* GetDescriptorSet(const RHI_Device_Resource resource_type);
         static void* GetDescriptorSetLayout(const RHI_Device_Resource resource_type);
-        static void SetBindlessSamplers(const std::array<std::shared_ptr<RHI_Sampler>, 8>& samplers);
+        static void UpdateBindlessResources(const std::array<std::shared_ptr<RHI_Sampler>, 8>* samplers, std::vector<RHI_Texture*>* textures);
 
         // Pipelines
         static void GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout);

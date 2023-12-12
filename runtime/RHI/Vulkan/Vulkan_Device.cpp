@@ -21,6 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========================
 #include "pch.h"
+#include "../Rendering/Renderer.h"
+#include "../../Profiling/Profiler.h"
 #include "../RHI_Device.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Semaphore.h"
@@ -32,7 +34,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Texture.h"
-#include "../../Profiling/Profiler.h"
 SP_WARNINGS_OFF
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -427,75 +428,12 @@ namespace Spartan
         const uint16_t descriptor_pool_max_storage_buffers_dynamic  = 32;
         const uint16_t descriptor_pool_max_constant_buffers_dynamic = 32;
         const uint16_t descriptor_pool_max_samplers                 = 32;
-
-        VkDescriptorPool descriptor_pool = nullptr;
+        VkDescriptorPool descriptor_pool                            = nullptr;
 
         // cache
-        unordered_map<uint64_t, RHI_DescriptorSet> descriptor_sets;
-        unordered_map<uint64_t, shared_ptr<RHI_DescriptorSetLayout>> descriptor_set_layouts;
+        unordered_map<uint64_t, RHI_DescriptorSet> sets;
+        unordered_map<uint64_t, shared_ptr<RHI_DescriptorSetLayout>> layouts;
         unordered_map<uint64_t, shared_ptr<RHI_Pipeline>> pipelines;
-        array<VkDescriptorSet, 2> descriptor_sets_bindless;
-        array<VkDescriptorSetLayout, 2> descriptor_set_layouts_bindless;
-
-        void create_descriptor_set_samplers(
-            const vector<shared_ptr<RHI_Sampler>>& samplers,
-            const uint32_t binding_slot,
-            const RHI_Device_Resource resource_type
-        )
-        {
-            string debug_name                            = resource_type == RHI_Device_Resource::sampler_comparison ? "samplers_comparison" : "samplers_regular";
-            VkDescriptorSet* descriptor_set              = &descriptor_sets_bindless[static_cast<uint32_t>(resource_type)];
-            VkDescriptorSetLayout* descriptor_set_layout = &descriptor_set_layouts_bindless[static_cast<uint32_t>(resource_type)];
-            uint32_t sampler_count                       = static_cast<uint32_t>(samplers.size());
-            uint32_t binding                             = rhi_shader_shift_register_s + binding_slot;
-
-            // Create descriptor set layout
-            VkDescriptorSetLayoutBinding layout_binding = {};
-            layout_binding.binding                      = binding;
-            layout_binding.descriptorType               = VK_DESCRIPTOR_TYPE_SAMPLER;
-            layout_binding.descriptorCount              = sampler_count;
-            layout_binding.stageFlags                   = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
-            layout_binding.pImmutableSamplers           = nullptr;
-
-            VkDescriptorSetLayoutCreateInfo layout_info = {};
-            layout_info.sType                           = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            layout_info.bindingCount                    = 1;
-            layout_info.pBindings                       = &layout_binding;
-            layout_info.flags                           = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT;
-
-            SP_VK_ASSERT_MSG(vkCreateDescriptorSetLayout(RHI_Context::device, &layout_info, nullptr, descriptor_set_layout), "Failed to create descriptor set layout");
-            RHI_Device::SetResourceName(static_cast<void*>(*descriptor_set_layout), RHI_Resource_Type::DescriptorSetLayout, debug_name);
-
-            // create descriptor set
-            VkDescriptorSetAllocateInfo allocInfo = {};
-            allocInfo.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-            allocInfo.descriptorPool              = descriptor_pool;
-            allocInfo.descriptorSetCount          = 1;
-            allocInfo.pSetLayouts                 = descriptor_set_layout;
-
-            SP_VK_ASSERT_MSG(vkAllocateDescriptorSets(RHI_Context::device, &allocInfo, descriptor_set), "Failed to allocate descriptor set");
-            RHI_Device::SetResourceName(static_cast<void*>(*descriptor_set), RHI_Resource_Type::DescriptorSet, debug_name);
-
-            // update descriptor set with samplers
-            vector<VkDescriptorImageInfo> image_infos(sampler_count);
-            for (uint32_t i = 0; i < sampler_count; i++)
-            {
-                image_infos[i].sampler     = static_cast<VkSampler>(samplers[i]->GetRhiResource());
-                image_infos[i].imageView   = nullptr;
-                image_infos[i].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            }
-
-            VkWriteDescriptorSet descriptor_write = {};
-            descriptor_write.sType                = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptor_write.dstSet               = *descriptor_set;
-            descriptor_write.dstBinding           = binding;
-            descriptor_write.dstArrayElement      = 0; // The starting element in that array
-            descriptor_write.descriptorType       = VK_DESCRIPTOR_TYPE_SAMPLER;
-            descriptor_write.descriptorCount      = sampler_count;
-            descriptor_write.pImageInfo           = image_infos.data();
-
-            vkUpdateDescriptorSets(RHI_Context::device, 1, &descriptor_write, 0, nullptr);
-        }
 
         void get_descriptors_from_pipeline_state(RHI_PipelineState& pipeline_state, vector<RHI_Descriptor>& descriptors)
         {
@@ -512,14 +450,14 @@ namespace Spartan
                 SP_ASSERT(pipeline_state.shader_vertex->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
                 descriptors = pipeline_state.shader_vertex->GetDescriptors();
 
-                // If there is a pixel shader, merge it's resources into our map as well
+                // if there is a pixel shader, merge it's resources into our map as well
                 if (pipeline_state.shader_pixel)
                 {
                     SP_ASSERT(pipeline_state.shader_pixel->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
 
                     for (const RHI_Descriptor& descriptor_pixel : pipeline_state.shader_pixel->GetDescriptors())
                     {
-                        // Assume that the descriptor has been created in the vertex shader and only try to update it's shader stage
+                        // assume that the descriptor has been created in the vertex shader and only try to update it's shader stage
                         bool updated_existing = false;
                         for (RHI_Descriptor& descriptor_vertex : descriptors)
                         {
@@ -531,7 +469,7 @@ namespace Spartan
                             }
                         }
 
-                        // If no updating took place, this a pixel shader only resource, add it
+                        // if no updating took place, this a pixel shader only resource, add it
                         if (!updated_existing)
                         {
                             descriptors.emplace_back(descriptor_pixel);
@@ -541,7 +479,7 @@ namespace Spartan
             }
 
             // sort descriptors by slot, this is because dynamic offsets (which are computed in a serialized
-            // manner in RHI_DescriptorSetLayout::GetDynamicOffsets(), need to be ordered by their slot
+            // manner in RHI_DescriptorSetLayout::GetDynamicOffsets()) need to be ordered by their slot
             sort(descriptors.begin(), descriptors.end(), [](const RHI_Descriptor& a, const RHI_Descriptor& b)
             {
                 return a.slot < b.slot;
@@ -558,18 +496,19 @@ namespace Spartan
             uint64_t hash = 0;
             for (RHI_Descriptor& descriptor : descriptors)
             {
-                hash = rhi_hash_combine(hash, descriptor.ComputeHash());
+                hash = rhi_hash_combine(hash, static_cast<uint64_t>(descriptor.slot));
+                hash = rhi_hash_combine(hash, static_cast<uint64_t>(descriptor.stage));
             }
 
             // search for a descriptor set layout which matches this hash
-            auto it     = descriptor_set_layouts.find(hash);
-            bool cached = it != descriptor_set_layouts.end();
+            auto it     = layouts.find(hash);
+            bool cached = it != layouts.end();
 
             // if there is no descriptor set layout for this particular hash, create one
             if (!cached)
             {
                 // emplace a new descriptor set layout
-                it = descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(descriptors, pipeline_state.name))).first;
+                it = layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(descriptors, pipeline_state.name))).first;
             }
             shared_ptr<RHI_DescriptorSetLayout> descriptor_set_layout = it->second;
 
@@ -577,9 +516,149 @@ namespace Spartan
             {
                 descriptor_set_layout->ClearDescriptorData();
             }
-            descriptor_set_layout->NeedsToBind();
 
             return descriptor_set_layout;
+        }
+
+        namespace bindless
+        {
+            array<VkDescriptorSet, 3> sets;
+            array<VkDescriptorSetLayout, 3> layouts;
+
+            void create_layout(const RHI_Device_Resource resource_type, const uint32_t binding, const uint32_t resource_count, const string& debug_name)
+            {
+                  VkDescriptorSetLayoutBinding layout_binding = {};
+                  layout_binding.binding                      = binding;
+                  layout_binding.descriptorType               = resource_type == RHI_Device_Resource::textures_material ? VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLER;
+                  layout_binding.descriptorCount              = rhi_dynamic_array_max;
+                  layout_binding.stageFlags                   = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
+                  layout_binding.pImmutableSamplers           = nullptr;
+                  
+                  VkDescriptorSetLayoutBindingFlagsCreateInfo layout_binding_flags = {};
+                  layout_binding_flags.sType                                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+                  VkDescriptorBindingFlags binding_flags                           = VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
+                  layout_binding_flags.bindingCount                                = 1;
+                  layout_binding_flags.pBindingFlags                               = &binding_flags;
+                  
+                  VkDescriptorSetLayoutCreateInfo layout_info = {};
+                  layout_info.sType                           = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+                  layout_info.bindingCount                    = 1;
+                  layout_info.pBindings                       = &layout_binding;
+                  layout_info.flags                           = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT;
+                  layout_info.pNext                           = &layout_binding_flags;
+
+                  VkDescriptorSetLayout* layout = &layouts[static_cast<uint32_t>(resource_type)];
+                  SP_VK_ASSERT_MSG(vkCreateDescriptorSetLayout(RHI_Context::device, &layout_info, nullptr, layout), "Failed to create descriptor set layout");
+                  RHI_Device::SetResourceName(static_cast<void*>(*layout), RHI_Resource_Type::DescriptorSetLayout, debug_name);
+            }
+
+            void create_set(const RHI_Device_Resource resource_type, const uint32_t resource_count, const string& debug_name)
+            {
+                // allocate descriptor set with actual descriptor count
+                VkDescriptorSetVariableDescriptorCountAllocateInfoEXT variableDescriptorCountAllocInfo = {};
+                variableDescriptorCountAllocInfo.sType                                                 = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
+                variableDescriptorCountAllocInfo.descriptorSetCount                                    = 1;              // one descriptor set
+                uint32_t actualDescriptorCount                                                         = resource_count; // actual number of textures being used
+                variableDescriptorCountAllocInfo.pDescriptorCounts                                     = &actualDescriptorCount;
+
+                // allocate descriptor set
+                VkDescriptorSetAllocateInfo allocInfo = {};
+                allocInfo.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+                allocInfo.descriptorPool              = descriptors::descriptor_pool;
+                allocInfo.descriptorSetCount          = 1;
+                allocInfo.pSetLayouts                 = &layouts[static_cast<uint32_t>(resource_type)];
+                allocInfo.pNext                       = &variableDescriptorCountAllocInfo;
+
+                VkDescriptorSet* descriptor_set = &sets[static_cast<uint32_t>(resource_type)];
+                SP_VK_ASSERT_MSG(vkAllocateDescriptorSets(RHI_Context::device, &allocInfo, descriptor_set), "Failed to allocate descriptor set");
+                RHI_Device::SetResourceName(static_cast<void*>(*descriptor_set), RHI_Resource_Type::DescriptorSet, debug_name);
+            }
+
+            void create_descriptor_set_samplers(const vector<shared_ptr<RHI_Sampler>>& samplers, const uint32_t binding_slot, const RHI_Device_Resource resource_type)
+            {
+                string debug_name                            = resource_type == RHI_Device_Resource::sampler_comparison ? "samplers_comparison" : "samplers_regular";
+                VkDescriptorSet* descriptor_set              = &sets[static_cast<uint32_t>(resource_type)];
+                VkDescriptorSetLayout* descriptor_set_layout = &layouts[static_cast<uint32_t>(resource_type)];
+                uint32_t sampler_count                       = static_cast<uint32_t>(samplers.size());
+                uint32_t binding                             = rhi_shader_shift_register_s + binding_slot;
+
+                // layout
+                if (layouts[static_cast<uint32_t>(resource_type)] == nullptr)
+                {
+                    create_layout(resource_type, binding, sampler_count, debug_name);
+                }
+
+                // set
+                create_set(resource_type, sampler_count, debug_name);
+
+                // update
+                {
+                    // update descriptor set with samplers
+                    vector<VkDescriptorImageInfo> image_infos(sampler_count);
+                    for (uint32_t i = 0; i < sampler_count; i++)
+                    {
+                        image_infos[i].sampler     = static_cast<VkSampler>(samplers[i]->GetRhiResource());
+                        image_infos[i].imageView   = nullptr;
+                        image_infos[i].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                    }
+
+                    VkWriteDescriptorSet descriptor_write = {};
+                    descriptor_write.sType                = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                    descriptor_write.dstSet               = *descriptor_set;
+                    descriptor_write.dstBinding           = binding;
+                    descriptor_write.dstArrayElement      = 0; // starting element in that array
+                    descriptor_write.descriptorType       = VK_DESCRIPTOR_TYPE_SAMPLER;
+                    descriptor_write.descriptorCount      = sampler_count;
+                    descriptor_write.pImageInfo           = image_infos.data();
+
+                    vkUpdateDescriptorSets(RHI_Context::device, 1, &descriptor_write, 0, nullptr);
+                }
+            }
+
+            void create_descriptor_set_textures(const vector<RHI_Texture*>* textures, const uint32_t binding_slot)
+            {
+                // debug name for resource tracking
+                string debug_name                            = "textures_material";
+                VkDescriptorSet* descriptor_set              = &sets[static_cast<uint32_t>(RHI_Device_Resource::textures_material)];
+                VkDescriptorSetLayout* descriptor_set_layout = &layouts[static_cast<uint32_t>(RHI_Device_Resource::textures_material)];
+                uint32_t texture_count                       = static_cast<uint32_t>(textures->size());
+                uint32_t binding                             = rhi_shader_shift_register_t + binding_slot;
+
+                // layout
+                if (layouts[static_cast<uint32_t>(RHI_Device_Resource::textures_material)] == nullptr)
+                {
+                    create_layout(RHI_Device_Resource::textures_material, binding, texture_count, debug_name);
+                }
+
+                // set
+                create_set(RHI_Device_Resource::textures_material, texture_count, debug_name);
+
+                // update
+                {
+                    // update descriptor set with textures
+                    vector<VkDescriptorImageInfo> image_infos(texture_count);
+                    for (uint32_t i = 0; i < texture_count; i++)
+                    {
+                        RHI_Texture* texture = (*textures)[i];
+                        void* resource       = texture ? texture->GetRhiSrv() : Renderer::GetStandardTexture(Renderer_StandardTexture::Black)->GetRhiSrv();
+
+                        image_infos[i].sampler     = nullptr;
+                        image_infos[i].imageView   = static_cast<VkImageView>(resource);
+                        image_infos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                    }
+
+                    VkWriteDescriptorSet descriptor_write = {};
+                    descriptor_write.sType                = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                    descriptor_write.dstSet               = *descriptor_set;
+                    descriptor_write.dstBinding           = binding;
+                    descriptor_write.dstArrayElement      = 0; // starting element in the array
+                    descriptor_write.descriptorType       = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+                    descriptor_write.descriptorCount      = texture_count;
+                    descriptor_write.pImageInfo           = image_infos.data();
+
+                    vkUpdateDescriptorSets(RHI_Context::device, 1, &descriptor_write, 0, nullptr);
+                }
+            }
         }
     }
 
@@ -796,6 +875,10 @@ namespace Spartan
                     // cubemaps
                     SP_ASSERT(features_supported.features.imageCubeArray == VK_TRUE);
                     device_features_to_enable.features.imageCubeArray = VK_TRUE;
+
+                    // variable descriptor count (for bindless)
+                    SP_ASSERT(features_supported_1_2.descriptorBindingVariableDescriptorCount == VK_TRUE);
+                    device_features_to_enable_1_2.descriptorBindingVariableDescriptorCount = VK_TRUE;
 
                     // partially bound descriptors
                     SP_ASSERT(features_supported_1_2.descriptorBindingPartiallyBound == VK_TRUE);
@@ -1246,12 +1329,14 @@ namespace Spartan
         {
             for (void* resource : it.second)
             {
-                switch (it.first)
+                RHI_Resource_Type resource_type = it.first;
+
+                switch (resource_type)
                 {
                     case RHI_Resource_Type::Texture:             MemoryTextureDestroy(resource); break;
                     case RHI_Resource_Type::TextureView:         vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(resource), nullptr);                     break;
                     case RHI_Resource_Type::Sampler:             vkDestroySampler(RHI_Context::device, reinterpret_cast<VkSampler>(resource), nullptr);                    break;
-                    case RHI_Resource_Type::Buffer:              MemoryBufferDestroy(resource);                                                                                  break;
+                    case RHI_Resource_Type::Buffer:              MemoryBufferDestroy(resource);                                                                            break;
                     case RHI_Resource_Type::Shader:              vkDestroyShaderModule(RHI_Context::device, static_cast<VkShaderModule>(resource), nullptr);               break;
                     case RHI_Resource_Type::Semaphore:           vkDestroySemaphore(RHI_Context::device, static_cast<VkSemaphore>(resource), nullptr);                     break;
                     case RHI_Resource_Type::Fence:               vkDestroyFence(RHI_Context::device, static_cast<VkFence>(resource), nullptr);                             break;
@@ -1260,6 +1345,24 @@ namespace Spartan
                     case RHI_Resource_Type::Pipeline:            vkDestroyPipeline(RHI_Context::device, static_cast<VkPipeline>(resource), nullptr);                       break;
                     case RHI_Resource_Type::PipelineLayout:      vkDestroyPipelineLayout(RHI_Context::device, static_cast<VkPipelineLayout>(resource), nullptr);           break;
                     default:                                     SP_ASSERT_MSG(false, "Unknown resource");                                                                 break;
+                }
+
+                // delete descriptor sets which are now invalid (because they are referring to a delete resource)
+                if (resource_type == RHI_Resource_Type::TextureView || resource_type == RHI_Resource_Type::Buffer || resource_type == RHI_Resource_Type::Sampler)
+                {
+                    for (auto it = descriptors::sets.begin(); it != descriptors::sets.end();)
+                    {
+                        if (it->second.IsReferingToResource(resource))
+                        {
+                            it = descriptors::sets.erase(it);
+                            // ideally the descriptor set pool is not oblivious to the fact that we don't use this set anymore
+                            // maybe after a certain number of deletions we reset the entire pool to free memory
+                        }
+                        else
+                        {
+                            ++it;
+                        }
+                    }
                 }
             }
         }
@@ -1367,17 +1470,17 @@ namespace Spartan
 
     void* RHI_Device::GetDescriptorSet(const RHI_Device_Resource resource_type)
     {
-        return static_cast<void*>(descriptors::descriptor_sets_bindless[static_cast<uint32_t>(resource_type)]);
+        return static_cast<void*>(descriptors::bindless::sets[static_cast<uint32_t>(resource_type)]);
     }
 
     void* RHI_Device::GetDescriptorSetLayout(const RHI_Device_Resource resource_type)
     {
-        return static_cast<void*>(descriptors::descriptor_set_layouts_bindless[static_cast<uint32_t>(resource_type)]);
+        return static_cast<void*>(descriptors::bindless::layouts[static_cast<uint32_t>(resource_type)]);
     }
 
     unordered_map<uint64_t, RHI_DescriptorSet>& RHI_Device::GetDescriptorSets()
     {
-        return descriptors::descriptor_sets;
+        return descriptors::sets;
     }
 
     uint32_t RHI_Device::GetDescriptorType(const RHI_Descriptor& descriptor)
@@ -1401,46 +1504,62 @@ namespace Spartan
         return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
 
-    void RHI_Device::SetBindlessSamplers(const array<shared_ptr<RHI_Sampler>, 8>& samplers)
+    void RHI_Device::UpdateBindlessResources(const array<shared_ptr<RHI_Sampler>, 8>* samplers, vector<RHI_Texture*>* textures)
     {
-        descriptors::pipelines.clear();
-
-        // comparison
+        if (samplers)
         {
-            if (descriptors::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)] != nullptr)
+            // samplers comparison
             {
-                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::DescriptorSetLayout, descriptors::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)]);
-                descriptors::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)] = nullptr;
+                vector<shared_ptr<RHI_Sampler>> data =
+                {
+                    (*samplers)[0], // comparison
+                };
+
+                descriptors::bindless::create_descriptor_set_samplers(data, 0, RHI_Device_Resource::sampler_comparison);
             }
 
-            vector<shared_ptr<RHI_Sampler>> samplers_comparison =
+            // samplers regular
             {
-                samplers[0], // comparison
-            };
+                vector<shared_ptr<RHI_Sampler>> data =
+                {
+                    (*samplers)[1], // point_clamp_edge
+                    (*samplers)[2], // point_clamp_border
+                    (*samplers)[3], // point_wrap
+                    (*samplers)[4], // bilinear_clamp
+                    (*samplers)[5], // bilinear_wrap
+                    (*samplers)[6], // trilinear_clamp
+                    (*samplers)[7]  // anisotropic_wrap
+                };
 
-            descriptors::create_descriptor_set_samplers(samplers_comparison, 0, RHI_Device_Resource::sampler_comparison);
+                descriptors::bindless::create_descriptor_set_samplers(data, 1, RHI_Device_Resource::sampler_regular);
+            }
         }
 
-        // regular
+        // textures material
         {
-            if (descriptors::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)] != nullptr)
+            const uint32_t bindig_slot = 29;
+
+            // by the time vkCmdBindDescriptorSets runs, we can't have a null descriptor set, so make sure there is something there
             {
-                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::DescriptorSetLayout, descriptors::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)]);
-                descriptors::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)] = nullptr;
+                bool first_run   = descriptors::bindless::sets[static_cast<uint32_t>(RHI_Device_Resource::textures_material)] == nullptr;
+                bool no_textures = textures == nullptr;
+
+                if (first_run && no_textures)
+                {
+                    vector<RHI_Texture*> dummy_texture = { nullptr };
+                    descriptors::bindless::create_descriptor_set_textures(&dummy_texture, bindig_slot);
+                }
             }
 
-            vector<shared_ptr<RHI_Sampler>> samplers_regular =
+            if (textures)
             {
-                samplers[1], // point_clamp_edge
-                samplers[2], // point_clamp_border
-                samplers[3], // point_wrap
-                samplers[4], // bilinear_clamp
-                samplers[5], // bilinear_wrap
-                samplers[6], // trilinear_clamp
-                samplers[7]  // anisotropic_wrap
-            };
+                if (textures->size() == 0)
+                {
+                    textures->push_back(nullptr);
+                }
 
-            descriptors::create_descriptor_set_samplers(samplers_regular, 1, RHI_Device_Resource::sampler_regular);
+                descriptors::bindless::create_descriptor_set_textures(textures, bindig_slot);
+            }
         }
     }
 
@@ -1454,12 +1573,12 @@ namespace Spartan
 
         descriptor_set_layout = descriptors::get_or_create_descriptor_set_layout(pso).get();
 
-        // If no pipeline exists, create one
+        // if no pipeline exists, create one
         uint64_t hash = pso.GetHash();
         auto it = descriptors::pipelines.find(hash);
         if (it == descriptors::pipelines.end())
         {
-            // Create a new pipeline
+            // create a new pipeline
             it = descriptors::pipelines.emplace(make_pair(hash, make_shared<RHI_Pipeline>(pso, descriptor_set_layout))).first;
         }
 

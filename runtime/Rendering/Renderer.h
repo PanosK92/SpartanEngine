@@ -202,11 +202,9 @@ namespace Spartan
         static void OnFrameStart(RHI_CommandList* cmd_list);
         static void OnFrameEnd(RHI_CommandList* cmd_list);
 
-        // common texture binding
-        static void SetTexturesGfbuffer(RHI_CommandList* cmd_list);
-        static void SetTexturesMaterial(RHI_CommandList* cmd_list, Material* material);
-
         // misc
+        static void SetTexturesGfbuffer(RHI_CommandList* cmd_list);
+        static void MapMaterialsToGpu();
         static void DestroyResources();
 
         // misc

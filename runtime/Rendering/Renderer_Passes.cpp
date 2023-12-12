@@ -335,7 +335,6 @@ namespace Spartan
 
                         // set material
                         {
-                            SetTexturesMaterial(cmd_list, material);
                             UpdateConstantBufferMaterial(cmd_list, material);
                         }
 
@@ -455,9 +454,6 @@ namespace Spartan
                                 cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
                                 cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
 
-                                // bind material textures
-                                SetTexturesMaterial(cmd_list, material);
-
                                 // set pass constants with cascade transform
                                 m_cb_pass_cpu.transform = entity->GetMatrix() * view_projection;
                                 PushPassConstants(cmd_list);
@@ -549,7 +545,6 @@ namespace Spartan
                 // set alpha testing textures
                 if (bound_material_id != material->GetObjectId())
                 {
-                    SetTexturesMaterial(cmd_list, material);
                     UpdateConstantBufferMaterial(cmd_list, material);
                     bound_material_id = material->GetObjectId();
                 }
@@ -669,7 +664,6 @@ namespace Spartan
                 {
                     if (bound_material_id != material->GetObjectId())
                     {
-                        SetTexturesMaterial(cmd_list, material);
                         UpdateConstantBufferMaterial(cmd_list, material);
                         bound_material_id = material->GetObjectId();
                     }
@@ -2380,7 +2374,7 @@ namespace Spartan
         // set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // Set pass constants
+        // set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_brdf_specular_lut);
         PushPassConstants(cmd_list);
 
