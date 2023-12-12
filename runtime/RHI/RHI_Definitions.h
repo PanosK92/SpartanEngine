@@ -419,8 +419,9 @@ namespace Spartan
     const uint32_t rhi_stencil_load              = std::numeric_limits<uint32_t>::infinity();
     const uint8_t  rhi_max_render_target_count   = 8;
     const uint8_t  rhi_max_constant_buffer_count = 8;
-    const uint32_t rhi_dynamic_offset_empty      = std::numeric_limits<uint32_t>::max();
+    const uint32_t rhi_max_dynamic_array_size    = 256;
     const uint8_t  rhi_max_mip_count             = 13;
     const uint32_t rhi_all_mips                  = std::numeric_limits<uint32_t>::max();
-    const uint32_t rhi_dynamic_array_max         = 256;
+    const uint32_t rhi_dynamic_offset_empty = std::numeric_limits<uint32_t>::max();
+
 }

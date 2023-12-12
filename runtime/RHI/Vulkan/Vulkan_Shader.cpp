@@ -68,7 +68,7 @@ namespace Spartan
 
                 if (is_array && array_length == 0)
                 {
-                    array_length = rhi_dynamic_array_max;
+                    array_length = rhi_max_dynamic_array_size;
                 }
 
                 descriptors.emplace_back
