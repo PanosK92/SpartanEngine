@@ -759,7 +759,7 @@ namespace Spartan
         return (is_scalable && is_above) ? hit_position : Vector3::Infinity;
     }
 
-    float PhysicsBody::GetVolume()
+    float PhysicsBody::GetCapsuleVolume()
 	{
         btCapsuleShape* capsule_shape = static_cast<btCapsuleShape*>(m_shape);
 
@@ -779,6 +779,13 @@ namespace Spartan
         // total volume is the sum of the cylinder and two hemispheres
         return cylinder_volume + hemisphere_volume;
 	}
+
+    float PhysicsBody::GetCapsuleRadius()
+    {
+        btCapsuleShape* capsule_shape = static_cast<btCapsuleShape*>(m_shape);
+
+        return capsule_shape->getRadius();
+    }
     
     void PhysicsBody::UpdateShape()
     {
