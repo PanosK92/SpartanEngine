@@ -87,7 +87,7 @@ struct MaterialBufferData
     uint properties;
     float world_space_height;
     uint id;
-    float padding2;
+    uint index;
 };
 
 cbuffer BufferFrame    : register(b0) { FrameBufferData buffer_frame;       }; // low frequency    - updates once per frame

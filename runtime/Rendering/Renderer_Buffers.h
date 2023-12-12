@@ -155,7 +155,7 @@ namespace Spartan
         uint32_t properties      = 0;
         float world_space_height = 0.0f;
         uint32_t id              = 0;
-        float padding            = 0.0f;
+        uint32_t index           = 0;
 
         bool operator==(const Cb_Material& rhs) const
         {
@@ -169,6 +169,7 @@ namespace Spartan
                 height_mul         == rhs.height_mul    &&
                 properties         == rhs.properties    &&
                 id                 == rhs.id            &&
+                index              == rhs.index         &&
                 world_space_height == rhs.world_space_height;
         }
     };
