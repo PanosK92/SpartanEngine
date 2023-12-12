@@ -530,11 +530,12 @@ namespace Spartan
                         // swim
                         if (is_underwater)
                         {
+
                             // buoyancy
                             {
-                                float water_density  = 1.03f * 0.001f; // to newton
-                                float object_density = 0.8f  * 0.001f; // to newton
-                                float total_volume   = m_physics_body_to_control->GetVolume();
+                                float water_density  = 1.03f;
+                                float object_density = 0.8f;
+                                float total_volume   = m_physics_body_to_control->GetCapsuleVolume();
 
                                 // calculate the submerged portion
                                 float submerged_height   = -GetEntity()->GetPosition().y;
@@ -545,9 +546,21 @@ namespace Spartan
                                 float displacement_volume = total_volume * submerged_fraction * (object_density / water_density);
                                 Vector3 buoyancy_force    = -(water_density * m_physics_body_to_control->GetGravity() * displacement_volume);
 
-                                m_physics_body_to_control->ApplyForce(buoyancy_force * 1000000.0f, PhysicsForce::Constant);
+                                // compute drag factor
+                                float drag_coefficient  = 0.34f;
+                                float frontal_area      = std::pow(Helper::PI * m_physics_body_to_control->GetCapsuleRadius(), 2.0f);
+                                float linear_velocity_y = water_density * m_physics_body_to_control->GetLinearVelocity().y;
+                                float drag_force_y      = 0.5f * water_density * linear_velocity_y * linear_velocity_y * drag_coefficient;
+
+                                // Making drag force opposite to the velocity direction
+                                if (linear_velocity_y > 0)
+                                {
+                                    drag_force_y = -drag_force_y;
+                                }
+
+                                m_physics_body_to_control->ApplyForce(buoyancy_force * 1000.0f, PhysicsForce::Constant);
+                                m_physics_body_to_control->ApplyForce(Vector3(0.0f, drag_force_y, 0.0f) * 200.0f, PhysicsForce::Constant);
                             }
-                            
                             // movement
                             Vector3 velocity_current = m_physics_body_to_control->GetLinearVelocity();
                             Vector3 velocity_new     = Vector3(m_movement_speed.x * 20.0f, velocity_current.y, m_movement_speed.z * 20.0f);
