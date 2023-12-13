@@ -50,8 +50,8 @@ namespace Spartan
         (
             remove_if(descriptors.begin(), descriptors.end(), [](RHI_Descriptor& descriptor)
             { 
-                return  descriptor.type == RHI_Descriptor_Type::PushConstantBuffer ||          // push constants are not part of the descriptor set layout
-                       (descriptor.as_array && descriptor.array_length == rhi_max_array_size); // binldess arrays have their own layout
+                    return descriptor.type == RHI_Descriptor_Type::PushConstantBuffer ||          // push constants are not part of the descriptor set layout
+                          (descriptor.as_array && descriptor.array_length == rhi_max_array_size); // binldess arrays have their own layout
             }),
             descriptors.end()
         );
@@ -66,13 +66,14 @@ namespace Spartan
                 if (!unique_bindings.insert(descriptor.slot).second)
                 {
                     // if insertion failed, the binding number is not unique, store it for inspection
-                    duplicate_bindings.push_back({
+                    duplicate_bindings.push_back
+                    ({
                         descriptor.slot,                                   // binding
                         static_cast<VkDescriptorType>(descriptor.type),    // descriptorType
                         descriptor.as_array ? descriptor.array_length : 1, // descriptorCount
                         descriptor.stage,                                  // stageFlags
                         nullptr                                            // pImmutableSamplers
-                        });                                                
+                    });                                                
                 }
             }
 

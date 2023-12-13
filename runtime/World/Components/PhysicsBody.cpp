@@ -912,7 +912,6 @@ namespace Spartan
                 // turn it into a proper convex hull since btConvexHullShape is an approximation
                 m_shape = static_cast<btConvexHullShape*>(shape_approximated);
                 static_cast<btConvexHullShape*>(m_shape)->optimizeConvexHull();
-                static_cast<btConvexHullShape*>(m_shape)->initializePolyhedralFeatures();
                 break;
             }
         }

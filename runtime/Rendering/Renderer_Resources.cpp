@@ -90,10 +90,15 @@ namespace Spartan
 
         #define structured_buffer(x) m_structured_buffers[static_cast<uint8_t>(x)]
 
-        uint32_t stride = static_cast<uint32_t>(sizeof(uint32_t));
-        structured_buffer(Renderer_StructuredBuffer::Spd) = make_shared<RHI_StructuredBuffer>(stride, element_count, "spd_counter");
+        {
+            uint32_t stride = static_cast<uint32_t>(sizeof(uint32_t));
+            structured_buffer(Renderer_StructuredBuffer::Spd) = make_shared<RHI_StructuredBuffer>(stride, element_count, "spd_counter");
 
-        stride = static_cast<uint32_t>(sizeof(Sb_MaterialProperties)) * rhi_max_array_size;
+            uint32_t counter_value = 0;
+            structured_buffer(Renderer_StructuredBuffer::Spd)->Update(&counter_value);
+        }
+
+        uint32_t stride = static_cast<uint32_t>(sizeof(Sb_MaterialProperties)) * rhi_max_array_size;
         structured_buffer(Renderer_StructuredBuffer::Material) = make_shared<RHI_StructuredBuffer>(stride, element_count, "materials");
     }
 
