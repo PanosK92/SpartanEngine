@@ -71,8 +71,7 @@ namespace Spartan
     float Profiler::m_time_gpu_last   = 0.0f;
 
     // memory
-    uint32_t Profiler::m_descriptor_set_count    = 0;
-    uint32_t Profiler::m_descriptor_set_capacity = 0;
+    uint32_t Profiler::m_descriptor_set_count = 0;
 
     ProfilerGranularity Profiler::m_granularity = ProfilerGranularity::Full;
 
@@ -520,7 +519,7 @@ namespace Spartan
             << "Textures:\t\t\t\t\t\t\t"    << texture_count          << endl
             << "Materials:\t\t\t\t\t\t\t"   << material_count         << endl
             << "Pipelines:\t\t\t\t\t\t\t"   << pipeline_count         << endl
-            << "Descriptor set capacity:\t" << m_descriptor_set_count << "/" << m_descriptor_set_capacity;
+            << "Descriptor set capacity:\t" << m_descriptor_set_count << "/" << rhi_max_descriptor_set_count;
 
         // draw at the top-left of the screen
         metrics_str = oss_metrics.str();
