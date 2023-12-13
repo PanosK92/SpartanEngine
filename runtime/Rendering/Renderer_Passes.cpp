@@ -710,7 +710,7 @@ namespace Spartan
             PushPassConstants(cmd_list);
 
             // set textures
-            SetTexturesGfbuffer(cmd_list);
+            SetGbufferTexturesAndMaterials(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsUav::tex,           tex_ssgi);
             cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse, GetRenderTarget(Renderer_RenderTexture::light_diffuse));
 
@@ -734,7 +734,7 @@ namespace Spartan
             PushPassConstants(cmd_list);
 
             // set textures
-            SetTexturesGfbuffer(cmd_list);
+            SetGbufferTexturesAndMaterials(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_ssgi_filtered);
             cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_ssgi);
                                                              
@@ -774,7 +774,7 @@ namespace Spartan
         PushPassConstants(cmd_list);
 
         // set textures
-        SetTexturesGfbuffer(cmd_list);
+        SetGbufferTexturesAndMaterials(cmd_list);
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssr); // write to that
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);  // reflect from that
 
@@ -982,8 +982,9 @@ namespace Spartan
         {
             if (shared_ptr<Light> light = entity->GetComponent<Light>())
             {
-                // do the lighting even when intensity is zero, since we can have emissive lighting
-                SetTexturesGfbuffer(cmd_list);
+                // note: do lighting even at zero intensity as there can be emissive materials
+
+                SetGbufferTexturesAndMaterials(cmd_list);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_diffuse);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_specular);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex3, tex_volumetric);
@@ -1072,7 +1073,7 @@ namespace Spartan
         }
 
         // set textures
-        SetTexturesGfbuffer(cmd_list);
+        SetGbufferTexturesAndMaterials(cmd_list);
         cmd_list->SetTexture(Renderer_BindingsUav::tex,              tex_out);
         cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,    is_transparent_pass ? GetRenderTarget(Renderer_RenderTexture::light_diffuse_transparent).get()  : GetRenderTarget(Renderer_RenderTexture::light_diffuse).get());
         cmd_list->SetTexture(Renderer_BindingsSrv::light_specular,   is_transparent_pass ? GetRenderTarget(Renderer_RenderTexture::light_specular_transparent).get() : GetRenderTarget(Renderer_RenderTexture::light_specular).get());
@@ -1115,7 +1116,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // set textures
-        SetTexturesGfbuffer(cmd_list);
+        SetGbufferTexturesAndMaterials(cmd_list);
         cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,        GetRenderTarget(Renderer_RenderTexture::ssgi_filtered));
         cmd_list->SetTexture(Renderer_BindingsSrv::ssr,         GetRenderTarget(Renderer_RenderTexture::ssr));
         cmd_list->SetTexture(Renderer_BindingsSrv::sss,         GetRenderTarget(Renderer_RenderTexture::sss));
@@ -1213,7 +1214,7 @@ namespace Spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in, mip, mip_range);
             if (depth_aware)
             {
-                SetTexturesGfbuffer(cmd_list);
+                SetGbufferTexturesAndMaterials(cmd_list);
             }
 
             // render
@@ -1241,7 +1242,7 @@ namespace Spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_blur);
             if (depth_aware)
             {
-                SetTexturesGfbuffer(cmd_list);
+                SetGbufferTexturesAndMaterials(cmd_list);
             }
 
             // render
@@ -1589,7 +1590,7 @@ namespace Spartan
         PushPassConstants(cmd_list);
 
         // set textures
-        SetTexturesGfbuffer(cmd_list);
+        SetGbufferTexturesAndMaterials(cmd_list);
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
 
@@ -1631,7 +1632,7 @@ namespace Spartan
             PushPassConstants(cmd_list);
 
             // set textures
-            SetTexturesGfbuffer(cmd_list);
+            SetGbufferTexturesAndMaterials(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_bokeh_half);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
 
@@ -1704,7 +1705,7 @@ namespace Spartan
             PushPassConstants(cmd_list);
 
             // set textures
-            SetTexturesGfbuffer(cmd_list);
+            SetGbufferTexturesAndMaterials(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_bokeh_half);

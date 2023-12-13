@@ -84,16 +84,17 @@ namespace Spartan
     }
 
     void Renderer::CreateStructuredBuffers()
-    {
+    { 
+        uint32_t times_used_in_frame = 8; // safe to tweak this, if it's enough the engine will assert
+        uint32_t element_count       = times_used_in_frame * resources_frame_lifetime;
+
         #define structured_buffer(x) m_structured_buffers[static_cast<uint8_t>(x)]
 
-        uint32_t stride        = static_cast<uint32_t>(sizeof(uint32_t));
-        uint32_t element_count = 16 * resources_frame_lifetime; // SPD is used less than 5 times per frame so 16 should cover it
+        uint32_t stride = static_cast<uint32_t>(sizeof(uint32_t));
         structured_buffer(Renderer_StructuredBuffer::Spd) = make_shared<RHI_StructuredBuffer>(stride, element_count, "spd_counter");
 
-        stride        = static_cast<uint32_t>(sizeof(Sb_MaterialProperties)) * 1024;
-        element_count = 3 * resources_frame_lifetime; // car default world requires that 2, possibly because it does some material updates
-        structured_buffer(Renderer_StructuredBuffer::Material) = make_shared<RHI_StructuredBuffer>(stride, element_count, "material_array");
+        stride = static_cast<uint32_t>(sizeof(Sb_MaterialProperties)) * rhi_max_array_size;
+        structured_buffer(Renderer_StructuredBuffer::Material) = make_shared<RHI_StructuredBuffer>(stride, element_count, "materials");
     }
 
     void Renderer::CreateDepthStencilStates()
