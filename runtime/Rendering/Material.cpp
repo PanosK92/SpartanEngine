@@ -196,7 +196,7 @@ namespace Spartan
             m_textures[type_int] = nullptr;
         }
 
-        // Set the correct multiplier
+        // set the correct multiplier
         float multiplier = texture != nullptr;
         if (texture_type == MaterialTexture::Roughness)
         {
@@ -339,5 +339,13 @@ namespace Spartan
     void Material::SetIndex(const uint32_t index)
     {
         m_index = index;
+
+        for (shared_ptr<RHI_Texture>& texture : m_textures)
+        {
+            if (texture)
+            {
+                texture->SetMaterialIndex(m_index);
+            }
+        }
     }
 }
