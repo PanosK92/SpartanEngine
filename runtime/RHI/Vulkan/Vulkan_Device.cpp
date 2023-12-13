@@ -549,11 +549,10 @@ namespace Spartan
             void create_set(const RHI_Device_Resource resource_type, const uint32_t resource_count, const string& debug_name)
             {
                 // allocate descriptor set with actual descriptor count
-                VkDescriptorSetVariableDescriptorCountAllocateInfoEXT variableDescriptorCountAllocInfo = {};
-                variableDescriptorCountAllocInfo.sType                                                 = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
-                variableDescriptorCountAllocInfo.descriptorSetCount                                    = 1;              // one descriptor set
-                uint32_t actualDescriptorCount                                                         = resource_count; // actual number of textures being used
-                variableDescriptorCountAllocInfo.pDescriptorCounts                                     = &actualDescriptorCount;
+                VkDescriptorSetVariableDescriptorCountAllocateInfoEXT real_descriptor_count_info = {};
+                real_descriptor_count_info.sType                                                 = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
+                real_descriptor_count_info.descriptorSetCount                                    = 1;               // one descriptor set
+                real_descriptor_count_info.pDescriptorCounts                                     = &resource_count; // actual number of textures being used
 
                 // allocate descriptor set
                 VkDescriptorSetAllocateInfo allocation_info = {};
@@ -561,14 +560,15 @@ namespace Spartan
                 allocation_info.descriptorPool              = descriptors::descriptor_pool;
                 allocation_info.descriptorSetCount          = 1;
                 allocation_info.pSetLayouts                 = &layouts[static_cast<uint32_t>(resource_type)];
-                allocation_info.pNext                       = &variableDescriptorCountAllocInfo;
+                allocation_info.pNext                       = &real_descriptor_count_info;
 
+                // create
                 VkDescriptorSet* descriptor_set = &sets[static_cast<uint32_t>(resource_type)];
                 SP_VK_ASSERT_MSG(vkAllocateDescriptorSets(RHI_Context::device, &allocation_info, descriptor_set), "Failed to allocate descriptor set");
                 RHI_Device::SetResourceName(static_cast<void*>(*descriptor_set), RHI_Resource_Type::DescriptorSet, debug_name);
             }
 
-            void create_descriptor_set_samplers(const vector<shared_ptr<RHI_Sampler>>& samplers, const uint32_t binding_slot, const RHI_Device_Resource resource_type)
+            void update_samplers(const vector<shared_ptr<RHI_Sampler>>& samplers, const uint32_t binding_slot, const RHI_Device_Resource resource_type)
             {
                 string debug_name                            = resource_type == RHI_Device_Resource::sampler_comparison ? "samplers_comparison" : "samplers_regular";
                 VkDescriptorSet* descriptor_set              = &sets[static_cast<uint32_t>(resource_type)];
@@ -576,14 +576,12 @@ namespace Spartan
                 uint32_t sampler_count                       = static_cast<uint32_t>(samplers.size());
                 uint32_t binding                             = rhi_shader_shift_register_s + binding_slot;
 
-                // layout
+                // create layout and set (if needed)
                 if (layouts[static_cast<uint32_t>(resource_type)] == nullptr)
                 {
                     create_layout(resource_type, binding, sampler_count, debug_name);
+                    create_set(resource_type, sampler_count, debug_name);
                 }
-
-                // set
-                create_set(resource_type, sampler_count, debug_name);
 
                 // update
                 {
@@ -608,7 +606,7 @@ namespace Spartan
                 }
             }
 
-            void create_descriptor_set_textures(const array<RHI_Texture*, rhi_max_array_size>* textures, const uint32_t binding_slot)
+            void update_textures(const array<RHI_Texture*, rhi_max_array_size>* textures, const uint32_t binding_slot)
             {
                 string debug_name                            = "textures_material";
                 VkDescriptorSet* descriptor_set              = &sets[static_cast<uint32_t>(RHI_Device_Resource::textures_material)];
@@ -616,14 +614,12 @@ namespace Spartan
                 uint32_t texture_count                       = static_cast<uint32_t>(textures->size());
                 uint32_t binding                             = rhi_shader_shift_register_t + binding_slot;
 
-                // layout
+                // create layout and set (if needed)
                 if (layouts[static_cast<uint32_t>(RHI_Device_Resource::textures_material)] == nullptr)
                 {
                     create_layout(RHI_Device_Resource::textures_material, binding, texture_count, debug_name);
+                    create_set(RHI_Device_Resource::textures_material, texture_count, debug_name);
                 }
-
-                // set
-                create_set(RHI_Device_Resource::textures_material, texture_count, debug_name);
 
                 // update
                 {
@@ -645,12 +641,11 @@ namespace Spartan
                         if (!texture)
                             continue;
 
-                        void* resource = texture ? texture->GetRhiSrv() : Renderer::GetStandardTexture(default_texture)->GetRhiSrv();
-
-                        uint32_t textures_per_material = 10;
+                        // deduce a couple of things
                         uint32_t material_index        = texture->GetMaterialIndex();
                         uint32_t texture_type_index    = texture->GetMaterialIndexTexture();
-                        uint32_t descriptor_index      = material_index * textures_per_material + texture_type_index;
+                        uint32_t descriptor_index      = material_index * Material::texture_count_support + texture_type_index;
+                        void* resource                 = texture ? texture->GetRhiSrv() : Renderer::GetStandardTexture(default_texture)->GetRhiSrv();
 
                         image_infos[descriptor_index].sampler     = nullptr;
                         image_infos[descriptor_index].imageView   = static_cast<VkImageView>(resource);
@@ -1511,17 +1506,17 @@ namespace Spartan
     {
         if (samplers)
         {
-            // samplers comparison
+            // comparison
             {
                 vector<shared_ptr<RHI_Sampler>> data =
                 {
-                    (*samplers)[0], // comparison
+                    (*samplers)[0],
                 };
 
-                descriptors::bindless::create_descriptor_set_samplers(data, 0, RHI_Device_Resource::sampler_comparison);
+                descriptors::bindless::update_samplers(data, 0, RHI_Device_Resource::sampler_comparison);
             }
 
-            // samplers regular
+            // regular
             {
                 vector<shared_ptr<RHI_Sampler>> data =
                 {
@@ -1534,13 +1529,13 @@ namespace Spartan
                     (*samplers)[7]  // anisotropic_wrap
                 };
 
-                descriptors::bindless::create_descriptor_set_samplers(data, 1, RHI_Device_Resource::sampler_regular);
+                descriptors::bindless::update_samplers(data, 1, RHI_Device_Resource::sampler_regular);
             }
         }
 
-        // textures material
+        // textures
         {
-            const uint32_t bindig_slot = 29;
+            const uint32_t binding_slot = static_cast<uint32_t>(Renderer_BindingsSrv::materials);
 
             // by the time vkCmdBindDescriptorSets runs, we can't have a null descriptor set, so make sure there is something there
             {
@@ -1551,13 +1546,13 @@ namespace Spartan
                 {
                     array<RHI_Texture*, rhi_max_array_size> array_dummy;
                     array_dummy.fill(nullptr);
-                    descriptors::bindless::create_descriptor_set_textures(&array_dummy, bindig_slot);
+                    descriptors::bindless::update_textures(&array_dummy, binding_slot);
                 }
             }
 
             if (textures)
             {
-                descriptors::bindless::create_descriptor_set_textures(textures, bindig_slot);
+                descriptors::bindless::update_textures(textures, binding_slot);
             }
         }
     }

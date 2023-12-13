@@ -146,7 +146,10 @@ namespace Spartan
         tex2             = 25,
         font_atlas       = 26,
         reflection_probe = 27,
-        sss              = 28
+        sss              = 28,
+
+        // bindless
+        materials = 29
     };
 
     enum class Renderer_BindingsUav
