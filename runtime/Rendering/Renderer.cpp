@@ -121,12 +121,12 @@ namespace Spartan
 
         namespace world_materials
         {
-            array<RHI_Texture*, rhi_max_array_size> textures;            // this is a bindless array on the GPU side
-            array<Sb_MaterialProperties, rhi_max_array_size> properties; // this is a structured buffer on the GPU side
+            array<RHI_Texture*, rhi_max_array_size> textures;            // mapped to the GPU as a bindless texture array
+            array<Sb_MaterialProperties, rhi_max_array_size> properties; // mapped to the GPU as a structured properties buffer
             bool dirty              = true;
             uint32_t material_index = 0;
 
-            void update_material(Material* material)
+            void update_from_material(Material* material)
             {
                 // properties
                 {
@@ -162,7 +162,7 @@ namespace Spartan
                 }
             }
 
-            void update(vector<shared_ptr<Entity>>& entities)
+            void update_from_entity_vector(vector<shared_ptr<Entity>>& entities)
             {
                 for (shared_ptr<Entity> entity : entities)
                 {
@@ -170,7 +170,7 @@ namespace Spartan
                     {
                         if (Material* material = renderable->GetMaterial())
                         {
-                            update_material(material);
+                            update_from_material(material);
                         }
                     }
                 }
@@ -182,11 +182,11 @@ namespace Spartan
                 textures.fill(nullptr);
                 material_index = 0;
 
-                update_material(Renderer::GetStandardMaterial().get());
-                update(renderables[Renderer_Entity::Geometry]);
-                update(renderables[Renderer_Entity::GeometryInstanced]);
-                update(renderables[Renderer_Entity::GeometryTransparent]);
-                update(renderables[Renderer_Entity::GeometryTransparentInstanced]);
+                update_from_material(Renderer::GetStandardMaterial().get());
+                update_from_entity_vector(renderables[Renderer_Entity::Geometry]);
+                update_from_entity_vector(renderables[Renderer_Entity::GeometryInstanced]);
+                update_from_entity_vector(renderables[Renderer_Entity::GeometryTransparent]);
+                update_from_entity_vector(renderables[Renderer_Entity::GeometryTransparentInstanced]);
 
                 dirty = true;
             }
