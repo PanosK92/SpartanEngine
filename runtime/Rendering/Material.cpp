@@ -187,7 +187,7 @@ namespace Spartan
             // cache the texture to ensure scene serialization/deserialization
             m_textures[type_int] = ResourceCache::Cache(texture->GetSharedPtr());
 
-            // assign indices (helps to get it in the right array slot - bindless)
+            // assign indices
             texture->SetMaterialIndex(m_index);
             texture->SetMaterialIndexTexture(static_cast<uint32_t>(texture_type));
         }

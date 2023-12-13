@@ -658,6 +658,7 @@ namespace Spartan
         m_constant_buffers.fill(nullptr);
         m_structured_buffers.fill(nullptr);
         m_fonts.fill(nullptr);
+        standard_material = nullptr;
     }
 
     array<shared_ptr<RHI_Texture>, render_target_count>& Renderer::GetRenderTargets()
