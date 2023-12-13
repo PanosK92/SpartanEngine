@@ -136,6 +136,8 @@ namespace Spartan
 
     RHI_DescriptorSet* RHI_DescriptorSetLayout::GetDescriptorSet()
     {
+        RHI_DescriptorSet* descriptor_set = nullptr;
+
         // integrate descriptor data into the hash (anything that can change)
         uint64_t hash = m_hash;
         for (const RHI_Descriptor& descriptor : m_descriptors)
@@ -148,15 +150,17 @@ namespace Spartan
         // if we don't have a descriptor set to match that state, create one
         unordered_map<uint64_t, RHI_DescriptorSet>& descriptor_sets = RHI_Device::GetDescriptorSets();
         const auto it = descriptor_sets.find(hash);
-        if (it == descriptor_sets.end())
+        if (it == descriptor_sets.end()) // create descriptor set
         {
-            // create descriptor set
             descriptor_sets[hash] = RHI_DescriptorSet(m_descriptors, this, m_object_name.c_str());
-            return &descriptor_sets[hash];
+            descriptor_set        = &descriptor_sets[hash];
         }
-
-        // retrieve the existing one
-        return &it->second;
+        else // retrieve the existing one
+        {
+            descriptor_set = &it->second;
+        }
+    
+        return descriptor_set;
     }
 
     void RHI_DescriptorSetLayout::GetDynamicOffsets(vector<uint32_t>* offsets)
