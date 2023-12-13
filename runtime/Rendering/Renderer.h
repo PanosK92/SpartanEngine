@@ -128,6 +128,7 @@ namespace Spartan
         static std::shared_ptr<RHI_Texture> GetStandardTexture(const Renderer_StandardTexture type);
         static std::shared_ptr<Mesh> GetStandardMesh(const Renderer_MeshType type);
         static std::shared_ptr<Font> GetFont();
+        static std::shared_ptr<Material> GetStandardMaterial();
         //=======================================================================================================
 
     private:
@@ -143,12 +144,13 @@ namespace Spartan
         static void CreateDepthStencilStates();
         static void CreateRasterizerStates();
         static void CreateBlendStates();
-        static void CreateFonts();
-        static void CreateStandardMeshes();
-        static void CreateStandardTextures();
         static void CreateShaders();
         static void CreateSamplers(const bool create_only_anisotropic = false);
         static void CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic);
+        static void CreateFonts();
+        static void CreateStandardMeshes();
+        static void CreateStandardTextures();
+        static void CreateStandardMaterials();
 
         // passes - core
         static void Pass_Frame(RHI_CommandList* cmd_list);
@@ -202,7 +204,7 @@ namespace Spartan
         static void OnFrameEnd(RHI_CommandList* cmd_list);
 
         // misc
-        static void SetGbufferTexturesAndMaterials(RHI_CommandList* cmd_list);
+        static void SetGbufferTextures(RHI_CommandList* cmd_list);
         static void DestroyResources();
 
         // misc

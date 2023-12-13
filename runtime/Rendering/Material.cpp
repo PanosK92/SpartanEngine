@@ -80,8 +80,6 @@ namespace Spartan
                 }
             }
         }
-
-        uint32_t index_global = 0;
     }
 
     Material::Material() : IResource(ResourceType::Material)
@@ -100,8 +98,6 @@ namespace Spartan
         SetProperty(MaterialProperty::TextureTilingY,      1.0f);
         SetProperty(MaterialProperty::WorldSpaceHeight,    1.0f);
         SetProperty(MaterialProperty::Ior,                 1.33f); // water
-
-        m_index = index_global++;
     }
 
     bool Material::LoadFromFile(const std::string& file_path)
@@ -338,5 +334,10 @@ namespace Spartan
         SetProperty(MaterialProperty::ColorG, color.g);
         SetProperty(MaterialProperty::ColorB, color.b);
         SetProperty(MaterialProperty::ColorA, color.a);
+    }
+
+    void Material::SetIndex(const uint32_t index)
+    {
+        m_index = index;
     }
 }
