@@ -643,7 +643,7 @@ namespace Spartan
                         // deduce a couple of things
                         uint32_t material_index     = texture->GetMaterialIndex();
                         uint32_t texture_type_index = texture->GetMaterialIndexTexture();
-                        uint32_t descriptor_index   = material_index * Material::texture_count_support + texture_type_index;
+                        uint32_t descriptor_index   = material_index + texture_type_index;
                         void* resource              = texture ? texture->GetRhiSrv() : Renderer::GetStandardTexture(default_texture)->GetRhiSrv();
 
                         image_infos[descriptor_index].sampler     = nullptr;
