@@ -121,8 +121,8 @@ namespace Spartan
 
         namespace world_materials
         {
-            array<RHI_Texture*, rhi_max_dynamic_array_size> textures;  // this is a bindless array on the GPU side
-            array<Sb_MaterialProperties, 1024> properties;             // this is a structured buffer on the GPU side
+            array<RHI_Texture*, rhi_max_array_size> textures;            // this is a bindless array on the GPU side
+            array<Sb_MaterialProperties, rhi_max_array_size> properties; // this is a structured buffer on the GPU side
             bool dirty = true;
 
             void update(vector<shared_ptr<Entity>>& entities)
@@ -555,8 +555,6 @@ namespace Spartan
         }
 
         GetConstantBuffer(Renderer_ConstantBuffer::Frame)->Update(&m_cb_frame_cpu);
-
-        // set by default as the offset has changed
         if (set)
         {
             cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetConstantBuffer(Renderer_ConstantBuffer::Frame));
@@ -641,7 +639,6 @@ namespace Spartan
     {
         cmd_list->PushConstants(0, sizeof(Pcb_Pass), &m_cb_pass_cpu);
     }
-
 
     void Renderer::OnMaterialChanged()
     {

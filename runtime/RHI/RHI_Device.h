@@ -54,12 +54,12 @@ namespace Spartan
         static void QueueSetIndex(const RHI_Queue_Type type, const uint32_t index);
         
         // Descriptors
-        static void SetDescriptorSetCapacity(uint32_t descriptor_set_capacity);
+        static void CreateDescriptorPool();
         static void AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const std::vector<RHI_Descriptor>& descriptors);
         static std::unordered_map<uint64_t, RHI_DescriptorSet>& GetDescriptorSets();
         static void* GetDescriptorSet(const RHI_Device_Resource resource_type);
         static void* GetDescriptorSetLayout(const RHI_Device_Resource resource_type);
-        static void UpdateBindlessResources(const std::array<std::shared_ptr<RHI_Sampler>, 8>* samplers, std::array<RHI_Texture*, rhi_max_dynamic_array_size>* textures);
+        static void UpdateBindlessResources(const std::array<std::shared_ptr<RHI_Sampler>, 8>* samplers, std::array<RHI_Texture*, rhi_max_array_size>* textures);
 
         // Pipelines
         static void GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout);

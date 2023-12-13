@@ -103,7 +103,6 @@ namespace Spartan
 
         // memory
         static uint32_t m_descriptor_set_count;
-        static uint32_t m_descriptor_set_capacity;
 
         // misc
         static ProfilerGranularity m_granularity;

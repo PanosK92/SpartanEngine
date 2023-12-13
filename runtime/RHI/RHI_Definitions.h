@@ -406,10 +406,11 @@ namespace Spartan
     }
 
     // shader register slot shifts (required to produce spirv from hlsl)
+    // 000-099 is push constant buffer range
     const uint32_t rhi_shader_shift_register_u = 100;
     const uint32_t rhi_shader_shift_register_b = 200;
-    const uint32_t rhi_shader_shift_register_s = 300;
-    const uint32_t rhi_shader_shift_register_t = 400;
+    const uint32_t rhi_shader_shift_register_t = 300;
+    const uint32_t rhi_shader_shift_register_s = 400;
 
     const Color    rhi_color_dont_care           = Color(std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f);
     const Color    rhi_color_load                = Color(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
@@ -419,7 +420,8 @@ namespace Spartan
     const uint32_t rhi_stencil_load              = std::numeric_limits<uint32_t>::infinity();
     const uint8_t  rhi_max_render_target_count   = 8;
     const uint8_t  rhi_max_constant_buffer_count = 8;
-    const uint32_t rhi_max_dynamic_array_size    = 256;
+    const uint32_t rhi_max_array_size            = 4096;
+    const uint32_t rhi_max_descriptor_set_count  = 512;
     const uint8_t  rhi_max_mip_count             = 13;
     const uint32_t rhi_all_mips                  = std::numeric_limits<uint32_t>::max();
     const uint32_t rhi_dynamic_offset_empty = std::numeric_limits<uint32_t>::max();

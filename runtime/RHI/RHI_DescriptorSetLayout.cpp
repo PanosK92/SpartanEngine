@@ -161,8 +161,7 @@ namespace Spartan
 
     void RHI_DescriptorSetLayout::GetDynamicOffsets(vector<uint32_t>* offsets)
     {
-        // offsets should be ordered by the binding slots in the descriptor
-        // set layouts, so m_descriptors should already be sorted by slot
+        // offsets should be ordered by the binding slots in the descriptor set layouts, so m_descriptors should already be sorted by slot
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
             if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer || descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
