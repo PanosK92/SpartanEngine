@@ -203,8 +203,7 @@ namespace Spartan
         static void OnFrameEnd(RHI_CommandList* cmd_list);
 
         // misc
-        static void SetTexturesGfbuffer(RHI_CommandList* cmd_list);
-        static void MapMaterialsToGpu();
+        static void SetGbufferTexturesAndMaterials(RHI_CommandList* cmd_list);
         static void DestroyResources();
 
         // misc

@@ -969,8 +969,9 @@ namespace Spartan
         return m_renderables;
     }
 
-    void Renderer::SetTexturesGfbuffer(RHI_CommandList* cmd_list)
+    void Renderer::SetGbufferTexturesAndMaterials(RHI_CommandList* cmd_list)
     {
+        // g-buffer
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,            GetRenderTarget(Renderer_RenderTexture::gbuffer_color));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,            GetRenderTarget(Renderer_RenderTexture::gbuffer_normal));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,             GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));
@@ -978,24 +979,21 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity,          GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity_previous, GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity_previous));
 
-        if (world_materials::dirty)
+        // materials
         {
-            MapMaterialsToGpu();
-            world_materials::dirty = false;
+            if (world_materials::dirty)
+            {
+                // properties - a structured buffer of X elements, where each element holds various material properties
+                GetStructuredBuffer(Renderer_StructuredBuffer::Material)->Update(&world_materials::properties[0]);
+
+                // textures - an array of textures - bindless model
+                RHI_Device::UpdateBindlessResources(nullptr, &world_materials::textures);
+
+                world_materials::dirty = false;
+            }
+
+            cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_materials, GetStructuredBuffer(Renderer_StructuredBuffer::Material));
         }
-
-        cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_materials, GetStructuredBuffer(Renderer_StructuredBuffer::Material));
-    }
-
-    void Renderer::MapMaterialsToGpu()
-    {
-        // write all world materials to the gpu
-
-        // structured buffer, this is a buffer of X elements, where each element holds various material properties
-        GetStructuredBuffer(Renderer_StructuredBuffer::Material)->Update(&world_materials::properties[0]);
-
-        // texture array, these are the material textures
-        RHI_Device::UpdateBindlessResources(nullptr, &world_materials::textures);
     }
 
     void Renderer::Screenshot(const string& file_path)
