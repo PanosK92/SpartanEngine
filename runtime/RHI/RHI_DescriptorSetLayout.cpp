@@ -100,10 +100,10 @@ namespace Spartan
         bool mip_specified = mip_index != rhi_all_mips;
         RHI_Image_Layout layout = texture->GetLayout(mip_specified ? mip_index : 0);
 
-         // Validate layout
+        // validate layout
         SP_ASSERT(layout == RHI_Image_Layout::General || layout == RHI_Image_Layout::Shader_Read || layout == RHI_Image_Layout::Depth_Stencil_Read);
 
-        // Validate type
+        // validate type
         SP_ASSERT(texture->IsSrv());
 
         for (RHI_Descriptor& descriptor : m_descriptors)

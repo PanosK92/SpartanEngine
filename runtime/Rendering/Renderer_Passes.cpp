@@ -111,8 +111,10 @@ namespace Spartan
         }
     }
 
-    void Renderer::SetGlobalShaderResources(RHI_CommandList* cmd_list)
+    void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
     {
+        // todo: make them bindless
+   
         // constant buffers
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame,    GetConstantBuffer(Renderer_ConstantBuffer::Frame));
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::light,    GetConstantBuffer(Renderer_ConstantBuffer::Light));
@@ -121,6 +123,10 @@ namespace Spartan
         // textures
         cmd_list->SetTexture(Renderer_BindingsSrv::noise_normal, GetStandardTexture(Renderer_StandardTexture::Noise_normal));
         cmd_list->SetTexture(Renderer_BindingsSrv::noise_blue,   GetStandardTexture(Renderer_StandardTexture::Noise_blue));
+
+        // structure buffers
+        cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_materials, GetStructuredBuffer(Renderer_StructuredBuffer::Material));
+        cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_spd,       GetStructuredBuffer(Renderer_StructuredBuffer::Spd));
     }
 
     void Renderer::Pass_Frame(RHI_CommandList* cmd_list)
@@ -1854,11 +1860,6 @@ namespace Spartan
         m_cb_pass_cpu.set_resolution_out(tex);
         m_cb_pass_cpu.set_f3_value(static_cast<float>(output_mip_count), static_cast<float>(thread_group_count_x_ * thread_group_count_y_), 0.0f);
         PushPassConstants(cmd_list);
-
-        // update counter
-        uint32_t counter_value = 0;
-        GetStructuredBuffer(Renderer_StructuredBuffer::Spd)->Update(&counter_value);
-        cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_spd, GetStructuredBuffer(Renderer_StructuredBuffer::Spd));
 
         // set textures
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex, 0, 1);                          // top mip

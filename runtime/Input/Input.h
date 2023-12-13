@@ -31,7 +31,7 @@ namespace Spartan
 {
     enum class KeyCode
     {
-        // Keyboard
+        // keyboard
         F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15,
         Alpha0, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Alpha6, Alpha7, Alpha8, Alpha9,
         Keypad0, Keypad1, Keypad2, Keypad3, Keypad4, Keypad5, Keypad6, Keypad7, Keypad8, Keypad9,
@@ -54,12 +54,12 @@ namespace Spartan
         End,
         Insert,
 
-        // Mouse
+        // mouse
         Click_Left,
         Click_Middle,
         Click_Right,
 
-        // Gamepad
+        // gamepad - xbox as basis but works with other brands (like playstation)
         DPad_Up,
         DPad_Down,
         DPad_Left,
@@ -75,12 +75,12 @@ namespace Spartan
         Right_Stick,
         Left_Shoulder,
         Right_Shoulder,
-        Misc1,    // Xbox Series X share button, PS5 microphone button, Nintendo Switch Pro capture button
-        Paddle1,  // Xbox Elite paddle P1
-        Paddle2,  // Xbox Elite paddle P3
-        Paddle3,  // Xbox Elite paddle P2
-        Paddle4,  // Xbox Elite paddle P4
-        Touchpad, // PS4/PS5 touchpad button
+        Misc1,    // xbox series x share button, ps5 microphone button, nintendo switch pro capture button
+        Paddle1,  // xbox elite paddle P1
+        Paddle2,  // xbox elite paddle P3
+        Paddle3,  // xbox elite paddle P2
+        Paddle4,  // xbox elite paddle P4
+        Touchpad, // ps4/Pps5 touchpad button
     };
 
     class SP_CLASS Input
@@ -100,10 +100,12 @@ namespace Spartan
         static void OnEventMouse(void* event_mouse);
         static void OnEventController(void* event_controller);
 
-        // keys
-        static bool GetKey(const KeyCode key);     // Returns true while a button is held down
-        static bool GetKeyDown(const KeyCode key); // Returns true during the frame the user pressed down the button
-        static bool GetKeyUp(const KeyCode key);   // Returns true during the frame the user releases the button
+        // returns true while a button is held down
+        static bool GetKey(const KeyCode key);
+        // returns true during the frame the user pressed down the button
+        static bool GetKeyDown(const KeyCode key);
+        // returns true during the frame the user releases the button
+        static bool GetKeyUp(const KeyCode key);
 
         // mouse
         static void SetMouseCursorVisible(const bool visible);
@@ -125,11 +127,11 @@ namespace Spartan
         static float GetControllerTriggerLeft();
         static float GetControllerTriggerRight();
 
-        // Vibrate the gamepad.
-        // Motor speed range is from 0.0 to 1.0f.
-        // The left motor is the low-frequency rumble motor.
-        // The right motor is the high-frequency rumble motor. 
-        // The two motors are not the same, and they create different vibration effects.
+        // vibrate the gamepad.
+        // motor speed range is from 0.0 to 1.0f.
+        // the left motor is the low-frequency rumble motor.
+        // the right motor is the high-frequency rumble motor. 
+        // the two motors are not the same, and they create different vibration effects.
         static bool GamepadVibrate(const float left_motor_speed, const float right_motor_speed);
 
     private:
@@ -137,7 +139,7 @@ namespace Spartan
         static uint32_t GetKeyIndexMouse();
         static uint32_t GetKeyIndexController();
 
-        // Keys
+        // keys
         static std::array<bool, 107> m_keys;
         static uint32_t m_start_index_mouse;
         static uint32_t m_start_index_controller;

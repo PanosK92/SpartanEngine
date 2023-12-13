@@ -527,10 +527,11 @@ namespace Spartan
                   layout_binding.descriptorCount              = rhi_max_array_size;
                   layout_binding.stageFlags                   = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
                   layout_binding.pImmutableSamplers           = nullptr;
-                  
+
+                  VkDescriptorBindingFlags binding_flags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
+
                   VkDescriptorSetLayoutBindingFlagsCreateInfo layout_binding_flags = {};
                   layout_binding_flags.sType                                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
-                  VkDescriptorBindingFlags binding_flags                           = VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
                   layout_binding_flags.bindingCount                                = 1;
                   layout_binding_flags.pBindingFlags                               = &binding_flags;
                   
@@ -640,10 +641,10 @@ namespace Spartan
                             continue;
 
                         // deduce a couple of things
-                        uint32_t material_index        = texture->GetMaterialIndex();
-                        uint32_t texture_type_index    = texture->GetMaterialIndexTexture();
-                        uint32_t descriptor_index      = material_index * Material::texture_count_support + texture_type_index;
-                        void* resource                 = texture ? texture->GetRhiSrv() : Renderer::GetStandardTexture(default_texture)->GetRhiSrv();
+                        uint32_t material_index     = texture->GetMaterialIndex();
+                        uint32_t texture_type_index = texture->GetMaterialIndexTexture();
+                        uint32_t descriptor_index   = material_index * Material::texture_count_support + texture_type_index;
+                        void* resource              = texture ? texture->GetRhiSrv() : Renderer::GetStandardTexture(default_texture)->GetRhiSrv();
 
                         image_infos[descriptor_index].sampler     = nullptr;
                         image_infos[descriptor_index].imageView   = static_cast<VkImageView>(resource);
@@ -671,6 +672,7 @@ namespace Spartan
 
         #ifdef DEBUG
         // add validation related extensions
+        RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT);
         RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
         RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
         // add debugging related extensions
@@ -712,14 +714,7 @@ namespace Spartan
                 // choose the version which is supported by both the sdk and the driver
                 app_info.apiVersion = Helper::Min(sdk_version, driver_version);
 
-                // The following extensions have been promoted to 1.2 and 1.3.
-                // VK_KHR_timeline_semaphore                 - 1.2
-                // VK_KHR_dynamic_rendering                  - 1.3
-                // VK_EXT_subgroup_size_control              - 1.3
-                // VK_KHR_shader_float16_int8                - 1.2
-                // VK_EXT_shader_demote_to_helper_invocation - 1.3
-                // VK_KHR_synchronization2                   - 1.3
-                // We make Vulkan 1.3 the minimum required version and we enable those extensions from the core.
+                // 1.3 the minimum required version as we are using extensions from 1.3
                 SP_ASSERT_MSG(app_info.apiVersion >= VK_API_VERSION_1_3, "Vulkan 1.3 is not supported");
 
                 // in case the SDK is not supported by the driver, prompt the user to update
@@ -863,6 +858,43 @@ namespace Spartan
 
                 // check if certain features are supported and enable them
                 {
+                    // descriptors
+                    {
+                        SP_ASSERT(features_supported_1_2.descriptorBindingVariableDescriptorCount == VK_TRUE);
+                        device_features_to_enable_1_2.descriptorBindingVariableDescriptorCount = VK_TRUE;
+
+                        SP_ASSERT(features_supported_1_2.descriptorBindingVariableDescriptorCount == VK_TRUE);
+                        device_features_to_enable_1_2.descriptorBindingVariableDescriptorCount = VK_TRUE;
+
+                        SP_ASSERT(features_supported_1_2.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE);
+                        device_features_to_enable_1_2.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+
+                        SP_ASSERT(features_supported_1_2.descriptorBindingPartiallyBound == VK_TRUE);
+                        device_features_to_enable_1_2.descriptorBindingPartiallyBound = VK_TRUE;
+
+                        SP_ASSERT(features_supported_1_2.runtimeDescriptorArray == VK_TRUE);
+                        device_features_to_enable_1_2.runtimeDescriptorArray = VK_TRUE;
+                    }
+
+                    // types
+                    {
+                        // extended types (int8, int16, int64, etc) - SPD
+                        SP_ASSERT(features_supported_1_2.shaderSubgroupExtendedTypes == VK_TRUE);
+                        device_features_to_enable_1_2.shaderSubgroupExtendedTypes = VK_TRUE;
+
+                        // float16 - If supported, FSR 2 will opt for it, so don't assert.
+                        if (features_supported_1_2.shaderFloat16 == VK_TRUE)
+                        {
+                            device_features_to_enable_1_2.shaderFloat16 = VK_TRUE;
+                        }
+
+                        // int16 - If supported, FSR 2 will opt for it, so don't assert.
+                        if (features_supported.features.shaderInt16 == VK_TRUE)
+                        {
+                            device_features_to_enable.features.shaderInt16 = VK_TRUE;
+                        }
+                    }
+
                     // anisotropic filtering
                     SP_ASSERT(features_supported.features.samplerAnisotropy == VK_TRUE);
                     device_features_to_enable.features.samplerAnisotropy = VK_TRUE;
@@ -879,18 +911,6 @@ namespace Spartan
                     SP_ASSERT(features_supported.features.imageCubeArray == VK_TRUE);
                     device_features_to_enable.features.imageCubeArray = VK_TRUE;
 
-                    // variable descriptor count (for bindless)
-                    SP_ASSERT(features_supported_1_2.descriptorBindingVariableDescriptorCount == VK_TRUE);
-                    device_features_to_enable_1_2.descriptorBindingVariableDescriptorCount = VK_TRUE;
-
-                    // partially bound descriptors
-                    SP_ASSERT(features_supported_1_2.descriptorBindingPartiallyBound == VK_TRUE);
-                    device_features_to_enable_1_2.descriptorBindingPartiallyBound = VK_TRUE;
-
-                    // runtime descriptor array
-                    SP_ASSERT(features_supported_1_2.runtimeDescriptorArray == VK_TRUE);
-                    device_features_to_enable_1_2.runtimeDescriptorArray = VK_TRUE;
-
                     // timeline semaphores
                     SP_ASSERT(features_supported_1_2.timelineSemaphore == VK_TRUE);
                     device_features_to_enable_1_2.timelineSemaphore = VK_TRUE;
@@ -898,10 +918,6 @@ namespace Spartan
                     // rendering without render passes and frame buffer objects
                     SP_ASSERT(features_supported_1_3.dynamicRendering == VK_TRUE);
                     device_features_to_enable_1_3.dynamicRendering = VK_TRUE;
-
-                    // extended types (int8, int16, int64, etc) - SPD
-                    SP_ASSERT(features_supported_1_2.shaderSubgroupExtendedTypes == VK_TRUE);
-                    device_features_to_enable_1_2.shaderSubgroupExtendedTypes = VK_TRUE;
 
                     // wave64
                     SP_ASSERT(features_supported_1_3.shaderDemoteToHelperInvocation == VK_TRUE);
@@ -911,18 +927,6 @@ namespace Spartan
                     if (features_supported_1_3.subgroupSizeControl == VK_TRUE)
                     {
                         device_features_to_enable_1_3.subgroupSizeControl = VK_TRUE;
-                    }
-
-                    // float16 - If supported, FSR 2 will opt for it, so don't assert.
-                    if (features_supported_1_2.shaderFloat16 == VK_TRUE)
-                    {
-                        device_features_to_enable_1_2.shaderFloat16 = VK_TRUE;
-                    }
-
-                    // int16 - If supported, FSR 2 will opt for it, so don't assert.
-                    if (features_supported.features.shaderInt16 == VK_TRUE)
-                    {
-                        device_features_to_enable.features.shaderInt16 = VK_TRUE;
                     }
                 }
             }

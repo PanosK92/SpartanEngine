@@ -568,9 +568,12 @@ namespace Spartan
                         }
                         
                         // jump
-                        if (is_grounded && Input::GetKeyDown(KeyCode::Space))
+                        if (Input::GetKeyDown(KeyCode::Space) || Input::GetKeyDown(KeyCode::Button_A))
                         {
-                            m_physics_body_to_control->ApplyForce(Vector3::Up * 500.0f, PhysicsForce::Impulse);
+                            if (is_grounded)
+                            {
+                                m_physics_body_to_control->ApplyForce(Vector3::Up * 500.0f, PhysicsForce::Impulse);
+                            }
                         }
                     }
                     else
