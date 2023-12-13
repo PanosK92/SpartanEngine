@@ -305,7 +305,7 @@ namespace Spartan
         }
     }
 
-    void RHI_Device::SetBindlessSamplers(const array<shared_ptr<RHI_Sampler>, 8>& samplers)
+    void RHI_Device::UpdateBindlessResources(const array<shared_ptr<RHI_Sampler>, 8>* samplers, array<RHI_Texture*, rhi_max_array_size>* textures)
     {
 
     }
