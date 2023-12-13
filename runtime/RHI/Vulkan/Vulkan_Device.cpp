@@ -677,7 +677,7 @@ namespace Spartan
         SP_ASSERT_MSG(RHI_Context::api_type == RHI_Api_Type::Vulkan, "RHI context not initialized");
 
         #ifdef DEBUG
-        // ad validation related extensions
+        // add validation related extensions
         RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
         RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
         // add debugging related extensions
@@ -1356,7 +1356,7 @@ namespace Spartan
                     default:                                     SP_ASSERT_MSG(false, "Unknown resource");                                                                 break;
                 }
 
-                // delete descriptor sets which are now invalid (because they are referring to a delete resource)
+                // delete descriptor sets which are now invalid (because they are referring to a deleted resource)
                 if (resource_type == RHI_Resource_Type::TextureView || resource_type == RHI_Resource_Type::Buffer || resource_type == RHI_Resource_Type::Sampler)
                 {
                     for (auto it = descriptors::sets.begin(); it != descriptors::sets.end();)
