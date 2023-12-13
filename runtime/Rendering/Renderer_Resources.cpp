@@ -67,6 +67,7 @@ namespace Spartan
         array<shared_ptr<RHI_Texture>, 10>                m_standard_textures;
         array<shared_ptr<Mesh>, 7>                        m_standard_meshes;
         array<shared_ptr<Font>, resources_frame_lifetime> m_fonts;
+        shared_ptr<Material>                              standard_material;
     }
 
     void Renderer::CreateConstantBuffers()
@@ -630,6 +631,23 @@ namespace Spartan
         }
     }
 
+    void Renderer::CreateStandardMaterials()
+    {
+        const string data_dir = ResourceCache::GetDataDirectory() + "\\";
+        FileSystem::CreateDirectory(data_dir);
+
+        standard_material = make_shared<Material>();
+        standard_material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard" + EXTENSION_MATERIAL); // set resource file path so it can be used by the resource cache
+        standard_material->SetProperty(MaterialProperty::CanBeEdited,    0.0f);
+        standard_material->SetProperty(MaterialProperty::TextureTilingX, 10.0f);
+        standard_material->SetProperty(MaterialProperty::TextureTilingY, 10.0f);
+        standard_material->SetProperty(MaterialProperty::ColorR,         1.0f);
+        standard_material->SetProperty(MaterialProperty::ColorG,         1.0f);
+        standard_material->SetProperty(MaterialProperty::ColorB,         1.0f);
+        standard_material->SetProperty(MaterialProperty::ColorA,         1.0f);
+        standard_material->SetTexture(MaterialTexture::Color,            Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard));
+    }
+
     void Renderer::DestroyResources()
     {
         m_render_targets.fill(nullptr);
@@ -715,5 +733,10 @@ namespace Spartan
     shared_ptr<Font> Renderer::GetFont()
     {
         return m_fonts[m_resource_index];
+    }
+
+    shared_ptr<Material> Renderer::GetStandardMaterial()
+    {
+        return standard_material;
     }
 }

@@ -250,26 +250,7 @@ namespace Spartan
 
     void Renderable::SetDefaultMaterial()
     {
-        m_material_default = true;
-        const string data_dir = ResourceCache::GetDataDirectory() + "\\";
-        FileSystem::CreateDirectory(data_dir);
-
-        // create material
-        shared_ptr<Material> material = make_shared<Material>();
-        material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard" + EXTENSION_MATERIAL); // Set resource file path so it can be used by the resource cache
-        material->SetProperty(MaterialProperty::CanBeEdited,    0.0f);
-        material->SetProperty(MaterialProperty::TextureTilingX, 10.0f);
-        material->SetProperty(MaterialProperty::TextureTilingY, 10.0f);
-        material->SetProperty(MaterialProperty::ColorR,         1.0f);
-        material->SetProperty(MaterialProperty::ColorG,         1.0f);
-        material->SetProperty(MaterialProperty::ColorB,         1.0f);
-        material->SetProperty(MaterialProperty::ColorA,         1.0f);
-
-        // set default texture
-        material->SetTexture(MaterialTexture::Color, Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard));
-
-        // set material
-        SetMaterial(material);
+        SetMaterial(Renderer::GetStandardMaterial());
         m_material_default = true;
     }
 

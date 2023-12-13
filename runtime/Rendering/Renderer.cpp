@@ -60,7 +60,7 @@ namespace Spartan
     bool Renderer::m_brdf_specular_lut_rendered;
     RHI_CommandPool* Renderer::m_cmd_pool = nullptr;
     shared_ptr<Camera> Renderer::m_camera = nullptr;
-    uint32_t Renderer::m_resource_index = 0;
+    uint32_t Renderer::m_resource_index   = 0;
 
     namespace
     {
@@ -123,7 +123,44 @@ namespace Spartan
         {
             array<RHI_Texture*, rhi_max_array_size> textures;            // this is a bindless array on the GPU side
             array<Sb_MaterialProperties, rhi_max_array_size> properties; // this is a structured buffer on the GPU side
-            bool dirty = true;
+            bool dirty              = true;
+            uint32_t material_index = 0;
+
+            void update_material(Material* material)
+            {
+                // properties
+                {
+                    Sb_MaterialProperties _properties = {};
+                    _properties.anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
+                    _properties.anisotropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
+                    _properties.clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
+                    _properties.clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
+                    _properties.sheen                 = material->GetProperty(MaterialProperty::Sheen);
+                    _properties.sheen_tint            = material->GetProperty(MaterialProperty::SheenTint);
+                    _properties.subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
+                    _properties.ior                   = material->GetProperty(MaterialProperty::Ior);
+                
+                    uint32_t index    = static_cast<uint32_t>(material->GetObjectId() % properties.size());
+                    properties[index] = _properties;
+                }
+                
+                // textures
+                {
+                    textures[material_index + 0]  = material->GetTexture(MaterialTexture::Color);
+                    textures[material_index + 1]  = material->GetTexture(MaterialTexture::Color2);
+                    textures[material_index + 2]  = material->GetTexture(MaterialTexture::Roughness);
+                    textures[material_index + 3]  = material->GetTexture(MaterialTexture::Metalness);
+                    textures[material_index + 4]  = material->GetTexture(MaterialTexture::Normal);
+                    textures[material_index + 5]  = material->GetTexture(MaterialTexture::Normal2);
+                    textures[material_index + 6]  = material->GetTexture(MaterialTexture::Occlusion);
+                    textures[material_index + 7]  = material->GetTexture(MaterialTexture::Emission);
+                    textures[material_index + 8]  = material->GetTexture(MaterialTexture::Height);
+                    textures[material_index + 9]  = material->GetTexture(MaterialTexture::AlphaMask);
+                
+                    material->SetIndex(material_index);
+                    material_index += Material::texture_count_support;
+                }
+            }
 
             void update(vector<shared_ptr<Entity>>& entities)
             {
@@ -133,37 +170,7 @@ namespace Spartan
                     {
                         if (Material* material = renderable->GetMaterial())
                         {
-                            // properties
-                            {
-                                Sb_MaterialProperties _properties = {};
-                                _properties.anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
-                                _properties.anisotropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
-                                _properties.clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
-                                _properties.clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
-                                _properties.sheen                 = material->GetProperty(MaterialProperty::Sheen);
-                                _properties.sheen_tint            = material->GetProperty(MaterialProperty::SheenTint);
-                                _properties.subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
-                                _properties.ior                   = material->GetProperty(MaterialProperty::Ior);
-
-                                uint32_t index = static_cast<uint32_t>(material->GetObjectId() % properties.size());
-                                properties[index] = _properties;
-                            }
-
-                            // textures
-                            {
-                                uint32_t index = material->GetIndex();
-
-                                textures[index + 0]  = material->GetTexture(MaterialTexture::Color);
-                                textures[index + 1]  = material->GetTexture(MaterialTexture::Color2);
-                                textures[index + 2]  = material->GetTexture(MaterialTexture::Roughness);
-                                textures[index + 3]  = material->GetTexture(MaterialTexture::Metalness);
-                                textures[index + 4]  = material->GetTexture(MaterialTexture::Normal);
-                                textures[index + 5]  = material->GetTexture(MaterialTexture::Normal2);
-                                textures[index + 6]  = material->GetTexture(MaterialTexture::Occlusion);
-                                textures[index + 7]  = material->GetTexture(MaterialTexture::Emission);
-                                textures[index + 8]  = material->GetTexture(MaterialTexture::Height);
-                                textures[index + 9]  = material->GetTexture(MaterialTexture::AlphaMask);
-                            }
+                            update_material(material);
                         }
                     }
                 }
@@ -171,9 +178,11 @@ namespace Spartan
 
             void refresh(unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& renderables)
             {
-                textures.fill(nullptr);
                 properties.fill(Sb_MaterialProperties{});
+                textures.fill(nullptr);
+                material_index = 0;
 
+                update_material(Renderer::GetStandardMaterial().get());
                 update(renderables[Renderer_Entity::Geometry]);
                 update(renderables[Renderer_Entity::GeometryInstanced]);
                 update(renderables[Renderer_Entity::GeometryTransparent]);
@@ -265,6 +274,8 @@ namespace Spartan
 
         // resources
         CreateStandardTextures();
+        CreateStandardMaterials();
+        CreateFonts();
         CreateStandardMeshes();
         CreateConstantBuffers();
         CreateShaders();
@@ -272,7 +283,6 @@ namespace Spartan
         CreateRasterizerStates();
         CreateBlendStates();
         CreateRenderTextures(true, true, true, true);
-        CreateFonts();
         CreateSamplers(false);
         CreateStructuredBuffers();
 
@@ -612,7 +622,7 @@ namespace Spartan
 
             // set
             m_cb_material_cpu.id                  = static_cast<uint32_t>(material->GetObjectId());
-            m_cb_material_cpu.index               = material->GetIndex() * Material::texture_count_support;
+            m_cb_material_cpu.index               = material->GetIndex();
             m_cb_material_cpu.world_space_height  = material->GetProperty(MaterialProperty::WorldSpaceHeight);
             m_cb_material_cpu.color.x             = material->GetProperty(MaterialProperty::ColorR);
             m_cb_material_cpu.color.y             = material->GetProperty(MaterialProperty::ColorG);
@@ -975,9 +985,8 @@ namespace Spartan
         return m_renderables;
     }
 
-    void Renderer::SetGbufferTexturesAndMaterials(RHI_CommandList* cmd_list)
+    void Renderer::SetGbufferTextures(RHI_CommandList* cmd_list)
     {
-        // g-buffer
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,            GetRenderTarget(Renderer_RenderTexture::gbuffer_color));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,            GetRenderTarget(Renderer_RenderTexture::gbuffer_normal));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,             GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));

@@ -105,6 +105,7 @@ namespace Spartan
         void SetProperty(const MaterialProperty property_type, const float value);
         void SetColor(const Color& color);
 
+        void SetIndex(const uint32_t index);
         uint32_t GetIndex() { return m_index; }
         static const uint32_t texture_count_support = static_cast<uint32_t>(MaterialTexture::Max);
  
