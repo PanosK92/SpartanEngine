@@ -282,7 +282,7 @@ namespace Spartan
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,           SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,              SP_EVENT_HANDLER_STATIC(OnClear));
             SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
-            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChange,        SP_EVENT_HANDLER_STATIC(OnMaterialChanged));
+            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChange,        SP_EVENT_HANDLER_EXPRESSION_STATIC( world_materials::refresh(m_renderables); ));
 
             // fire
             SP_FIRE_EVENT(EventType::RendererOnInitialized);
@@ -329,7 +329,7 @@ namespace Spartan
             SP_LOG_INFO("Parsed deletion queue");
         }
 
-        // reset buffer offsets
+        // sync point
         {
             m_resource_index++;
 
@@ -345,6 +345,17 @@ namespace Spartan
                 for (shared_ptr<RHI_StructuredBuffer> structured_buffer : GetStructuredBuffers())
                 {
                     structured_buffer->ResetOffset();
+                }
+
+                if (world_materials::dirty)
+                {
+                    // properties - a structured buffer of X elements, where each element holds various material properties
+                    GetStructuredBuffer(Renderer_StructuredBuffer::Material)->Update(&world_materials::properties[0]);
+
+                    // textures - an array of textures - bindless model
+                    RHI_Device::UpdateBindlessResources(nullptr, &world_materials::textures);
+
+                    world_materials::dirty = false;
                 }
             }
         }
@@ -638,11 +649,6 @@ namespace Spartan
     void Renderer::PushPassConstants(RHI_CommandList* cmd_list)
     {
         cmd_list->PushConstants(0, sizeof(Pcb_Pass), &m_cb_pass_cpu);
-    }
-
-    void Renderer::OnMaterialChanged()
-    {
-        world_materials::refresh(m_renderables);
     }
 
     void Renderer::OnWorldResolved(sp_variant data)
@@ -980,20 +986,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity_previous, GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity_previous));
 
         // materials
-        {
-            if (world_materials::dirty)
-            {
-                // properties - a structured buffer of X elements, where each element holds various material properties
-                GetStructuredBuffer(Renderer_StructuredBuffer::Material)->Update(&world_materials::properties[0]);
-
-                // textures - an array of textures - bindless model
-                RHI_Device::UpdateBindlessResources(nullptr, &world_materials::textures);
-
-                world_materials::dirty = false;
-            }
-
-            cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_materials, GetStructuredBuffer(Renderer_StructuredBuffer::Material));
-        }
+        cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_materials, GetStructuredBuffer(Renderer_StructuredBuffer::Material));
     }
 
     void Renderer::Screenshot(const string& file_path)

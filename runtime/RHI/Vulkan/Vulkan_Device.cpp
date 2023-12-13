@@ -570,15 +570,14 @@ namespace Spartan
 
             void update_samplers(const vector<shared_ptr<RHI_Sampler>>& samplers, const uint32_t binding_slot, const RHI_Device_Resource resource_type)
             {
-                string debug_name                            = resource_type == RHI_Device_Resource::sampler_comparison ? "samplers_comparison" : "samplers_regular";
-                VkDescriptorSet* descriptor_set              = &sets[static_cast<uint32_t>(resource_type)];
-                VkDescriptorSetLayout* descriptor_set_layout = &layouts[static_cast<uint32_t>(resource_type)];
-                uint32_t sampler_count                       = static_cast<uint32_t>(samplers.size());
-                uint32_t binding                             = rhi_shader_shift_register_s + binding_slot;
+                uint32_t sampler_count = static_cast<uint32_t>(samplers.size());
+                uint32_t binding       = rhi_shader_shift_register_s + binding_slot;
 
                 // create layout and set (if needed)
                 if (layouts[static_cast<uint32_t>(resource_type)] == nullptr)
                 {
+                    string debug_name = resource_type == RHI_Device_Resource::sampler_comparison ? "samplers_comparison" : "samplers_regular";
+
                     create_layout(resource_type, binding, sampler_count, debug_name);
                     create_set(resource_type, sampler_count, debug_name);
                 }
@@ -595,7 +594,7 @@ namespace Spartan
 
                     VkWriteDescriptorSet descriptor_write = {};
                     descriptor_write.sType                = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                    descriptor_write.dstSet               = *descriptor_set;
+                    descriptor_write.dstSet               = sets[static_cast<uint32_t>(resource_type)];
                     descriptor_write.dstBinding           = binding;
                     descriptor_write.dstArrayElement      = 0; // starting element in that array
                     descriptor_write.descriptorType       = VK_DESCRIPTOR_TYPE_SAMPLER;
@@ -608,15 +607,14 @@ namespace Spartan
 
             void update_textures(const array<RHI_Texture*, rhi_max_array_size>* textures, const uint32_t binding_slot)
             {
-                string debug_name                            = "textures_material";
-                VkDescriptorSet* descriptor_set              = &sets[static_cast<uint32_t>(RHI_Device_Resource::textures_material)];
-                VkDescriptorSetLayout* descriptor_set_layout = &layouts[static_cast<uint32_t>(RHI_Device_Resource::textures_material)];
-                uint32_t texture_count                       = static_cast<uint32_t>(textures->size());
-                uint32_t binding                             = rhi_shader_shift_register_t + binding_slot;
+                uint32_t texture_count = static_cast<uint32_t>(textures->size());
+                uint32_t binding       = rhi_shader_shift_register_t + binding_slot;
 
                 // create layout and set (if needed)
                 if (layouts[static_cast<uint32_t>(RHI_Device_Resource::textures_material)] == nullptr)
                 {
+                    string debug_name = "textures_material";
+
                     create_layout(RHI_Device_Resource::textures_material, binding, texture_count, debug_name);
                     create_set(RHI_Device_Resource::textures_material, texture_count, debug_name);
                 }
@@ -654,7 +652,7 @@ namespace Spartan
 
                     VkWriteDescriptorSet descriptor_write = {};
                     descriptor_write.sType                = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                    descriptor_write.dstSet               = *descriptor_set;
+                    descriptor_write.dstSet               = sets[static_cast<uint32_t>(RHI_Device_Resource::textures_material)];
                     descriptor_write.dstBinding           = binding;
                     descriptor_write.dstArrayElement      = 0; // starting element in the array
                     descriptor_write.descriptorType       = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
