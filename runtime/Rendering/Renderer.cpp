@@ -601,7 +601,7 @@ namespace Spartan
 
             // set
             m_cb_material_cpu.id                  = static_cast<uint32_t>(material->GetObjectId());
-            m_cb_material_cpu.index               = material->GetIndex() * 10; // 10 is the number of textures per material
+            m_cb_material_cpu.index               = material->GetIndex() * Material::texture_count_support;
             m_cb_material_cpu.world_space_height  = material->GetProperty(MaterialProperty::WorldSpaceHeight);
             m_cb_material_cpu.color.x             = material->GetProperty(MaterialProperty::ColorR);
             m_cb_material_cpu.color.y             = material->GetProperty(MaterialProperty::ColorG);

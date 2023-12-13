@@ -42,7 +42,7 @@ namespace Spartan
         Emission,  // a texture that will cause a surface to be lit, works nice with bloom.
         Height,    // perceived depth for parallax mapping.
         AlphaMask, // a texture which will use pixel shader discards for transparent pixels.
-        Undefined
+        Max
     };
 
     enum class MaterialProperty
@@ -103,14 +103,13 @@ namespace Spartan
         // properties
         float GetProperty(const MaterialProperty property_type) const { return m_properties[static_cast<uint32_t>(property_type)]; }
         void SetProperty(const MaterialProperty property_type, const float value);
-
-        // properties - color
         void SetColor(const Color& color);
 
         uint32_t GetIndex() { return m_index; }
+        static const uint32_t texture_count_support = static_cast<uint32_t>(MaterialTexture::Max);
  
     private:
-        std::array<std::shared_ptr<RHI_Texture>, 10> m_textures;
+        std::array<std::shared_ptr<RHI_Texture>, texture_count_support> m_textures;
         std::array<float, 28> m_properties;
 
         uint32_t m_index = 0;

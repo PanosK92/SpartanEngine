@@ -85,7 +85,7 @@ namespace Spartan
 
     void Renderer::CreateStructuredBuffers()
     { 
-        uint32_t times_used_in_frame = 8; // safe to tweak this, if it's enough the engine will assert
+        uint32_t times_used_in_frame = 10; // safe to tweak this, if it's enough the engine will assert
         uint32_t element_count       = times_used_in_frame * resources_frame_lifetime;
 
         #define structured_buffer(x) m_structured_buffers[static_cast<uint8_t>(x)]

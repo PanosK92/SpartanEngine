@@ -683,7 +683,7 @@ void Properties::ShowMaterial(Material* material) const
             {
                 const auto show_property = [this, &material](const char* name, const char* tooltip, const MaterialTexture mat_tex, const MaterialProperty mat_property)
                 {
-                    bool show_texture  = mat_tex      != MaterialTexture::Undefined;
+                    bool show_texture  = mat_tex      != MaterialTexture::Max;
                     bool show_modifier = mat_property != MaterialProperty::Undefined;
 
                     // Name
@@ -776,14 +776,14 @@ void Properties::ShowMaterial(Material* material) const
                 show_property("Emission",             "Light emission from the surface, works nice with bloom",                            MaterialTexture::Emission,  MaterialProperty::Undefined);
                 show_property("Alpha mask",           "Discards pixels",                                                                   MaterialTexture::AlphaMask, MaterialProperty::Undefined);
                 // properties with only a multiplier                                                                                                                   
-                show_property("Clearcoat",            "Extra white specular layer on top of others",                                       MaterialTexture::Undefined, MaterialProperty::Clearcoat);
-                show_property("Clearcoat roughness",  "Roughness of clearcoat specular",                                                   MaterialTexture::Undefined, MaterialProperty::Clearcoat_Roughness);
-                show_property("Anisotropic",          "Amount of anisotropy for specular reflection",                                      MaterialTexture::Undefined, MaterialProperty::Anisotropic);
-                show_property("Anisotropic rotation", "Rotates the direction of anisotropy, with 1.0 going full circle",                   MaterialTexture::Undefined, MaterialProperty::AnisotropicRotation);
-                show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTexture::Undefined, MaterialProperty::Sheen);
-                show_property("Sheen tint",           "Mix between white and using base color for sheen reflection",                       MaterialTexture::Undefined, MaterialProperty::SheenTint);
-                show_property("Subsurface scattering","Amount of translucency",                                                            MaterialTexture::Undefined, MaterialProperty::SubsurfaceScattering);
-                show_property("IOR",                  "Index of refraction, color must be transparent for this have any effect",           MaterialTexture::Undefined, MaterialProperty::Ior);
+                show_property("Clearcoat",            "Extra white specular layer on top of others",                                       MaterialTexture::Max, MaterialProperty::Clearcoat);
+                show_property("Clearcoat roughness",  "Roughness of clearcoat specular",                                                   MaterialTexture::Max, MaterialProperty::Clearcoat_Roughness);
+                show_property("Anisotropic",          "Amount of anisotropy for specular reflection",                                      MaterialTexture::Max, MaterialProperty::Anisotropic);
+                show_property("Anisotropic rotation", "Rotates the direction of anisotropy, with 1.0 going full circle",                   MaterialTexture::Max, MaterialProperty::AnisotropicRotation);
+                show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTexture::Max, MaterialProperty::Sheen);
+                show_property("Sheen tint",           "Mix between white and using base color for sheen reflection",                       MaterialTexture::Max, MaterialProperty::SheenTint);
+                show_property("Subsurface scattering","Amount of translucency",                                                            MaterialTexture::Max, MaterialProperty::SubsurfaceScattering);
+                show_property("IOR",                  "Index of refraction, color must be transparent for this have any effect",           MaterialTexture::Max, MaterialProperty::Ior);
             }
 
             // UV
