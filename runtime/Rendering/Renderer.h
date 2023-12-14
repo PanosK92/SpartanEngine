@@ -193,6 +193,7 @@ namespace Spartan
         static void OnWorldResolved(sp_variant data);
         static void OnClear();
         static void OnFullScreenToggled();
+        static void OnSyncPoint();
 
         // lines
         static void Lines_OneFrameStart();

@@ -322,7 +322,7 @@ namespace Spartan
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,           SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,              SP_EVENT_HANDLER_STATIC(OnClear));
             SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
-            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChange,        SP_EVENT_HANDLER_EXPRESSION_STATIC( world_materials::refresh(m_renderables); ));
+            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_EXPRESSION_STATIC( world_materials::dirty = true; ));
 
             // fire
             SP_FIRE_EVENT(EventType::RendererOnInitialized);
@@ -361,45 +361,8 @@ namespace Spartan
             SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
         }
 
-        // delete any RHI resources that have accumulated
-        if (RHI_Device::DeletionQueueNeedsToParse())
-        {
-            RHI_Device::QueueWaitAll();
-            RHI_Device::DeletionQueueParse();
-            SP_LOG_INFO("Parsed deletion queue");
-        }
-
-        // sync point
-        {
-            m_resource_index++;
-
-            if (m_resource_index == resources_frame_lifetime)
-            {
-                m_resource_index = 0;
-
-                for (shared_ptr<RHI_ConstantBuffer> constant_buffer : GetConstantBuffers())
-                {
-                    constant_buffer->ResetOffset();
-                }
-
-                for (shared_ptr<RHI_StructuredBuffer> structured_buffer : GetStructuredBuffers())
-                {
-                    structured_buffer->ResetOffset();
-                }
-
-                if (world_materials::dirty)
-                {
-                    // properties - a structured buffer of X elements, where each element holds various material properties
-                    GetStructuredBuffer(Renderer_StructuredBuffer::Material)->Update(&world_materials::properties[0]);
-
-                    // textures - an array of textures - bindless model
-                    RHI_Device::UpdateBindlessResources(nullptr, &world_materials::textures);
-
-                    world_materials::dirty = false;
-                }
-            }
-        }
-
+        OnSyncPoint();
+       
         RHI_Device::Tick(frame_num);
 
         // begin
@@ -701,6 +664,56 @@ namespace Spartan
         }
 
         Input::SetMouseCursorVisible(!Window::IsFullScreen());
+    }
+
+    void Renderer::OnSyncPoint()
+    {
+        // this function is called at a synchronization point in the rendering process
+        // at this sync point, the command pool has exhausted its command lists and 
+        // is about to reset them, this is an opportune moment for us to perform
+        // certain operations, knowing that no rendering commands are currently
+        // executing and no resources are being used by any command list
+
+        m_resource_index++;
+        bool is_sync_point = m_resource_index == resources_frame_lifetime;
+
+        if (is_sync_point)
+        {
+            m_resource_index = 0;
+
+            // delete any rhi resources that have accumulated
+            if (RHI_Device::DeletionQueueNeedsToParse())
+            {
+                RHI_Device::QueueWaitAll();
+                RHI_Device::DeletionQueueParse();
+                SP_LOG_INFO("Parsed deletion queue");
+            }
+
+            // reset buffers with dynamic offsets
+            {
+                for (shared_ptr<RHI_ConstantBuffer> constant_buffer : GetConstantBuffers())
+                {
+                    constant_buffer->ResetOffset();
+                }
+
+                for (shared_ptr<RHI_StructuredBuffer> structured_buffer : GetStructuredBuffers())
+                {
+                    structured_buffer->ResetOffset();
+                }
+            }
+
+            // update bindless resources
+            if (world_materials::dirty)
+            {
+                // material properties
+                GetStructuredBuffer(Renderer_StructuredBuffer::Material)->Update(&world_materials::properties[0]);
+
+                // material textures
+                RHI_Device::UpdateBindlessResources(nullptr, &world_materials::textures);
+
+                world_materials::dirty = false;
+            }
+        }
     }
 
     void Renderer::OnFrameStart(RHI_CommandList* cmd_list)
