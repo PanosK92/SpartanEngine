@@ -214,6 +214,8 @@ namespace Spartan
         {
             SetProperty(MaterialProperty::Height, multiplier);
         }
+
+        SP_FIRE_EVENT(EventType::MaterialOnChanged);
     }
 
     void Material::SetTexture(const MaterialTexture texture_type, shared_ptr<RHI_Texture> texture)
@@ -313,19 +315,9 @@ namespace Spartan
             value = clamp(value, 1.0f, 2.4f);
         }
 
-        if (property_type == MaterialProperty::Anisotropic ||
-            property_type == MaterialProperty::AnisotropicRotation ||
-            property_type == MaterialProperty::Clearcoat ||
-            property_type == MaterialProperty::Clearcoat_Roughness ||
-            property_type == MaterialProperty::Sheen ||
-            property_type == MaterialProperty::SheenTint ||
-            property_type == MaterialProperty::SubsurfaceScattering ||
-            property_type == MaterialProperty::Ior)
-        {
-            SP_FIRE_EVENT(EventType::MaterialOnChange);
-        }
-
         m_properties[static_cast<uint32_t>(property_type)] = value;
+
+        SP_FIRE_EVENT(EventType::MaterialOnChanged);
     }
 
     void Material::SetColor(const Color& color)
