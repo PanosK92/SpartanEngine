@@ -345,7 +345,6 @@ namespace Spartan
         }
 
         RenderDoc::Shutdown();
-        RHI_Device::QueueWaitAll();
         RHI_FidelityFX::Destroy();
         RHI_Device::Destroy();
     }

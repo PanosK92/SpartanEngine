@@ -57,7 +57,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     surface.Build(thread_id.xy, true, true, true);
 
     // early exit cases
-    bool early_exit_1 = pass_is_opaque() && surface.is_transparent() && !surface.is_sky(); // do shade sky pixels during the opaque pass (volumetric lighting)
+    bool early_exit_1 = pass_is_opaque()      && surface.is_transparent() && !surface.is_sky(); // do shade sky pixels during the opaque pass (volumetric lighting)
     bool early_exit_2 = pass_is_transparent() && surface.is_opaque();
     if (early_exit_1 || early_exit_2)
         return;
@@ -69,19 +69,19 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // shadows
     float4 shadow = 1.0f;
     {
-        // shadow mapping
         if (light_has_shadows())
         {
+            // shadow maps
             shadow = Shadow_Map(surface, light);
+
+             // screen space shadows - for opaque objects
+            uint array_slice_index = (uint)pass_get_f3_value2().x;
+            if (is_screen_space_shadows_enabled() && pass_is_opaque() && array_slice_index != -1)
+            {
+                shadow.a = min(shadow.a, tex_sss[int3(thread_id.xy, array_slice_index)].x);
+            }
         }
         
-        // screen space shadows
-        int array_slice_index = pass_get_f3_value2().x;
-        if (light_has_shadows() && is_screen_space_shadows_enabled() && array_slice_index != -1)
-        {
-            shadow.a = min(shadow.a, tex_sss[int3(thread_id.xy, array_slice_index)].x);
-        }
-
         // ensure that the shadow is as transparent as the material
         if (pass_is_transparent())
         {
@@ -140,6 +140,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float3 emissive = surface.emissive * surface.albedo;
 
      // diffuse and specular
-    tex_uav[thread_id.xy] += float4(saturate_11(light_diffuse * light.radiance + emissive + light_subsurface), 1.0f);
+    tex_uav[thread_id.xy]  += float4(saturate_11(light_diffuse * light.radiance + emissive + light_subsurface), 1.0f);
     tex_uav2[thread_id.xy] += float4(saturate_11(light_specular * light.radiance), 1.0f);
 }
