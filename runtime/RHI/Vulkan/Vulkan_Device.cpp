@@ -625,7 +625,7 @@ namespace Spartan
                     vector<VkDescriptorImageInfo> image_infos(texture_count);
                     Renderer_StandardTexture default_texture = Renderer_StandardTexture::Checkerboard;
 
-                    // initialize all slots to a default texture
+                    // initialize all slots to a default texture (it helps to have visual reference as to what texture is not present)
                     for (VkDescriptorImageInfo& info : image_infos)
                     {
                         info.sampler     = nullptr;
@@ -633,7 +633,7 @@ namespace Spartan
                         info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                     }
 
-                    // assign textures to their material based index (bindless)
+                    // update indexed slots with textures
                     for (uint32_t i = 0; i < texture_count; ++i)
                     {
                         RHI_Texture* texture = (*textures)[i];
@@ -641,10 +641,8 @@ namespace Spartan
                             continue;
 
                         // deduce a couple of things
-                        uint32_t material_index     = texture->GetMaterialIndex();
-                        uint32_t texture_type_index = texture->GetMaterialIndexTexture();
-                        uint32_t descriptor_index   = material_index + texture_type_index;
-                        void* resource              = texture ? texture->GetRhiSrv() : Renderer::GetStandardTexture(default_texture)->GetRhiSrv();
+                        uint32_t descriptor_index = texture->GetMaterialIndex() + texture->GetMaterialIndexTexture();
+                        void* resource            = texture ? texture->GetRhiSrv() : Renderer::GetStandardTexture(default_texture)->GetRhiSrv();
 
                         image_infos[descriptor_index].sampler     = nullptr;
                         image_infos[descriptor_index].imageView   = static_cast<VkImageView>(resource);

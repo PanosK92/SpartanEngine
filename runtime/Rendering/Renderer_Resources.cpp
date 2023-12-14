@@ -52,27 +52,27 @@ namespace Spartan
     namespace
     {
         // graphics states
-        array<shared_ptr<RHI_RasterizerState>, 5>   m_rasterizer_states;
-        array<shared_ptr<RHI_DepthStencilState>, 5> m_depth_stencil_states;
-        array<shared_ptr<RHI_BlendState>, 3>        m_blend_states;
+        array<shared_ptr<RHI_RasterizerState>, 5>   rasterizer_states;
+        array<shared_ptr<RHI_DepthStencilState>, 5> depth_stencil_states;
+        array<shared_ptr<RHI_BlendState>, 3>        blend_states;
 
         // renderer resources
-        array<shared_ptr<RHI_Texture>, render_target_count> m_render_targets;
-        array<shared_ptr<RHI_Shader>, shader_count>         m_shaders;
-        array<shared_ptr<RHI_Sampler>, 8>                   m_samplers;
-        array<shared_ptr<RHI_ConstantBuffer>, 3>            m_constant_buffers;
-        array<shared_ptr<RHI_StructuredBuffer>, 2>          m_structured_buffers;
+        array<shared_ptr<RHI_Texture>, render_target_count> render_targets;
+        array<shared_ptr<RHI_Shader>, shader_count>         shaders;
+        array<shared_ptr<RHI_Sampler>, 8>                   samplers;
+        array<shared_ptr<RHI_ConstantBuffer>, 3>            constant_buffers;
+        array<shared_ptr<RHI_StructuredBuffer>, 2>          structured_buffers;
 
         // asset resources
-        array<shared_ptr<RHI_Texture>, 10>                m_standard_textures;
-        array<shared_ptr<Mesh>, 7>                        m_standard_meshes;
-        array<shared_ptr<Font>, resources_frame_lifetime> m_fonts;
+        array<shared_ptr<RHI_Texture>, 10>                standard_textures;
+        array<shared_ptr<Mesh>, 7>                        standard_meshes;
+        array<shared_ptr<Font>, resources_frame_lifetime> standard_font;
         shared_ptr<Material>                              standard_material;
     }
 
     void Renderer::CreateConstantBuffers()
     {
-        #define constant_buffer(x) m_constant_buffers[static_cast<uint8_t>(x)]
+        #define constant_buffer(x) constant_buffers[static_cast<uint8_t>(x)]
 
         constant_buffer(Renderer_ConstantBuffer::Frame) = make_shared<RHI_ConstantBuffer>(string("frame"));
         constant_buffer(Renderer_ConstantBuffer::Frame)->Create<Cb_Frame>(resources_frame_lifetime);
@@ -89,7 +89,7 @@ namespace Spartan
         uint32_t times_used_in_frame = 12; // safe to tweak this, if it's enough the engine will assert
         uint32_t element_count       = times_used_in_frame * resources_frame_lifetime;
 
-        #define structured_buffer(x) m_structured_buffers[static_cast<uint8_t>(x)]
+        #define structured_buffer(x) structured_buffers[static_cast<uint8_t>(x)]
 
         {
             uint32_t stride = static_cast<uint32_t>(sizeof(uint32_t));
@@ -107,7 +107,7 @@ namespace Spartan
     {
         RHI_Comparison_Function reverse_z_aware_comp_func = RHI_Comparison_Function::GreaterEqual; // reverse-z
 
-        #define depth_stencil_state(x) m_depth_stencil_states[static_cast<uint8_t>(x)]
+        #define depth_stencil_state(x) depth_stencil_states[static_cast<uint8_t>(x)]
         // arguments: depth_test, depth_write, depth_function, stencil_test, stencil_write, stencil_function
         depth_stencil_state(Renderer_DepthStencilState::Off)                            = make_shared<RHI_DepthStencilState>(false, false, RHI_Comparison_Function::Never, false, false, RHI_Comparison_Function::Never);
         depth_stencil_state(Renderer_DepthStencilState::Depth_read_write_stencil_read)  = make_shared<RHI_DepthStencilState>(true,  true,  reverse_z_aware_comp_func,      false, false, RHI_Comparison_Function::Never);
@@ -123,7 +123,7 @@ namespace Spartan
         float depth_bias_slope_scaled = Light::GetBiasSlopeScaled();
         float line_width              = 2.0f;
 
-        #define rasterizer_state(x) m_rasterizer_states[static_cast<uint8_t>(x)]
+        #define rasterizer_state(x) rasterizer_states[static_cast<uint8_t>(x)]
         // cull mode, filled mode, depth clip, scissor, bias, bias clamp, slope scaled bias, line width
         rasterizer_state(Renderer_RasterizerState::Solid_cull_back)     = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, 0.0f,              0.0f,             0.0f,                    line_width);
         rasterizer_state(Renderer_RasterizerState::Solid_cull_none)     = make_shared<RHI_RasterizerState>(RHI_CullMode::None, RHI_PolygonMode::Solid,     true,  false, 0.0f,              0.0f,             0.0f,                    line_width);
@@ -134,7 +134,7 @@ namespace Spartan
 
     void Renderer::CreateBlendStates()
     {
-        #define blend_state(x) m_blend_states[static_cast<uint8_t>(x)]
+        #define blend_state(x) blend_states[static_cast<uint8_t>(x)]
         // blend_enabled, source_blend, dest_blend, blend_op, source_blend_alpha, dest_blend_alpha, blend_op_alpha, blend_factor
         blend_state(Renderer_BlendState::Disabled) = make_shared<RHI_BlendState>(false);
         blend_state(Renderer_BlendState::Alpha)    = make_shared<RHI_BlendState>(true, RHI_Blend::Src_Alpha, RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
@@ -147,12 +147,12 @@ namespace Spartan
         float mip_bias = 0.0f;
         if (GetResolutionOutput().x > GetResolutionRender().x)
         {
-            // Progressively negative values when upsampling for increased texture fidelity
+            // progressively negative values when upsampling for increased texture fidelity
             mip_bias = log2(GetResolutionRender().x / GetResolutionOutput().x) - 1.0f;
             SP_LOG_INFO("Mip bias set to %f", mip_bias);
         }
         
-        #define sampler(x) m_samplers[static_cast<uint8_t>(x)]
+        #define sampler(x) samplers[static_cast<uint8_t>(x)]
         if (!create_only_anisotropic)
         {
             // arguments:                                                            min,                 max,                 mip,                 address mode,                            comparison,                 anisotropy, comparison enabled
@@ -168,7 +168,7 @@ namespace Spartan
         float anisotropy = GetOption<float>(Renderer_Option::Anisotropy);
         sampler(Renderer_Sampler::Anisotropic_wrap) = make_shared<RHI_Sampler>(RHI_Filter::Linear, RHI_Filter::Linear, RHI_Filter::Linear, RHI_Sampler_Address_Mode::Wrap, RHI_Comparison_Function::Always, anisotropy, false, mip_bias);
 
-        RHI_Device::UpdateBindlessResources(&m_samplers, nullptr);
+        RHI_Device::UpdateBindlessResources(&samplers, nullptr);
     }
 
     void Renderer::CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic)
@@ -195,7 +195,7 @@ namespace Spartan
 
         // notes:
         // - gbuffer_normal: Any format with or below 8 bits per channel, will produce banding
-        #define render_target(x) m_render_targets[static_cast<uint8_t>(x)]
+        #define render_target(x) render_targets[static_cast<uint8_t>(x)]
 
         // render resolution
         if (create_render)
@@ -287,7 +287,7 @@ namespace Spartan
     {
         const bool async        = true;
         const string shader_dir = ResourceCache::GetResourceDirectory(ResourceDirectory::Shaders) + "\\";
-        #define shader(x) m_shaders[static_cast<uint8_t>(x)]
+        #define shader(x) shaders[static_cast<uint8_t>(x)]
 
         // debug
         {
@@ -516,7 +516,7 @@ namespace Spartan
         for (uint32_t i = 0; i < 5; i++) // as many as m_resources_frame_lifetime
         {
             // ResourceCache will ensure that the font resource is only loaded once
-            m_fonts[i] = make_shared<Font>(dir_font + "CalibriBold.ttf", static_cast<uint32_t>(13 * Window::GetDpiScale()), Vector4(0.8f, 0.8f, 0.8f, 1.0f));
+            standard_font[i] = make_shared<Font>(dir_font + "CalibriBold.ttf", static_cast<uint32_t>(13 * Window::GetDpiScale()), Vector4(0.8f, 0.8f, 0.8f, 1.0f));
         }
     }
 
@@ -567,7 +567,7 @@ namespace Spartan
             mesh->ComputeNormalizedScale();
             mesh->CreateGpuBuffers();
 
-            m_standard_meshes[static_cast<uint8_t>(type)] = mesh;
+            standard_meshes[static_cast<uint8_t>(type)] = mesh;
         };
 
         create_mesh(Renderer_MeshType::Cube);
@@ -589,7 +589,7 @@ namespace Spartan
     void Renderer::CreateStandardTextures()
     {
         const string dir_texture = ResourceCache::GetResourceDirectory(ResourceDirectory::Textures) + "\\";
-        #define standard_texture(x) m_standard_textures[static_cast<uint8_t>(x)]
+        #define standard_texture(x) standard_textures[static_cast<uint8_t>(x)]
 
         // Noise textures
         {
@@ -650,90 +650,90 @@ namespace Spartan
 
     void Renderer::DestroyResources()
     {
-        m_render_targets.fill(nullptr);
-        m_shaders.fill(nullptr);
-        m_samplers.fill(nullptr);
-        m_standard_textures.fill(nullptr);
-        m_standard_meshes.fill(nullptr);
-        m_constant_buffers.fill(nullptr);
-        m_structured_buffers.fill(nullptr);
-        m_fonts.fill(nullptr);
+        render_targets.fill(nullptr);
+        shaders.fill(nullptr);
+        samplers.fill(nullptr);
+        standard_textures.fill(nullptr);
+        standard_meshes.fill(nullptr);
+        constant_buffers.fill(nullptr);
+        structured_buffers.fill(nullptr);
+        standard_font.fill(nullptr);
         standard_material = nullptr;
     }
 
     array<shared_ptr<RHI_Texture>, render_target_count>& Renderer::GetRenderTargets()
     {
-        return m_render_targets;
+        return render_targets;
     }
 
     array<shared_ptr<RHI_Shader>, shader_count>& Renderer::GetShaders()
     {
-        return m_shaders;
+        return shaders;
     }
 
     array<shared_ptr<RHI_ConstantBuffer>, 3>& Renderer::GetConstantBuffers()
     {
-        return m_constant_buffers;
+        return constant_buffers;
     }
 
     array<shared_ptr<RHI_StructuredBuffer>, 2>& Renderer::GetStructuredBuffers()
     {
-        return m_structured_buffers;
+        return structured_buffers;
     }
 
     shared_ptr<RHI_RasterizerState> Renderer::GetRasterizerState(const Renderer_RasterizerState type)
     {
-        return m_rasterizer_states[static_cast<uint8_t>(type)];
+        return rasterizer_states[static_cast<uint8_t>(type)];
     }
 
     shared_ptr<RHI_DepthStencilState> Renderer::GetDepthStencilState(const Renderer_DepthStencilState type)
     {
-        return m_depth_stencil_states[static_cast<uint8_t>(type)];
+        return depth_stencil_states[static_cast<uint8_t>(type)];
     }
 
     shared_ptr<RHI_BlendState> Renderer::GetBlendState(const Renderer_BlendState type)
     {
-        return m_blend_states[static_cast<uint8_t>(type)];
+        return blend_states[static_cast<uint8_t>(type)];
     }
 
     shared_ptr<RHI_Texture> Renderer::GetRenderTarget(const Renderer_RenderTexture type)
     {
-        return m_render_targets[static_cast<uint8_t>(type)];
+        return render_targets[static_cast<uint8_t>(type)];
     }
 
     shared_ptr<RHI_Shader> Renderer::GetShader(const Renderer_Shader type)
     {
-        return m_shaders[static_cast<uint8_t>(type)];
+        return shaders[static_cast<uint8_t>(type)];
     }
 
     shared_ptr<RHI_Sampler> Renderer::GetSampler(const Renderer_Sampler type)
     {
-        return m_samplers[static_cast<uint8_t>(type)];
+        return samplers[static_cast<uint8_t>(type)];
     }
 
     shared_ptr<RHI_ConstantBuffer> Renderer::GetConstantBuffer(const Renderer_ConstantBuffer type)
     {
-        return m_constant_buffers[static_cast<uint8_t>(type)];
+        return constant_buffers[static_cast<uint8_t>(type)];
     }
 
     shared_ptr<RHI_StructuredBuffer> Renderer::GetStructuredBuffer(const Renderer_StructuredBuffer type)
     {
-        return m_structured_buffers[static_cast<uint8_t>(type)];
+        return structured_buffers[static_cast<uint8_t>(type)];
     }
 
     shared_ptr<RHI_Texture> Renderer::GetStandardTexture(const Renderer_StandardTexture type)
     {
-        return m_standard_textures[static_cast<uint8_t>(type)];
+        return standard_textures[static_cast<uint8_t>(type)];
     }
 
     shared_ptr<Mesh> Renderer::GetStandardMesh(const Renderer_MeshType type)
     {
-        return m_standard_meshes[static_cast<uint8_t>(type)];
+        return standard_meshes[static_cast<uint8_t>(type)];
     }
 
     shared_ptr<Font> Renderer::GetFont()
     {
-        return m_fonts[m_resource_index];
+        return standard_font[m_resource_index];
     }
 
     shared_ptr<Material> Renderer::GetStandardMaterial()
