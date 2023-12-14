@@ -72,7 +72,7 @@ struct Surface
         float4 sample_albedo     = use_albedo ? tex_albedo[position_screen] : 0.0f;
         float4 sample_normal     = tex_normal[position_screen];
         float4 sample_material   = tex_material[position_screen];
-        float sample_depth       = tex_depth[position_screen];
+        float sample_depth       = tex_depth[position_screen].r;
 
         // access the material structured buffer to get additional properties
         // the normal's alpha channel holds the material index

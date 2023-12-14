@@ -21,13 +21,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
+//= INCLUDES ===========
 #include "Definitions.h"
-#include "../World/Entity.h"
-//==========================
+//======================
 
 namespace Spartan
 {
+    // useful when focus is needed to debug
+    #define MUTE 0
+
+    //= FWD DECLARATIONS =
+    class Entity;
+    //====================
+
     class SP_CLASS Audio
     {
     public:

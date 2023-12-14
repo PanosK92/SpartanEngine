@@ -175,10 +175,17 @@ namespace Spartan
 
     bool Audio::PlaySound(void* sound, void*& channel)
     {
-        #if defined(_MSC_VER)
-        return Audio::HandleErrorFmod(fmod_system->playSound(static_cast<FMOD::Sound*>(sound), nullptr, false, reinterpret_cast<FMOD::Channel**>(&channel)));
-        #else
-        return false;
-        #endif
+        if (MUTE == 0)
+        {
+            #if defined(_MSC_VER)
+            return Audio::HandleErrorFmod(fmod_system->playSound(static_cast<FMOD::Sound*>(sound), nullptr, false, reinterpret_cast<FMOD::Channel**>(&channel)));
+            #else
+            return false;
+            #endif
+        }
+        else
+        {
+            return false;
+        }
     }
 }
