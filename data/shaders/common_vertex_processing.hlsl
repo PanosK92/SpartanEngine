@@ -65,7 +65,7 @@ struct vertex_processing
             float combined_wave = (base_wave1 + base_wave2 + high_freq_noise) / 3.0f;
             
             // reduce sway at the bottom, increase at the top
-            float sway_factor = saturate((position_vertex.y - animation_pivot.y) / buffer_material.world_space_height);
+            float sway_factor = saturate((position_vertex.y - animation_pivot.y) / GetMaterial().world_space_height);
             
             // calculate final offset
             float3 offset = wind_direction * combined_wave * wind_vertex_sway_extent * sway_factor;
@@ -87,7 +87,7 @@ struct vertex_processing
             float2 direction_away_from_player = normalize(position_vertex.xz - buffer_frame.camera_position.xz);
         
             // calculate height factor (more bending at the top)
-            float height_factor = (position_vertex.y - animation_pivot.y) / buffer_material.world_space_height;
+            float height_factor = (position_vertex.y - animation_pivot.y) / GetMaterial().world_space_height;
             height_factor = saturate(height_factor);
         
             // apply rotational bending

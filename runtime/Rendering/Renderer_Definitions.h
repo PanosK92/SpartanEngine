@@ -103,8 +103,7 @@ namespace Spartan
     enum class Renderer_BindingsCb
     {
         frame    = 0,
-        light    = 1,
-        material = 2
+        light    = 1
     };
     
     enum class Renderer_BindingsSrv
@@ -154,11 +153,11 @@ namespace Spartan
 
     enum class Renderer_BindingsUav
     {
-        tex          = 0,
-        tex2         = 1,
-        tex3         = 2,
-        tex_sss      = 3,
-        sb_materials = 4,
+        sb_materials = 0,
+        tex          = 1,
+        tex2         = 2,
+        tex3         = 3,
+        tex_sss      = 4,
         sb_spd       = 5,
         tex_spd      = 6,
     };
@@ -278,8 +277,7 @@ namespace Spartan
     enum class Renderer_ConstantBuffer
     {
         Frame,
-        Light,
-        Material
+        Light
     };
 
     enum class Renderer_StructuredBuffer

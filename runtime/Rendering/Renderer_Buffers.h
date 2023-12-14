@@ -139,40 +139,6 @@ namespace Spartan
         }
     };
 
-    // medium to high frequency - updates per light
-    struct Cb_Material
-    {
-        Math::Vector4 color = Math::Vector4::Zero;
-
-        Math::Vector2 tiling_uv = Math::Vector2::Zero;
-        Math::Vector2 offset_uv = Math::Vector2::Zero;
-
-        float roughness_mul = 0.0f;
-        float metallic_mul  = 0.0f;
-        float normal_mul    = 0.0f;
-        float height_mul    = 0.0f;
-
-        uint32_t properties      = 0;
-        float world_space_height = 0.0f;
-        uint32_t index           = 0;
-        uint32_t padding         = 0;
-
-        bool operator==(const Cb_Material& rhs) const
-        {
-            return
-                color              == rhs.color         &&
-                tiling_uv          == rhs.tiling_uv     &&
-                offset_uv          == rhs.offset_uv     &&
-                roughness_mul      == rhs.roughness_mul &&
-                metallic_mul       == rhs.metallic_mul  &&
-                normal_mul         == rhs.normal_mul    &&
-                height_mul         == rhs.height_mul    &&
-                properties         == rhs.properties    &&
-                index              == rhs.index         &&
-                world_space_height == rhs.world_space_height;
-        }
-    };
-
     // 128 byte push constant buffer - updates per pass/draw
     struct Pcb_Pass
     {
@@ -246,6 +212,11 @@ namespace Spartan
             m_value.m13 = w;
         };
 
+        void set_material_index(const uint32_t index)
+        {
+            m_value.m32 = static_cast<float>(index);
+        }
+
         void set_is_transparent(const bool is_transparent)
         {
             m_value.m33 = is_transparent ? 1.0f : 0.0f;
@@ -261,6 +232,21 @@ namespace Spartan
 
     struct Sb_MaterialProperties
     {
+        Math::Vector4 color = Math::Vector4::Zero;
+
+        Math::Vector2 tiling_uv = Math::Vector2::Zero;
+        Math::Vector2 offset_uv = Math::Vector2::Zero;
+
+        float roughness_mul = 0.0f;
+        float metallic_mul  = 0.0f;
+        float normal_mul    = 0.0f;
+        float height_mul    = 0.0f;
+
+        uint32_t properties      = 0;
+        float world_space_height = 0.0f;
+        uint32_t index           = 0;
+        uint32_t padding         = 0;
+
         float sheen;
         Math::Vector3 sheen_tint;
 
@@ -271,6 +257,6 @@ namespace Spartan
 
         float subsurface_scattering;
         float ior;
-        Math::Vector2 padding;
+        Math::Vector2 padding_2;
     };
 }

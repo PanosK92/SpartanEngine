@@ -47,16 +47,20 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
+    // constant buffers
     Cb_Frame Renderer::m_cb_frame_cpu;
     Pcb_Pass Renderer::m_cb_pass_cpu;
     Cb_Light Renderer::m_cb_light_cpu;
-    Cb_Material Renderer::m_cb_material_cpu;
+
+    // line rendering
     shared_ptr<RHI_VertexBuffer> Renderer::m_vertex_buffer_lines;
     vector<RHI_Vertex_PosCol> Renderer::m_line_vertices;
     vector<float> Renderer::m_lines_duration;
     uint32_t Renderer::m_lines_index_depth_off;
     uint32_t Renderer::m_lines_index_depth_on;
+
+    // misc
+    unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
     bool Renderer::m_brdf_specular_lut_rendered;
     RHI_CommandPool* Renderer::m_cmd_pool = nullptr;
     shared_ptr<Camera> Renderer::m_camera = nullptr;
@@ -69,21 +73,21 @@ namespace Spartan
         Math::Vector2 m_resolution_output = Math::Vector2::Zero;
         RHI_Viewport m_viewport           = RHI_Viewport(0, 0, 0, 0);
 
-        // swapchain
-        const uint8_t swap_chain_buffer_count = 2;
+        // rhi resources
         shared_ptr<RHI_SwapChain> swap_chain;
+        const uint8_t swap_chain_buffer_count = 2;
+        RHI_CommandList* cmd_current          = nullptr;
 
         // mip generation
         mutex mutex_mip_generation;
         vector<RHI_Texture*> textures_mip_generation;
 
-        // rhi resources
-        RHI_CommandList* cmd_current = nullptr;
+        // renderable/entity management
+        mutex mutex_entity_addition;
+        vector<shared_ptr<Entity>> m_entities_to_add;
 
         // misc
         unordered_map<Renderer_Option, float> m_options;
-        mutex mutex_entity_addition;
-        vector<shared_ptr<Entity>> m_entities_to_add;
         uint64_t frame_num                   = 0;
         Math::Vector2 jitter_offset          = Math::Vector2::Zero;
         const uint32_t resolution_shadow_min = 128;
@@ -133,16 +137,45 @@ namespace Spartan
                 if (unique_material_ids.find(material->GetObjectId()) != unique_material_ids.end())
                     return;
 
+                material->SetIndex(material_index);
+
                 // properties
                 {
-                    properties[material_index + 0].anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
-                    properties[material_index + 1].anisotropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
-                    properties[material_index + 2].clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
-                    properties[material_index + 3].clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
-                    properties[material_index + 4].sheen                 = material->GetProperty(MaterialProperty::Sheen);
-                    properties[material_index + 5].sheen_tint            = material->GetProperty(MaterialProperty::SheenTint);
-                    properties[material_index + 6].subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
-                    properties[material_index + 7].ior                   = material->GetProperty(MaterialProperty::Ior);
+                    properties[material_index].index                 = material->GetIndex();
+                    properties[material_index].world_space_height    = material->GetProperty(MaterialProperty::WorldSpaceHeight);
+                    properties[material_index].color.x               = material->GetProperty(MaterialProperty::ColorR);
+                    properties[material_index].color.y               = material->GetProperty(MaterialProperty::ColorG);
+                    properties[material_index].color.z               = material->GetProperty(MaterialProperty::ColorB);
+                    properties[material_index].color.w               = material->GetProperty(MaterialProperty::ColorA);
+                    properties[material_index].tiling_uv.x           = material->GetProperty(MaterialProperty::TextureTilingX);
+                    properties[material_index].tiling_uv.y           = material->GetProperty(MaterialProperty::TextureTilingY);
+                    properties[material_index].offset_uv.x           = material->GetProperty(MaterialProperty::TextureOffsetX);
+                    properties[material_index].offset_uv.y           = material->GetProperty(MaterialProperty::TextureOffsetY);
+                    properties[material_index].roughness_mul         = material->GetProperty(MaterialProperty::Roughness);
+                    properties[material_index].metallic_mul          = material->GetProperty(MaterialProperty::Metalness);
+                    properties[material_index].normal_mul            = material->GetProperty(MaterialProperty::Normal);
+                    properties[material_index].height_mul            = material->GetProperty(MaterialProperty::Height);
+                    properties[material_index].anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
+                    properties[material_index].anisotropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
+                    properties[material_index].clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
+                    properties[material_index].clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
+                    properties[material_index].sheen                 = material->GetProperty(MaterialProperty::Sheen);
+                    properties[material_index].sheen_tint            = material->GetProperty(MaterialProperty::SheenTint);
+                    properties[material_index].subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
+                    properties[material_index].ior                   = material->GetProperty(MaterialProperty::Ior);
+
+                    properties[material_index].properties = material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness) ? (1U << 0)  : 0;
+                    properties[material_index].properties = material->HasTexture(MaterialTexture::Height)                            ? (1U << 1)  : 0;
+                    properties[material_index].properties = material->HasTexture(MaterialTexture::Normal)                            ? (1U << 2)  : 0;
+                    properties[material_index].properties = material->HasTexture(MaterialTexture::Color)                             ? (1U << 3)  : 0;
+                    properties[material_index].properties = material->HasTexture(MaterialTexture::Roughness)                         ? (1U << 4)  : 0;
+                    properties[material_index].properties = material->HasTexture(MaterialTexture::Metalness)                         ? (1U << 5)  : 0;
+                    properties[material_index].properties = material->HasTexture(MaterialTexture::AlphaMask)                         ? (1U << 6)  : 0;
+                    properties[material_index].properties = material->HasTexture(MaterialTexture::Emission)                          ? (1U << 7)  : 0;
+                    properties[material_index].properties = material->HasTexture(MaterialTexture::Occlusion)                         ? (1U << 8)  : 0;
+                    properties[material_index].properties = material->GetProperty(MaterialProperty::TextureSlopeBased)               ? (1U << 9)  : 0;
+                    properties[material_index].properties = material->GetProperty(MaterialProperty::VertexAnimateWind)               ? (1U << 10) : 0;
+                    properties[material_index].properties = material->GetProperty(MaterialProperty::VertexAnimateWater)              ? (1U << 11) : 0;
                 }
                 
                 // textures
@@ -158,8 +191,7 @@ namespace Spartan
                     textures[material_index + 8]  = material->GetTexture(MaterialTexture::Height);
                     textures[material_index + 9]  = material->GetTexture(MaterialTexture::AlphaMask);
                 }
-
-                material->SetIndex(material_index);
+           
                 material_index += Material::texture_count_support;
             }
 
@@ -611,49 +643,6 @@ namespace Spartan
 
         GetConstantBuffer(Renderer_ConstantBuffer::Light)->Update(&m_cb_light_cpu);
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::light, GetConstantBuffer(Renderer_ConstantBuffer::Light));
-    }
-
-    void Renderer::UpdateConstantBufferMaterial(RHI_CommandList* cmd_list, Material* material)
-    {
-        static uint64_t bound_material_id = 0;
-
-        if (material->GetObjectId() != bound_material_id)
-        {
-            m_cb_material_cpu.properties = 0;
-
-            // set
-            m_cb_material_cpu.index               = material->GetIndex();
-            m_cb_material_cpu.world_space_height  = material->GetProperty(MaterialProperty::WorldSpaceHeight);
-            m_cb_material_cpu.color.x             = material->GetProperty(MaterialProperty::ColorR);
-            m_cb_material_cpu.color.y             = material->GetProperty(MaterialProperty::ColorG);
-            m_cb_material_cpu.color.z             = material->GetProperty(MaterialProperty::ColorB);
-            m_cb_material_cpu.color.w             = material->GetProperty(MaterialProperty::ColorA);
-            m_cb_material_cpu.tiling_uv.x         = material->GetProperty(MaterialProperty::TextureTilingX);
-            m_cb_material_cpu.tiling_uv.y         = material->GetProperty(MaterialProperty::TextureTilingY);
-            m_cb_material_cpu.offset_uv.x         = material->GetProperty(MaterialProperty::TextureOffsetX);
-            m_cb_material_cpu.offset_uv.y         = material->GetProperty(MaterialProperty::TextureOffsetY);
-            m_cb_material_cpu.roughness_mul       = material->GetProperty(MaterialProperty::Roughness);
-            m_cb_material_cpu.metallic_mul        = material->GetProperty(MaterialProperty::Metalness);
-            m_cb_material_cpu.normal_mul          = material->GetProperty(MaterialProperty::Normal);
-            m_cb_material_cpu.height_mul          = material->GetProperty(MaterialProperty::Height);
-            m_cb_material_cpu.properties         |= material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness) ? (1U << 0)  : 0;
-            m_cb_material_cpu.properties         |= material->HasTexture(MaterialTexture::Height)                            ? (1U << 1)  : 0;
-            m_cb_material_cpu.properties         |= material->HasTexture(MaterialTexture::Normal)                            ? (1U << 2)  : 0;
-            m_cb_material_cpu.properties         |= material->HasTexture(MaterialTexture::Color)                             ? (1U << 3)  : 0;
-            m_cb_material_cpu.properties         |= material->HasTexture(MaterialTexture::Roughness)                         ? (1U << 4)  : 0;
-            m_cb_material_cpu.properties         |= material->HasTexture(MaterialTexture::Metalness)                         ? (1U << 5)  : 0;
-            m_cb_material_cpu.properties         |= material->HasTexture(MaterialTexture::AlphaMask)                         ? (1U << 6)  : 0;
-            m_cb_material_cpu.properties         |= material->HasTexture(MaterialTexture::Emission)                          ? (1U << 7)  : 0;
-            m_cb_material_cpu.properties         |= material->HasTexture(MaterialTexture::Occlusion)                         ? (1U << 8)  : 0;
-            m_cb_material_cpu.properties         |= material->GetProperty(MaterialProperty::TextureSlopeBased)               ? (1U << 9)  : 0;
-            m_cb_material_cpu.properties         |= material->GetProperty(MaterialProperty::VertexAnimateWind)               ? (1U << 10) : 0;
-            m_cb_material_cpu.properties         |= material->GetProperty(MaterialProperty::VertexAnimateWater)              ? (1U << 11) : 0;
-
-            GetConstantBuffer(Renderer_ConstantBuffer::Material)->Update(&m_cb_material_cpu);
-            cmd_list->SetConstantBuffer(Renderer_BindingsCb::material, GetConstantBuffer(Renderer_ConstantBuffer::Material));
-
-            bound_material_id = material->GetObjectId();
-        }
     }
 
     void Renderer::PushPassConstants(RHI_CommandList* cmd_list)

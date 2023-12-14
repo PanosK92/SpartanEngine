@@ -113,12 +113,11 @@ namespace Spartan
 
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
     {
-        // todo: make them bindless
+        // todo: see if something can be made bindless (noise textures can)
    
         // constant buffers
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame,    GetConstantBuffer(Renderer_ConstantBuffer::Frame));
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::light,    GetConstantBuffer(Renderer_ConstantBuffer::Light));
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::material, GetConstantBuffer(Renderer_ConstantBuffer::Material));
 
         // textures
         cmd_list->SetTexture(Renderer_BindingsSrv::noise_normal, GetStandardTexture(Renderer_StandardTexture::Noise_normal));
@@ -339,11 +338,10 @@ namespace Spartan
                             cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
                         }
 
-                        // set material
-                        UpdateConstantBufferMaterial(cmd_list, material);
-
                         // set pass constants
+                        if (Material* material = renderable->GetMaterial())
                         {
+                            m_cb_pass_cpu.set_material_index(material->GetIndex());
                             m_cb_pass_cpu.set_f3_value(
                                 material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
                                 material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
@@ -520,11 +518,6 @@ namespace Spartan
                 if (!renderable)
                     continue;
 
-                // get material
-                Material* material = renderable->GetMaterial();
-                if (!material)
-                    continue;
-
                 // skip objects outside of the view frustum
                 if (!GetCamera()->IsInViewFrustum(renderable))
                     continue;
@@ -545,10 +538,8 @@ namespace Spartan
                     cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
                 }
 
-                // set alpha testing textures
-                UpdateConstantBufferMaterial(cmd_list, material);
-
                 // set pass constants
+                if (Material* material = renderable->GetMaterial())
                 {
                     m_cb_pass_cpu.transform = entity->GetMatrix();
                     m_cb_pass_cpu.set_f3_value(
@@ -556,6 +547,7 @@ namespace Spartan
                         material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
                         material->GetProperty(MaterialProperty::ColorA)
                     );
+                    m_cb_pass_cpu.set_material_index(material->GetIndex());
 
                     PushPassConstants(cmd_list);
                 }
@@ -657,14 +649,13 @@ namespace Spartan
                     cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
                 }
 
-                // set material
-                if (Material* material = renderable->GetMaterial())
-                {
-                    UpdateConstantBufferMaterial(cmd_list, material);
-                }
-
                 // push pass constants
                 {
+                    if (Material* material = renderable->GetMaterial())
+                    {
+                        m_cb_pass_cpu.set_material_index(material->GetIndex());
+                    }
+
                     m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
 
                     // update transform
