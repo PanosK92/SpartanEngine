@@ -206,12 +206,17 @@ namespace Spartan
                 }
             }
 
-            void refresh(unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& renderables)
+            void clear()
             {
                 properties.fill(Sb_MaterialProperties{});
                 textures.fill(nullptr);
                 unique_material_ids.clear();
                 material_index = 0;
+            }
+
+            void refresh(unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& renderables)
+            {
+                clear();
 
                 update(renderables[Renderer_Entity::Geometry]);
                 update(renderables[Renderer_Entity::GeometryInstanced]);
@@ -337,6 +342,7 @@ namespace Spartan
         // releases their rhi resources before device destruction
         {
             DestroyResources();
+            world_materials::clear();
 
             m_entities_to_add.clear();
             m_renderables.clear();

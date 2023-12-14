@@ -88,16 +88,16 @@ namespace Spartan
         m_properties.fill(0.0f);
 
         // initialize properties
-        SetProperty(MaterialProperty::CanBeEdited,         1.0f);
-        SetProperty(MaterialProperty::ColorR,              1.0f);
-        SetProperty(MaterialProperty::ColorG,              1.0f);
-        SetProperty(MaterialProperty::ColorB,              1.0f);
-        SetProperty(MaterialProperty::ColorA,              1.0f);
-        SetProperty(MaterialProperty::Roughness, 1.0f);
-        SetProperty(MaterialProperty::TextureTilingX,      1.0f);
-        SetProperty(MaterialProperty::TextureTilingY,      1.0f);
-        SetProperty(MaterialProperty::WorldSpaceHeight,    1.0f);
-        SetProperty(MaterialProperty::Ior,                 1.33f); // water
+        SetProperty(MaterialProperty::CanBeEdited,      1.0f);
+        SetProperty(MaterialProperty::ColorR,           1.0f);
+        SetProperty(MaterialProperty::ColorG,           1.0f);
+        SetProperty(MaterialProperty::ColorB,           1.0f);
+        SetProperty(MaterialProperty::ColorA,           1.0f);
+        SetProperty(MaterialProperty::Roughness,        1.0f);
+        SetProperty(MaterialProperty::TextureTilingX,   1.0f);
+        SetProperty(MaterialProperty::TextureTilingY,   1.0f);
+        SetProperty(MaterialProperty::WorldSpaceHeight, 1.0f);
+        SetProperty(MaterialProperty::Ior,              1.33f); // water
     }
 
     bool Material::LoadFromFile(const std::string& file_path)
@@ -305,7 +305,7 @@ namespace Spartan
                 World::Resolve();
             }
 
-            // Transparent objects are typically see-through (low roughness) so use the alpha as the roughness multiplier.
+            // transparent objects are typically see-through (low roughness) so use the alpha as the roughness multiplier.
             m_properties[static_cast<uint32_t>(MaterialProperty::Roughness)] = value * 0.5f;
         }
 

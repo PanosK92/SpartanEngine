@@ -294,11 +294,11 @@ namespace Spartan
         {
             // resources
             {
-                fsr2_dispatch_description.color           = to_ffx_resource(tex_color,                    L"fsr2_color");
-                fsr2_dispatch_description.colorOpaqueOnly = to_ffx_resource(tex_color_opaque,             L"fsr2_color_opaque");
-                fsr2_dispatch_description.depth           = to_ffx_resource(tex_depth,                    L"fsr2_depth");
-                fsr2_dispatch_description.output          = to_ffx_resource(tex_output,                   L"fsr2_output");
-                fsr2_dispatch_description.motionVectors   = to_ffx_resource(tex_velocity,                 L"fsr2_velocity");
+                fsr2_dispatch_description.color           = to_ffx_resource(tex_color,         L"fsr2_color");
+                fsr2_dispatch_description.colorOpaqueOnly = to_ffx_resource(tex_color_opaque,  L"fsr2_color_opaque");
+                fsr2_dispatch_description.depth           = to_ffx_resource(tex_depth,         L"fsr2_depth");
+                fsr2_dispatch_description.output          = to_ffx_resource(tex_output,        L"fsr2_output");
+                fsr2_dispatch_description.motionVectors   = to_ffx_resource(tex_velocity,      L"fsr2_velocity");
                 fsr2_dispatch_description.commandList     = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
             }
 
