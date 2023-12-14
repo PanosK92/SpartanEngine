@@ -542,7 +542,11 @@ namespace Spartan
         // remove this child from it's previous parent
         if (m_parent)
         {
-            m_parent->RemoveChild(this);
+            // this avoid a stack overflow due to recursion
+            // we do m_parent = new_parent; below anyway
+            bool update_child_with_null_parent = false;
+
+            m_parent->RemoveChild(this, update_child_with_null_parent);
         }
 
         // add this child to the new parent
@@ -575,7 +579,7 @@ namespace Spartan
         }
     }
 
-    void Entity::RemoveChild(Entity* child)
+    void Entity::RemoveChild(Entity* child, bool update_child_with_null_parent)
     {
         SP_ASSERT(child != nullptr);
 
@@ -589,7 +593,10 @@ namespace Spartan
         m_children.erase(remove_if(m_children.begin(), m_children.end(), [child](Entity* vec_transform) { return vec_transform->GetObjectId() == child->GetObjectId(); }), m_children.end());
 
         // remove the child's parent
-        child->SetParent(nullptr);
+        if (update_child_with_null_parent)
+        {
+            child->SetParent(nullptr);
+        }
     }
 
     void Entity::SetParent_Internal(Entity* new_parent)

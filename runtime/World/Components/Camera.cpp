@@ -530,7 +530,6 @@ namespace Spartan
                         // swim
                         if (is_underwater)
                         {
-
                             // buoyancy
                             {
                                 float water_density  = 1.03f;
@@ -552,7 +551,7 @@ namespace Spartan
                                 float linear_velocity_y = water_density * m_physics_body_to_control->GetLinearVelocity().y;
                                 float drag_force_y      = 0.5f * water_density * linear_velocity_y * linear_velocity_y * drag_coefficient;
 
-                                // Making drag force opposite to the velocity direction
+                                // making drag force opposite to the velocity direction
                                 if (linear_velocity_y > 0)
                                 {
                                     drag_force_y = -drag_force_y;
@@ -561,6 +560,7 @@ namespace Spartan
                                 m_physics_body_to_control->ApplyForce(buoyancy_force * 1000.0f, PhysicsForce::Constant);
                                 m_physics_body_to_control->ApplyForce(Vector3(0.0f, drag_force_y, 0.0f) * 200.0f, PhysicsForce::Constant);
                             }
+
                             // movement
                             Vector3 velocity_current = m_physics_body_to_control->GetLinearVelocity();
                             Vector3 velocity_new     = Vector3(m_movement_speed.x * 20.0f, velocity_current.y, m_movement_speed.z * 20.0f);
@@ -572,7 +572,7 @@ namespace Spartan
                         {
                             if (is_grounded)
                             {
-                                m_physics_body_to_control->ApplyForce(Vector3::Up * 500.0f, PhysicsForce::Impulse);
+                                m_physics_body_to_control->ApplyForce(Vector3::Up * 800.0f, PhysicsForce::Impulse);
                             }
                         }
                     }
@@ -605,17 +605,17 @@ namespace Spartan
             // Something is not right with the duration...
             const float lerp_duration = 2.0f + Helper::Clamp(m_lerp_to_target_distance * 0.01f, 0.0f, 2.0f);
 
-            // Alpha
+            // alpha
             m_lerp_to_target_alpha += static_cast<float>(Timer::GetDeltaTimeSec()) / lerp_duration;
 
-            // Position
+            // position
             if (m_lerp_to_target_p)
             {
                 const Vector3 interpolated_position = Vector3::Lerp(GetEntity()->GetPosition(), m_lerp_to_target_position, m_lerp_to_target_alpha);
                 GetEntity()->SetPosition(interpolated_position);
             }
 
-            // Rotation
+            // rotation
             if (m_lerp_to_target_r)
             {
                 const Quaternion interpolated_rotation = Quaternion::Lerp(GetEntity()->GetRotation(), m_lerp_to_target_rotation, Helper::Clamp(m_lerp_to_target_alpha, 0.0f, 1.0f));
