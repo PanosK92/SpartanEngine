@@ -19,6 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#ifndef SPARTAN_COMMON_BUFFERS
+#define SPARTAN_COMMON_BUFFERS
+
+//= STRUCT DEFINITIONS =========================================================================================================================================
 struct FrameBufferData
 {
     matrix view;
@@ -51,7 +55,7 @@ struct FrameBufferData
     float2 padding_1;
 
     float3 camera_position_previous;
-    float padding_2;
+    uint material_index;
 };
 
 struct LightBufferData
@@ -72,42 +76,48 @@ struct LightBufferData
     uint options;
 };
 
-cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame;  }; // low frequency    - updates once per frame
-cbuffer BufferLight : register(b1) { LightBufferData buffer_light;  }; // medium frequency - updates per light
-
 struct PassBufferData
 {
     matrix transform;
-    matrix m_value;
+    matrix values; // in the g-buffer this is used for the previous, transformation matrix
 };
+//==============================================================================================================================================================
 
+//= RESOURCE DECLARATIONS ======================================================================================================================================
 [[vk::push_constant]]
 PassBufferData buffer_pass;
+cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame;  };
+cbuffer BufferLight : register(b1) { LightBufferData buffer_light;  };
+//==============================================================================================================================================================
 
+//= EASY PROPERTY ACCESS =======================================================================================================================================
 // lighting properties
-bool light_is_directional()           { return buffer_light.options & uint(1U << 0); }
-bool light_is_point()                 { return buffer_light.options & uint(1U << 1); }
-bool light_is_spot()                  { return buffer_light.options & uint(1U << 2); }
-bool light_has_shadows()              { return buffer_light.options & uint(1U << 3); }
-bool light_has_shadows_transparent()  { return buffer_light.options & uint(1U << 4); }
-bool light_is_volumetric()            { return buffer_light.options & uint(1U << 5); }
-
-// frame properties
-bool is_taa_enabled()                  { return any(buffer_frame.taa_jitter_current); }
-bool is_ssr_enabled()                  { return buffer_frame.options & uint(1U << 0); }
-bool is_ssgi_enabled()                 { return buffer_frame.options & uint(1U << 1); }
-bool is_screen_space_shadows_enabled() { return buffer_frame.options & uint(1U << 2); }
-bool is_fog_enabled()                  { return buffer_frame.options & uint(1U << 3); }
-bool is_fog_volumetric_enabled()       { return buffer_frame.options & uint(1U << 4); }
+bool light_is_directional()               { return buffer_light.options & uint(1U << 0); }
+bool light_is_point()                     { return buffer_light.options & uint(1U << 1); }
+bool light_is_spot()                      { return buffer_light.options & uint(1U << 2); }
+bool light_has_shadows()                  { return buffer_light.options & uint(1U << 3); }
+bool light_has_shadows_transparent()      { return buffer_light.options & uint(1U << 4); }
+bool light_is_volumetric()                { return buffer_light.options & uint(1U << 5); }
+                                          
+// frame properties                       
+bool is_taa_enabled()                     { return any(buffer_frame.taa_jitter_current); }
+bool is_ssr_enabled()                     { return buffer_frame.options & uint(1U << 0); }
+bool is_ssgi_enabled()                    { return buffer_frame.options & uint(1U << 1); }
+bool is_screen_space_shadows_enabled()    { return buffer_frame.options & uint(1U << 2); }
+bool is_fog_enabled()                     { return buffer_frame.options & uint(1U << 3); }
+bool is_fog_volumetric_enabled()          { return buffer_frame.options & uint(1U << 4); }
 
 // pass properties
-matrix pass_get_transform_previous()      { return buffer_pass.m_value; }
-float2 pass_get_resolution_in()           { return float2(buffer_pass.m_value._m03, buffer_pass.m_value._m22); }
-float2 pass_get_resolution_out()          { return float2(buffer_pass.m_value._m23, buffer_pass.m_value._m30); }
-float3 pass_get_f3_value()                { return float3(buffer_pass.m_value._m00, buffer_pass.m_value._m01, buffer_pass.m_value._m02); }
-float3 pass_get_f3_value2()               { return float3(buffer_pass.m_value._m20, buffer_pass.m_value._m21, buffer_pass.m_value._m31); }
-float4 pass_get_f4_value()                { return float4(buffer_pass.m_value._m10, buffer_pass.m_value._m11, buffer_pass.m_value._m12, buffer_pass.m_value._m13); }
-bool pass_is_transparent()                { return buffer_pass.m_value._m33; }
-bool pass_is_reflection_probe_available() { return pass_get_f4_value().x == 1.0f; } // this is more risky
+matrix pass_get_transform_previous()      { return buffer_pass.values; }
+float2 pass_get_resolution_in()           { return float2(buffer_pass.values._m03, buffer_pass.values._m22); }
+float2 pass_get_resolution_out()          { return float2(buffer_pass.values._m23, buffer_pass.values._m30); }
+float3 pass_get_f3_value()                { return float3(buffer_pass.values._m00, buffer_pass.values._m01, buffer_pass.values._m02); }
+float3 pass_get_f3_value2()               { return float3(buffer_pass.values._m20, buffer_pass.values._m21, buffer_pass.values._m31); }
+float4 pass_get_f4_value()                { return float4(buffer_pass.values._m10, buffer_pass.values._m11, buffer_pass.values._m12, buffer_pass.values._m13); }
+bool pass_is_transparent()                { return buffer_pass.values._m33; }
 bool pass_is_opaque()                     { return !pass_is_transparent(); }
-uint pass_get_material_index()            { return buffer_pass.m_value._m32; }
+bool pass_is_reflection_probe_available() { return pass_get_f4_value().x == 1.0f; } // this is more risky
+// _m32 is available for use
+//==============================================================================================================================================================
+
+#endif // SPARTAN_COMMON_BUFFERS

@@ -20,8 +20,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const float g_quality_distance_low = 500.0f;
-
 struct PixelInputType
 {
     float4 position             : SV_POSITION;
@@ -145,6 +143,8 @@ PixelInputType mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID
     
     return output;
 }
+
+static const float g_quality_distance_low = 500.0f;
 
 PixelOutputType mainPS(PixelInputType input)
 {
@@ -288,7 +288,7 @@ PixelOutputType mainPS(PixelInputType input)
     // write to g-buffer
     PixelOutputType g_buffer;
     g_buffer.albedo   = albedo;
-    g_buffer.normal   = float4(normal, GetMaterial().index);
+    g_buffer.normal   = float4(normal, buffer_frame.material_index);
     g_buffer.material = float4(roughness, metalness, emission, occlusion);
     g_buffer.velocity = velocity;
 

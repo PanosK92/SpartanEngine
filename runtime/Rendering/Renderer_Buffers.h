@@ -63,7 +63,7 @@ namespace Spartan
         Math::Vector2 padding;
 
         Math::Vector3 camera_position_previous;
-        float padding2;
+        uint32_t material_index;
 
         void set_bit(const bool set, const uint32_t bit)
         {
@@ -94,6 +94,7 @@ namespace Spartan
                 resolution_render          == rhs.resolution_render          &&
                 taa_jitter_current         == rhs.taa_jitter_current         &&
                 taa_jitter_previous        == rhs.taa_jitter_previous        &&
+                material_index             == rhs.material_index             &&
                 options                    == rhs.options;
         }
 
@@ -244,8 +245,8 @@ namespace Spartan
 
         uint32_t properties      = 0;
         float world_space_height = 0.0f;
-        uint32_t index           = 0;
-        uint32_t padding         = 0;
+        float ior                = 1.0f;
+        uint32_t padding_1       = 0;
 
         float sheen;
         Math::Vector3 sheen_tint;
@@ -256,7 +257,6 @@ namespace Spartan
         float clearcoat_roughness;
 
         float subsurface_scattering;
-        float ior;
-        Math::Vector2 padding_2;
+        Math::Vector3 padding_2;
     };
 }

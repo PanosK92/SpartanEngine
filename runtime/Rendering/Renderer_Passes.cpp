@@ -318,9 +318,8 @@ namespace Spartan
                     {
                         // acquire renderable component
                         shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                        Mesh* mesh         = renderable->GetMesh();
-                        Material* material = renderable->GetMaterial();
-                        if (!renderable || !renderable->GetCastShadows() || !mesh || !material)
+                        Mesh* mesh = renderable->GetMesh();
+                        if (!renderable || !renderable->GetCastShadows() || !mesh)
                             continue;
 
                         // skip objects outside of the view frustum
@@ -339,16 +338,22 @@ namespace Spartan
                         }
 
                         // set pass constants
-                        if (Material* material = renderable->GetMaterial())
                         {
-                            m_cb_pass_cpu.set_material_index(material->GetIndex());
-                            m_cb_pass_cpu.set_f3_value(
-                                material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
-                                material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
-                                material->GetProperty(MaterialProperty::ColorA)
-                            );
                             m_cb_pass_cpu.set_f3_value2(static_cast<float>(array_index), 0.0f, 0.0f);
                             m_cb_pass_cpu.transform = entity->GetMatrix();
+
+                            if (Material* material = renderable->GetMaterial())
+                            {
+                                m_cb_pass_cpu.set_f3_value(
+                                    material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
+                                    material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
+                                    material->GetProperty(MaterialProperty::ColorA)
+                                );
+
+                                m_cb_frame_cpu.material_index = material->GetIndex();
+                                UpdateConstantBufferFrame(cmd_list);
+                            }
+
                             PushPassConstants(cmd_list);
                         }
 
@@ -539,15 +544,20 @@ namespace Spartan
                 }
 
                 // set pass constants
-                if (Material* material = renderable->GetMaterial())
                 {
                     m_cb_pass_cpu.transform = entity->GetMatrix();
-                    m_cb_pass_cpu.set_f3_value(
-                        material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
-                        material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
-                        material->GetProperty(MaterialProperty::ColorA)
-                    );
-                    m_cb_pass_cpu.set_material_index(material->GetIndex());
+
+                    if (Material* material = renderable->GetMaterial())
+                    {
+                        m_cb_pass_cpu.set_f3_value(
+                            material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
+                            material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
+                            material->GetProperty(MaterialProperty::ColorA)
+                        );
+
+                        m_cb_frame_cpu.material_index = material->GetIndex();
+                        UpdateConstantBufferFrame(cmd_list);
+                    }
 
                     PushPassConstants(cmd_list);
                 }
@@ -649,21 +659,19 @@ namespace Spartan
                     cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
                 }
 
-                // push pass constants
+                // set pass constants
                 {
-                    if (Material* material = renderable->GetMaterial())
-                    {
-                        m_cb_pass_cpu.set_material_index(material->GetIndex());
-                    }
-
-                    m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
-
-                    // update transform
                     m_cb_pass_cpu.transform = entity->GetMatrix();
                     m_cb_pass_cpu.set_transform_previous(entity->GetMatrixPrevious());
-                    entity->SetMatrixPrevious(m_cb_pass_cpu.transform);
-
+                    m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
                     PushPassConstants(cmd_list);
+
+                    entity->SetMatrixPrevious(m_cb_pass_cpu.transform);
+                    if (Material* material = renderable->GetMaterial())
+                    {
+                        m_cb_frame_cpu.material_index = material->GetIndex();
+                        UpdateConstantBufferFrame(cmd_list);
+                    }             
                 }
 
                 draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
@@ -1703,8 +1711,8 @@ namespace Spartan
 
             // set textures
             SetGbufferTextures(cmd_list);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_out);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_in);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_bokeh_half);
 
             // render
