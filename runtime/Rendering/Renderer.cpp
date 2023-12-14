@@ -137,45 +137,41 @@ namespace Spartan
                 if (unique_material_ids.find(material->GetObjectId()) != unique_material_ids.end())
                     return;
 
-                material->SetIndex(material_index);
-
                 // properties
                 {
-                    properties[material_index].index                 = material->GetIndex();
-                    properties[material_index].world_space_height    = material->GetProperty(MaterialProperty::WorldSpaceHeight);
-                    properties[material_index].color.x               = material->GetProperty(MaterialProperty::ColorR);
-                    properties[material_index].color.y               = material->GetProperty(MaterialProperty::ColorG);
-                    properties[material_index].color.z               = material->GetProperty(MaterialProperty::ColorB);
-                    properties[material_index].color.w               = material->GetProperty(MaterialProperty::ColorA);
-                    properties[material_index].tiling_uv.x           = material->GetProperty(MaterialProperty::TextureTilingX);
-                    properties[material_index].tiling_uv.y           = material->GetProperty(MaterialProperty::TextureTilingY);
-                    properties[material_index].offset_uv.x           = material->GetProperty(MaterialProperty::TextureOffsetX);
-                    properties[material_index].offset_uv.y           = material->GetProperty(MaterialProperty::TextureOffsetY);
-                    properties[material_index].roughness_mul         = material->GetProperty(MaterialProperty::Roughness);
-                    properties[material_index].metallic_mul          = material->GetProperty(MaterialProperty::Metalness);
-                    properties[material_index].normal_mul            = material->GetProperty(MaterialProperty::Normal);
-                    properties[material_index].height_mul            = material->GetProperty(MaterialProperty::Height);
-                    properties[material_index].anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
-                    properties[material_index].anisotropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
-                    properties[material_index].clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
-                    properties[material_index].clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
-                    properties[material_index].sheen                 = material->GetProperty(MaterialProperty::Sheen);
-                    properties[material_index].sheen_tint            = material->GetProperty(MaterialProperty::SheenTint);
-                    properties[material_index].subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
-                    properties[material_index].ior                   = material->GetProperty(MaterialProperty::Ior);
-
-                    properties[material_index].properties = material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness) ? (1U << 0)  : 0;
-                    properties[material_index].properties = material->HasTexture(MaterialTexture::Height)                            ? (1U << 1)  : 0;
-                    properties[material_index].properties = material->HasTexture(MaterialTexture::Normal)                            ? (1U << 2)  : 0;
-                    properties[material_index].properties = material->HasTexture(MaterialTexture::Color)                             ? (1U << 3)  : 0;
-                    properties[material_index].properties = material->HasTexture(MaterialTexture::Roughness)                         ? (1U << 4)  : 0;
-                    properties[material_index].properties = material->HasTexture(MaterialTexture::Metalness)                         ? (1U << 5)  : 0;
-                    properties[material_index].properties = material->HasTexture(MaterialTexture::AlphaMask)                         ? (1U << 6)  : 0;
-                    properties[material_index].properties = material->HasTexture(MaterialTexture::Emission)                          ? (1U << 7)  : 0;
-                    properties[material_index].properties = material->HasTexture(MaterialTexture::Occlusion)                         ? (1U << 8)  : 0;
-                    properties[material_index].properties = material->GetProperty(MaterialProperty::TextureSlopeBased)               ? (1U << 9)  : 0;
-                    properties[material_index].properties = material->GetProperty(MaterialProperty::VertexAnimateWind)               ? (1U << 10) : 0;
-                    properties[material_index].properties = material->GetProperty(MaterialProperty::VertexAnimateWater)              ? (1U << 11) : 0;
+                    properties[material_index].world_space_height     = material->GetProperty(MaterialProperty::WorldSpaceHeight);
+                    properties[material_index].color.x                = material->GetProperty(MaterialProperty::ColorR);
+                    properties[material_index].color.y                = material->GetProperty(MaterialProperty::ColorG);
+                    properties[material_index].color.z                = material->GetProperty(MaterialProperty::ColorB);
+                    properties[material_index].color.w                = material->GetProperty(MaterialProperty::ColorA);
+                    properties[material_index].tiling_uv.x            = material->GetProperty(MaterialProperty::TextureTilingX);
+                    properties[material_index].tiling_uv.y            = material->GetProperty(MaterialProperty::TextureTilingY);
+                    properties[material_index].offset_uv.x            = material->GetProperty(MaterialProperty::TextureOffsetX);
+                    properties[material_index].offset_uv.y            = material->GetProperty(MaterialProperty::TextureOffsetY);
+                    properties[material_index].roughness_mul          = material->GetProperty(MaterialProperty::Roughness);
+                    properties[material_index].metallic_mul           = material->GetProperty(MaterialProperty::Metalness);
+                    properties[material_index].normal_mul             = material->GetProperty(MaterialProperty::Normal);
+                    properties[material_index].height_mul             = material->GetProperty(MaterialProperty::Height);
+                    properties[material_index].anisotropic            = material->GetProperty(MaterialProperty::Anisotropic);
+                    properties[material_index].anisotropic_rotation   = material->GetProperty(MaterialProperty::AnisotropicRotation);
+                    properties[material_index].clearcoat              = material->GetProperty(MaterialProperty::Clearcoat);
+                    properties[material_index].clearcoat_roughness    = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
+                    properties[material_index].sheen                  = material->GetProperty(MaterialProperty::Sheen);
+                    properties[material_index].sheen_tint             = material->GetProperty(MaterialProperty::SheenTint);
+                    properties[material_index].subsurface_scattering  = material->GetProperty(MaterialProperty::SubsurfaceScattering);
+                    properties[material_index].ior                    = material->GetProperty(MaterialProperty::Ior);
+                    properties[material_index].properties            |= material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness) ? (1U << 0)  : 0;
+                    properties[material_index].properties            |= material->HasTexture(MaterialTexture::Height)                            ? (1U << 1)  : 0;
+                    properties[material_index].properties            |= material->HasTexture(MaterialTexture::Normal)                            ? (1U << 2)  : 0;
+                    properties[material_index].properties            |= material->HasTexture(MaterialTexture::Color)                             ? (1U << 3)  : 0;
+                    properties[material_index].properties            |= material->HasTexture(MaterialTexture::Roughness)                         ? (1U << 4)  : 0;
+                    properties[material_index].properties            |= material->HasTexture(MaterialTexture::Metalness)                         ? (1U << 5)  : 0;
+                    properties[material_index].properties            |= material->HasTexture(MaterialTexture::AlphaMask)                         ? (1U << 6)  : 0;
+                    properties[material_index].properties            |= material->HasTexture(MaterialTexture::Emission)                          ? (1U << 7)  : 0;
+                    properties[material_index].properties            |= material->HasTexture(MaterialTexture::Occlusion)                         ? (1U << 8)  : 0;
+                    properties[material_index].properties            |= material->GetProperty(MaterialProperty::TextureSlopeBased)               ? (1U << 9)  : 0;
+                    properties[material_index].properties            |= material->GetProperty(MaterialProperty::VertexAnimateWind)               ? (1U << 10) : 0;
+                    properties[material_index].properties            |= material->GetProperty(MaterialProperty::VertexAnimateWater)              ? (1U << 11) : 0;
                 }
                 
                 // textures
@@ -191,7 +187,8 @@ namespace Spartan
                     textures[material_index + 8]  = material->GetTexture(MaterialTexture::Height);
                     textures[material_index + 9]  = material->GetTexture(MaterialTexture::AlphaMask);
                 }
-           
+
+                material->SetIndex(material_index);
                 material_index += Material::texture_count_support;
             }
 
@@ -336,7 +333,8 @@ namespace Spartan
     {
         SP_FIRE_EVENT(EventType::RendererOnShutdown);
 
-        // manually invoke the deconstructors so that ParseDeletionQueue(), releases their rhi resources.
+        // manually invoke the deconstructors so that ParseDeletionQueue()
+        // releases their rhi resources before device destruction
         {
             DestroyResources();
 
@@ -349,7 +347,6 @@ namespace Spartan
         RenderDoc::Shutdown();
         RHI_Device::QueueWaitAll();
         RHI_FidelityFX::Destroy();
-        RHI_Device::DeletionQueueParse();
         RHI_Device::Destroy();
     }
 

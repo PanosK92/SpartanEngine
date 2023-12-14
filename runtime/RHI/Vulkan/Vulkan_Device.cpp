@@ -1005,28 +1005,30 @@ namespace Spartan
 
     void RHI_Device::Destroy()
     {
+        RHI_Device::DeletionQueueParse();
+
         SP_ASSERT(queues::graphics != nullptr);
 
         QueueWaitAll();
 
-        // Destroy command pools
+        // destroy command pools
         command_pools::regular.clear();
         command_pools::immediate.fill(nullptr);
 
-        // Descriptor pool
+        // descriptor pool
         vkDestroyDescriptorPool(RHI_Context::device, descriptors::descriptor_pool, nullptr);
         descriptors::descriptor_pool = nullptr;
 
-        // Allocator
+        // allocator
         vulkan_memory_allocator::destroy();
 
-        // Debug messenger
+        // debug messenger
         if (RHI_Context::validation)
         {
             validation_layer_logging::shutdown(RHI_Context::instance);
         }
 
-        // Device and instance
+        // device and instance
         vkDestroyDevice(RHI_Context::device, nullptr);
         vkDestroyInstance(RHI_Context::instance, nullptr);
     }

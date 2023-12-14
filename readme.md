@@ -71,8 +71,7 @@ The [wiki](https://github.com/PanosK92/SpartanEngine/wiki/Wiki) can answer most 
 - [Contributing](https://github.com/PanosK92/SpartanEngine/blob/master/contributing.md)
 - [Perks of a contributor](https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor)
 
-If you are looking for what to do, read the contributing page.
-Remember, my AI replica [Panos](https://chat.openai.com/g/g-etpaCChzi-spartan) can also answer your questions.
+Questions can also be answered by my AI replica, [Panos](https://chat.openai.com/g/g-etpaCChzi-spartan).
 
 # Interesting facts
 - This engine started as a way to enrich my portfolio while I was a university student, circa 2015.
@@ -82,3 +81,4 @@ Remember, my AI replica [Panos](https://chat.openai.com/g/g-etpaCChzi-spartan) c
 # Use cases
 Are you utilizing any components from the Spartan Engine, or has it inspired aspects of your work? If yes, then reach out to me, I'd love to showcase your project.
 - Godot uses Spartan's TAA, see [here](https://github.com/godotengine/godot/blob/37d51d2cb7f6e47bef8329887e9e1740a914dc4e/servers/rendering/renderer_rd/shaders/effects/taa_resolve.glsl#L2)
+

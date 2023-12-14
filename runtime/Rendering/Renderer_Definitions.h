@@ -153,13 +153,13 @@ namespace Spartan
 
     enum class Renderer_BindingsUav
     {
-        sb_materials = 0,
-        tex          = 1,
-        tex2         = 2,
-        tex3         = 3,
-        tex_sss      = 4,
-        sb_spd       = 5,
-        tex_spd      = 6,
+        sb_materials      = 0,
+        tex               = 1,
+        tex2              = 2,
+        tex3              = 3,
+        tex_sss           = 4,
+        sb_spd            = 5,
+        tex_spd           = 6,
     };
 
     enum class Renderer_Shader : uint8_t

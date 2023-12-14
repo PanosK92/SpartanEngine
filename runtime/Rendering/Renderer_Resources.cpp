@@ -72,31 +72,36 @@ namespace Spartan
 
     void Renderer::CreateConstantBuffers()
     {
+        uint32_t times_used_in_frame = 1000; // safe to tweak this, if it's enough the engine will assert
+        uint32_t element_count       = times_used_in_frame * resources_frame_lifetime;
+
         #define constant_buffer(x) constant_buffers[static_cast<uint8_t>(x)]
 
         constant_buffer(Renderer_ConstantBuffer::Frame) = make_shared<RHI_ConstantBuffer>(string("frame"));
-        constant_buffer(Renderer_ConstantBuffer::Frame)->Create<Cb_Frame>(resources_frame_lifetime);
+        constant_buffer(Renderer_ConstantBuffer::Frame)->Create<Cb_Frame>(element_count);
 
         constant_buffer(Renderer_ConstantBuffer::Light) = make_shared<RHI_ConstantBuffer>(string("light"));
-        constant_buffer(Renderer_ConstantBuffer::Light)->Create<Cb_Light>(1600 * resources_frame_lifetime);
+        constant_buffer(Renderer_ConstantBuffer::Light)->Create<Cb_Light>(element_count);
     }
 
     void Renderer::CreateStructuredBuffers()
     { 
         uint32_t times_used_in_frame = 12; // safe to tweak this, if it's enough the engine will assert
         uint32_t element_count       = times_used_in_frame * resources_frame_lifetime;
+        uint32_t stride              = 0;
 
         #define structured_buffer(x) structured_buffers[static_cast<uint8_t>(x)]
 
         {
-            uint32_t stride = static_cast<uint32_t>(sizeof(uint32_t));
+            stride = static_cast<uint32_t>(sizeof(uint32_t));
             structured_buffer(Renderer_StructuredBuffer::Spd) = make_shared<RHI_StructuredBuffer>(stride, element_count, "spd_counter");
 
+            // only needs to be set once, then after each use SPD resets it itself
             uint32_t counter_value = 0;
             structured_buffer(Renderer_StructuredBuffer::Spd)->Update(&counter_value);
         }
 
-        uint32_t stride = static_cast<uint32_t>(sizeof(Sb_MaterialProperties)) * rhi_max_array_size;
+        stride = static_cast<uint32_t>(sizeof(Sb_MaterialProperties)) * rhi_max_array_size;
         structured_buffer(Renderer_StructuredBuffer::Material) = make_shared<RHI_StructuredBuffer>(stride, element_count, "materials");
     }
 
