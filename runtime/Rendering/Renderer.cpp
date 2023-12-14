@@ -131,6 +131,14 @@ namespace Spartan
             uint32_t material_index = 0;
             bool dirty              = true;
 
+            void clear()
+            {
+                properties.fill(Sb_MaterialProperties{});
+                textures.fill(nullptr);
+                unique_material_ids.clear();
+                material_index = 0;
+            }
+
             void update(Material* material)
             {
                 // check if the material's ID is already processed
@@ -206,15 +214,7 @@ namespace Spartan
                 }
             }
 
-            void clear()
-            {
-                properties.fill(Sb_MaterialProperties{});
-                textures.fill(nullptr);
-                unique_material_ids.clear();
-                material_index = 0;
-            }
-
-            void refresh(unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& renderables)
+            void update(unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& renderables)
             {
                 clear();
 
@@ -223,7 +223,7 @@ namespace Spartan
                 update(renderables[Renderer_Entity::GeometryTransparent]);
                 update(renderables[Renderer_Entity::GeometryTransparentInstanced]);
 
-                dirty = true;
+                dirty = false;
             }
         }
     }
@@ -707,16 +707,15 @@ namespace Spartan
                 }
             }
 
-            // update bindless resources
+            // update and set bindless resources
             if (world_materials::dirty)
             {
-                // material properties
+                // update
+                world_materials::update(m_renderables);
+
+                // set
                 GetStructuredBuffer(Renderer_StructuredBuffer::Material)->Update(&world_materials::properties[0]);
-
-                // material textures
                 RHI_Device::UpdateBindlessResources(nullptr, &world_materials::textures);
-
-                world_materials::dirty = false;
             }
         }
     }
@@ -783,9 +782,9 @@ namespace Spartan
             sort_renderables(m_camera.get(), &m_renderables[Renderer_Entity::Geometry], false);
             sort_renderables(m_camera.get(), &m_renderables[Renderer_Entity::GeometryTransparent], true);
 
-            world_materials::refresh(m_renderables);
-
             m_entities_to_add.clear();
+
+            world_materials::dirty = true;
         }
 
         // generate mips
