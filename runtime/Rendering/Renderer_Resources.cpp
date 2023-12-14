@@ -268,7 +268,7 @@ namespace Spartan
             m_brdf_specular_lut_rendered = false;
 
             // atmospheric scattering
-            render_target(Renderer_RenderTexture::atmospheric_scattering) = make_unique<RHI_Texture2D>(2048, 2048, mip_count, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_atmospheric_scattering");
+            render_target(Renderer_RenderTexture::skysphere) = make_unique<RHI_Texture2D>(2048, 2048, mip_count, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_skysphere");
         }
 
         // dynamic resolution
@@ -387,9 +387,9 @@ namespace Spartan
             shader(Renderer_Shader::quad_p)->Compile(RHI_Shader_Pixel, shader_dir + "quad.hlsl", async);
         }
 
-        // atmospheric scattering
-        shader(Renderer_Shader::atmospheric_scattering_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::atmospheric_scattering_c)->Compile(RHI_Shader_Compute, shader_dir + "atmospheric_scattering.hlsl", async);
+        // skysphere
+        shader(Renderer_Shader::skysphere_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::skysphere_c)->Compile(RHI_Shader_Compute, shader_dir + "skysphere.hlsl", async);
 
         // font
         shader(Renderer_Shader::font_v) = make_shared<RHI_Shader>();

@@ -208,7 +208,7 @@ namespace Spartan
         ssgi_c,
         ssr_c,
         sss_c_bend,
-        atmospheric_scattering_c,
+        skysphere_c,
         temporal_filter_c,
         blur_gaussian_c,
         blur_gaussian_bilaterial_c,
@@ -244,7 +244,7 @@ namespace Spartan
         ssgi_filtered,
         ssr,
         sss,
-        atmospheric_scattering,
+        skysphere,
         bloom,
         blur,
         outline
