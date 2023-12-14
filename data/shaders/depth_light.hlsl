@@ -37,7 +37,7 @@ Pixel_PosUv mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 // transparent/colored shadows
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-    float2 uv    = float2(input.uv.x * buffer_material.tiling.x + buffer_material.offset.x, input.uv.y * buffer_material.offset.y + buffer_material.tiling.y);
+    float2 uv    = float2(input.uv.x * GetMaterial().tiling.x + GetMaterial().offset.x, input.uv.y * GetMaterial().offset.y + GetMaterial().tiling.y);
     float4 color = tex.SampleLevel(samplers[sampler_anisotropic_wrap], uv, 0);
-    return float4(degamma(color.rgb), color.a) * buffer_material.color;
+    return float4(degamma(color.rgb), color.a) * GetMaterial().color;
 }

@@ -76,7 +76,7 @@ struct Surface
 
         // access the material structured buffer to get additional properties
         // the normal's alpha channel holds the material index
-        MaterialProperties mat_properties = material_properties[sample_normal.a];
+        MaterialProperties mat_properties = buffer_materials[sample_normal.a];
         
         // misc
         uv     = (position_screen + 0.5f) / pass_get_resolution_out();

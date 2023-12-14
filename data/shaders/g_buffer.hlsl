@@ -149,10 +149,10 @@ PixelInputType mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID
 PixelOutputType mainPS(PixelInputType input)
 {
     // initial g-buffer values
-    float4 albedo   = buffer_material.color;
+    float4 albedo   = GetMaterial().color;
     float3 normal   = input.normal_world.xyz;
-    float roughness = buffer_material.roughness;
-    float metalness = buffer_material.metallness;
+    float roughness = GetMaterial().roughness;
+    float metalness = GetMaterial().metallness;
     float occlusion = 1.0f;
     float emission  = 0.0f;
     float2 velocity = 0.0f;
@@ -173,7 +173,7 @@ PixelOutputType mainPS(PixelInputType input)
 
     // uv
     float2 uv = input.uv;
-    uv        = float2(uv.x * buffer_material.tiling.x + buffer_material.offset.x, uv.y * buffer_material.tiling.y + buffer_material.offset.y);
+    uv        = float2(uv.x * GetMaterial().tiling.x + GetMaterial().offset.x, uv.y * GetMaterial().tiling.y + GetMaterial().offset.y);
     
     // alpha mask
     float alpha_mask = 1.0f;
@@ -209,7 +209,7 @@ PixelOutputType mainPS(PixelInputType input)
         // parallax mapping
         if (has_texture_height())
         {
-            float scale = buffer_material.height * 0.01f;
+            float scale = GetMaterial().height * 0.01f;
 
             float3x3 world_to_tangent       = make_world_to_tangent_matrix(input.normal_world, input.tangent_world);
             float3 camera_to_pixel_tangent  = normalize(mul(normalize(camera_to_pixel_world), world_to_tangent));
@@ -223,7 +223,7 @@ PixelOutputType mainPS(PixelInputType input)
             // get tangent space normal and apply the user defined intensity, then transform it to world space
             float3 normal_sample       = sampling::smart(material_normal, material_normal_2, uv, slope, input.position_world).xyz;
             float3 tangent_normal      = normalize(unpack(normal_sample));
-            float normal_intensity     = clamp(buffer_material.normal, 0.012f, buffer_material.normal);
+            float normal_intensity     = clamp(GetMaterial().normal, 0.012f, GetMaterial().normal);
             tangent_normal.xy         *= saturate(normal_intensity);
             float3x3 tangent_to_world  = make_tangent_to_world_matrix(input.normal_world, input.tangent_world);
             normal                     = normalize(mul(tangent_normal, tangent_to_world).xyz);
@@ -288,7 +288,7 @@ PixelOutputType mainPS(PixelInputType input)
     // write to g-buffer
     PixelOutputType g_buffer;
     g_buffer.albedo   = albedo;
-    g_buffer.normal   = float4(normal, buffer_material.index);
+    g_buffer.normal   = float4(normal, GetMaterial().index);
     g_buffer.material = float4(roughness, metalness, emission, occlusion);
     g_buffer.velocity = velocity;
 

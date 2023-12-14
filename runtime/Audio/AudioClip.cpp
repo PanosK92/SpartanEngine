@@ -22,11 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================
 #include "pch.h"
 #include "AudioClip.h"
+#include "Audio.h"
+#include "../IO/FileStream.h"
+#include "../World/Entity.h"
 #if defined(_MSC_VER)
 #include <fmod.hpp>
 #endif
-#include "Audio.h"
-#include "../IO/FileStream.h"
 //===========================
 
 //= NAMESPACES ================

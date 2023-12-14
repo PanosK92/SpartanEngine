@@ -56,7 +56,8 @@ Texture2D tex_font_atlas         : register(t26);
 TextureCube tex_reflection_probe : register(t27);
 Texture2DArray tex_sss			 : register(t28);
 
-//= MATERIAL TEXTURES =================================================================
+//= MATERIALS =======================================================================================
+// texture array containing all material present int the world
 static const uint material_albedo    = 0;
 static const uint material_albedo_2  = 1;
 static const uint material_roughness = 2;
@@ -67,14 +68,27 @@ static const uint material_occlusion = 6;
 static const uint material_emission  = 7;
 static const uint material_height    = 8;
 static const uint material_mask      = 9;
-
 Texture2D tex_materials[] : register(t29, space1);
+#define GET_TEXTURE(index_texture) tex_materials[pass_get_material_index() + index_texture]
 
-#define GET_TEXTURE(index_texture) tex_materials[buffer_material.index + index_texture]
-//=====================================================================================
-
+// property buffer containg all materials present in the world
 struct MaterialProperties
 {
+    float4 color;
+
+    float2 tiling;
+    float2 offset;
+
+    float roughness;
+    float metallness;
+    float normal;
+    float height;
+
+    uint properties;
+    float world_space_height;
+    uint index;
+    uint padding_1;
+    
     float sheen;
     float3 sheen_tint;
     
@@ -85,14 +99,30 @@ struct MaterialProperties
     
     float subsurface_scattering;
     float ior;
-    float2 padding;
+    float2 padding_2;
 };
+RWStructuredBuffer<MaterialProperties> buffer_materials : register(u0);
 
-// storage
-RWTexture2D<float4> tex_uav                                : register(u0);
-RWTexture2D<float4> tex_uav2                               : register(u1);
-RWTexture2D<float4> tex_uav3                               : register(u2);
-RWTexture2DArray<float4> tex_uav_sss                       : register(u3);
-RWStructuredBuffer<MaterialProperties> material_properties : register(u4); // matches ID/index to material properties, used for lighting
+// easy access to certain material properties (and the material itself)
+MaterialProperties GetMaterial()              { return buffer_materials[pass_get_material_index()]; }
+bool has_single_texture_roughness_metalness() { return GetMaterial().properties & uint(1U << 0);    }
+bool has_texture_height()                     { return GetMaterial().properties & uint(1U << 1);    }
+bool has_texture_normal()                     { return GetMaterial().properties & uint(1U << 2);    }
+bool has_texture_albedo()                     { return GetMaterial().properties & uint(1U << 3);    }
+bool has_texture_roughness()                  { return GetMaterial().properties & uint(1U << 4);    }
+bool has_texture_metalness()                  { return GetMaterial().properties & uint(1U << 5);    }
+bool has_texture_alpha_mask()                 { return GetMaterial().properties & uint(1U << 6);    }
+bool has_texture_emissive()                   { return GetMaterial().properties & uint(1U << 7);    }
+bool has_texture_occlusion()                  { return GetMaterial().properties & uint(1U << 8);    }
+bool material_texture_slope_based()           { return GetMaterial().properties & uint(1U << 9);    }
+bool material_vertex_animate_wind()           { return GetMaterial().properties & uint(1U << 10);   }
+bool material_vertex_animate_water()          { return GetMaterial().properties & uint(1U << 11);   }
+//===================================================================================================
+
+// various storage textures/buffers
+RWTexture2D<float4> tex_uav                                : register(u1);
+RWTexture2D<float4> tex_uav2                               : register(u2);
+RWTexture2D<float4> tex_uav3                               : register(u3);
+RWTexture2DArray<float4> tex_uav_sss                       : register(u4);
 globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u5); // used by FidelityFX SPD
 globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u6); // used by FidelityFX SPD

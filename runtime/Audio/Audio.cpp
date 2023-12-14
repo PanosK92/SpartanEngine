@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "pch.h"
 #include "Audio.h"
+#include "../World/Entity.h"
 #include "../Profiling/Profiler.h"
 SP_WARNINGS_OFF
 #if defined(_MSC_VER)

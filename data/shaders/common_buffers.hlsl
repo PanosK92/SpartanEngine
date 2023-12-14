@@ -72,27 +72,8 @@ struct LightBufferData
     uint options;
 };
 
-struct MaterialBufferData
-{
-    float4 color;
-
-    float2 tiling;
-    float2 offset;
-
-    float roughness;
-    float metallness;
-    float normal;
-    float height;
-
-    uint properties;
-    float world_space_height;
-    uint index;
-    uint padding_3;
-};
-
-cbuffer BufferFrame    : register(b0) { FrameBufferData buffer_frame;       }; // low frequency    - updates once per frame
-cbuffer BufferLight    : register(b1) { LightBufferData buffer_light;       }; // medium frequency - updates per light
-cbuffer BufferMaterial : register(b2) { MaterialBufferData buffer_material; }; // medium frequency - updates per material during the g-buffer pass
+cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame;  }; // low frequency    - updates once per frame
+cbuffer BufferLight : register(b1) { LightBufferData buffer_light;  }; // medium frequency - updates per light
 
 struct PassBufferData
 {
@@ -102,20 +83,6 @@ struct PassBufferData
 
 [[vk::push_constant]]
 PassBufferData buffer_pass;
-
-// g-buffer texture properties
-bool has_single_texture_roughness_metalness() { return buffer_material.properties & uint(1U << 0); }
-bool has_texture_height()                     { return buffer_material.properties & uint(1U << 1); }
-bool has_texture_normal()                     { return buffer_material.properties & uint(1U << 2); }
-bool has_texture_albedo()                     { return buffer_material.properties & uint(1U << 3); }
-bool has_texture_roughness()                  { return buffer_material.properties & uint(1U << 4); }
-bool has_texture_metalness()                  { return buffer_material.properties & uint(1U << 5); }
-bool has_texture_alpha_mask()                 { return buffer_material.properties & uint(1U << 6); }
-bool has_texture_emissive()                   { return buffer_material.properties & uint(1U << 7); }
-bool has_texture_occlusion()                  { return buffer_material.properties & uint(1U << 8); }
-bool material_texture_slope_based()           { return buffer_material.properties & uint(1U << 9); }
-bool material_vertex_animate_wind()           { return buffer_material.properties & uint(1U << 10); }
-bool material_vertex_animate_water()          { return buffer_material.properties & uint(1U << 11); }
 
 // lighting properties
 bool light_is_directional()           { return buffer_light.options & uint(1U << 0); }
@@ -143,4 +110,4 @@ float4 pass_get_f4_value()                { return float4(buffer_pass.m_value._m
 bool pass_is_transparent()                { return buffer_pass.m_value._m33; }
 bool pass_is_reflection_probe_available() { return pass_get_f4_value().x == 1.0f; } // this is more risky
 bool pass_is_opaque()                     { return !pass_is_transparent(); }
-// m32 is free
+uint pass_get_material_index()            { return buffer_pass.m_value._m32; }
