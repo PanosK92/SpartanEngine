@@ -41,7 +41,7 @@ struct PixelOutputType
 
 struct sampling
 {
-    static float4 interleave(uint texture_1, uint texture_2, float2 uv)
+    static float4 interleave(uint texture_index_1, uint texture_index_2, float2 uv)
     {
         // constants for scale and direction of the normal map movement
         float2 direction_1 = float2(1.0, 0.5);
@@ -56,14 +56,14 @@ struct sampling
         float2 uv_2 = uv + buffer_frame.time * speed_2 * direction_2;
 
         // sample
-        float4 sample_1 = GET_TEXTURE(texture_1).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_1 * scale_1);
-        float4 sample_2 = GET_TEXTURE(texture_2).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_2 * scale_2);
+        float4 sample_1 = GET_TEXTURE(texture_index_1).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_1 * scale_1);
+        float4 sample_2 = GET_TEXTURE(texture_index_2).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_2 * scale_2);
 
         // blend
         return sample_1 + sample_2;
     }
 
-    static float4 reduce_tiling(uint _tex, float2 uv, float variation)
+    static float4 reduce_tiling(uint texture_index, float2 uv, float variation)
     {
         float random_value = tex_noise_blue.Sample(samplers[sampler_anisotropic_wrap], float3(uv * 0.005f, 0)).x; // low frequency lookup
 
@@ -81,8 +81,8 @@ struct sampling
         float2 off_b = sin(float2(3.0f, 7.0f) * ib);
 
         // sample the texture with offsets and gradients
-        float4 col_a = GET_TEXTURE(_tex).SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv + variation * off_a, duvdx, duvdy);
-        float4 col_b = GET_TEXTURE(_tex).SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv + variation * off_b, duvdx, duvdy);
+        float4 col_a = GET_TEXTURE(texture_index).SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv + variation * off_a, duvdx, duvdy);
+        float4 col_b = GET_TEXTURE(texture_index).SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv + variation * off_b, duvdx, duvdy);
 
         // blend the samples
         float blend_factor   = smoothstep(0.2f, 0.8f, f - 0.1f * ((col_a.x - col_b.x) + (col_a.y - col_b.y) + (col_a.z - col_b.z)+ (col_a.w - col_b.w)));
@@ -91,12 +91,12 @@ struct sampling
         return blended_color;
     }
 
-    static float4 smart(uint texture_1, uint texture_2, float2 uv, float slope, float3 position_world)
+    static float4 smart(uint texture_index_1, uint texture_index_2, float2 uv, float slope, float3 position_world)
     {
         // in case of water, we just interleave the normal
         if (material_vertex_animate_water())
         {
-            float4 normal = interleave(texture_1, texture_1, uv);
+            float4 normal = interleave(texture_index_1, texture_index_2, uv);
             return float4(normalize(normal.xyz), 0.0f);
         }
 
@@ -104,15 +104,15 @@ struct sampling
         if (material_texture_slope_based())
         {
             float variation  = 1.0f;
-            float4 tex_flat  = reduce_tiling(texture_1, uv, variation);
-            float4 tex_slope = reduce_tiling(texture_2, uv * 0.3f, variation);
+            float4 tex_flat  = reduce_tiling(texture_index_1, uv, variation);
+            float4 tex_slope = reduce_tiling(texture_index_2, uv * 0.3f, variation);
             float4 color     = lerp(tex_slope, tex_flat, slope);
 
             return color;
         }
 
         // this is a regular sample
-        return GET_TEXTURE(texture_1).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
+        return GET_TEXTURE(texture_index_1).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
     }
 };
 
