@@ -89,8 +89,8 @@ namespace Spartan
                 PhysicsBody* physics_body = m_default_physics_body_camera->AddComponent<PhysicsBody>().get();
                 physics_body->SetShapeType(PhysicsShape::Capsule);
                 physics_body->SetMass(82.0f);
-                physics_body->SetRestitution(0.0f);
-                physics_body->SetFriction(1.0f);
+                physics_body->SetRestitution(0.1f);
+                physics_body->SetFriction(0.8f);
                 physics_body->SetBoundingBox(Vector3(0.5f, 1.8f, 0.5f));
                 physics_body->SetRotationLock(true);
 
