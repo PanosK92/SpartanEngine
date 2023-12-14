@@ -123,9 +123,9 @@ namespace Spartan
         {
             array<RHI_Texture*, rhi_max_array_size> textures;            // mapped to the GPU as a bindless texture array
             array<Sb_MaterialProperties, rhi_max_array_size> properties; // mapped to the GPU as a structured properties buffer
+            unordered_set<uint64_t> unique_material_ids;
             uint32_t material_index = 0;
-            std::unordered_set<uint64_t> unique_material_ids;
-            bool dirty = true;
+            bool dirty              = true;
 
             void update(Material* material)
             {
@@ -135,18 +135,14 @@ namespace Spartan
 
                 // properties
                 {
-                    Sb_MaterialProperties _properties = {};
-                    _properties.anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
-                    _properties.anisotropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
-                    _properties.clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
-                    _properties.clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
-                    _properties.sheen                 = material->GetProperty(MaterialProperty::Sheen);
-                    _properties.sheen_tint            = material->GetProperty(MaterialProperty::SheenTint);
-                    _properties.subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
-                    _properties.ior                   = material->GetProperty(MaterialProperty::Ior);
-                
-                    uint32_t index    = static_cast<uint32_t>(material->GetObjectId() % properties.size());
-                    properties[index] = _properties;
+                    properties[material_index + 0].anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
+                    properties[material_index + 1].anisotropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
+                    properties[material_index + 2].clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
+                    properties[material_index + 3].clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
+                    properties[material_index + 4].sheen                 = material->GetProperty(MaterialProperty::Sheen);
+                    properties[material_index + 5].sheen_tint            = material->GetProperty(MaterialProperty::SheenTint);
+                    properties[material_index + 6].subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
+                    properties[material_index + 7].ior                   = material->GetProperty(MaterialProperty::Ior);
                 }
                 
                 // textures
@@ -161,10 +157,10 @@ namespace Spartan
                     textures[material_index + 7]  = material->GetTexture(MaterialTexture::Emission);
                     textures[material_index + 8]  = material->GetTexture(MaterialTexture::Height);
                     textures[material_index + 9]  = material->GetTexture(MaterialTexture::AlphaMask);
-                
-                    material->SetIndex(material_index);
-                    material_index += Material::texture_count_support;
                 }
+
+                material->SetIndex(material_index);
+                material_index += Material::texture_count_support;
             }
 
             void update(vector<shared_ptr<Entity>>& entities)
@@ -185,8 +181,8 @@ namespace Spartan
             {
                 properties.fill(Sb_MaterialProperties{});
                 textures.fill(nullptr);
-                material_index = 0;
                 unique_material_ids.clear();
+                material_index = 0;
 
                 update(renderables[Renderer_Entity::Geometry]);
                 update(renderables[Renderer_Entity::GeometryInstanced]);
@@ -626,7 +622,6 @@ namespace Spartan
             m_cb_material_cpu.properties = 0;
 
             // set
-            m_cb_material_cpu.id                  = static_cast<uint32_t>(material->GetObjectId());
             m_cb_material_cpu.index               = material->GetIndex();
             m_cb_material_cpu.world_space_height  = material->GetProperty(MaterialProperty::WorldSpaceHeight);
             m_cb_material_cpu.color.x             = material->GetProperty(MaterialProperty::ColorR);

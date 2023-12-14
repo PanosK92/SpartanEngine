@@ -157,7 +157,6 @@ PixelOutputType mainPS(PixelInputType input)
     float emission  = 0.0f;
     float2 velocity = 0.0f;
 
-
     // velocity
     {
         // convert to ndc

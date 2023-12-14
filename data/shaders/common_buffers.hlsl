@@ -48,10 +48,10 @@ struct FrameBufferData
 
     float gamma;
     float camera_last_movement_time;
-    float2 padding;
+    float2 padding_1;
 
     float3 camera_position_previous;
-    float padding2;
+    float padding_2;
 };
 
 struct LightBufferData
@@ -86,8 +86,8 @@ struct MaterialBufferData
 
     uint properties;
     float world_space_height;
-    uint id;
     uint index;
+    uint padding_3;
 };
 
 cbuffer BufferFrame    : register(b0) { FrameBufferData buffer_frame;       }; // low frequency    - updates once per frame

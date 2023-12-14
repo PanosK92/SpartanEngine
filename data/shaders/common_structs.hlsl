@@ -72,12 +72,11 @@ struct Surface
         float4 sample_albedo     = use_albedo ? tex_albedo[position_screen] : 0.0f;
         float4 sample_normal     = tex_normal[position_screen];
         float4 sample_material   = tex_material[position_screen];
-        float sample_depth       = get_depth(position_screen);
+        float sample_depth       = tex_depth[position_screen];
 
         // access the material structured buffer to get additional properties
-        float material_id                 = sample_normal.w;
-        uint material_index               = (uint)material_id; 
-        MaterialProperties mat_properties = material_properties[material_index];
+        // the normal's alpha channel holds the material index
+        MaterialProperties mat_properties = material_properties[sample_normal.a];
         
         // misc
         uv     = (position_screen + 0.5f) / pass_get_resolution_out();
@@ -135,7 +134,7 @@ struct Surface
 
 struct Light
 {
-    // Properties
+    // properties
     float3 color;
     float3 position;
     float  intensity;
@@ -226,7 +225,7 @@ struct Light
         near              = 0.1f;
         distance_to_pixel = length(surface_position - position);
         to_pixel          = compute_direction(position, surface_position);
-        n_dot_l           = saturate(dot(surface_normal, -to_pixel)); // Pre-compute n_dot_l since it's used in many places
+        n_dot_l           = saturate(dot(surface_normal, -to_pixel)); // pre-compute n_dot_l since it's used in many places
         attenuation       = compute_attenuation(surface_position);
 
         // apply occlusion
@@ -254,10 +253,10 @@ struct AngularInfo
 
     void Build(Light light, Surface surface)
     {
-        n = normalize(surface.normal);           // Outward direction of surface point
-        v = normalize(-surface.camera_to_pixel); // Direction from surface point to view
-        l = normalize(-light.to_pixel);          // Direction from surface point to light
-        h = normalize(l + v);                    // Direction of the vector between l and v
+        n = normalize(surface.normal);           // outward direction of surface point
+        v = normalize(-surface.camera_to_pixel); // direction from surface point to view
+        l = normalize(-light.to_pixel);          // direction from surface point to light
+        h = normalize(l + v);                    // direction of the vector between l and v
 
         n_dot_l = saturate(dot(n, l));
         n_dot_v = saturate(dot(n, v));
