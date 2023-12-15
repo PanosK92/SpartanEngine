@@ -38,38 +38,37 @@ Widget::Widget(Editor* editor)
 
 BorderDirection Widget::HoveredBorderDirection()
 {
-    if (m_change_cursor_on_border)
-    {
-        const float borderThreshold = 10.0f; // Pixels near border considered as hovering
+    if (!m_change_cursor_on_border)
+        return BorderDirection::None;
 
-        // Get the current position of the cursor
-        ImVec2 cursorPos  = ImGui::GetMousePos();
+    const float borderThreshold = 10.0f; // Pixels near border considered as hovering
 
-        // Calculate the edges of the window
-        ImVec2 windowPos  = m_window->Pos;
-        ImVec2 windowSize = m_window->Size;
-        ImVec2 windowMin  = windowPos;
-        ImVec2 windowMax  = ImVec2(windowPos.x + windowSize.x, windowPos.y + windowSize.y);
+    // Get the current position of the cursor
+    ImVec2 cursorPos  = ImGui::GetMousePos();
 
-        // Check if the cursor is within the border threshold of any window edge
-        bool isNearLeftBorder   = (cursorPos.x >= windowMin.x && cursorPos.x <= windowMin.x + borderThreshold);
-        bool isNearRightBorder  = (cursorPos.x <= windowMax.x && cursorPos.x >= windowMax.x - borderThreshold);
-        bool isNearTopBorder    = (cursorPos.y >= windowMin.y && cursorPos.y <= windowMin.y + borderThreshold);
-        bool isNearBottomBorder = (cursorPos.y <= windowMax.y && cursorPos.y >= windowMax.y - borderThreshold);
+    // Calculate the edges of the window
+    ImVec2 windowPos  = m_window->Pos;
+    ImVec2 windowSize = m_window->Size;
+    ImVec2 windowMin  = windowPos;
+    ImVec2 windowMax  = ImVec2(windowPos.x + windowSize.x, windowPos.y + windowSize.y);
 
-        if (isNearLeftBorder)
-            return BorderDirection::Left;
-        
-        if (isNearRightBorder)
-            return BorderDirection::Right;
-        
-        if (isNearTopBorder)
-            return BorderDirection::Top;
+    // Check if the cursor is within the border threshold of any window edge
+    bool isNearLeftBorder   = (cursorPos.x >= windowMin.x && cursorPos.x <= windowMin.x + borderThreshold);
+    bool isNearRightBorder  = (cursorPos.x <= windowMax.x && cursorPos.x >= windowMax.x - borderThreshold);
+    bool isNearTopBorder    = (cursorPos.y >= windowMin.y && cursorPos.y <= windowMin.y + borderThreshold);
+    bool isNearBottomBorder = (cursorPos.y <= windowMax.y && cursorPos.y >= windowMax.y - borderThreshold);
 
-        if (isNearBottomBorder)
-            return BorderDirection::Bottom;
-    }
-    return BorderDirection::None;
+    if (isNearLeftBorder)
+        return BorderDirection::Left;
+    
+    if (isNearRightBorder)
+        return BorderDirection::Right;
+    
+    if (isNearTopBorder)
+        return BorderDirection::Top;
+
+    if (isNearBottomBorder)
+        return BorderDirection::Bottom;
 }
 
 void Widget::Tick()
