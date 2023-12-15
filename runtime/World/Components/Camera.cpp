@@ -159,7 +159,8 @@ namespace Spartan
 
     bool Camera::IsInViewFrustum(shared_ptr<Renderable> renderable) const
     {
-        const BoundingBox& box = renderable->GetBoundingBox(BoundingBoxType::TransformedInstances);
+        BoundingBoxType type  = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+        const BoundingBox& box = renderable->GetBoundingBox(type);
 
         return IsInViewFrustum(box);
     }
