@@ -96,7 +96,7 @@ struct sampling
         // in case of water, we just interleave the normal
         if (material_vertex_animate_water())
         {
-            float4 normal = interleave(texture_index_1, texture_index_2, uv);
+            float4 normal = interleave(texture_index_1, texture_index_1, uv);
             return float4(normalize(normal.xyz), 0.0f);
         }
     
