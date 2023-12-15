@@ -103,7 +103,7 @@ namespace Spartan
             structured_buffer(Renderer_StructuredBuffer::Spd)->Update(&counter_value);
         }
 
-        uint32_t stride        = static_cast<uint32_t>(sizeof(Sb_MaterialProperties)) * rhi_max_array_size;
+        uint32_t stride        = static_cast<uint32_t>(sizeof(Sb_Materials)) * rhi_max_array_size;
         uint32_t element_count = 1; // only need one element since this buffer is not dynamic and it's offset resets at OnSyncPoint()
         structured_buffer(Renderer_StructuredBuffer::Material) = make_shared<RHI_StructuredBuffer>(stride, element_count, "materials");
     }

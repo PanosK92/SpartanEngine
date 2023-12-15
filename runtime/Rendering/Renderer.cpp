@@ -123,20 +123,20 @@ namespace Spartan
             });
         }
 
-        namespace world_materials
+        namespace bindless_materials
         {
-            array<RHI_Texture*, rhi_max_array_size> textures;            // mapped to the GPU as a bindless texture array
-            array<Sb_MaterialProperties, rhi_max_array_size> properties; // mapped to the GPU as a structured properties buffer
+            array<RHI_Texture*, rhi_max_array_size> textures;   // mapped to the GPU as a bindless texture array
+            array<Sb_Materials, rhi_max_array_size> properties; // mapped to the GPU as a structured properties buffer
             unordered_set<uint64_t> unique_material_ids;
-            uint32_t material_index = 0;
-            bool dirty              = true;
+            uint32_t index = 0;
+            bool dirty     = true;
 
             void clear()
             {
-                properties.fill(Sb_MaterialProperties{});
+                properties.fill(Sb_Materials{});
                 textures.fill(nullptr);
                 unique_material_ids.clear();
-                material_index = 0;
+                index = 0;
             }
 
             void update(Material* material)
@@ -147,57 +147,78 @@ namespace Spartan
 
                 // properties
                 {
-                    properties[material_index].world_space_height     = material->GetProperty(MaterialProperty::WorldSpaceHeight);
-                    properties[material_index].color.x                = material->GetProperty(MaterialProperty::ColorR);
-                    properties[material_index].color.y                = material->GetProperty(MaterialProperty::ColorG);
-                    properties[material_index].color.z                = material->GetProperty(MaterialProperty::ColorB);
-                    properties[material_index].color.w                = material->GetProperty(MaterialProperty::ColorA);
-                    properties[material_index].tiling_uv.x            = material->GetProperty(MaterialProperty::TextureTilingX);
-                    properties[material_index].tiling_uv.y            = material->GetProperty(MaterialProperty::TextureTilingY);
-                    properties[material_index].offset_uv.x            = material->GetProperty(MaterialProperty::TextureOffsetX);
-                    properties[material_index].offset_uv.y            = material->GetProperty(MaterialProperty::TextureOffsetY);
-                    properties[material_index].roughness_mul          = material->GetProperty(MaterialProperty::Roughness);
-                    properties[material_index].metallic_mul           = material->GetProperty(MaterialProperty::Metalness);
-                    properties[material_index].normal_mul             = material->GetProperty(MaterialProperty::Normal);
-                    properties[material_index].height_mul             = material->GetProperty(MaterialProperty::Height);
-                    properties[material_index].anisotropic            = material->GetProperty(MaterialProperty::Anisotropic);
-                    properties[material_index].anisotropic_rotation   = material->GetProperty(MaterialProperty::AnisotropicRotation);
-                    properties[material_index].clearcoat              = material->GetProperty(MaterialProperty::Clearcoat);
-                    properties[material_index].clearcoat_roughness    = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
-                    properties[material_index].sheen                  = material->GetProperty(MaterialProperty::Sheen);
-                    properties[material_index].sheen_tint             = material->GetProperty(MaterialProperty::SheenTint);
-                    properties[material_index].subsurface_scattering  = material->GetProperty(MaterialProperty::SubsurfaceScattering);
-                    properties[material_index].ior                    = material->GetProperty(MaterialProperty::Ior);
-                    properties[material_index].properties            |= material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness) ? (1U << 0)  : 0;
-                    properties[material_index].properties            |= material->HasTexture(MaterialTexture::Height)                            ? (1U << 1)  : 0;
-                    properties[material_index].properties            |= material->HasTexture(MaterialTexture::Normal)                            ? (1U << 2)  : 0;
-                    properties[material_index].properties            |= material->HasTexture(MaterialTexture::Color)                             ? (1U << 3)  : 0;
-                    properties[material_index].properties            |= material->HasTexture(MaterialTexture::Roughness)                         ? (1U << 4)  : 0;
-                    properties[material_index].properties            |= material->HasTexture(MaterialTexture::Metalness)                         ? (1U << 5)  : 0;
-                    properties[material_index].properties            |= material->HasTexture(MaterialTexture::AlphaMask)                         ? (1U << 6)  : 0;
-                    properties[material_index].properties            |= material->HasTexture(MaterialTexture::Emission)                          ? (1U << 7)  : 0;
-                    properties[material_index].properties            |= material->HasTexture(MaterialTexture::Occlusion)                         ? (1U << 8)  : 0;
-                    properties[material_index].properties            |= material->GetProperty(MaterialProperty::TextureSlopeBased)               ? (1U << 9)  : 0;
-                    properties[material_index].properties            |= material->GetProperty(MaterialProperty::VertexAnimateWind)               ? (1U << 10) : 0;
-                    properties[material_index].properties            |= material->GetProperty(MaterialProperty::VertexAnimateWater)              ? (1U << 11) : 0;
+                    properties[index].world_space_height     = material->GetProperty(MaterialProperty::WorldSpaceHeight);
+                    properties[index].color.x                = material->GetProperty(MaterialProperty::ColorR);
+                    properties[index].color.y                = material->GetProperty(MaterialProperty::ColorG);
+                    properties[index].color.z                = material->GetProperty(MaterialProperty::ColorB);
+                    properties[index].color.w                = material->GetProperty(MaterialProperty::ColorA);
+                    properties[index].tiling_uv.x            = material->GetProperty(MaterialProperty::TextureTilingX);
+                    properties[index].tiling_uv.y            = material->GetProperty(MaterialProperty::TextureTilingY);
+                    properties[index].offset_uv.x            = material->GetProperty(MaterialProperty::TextureOffsetX);
+                    properties[index].offset_uv.y            = material->GetProperty(MaterialProperty::TextureOffsetY);
+                    properties[index].roughness_mul          = material->GetProperty(MaterialProperty::Roughness);
+                    properties[index].metallic_mul           = material->GetProperty(MaterialProperty::Metalness);
+                    properties[index].normal_mul             = material->GetProperty(MaterialProperty::Normal);
+                    properties[index].height_mul             = material->GetProperty(MaterialProperty::Height);
+                    properties[index].anisotropic            = material->GetProperty(MaterialProperty::Anisotropic);
+                    properties[index].anisotropic_rotation   = material->GetProperty(MaterialProperty::AnisotropicRotation);
+                    properties[index].clearcoat              = material->GetProperty(MaterialProperty::Clearcoat);
+                    properties[index].clearcoat_roughness    = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
+                    properties[index].sheen                  = material->GetProperty(MaterialProperty::Sheen);
+                    properties[index].sheen_tint             = material->GetProperty(MaterialProperty::SheenTint);
+                    properties[index].subsurface_scattering  = material->GetProperty(MaterialProperty::SubsurfaceScattering);
+                    properties[index].ior                    = material->GetProperty(MaterialProperty::Ior);
+                    properties[index].properties            |= material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness) ? (1U << 0)  : 0;
+                    properties[index].properties            |= material->HasTexture(MaterialTexture::Height)                            ? (1U << 1)  : 0;
+                    properties[index].properties            |= material->HasTexture(MaterialTexture::Normal)                            ? (1U << 2)  : 0;
+                    properties[index].properties            |= material->HasTexture(MaterialTexture::Color)                             ? (1U << 3)  : 0;
+                    properties[index].properties            |= material->HasTexture(MaterialTexture::Roughness)                         ? (1U << 4)  : 0;
+                    properties[index].properties            |= material->HasTexture(MaterialTexture::Metalness)                         ? (1U << 5)  : 0;
+                    properties[index].properties            |= material->HasTexture(MaterialTexture::AlphaMask)                         ? (1U << 6)  : 0;
+                    properties[index].properties            |= material->HasTexture(MaterialTexture::Emission)                          ? (1U << 7)  : 0;
+                    properties[index].properties            |= material->HasTexture(MaterialTexture::Occlusion)                         ? (1U << 8)  : 0;
+                    properties[index].properties            |= material->GetProperty(MaterialProperty::TextureSlopeBased)               ? (1U << 9)  : 0;
+                    properties[index].properties            |= material->GetProperty(MaterialProperty::VertexAnimateWind)               ? (1U << 10) : 0;
+                    properties[index].properties            |= material->GetProperty(MaterialProperty::VertexAnimateWater)              ? (1U << 11) : 0;
                 }
                 
                 // textures
                 {
-                    textures[material_index + 0]  = material->GetTexture(MaterialTexture::Color);
-                    textures[material_index + 1]  = material->GetTexture(MaterialTexture::Color2);
-                    textures[material_index + 2]  = material->GetTexture(MaterialTexture::Roughness);
-                    textures[material_index + 3]  = material->GetTexture(MaterialTexture::Metalness);
-                    textures[material_index + 4]  = material->GetTexture(MaterialTexture::Normal);
-                    textures[material_index + 5]  = material->GetTexture(MaterialTexture::Normal2);
-                    textures[material_index + 6]  = material->GetTexture(MaterialTexture::Occlusion);
-                    textures[material_index + 7]  = material->GetTexture(MaterialTexture::Emission);
-                    textures[material_index + 8]  = material->GetTexture(MaterialTexture::Height);
-                    textures[material_index + 9]  = material->GetTexture(MaterialTexture::AlphaMask);
+                    textures[index + 0] = material->GetTexture(MaterialTexture::Color);
+                    textures[index + 1] = material->GetTexture(MaterialTexture::Color2);
+                    textures[index + 2] = material->GetTexture(MaterialTexture::Color3);
+
+                    textures[index + 3] = material->GetTexture(MaterialTexture::Roughness);
+                    textures[index + 4] = material->GetTexture(MaterialTexture::Roughness2);
+                    textures[index + 5] = material->GetTexture(MaterialTexture::Roughness3);
+
+                    textures[index + 6] = material->GetTexture(MaterialTexture::Metalness);
+                    textures[index + 7] = material->GetTexture(MaterialTexture::Metalness2);
+                    textures[index + 8] = material->GetTexture(MaterialTexture::Metalness3);
+
+                    textures[index + 9] = material->GetTexture(MaterialTexture::Normal);
+                    textures[index + 10] = material->GetTexture(MaterialTexture::Normal2);
+                    textures[index + 11] = material->GetTexture(MaterialTexture::Normal3);
+
+                    textures[index + 12] = material->GetTexture(MaterialTexture::Occlusion);
+                    textures[index + 13] = material->GetTexture(MaterialTexture::Occlusion2);
+                    textures[index + 14] = material->GetTexture(MaterialTexture::Occlusion3);
+
+                    textures[index + 15] = material->GetTexture(MaterialTexture::Emission);
+                    textures[index + 16] = material->GetTexture(MaterialTexture::Emission2);
+                    textures[index + 17] = material->GetTexture(MaterialTexture::Emission3);
+
+                    textures[index + 18] = material->GetTexture(MaterialTexture::Height);
+                    textures[index + 19] = material->GetTexture(MaterialTexture::Height2);
+                    textures[index + 20] = material->GetTexture(MaterialTexture::Height3);
+
+                    textures[index + 21] = material->GetTexture(MaterialTexture::AlphaMask);
+                    textures[index + 22] = material->GetTexture(MaterialTexture::AlphaMask2);
+                    textures[index + 23] = material->GetTexture(MaterialTexture::AlphaMask3);
                 }
 
-                material->SetIndex(material_index);
-                material_index += Material::texture_count_support;
+                material->SetIndex(index);
+                index += Material::texture_count_support;
             }
 
             void update(vector<shared_ptr<Entity>>& entities)
@@ -327,7 +348,7 @@ namespace Spartan
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,           SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,              SP_EVENT_HANDLER_STATIC(OnClear));
             SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
-            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_EXPRESSION_STATIC( world_materials::dirty = true; ));
+            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_EXPRESSION_STATIC( bindless_materials::dirty = true; ));
 
             // fire
             SP_FIRE_EVENT(EventType::RendererOnInitialized);
@@ -342,7 +363,7 @@ namespace Spartan
         // releases their rhi resources before device destruction
         {
             DestroyResources();
-            world_materials::clear();
+            bindless_materials::clear();
 
             m_entities_to_add.clear();
             m_renderables.clear();
@@ -714,14 +735,14 @@ namespace Spartan
             }
 
             // update and set bindless resources
-            if (world_materials::dirty)
+            if (bindless_materials::dirty)
             {
                 // update
-                world_materials::update(m_renderables);
+                bindless_materials::update(m_renderables);
 
                 // set
-                GetStructuredBuffer(Renderer_StructuredBuffer::Material)->Update(&world_materials::properties[0]);
-                RHI_Device::UpdateBindlessResources(nullptr, &world_materials::textures);
+                GetStructuredBuffer(Renderer_StructuredBuffer::Material)->Update(&bindless_materials::properties[0]);
+                RHI_Device::UpdateBindlessResources(nullptr, &bindless_materials::textures);
             }
         }
     }
@@ -790,7 +811,7 @@ namespace Spartan
 
             m_entities_to_add.clear();
 
-            world_materials::dirty = true;
+            bindless_materials::dirty = true;
         }
 
         // generate mips

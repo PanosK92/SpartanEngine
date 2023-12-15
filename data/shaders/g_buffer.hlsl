@@ -91,7 +91,7 @@ struct sampling
         return blended_color;
     }
 
-    static float4 smart(uint texture_index_1, uint texture_index_2, float2 uv, float slope, float3 position_world)
+    static float4 smart(uint texture_index_1, uint texture_index_2, uint texture_index_3, float2 uv, float slope, float3 position_world)
     {
         // in case of water, we just interleave the normal
         if (material_vertex_animate_water())
@@ -99,18 +99,28 @@ struct sampling
             float4 normal = interleave(texture_index_1, texture_index_2, uv);
             return float4(normalize(normal.xyz), 0.0f);
         }
-
+    
         // in case of the terrain, we do slope based texturing with tiling removal
         if (material_texture_slope_based())
         {
             float variation  = 1.0f;
             float4 tex_flat  = reduce_tiling(texture_index_1, uv, variation);
-            float4 tex_slope = reduce_tiling(texture_index_2, uv * 0.3f, variation);
-            float4 color     = lerp(tex_slope, tex_flat, slope);
-
-            return color;
+            float4 tex_slope = reduce_tiling(texture_index_2, uv * 0.5f, variation);
+            float4 terrain   = lerp(tex_slope, tex_flat, slope);
+    
+            // apply subterranean texture (sand) below sea level (y == 0)
+            float sand_offset = 4.0f;
+            float rock_depth = -2.0f;
+            if (position_world.y <= sand_offset)
+            {
+                float blend_factor = saturate(position_world.y / sand_offset);
+                float4 tex_sand    = reduce_tiling(texture_index_3, uv * 0.5f, variation);
+                return lerp(tex_sand, terrain, blend_factor);
+            }
+    
+            return terrain;
         }
-
+    
         // this is a regular sample
         return GET_TEXTURE(texture_index_1).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
     }
@@ -179,14 +189,14 @@ PixelOutputType mainPS(PixelInputType input)
     float alpha_mask = 1.0f;
     if (has_texture_alpha_mask())
     {
-        alpha_mask = GET_TEXTURE(material_mask).Sample(samplers[sampler_anisotropic_wrap], uv).r;
+        alpha_mask = GET_TEXTURE(material_mask_1).Sample(samplers[sampler_anisotropic_wrap], uv).r;
     }
     
     // albedo
     float slope = compute_slope(normal);
     if (has_texture_albedo())
     {
-        float4 albedo_sample = sampling::smart(material_albedo, material_albedo_2, uv, slope, input.position_world);
+        float4 albedo_sample = sampling::smart(material_albedo_1, material_albedo_2, material_albedo_3, uv, slope, input.position_world);
 
         // read albedo's alpha channel as an alpha mask as well
         alpha_mask      = min(alpha_mask, albedo_sample.a);
@@ -213,7 +223,7 @@ PixelOutputType mainPS(PixelInputType input)
 
             float3x3 world_to_tangent       = make_world_to_tangent_matrix(input.normal_world, input.tangent_world);
             float3 camera_to_pixel_tangent  = normalize(mul(normalize(camera_to_pixel_world), world_to_tangent));
-            float height                    = GET_TEXTURE(material_height).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).r - 0.5f;
+            float height                    = GET_TEXTURE(material_height_1).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).r - 0.5f;
             uv                             += (camera_to_pixel_tangent.xy / camera_to_pixel_tangent.z) * height * scale;
         }
         
@@ -221,7 +231,7 @@ PixelOutputType mainPS(PixelInputType input)
         if (has_texture_normal())
         {
             // get tangent space normal and apply the user defined intensity, then transform it to world space
-            float3 normal_sample       = sampling::smart(material_normal, material_normal_2, uv, slope, input.position_world).xyz;
+            float3 normal_sample       = sampling::smart(material_normal_1, material_normal_2, material_normal_3, uv, slope, input.position_world).xyz;
             float3 tangent_normal      = normalize(unpack(normal_sample));
             float normal_intensity     = clamp(GetMaterial().normal, 0.012f, GetMaterial().normal);
             tangent_normal.xy         *= saturate(normal_intensity);
@@ -231,28 +241,25 @@ PixelOutputType mainPS(PixelInputType input)
         
         // roughness + metalness
         {
-            if (!has_single_texture_roughness_metalness())
+            if (has_single_texture_roughness_metalness()) // gltf
             {
                 if (has_texture_roughness())
                 {
-                    roughness *= GET_TEXTURE(material_roughness).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).r;
-                }
-
-                if (has_texture_metalness())
-                {
-                    metalness *= GET_TEXTURE(material_metalness).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).r;
+                    float4 sample  = sampling::smart(material_roughness_1, material_roughness_2, material_roughness_3, uv, slope, input.position_world);      
+                    roughness     *= sample.g;
+                    metalness     *= sample.b;
                 }
             }
             else
             {
                 if (has_texture_roughness())
                 {
-                    roughness *= GET_TEXTURE(material_roughness).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).g;
+                    roughness *= sampling::smart(material_roughness_1, material_roughness_2, material_roughness_3, uv, slope, input.position_world).r;
                 }
 
                 if (has_texture_metalness())
                 {
-                    metalness *= GET_TEXTURE(material_metalness).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).b;
+                    metalness *= sampling::smart(material_metalness_1, material_metalness_2, material_metalness_3, uv, slope, input.position_world).r;
                 }
             }
         }
@@ -260,13 +267,13 @@ PixelOutputType mainPS(PixelInputType input)
         // occlusion
         if (has_texture_occlusion())
         {
-            occlusion = GET_TEXTURE(material_occlusion).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).r;
+            occlusion = sampling::smart(material_occlusion_1, material_occlusion_2, material_occlusion_3, uv, slope, input.position_world).r;
         }
 
         // emission
         if (has_texture_emissive())
         {
-            float3 emissive_color  = GET_TEXTURE(material_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).rgb;
+            float3 emissive_color  = GET_TEXTURE(material_emission_1).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).rgb;
             emission               = luminance(emissive_color);
             albedo.rgb            += emissive_color;
         }
