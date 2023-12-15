@@ -640,13 +640,12 @@ namespace Spartan
                         if (!texture)
                             continue;
 
-                        // deduce a couple of things
-                        uint32_t descriptor_index = texture->GetMaterialIndex() + texture->GetMaterialIndexTexture();
-                        void* resource            = texture ? texture->GetRhiSrv() : Renderer::GetStandardTexture(default_texture)->GetRhiSrv();
+                        // get resource
+                        void* resource = texture ? texture->GetRhiSrv() : Renderer::GetStandardTexture(default_texture)->GetRhiSrv();
 
-                        image_infos[descriptor_index].sampler     = nullptr;
-                        image_infos[descriptor_index].imageView   = static_cast<VkImageView>(resource);
-                        image_infos[descriptor_index].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                        image_infos[i].sampler     = nullptr;
+                        image_infos[i].imageView   = static_cast<VkImageView>(resource);
+                        image_infos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                     }
 
                     VkWriteDescriptorSet descriptor_write = {};

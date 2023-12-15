@@ -127,12 +127,6 @@ namespace Spartan
         RHI_Image_Layout GetLayout(const uint32_t mip) const { return m_layout[mip]; }
         std::array<RHI_Image_Layout, rhi_max_mip_count> GetLayouts()  const { return m_layout; }
 
-        // material
-        uint32_t GetMaterialIndex()                          { return m_material_index; }
-        void SetMaterialIndex(uint32_t index)                { m_material_index = index; }
-        uint32_t GetMaterialIndexTexture()                   { return m_material_index_texture; }
-        void SetMaterialIndexTexture(uint32_t index_texture) { m_material_index_texture = index_texture; }
-
         // viewport
         const auto& GetViewport() const { return m_viewport; }
 
@@ -176,8 +170,5 @@ namespace Spartan
 
     private:
         void ComputeMemoryUsage();
-
-        uint32_t m_material_index         = 0;
-        uint32_t m_material_index_texture = 0;
     };
 }

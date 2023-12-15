@@ -663,7 +663,7 @@ namespace Spartan
                     }
                     else
                     {
-                        SP_WARNINGS_ON("%s has no material assigned to it", entity->GetObjectName().c_str());
+                        SP_LOG_WARNING("Entity \"%s\" has no material assigned to it, skipping draw call", entity->GetObjectName().c_str());
                     }
                 }
 
