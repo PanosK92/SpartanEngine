@@ -65,37 +65,14 @@ Texture2DArray tex_sss			 : register(t28);
 
 //= MATERIALS =========================================================================================
 // texture array containing all material present int the world
-static const uint material_albedo_1    = 0;
-static const uint material_albedo_2    = 1;
-static const uint material_albedo_3    = 2;
-
-static const uint material_roughness_1 = 3;
-static const uint material_roughness_2 = 4;
-static const uint material_roughness_3 = 5;
-
-static const uint material_metalness_1 = 6;
-static const uint material_metalness_2 = 7;
-static const uint material_metalness_3 = 8;
-
-static const uint material_normal_1    = 9;
-static const uint material_normal_2    = 10;
-static const uint material_normal_3    = 11;
-
-static const uint material_occlusion_1 = 12;
-static const uint material_occlusion_2 = 13;
-static const uint material_occlusion_3 = 14;
-
-static const uint material_emission_1  = 15;
-static const uint material_emission_2  = 16;
-static const uint material_emission_3  = 17;
-
-static const uint material_height_1    = 18;
-static const uint material_height_2    = 19;
-static const uint material_height_3    = 20;
-
-static const uint material_mask_1      = 21;
-static const uint material_mask_2      = 22;
-static const uint material_mask_3      = 23;
+static const uint material_albedo    = 0; 
+static const uint material_roughness = 4; 
+static const uint material_metalness = 8; 
+static const uint material_normal    = 12;
+static const uint material_occlusion = 16;
+static const uint material_emission  = 20;
+static const uint material_height    = 24;
+static const uint material_mask      = 28;
 
 Texture2D tex_materials[] : register(t29, space1);
 #define GET_TEXTURE(index_texture) tex_materials[buffer_frame.material_index + index_texture]

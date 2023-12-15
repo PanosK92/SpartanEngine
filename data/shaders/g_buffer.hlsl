@@ -91,12 +91,12 @@ struct sampling
         return blended_color;
     }
 
-    static float4 smart(uint texture_index_1, uint texture_index_2, uint texture_index_3, float2 uv, float slope, float3 position_world)
+    static float4 smart(uint texture_index, float2 uv, float slope, float3 position_world)
     {
         // in case of water, we just interleave the normal
         if (material_vertex_animate_water())
         {
-            float4 normal = interleave(texture_index_1, texture_index_1, uv);
+            float4 normal = interleave(texture_index, texture_index, uv);
             return float4(normalize(normal.xyz), 0.0f);
         }
     
@@ -104,35 +104,44 @@ struct sampling
         if (material_texture_slope_based())
         {
             float variation  = 1.0f;
-            float4 tex_flat  = reduce_tiling(texture_index_1, uv, variation);
-            float4 tex_slope = reduce_tiling(texture_index_2, uv * 0.5f, variation);
-            float4 terrain   = lerp(tex_slope, tex_flat, slope);
-    
-            // apply subterranean texture (sand) below sea level (y == 0)
-            float sand_offset = 4.0f;
-            float rock_depth = -2.0f;
-            if (position_world.y <= sand_offset)
+            float4 tex_flat  = reduce_tiling(texture_index, uv * 0.5f, variation);
+            float4 tex_slope = reduce_tiling(texture_index + 1, uv * 0.5f, variation);
+            float4 terrain   = lerp(tex_flat, tex_slope, slope);
+
+            float sea_level   = 0.0f;
+            float snow_level  = 55.0f;
+            float sand_offset = 4.0f; // how high above sea level the sand should extend
+            
+            if (position_world.y <= sea_level + sand_offset) // sand below sea level
             {
-                float blend_factor = saturate(position_world.y / sand_offset);
-                float4 tex_sand    = reduce_tiling(texture_index_3, uv * 0.5f, variation);
-                return lerp(tex_sand, terrain, blend_factor);
+                float blend_factor = saturate(position_world.y / sand_offset);          
+                float4 tex_sand    = reduce_tiling(texture_index + 2, uv, variation);
+                terrain            = lerp(tex_sand, terrain, blend_factor);   
             }
-    
-            return terrain;
+            else if (position_world.y > snow_level) // snow above snow level
+            {
+                float snow_height  = 60.0f; // this is the height at which the terrain is fully covered in snow
+                float blend_factor = saturate((position_world.y - snow_level) / (snow_height - snow_level));
+                float4 tex_snow    = reduce_tiling(texture_index + 3, uv, variation);
+                terrain            = lerp(terrain, tex_snow, blend_factor);
+            }
+
+            // a final lerp with the slope/rock texture as it should show with and sand as well
+            return lerp(terrain, tex_slope, slope);
         }
     
         // this is a regular sample
-        return GET_TEXTURE(texture_index_1).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
+        return GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
     }
 };
 
 float compute_slope(float3 normal)
 {
-    float bias  = -0.1f; // increase the bias to favour the slope/rock texture
+    float bias  = -0.25f; // increase the bias to favour the slope/rock texture
     float slope = saturate(dot(normal, float3(0.0f, 1.0f, 0.0f)) - bias);
-    slope       = pow(slope, 16.0f); // increase the exponent to sharpen the transition
+    slope       = pow(slope, 24.0f); // increase the exponent to sharpen the transition
 
-    return slope;
+    return saturate(1.0f - slope);
 }
 
 PixelInputType mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
@@ -189,14 +198,14 @@ PixelOutputType mainPS(PixelInputType input)
     float alpha_mask = 1.0f;
     if (has_texture_alpha_mask())
     {
-        alpha_mask = GET_TEXTURE(material_mask_1).Sample(samplers[sampler_anisotropic_wrap], uv).r;
+        alpha_mask = GET_TEXTURE(material_mask).Sample(samplers[sampler_anisotropic_wrap], uv).r;
     }
     
     // albedo
     float slope = compute_slope(normal);
     if (has_texture_albedo())
     {
-        float4 albedo_sample = sampling::smart(material_albedo_1, material_albedo_2, material_albedo_3, uv, slope, input.position_world);
+        float4 albedo_sample = sampling::smart(material_albedo, uv, slope, input.position_world);
 
         // read albedo's alpha channel as an alpha mask as well
         alpha_mask      = min(alpha_mask, albedo_sample.a);
@@ -223,7 +232,7 @@ PixelOutputType mainPS(PixelInputType input)
 
             float3x3 world_to_tangent       = make_world_to_tangent_matrix(input.normal_world, input.tangent_world);
             float3 camera_to_pixel_tangent  = normalize(mul(normalize(camera_to_pixel_world), world_to_tangent));
-            float height                    = GET_TEXTURE(material_height_1).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).r - 0.5f;
+            float height                    = GET_TEXTURE(material_height).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).r - 0.5f;
             uv                             += (camera_to_pixel_tangent.xy / camera_to_pixel_tangent.z) * height * scale;
         }
         
@@ -231,7 +240,7 @@ PixelOutputType mainPS(PixelInputType input)
         if (has_texture_normal())
         {
             // get tangent space normal and apply the user defined intensity, then transform it to world space
-            float3 normal_sample       = sampling::smart(material_normal_1, material_normal_2, material_normal_3, uv, slope, input.position_world).xyz;
+            float3 normal_sample       = sampling::smart(material_normal, uv, slope, input.position_world).xyz;
             float3 tangent_normal      = normalize(unpack(normal_sample));
             float normal_intensity     = clamp(GetMaterial().normal, 0.012f, GetMaterial().normal);
             tangent_normal.xy         *= saturate(normal_intensity);
@@ -245,7 +254,7 @@ PixelOutputType mainPS(PixelInputType input)
             {
                 if (has_texture_roughness())
                 {
-                    float4 sample  = sampling::smart(material_roughness_1, material_roughness_2, material_roughness_3, uv, slope, input.position_world);      
+                    float4 sample  = sampling::smart(material_roughness, uv, slope, input.position_world);      
                     roughness     *= sample.g;
                     metalness     *= sample.b;
                 }
@@ -254,12 +263,12 @@ PixelOutputType mainPS(PixelInputType input)
             {
                 if (has_texture_roughness())
                 {
-                    roughness *= sampling::smart(material_roughness_1, material_roughness_2, material_roughness_3, uv, slope, input.position_world).r;
+                    roughness *= sampling::smart(material_roughness, uv, slope, input.position_world).r;
                 }
 
                 if (has_texture_metalness())
                 {
-                    metalness *= sampling::smart(material_metalness_1, material_metalness_2, material_metalness_3, uv, slope, input.position_world).r;
+                    metalness *= sampling::smart(material_metalness, uv, slope, input.position_world).r;
                 }
             }
         }
@@ -267,13 +276,13 @@ PixelOutputType mainPS(PixelInputType input)
         // occlusion
         if (has_texture_occlusion())
         {
-            occlusion = sampling::smart(material_occlusion_1, material_occlusion_2, material_occlusion_3, uv, slope, input.position_world).r;
+            occlusion = sampling::smart(material_occlusion, uv, slope, input.position_world).r;
         }
 
         // emission
         if (has_texture_emissive())
         {
-            float3 emissive_color  = GET_TEXTURE(material_emission_1).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).rgb;
+            float3 emissive_color  = GET_TEXTURE(material_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).rgb;
             emission               = luminance(emissive_color);
             albedo.rgb            += emissive_color;
         }

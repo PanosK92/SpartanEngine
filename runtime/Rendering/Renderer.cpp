@@ -184,41 +184,22 @@ namespace Spartan
                 
                 // textures
                 {
-                    textures[index + 0] = material->GetTexture(MaterialTexture::Color);
-                    textures[index + 1] = material->GetTexture(MaterialTexture::Color2);
-                    textures[index + 2] = material->GetTexture(MaterialTexture::Color3);
+         
 
-                    textures[index + 3] = material->GetTexture(MaterialTexture::Roughness);
-                    textures[index + 4] = material->GetTexture(MaterialTexture::Roughness2);
-                    textures[index + 5] = material->GetTexture(MaterialTexture::Roughness3);
+                    for (uint32_t type = 0; type < material_texture_type_count; type++)
+                    {
+                        for (uint32_t variation = 0; variation < material_texture_count_per_type; variation++)
+                        {
+                            uint32_t texture_index          = type * material_texture_count_per_type + variation;
+                            MaterialTexture textureType     = static_cast<MaterialTexture>(texture_index);
+                            textures[index + texture_index] = material->GetTexture(static_cast<MaterialTexture>(texture_index));
+                        }
+                    }
 
-                    textures[index + 6] = material->GetTexture(MaterialTexture::Metalness);
-                    textures[index + 7] = material->GetTexture(MaterialTexture::Metalness2);
-                    textures[index + 8] = material->GetTexture(MaterialTexture::Metalness3);
-
-                    textures[index + 9] = material->GetTexture(MaterialTexture::Normal);
-                    textures[index + 10] = material->GetTexture(MaterialTexture::Normal2);
-                    textures[index + 11] = material->GetTexture(MaterialTexture::Normal3);
-
-                    textures[index + 12] = material->GetTexture(MaterialTexture::Occlusion);
-                    textures[index + 13] = material->GetTexture(MaterialTexture::Occlusion2);
-                    textures[index + 14] = material->GetTexture(MaterialTexture::Occlusion3);
-
-                    textures[index + 15] = material->GetTexture(MaterialTexture::Emission);
-                    textures[index + 16] = material->GetTexture(MaterialTexture::Emission2);
-                    textures[index + 17] = material->GetTexture(MaterialTexture::Emission3);
-
-                    textures[index + 18] = material->GetTexture(MaterialTexture::Height);
-                    textures[index + 19] = material->GetTexture(MaterialTexture::Height2);
-                    textures[index + 20] = material->GetTexture(MaterialTexture::Height3);
-
-                    textures[index + 21] = material->GetTexture(MaterialTexture::AlphaMask);
-                    textures[index + 22] = material->GetTexture(MaterialTexture::AlphaMask2);
-                    textures[index + 23] = material->GetTexture(MaterialTexture::AlphaMask3);
                 }
 
                 material->SetIndex(index);
-                index += Material::texture_count_support;
+                index += material_texture_count_support;
             }
 
             void update(vector<shared_ptr<Entity>>& entities)

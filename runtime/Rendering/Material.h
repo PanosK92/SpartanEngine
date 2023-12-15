@@ -31,43 +31,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
     // each texture type has multiple copies to allow for complex materials
-    // if you modify this, also update Renderer::bindless_materials::update()
-    enum class MaterialTexture
-    {
-        Color,
-        Color2,
-        Color3,
-
-        Roughness,
-        Roughness2,
-        Roughness3,
-
-        Metalness,
-        Metalness2,
-        Metalness3,
-
-        Normal,
-        Normal2,
-        Normal3,
-
-        Occlusion, 
-        Occlusion2,
-        Occlusion3,
-
-        Emission,
-        Emission2,
-        Emission3,
-
-        Height,
-        Height2,
-        Height3,
-
-        AlphaMask,
-        AlphaMask2,
-        AlphaMask3,
-
+    enum class MaterialTexture {
+        Color, Color2, Color3, Color4,
+        Roughness, Roughness2, Roughness3, Roughness4,
+        Metalness, Metalness2, Metalness3, Metalness4,
+        Normal, Normal2, Normal3, Normal4,
+        Occlusion, Occlusion2, Occlusion3, Occlusion4,
+        Emission, Emission2, Emission3, Emission4,
+        Height, Height2, Height3, Height4,
+        AlphaMask, AlphaMask2, AlphaMask3, AlphaMask4,
         Max
     };
+
+    const uint32_t material_texture_type_count     = 8;
+    const uint32_t material_texture_count_per_type = 4;
+    const uint32_t material_texture_count_support  = static_cast<uint32_t>(MaterialTexture::Max);
 
     enum class MaterialProperty
     {
@@ -133,10 +111,8 @@ namespace Spartan
         void SetIndex(const uint32_t index) { m_index = index; }
         uint32_t GetIndex() const           { return m_index; }
 
-        static const uint32_t texture_count_support = static_cast<uint32_t>(MaterialTexture::Max);
- 
     private:
-        std::array<std::shared_ptr<RHI_Texture>, texture_count_support> m_textures;
+        std::array<std::shared_ptr<RHI_Texture>, material_texture_count_support> m_textures;
         std::array<float, 28> m_properties;
 
         uint32_t m_index = 0;

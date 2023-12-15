@@ -710,21 +710,19 @@ void Properties::ShowMaterial(Material* material) const
                     // texture
                     if (show_texture)
                     {
-                        // 1st texture
-                        auto setter = [&material, &mat_tex](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(mat_tex, texture); };
-                        ImGuiSp::image_slot(material->GetTexture_PtrShared(mat_tex), setter);
+                        const uint32_t textures_count_per_type = 4;
+                        for (uint32_t i = 0; i < textures_count_per_type; ++i)
+                        {
+                            MaterialTexture textureType = static_cast<MaterialTexture>(static_cast<uint32_t>(mat_tex) + i);
+                            auto setter = [&, textureType](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(textureType, texture); };
 
-                        // 2nd texture
-                        ImGui::SameLine();
-                        MaterialTexture type_2 = static_cast<MaterialTexture>(static_cast<uint32_t>(mat_tex) + 1);
-                        auto setter_2          = [&material, &mat_tex, type_2](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(type_2, texture); };
-                        ImGuiSp::image_slot(material->GetTexture_PtrShared(type_2), setter_2);
+                            if (i > 0)
+                            {
+                                ImGui::SameLine();
+                            }
 
-                        // 3rd texture
-                        ImGui::SameLine();
-                        MaterialTexture type_3 = static_cast<MaterialTexture>(static_cast<uint32_t>(mat_tex) + 2);
-                        auto setter_3          = [&material, &mat_tex, type_3](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(type_3, texture); };
-                        ImGuiSp::image_slot(material->GetTexture_PtrShared(type_3), setter_3);
+                            ImGuiSp::image_slot(material->GetTexture_PtrShared(textureType), setter);
+                        }
 
                         if (show_modifier)
                         {

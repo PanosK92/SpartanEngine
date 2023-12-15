@@ -875,8 +875,8 @@ namespace Spartan
                 shared_ptr<Material> material = make_shared<Material>();
                 material->SetResourceFilePath(string("project\\terrain\\material_terrain") + string(EXTENSION_MATERIAL));
                 material->SetProperty(MaterialProperty::TextureSlopeBased, 1.0f);
-                material->SetProperty(MaterialProperty::TextureTilingX,    300.0f);
-                material->SetProperty(MaterialProperty::TextureTilingY,    300.0f);
+                material->SetProperty(MaterialProperty::TextureTilingX,    500.0f);
+                material->SetProperty(MaterialProperty::TextureTilingY,    500.0f);
 
                 // flat
                 material->SetTexture(MaterialTexture::Color,     "project\\terrain\\grass\\albedo.png");
@@ -885,16 +885,22 @@ namespace Spartan
                 material->SetTexture(MaterialTexture::Occlusion, "project\\terrain\\grass\\occlusion.png");
 
                 // slope
-                material->SetTexture(MaterialTexture::Color2,     "project\\terrain\\slate_cliff_rock\\albedo.png");
-                material->SetTexture(MaterialTexture::Normal2,    "project\\terrain\\slate_cliff_rock\\normal.png");
-                material->SetTexture(MaterialTexture::Roughness2, "project\\terrain\\slate_cliff_rock\\roughness.png");
-                material->SetTexture(MaterialTexture::Occlusion2, "project\\terrain\\slate_cliff_rock\\occlusion.png");
+                material->SetTexture(MaterialTexture::Color2,     "project\\terrain\\rock\\albedo.png");
+                material->SetTexture(MaterialTexture::Normal2,    "project\\terrain\\rock\\normal.png");
+                material->SetTexture(MaterialTexture::Roughness2, "project\\terrain\\rock\\roughness.png");
+                material->SetTexture(MaterialTexture::Occlusion2, "project\\terrain\\rock\\occlusion.png");
 
                 // subterranean
                 material->SetTexture(MaterialTexture::Color3,     "project\\terrain\\sand\\albedo.png");
                 material->SetTexture(MaterialTexture::Normal3,    "project\\terrain\\sand\\normal.png");
                 material->SetTexture(MaterialTexture::Roughness3, "project\\terrain\\sand\\roughness.png");
                 material->SetTexture(MaterialTexture::Occlusion3, "project\\terrain\\sand\\occlusion.png");
+
+                // snow
+                material->SetTexture(MaterialTexture::Color4,     "project\\terrain\\snow\\albedo.png");
+                material->SetTexture(MaterialTexture::Normal4,    "project\\terrain\\snow\\normal.png");
+                material->SetTexture(MaterialTexture::Roughness4, "project\\terrain\\snow\\roughness.png");
+                material->SetTexture(MaterialTexture::Occlusion4, "project\\terrain\\snow\\occlusion.png");
 
 
                 m_default_terrain->GetComponent<Renderable>()->SetMaterial(material);
