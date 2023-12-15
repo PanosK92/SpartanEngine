@@ -101,7 +101,8 @@ namespace Spartan
             structured_buffer(Renderer_StructuredBuffer::Spd)->Update(&counter_value);
         }
 
-        stride = static_cast<uint32_t>(sizeof(Sb_MaterialProperties)) * rhi_max_array_size;
+        stride        = static_cast<uint32_t>(sizeof(Sb_MaterialProperties)) * rhi_max_array_size;
+        element_count = 1;
         structured_buffer(Renderer_StructuredBuffer::Material) = make_shared<RHI_StructuredBuffer>(stride, element_count, "materials");
     }
 
