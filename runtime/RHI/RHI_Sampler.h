@@ -51,7 +51,7 @@ namespace Spartan
         RHI_Comparison_Function GetComparisonFunction() const { return m_comparison_function; }
         bool GetAnisotropyEnabled()                     const { return m_anisotropy != 0; }
         bool GetComparisonEnabled()                     const { return m_comparison_enabled; }
-        void* GetRhiResource()                             const { return m_rhi_resource; }
+        void* GetRhiResource()                          const { return m_rhi_resource; }
 
     private:
         void CreateResource();

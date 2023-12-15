@@ -623,25 +623,15 @@ namespace Spartan
                 // update
                 {
                     vector<VkDescriptorImageInfo> image_infos(texture_count);
-                    Renderer_StandardTexture default_texture = Renderer_StandardTexture::Checkerboard;
-
-                    // initialize all slots to a default texture (it helps to have visual reference as to what texture is not present)
-                    for (VkDescriptorImageInfo& info : image_infos)
-                    {
-                        info.sampler     = nullptr;
-                        info.imageView   = static_cast<VkImageView>(Renderer::GetStandardTexture(default_texture)->GetRhiSrv());
-                        info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                    }
-
-                    // update indexed slots with textures
                     for (uint32_t i = 0; i < texture_count; ++i)
                     {
                         RHI_Texture* texture = (*textures)[i];
                         if (!texture)
                             continue;
 
-                        // get resource
-                        void* resource = texture ? texture->GetRhiSrv() : Renderer::GetStandardTexture(default_texture)->GetRhiSrv();
+                        // get texture, if unable to do so, fallback to a checkerboard texture, so we can spot it by eye
+                        void* srv_default = Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard)->GetRhiSrv();
+                        void* resource    = texture ? texture->GetRhiSrv() : srv_default;
 
                         image_infos[i].sampler     = nullptr;
                         image_infos[i].imageView   = static_cast<VkImageView>(resource);
