@@ -369,6 +369,7 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
         uint32_t instance_partitions = renderable->GetInstancePartitionCount();
         string name_material         = material ? material->GetObjectName() : "N/A";
         bool cast_shadows            = renderable->GetCastShadows();
+        bool is_visible              = renderable->GetIsVisible();
         //==========================================================================
 
         // mesh
@@ -398,7 +399,12 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
         }
 
         ImGui::Text("Cast shadows");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##renderable_cast_shadows", &cast_shadows);
+        ImGui::SameLine(column_pos_x);
+        ImGui::Checkbox("##renderable_cast_shadows", &cast_shadows);
+
+        ImGui::Text("Visible");
+        ImGui::SameLine(column_pos_x);
+        ImGui::LabelText("##renderable_visible", is_visible ? "true" : "false", ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
 
         //= MAP ===================================================================================
         if (cast_shadows != renderable->GetCastShadows()) renderable->SetCastShadows(cast_shadows);
