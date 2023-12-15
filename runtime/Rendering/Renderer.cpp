@@ -295,8 +295,8 @@ namespace Spartan
         SetOption(Renderer_Option::Exposure,                      1.0f);                                                 
         SetOption(Renderer_Option::Sharpness,                     1.0f);                                                 
         SetOption(Renderer_Option::Fog,                           20.0f);                                                 
-        //SetOption(Renderer_Option::Antialiasing,                  static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 2 for taa
-        //SetOption(Renderer_Option::Upsampling,                    static_cast<float>(Renderer_Upsampling::FSR2));
+        SetOption(Renderer_Option::Antialiasing,                  static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 2 for taa
+        SetOption(Renderer_Option::Upsampling,                    static_cast<float>(Renderer_Upsampling::FSR2));
         SetOption(Renderer_Option::Vsync,                         0.0f);
         SetOption(Renderer_Option::Debanding,                     0.0f);
         SetOption(Renderer_Option::Debug_TransformHandle,         1.0f);
@@ -502,7 +502,13 @@ namespace Spartan
 
     void Renderer::UpdateConstantBufferFrame(RHI_CommandList* cmd_list, const bool set /*= true*/)
     {
-        // update struct
+        // we are temporarily using the frame buffer to update the material index
+        // multiple times per frame, so do the update in this function only every
+        // frame, but do set the constant buffer
+        bool is_new_frame = m_cb_frame_cpu.frame != frame_num;
+
+        // update
+        if (is_new_frame)
         {
             // matrices
             {
@@ -554,7 +560,6 @@ namespace Spartan
                 m_cb_frame_cpu.camera_direction           = m_camera->GetEntity()->GetForward();
                 m_cb_frame_cpu.camera_last_movement_time  = (m_cb_frame_cpu.camera_position - m_cb_frame_cpu.camera_position_previous).LengthSquared() != 0.0f
                     ? static_cast<float>(Timer::GetTimeSec()) : m_cb_frame_cpu.camera_last_movement_time;
-
             }
             m_cb_frame_cpu.resolution_output   = m_resolution_output;
             m_cb_frame_cpu.resolution_render   = m_resolution_render;
@@ -573,6 +578,7 @@ namespace Spartan
             m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::FogVolumetric),                 1 << 4);
         }
 
+        // set
         GetConstantBuffer(Renderer_ConstantBuffer::Frame)->Update(&m_cb_frame_cpu);
         if (set)
         {
