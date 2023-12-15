@@ -363,11 +363,10 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
     if (component_begin("Renderable", IconType::Component_Renderable, renderable))
     {
         //= REFLECT ================================================================
-        Mesh* mesh                   = renderable->GetMesh();
+        string name_mesh             = renderable->GetMeshName();
         Material* material           = renderable->GetMaterial();
         uint32_t instance_count      = renderable->GetInstanceCount();
         uint32_t instance_partitions = renderable->GetInstancePartitionCount();
-        string name_mesh             = mesh ? mesh->GetObjectName() : "N/A";
         string name_material         = material ? material->GetObjectName() : "N/A";
         bool cast_shadows            = renderable->GetCastShadows();
         //==========================================================================

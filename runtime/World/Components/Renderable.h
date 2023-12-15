@@ -34,6 +34,7 @@ namespace Spartan
     class Mesh;
     class Material;
     class RHI_VertexBuffer;
+    class RHI_IndexBuffer;
 
     enum class BoundingBoxType
     {
@@ -89,6 +90,11 @@ namespace Spartan
         void SetCastShadows(const bool cast_shadows) { m_cast_shadows = cast_shadows; }
         bool GetCastShadows() const                  { return m_cast_shadows; }
 
+        // mesh
+        RHI_IndexBuffer* GetIndexBuffer()   const;
+        RHI_VertexBuffer* GetVertexBuffer() const;
+        const std::string& GetMeshName() const;
+
         // instancing
         bool HasInstancing() const                  { return !m_instances.empty(); }
         RHI_VertexBuffer* GetInstanceBuffer() const { return m_instance_buffer.get(); }
@@ -100,7 +106,7 @@ namespace Spartan
         uint32_t GetIndexCount() const   { return m_geometry_index_count; }
         uint32_t GetVertexOffset() const { return m_geometry_vertex_offset; }
         uint32_t GetVertexCount() const  { return m_geometry_vertex_count; }
-        Mesh* GetMesh() const            { return m_mesh; }
+        bool ReadToRender() const;
 
     private:
         // geometry/mesh
