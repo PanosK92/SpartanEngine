@@ -195,7 +195,7 @@ namespace Spartan
         // misc
         bool m_position_changed_this_frame = false;
         bool m_rotation_changed_this_frame = false;
-        std::mutex m_mutex_child;
+        std::mutex m_mutex_children;
         std::mutex m_mutex_parent;
     };
 }
