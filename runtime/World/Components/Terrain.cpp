@@ -290,8 +290,6 @@ namespace Spartan
                         vertices[i].tan[0] = tangent_average.x;
                         vertices[i].tan[1] = tangent_average.y;
                         vertices[i].tan[2] = tangent_average.z;
-
-                        ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
                     }
                 }
             };
@@ -374,6 +372,68 @@ namespace Spartan
             }
 
             return transforms;
+        }
+
+        void split_terrain_into_tiles(
+            const vector<RHI_Vertex_PosTexNorTan>& vertices,
+            const vector<uint32_t>& indices,
+            uint32_t total_width_vertices,
+            uint32_t total_height_vertices,
+            uint32_t tile_count_x,
+            uint32_t tile_count_y,
+            vector<vector<RHI_Vertex_PosTexNorTan>>& tiled_vertices,
+            vector<vector<uint32_t>>& tiled_indices)
+        {
+            // Calculate the number of vertices per tile
+            uint32_t vertices_per_tile_x = total_width_vertices / tile_count_x;
+            uint32_t vertices_per_tile_y = total_height_vertices / tile_count_y;
+
+            for (uint32_t tile_y = 0; tile_y < tile_count_y; ++tile_y)
+            {
+                for (uint32_t tile_x = 0; tile_x < tile_count_x; ++tile_x)
+                {
+                    uint32_t start_x = tile_x * vertices_per_tile_x;
+                    uint32_t end_x   = min(start_x + vertices_per_tile_x, total_width_vertices);
+                    uint32_t start_y = tile_y * vertices_per_tile_y;
+                    uint32_t end_y   = min(start_y + vertices_per_tile_y, total_height_vertices);
+
+                    vector<RHI_Vertex_PosTexNorTan> tile_vertices;
+                    vector<uint32_t> tile_indices;
+
+                    // Iterate over vertices in the range for this tile
+                    for (uint32_t y = start_y; y < end_y; ++y)
+                    {
+                        for (uint32_t x = start_x; x < end_x; ++x)
+                        {
+                            uint32_t vertex_index = y * total_width_vertices + x;
+                            tile_vertices.push_back(vertices[vertex_index]);
+                        }
+                    }
+
+                    // Generate indices for the tile
+                    for (uint32_t y = 0; y < end_y - start_y - 1; ++y)
+                    {
+                        for (uint32_t x = 0; x < end_x - start_x - 1; ++x)
+                        {
+                            uint32_t base_index = y * vertices_per_tile_x + x;
+
+                            // Triangle 1
+                            tile_indices.push_back(base_index);
+                            tile_indices.push_back(base_index + vertices_per_tile_x);
+                            tile_indices.push_back(base_index + 1);
+
+                            // Triangle 2
+                            tile_indices.push_back(base_index + 1);
+                            tile_indices.push_back(base_index + vertices_per_tile_x);
+                            tile_indices.push_back(base_index + vertices_per_tile_x + 1);
+                        }
+                    }
+
+                    // Add the tile's vertices and indices to the respective vectors
+                    tiled_vertices.push_back(tile_vertices);
+                    tiled_indices.push_back(tile_indices);
+                }
+            }
         }
     }
 
@@ -461,56 +521,93 @@ namespace Spartan
         {
             m_is_generating = true;
 
-            if (!generate_height_points_from_height_map(m_height_data, m_height_texture, m_min_y, m_max_y))
-            {
-                m_is_generating = false;
-                return;
-            }
-
-            // deduce some stuff
-            uint32_t width   = m_height_texture->GetWidth();
-            uint32_t height  = m_height_texture->GetHeight();
-            m_height_samples = width * height;
-            m_vertex_count   = m_height_samples;
-            m_index_count    = m_vertex_count * 6;
-            m_triangle_count = m_index_count / 3;
-
-            uint32_t job_count =
-                1 +              // 1. generate_positions()
-                1 +              // 2. generate_vertices_and_indices()
-                m_vertex_count + // 3. generate_normals_and_tangents()
-                1;               // 4. create mesh
-
             // star progress tracking
+            uint32_t job_count = 5;
             ProgressTracker::GetProgress(ProgressType::Terrain).Start(job_count, "Generating terrain...");
 
-            // pre-allocate memory for the calculations that follow
-            vector<Vector3> positions(m_height_samples);
-            positions.reserve(m_height_samples);
-            vector<RHI_Vertex_PosTexNorTan> vertices(m_vertex_count);
-            vertices.reserve(m_vertex_count);
-            vector<uint32_t> indices(m_index_count);
-            indices.reserve(m_index_count);
+            uint32_t width  = 0;
+            uint32_t height = 0;
+            vector<Vector3> positions;
+            vector<RHI_Vertex_PosTexNorTan> vertices;
+            vector<uint32_t> indices;
 
-            // 1. generate positions by reading the height map
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating positions...");
-            generate_positions(positions, m_height_data, width, height);
-            ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            // 1. Process height map
+          
+            {
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Process height map...");
 
-            // 2. compute vertices and indices
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating vertices and indices...");
-            generate_vertices_and_indices(vertices, indices, positions, width, height);
-            ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+                if (!generate_height_points_from_height_map(m_height_data, m_height_texture, m_min_y, m_max_y))
+                {
+                    m_is_generating = false;
+                    return;
+                }
 
-            // 3. compute normals and tangents
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating normals...");
-            generate_normals(indices, vertices);
-            // jobs done are tracked internally here because this is the most expensive function
+                // deduce some stuff
+                width            = m_height_texture->GetWidth();
+                height           = m_height_texture->GetHeight();
+                m_height_samples = width * height;
+                m_vertex_count   = m_height_samples;
+                m_index_count    = m_vertex_count * 6;
+                m_triangle_count = m_index_count / 3;
 
-            // 4. create mesh
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Creating mesh...");
-            UpdateFromVertices(indices, vertices);
-            ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+                // allocate memory for the calculations that follow
+                positions = vector<Vector3>(m_height_samples);
+                vertices  = vector<RHI_Vertex_PosTexNorTan>(m_vertex_count);
+                indices   = vector<uint32_t>(m_index_count);
+
+                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            }
+
+            // 2. compute positions by reading the height map
+            {
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating positions...");
+                generate_positions(positions, m_height_data, width, height);
+                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            }
+
+            // 3. compute vertices and indices
+            {
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating vertices and indices...");
+                generate_vertices_and_indices(vertices, indices, positions, width, height);
+                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            }
+
+            // 4. compute normals and tangents
+            {
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating normals...");
+                generate_normals(indices, vertices);
+                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            }
+
+            // 5. split into tiles
+            {
+                //ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Splitting into tiles...");
+
+                //// containers for tiled vertices and indices
+                //vector<vector<RHI_Vertex_PosTexNorTan>> tiled_vertices;
+                //vector<vector<uint32_t>> tiled_indices;
+
+                //// call the split_terrain_into_tiles function with the appropriate arguments
+                //split_terrain_into_tiles(
+                //    vertices,       // the original vertices of the entire terrain
+                //    indices,        // the original indices of the entire terrain
+                //    1024,           // total number of vertices along the width (X-axis)
+                //    1024,           // total number of vertices along the height (Z-axis)
+                //    12,             // number of tiles along the X-axis
+                //    12,             // number of tiles along the Z-axis
+                //    tiled_vertices, // container for tiled vertices
+                //    tiled_indices   // container for tiled indices
+                //);
+
+                //ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            }
+
+            // 6. create a mesh for each tile
+            {
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Creating mesh...");
+                UpdateFromVertices(indices, vertices);
+                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            }
 
             if (on_complete)
             {

@@ -670,7 +670,7 @@ float get_alpha_threshold(float3 world_position)
     // closer objects have a lower threshold, while distant objects have a higher threshold
     // this prevents things like foliage from resolving to little or no pixels over a certain distance
     float pixel_distance  = length(world_position - buffer_frame.camera_position);
-    float alpha_threshold = ALPHA_THRESHOLD_DEFAULT - (pixel_distance * 0.00105f) * (1.0f - ALPHA_THRESHOLD_DEFAULT);
+    float alpha_threshold = ALPHA_THRESHOLD_DEFAULT - (pixel_distance * 0.001f) * (1.0f - ALPHA_THRESHOLD_DEFAULT);
     alpha_threshold       = saturate(alpha_threshold);
 
     return alpha_threshold;
