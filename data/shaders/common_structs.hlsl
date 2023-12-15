@@ -56,7 +56,7 @@ struct Surface
     float3 specular_energy;
     float3 diffuse_energy;
     
-    // activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
+    // activision gtao paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
     float3 multi_bounce_ao(float visibility, float3 albedo)
     {
         float3 a = 2.0404 * albedo - 0.3324;
@@ -76,7 +76,7 @@ struct Surface
 
         // access the material structured buffer to get additional properties
         // the normal's alpha channel holds the material index
-        MaterialProperties mat_properties = buffer_materials[sample_normal.a];
+        Materials material = buffer_materials[sample_normal.a];
         
         // misc
         uv     = (position_screen + 0.5f) / pass_get_resolution_out();
@@ -89,14 +89,14 @@ struct Surface
         metallic              = sample_material.g;
         emissive              = sample_material.b;
         F0                    = lerp(0.04f, albedo, metallic);
-        anisotropic           = mat_properties.anisotropic;
-        anisotropic_rotation  = mat_properties.anisotropic_rotation;
-        clearcoat             = mat_properties.clearcoat;
-        clearcoat_roughness   = mat_properties.clearcoat_roughness;
-        sheen                 = mat_properties.sheen;
-        sheen_tint            = mat_properties.sheen_tint;
-        subsurface_scattering = mat_properties.subsurface_scattering;
-        ior                   = mat_properties.ior;
+        anisotropic           = material.anisotropic;
+        anisotropic_rotation  = material.anisotropic_rotation;
+        clearcoat             = material.clearcoat;
+        clearcoat_roughness   = material.clearcoat_roughness;
+        sheen                 = material.sheen;
+        sheen_tint            = material.sheen_tint;
+        subsurface_scattering = material.subsurface_scattering;
+        ior                   = material.ior;
         specular_energy       = 1.0f;
         diffuse_energy        = 1.0f;
 
@@ -104,7 +104,7 @@ struct Surface
         roughness_alpha         = roughness * roughness;
         roughness_alpha_squared = roughness_alpha * roughness_alpha;
 
-        // SSGI
+        // ssgi
         {
             occlusion = 1.0f;
             gi        = 0.0f;

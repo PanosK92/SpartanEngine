@@ -231,7 +231,7 @@ namespace Spartan
         bool operator!=(const Pcb_Pass& rhs) const { return !(*this == rhs); }
     };
 
-    struct Sb_MaterialProperties
+    struct Sb_Materials
     {
         Math::Vector4 color = Math::Vector4::Zero;
 

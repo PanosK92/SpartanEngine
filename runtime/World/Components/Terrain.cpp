@@ -334,13 +334,16 @@ namespace Spartan
                 Vector3 v2 = Vector3(vertices[indices[triangle_index + 2]].pos[0], vertices[indices[triangle_index + 2]].pos[1], vertices[indices[triangle_index + 2]].pos[2]);
 
                 // compute the slope of the triangle
-                Vector3 normal = Vector3::Cross(v1 - v0, v2 - v0).Normalized();
-                float slope_radians = acos(Vector3::Dot(normal, Vector3::Up));
-
+                Vector3 normal          = Vector3::Cross(v1 - v0, v2 - v0).Normalized();
+                float slope_radians     = acos(Vector3::Dot(normal, Vector3::Up));
                 bool is_relatively_flat = slope_radians <= max_slope_radians;
-                float water_level       = 0.0f; // this is a fact across the engine
-                bool is_above_water     = ((v0.y + v1.y + v2.y) / 3.0f) > water_level + 0.5f;
-                if (is_relatively_flat && is_above_water)
+
+                // compute height threshold
+                float sea_level                = 0.0f;             // this is a fact across the engine
+                float height_threshold         = sea_level + 4.0f; // don't want things to grow too close to see level (where sand could be)
+                bool is_above_height_threshold = v0.y >= height_threshold && v1.y >= height_threshold && v2.y >= height_threshold;
+
+                if (is_relatively_flat && is_above_height_threshold)
                 {
                     // generate barycentric coordinates
                     float u = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);

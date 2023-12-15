@@ -874,13 +874,28 @@ namespace Spartan
 
                 shared_ptr<Material> material = make_shared<Material>();
                 material->SetResourceFilePath(string("project\\terrain\\material_terrain") + string(EXTENSION_MATERIAL));
-                material->SetTexture(MaterialTexture::Color,               "project\\terrain\\florest_floor\\albedo.png");
-                material->SetTexture(MaterialTexture::Normal,              "project\\terrain\\florest_floor\\normal.png");
-                material->SetTexture(MaterialTexture::Color2,              "project\\terrain\\slate_cliff_rock\\albedo.png");
-                material->SetTexture(MaterialTexture::Normal2,             "project\\terrain\\slate_cliff_rock\\normal.png");
                 material->SetProperty(MaterialProperty::TextureSlopeBased, 1.0f);
                 material->SetProperty(MaterialProperty::TextureTilingX,    300.0f);
                 material->SetProperty(MaterialProperty::TextureTilingY,    300.0f);
+
+                // flat
+                material->SetTexture(MaterialTexture::Color,     "project\\terrain\\grass\\albedo.png");
+                material->SetTexture(MaterialTexture::Normal,    "project\\terrain\\grass\\normal.png");
+                material->SetTexture(MaterialTexture::Roughness, "project\\terrain\\grass\\roughness.png");
+                material->SetTexture(MaterialTexture::Occlusion, "project\\terrain\\grass\\occlusion.png");
+
+                // slope
+                material->SetTexture(MaterialTexture::Color2,     "project\\terrain\\slate_cliff_rock\\albedo.png");
+                material->SetTexture(MaterialTexture::Normal2,    "project\\terrain\\slate_cliff_rock\\normal.png");
+                material->SetTexture(MaterialTexture::Roughness2, "project\\terrain\\slate_cliff_rock\\roughness.png");
+                material->SetTexture(MaterialTexture::Occlusion2, "project\\terrain\\slate_cliff_rock\\occlusion.png");
+
+                // subterranean
+                material->SetTexture(MaterialTexture::Color3,     "project\\terrain\\sand\\albedo.png");
+                material->SetTexture(MaterialTexture::Normal3,    "project\\terrain\\sand\\normal.png");
+                material->SetTexture(MaterialTexture::Roughness3, "project\\terrain\\sand\\roughness.png");
+                material->SetTexture(MaterialTexture::Occlusion3, "project\\terrain\\sand\\occlusion.png");
+
 
                 m_default_terrain->GetComponent<Renderable>()->SetMaterial(material);
             }
@@ -902,7 +917,7 @@ namespace Spartan
                     shared_ptr<Entity> water = CreateEntity();
                     water->SetObjectName("water");
                     water->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
-                    water->SetScale(Vector3(1100.0f, 1.0f, 1100.0f));
+                    water->SetScale(Vector3(2000.0f, 1.0f, 2000.0f));
 
                     Renderable* renderable = water->AddComponent<Renderable>().get();
                     renderable->SetGeometry(Renderer_MeshType::Grid);
@@ -912,15 +927,15 @@ namespace Spartan
                         // set material
                         shared_ptr<Material> material = make_shared<Material>();
                         material->SetObjectName("material_water");
-                        material->SetColor(Color(0.0f, 70.0f / 255.0f, 80.0f / 255.0f, 120.0f / 255.0f));
+                        material->SetColor(Color(0.0f, 70.0f / 255.0f, 80.0f / 255.0f, 230.0f / 255.0f));
                         material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\water_normal.jpeg");
                         material->SetProperty(MaterialProperty::Ior,                 1.33f); // water
                         material->SetProperty(MaterialProperty::Roughness,           0.0f);
                         material->SetProperty(MaterialProperty::Clearcoat,           1.0f);  // just a bit of roughness to diffuse the sun a little
-                        material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f);  // just a bit of roughness to diffuse the sun a little
+                        material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f); // just a bit of roughness to diffuse the sun a little
                         material->SetProperty(MaterialProperty::Normal,              0.1f);
-                        material->SetProperty(MaterialProperty::TextureTilingX,      250.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingY,      250.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingX,      500.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingY,      500.0f);
                         material->SetProperty(MaterialProperty::VertexAnimateWater,  1.0f);
 
                         // create a file path for this material (required for the material to be able to be cached by the resource cache)

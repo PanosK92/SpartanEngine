@@ -710,22 +710,21 @@ void Properties::ShowMaterial(Material* material) const
                     // texture
                     if (show_texture)
                     {
+                        // 1st texture
                         auto setter = [&material, &mat_tex](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(mat_tex, texture); };
                         ImGuiSp::image_slot(material->GetTexture_PtrShared(mat_tex), setter);
 
-                        // 2nd textures, used for blending by the terrain
-                        if (mat_tex == MaterialTexture::Color)
-                        {
-                            auto setter = [&material](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(MaterialTexture::Color2, texture); };
-                            ImGui::SameLine();
-                            ImGuiSp::image_slot(material->GetTexture_PtrShared(MaterialTexture::Color2), setter);
-                        }
-                        else if (mat_tex == MaterialTexture::Normal)
-                        {
-                            auto setter = [&material](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(MaterialTexture::Normal2, texture); };
-                            ImGui::SameLine();
-                            ImGuiSp::image_slot(material->GetTexture_PtrShared(MaterialTexture::Normal2), setter);
-                        }
+                        // 2nd texture
+                        ImGui::SameLine();
+                        MaterialTexture type_2 = static_cast<MaterialTexture>(static_cast<uint32_t>(mat_tex) + 1);
+                        auto setter_2          = [&material, &mat_tex, type_2](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(type_2, texture); };
+                        ImGuiSp::image_slot(material->GetTexture_PtrShared(type_2), setter_2);
+
+                        // 3rd texture
+                        ImGui::SameLine();
+                        MaterialTexture type_3 = static_cast<MaterialTexture>(static_cast<uint32_t>(mat_tex) + 2);
+                        auto setter_3          = [&material, &mat_tex, type_3](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(type_3, texture); };
+                        ImGuiSp::image_slot(material->GetTexture_PtrShared(type_3), setter_3);
 
                         if (show_modifier)
                         {

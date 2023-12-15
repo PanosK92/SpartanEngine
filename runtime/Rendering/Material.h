@@ -30,18 +30,42 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
+    // each texture type has multiple copies to allow for complex materials
+    // if you modify this, also update Renderer::bindless_materials::update()
     enum class MaterialTexture
     {
         Color,
-        Color2,    // a second color for blending purposes
-        Roughness, // specifies microfacet roughness of the surface for diffuse and specular reflection
-        Metalness, // blends between a non-metallic and metallic material model
+        Color2,
+        Color3,
+
+        Roughness,
+        Roughness2,
+        Roughness3,
+
+        Metalness,
+        Metalness2,
+        Metalness3,
+
         Normal,
-        Normal2,   // a second normal for blending purposes
-        Occlusion, // a texture that will be mixed with ssgi.
-        Emission,  // a texture that will cause a surface to be lit, works nice with bloom.
-        Height,    // perceived depth for parallax mapping.
-        AlphaMask, // a texture which will use pixel shader discards for transparent pixels.
+        Normal2,
+        Normal3,
+
+        Occlusion, 
+        Occlusion2,
+        Occlusion3,
+
+        Emission,
+        Emission2,
+        Emission3,
+
+        Height,
+        Height2,
+        Height3,
+
+        AlphaMask,
+        AlphaMask2,
+        AlphaMask3,
+
         Max
     };
 
