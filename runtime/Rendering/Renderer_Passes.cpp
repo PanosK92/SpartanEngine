@@ -318,8 +318,7 @@ namespace Spartan
                     {
                         // acquire renderable component
                         shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                        Mesh* mesh = renderable->GetMesh();
-                        if (!renderable || !renderable->GetCastShadows() || !mesh)
+                        if (!renderable || !renderable->ReadToRender() || !renderable->GetCastShadows())
                             continue;
 
                         // skip objects outside of the view frustum
@@ -328,13 +327,13 @@ namespace Spartan
 
                         // set vertex, index and instance buffers
                         {
-                            cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
+                            cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
                             if (pso.instancing)
                             {
                                 cmd_list->SetBufferVertex(renderable->GetInstanceBuffer(), 1);
                             }
 
-                            cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
+                            cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
                         }
 
                         // set pass constants
@@ -449,8 +448,7 @@ namespace Spartan
                                     continue;
 
                                 // get geometry
-                                Mesh* mesh = renderable->GetMesh();
-                                if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
+                                if (!renderable->GetVertexBuffer() || !renderable->GetIndexBuffer())
                                     continue;
 
                                 // skip objects outside of the view frustum
@@ -458,8 +456,8 @@ namespace Spartan
                                     continue;
 
                                 // set geometry (will only happen if not already set)
-                                cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
-                                cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
+                                cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+                                cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
 
                                 // set pass constants with cascade transform
                                 m_cb_pass_cpu.transform = entity->GetMatrix() * view_projection;
@@ -518,12 +516,9 @@ namespace Spartan
 
             for (shared_ptr<Entity> entity : entities)
             {
-                shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                Mesh* mesh                        = renderable->GetMesh();
-                Material* material                = renderable->GetMaterial();
-
                 // when async loading certain things can be null
-                if (!renderable || !mesh || !material)
+                shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                if (!renderable || !renderable->ReadToRender())
                     continue;
 
                 // skip objects outside of the view frustum
@@ -534,27 +529,34 @@ namespace Spartan
 
                 // set vertex, index and instance buffers
                 {
-                    cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
+                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
                     if (pso.instancing)
                     {
                         cmd_list->SetBufferVertex(renderable->GetInstanceBuffer(), 1);
                     }
 
-                    cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
+                    cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
                 }
 
                 // set pass constants
                 {
+                    if (Material* material = renderable->GetMaterial())
+                    {
+                        m_cb_pass_cpu.set_f3_value(
+                            material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
+                            material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
+                            material->GetProperty(MaterialProperty::ColorA)
+                        );
+
+
+                        m_cb_frame_cpu.material_index = material->GetIndex();
+                        UpdateConstantBufferFrame(cmd_list);
+
+                        // the material is used for alpha testing and it's
+                        // okay for a renderable to not have a material
+                    }
+
                     m_cb_pass_cpu.transform = entity->GetMatrix();
-                    m_cb_pass_cpu.set_f3_value(
-                        material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
-                        material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
-                        material->GetProperty(MaterialProperty::ColorA)
-                    );
-
-                    m_cb_frame_cpu.material_index = material->GetIndex();
-                    UpdateConstantBufferFrame(cmd_list);
-
                     PushPassConstants(cmd_list);
                 }
 
@@ -630,23 +632,20 @@ namespace Spartan
 
             for (shared_ptr<Entity> entity : entities)
             {
-                shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                Mesh* mesh                        = renderable->GetMesh();
-                Material* material                = renderable->GetMaterial();
-
                 // when async loading certain things can be null (also frustum cull)
-                if (!renderable || !mesh || !material || !renderable->GetIsVisible())
+                shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                if (!renderable || !renderable->ReadToRender() || !renderable->GetIsVisible())
                     continue;
 
                 // set vertex, index and instance buffers
                 {
-                    cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
+                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
                     if (pso.instancing)
                     {
                         cmd_list->SetBufferVertex(renderable->GetInstanceBuffer(), 1);
                     }
 
-                    cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
+                    cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
                 }
 
                 // set pass constants
@@ -655,10 +654,17 @@ namespace Spartan
                     m_cb_pass_cpu.set_transform_previous(entity->GetMatrixPrevious());
                     m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
                     PushPassConstants(cmd_list);
-
                     entity->SetMatrixPrevious(m_cb_pass_cpu.transform);
-                    m_cb_frame_cpu.material_index = material->GetIndex();
-                    UpdateConstantBufferFrame(cmd_list);
+
+                    if (Material* material = renderable->GetMaterial())
+                    {
+                        m_cb_frame_cpu.material_index = material->GetIndex();
+                        UpdateConstantBufferFrame(cmd_list);
+                    }
+                    else
+                    {
+                        SP_WARNINGS_ON("%s has no material assigned to it", entity->GetObjectName().c_str());
+                    }
                 }
 
                 draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
@@ -2187,71 +2193,65 @@ namespace Spartan
 
                     if (shared_ptr<Renderable> renderable = entity_selected->GetComponent<Renderable>())
                     {
-                        if (Mesh* mesh = renderable->GetMesh())
+                        cmd_list->BeginMarker("color_silhouette");
                         {
-                            if (mesh->GetVertexBuffer() && mesh->GetIndexBuffer())
+                            // Define render state
+                            static RHI_PipelineState pso;
+                            pso.shader_vertex                   = shader_v;
+                            pso.shader_pixel                    = shader_p;
+                            pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
+                            pso.blend_state                     = GetBlendState(Renderer_BlendState::Disabled).get();
+                            pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
+                            pso.render_target_color_textures[0] = tex_outline;
+                            pso.clear_color[0]                  = clear_color;
+                            pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
+                        
+                            // set pipeline state
+                            cmd_list->SetPipelineState(pso);
+                        
+                            // render
                             {
-                                cmd_list->BeginMarker("color_silhouette");
-                                {
-                                    // Define render state
-                                    static RHI_PipelineState pso;
-                                    pso.shader_vertex                   = shader_v;
-                                    pso.shader_pixel                    = shader_p;
-                                    pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
-                                    pso.blend_state                     = GetBlendState(Renderer_BlendState::Disabled).get();
-                                    pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
-                                    pso.render_target_color_textures[0] = tex_outline;
-                                    pso.clear_color[0]                  = clear_color;
-                                    pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
-
-                                    // set pipeline state
-                                    cmd_list->SetPipelineState(pso);
-
-                                    // render
-                                    {
-                                        // push draw data
-                                        m_cb_pass_cpu.set_f4_value(debug_color);
-                                        m_cb_pass_cpu.transform = entity_selected->GetMatrix();
-                                        PushPassConstants(cmd_list);
-
-                                        cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
-                                        cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
-                                        cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
-                                    }
-                                }
-                                cmd_list->EndMarker();
-
-                                // Blur the color silhouette
-                                {
-                                    const bool depth_aware = false;
-                                    const float radius     = 30.0f;
-                                    const float sigma      = 32.0f;
-                                    Pass_Blur_Gaussian(cmd_list, tex_outline, depth_aware, radius, sigma);
-                                }
-
-                                // Combine color silhouette with frame
-                                cmd_list->BeginMarker("composition");
-                                {
-                                    static RHI_PipelineState pso;
-                                    pso.shader_compute = shader_c;
-
-                                    // Set pipeline state
-                                    cmd_list->SetPipelineState(pso);
-
-                                    // Set pass constants
-                                    m_cb_pass_cpu.set_resolution_out(tex_out);
-                                    PushPassConstants(cmd_list);
-
-                                    // Set textures
-                                    cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
-                                    cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_outline);
-
-                                    // Render
-                                    cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
-                                }
-                                cmd_list->EndMarker();
+                                // push draw data
+                                m_cb_pass_cpu.set_f4_value(debug_color);
+                                m_cb_pass_cpu.transform = entity_selected->GetMatrix();
+                                PushPassConstants(cmd_list);
+                        
+                                cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
+                                cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+                                cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
                             }
                         }
+                        cmd_list->EndMarker();
+                        
+                        // Blur the color silhouette
+                        {
+                            const bool depth_aware = false;
+                            const float radius     = 30.0f;
+                            const float sigma      = 32.0f;
+                            Pass_Blur_Gaussian(cmd_list, tex_outline, depth_aware, radius, sigma);
+                        }
+                        
+                        // Combine color silhouette with frame
+                        cmd_list->BeginMarker("composition");
+                        {
+                            static RHI_PipelineState pso;
+                            pso.shader_compute = shader_c;
+                        
+                            // Set pipeline state
+                            cmd_list->SetPipelineState(pso);
+                        
+                            // Set pass constants
+                            m_cb_pass_cpu.set_resolution_out(tex_out);
+                            PushPassConstants(cmd_list);
+                        
+                            // Set textures
+                            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+                            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_outline);
+                        
+                            // Render
+                            cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+                        }
+                        cmd_list->EndMarker();
                     }
                 }
                 cmd_list->EndTimeblock();

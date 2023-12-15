@@ -259,6 +259,31 @@ namespace Spartan
         return m_material ? m_material->GetObjectName() : "";
     }
 
+	RHI_IndexBuffer* Renderable::GetIndexBuffer() const
+	{
+        if (!m_mesh)
+            return nullptr;
+
+        return m_mesh->GetIndexBuffer();
+	}
+
+    RHI_VertexBuffer* Renderable::GetVertexBuffer() const
+    {
+        if (!m_mesh)
+            return nullptr;
+
+        return m_mesh->GetVertexBuffer();
+    }
+
+    const string& Renderable::GetMeshName() const
+    {
+        static string no_mesh = "N/A";
+        if (!m_mesh)
+            return no_mesh;
+
+        return m_mesh->GetObjectName();
+    }
+
     void Renderable::SetInstances(const vector<Matrix>& instances)
     {
         m_instances = instances;
@@ -279,4 +304,18 @@ namespace Spartan
 
         m_bounding_box_dirty = true;
     }
+
+	bool Renderable::ReadToRender() const
+	{
+        if (!m_mesh)
+            return false;
+
+        if (!m_mesh->GetVertexBuffer())
+            return false;
+
+        if (!m_mesh->GetIndexBuffer())
+            return false;
+
+        return true;
+	}
 }
