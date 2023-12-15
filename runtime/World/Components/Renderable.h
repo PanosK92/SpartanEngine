@@ -81,6 +81,10 @@ namespace Spartan
         auto HasMaterial() const      { return m_material != nullptr; }
         //===============================================================================
 
+        // visibility
+        void SetIsVisible(const bool is_visible) { m_is_visible = is_visible; }
+        bool GetIsVisible() const                { return m_is_visible; }
+
         // shadows
         void SetCastShadows(const bool cast_shadows) { m_cast_shadows = cast_shadows; }
         bool GetCastShadows() const                  { return m_cast_shadows; }
@@ -123,5 +127,6 @@ namespace Spartan
         // misc
         Math::Matrix m_transform_previous = Math::Matrix::Identity;
         bool m_cast_shadows               = true;
+        bool m_is_visible                 = true;
     };
 }

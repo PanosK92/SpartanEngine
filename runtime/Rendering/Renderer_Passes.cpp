@@ -518,18 +518,18 @@ namespace Spartan
 
             for (shared_ptr<Entity> entity : entities)
             {
-                // get renderable
                 shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                if (!renderable)
+                Mesh* mesh                        = renderable->GetMesh();
+                Material* material                = renderable->GetMaterial();
+
+                // when async loading certain things can be null
+                if (!renderable || !mesh || !material)
                     continue;
 
                 // skip objects outside of the view frustum
-                if (!GetCamera()->IsInViewFrustum(renderable))
-                    continue;
-
-                // mesh can be null when async loading
-                Mesh* mesh = renderable->GetMesh();
-                if (!mesh)
+                // the renderable component saves visibility for the g-buffer pass
+                renderable->SetIsVisible(GetCamera()->IsInViewFrustum(renderable));
+                if (!renderable->GetIsVisible())
                     continue;
 
                 // set vertex, index and instance buffers
@@ -546,18 +546,14 @@ namespace Spartan
                 // set pass constants
                 {
                     m_cb_pass_cpu.transform = entity->GetMatrix();
+                    m_cb_pass_cpu.set_f3_value(
+                        material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
+                        material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
+                        material->GetProperty(MaterialProperty::ColorA)
+                    );
 
-                    if (Material* material = renderable->GetMaterial())
-                    {
-                        m_cb_pass_cpu.set_f3_value(
-                            material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
-                            material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
-                            material->GetProperty(MaterialProperty::ColorA)
-                        );
-
-                        m_cb_frame_cpu.material_index = material->GetIndex();
-                        UpdateConstantBufferFrame(cmd_list);
-                    }
+                    m_cb_frame_cpu.material_index = material->GetIndex();
+                    UpdateConstantBufferFrame(cmd_list);
 
                     PushPassConstants(cmd_list);
                 }
@@ -634,18 +630,12 @@ namespace Spartan
 
             for (shared_ptr<Entity> entity : entities)
             {
-                // get renderable
                 shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                if (!renderable)
-                    continue;
+                Mesh* mesh                        = renderable->GetMesh();
+                Material* material                = renderable->GetMaterial();
 
-                // skip entities outside of the view frustum
-                if (!GetCamera()->IsInViewFrustum(renderable))
-                    continue;
-
-                // mesh can be null when async loading
-                Mesh* mesh = renderable->GetMesh();
-                if (!mesh)
+                // when async loading certain things can be null (also frustum cull)
+                if (!renderable || !mesh || !material || !renderable->GetIsVisible())
                     continue;
 
                 // set vertex, index and instance buffers
@@ -667,11 +657,8 @@ namespace Spartan
                     PushPassConstants(cmd_list);
 
                     entity->SetMatrixPrevious(m_cb_pass_cpu.transform);
-                    if (Material* material = renderable->GetMaterial())
-                    {
-                        m_cb_frame_cpu.material_index = material->GetIndex();
-                        UpdateConstantBufferFrame(cmd_list);
-                    }             
+                    m_cb_frame_cpu.material_index = material->GetIndex();
+                    UpdateConstantBufferFrame(cmd_list);
                 }
 
                 draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
