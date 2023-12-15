@@ -186,10 +186,6 @@ namespace Spartan
         {
             // cache the texture to ensure scene serialization/deserialization
             m_textures[type_int] = ResourceCache::Cache(texture->GetSharedPtr());
-
-            // assign indices
-            texture->SetMaterialIndex(m_index);
-            texture->SetMaterialIndexTexture(static_cast<uint32_t>(texture_type));
         }
         else
         {
@@ -326,18 +322,5 @@ namespace Spartan
         SetProperty(MaterialProperty::ColorG, color.g);
         SetProperty(MaterialProperty::ColorB, color.b);
         SetProperty(MaterialProperty::ColorA, color.a);
-    }
-
-    void Material::SetIndex(const uint32_t index)
-    {
-        m_index = index;
-
-        for (shared_ptr<RHI_Texture>& texture : m_textures)
-        {
-            if (texture)
-            {
-                texture->SetMaterialIndex(m_index);
-            }
-        }
     }
 }
