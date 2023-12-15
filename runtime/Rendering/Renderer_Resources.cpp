@@ -72,7 +72,11 @@ namespace Spartan
 
     void Renderer::CreateConstantBuffers()
     {
-        uint32_t times_used_in_frame = 1000; // safe to tweak this, if it's enough the engine will assert
+        // todo:
+        // the material index has to be removed from the frame buffer so that it only needs one update per frame
+        // the light buffer has be deleted and replaced with a structured buffer/array of all the lights
+
+        uint32_t times_used_in_frame = 4096;
         uint32_t element_count       = times_used_in_frame * resources_frame_lifetime;
 
         #define constant_buffer(x) constant_buffers[static_cast<uint8_t>(x)]

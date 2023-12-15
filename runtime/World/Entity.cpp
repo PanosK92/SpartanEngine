@@ -570,7 +570,7 @@ namespace Spartan
         if (child->GetObjectId() == GetObjectId())
             return;
 
-        lock_guard lock(m_mutex_child);
+        lock_guard lock(m_mutex_children);
 
         // if this is not already a child, add it
         if (!(find(m_children.begin(), m_children.end(), child) != m_children.end()))
@@ -587,7 +587,7 @@ namespace Spartan
         if (child->GetObjectId() == GetObjectId())
             return;
 
-        lock_guard lock(m_mutex_child);
+        lock_guard lock(m_mutex_children);
 
         // remove the child
         m_children.erase(remove_if(m_children.begin(), m_children.end(), [child](Entity* vec_transform) { return vec_transform->GetObjectId() == child->GetObjectId(); }), m_children.end());
@@ -624,7 +624,7 @@ namespace Spartan
     // this is a recursive function, the children will also find their own children and so on
     void Entity::AcquireChildren()
     {
-        lock_guard lock(m_mutex_child);
+        lock_guard lock(m_mutex_children);
         m_children.clear();
         m_children.shrink_to_fit();
 
