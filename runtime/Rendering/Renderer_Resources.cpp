@@ -86,14 +86,12 @@ namespace Spartan
 
     void Renderer::CreateStructuredBuffers()
     { 
-        uint32_t times_used_in_frame = 12; // safe to tweak this, if it's enough the engine will assert
-        uint32_t element_count       = times_used_in_frame * resources_frame_lifetime;
-        uint32_t stride              = 0;
-
         #define structured_buffer(x) structured_buffers[static_cast<uint8_t>(x)]
 
         {
-            stride = static_cast<uint32_t>(sizeof(uint32_t));
+            uint32_t times_used_in_frame = 12; // safe to tweak this, if it's enough the engine will assert
+            uint32_t element_count       = times_used_in_frame * resources_frame_lifetime;
+            uint32_t stride              = static_cast<uint32_t>(sizeof(uint32_t));
             structured_buffer(Renderer_StructuredBuffer::Spd) = make_shared<RHI_StructuredBuffer>(stride, element_count, "spd_counter");
 
             // only needs to be set once, then after each use SPD resets it itself
@@ -101,8 +99,8 @@ namespace Spartan
             structured_buffer(Renderer_StructuredBuffer::Spd)->Update(&counter_value);
         }
 
-        stride        = static_cast<uint32_t>(sizeof(Sb_MaterialProperties)) * rhi_max_array_size;
-        element_count = 1;
+        uint32_t stride        = static_cast<uint32_t>(sizeof(Sb_MaterialProperties)) * rhi_max_array_size;
+        uint32_t element_count = 1; // only need one element since this buffer is not dynamic and it's offset resets at OnSyncPoint()
         structured_buffer(Renderer_StructuredBuffer::Material) = make_shared<RHI_StructuredBuffer>(stride, element_count, "materials");
     }
 
