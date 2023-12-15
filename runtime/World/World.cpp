@@ -923,7 +923,7 @@ namespace Spartan
                     shared_ptr<Entity> water = CreateEntity();
                     water->SetObjectName("water");
                     water->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
-                    water->SetScale(Vector3(2000.0f, 1.0f, 2000.0f));
+                    water->SetScale(Vector3(5000.0f, 1.0f, 5000.0f));
 
                     Renderable* renderable = water->AddComponent<Renderable>().get();
                     renderable->SetGeometry(Renderer_MeshType::Grid);
@@ -940,8 +940,8 @@ namespace Spartan
                         material->SetProperty(MaterialProperty::Clearcoat,           1.0f);  // just a bit of roughness to diffuse the sun a little
                         material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f); // just a bit of roughness to diffuse the sun a little
                         material->SetProperty(MaterialProperty::Normal,              0.1f);
-                        material->SetProperty(MaterialProperty::TextureTilingX,      500.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingY,      500.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingX,      1000.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingY,      1000.0f);
                         material->SetProperty(MaterialProperty::VertexAnimateWater,  1.0f);
 
                         // create a file path for this material (required for the material to be able to be cached by the resource cache)

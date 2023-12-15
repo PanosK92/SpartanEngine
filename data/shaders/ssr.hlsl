@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const float g_ssr_max_distance        = 10000.0f;
+static const float g_ssr_max_distance        = 1000.0f;
 static const uint g_ssr_max_steps            = 128;
 static const uint g_ssr_binary_search_steps  = 64;
 static const float g_ssr_thickness           = 0.08f;

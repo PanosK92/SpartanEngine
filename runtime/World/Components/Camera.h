@@ -141,12 +141,12 @@ namespace Spartan
         void ProcessInputFpsControl();
         void ProcessInputLerpToEntity();
 
-        float m_aperture                           = 2.8f;         // Aperture value in f-stop. Controls the amount of light, depth of field and chromatic aberration.
-        float m_shutter_speed                      = 1.0f / 60.0f; // Length of time for which the camera shutter is open (sec). Also controls the amount of motion blur.
-        float m_iso                                = 500.0f;       // Sensitivity to light.
+        float m_aperture                           = 2.8f;         // aperture value in f-stop. Controls the amount of light, depth of field and chromatic aberration
+        float m_shutter_speed                      = 1.0f / 60.0f; // length of time for which the camera shutter is open (sec). Also controls the amount of motion blur
+        float m_iso                                = 500.0f;       // sensitivity to light
         float m_fov_horizontal_rad                 = Math::Helper::DegreesToRadians(90.0f);
         float m_near_plane                         = 0.1f;
-        float m_far_plane                          = 1000.0f;
+        float m_far_plane                          = 4000.0f;
         ProjectionType m_projection_type           = Projection_Perspective;
         Math::Matrix m_view                        = Math::Matrix::Identity;
         Math::Matrix m_projection                  = Math::Matrix::Identity;
