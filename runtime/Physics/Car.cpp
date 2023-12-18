@@ -57,10 +57,10 @@ namespace Spartan
         // 2. all the values are based on the toyota ae86 sprinter trueno, when literature was not available, values were approximated based on a typical mid-size car
 
         // engine
-        constexpr float engine_torque_max                  = 147.1f;  // maximum torque output of the engine
-        constexpr float engine_max_rpm                     = 7600.0f; // maximum engine rpm - redline
-        constexpr float engine_idle_rpm                    = 900.0f;  // idle engine rpm
-        vector<pair<float, float>> engine_torque_map       =
+        constexpr float engine_torque_max                       = 147.1f;  // maximum torque output of the engine
+        constexpr float engine_max_rpm                          = 7600.0f; // maximum engine rpm - redline
+        constexpr float engine_idle_rpm                         = 900.0f;  // idle engine rpm
+        vector<pair<float, float>> engine_torque_map            =
         {
             { 1000.0f, 20.0f  },
             { 2000.0f, 40.0f  },
@@ -128,11 +128,11 @@ namespace Spartan
             string wheel_name;
             switch (wheel_index)
             {
-            case tuning::wheel_fl: wheel_name = "FL";     break;
-            case tuning::wheel_fr: wheel_name = "FR";     break;
-            case tuning::wheel_rl: wheel_name = "RL";     break;
-            case tuning::wheel_rr: wheel_name = "RR";     break;
-            default:               wheel_name = "Unknown"; break;
+                case tuning::wheel_fl: wheel_name = "FL";     break;
+                case tuning::wheel_fr: wheel_name = "FR";     break;
+                case tuning::wheel_rl: wheel_name = "RL";     break;
+                case tuning::wheel_rr: wheel_name = "RR";     break;
+                default:               wheel_name = "Unknown"; break;
             }
 
             // setup ostringstream
@@ -148,7 +148,6 @@ namespace Spartan
             oss << "Slip ratio: " << parameters.pacejka_slip_ratio[wheel_index] << " ( Fz: " << parameters.pacejka_fz[wheel_index] << " N ) \n";
             oss << "Slip angle: " << parameters.pacejka_slip_angle[wheel_index] * Math::Helper::RAD_TO_DEG << " ( Fx: " << parameters.pacejka_fx[wheel_index] << " N ) \n";
 
-
             return oss.str();
         }
 
@@ -158,6 +157,7 @@ namespace Spartan
             Renderer::DrawString(wheel_to_string(parameters, tuning::wheel_fr), Vector2(1.0f, 0.005f));
             Renderer::DrawString(wheel_to_string(parameters, tuning::wheel_rl), Vector2(1.4f, 0.005f));
             Renderer::DrawString(wheel_to_string(parameters, tuning::wheel_rr), Vector2(1.8f, 0.005f));
+            Renderer::DrawString("Take control! Use the arrow keys to steer the car and space for handbreak.", Vector2(0.005f, -0.96f));
         }
 
         void draw_info_general(CarParameters& parameters, const float speed)

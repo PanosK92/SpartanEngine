@@ -792,8 +792,6 @@ namespace Spartan
             World::RemoveEntity(entity_car->GetDescendantByName("RR_Wheel_Brake Disc_0"));
             World::RemoveEntity(entity_car->GetDescendantByName("RR_Wheel_TireMaterial_0"));
             World::RemoveEntity(entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0"));
-
-            SP_LOG_INFO("Take control: Use the arrow keys to steer the car and space for handbreak!");
         }
 
         Engine::AddFlag(EngineMode::Game);
