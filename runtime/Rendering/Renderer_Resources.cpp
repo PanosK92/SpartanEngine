@@ -93,7 +93,7 @@ namespace Spartan
         #define structured_buffer(x) structured_buffers[static_cast<uint8_t>(x)]
 
         {
-            uint32_t times_used_in_frame = 12; // safe to tweak this, if it's enough the engine will assert
+            uint32_t times_used_in_frame = 12; // safe to tweak this, if it's not enough the engine will assert
             uint32_t element_count       = times_used_in_frame * resources_frame_lifetime;
             uint32_t stride              = static_cast<uint32_t>(sizeof(uint32_t));
             structured_buffer(Renderer_StructuredBuffer::Spd) = make_shared<RHI_StructuredBuffer>(stride, element_count, "spd_counter");

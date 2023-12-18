@@ -89,8 +89,6 @@ namespace Spartan
                 PhysicsBody* physics_body = m_default_physics_body_camera->AddComponent<PhysicsBody>().get();
                 physics_body->SetShapeType(PhysicsShape::Capsule);
                 physics_body->SetMass(82.0f);
-                physics_body->SetRestitution(0.1f);
-                physics_body->SetFriction(0.8f);
                 physics_body->SetBoundingBox(Vector3(0.5f, 1.8f, 0.5f));
                 physics_body->SetRotationLock(true);
 
@@ -133,23 +131,24 @@ namespace Spartan
             // floor
             if (load_floor)
             {
+                // the scale of the entity and the UV tiling is adjusted so that it each square represents 1 unit
+                // the default cube has 1 unit dimensions, this what can be used as a reference
+
                 m_default_model_floor = World::CreateEntity();
                 m_default_model_floor->SetObjectName("floor");
                 m_default_model_floor->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise it a bit to avoid z-fighting with world grid
-                m_default_model_floor->SetScale(Vector3(256.0f, 1.0f, 256.0f));
+                m_default_model_floor->SetScale(Vector3(1000.0f, 1.0f, 1000.0f));
 
                 // add a renderable component
                 shared_ptr<Renderable> renderable = m_default_model_floor->AddComponent<Renderable>();
                 renderable->SetGeometry(Renderer::GetStandardMesh(Renderer_MeshType::Quad).get());
                 renderable->SetDefaultMaterial();
-                renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingX, 100.0f);
-                renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingY, 100.0f);
+                renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingX, 170.0f);
+                renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingY, 170.0f);
 
                 // add physics components
                 shared_ptr<PhysicsBody> rigid_body = m_default_model_floor->AddComponent<PhysicsBody>();
                 rigid_body->SetMass(0.0f); // static
-                rigid_body->SetFriction(0.9f);
-                rigid_body->SetRestitution(0.1f);
                 rigid_body->SetShapeType(PhysicsShape::StaticPlane);
             }
         }
@@ -185,22 +184,19 @@ namespace Spartan
             // add physics components
             shared_ptr<PhysicsBody> rigid_body = m_default_cube->AddComponent<PhysicsBody>();
             rigid_body->SetMass(15.0f);
-            rigid_body->SetRestitution(0.3f);
-            rigid_body->SetFriction(1.0f);
             rigid_body->SetShapeType(PhysicsShape::Box);
         }
 
         static void create_default_car(const Math::Vector3& position = Vector3(0.0f, 0.2f, 0.0f))
         {
-            const float car_scale   = 0.009f;
-            const float wheel_scale = 0.16f;
+            const float car_scale   = 0.0180f;
+            const float wheel_scale = 0.3f;
 
             if (m_default_model_car = ResourceCache::Load<Mesh>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
             {
                 Entity* entity_car = m_default_model_car->GetRootEntity();
                 entity_car->SetObjectName("geometry");
 
-                entity_car->SetPosition(Vector3(0.05f, 0.0f, 0.0f)); // compensation for model offset
                 entity_car->SetRotation(Quaternion::FromEulerAngles(90.0f, 0.0f, -180.0f));
                 entity_car->SetScale(Vector3(car_scale));
 
@@ -297,9 +293,6 @@ namespace Spartan
                     physics_body->SetBodyType(PhysicsBodyType::Vehicle);
                     physics_body->SetCenterOfMass(Vector3(0.0f, 0.8f, 0.0f));
                     physics_body->SetBoundingBox(Vector3(1.5f, 0.9f, 4.1f));
-                    physics_body->SetRestitution(0.1f);
-                    physics_body->SetFriction(0.6f);
-                    physics_body->SetFrictionRolling(0.01f);
                     physics_body->SetMass(960.0f); // http://www.j-garage.com/toyota/ae86.html
 
                     // set the steering wheel to the physics body so that it can rotate it
@@ -774,7 +767,7 @@ namespace Spartan
             Entity* entity = m_default_model_helmet_flight->GetRootEntity();
             entity->SetObjectName("flight_helmet");
             entity->SetPosition(Vector3(0.0f, 0.1f, 0.0f));
-            entity->SetScale(Vector3(2.0f, 2.0f, 2.0f));
+            entity->SetScale(Vector3(1.7f, 1.7f, 1.7f));
         }
 
         // damaged helmet
@@ -782,12 +775,11 @@ namespace Spartan
         {
             Entity* entity = m_default_model_helmet_damaged->GetRootEntity();
             entity->SetObjectName("damaged_helmet");
-            entity->SetPosition(Vector3(1.1713f, 0.4747f, -0.1711f));
-            entity->SetScale(Vector3(0.4343f, 0.4343f, 0.4343f));
+            entity->SetPosition(Vector3(1.1713f, 0.5f, -0.1711f));
+            entity->SetScale(Vector3(0.3f, 0.3f, 0.3f));
 
             PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
             physics_body->SetMass(8.0f);
-            physics_body->SetFriction(0.95f);
         }
 
         // start simulating (for the physics and the music to work)
@@ -914,9 +906,6 @@ namespace Spartan
                 // add physics so we can walk on it
                 PhysicsBody* rigid_body = m_default_terrain->AddComponent<PhysicsBody>().get();
                 rigid_body->SetMass(0.0f);
-                rigid_body->SetRestitution(0.0f);
-                rigid_body->SetFriction(1.0f);
-                rigid_body->SetFrictionRolling(1.0f);
 
                 // water
                 {

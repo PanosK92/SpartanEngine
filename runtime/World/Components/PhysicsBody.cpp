@@ -58,9 +58,9 @@ namespace Spartan
     {
         const float k_default_deactivation_time = 2000;
         const float k_default_mass              = 1.0f;
-        const float k_default_restitution       = 0.0f;
-        const float k_default_friction          = 0.5f;
-        const float k_default_friction_rolling  = 0.0f;
+        const float k_default_restitution       = 0.2f;
+        const float k_default_friction          = 0.9f;
+        const float k_default_friction_rolling  = 0.9f;
     }
 
     #define shape static_cast<btCollisionShape*>(m_shape)

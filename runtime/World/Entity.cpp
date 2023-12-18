@@ -512,65 +512,58 @@ namespace Spartan
     {
         lock_guard lock(m_mutex_parent);
 
-        // early exit if the parent is this transform (which is invalid)
         if (new_parent)
         {
+            // early exit if the parent is this entity
             if (GetObjectId() == new_parent->GetObjectId())
                 return;
-        }
-
-        // early exit if the parent is already set.
-        if (m_parent && new_parent)
-        {
-            if (m_parent->GetObjectId() == new_parent->GetObjectId())
+        
+            // early exit if the parent is already set
+            if (m_parent && m_parent->GetObjectId() == new_parent->GetObjectId())
                 return;
-        }
-
-        // if the new parent is a descendant of this transform (e.g. dragging and dropping an entity onto one of it's children)
-        if (new_parent && new_parent->IsDescendantOf(this))
-        {
-            // assign the parent of this transform to the children.
-            for (Entity* child : m_children)
+        
+            // if the new parent is a descendant of this transform (e.g. dragging and dropping an entity onto one of it's children)
+            if (new_parent->IsDescendantOf(this))
             {
-                child->SetParent_Internal(m_parent);
+                for (Entity* child : m_children)
+                {
+                    child->m_parent = m_parent; // directly setting parent
+                    child->UpdateTransform();   // update transform if needed
+                }
+        
+                m_children.clear();
             }
-
-            // remove any children
-            m_children.clear();
         }
-
-        // remove this child from it's previous parent
+        
+        // remove the this as a child from the existing parent
         if (m_parent)
         {
-            // this avoid a stack overflow due to recursion
-            // we do m_parent = new_parent; below anyway
             bool update_child_with_null_parent = false;
-
             m_parent->RemoveChild(this, update_child_with_null_parent);
         }
-
-        // add this child to the new parent
+        
+        // add this is a child to new parent
         if (new_parent)
         {
             new_parent->AddChild(this);
-            new_parent->UpdateTransform();
         }
 
-        // assign the new parent
-        m_parent = new_parent;
+        if ((m_parent && !new_parent) || (!m_parent && new_parent))
+        {
+            UpdateTransform();
+        }
 
-        UpdateTransform();
+        m_parent = new_parent;
     }
 
     void Entity::AddChild(Entity* child)
     {
         SP_ASSERT(child != nullptr);
+        lock_guard lock(m_mutex_children);
 
         // ensure that the child is not this transform
         if (child->GetObjectId() == GetObjectId())
             return;
-
-        lock_guard lock(m_mutex_children);
 
         // if this is not already a child, add it
         if (!(find(m_children.begin(), m_children.end(), child) != m_children.end()))
@@ -597,27 +590,6 @@ namespace Spartan
         {
             child->SetParent(nullptr);
         }
-    }
-
-    void Entity::SetParent_Internal(Entity* new_parent)
-    {
-        lock_guard lock(m_mutex_parent);
-
-        // ensure that parent is not this transform
-        if (new_parent)
-        {
-            if (GetObjectId() == new_parent->GetObjectId())
-                return;
-        }
-
-        // mark as dirty if the parent is about to really change
-        if ((m_parent && !new_parent) || (!m_parent && new_parent))
-        {
-            UpdateTransform();
-        }
-
-        // assign the new parent
-        m_parent = new_parent;
     }
 
     // searches the entire hierarchy, finds any children and saves them in m_children

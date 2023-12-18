@@ -85,7 +85,7 @@ namespace Spartan
         constexpr float suspension_damping                      = 2.0f;                                      // damping coefficient to dissipate energy
         constexpr float suspension_compression                  = 1.0f;                                      // compression damping coefficient
         constexpr float suspension_force_max                    = 5000.0f;                                   // maximum force suspension can exert in newtons
-        constexpr float suspension_length                       = 0.35f;                                     // spring length
+        constexpr float suspension_length                       = 0.2f;                                      // spring length
         constexpr float suspension_rest_length                  = suspension_length * 0.8f;                  // spring length at equilibrium
         constexpr float suspension_travel_max                   = suspension_length * 0.5f;                  // maximum travel of the suspension                                                                       
         constexpr float suspension_antiroll_bar_stiffness_front = 500.0f;                                    // higher front stiffness reduces oversteer, lower increases it
@@ -106,7 +106,7 @@ namespace Spartan
         constexpr float aerodynamic_downforce                   = 0.2f;                                      // the faster the vehicle, the more the tires will grip the road
 
         // misc                                                                                              
-        constexpr float wheel_radius                            = 0.25f;                                     // wheel radius of a typical mid-sized car - this affects the angular velocity
+        constexpr float wheel_radius                            = 0.5f;                                      // wheel radius of a typical mid-sized car - this affects the angular velocity
         constexpr float tire_friction                           = 1.6f;                                      // bullet has a hard time simulating friction that's reliable enough for cars, so this is pretty arbitrary
 
         // wheel indices (used for bullet physics)
@@ -564,8 +564,8 @@ namespace Spartan
 
             // position of the wheels relative to the chassis
             {
-                const float extent_forward  = 1.3f;
-                const float extent_sideways = 0.65f;
+                const float extent_forward  = 2.4f;
+                const float extent_sideways = 1.4f;
 
                 wheel_positions[tuning::wheel_fl] = btVector3(-extent_sideways, -tuning::suspension_length,  extent_forward - 0.2f);
                 wheel_positions[tuning::wheel_fr] = btVector3( extent_sideways, -tuning::suspension_length,  extent_forward - 0.2f);
