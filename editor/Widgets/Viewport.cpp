@@ -98,19 +98,28 @@ void Viewport::OnTickVisible()
         m_editor->GetWidget<AssetBrowser>()->ShowMeshImportDialog(get<const char*>(payload->data));
     }
 
+    shared_ptr<Camera> camera = Renderer::GetCamera();
+
     // mouse picking
-    if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() && ImGui::TransformGizmo::allow_picking())
+    if (camera && ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() && ImGui::TransformGizmo::allow_picking())
     {
-        if (shared_ptr<Camera> camera = Renderer::GetCamera())
-        {
-            camera->Pick();
-            m_editor->GetWidget<WorldViewer>()->SetSelectedEntity(camera->GetSelectedEntity());
-        }
+        camera->Pick();
+        m_editor->GetWidget<WorldViewer>()->SetSelectedEntity(camera->GetSelectedEntity());
     }
 
     // entity transform gizmo (will only show if an entity has been picked)
     if (Renderer::GetOption<bool>(Spartan::Renderer_Option::Debug_TransformHandle))
     {
         ImGui::TransformGizmo::tick();
+    }
+
+    // check if the engine wants cursor control
+    if (camera && camera->IsActivelyControlled())
+    {
+        ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+    }
+    else
+    {
+        ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
     }
 }
