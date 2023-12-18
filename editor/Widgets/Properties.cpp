@@ -199,23 +199,23 @@ void Properties::ShowTransform(shared_ptr<Entity> entity) const
 {
     if (component_begin("Transform", IconType::Component_Transform, nullptr, true, false))
     {
-        //= REFLECT =====================================================
+        //= REFLECT ==================================================
         Vector3 position = entity->GetPositionLocal();
         Vector3 rotation = entity->GetRotationLocal().ToEulerAngles();
         Vector3 scale    = entity->GetScaleLocal();
-        //===============================================================
+        //============================================================
 
-        ImGuiSp::vector3("Position", position);
+        ImGuiSp::vector3("Position (m)", position);
         ImGui::SameLine();
-        ImGuiSp::vector3("Rotation", rotation);
+        ImGuiSp::vector3("Rotation (degrees)", rotation);
         ImGui::SameLine();
-        ImGuiSp::vector3("Scale", scale);
+        ImGuiSp::vector3("Scale (m)", scale);
 
-        //= MAP ===========================================================
+        //= MAP ========================================================
         entity->SetPositionLocal(position);
         entity->SetScaleLocal(scale);
         entity->SetRotationLocal(Quaternion::FromEulerAngles(rotation));
-        //=================================================================
+        //==============================================================
     }
     component_end();
 }
@@ -425,22 +425,22 @@ void Properties::ShowPhysicsBody(shared_ptr<PhysicsBody> body) const
 
     if (component_begin("PhysicsBody", IconType::Component_PhysicsBody, body))
     {
-        //= REFLECT =============================================================
-        float mass                = body->GetMass();
-        float friction            = body->GetFriction();
-        float friction_rolling    = body->GetFrictionRolling();
-        float restitution         = body->GetRestitution();
-        bool use_gravity          = body->GetUseGravity();
-        bool is_kinematic         = body->GetIsKinematic();
-        bool freeze_pos_x         = static_cast<bool>(body->GetPositionLock().x);
-        bool freeze_pos_y         = static_cast<bool>(body->GetPositionLock().y);
-        bool freeze_pos_z         = static_cast<bool>(body->GetPositionLock().z);
-        bool freeze_rot_x         = static_cast<bool>(body->GetRotationLock().x);
-        bool freeze_rot_y         = static_cast<bool>(body->GetRotationLock().y);
-        bool freeze_rot_z         = static_cast<bool>(body->GetRotationLock().z);
-        Vector3 center_of_mass    = body->GetCenterOfMass();
-        Vector3 bounding_box      = body->GetBoundingBox();
-        //=======================================================================
+        //= REFLECT ==========================================================
+        float mass             = body->GetMass();
+        float friction         = body->GetFriction();
+        float friction_rolling = body->GetFrictionRolling();
+        float restitution      = body->GetRestitution();
+        bool use_gravity       = body->GetUseGravity();
+        bool is_kinematic      = body->GetIsKinematic();
+        bool freeze_pos_x      = static_cast<bool>(body->GetPositionLock().x);
+        bool freeze_pos_y      = static_cast<bool>(body->GetPositionLock().y);
+        bool freeze_pos_z      = static_cast<bool>(body->GetPositionLock().z);
+        bool freeze_rot_x      = static_cast<bool>(body->GetRotationLock().x);
+        bool freeze_rot_y      = static_cast<bool>(body->GetRotationLock().y);
+        bool freeze_rot_z      = static_cast<bool>(body->GetRotationLock().z);
+        Vector3 center_of_mass = body->GetCenterOfMass();
+        Vector3 bounding_box   = body->GetBoundingBox();
+        //====================================================================
 
         // body type
         {
@@ -460,7 +460,7 @@ void Properties::ShowPhysicsBody(shared_ptr<PhysicsBody> body) const
         }
 
         // mass
-        ImGui::Text("Mass");
+        ImGui::Text("Mass (kg)");
         ImGui::SameLine(column_pos_x); ImGui::InputFloat("##physics_body_mass", &mass, step, step_fast, precision, input_text_flags);
 
         // friction

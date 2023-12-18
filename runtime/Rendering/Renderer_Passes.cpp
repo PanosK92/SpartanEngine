@@ -1827,7 +1827,7 @@ namespace Spartan
 
         // ensure that the input texture meets the requirements.
         SP_ASSERT(tex->HasPerMipViews());
-        SP_ASSERT(tex->GetWidth() <= 4096 && tex->GetHeight() <= 4096 && output_mip_count <= 12); // As per documentation (page 22)
+        SP_ASSERT(tex->GetWidth() <= 4096 && tex->GetHeight() <= 4096 && output_mip_count <= 12); // as per documentation (page 22)
 
         // acquire shader
         RHI_Shader* shader_c = GetShader(Renderer_Shader::ffx_spd_c).get();
@@ -1844,8 +1844,8 @@ namespace Spartan
         // set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // as per documentation (page 22)
-        const uint32_t thread_group_count_x_ = (tex->GetWidth() + 63) >> 6;
+        // as per document documentation (page 22)
+        const uint32_t thread_group_count_x_ = (tex->GetWidth()  + 63) >> 6;
         const uint32_t thread_group_count_y_ = (tex->GetHeight() + 63) >> 6;
 
         // push pass data

@@ -176,7 +176,6 @@ namespace Spartan
         bool m_hierarchy_visibility   = true;
         std::array<std::shared_ptr<Component>, 13> m_components;
 
-        void SetParent_Internal(Entity* parent);
         void UpdateTransform();
         Math::Matrix GetParentTransformMatrix() const;
 
@@ -189,6 +188,7 @@ namespace Spartan
         Math::Matrix m_matrix_previous = Math::Matrix::Identity;
         Math::Matrix m_matrix_local    = Math::Matrix::Identity;
 
+        std::weak_ptr<Entity> m_parent_weak;
         Entity* m_parent = nullptr;      // the parent of this entity
         std::vector<Entity*> m_children; // the children of this entity
 

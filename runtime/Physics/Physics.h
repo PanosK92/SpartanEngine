@@ -51,7 +51,7 @@ namespace Spartan
         static std::vector<btRigidBody*> RayCast(const Math::Vector3& start, const Math::Vector3& end);
         static Math::Vector3 RayCastFirstHitPosition(const Math::Vector3& start, const Math::Vector3& end);
 
-        // Body
+        // body
         static void AddBody(btRigidBody* body);
         static void RemoveBody(btRigidBody*& body);
         static void AddBody(btSoftBody* body);
@@ -59,18 +59,18 @@ namespace Spartan
         static void AddBody(btRaycastVehicle* body);
         static void RemoveBody(btRaycastVehicle*& body);
 
-        // Constraint
+        // constraint
         static void AddConstraint(btTypedConstraint* constraint, bool collision_with_linked_body = true);
         static void RemoveConstraint(btTypedConstraint*& constraint);
 
-        // Misc
+        // misc
         static Math::Vector3& GetGravity();
         static btSoftBodyWorldInfo& GetSoftWorldInfo();
         static void* GetPhysicsDebugDraw();
         static void* GetWorld();
 
     private:
-        // Picking
+        // picking
         static void PickBody();
         static void UnpickBody();
         static void MovePickedBody();

@@ -56,7 +56,7 @@ public:
     static void Inspect(const std::shared_ptr<Spartan::Entity> entity);
     static void Inspect(const std::shared_ptr<Spartan::Material> material);
 
-    // Inspected resources
+    // inspected resources
     static std::weak_ptr<Spartan::Entity> m_inspected_entity;
     static std::weak_ptr<Spartan::Material> m_inspected_material;
 
