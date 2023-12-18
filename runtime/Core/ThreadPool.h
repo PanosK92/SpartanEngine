@@ -36,16 +36,16 @@ namespace Spartan
         static void Initialize();
         static void Shutdown();
 
-        // Add a task.
+        // add a task
         static void AddTask(Task&& task);
 
-        // Adds multiple tasks to spread execution of a given function across all available threads.
+        // spread execution of a given function across all available threads
         static void ParallelLoop(std::function<void(uint32_t work_index_start, uint32_t work_index_end)>&& function, const uint32_t work_total);
 
-        // Wait for all threads to finish work
+        // wait for all threads to finish work
         static void Flush(bool remove_queued = false);
 
-        // Stats
+        // stats
         static uint32_t GetThreadCount();
         static uint32_t GetWorkingThreadCount();
         static uint32_t GetIdleThreadCount();

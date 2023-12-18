@@ -2335,7 +2335,7 @@ namespace Spartan
     {
         // acquire shader
         RHI_Shader* shader_c = GetShader(Renderer_Shader::brdf_specular_lut_c).get();
-        if (!shader_c->IsCompiled())
+        if (!shader_c || !shader_c->IsCompiled())
             return;
 
         // acquire render target

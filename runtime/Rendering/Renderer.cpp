@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Camera.h"
 #include "../World/Components/AudioSource.h"
 #include "../World/Components/ReflectionProbe.h"
+#include "ThreadPool.h"
 //==============================================
 
 //= NAMESPACES ===============
@@ -309,19 +310,25 @@ namespace Spartan
         SetOption(Renderer_Option::Debug_Physics,                 0.0f);
         SetOption(Renderer_Option::Debug_PerformanceMetrics,      1.0f);
 
-        // resources
-        CreateStandardTextures();
-        CreateStandardMaterials();
-        CreateFonts();
-        CreateStandardMeshes();
-        CreateConstantBuffers();
-        CreateShaders();
-        CreateDepthStencilStates();
-        CreateRasterizerStates();
-        CreateBlendStates();
-        CreateRenderTextures(true, true, true, true);
-        CreateSamplers(false);
-        CreateStructuredBuffers();
+        // load/create resources
+        {
+            ThreadPool::AddTask([]()
+            {
+                CreateStandardTextures();
+                CreateStandardMaterials();
+                CreateFonts();
+                CreateShaders();
+            });
+
+            CreateStandardMeshes();
+            CreateConstantBuffers();
+            CreateDepthStencilStates();
+            CreateRasterizerStates();
+            CreateBlendStates();
+            CreateRenderTextures(true, true, true, true);
+            CreateSamplers(false);
+            CreateStructuredBuffers();
+        }
 
         // events
         {
