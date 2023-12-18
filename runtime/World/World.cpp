@@ -291,8 +291,8 @@ namespace Spartan
                 {
                     PhysicsBody* physics_body = entity_root->AddComponent<PhysicsBody>().get();
                     physics_body->SetBodyType(PhysicsBodyType::Vehicle);
-                    physics_body->SetCenterOfMass(Vector3(0.0f, 0.8f, 0.0f));
-                    physics_body->SetBoundingBox(Vector3(1.5f, 0.9f, 4.1f));
+                    physics_body->SetCenterOfMass(Vector3(0.0f, 1.2f, 0.0f));
+                    physics_body->SetBoundingBox(Vector3(3.0f, 1.9f, 7.0f));
                     physics_body->SetMass(960.0f); // http://www.j-garage.com/toyota/ae86.html
 
                     // set the steering wheel to the physics body so that it can rotate it
