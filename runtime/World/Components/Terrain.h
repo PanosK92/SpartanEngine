@@ -66,7 +66,7 @@ namespace Spartan
         uint32_t GetVertexCount() const       { return m_vertex_count; }
         uint32_t GetIndexCount() const        { return m_index_count; }
         uint64_t GetHeightSampleCount() const { return m_height_samples; }
-        float* GetHeightData()                { return &m_height_data[0]; }
+        float* GetHeightData()                { return !m_height_data.empty() ? &m_height_data[0] : nullptr; }
 
         void GenerateAsync(std::function<void()> on_complete = nullptr);
 

@@ -147,7 +147,7 @@ namespace Spartan
         bool HasRotationChangedThisFrame() const { return m_rotation_changed_this_frame; }
         //================================================================================
 
-        //= HIERARCHY =============================================================================
+        //= HIERARCHY ===================================================================================
         void SetParent(std::weak_ptr<Entity> new_parent);
         Entity* GetChildByIndex(uint32_t index);
         Entity* GetChildByName(const std::string& name);
@@ -157,13 +157,13 @@ namespace Spartan
         bool IsDescendantOf(Entity* transform) const;
         void GetDescendants(std::vector<Entity*>* descendants);
         Entity* GetDescendantByName(const std::string& name);
-        bool HasParent() const              { return !m_parent.expired(); }
-        bool HasChildren() const            { return GetChildrenCount() > 0 ? true : false; }
-        uint32_t GetChildrenCount() const   { return static_cast<uint32_t>(m_children.size()); }
-        Entity* GetRoot()                   { return HasParent() ? GetParent()->GetRoot() : this; }
-        Entity* GetParent() const           { return m_parent.lock().get(); }
-        std::vector<Entity*>& GetChildren() { return m_children; }
-        //=========================================================================================
+        bool HasParent() const                    { return !m_parent.expired(); }
+        bool HasChildren() const                  { return GetChildrenCount() > 0 ? true : false; }
+        uint32_t GetChildrenCount() const         { return static_cast<uint32_t>(m_children.size()); }
+        Entity* GetRoot()                         { return HasParent() ? GetParent()->GetRoot() : this; }
+        std::shared_ptr<Entity> GetParent() const { return m_parent.lock(); }
+        std::vector<Entity*>& GetChildren()       { return m_children; }
+        //===============================================================================================
 
         const Math::Matrix& GetMatrix() const              { return m_matrix; }
         const Math::Matrix& GetLocalMatrix() const         { return m_matrix_local; }
