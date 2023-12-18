@@ -50,7 +50,7 @@ namespace Spartan
         // compilation
         void Compile(const RHI_Shader_Stage type, const std::string& file_path, bool async, const RHI_Vertex_Type vertex_type = RHI_Vertex_Type::Undefined);
         RHI_ShaderCompilationState GetCompilationState() const { return m_compilation_state; }
-        bool IsCompiled()                                  const { return m_compilation_state == RHI_ShaderCompilationState::Succeeded; }
+        bool IsCompiled() const                                { return m_compilation_state == RHI_ShaderCompilationState::Succeeded; }
 
         // source
         void LoadFromDrive(const std::string& file_path);
