@@ -97,7 +97,7 @@ namespace Spartan
                 camera->SetObjectName("component_camera");
                 camera->AddComponent<Camera>()->SetPhysicsBodyToControl(physics_body);
                 camera->AddComponent<AudioListener>();
-                camera->SetParent(m_default_physics_body_camera.get());
+                camera->SetParent(m_default_physics_body_camera);
                 camera->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f)); // place it at the top of the capsule
                 camera->SetRotation(Quaternion::FromEulerAngles(camera_rotation));
             }
@@ -185,239 +185,6 @@ namespace Spartan
             shared_ptr<PhysicsBody> rigid_body = m_default_cube->AddComponent<PhysicsBody>();
             rigid_body->SetMass(15.0f);
             rigid_body->SetShapeType(PhysicsShape::Box);
-        }
-
-        static void create_default_car(const Math::Vector3& position = Vector3(0.0f, 0.2f, 0.0f))
-        {
-            const float car_scale   = 0.0180f;
-            const float wheel_scale = 0.3f;
-
-            if (m_default_model_car = ResourceCache::Load<Mesh>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
-            {
-                Entity* entity_car = m_default_model_car->GetRootEntity();
-                entity_car->SetObjectName("geometry");
-
-                entity_car->SetRotation(Quaternion::FromEulerAngles(90.0f, 0.0f, -180.0f));
-                entity_car->SetScale(Vector3(car_scale));
-
-                // the car is defined with a weird rotation (probably a bug with sketchfab auto converting to gltf)
-                // so we create a root which has no rotation and we parent the car to it, then attach the physics body to the root
-                Entity* entity_root = World::CreateEntity().get();
-                entity_root->SetObjectName("toyota_ae86_sprinter_trueno");
-                entity_root->SetPosition(position);
-                entity_car->SetParent(entity_root);
-
-                // body
-                {
-                    if (Entity* body = entity_car->GetDescendantByName("CarBody_Windows_0"))
-                    {
-                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
-                        {
-                            material->SetProperty(MaterialProperty::Ior, 1.45f);
-                        }
-                    }
-
-                    if (Entity* body = entity_car->GetDescendantByName("CarBody_Primary_0"))
-                    {
-                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
-                        {
-                            material->SetColor(Color::material_aluminum);
-                            material->SetProperty(MaterialProperty::Roughness, 0.5f);
-                            material->SetProperty(MaterialProperty::Metalness, 0.15f);
-                            material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
-                            material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f);
-                        }
-                    }
-
-                    // plastic
-                    {
-                        if (Entity* body = entity_car->GetDescendantByName("CarBody_Secondary_0"))
-                        {
-                            if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
-                            {
-                                material->SetColor(Color::material_tire);
-                                material->SetProperty(MaterialProperty::Roughness, 0.35f);
-                            }
-                        }
-
-                        if (Entity* body = entity_car->GetDescendantByName("CarBody_Trim1_0"))
-                        {
-                            if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
-                            {
-                                material->SetColor(Color::material_tire);
-                                material->SetProperty(MaterialProperty::Roughness, 0.35f);
-                            }
-                        }
-                    }
-                }
-
-                // interior
-                {
-                    if (Material* material = entity_car->GetDescendantByName("Interior_InteriorPlastic_0")->GetComponent<Renderable>()->GetMaterial())
-                    {
-                        material->SetColor(Color::material_tire);
-                        material->SetTexture(MaterialTexture::Roughness, nullptr);
-                        material->SetProperty(MaterialProperty::Roughness, 0.8f);
-                        material->SetProperty(MaterialProperty::Metalness, 0.0f);
-                    }
-
-                    if (Material* material = entity_car->GetDescendantByName("Interior_InteriorPlastic2_0")->GetComponent<Renderable>()->GetMaterial())
-                    {
-                        material->SetColor(Color::material_tire);
-                        material->SetProperty(MaterialProperty::Roughness, 0.8f);
-                        material->SetProperty(MaterialProperty::Metalness, 0.0f);
-                    }
-
-                }
-
-                // lights
-                {
-                    if (Material* material = entity_car->GetDescendantByName("CarBody_LampCovers_0")->GetComponent<Renderable>()->GetMaterial())
-                    {
-                        material->SetColor(Color::material_glass);
-                        material->SetProperty(MaterialProperty::Roughness, 0.2f);
-                        material->SetTexture(MaterialTexture::Emission, material->GetTexture_PtrShared(MaterialTexture::Color));
-                    }
-
-                    // plastic covers
-                    if (Material* material = entity_car->GetDescendantByName("Headlights_Trim2_0")->GetComponent<Renderable>()->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::Roughness, 0.35f);
-                        material->SetColor(Color::material_tire);
-                    }
-                }
-
-                // add physics body
-                {
-                    PhysicsBody* physics_body = entity_root->AddComponent<PhysicsBody>().get();
-                    physics_body->SetBodyType(PhysicsBodyType::Vehicle);
-                    physics_body->SetCenterOfMass(Vector3(0.0f, 1.2f, 0.0f));
-                    physics_body->SetBoundingBox(Vector3(3.0f, 1.9f, 7.0f));
-                    physics_body->SetMass(960.0f); // http://www.j-garage.com/toyota/ae86.html
-
-                    // set the steering wheel to the physics body so that it can rotate it
-                    if (Entity* entity_steering_wheel = entity_car->GetDescendantByName("SteeringWheel_SteeringWheel_0"))
-                    {
-                        physics_body->GetCar()->SetSteeringWheelTransform(entity_steering_wheel);
-                    }
-
-                    // remove all the wheels since they have weird rotations, we will add our own
-                    {
-                        World::RemoveEntity(entity_car->GetDescendantByName("FL_Wheel_RimMaterial_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("FL_Wheel_Brake Disc_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("FL_Wheel_TireMaterial_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("FL_Caliper_BrakeCaliper_0"));
-
-                        World::RemoveEntity(entity_car->GetDescendantByName("FR_Wheel_RimMaterial_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("FR_Wheel_Brake Disc_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("FR_Wheel_TireMaterial_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("FR_Caliper_BrakeCaliper_0"));
-
-                        World::RemoveEntity(entity_car->GetDescendantByName("RL_Wheel_RimMaterial_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("RL_Wheel_Brake Disc_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("RL_Wheel_TireMaterial_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("RL_Caliper_BrakeCaliper_0"));
-
-                        World::RemoveEntity(entity_car->GetDescendantByName("RR_Wheel_RimMaterial_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("RR_Wheel_Brake Disc_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("RR_Wheel_TireMaterial_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0"));
-                    }
-
-                    // load our own wheel
-                    if (m_default_model_wheel = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend"))
-                    {
-                        Entity* entity_wheel_root = m_default_model_wheel->GetRootEntity();
-                        entity_wheel_root->SetScale(Vector3(wheel_scale));
-
-                        if (Entity* entity_wheel = entity_wheel_root->GetDescendantByName("wheel Low"))
-                        {
-                            // create material
-                            shared_ptr<Material> material = make_shared<Material>();
-                            material->SetTexture(MaterialTexture::Color, "project\\models\\wheel\\albedo.jpeg");
-                            material->SetTexture(MaterialTexture::Normal, "project\\models\\wheel\\normal.png");
-                            material->SetTexture(MaterialTexture::Roughness, "project\\models\\wheel\\roughness.png");
-                            material->SetTexture(MaterialTexture::Metalness, "project\\models\\wheel\\metalness.png");
-
-                            // create a file path for this material (required for the material to be able to be cached by the resource cache)
-                            const string file_path = "project\\models\\wheel" + string(EXTENSION_MATERIAL);
-                            material->SetResourceFilePath(file_path);
-
-                            // set material
-                            entity_wheel->GetComponent<Renderable>()->SetMaterial(material);
-                        }
-
-                        // add the wheels to the body
-                        {
-                            Entity* wheel = entity_wheel_root;
-                            wheel->SetObjectName("wheel_fl");
-                            wheel->SetParent(entity_root);
-                            physics_body->GetCar()->SetWheelTransform(wheel, 0);
-
-                            wheel = entity_wheel_root->Clone();
-                            wheel->SetObjectName("wheel_fr");
-                            wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
-                            wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
-                            wheel->SetParent(entity_root);
-                            physics_body->GetCar()->SetWheelTransform(wheel, 1);
-
-                            wheel = entity_wheel_root->Clone();
-                            wheel->SetObjectName("wheel_rl");
-                            wheel->SetParent(entity_root);
-                            physics_body->GetCar()->SetWheelTransform(wheel, 2);
-
-                            wheel = entity_wheel_root->Clone();
-                            wheel->SetObjectName("wheel_rr");
-                            wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
-                            wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
-                            wheel->SetParent(entity_root);
-                            physics_body->GetCar()->SetWheelTransform(wheel, 3);
-                        }
-                    }
-                }
-
-                // lights
-                {
-                    // headlights
-                    {
-                        shared_ptr<Entity> entity_light_left = World::CreateEntity();
-                        entity_light_left->SetObjectName("light_left");
-                        entity_light_left->SetParent(entity_car);
-                        entity_light_left->SetPositionLocal(Vector3(-50.0f, -185.0f, -70.0f));
-                        entity_light_left->SetRotationLocal(Quaternion::FromEulerAngles(80.0f, 0.0f, 0.0));
-
-                        shared_ptr<Light> light = entity_light_left->AddComponent<Light>();
-                        light->SetLightType(LightType::Spot);
-                        light->SetColor(Color::light_light_bulb);
-                        light->SetIntensity(LightIntensity::bulb_500_watt);
-                        light->SetShadowsEnabled(false);
-                        light->SetRange(20.0f);
-                        light->SetAngle(30.0f * Math::Helper::DEG_TO_RAD);
-
-                        Entity* entity_light_right = entity_light_left->Clone();
-                        entity_light_right->SetObjectName("light_right");
-                        entity_light_right->SetParent(entity_car);
-                        entity_light_right->SetPositionLocal(Vector3(50.0f, -185.0f, -70.0f));
-                    }
-
-                    // taillights
-                    {
-                        shared_ptr<Entity> entity_light_left = World::CreateEntity();
-                        entity_light_left->SetObjectName("light_back");
-                        entity_light_left->SetParent(entity_car);
-                        entity_light_left->SetPositionLocal(Vector3(0.0f, 190.0f, -70.0f));
-                        entity_light_left->SetRotationLocal(Quaternion::FromEulerAngles(-70.0f, 0.0f, 0.0));
-
-                        shared_ptr<Light> light = entity_light_left->AddComponent<Light>();
-                        light->SetLightType(LightType::Spot);
-                        light->SetColor(Color(1.0f, 0.0f, 0.0f, 1.0f));
-                        light->SetIntensity(LightIntensity::bulb_500_watt);
-                        light->SetShadowsEnabled(false);
-                        light->SetRange(3.0f);
-                        light->SetAngle(145.0f * Math::Helper::DEG_TO_RAD);
-                    }
-                }
-            }
         }
     }
 
@@ -677,7 +444,7 @@ namespace Spartan
         vector<shared_ptr<Entity>> root_entities;
         for (const shared_ptr<Entity>& entity : m_entities)
         {
-            if (entity->IsRoot())
+            if (!entity->HasParent())
             {
                 root_entities.emplace_back(entity);
             }
@@ -764,7 +531,7 @@ namespace Spartan
         // flight helmet
         if (m_default_model_helmet_flight = ResourceCache::Load<Mesh>("project\\models\\flight_helmet\\FlightHelmet.gltf"))
         {
-            Entity* entity = m_default_model_helmet_flight->GetRootEntity();
+            shared_ptr<Entity> entity = m_default_model_helmet_flight->GetRootEntity().lock();
             entity->SetObjectName("flight_helmet");
             entity->SetPosition(Vector3(0.0f, 0.1f, 0.0f));
             entity->SetScale(Vector3(1.7f, 1.7f, 1.7f));
@@ -773,7 +540,7 @@ namespace Spartan
         // damaged helmet
         if (m_default_model_helmet_damaged = ResourceCache::Load<Mesh>("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
         {
-            Entity* entity = m_default_model_helmet_damaged->GetRootEntity();
+            shared_ptr<Entity> entity = m_default_model_helmet_damaged->GetRootEntity().lock();
             entity->SetObjectName("damaged_helmet");
             entity->SetPosition(Vector3(1.1713f, 0.5f, -0.1711f));
             entity->SetScale(Vector3(0.3f, 0.3f, 0.3f));
@@ -790,11 +557,243 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(8.7844f, 2.0f, -4.1412f);
         Vector3 camera_rotation = Vector3(7.4f, -65.5f, 0.0f);
-        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, "project\\music\\car.mp3");
-        create_default_car();
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, "project\\music\\take_control.mp3");
+
+        // create care
+        {
+            const float car_scale   = 0.0180f;
+            const float wheel_scale = 0.3f;
+
+            if (m_default_model_car = ResourceCache::Load<Mesh>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
+            {
+                shared_ptr<Entity> entity_car = m_default_model_car->GetRootEntity().lock();
+                entity_car->SetObjectName("geometry");
+
+                entity_car->SetRotation(Quaternion::FromEulerAngles(90.0f, 0.0f, -180.0f));
+                entity_car->SetScale(Vector3(car_scale));
+
+                // the car is defined with a weird rotation (probably a bug with sketchfab auto converting to gltf)
+                // so we create a root which has no rotation and we parent the car to it, then attach the physics body to the root
+                shared_ptr<Entity> entity_root = World::CreateEntity();
+                entity_root->SetObjectName("toyota_ae86_sprinter_trueno");
+                entity_root->SetPosition(Vector3(0.0f, 0.2f, 0.0f));
+                entity_car->SetParent(entity_root);
+
+                // body
+                {
+                    if (Entity* body = entity_car->GetDescendantByName("CarBody_Windows_0"))
+                    {
+                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                        {
+                            material->SetProperty(MaterialProperty::Ior, 1.45f);
+                        }
+                    }
+
+                    if (Entity* body = entity_car->GetDescendantByName("CarBody_Primary_0"))
+                    {
+                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                        {
+                            material->SetColor(Color::material_aluminum);
+                            material->SetProperty(MaterialProperty::Roughness, 0.5f);
+                            material->SetProperty(MaterialProperty::Metalness, 0.15f);
+                            material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
+                            material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f);
+                        }
+                    }
+
+                    // plastic
+                    {
+                        if (Entity* body = entity_car->GetDescendantByName("CarBody_Secondary_0"))
+                        {
+                            if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                            {
+                                material->SetColor(Color::material_tire);
+                                material->SetProperty(MaterialProperty::Roughness, 0.35f);
+                            }
+                        }
+
+                        if (Entity* body = entity_car->GetDescendantByName("CarBody_Trim1_0"))
+                        {
+                            if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                            {
+                                material->SetColor(Color::material_tire);
+                                material->SetProperty(MaterialProperty::Roughness, 0.35f);
+                            }
+                        }
+                    }
+                }
+
+                // interior
+                {
+                    if (Material* material = entity_car->GetDescendantByName("Interior_InteriorPlastic_0")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetColor(Color::material_tire);
+                        material->SetTexture(MaterialTexture::Roughness, nullptr);
+                        material->SetProperty(MaterialProperty::Roughness, 0.8f);
+                        material->SetProperty(MaterialProperty::Metalness, 0.0f);
+                    }
+
+                    if (Material* material = entity_car->GetDescendantByName("Interior_InteriorPlastic2_0")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetColor(Color::material_tire);
+                        material->SetProperty(MaterialProperty::Roughness, 0.8f);
+                        material->SetProperty(MaterialProperty::Metalness, 0.0f);
+                    }
+
+                }
+
+                // lights
+                {
+                    if (Material* material = entity_car->GetDescendantByName("CarBody_LampCovers_0")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetColor(Color::material_glass);
+                        material->SetProperty(MaterialProperty::Roughness, 0.2f);
+                        material->SetTexture(MaterialTexture::Emission, material->GetTexture_PtrShared(MaterialTexture::Color));
+                    }
+
+                    // plastic covers
+                    if (Material* material = entity_car->GetDescendantByName("Headlights_Trim2_0")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::Roughness, 0.35f);
+                        material->SetColor(Color::material_tire);
+                    }
+                }
+
+                // add physics body
+                {
+                    PhysicsBody* physics_body = entity_root->AddComponent<PhysicsBody>().get();
+                    physics_body->SetBodyType(PhysicsBodyType::Vehicle);
+                    physics_body->SetCenterOfMass(Vector3(0.0f, 1.2f, 0.0f));
+                    physics_body->SetBoundingBox(Vector3(3.0f, 1.9f, 7.0f));
+                    physics_body->SetMass(960.0f); // http://www.j-garage.com/toyota/ae86.html
+
+                    // set the steering wheel to the physics body so that it can rotate it
+                    if (Entity* entity_steering_wheel = entity_car->GetDescendantByName("SteeringWheel_SteeringWheel_0"))
+                    {
+                        physics_body->GetCar()->SetSteeringWheelTransform(entity_steering_wheel);
+                    }
+
+                    // remove all the wheels since they have weird rotations, we will add our own
+                    {
+                        World::RemoveEntity(entity_car->GetDescendantByName("FL_Wheel_RimMaterial_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("FL_Wheel_Brake Disc_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("FL_Wheel_TireMaterial_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("FL_Caliper_BrakeCaliper_0"));
+
+                        World::RemoveEntity(entity_car->GetDescendantByName("FR_Wheel_RimMaterial_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("FR_Wheel_Brake Disc_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("FR_Wheel_TireMaterial_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("FR_Caliper_BrakeCaliper_0"));
+
+                        World::RemoveEntity(entity_car->GetDescendantByName("RL_Wheel_RimMaterial_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("RL_Wheel_Brake Disc_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("RL_Wheel_TireMaterial_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("RL_Caliper_BrakeCaliper_0"));
+
+                        World::RemoveEntity(entity_car->GetDescendantByName("RR_Wheel_RimMaterial_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("RR_Wheel_Brake Disc_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("RR_Wheel_TireMaterial_0"));
+                        World::RemoveEntity(entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0"));
+                    }
+
+                    // load our own wheel
+                    if (m_default_model_wheel = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend"))
+                    {
+                        shared_ptr<Entity> entity_wheel_root = m_default_model_wheel->GetRootEntity().lock();
+                        entity_wheel_root->SetScale(Vector3(wheel_scale));
+
+                        if (Entity* entity_wheel = entity_wheel_root->GetDescendantByName("wheel Low"))
+                        {
+                            // create material
+                            shared_ptr<Material> material = make_shared<Material>();
+                            material->SetTexture(MaterialTexture::Color, "project\\models\\wheel\\albedo.jpeg");
+                            material->SetTexture(MaterialTexture::Normal, "project\\models\\wheel\\normal.png");
+                            material->SetTexture(MaterialTexture::Roughness, "project\\models\\wheel\\roughness.png");
+                            material->SetTexture(MaterialTexture::Metalness, "project\\models\\wheel\\metalness.png");
+
+                            // create a file path for this material (required for the material to be able to be cached by the resource cache)
+                            const string file_path = "project\\models\\wheel" + string(EXTENSION_MATERIAL);
+                            material->SetResourceFilePath(file_path);
+
+                            // set material
+                            entity_wheel->GetComponent<Renderable>()->SetMaterial(material);
+                        }
+
+                        // add the wheels to the body
+                        {
+                            shared_ptr<Entity> wheel = entity_wheel_root;
+                            wheel->SetObjectName("wheel_fl");
+                            wheel->SetParent(entity_root);
+                            physics_body->GetCar()->SetWheelTransform(wheel.get(), 0);
+
+                            wheel = entity_wheel_root->Clone();
+                            wheel->SetObjectName("wheel_fr");
+                            wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
+                            wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
+                            wheel->SetParent(entity_root);
+                            physics_body->GetCar()->SetWheelTransform(wheel.get(), 1);
+
+                            wheel = entity_wheel_root->Clone();
+                            wheel->SetObjectName("wheel_rl");
+                            wheel->SetParent(entity_root);
+                            physics_body->GetCar()->SetWheelTransform(wheel.get(), 2);
+
+                            wheel = entity_wheel_root->Clone();
+                            wheel->SetObjectName("wheel_rr");
+                            wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
+                            wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
+                            wheel->SetParent(entity_root);
+                            physics_body->GetCar()->SetWheelTransform(wheel.get(), 3);
+                        }
+                    }
+                }
+
+                // lights
+                {
+                    // headlights
+                    {
+                        shared_ptr<Entity> entity_light_left = World::CreateEntity();
+                        entity_light_left->SetObjectName("light_left");
+                        entity_light_left->SetParent(entity_car);
+                        entity_light_left->SetPositionLocal(Vector3(-50.0f, -185.0f, -70.0f));
+                        entity_light_left->SetRotationLocal(Quaternion::FromEulerAngles(80.0f, 0.0f, 0.0));
+
+                        shared_ptr<Light> light = entity_light_left->AddComponent<Light>();
+                        light->SetLightType(LightType::Spot);
+                        light->SetColor(Color::light_light_bulb);
+                        light->SetIntensity(LightIntensity::bulb_500_watt);
+                        light->SetShadowsEnabled(false);
+                        light->SetRange(20.0f);
+                        light->SetAngle(30.0f * Math::Helper::DEG_TO_RAD);
+
+                        shared_ptr<Entity> entity_light_right = entity_light_left->Clone();
+                        entity_light_right->SetObjectName("light_right");
+                        entity_light_right->SetParent(entity_car);
+                        entity_light_right->SetPositionLocal(Vector3(50.0f, -185.0f, -70.0f));
+                    }
+
+                    // taillights
+                    {
+                        shared_ptr<Entity> entity_light_left = World::CreateEntity();
+                        entity_light_left->SetObjectName("light_back");
+                        entity_light_left->SetParent(entity_car);
+                        entity_light_left->SetPositionLocal(Vector3(0.0f, 190.0f, -70.0f));
+                        entity_light_left->SetRotationLocal(Quaternion::FromEulerAngles(-70.0f, 0.0f, 0.0));
+
+                        shared_ptr<Light> light = entity_light_left->AddComponent<Light>();
+                        light->SetLightType(LightType::Spot);
+                        light->SetColor(Color(1.0f, 0.0f, 0.0f, 1.0f));
+                        light->SetIntensity(LightIntensity::bulb_500_watt);
+                        light->SetShadowsEnabled(false);
+                        light->SetRange(3.0f);
+                        light->SetAngle(145.0f * Math::Helper::DEG_TO_RAD);
+                    }
+                }
+            }
+        }
 
         Engine::AddFlag(EngineMode::Game);
-        SP_LOG_INFO("Use the arrow keys to steer the car and space for handbreak!");
+        SP_LOG_INFO("Take control: Use the arrow keys to steer the car and space for handbreak!");
     }
 
     void World::CreateDefaultWorldForest()
@@ -809,9 +808,9 @@ namespace Spartan
 
         // sound
         {
-            Entity* entity = World::CreateEntity().get();
+            shared_ptr<Entity> entity = World::CreateEntity();
             entity->SetObjectName("audio");
-            entity->SetParent(m_default_terrain.get());
+            entity->SetParent(m_default_terrain);
 
             // footsteps grass
             {
@@ -944,10 +943,10 @@ namespace Spartan
                 // vegetation_tree_1
                 if (shared_ptr<Mesh> tree = ResourceCache::Load<Mesh>("project\\models\\vegetation_tree_1\\tree.fbx"))
                 {
-                    Entity* entity = tree->GetRootEntity();
+                    shared_ptr<Entity> entity = tree->GetRootEntity().lock();
                     entity->SetObjectName("tree_1");
                     entity->SetScale(Vector3(0.01f, 0.01f, 0.01f));
-                    entity->SetParent(m_default_terrain.get());
+                    entity->SetParent(m_default_terrain);
 
                     vector<Matrix> instances;
 
@@ -978,10 +977,10 @@ namespace Spartan
                 // vegetation_plant_1
                 if (shared_ptr<Mesh> plant = ResourceCache::Load<Mesh>("project\\models\\vegetation_plant_1\\ormbunke.obj"))
                 {
-                    Entity* entity = plant->GetRootEntity();
+                    shared_ptr<Entity> entity = plant->GetRootEntity().lock();
                     entity->SetObjectName("plant_1");
                     entity->SetScale(Vector3(1.0f, 1.0f, 1.0f));
-                    entity->SetParent(m_default_terrain.get());
+                    entity->SetParent(m_default_terrain);
 
                     if (Entity* child = entity->GetDescendantByName("Plane.010"))
                     {
@@ -1070,7 +1069,7 @@ namespace Spartan
         // 3d model - Sponza
         if (m_default_model_sponza = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
         {
-            Entity* entity = m_default_model_sponza->GetRootEntity();
+            shared_ptr<Entity> entity = m_default_model_sponza->GetRootEntity().lock();
             entity->SetObjectName("sponza");
             entity->SetPosition(Vector3(0.0f, 1.5f, 0.0f));
             entity->SetScale(Vector3(2.0f, 2.0f, 2.0f)); // I actually walked in Sponza, it's that big
@@ -1103,7 +1102,7 @@ namespace Spartan
             // 3d model - sponza curtains
             if (m_default_model_sponza_curtains = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
             {
-                entity = m_default_model_sponza_curtains->GetRootEntity();
+                entity = m_default_model_sponza_curtains->GetRootEntity().lock();
                 entity->SetObjectName("sponza_curtains");
                 entity->SetPosition(Vector3(0.0f, 0.15f, 0.0f));
                 entity->SetScale(Vector3(2.0f, 2.0f, 2.0f)); // I actually walked in Sponza, it's that big
@@ -1123,7 +1122,7 @@ namespace Spartan
         // doom level
         if (m_default_model_doom = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
         {
-            Entity* entity = m_default_model_doom->GetRootEntity();
+            shared_ptr<Entity> entity = m_default_model_doom->GetRootEntity().lock();
             entity->SetObjectName("doom_e1m1");
             entity->SetPosition(Vector3(0.0f, 14.0f, -355.5300f));
             entity->SetScale(Vector3(0.1f, 0.1f, 0.1f));

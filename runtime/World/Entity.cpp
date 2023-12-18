@@ -44,10 +44,10 @@ namespace Spartan
     namespace
     {
         // input is an entity, output is a clone of that entity (descendant entities are not cloned)
-        Entity* clone_entity(Entity* entity)
+        shared_ptr<Entity> clone_entity(Entity* entity)
         {
             // clone basic properties
-            Entity* clone = World::CreateEntity().get();
+            shared_ptr<Entity> clone = World::CreateEntity();
             clone->SetObjectId(SpObject::GenerateObjectId());
             clone->SetObjectName(entity->GetObjectName());
             clone->SetActive(entity->IsActive());
@@ -73,14 +73,14 @@ namespace Spartan
         };
 
         // input is an entity, output is a clone of that entity (descendant entities are cloned)
-        Entity* clone_entity_and_descendants(Entity* entity)
+        shared_ptr<Entity> clone_entity_and_descendants(Entity* entity)
         {
-            Entity* clone_self = clone_entity(entity);
+            shared_ptr<Entity> clone_self = clone_entity(entity);
 
             // clone children make them call this lambda
             for (Entity* child_transform : entity->GetChildren())
             {
-                Entity* clone_child = clone_entity_and_descendants(child_transform);
+                shared_ptr<Entity> clone_child = clone_entity_and_descendants(child_transform);
                 clone_child->SetParent(clone_self);
             }
 
@@ -107,7 +107,7 @@ namespace Spartan
         UpdateTransform();
     }
 
-    Entity* Entity::Clone()
+    shared_ptr<Entity> Entity::Clone()
     {
         return clone_entity_and_descendants(this);
     }
@@ -162,7 +162,7 @@ namespace Spartan
             stream->Write(m_position_local);
             stream->Write(m_rotation_local);
             stream->Write(m_scale_local);
-            stream->Write(m_parent ? m_parent->GetObjectId() : 0);
+            stream->Write(!m_parent.expired() ? m_parent.lock()->GetObjectId() : 0);
         }
 
         // COMPONENTS
@@ -213,7 +213,7 @@ namespace Spartan
         }
     }
 
-    void Entity::Deserialize(FileStream* stream, Entity* parent)
+    void Entity::Deserialize(FileStream* stream, shared_ptr<Entity> parent)
     {
         // BASIC DATA
         {
@@ -268,7 +268,7 @@ namespace Spartan
                 }
             }
 
-            // Set the transform's parent
+            // set the transform's parent
             SetParent(parent);
         }
 
@@ -291,7 +291,7 @@ namespace Spartan
             // Children
             for (const auto& child : children)
             {
-                child.lock()->Deserialize(stream, this);
+                child.lock()->Deserialize(stream, World::GetEntityById(m_object_id));
             }
 
             AcquireChildren();
@@ -358,9 +358,9 @@ namespace Spartan
         m_matrix_local = Matrix(m_position_local, m_rotation_local, m_scale_local);
 
         // compute world transform
-        if (m_parent)
+        if (!m_parent.expired())
         {
-            m_matrix = m_matrix_local * m_parent->GetMatrix();
+            m_matrix = m_matrix_local * m_parent.lock()->GetMatrix();
         }
         else
         {
@@ -508,18 +508,21 @@ namespace Spartan
         return nullptr;
     }
 
-    void Entity::SetParent(Entity* new_parent)
+    void Entity::SetParent(weak_ptr<Entity> new_parent_in)
     {
         lock_guard lock(m_mutex_parent);
 
-        if (new_parent)
+        shared_ptr<Entity> new_parent = new_parent_in.lock();
+        shared_ptr<Entity> parent     = m_parent.lock();
+
+        if (!new_parent)
         {
             // early exit if the parent is this entity
             if (GetObjectId() == new_parent->GetObjectId())
                 return;
         
             // early exit if the parent is already set
-            if (m_parent && m_parent->GetObjectId() == new_parent->GetObjectId())
+            if (parent && parent->GetObjectId() == new_parent->GetObjectId())
                 return;
         
             // if the new parent is a descendant of this transform (e.g. dragging and dropping an entity onto one of it's children)
@@ -536,10 +539,10 @@ namespace Spartan
         }
         
         // remove the this as a child from the existing parent
-        if (m_parent)
+        if (parent)
         {
             bool update_child_with_null_parent = false;
-            m_parent->RemoveChild(this, update_child_with_null_parent);
+            parent->RemoveChild(this, update_child_with_null_parent);
         }
         
         // add this is a child to new parent
@@ -548,12 +551,12 @@ namespace Spartan
             new_parent->AddChild(this);
         }
 
-        if ((m_parent && !new_parent) || (!m_parent && new_parent))
+        if ((parent && !new_parent) || (!parent && new_parent))
         {
             UpdateTransform();
         }
 
-        m_parent = new_parent;
+        m_parent = new_parent_in;
     }
 
     void Entity::AddChild(Entity* child)
@@ -588,7 +591,8 @@ namespace Spartan
         // remove the child's parent
         if (update_child_with_null_parent)
         {
-            child->SetParent(nullptr);
+            shared_ptr<Entity> null = nullptr;
+            child->SetParent(null);
         }
     }
 
@@ -622,10 +626,10 @@ namespace Spartan
     {
         SP_ASSERT(transform != nullptr);
 
-        if (!m_parent)
+        if (m_parent.expired())
             return false;
 
-        if (m_parent->GetObjectId() == transform->GetObjectId())
+        if (m_parent.lock()->GetObjectId() == transform->GetObjectId())
             return true;
 
         for (Entity* child : transform->GetChildren())

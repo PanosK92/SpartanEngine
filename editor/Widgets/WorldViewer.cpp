@@ -179,7 +179,8 @@ void WorldViewer::TreeShow()
             const uint64_t entity_id = get<uint64_t>(payload->data);
             if (const shared_ptr<Spartan::Entity>& dropped_entity = Spartan::World::GetEntityById(entity_id))
             {
-                dropped_entity->SetParent(nullptr);
+                shared_ptr<Spartan::Entity> null = nullptr;
+                dropped_entity->SetParent(null);
             }
         }
 
@@ -358,7 +359,7 @@ void WorldViewer::EntityHandleDragDrop(shared_ptr<Spartan::Entity> entity_ptr) c
         {
             if (dropped_entity->GetObjectId() != entity_ptr->GetObjectId())
             {
-                dropped_entity->SetParent(entity_ptr.get());
+                dropped_entity->SetParent(entity_ptr);
             }
         }
     }
@@ -625,7 +626,7 @@ Spartan::Entity* WorldViewer::ActionEntityCreateEmpty()
     {
         if (shared_ptr<Spartan::Entity> selected_entity = camera->GetSelectedEntity())
         {
-            entity->SetParent(selected_entity.get());
+            entity->SetParent(selected_entity);
         }
     }
 

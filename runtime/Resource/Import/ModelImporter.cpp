@@ -92,14 +92,12 @@ namespace Spartan
         return Quaternion(ai_quaternion.x, ai_quaternion.y, ai_quaternion.z, ai_quaternion.w);
     }
 
-    static void set_entity_transform(const aiNode* node, Entity* entity)
+    static void set_entity_transform(const aiNode* node, shared_ptr<Entity> entity)
     {
-        SP_ASSERT_MSG(node != nullptr && entity != nullptr, "Invalid parameter(s)");
-
-        // Convert to engine matrix
+        // convert to engine matrix
         const Matrix matrix_engine = convert_matrix(node->mTransformation);
 
-        // Apply position, rotation and scale
+        // apply position, rotation and scale
         entity->SetPositionLocal(matrix_engine.GetTranslation());
         entity->SetRotationLocal(matrix_engine.GetRotation());
         entity->SetScaleLocal(matrix_engine.GetScale());
@@ -441,14 +439,14 @@ namespace Spartan
                 if (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportNormalizeScale))
                 {
                     float normalized_scale = mesh->ComputeNormalizedScale();
-                    mesh->GetRootEntity()->SetScale(normalized_scale);
+                    mesh->GetRootEntity().lock()->SetScale(normalized_scale);
                 }
 
                 mesh->CreateGpuBuffers();
             }
 
             // make the root entity active since it's now thread-safe
-            mesh->GetRootEntity()->SetActive(true);
+            mesh->GetRootEntity().lock()->SetActive(true);
             World::Resolve();
         }
         else
@@ -465,55 +463,55 @@ namespace Spartan
 
     void ModelImporter::ParseNode(const aiNode* node, shared_ptr<Entity> parent_entity)
     {
-        // Create an entity that will match this node.
+        // create an entity that will match this node.
         shared_ptr<Entity> entity = World::CreateEntity();
 
-        // Set root entity to mesh
+        // set root entity to mesh
         bool is_root_node = parent_entity == nullptr;
         if (is_root_node)
         {
             mesh->SetRootEntity(entity);
 
-            // The root entity is created as inactive for thread-safety.
+            // the root entity is created as inactive for thread-safety.
             entity->SetActive(false);
         }
 
-        // Name the entity
+        // name the entity
         string node_name = is_root_node ? model_name : node->mName.C_Str();
         entity->SetObjectName(model_name);
 
-        // Update progress tracking
+        // update progress tracking
         ProgressTracker::GetProgress(ProgressType::ModelImporter).SetText("Creating entity for " + entity->GetObjectName());
 
-        // Set the transform of parent_node as the parent of the new_entity's transform
-        entity->SetParent(parent_entity.get());
+        // set the transform of parent_node as the parent of the new_entity's transform
+        entity->SetParent(parent_entity);
 
-        // Apply node transformation
-        set_entity_transform(node, entity.get());
+        // apply node transformation
+        set_entity_transform(node, entity);
 
-        // Mesh components
+        // mesh components
         if (node->mNumMeshes > 0)
         {
-            ParseNodeMeshes(node, entity.get());
+            ParseNodeMeshes(node, entity);
         }
 
-        // Light component
+        // light component
         if (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportLights))
         {
-            ParseNodeLight(node, entity.get());
+            ParseNodeLight(node, entity);
         }
 
-        // Children nodes
+        // children nodes
         for (uint32_t i = 0; i < node->mNumChildren; i++)
         {
             ParseNode(node->mChildren[i], entity);
         }
 
-        // Update progress tracking
+        // update progress tracking
         ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone();
     }
 
-    void ModelImporter::ParseNodeMeshes(const aiNode* assimp_node, Entity* node_entity)
+    void ModelImporter::ParseNodeMeshes(const aiNode* assimp_node, shared_ptr<Entity> node_entity)
     {
         // An aiNode can have any number of meshes (albeit typically, it's one).
         // If it has more than one meshes, then we create children entities to store them.
@@ -522,32 +520,32 @@ namespace Spartan
 
         for (uint32_t i = 0; i < assimp_node->mNumMeshes; i++)
         {
-            Entity* entity    = node_entity;
-            aiMesh* node_mesh = scene->mMeshes[assimp_node->mMeshes[i]];
-            string node_name  = assimp_node->mName.C_Str();
+            shared_ptr<Entity> entity = node_entity;
+            aiMesh* node_mesh         = scene->mMeshes[assimp_node->mMeshes[i]];
+            string node_name          = assimp_node->mName.C_Str();
 
             // if this node has more than one meshes, create an entity for each mesh, then make that entity a child of node_entity
             if (assimp_node->mNumMeshes > 1)
             {
-                // Create entity
-                entity = World::CreateEntity().get();
+                // create entity
+                entity = World::CreateEntity();
 
-                // Set parent
+                // set parent
                 entity->SetParent(node_entity);
 
-                // Set name
+                // set name
                 node_name += "_" + to_string(i + 1); // set name
             }
 
-            // Set entity name
+            // set entity name
             entity->SetObjectName(node_name);
             
-            // Load the mesh onto the entity (via a Renderable component)
+            // load the mesh onto the entity (via a Renderable component)
             ParseMesh(node_mesh, entity);
         }
     }
 
-    void ModelImporter::ParseNodeLight(const aiNode* node, Entity* new_entity)
+    void ModelImporter::ParseNodeLight(const aiNode* node, shared_ptr<Entity> new_entity)
     {
         for (uint32_t i = 0; i < scene->mNumLights; i++)
         {
@@ -590,7 +588,7 @@ namespace Spartan
         }
     }
 
-    void ModelImporter::ParseMesh(aiMesh* assimp_mesh, Entity* entity_parent)
+    void ModelImporter::ParseMesh(aiMesh* assimp_mesh, shared_ptr<Entity> entity_parent)
     {
         SP_ASSERT(assimp_mesh != nullptr);
         SP_ASSERT(entity_parent != nullptr);
@@ -686,7 +684,7 @@ namespace Spartan
             // convert it and add it to the model
             shared_ptr<Material> material = load_material(mesh, model_file_path, model_is_gltf, assimp_material);
 
-            mesh->SetMaterial(material, entity_parent);
+            mesh->SetMaterial(material, entity_parent.get());
         }
 
         // Bones
