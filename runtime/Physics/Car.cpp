@@ -85,7 +85,7 @@ namespace Spartan
         constexpr float suspension_damping                      = 2.0f;                                      // damping coefficient to dissipate energy
         constexpr float suspension_compression                  = 1.0f;                                      // compression damping coefficient
         constexpr float suspension_force_max                    = 5000.0f;                                   // maximum force suspension can exert in newtons
-        constexpr float suspension_length                       = 0.2f;                                      // spring length
+        constexpr float suspension_length                       = 0.4f;                                      // spring length
         constexpr float suspension_rest_length                  = suspension_length * 0.8f;                  // spring length at equilibrium
         constexpr float suspension_travel_max                   = suspension_length * 0.5f;                  // maximum travel of the suspension                                                                       
         constexpr float suspension_antiroll_bar_stiffness_front = 500.0f;                                    // higher front stiffness reduces oversteer, lower increases it
