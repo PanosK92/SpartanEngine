@@ -189,7 +189,7 @@ Editor::Editor()
     IconLoader::Initialize();
     EditorHelper::Initialize(this);
 
-    // Create all ImGui widgets
+    // create all ImGui widgets
     m_widgets.emplace_back(make_shared<Console>(this));
     m_widgets.emplace_back(make_shared<Profiler>(this));
     m_widgets.emplace_back(make_shared<ResourceViewer>(this));
@@ -208,7 +208,7 @@ Editor::Editor()
     // allow ImGui to get event's from the engine's event processing loop
     SP_SUBSCRIBE_TO_EVENT(Spartan::EventType::Sdl, SP_EVENT_HANDLER_VARIANT_STATIC(process_event));
 
-    // Register ImGui as a third party library (will show up in the about window)
+    // register ImGui as a third party library (will show up in the about window)
     Spartan::Settings::RegisterThirdPartyLib("Dear ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
 }
 
@@ -231,7 +231,7 @@ void Editor::Tick()
     {
         bool render_editor = Spartan::Engine::IsFlagSet(Spartan::EngineMode::Editor);
 
-        // ImGui tick
+        // imgui tick
         if (render_editor)
         {
             ImGui_ImplSDL2_NewFrame();
@@ -288,45 +288,45 @@ void Editor::BeginWindow()
         ImGuiWindowFlags_NoBringToFrontOnFocus |
         ImGuiWindowFlags_NoNavFocus;
 
-    // Set window position and size
+    // set window position and size
     float offset_y = widget_menu_bar ? (widget_menu_bar->GetHeight() + widget_menu_bar->GetPadding()) : 0;
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + offset_y));
     ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - offset_y));
     ImGui::SetNextWindowViewport(viewport->ID);
 
-    // Set window style
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    // set window style
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding,   0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,    ImVec2(0.0f, 0.0f));
     ImGui::SetNextWindowBgAlpha(0.0f);
 
-    // Begin window
+    // begin window
     std::string name = "##main_window";
     bool open = true;
     m_editor_begun = ImGui::Begin(name.c_str(), &open, window_flags);
     ImGui::PopStyleVar(3);
 
-    // Begin dock space
+    // begin dock space
     if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable && m_editor_begun)
     {
-        // Dock space
+        // dock space
         const auto window_id = ImGui::GetID(name.c_str());
         if (!ImGui::DockBuilderGetNode(window_id))
         {
-            // Reset current docking state
+            // reset current docking state
             ImGui::DockBuilderRemoveNode(window_id);
             ImGui::DockBuilderAddNode(window_id, ImGuiDockNodeFlags_None);
             ImGui::DockBuilderSetNodeSize(window_id, ImGui::GetMainViewport()->Size);
 
-            // DockBuilderSplitNode(ImGuiID node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, ImGuiID* out_id_dir, ImGuiID* out_id_other);
+            // dockBuilderSplitNode(ImGuiID node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, ImGuiID* out_id_dir, ImGuiID* out_id_other);
             ImGuiID dock_main_id       = window_id;
             ImGuiID dock_right_id      = ImGui::DockBuilderSplitNode(dock_main_id,  ImGuiDir_Right, 0.2f,  nullptr, &dock_main_id);
             ImGuiID dock_right_down_id = ImGui::DockBuilderSplitNode(dock_right_id, ImGuiDir_Down,  0.6f,  nullptr, &dock_right_id);
             ImGuiID dock_down_id       = ImGui::DockBuilderSplitNode(dock_main_id,  ImGuiDir_Down,  0.25f, nullptr, &dock_main_id);
             ImGuiID dock_down_right_id = ImGui::DockBuilderSplitNode(dock_down_id,  ImGuiDir_Right, 0.6f,  nullptr, &dock_down_id);
 
-            // Dock windows
+            // dock windows
             ImGui::DockBuilderDockWindow("World",      dock_right_id);
             ImGui::DockBuilderDockWindow("Properties", dock_right_down_id);
             ImGui::DockBuilderDockWindow("Console",    dock_down_id);
