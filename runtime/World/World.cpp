@@ -421,14 +421,14 @@ namespace Spartan
 
             // remove entities using a single loop
             m_entities.erase(remove_if(m_entities.begin(), m_entities.end(),
-                [&](const shared_ptr<Entity>& entity)
-                {
-                    return ids_to_remove.count(entity->GetObjectId()) > 0;
-                }),
-                m_entities.end());
+            [&](const shared_ptr<Entity>& entity)
+            {
+                return ids_to_remove.count(entity->GetObjectId()) > 0;
+            }),
+            m_entities.end());
 
             // if there was a parent, update it
-            if (Entity* parent = entity_to_remove->GetParent())
+            if (shared_ptr<Entity> parent = entity_to_remove->GetParent())
             {
                 parent->AcquireChildren();
             }
@@ -673,29 +673,6 @@ namespace Spartan
                         physics_body->GetCar()->SetSteeringWheelTransform(entity_steering_wheel);
                     }
 
-                    // remove all the wheels since they have weird rotations, we will add our own
-                    {
-                        World::RemoveEntity(entity_car->GetDescendantByName("FL_Wheel_RimMaterial_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("FL_Wheel_Brake Disc_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("FL_Wheel_TireMaterial_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("FL_Caliper_BrakeCaliper_0"));
-
-                        World::RemoveEntity(entity_car->GetDescendantByName("FR_Wheel_RimMaterial_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("FR_Wheel_Brake Disc_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("FR_Wheel_TireMaterial_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("FR_Caliper_BrakeCaliper_0"));
-
-                        World::RemoveEntity(entity_car->GetDescendantByName("RL_Wheel_RimMaterial_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("RL_Wheel_Brake Disc_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("RL_Wheel_TireMaterial_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("RL_Caliper_BrakeCaliper_0"));
-
-                        World::RemoveEntity(entity_car->GetDescendantByName("RR_Wheel_RimMaterial_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("RR_Wheel_Brake Disc_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("RR_Wheel_TireMaterial_0"));
-                        World::RemoveEntity(entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0"));
-                    }
-
                     // load our own wheel
                     if (m_default_model_wheel = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend"))
                     {
@@ -792,8 +769,34 @@ namespace Spartan
             }
         }
 
+        // remove all the wheels since they have weird rotations, we will add our own
+        {
+            auto entity_car = m_default_model_car->GetRootEntity().lock();
+
+            World::RemoveEntity(entity_car->GetDescendantByName("FL_Wheel_RimMaterial_0"));
+            World::RemoveEntity(entity_car->GetDescendantByName("FL_Wheel_Brake Disc_0"));
+            World::RemoveEntity(entity_car->GetDescendantByName("FL_Wheel_TireMaterial_0"));
+            World::RemoveEntity(entity_car->GetDescendantByName("FL_Caliper_BrakeCaliper_0"));
+
+            World::RemoveEntity(entity_car->GetDescendantByName("FR_Wheel_RimMaterial_0"));
+            World::RemoveEntity(entity_car->GetDescendantByName("FR_Wheel_Brake Disc_0"));
+            World::RemoveEntity(entity_car->GetDescendantByName("FR_Wheel_TireMaterial_0"));
+            World::RemoveEntity(entity_car->GetDescendantByName("FR_Caliper_BrakeCaliper_0"));
+
+            World::RemoveEntity(entity_car->GetDescendantByName("RL_Wheel_RimMaterial_0"));
+            World::RemoveEntity(entity_car->GetDescendantByName("RL_Wheel_Brake Disc_0"));
+            World::RemoveEntity(entity_car->GetDescendantByName("RL_Wheel_TireMaterial_0"));
+            World::RemoveEntity(entity_car->GetDescendantByName("RL_Caliper_BrakeCaliper_0"));
+
+            World::RemoveEntity(entity_car->GetDescendantByName("RR_Wheel_RimMaterial_0"));
+            World::RemoveEntity(entity_car->GetDescendantByName("RR_Wheel_Brake Disc_0"));
+            World::RemoveEntity(entity_car->GetDescendantByName("RR_Wheel_TireMaterial_0"));
+            World::RemoveEntity(entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0"));
+
+            SP_LOG_INFO("Take control: Use the arrow keys to steer the car and space for handbreak!");
+        }
+
         Engine::AddFlag(EngineMode::Game);
-        SP_LOG_INFO("Take control: Use the arrow keys to steer the car and space for handbreak!");
     }
 
     void World::CreateDefaultWorldForest()

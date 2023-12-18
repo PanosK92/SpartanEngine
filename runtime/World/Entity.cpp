@@ -303,7 +303,7 @@ namespace Spartan
 
     bool Entity::IsActiveRecursively()
     {
-        if (Entity* parent = GetParent())
+        if (shared_ptr<Entity> parent = GetParent())
         {
             return m_is_active && parent->IsActiveRecursively();
         }
@@ -515,7 +515,7 @@ namespace Spartan
         shared_ptr<Entity> new_parent = new_parent_in.lock();
         shared_ptr<Entity> parent     = m_parent.lock();
 
-        if (!new_parent)
+        if (new_parent)
         {
             // early exit if the parent is this entity
             if (GetObjectId() == new_parent->GetObjectId())
