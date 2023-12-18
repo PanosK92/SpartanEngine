@@ -501,8 +501,8 @@ namespace Spartan
             // accelerate
             m_movement_speed += translation * delta_time;
 
-            // apply drag
-            m_movement_speed *= 1.0f - movement_drag * delta_time;
+            // apply drag (the clamp is there because at big delta times (movement can become zero or negative/opposite)
+            m_movement_speed *= clamp(1.0f - movement_drag * delta_time, 0.1f, numeric_limits<float>::max());
 
             // clamp it
             if (m_movement_speed.Length() > movement_speed_max)
