@@ -55,7 +55,7 @@ namespace Spartan
     bool RHI_Context::validation    = true;
     bool RHI_Context::gpu_markers   = true;
     bool RHI_Context::gpu_profiling = true;
-    bool RHI_Context::renderdoc     = true;
+    bool RHI_Context::renderdoc     = false;
 #else
     bool RHI_Context::validation    = false;
     bool RHI_Context::gpu_markers   = false;

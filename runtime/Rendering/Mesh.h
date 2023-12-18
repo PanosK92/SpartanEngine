@@ -48,11 +48,11 @@ namespace Spartan
         Mesh();
         ~Mesh();
 
-        // IResource
+        // iresource
         bool LoadFromFile(const std::string& file_path) override;
         bool SaveToFile(const std::string& file_path) override;
 
-        // Geometry
+        // geometry
         void Clear();
         void GetGeometry(
             uint32_t indexOffset,
@@ -64,32 +64,32 @@ namespace Spartan
         );
         uint32_t GetMemoryUsage() const;
 
-        // Add geometry
+        // add geometry
         void AddVertices(const std::vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t* vertex_offset_out = nullptr);
         void AddIndices(const std::vector<uint32_t>& indices, uint32_t* index_offset_out = nullptr);
 
-        // Get geometry
+        // get geometry
         std::vector<RHI_Vertex_PosTexNorTan>& GetVertices() { return m_vertices; }
         std::vector<uint32_t>& GetIndices()                 { return m_indices; }
 
-        // Get counts
+        // get counts
         uint32_t GetVertexCount() const;
         uint32_t GetIndexCount() const;
 
-        // AABB
+        // aabb
         const Math::BoundingBox& GetAabb() const { return m_aabb; }
         void ComputeAabb();
 
-        // GPU buffers
+        // gpu buffers
         void CreateGpuBuffers();
         RHI_IndexBuffer* GetIndexBuffer()   { return m_index_buffer.get();  }
         RHI_VertexBuffer* GetVertexBuffer() { return m_vertex_buffer.get(); }
 
-        // Root entity
-        Entity* GetRootEntity() { return m_root_entity.lock().get(); }
+        // root entity
+        std::weak_ptr<Entity> GetRootEntity() { return m_root_entity; }
         void SetRootEntity(std::shared_ptr<Entity>& entity) { m_root_entity = entity; }
 
-        // Misc
+        // misc
         uint32_t GetFlags() const { return m_flags; }
         static uint32_t GetDefaultFlags();
         float ComputeNormalizedScale();

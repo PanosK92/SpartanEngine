@@ -37,7 +37,7 @@ namespace Spartan
         ~Entity();
 
         void Initialize();
-        Entity* Clone();
+        std::shared_ptr<Entity> Clone();
 
         // core
         void OnStart(); // runs once, before the simulation ends
@@ -46,7 +46,7 @@ namespace Spartan
 
         // io
         void Serialize(FileStream* stream);
-        void Deserialize(FileStream* stream, Entity* parent);
+        void Deserialize(FileStream* stream, std::shared_ptr<Entity> parent);
 
         // active
         bool IsActive() const             { return m_is_active; }
@@ -148,7 +148,7 @@ namespace Spartan
         //================================================================================
 
         //= HIERARCHY =============================================================================
-        void SetParent(Entity* new_parent);
+        void SetParent(std::weak_ptr<Entity> new_parent);
         Entity* GetChildByIndex(uint32_t index);
         Entity* GetChildByName(const std::string& name);
         void AcquireChildren();
@@ -157,12 +157,11 @@ namespace Spartan
         bool IsDescendantOf(Entity* transform) const;
         void GetDescendants(std::vector<Entity*>* descendants);
         Entity* GetDescendantByName(const std::string& name);
-        bool IsRoot() const                 { return m_parent == nullptr; }
-        bool HasParent() const              { return m_parent != nullptr; }
+        bool HasParent() const              { return !m_parent.expired(); }
         bool HasChildren() const            { return GetChildrenCount() > 0 ? true : false; }
         uint32_t GetChildrenCount() const   { return static_cast<uint32_t>(m_children.size()); }
         Entity* GetRoot()                   { return HasParent() ? GetParent()->GetRoot() : this; }
-        Entity* GetParent() const           { return m_parent; }
+        Entity* GetParent() const           { return m_parent.lock().get(); }
         std::vector<Entity*>& GetChildren() { return m_children; }
         //=========================================================================================
 
@@ -188,8 +187,7 @@ namespace Spartan
         Math::Matrix m_matrix_previous = Math::Matrix::Identity;
         Math::Matrix m_matrix_local    = Math::Matrix::Identity;
 
-        std::weak_ptr<Entity> m_parent_weak;
-        Entity* m_parent = nullptr;      // the parent of this entity
+        std::weak_ptr<Entity> m_parent;  // the parent of this entity
         std::vector<Entity*> m_children; // the children of this entity
 
         // misc
