@@ -29,5 +29,5 @@ assignees: ''
 - GPU
 - CPU
 
-**Screenshots or Logs (if any):**
+**Log.txt (if it exists) or screenshots:**
 [Attach any screenshots or logs related to the issue here.]
