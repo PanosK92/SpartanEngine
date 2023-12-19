@@ -801,7 +801,7 @@ namespace Spartan
 
     void World::CreateDefaultWorldForest()
     {
-        Vector3 camera_position = Vector3(-261.7231f, 70.7239f, 436.0732f);
+        Vector3 camera_position = Vector3(-259.1407f, 71.0f, 432.8229f);
         Vector3 camera_rotation = Vector3(0.0f, 144.0f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, nullptr, true, false);
 

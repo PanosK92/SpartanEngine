@@ -43,23 +43,23 @@ namespace Spartan
 
     void Renderer::DrawLine(const Vector3& from, const Vector3& to, const Vector4& color_from, const Vector4& color_to, const float duration /*= 0.0f*/, const bool depth /*= true*/)
     {
-        // Get vertex index.
+        // get vertex index
         uint32_t& index = depth ? m_lines_index_depth_on : m_lines_index_depth_off;
 
-        // Grow vertex vector (if needed).
-         uint32_t vertex_count = static_cast<uint32_t>(m_line_vertices.size());
+        // grow vertex vector (if needed)
+        uint32_t vertex_count = static_cast<uint32_t>(m_line_vertices.size());
         if (index + 2 >= vertex_count)
         {
             uint32_t new_vertex_count = vertex_count == 0 ? 32768 : vertex_count * 2;
 
-            // If this is not the first allocation, inform the user.
+            // if this is not the first allocation, inform the user
             if (vertex_count != 0)
             {
                 SP_LOG_INFO("Line buffer can hold %d vertices but %d are needed, resizing the buffer to fit %d vertices.", vertex_count, index + 2, new_vertex_count);
             }
 
-            m_lines_index_depth_off = numeric_limits<uint32_t>::max(); // max because it's incremented below.
-            m_lines_index_depth_on  = (new_vertex_count / 2) - 1;      // -1 because it's incremented below.
+            m_lines_index_depth_off = numeric_limits<uint32_t>::max(); // max because it's incremented below
+            m_lines_index_depth_on  = (new_vertex_count / 2) - 1;      // -1 because it's incremented below
 
             m_line_vertices.reserve(new_vertex_count);
             m_line_vertices.resize(new_vertex_count);
@@ -68,7 +68,7 @@ namespace Spartan
             m_lines_duration.resize(new_vertex_count);
         }
 
-        // Write lines.
+        // write lines
         {
             index++;
             m_line_vertices[index]  = RHI_Vertex_PosCol(from, color_from);
