@@ -532,8 +532,7 @@ namespace Spartan
             vector<RHI_Vertex_PosTexNorTan> vertices;
             vector<uint32_t> indices;
 
-            // 1. Process height map
-          
+            // 1. process height map        
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Process height map...");
 
@@ -559,7 +558,7 @@ namespace Spartan
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
 
-            // 2. compute positions by reading the height map
+            // 2. compute positions
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating positions...");
                 generate_positions(positions, m_height_data, width, height);
@@ -580,30 +579,30 @@ namespace Spartan
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
 
-            // 5. split into tiles
-            {
-                //ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Splitting into tiles...");
+            //// 5. split into tiles
+            //{
+            //    ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Splitting into tiles...");
 
-                //// containers for tiled vertices and indices
-                //vector<vector<RHI_Vertex_PosTexNorTan>> tiled_vertices;
-                //vector<vector<uint32_t>> tiled_indices;
+            //    // containers for tiled vertices and indices
+            //    vector<vector<RHI_Vertex_PosTexNorTan>> tiled_vertices;
+            //    vector<vector<uint32_t>> tiled_indices;
 
-                //// call the split_terrain_into_tiles function with the appropriate arguments
-                //split_terrain_into_tiles(
-                //    vertices,       // the original vertices of the entire terrain
-                //    indices,        // the original indices of the entire terrain
-                //    1024,           // total number of vertices along the width (X-axis)
-                //    1024,           // total number of vertices along the height (Z-axis)
-                //    12,             // number of tiles along the X-axis
-                //    12,             // number of tiles along the Z-axis
-                //    tiled_vertices, // container for tiled vertices
-                //    tiled_indices   // container for tiled indices
-                //);
+            //    // call the split_terrain_into_tiles function with the appropriate arguments
+            //    split_terrain_into_tiles(
+            //        vertices,       // the original vertices of the entire terrain
+            //        indices,        // the original indices of the entire terrain
+            //        1024,           // total number of vertices along the width (X-axis)
+            //        1024,           // total number of vertices along the height (Z-axis)
+            //        12,             // number of tiles along the X-axis
+            //        12,             // number of tiles along the Z-axis
+            //        tiled_vertices, // container for tiled vertices
+            //        tiled_indices   // container for tiled indices
+            //    );
 
-                //ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-            }
+            //    ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            //}
 
-            // 6. create a mesh for each tile
+            // 6. create a mesh
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Creating mesh...");
                 UpdateFromVertices(indices, vertices);
