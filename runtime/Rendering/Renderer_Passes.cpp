@@ -2266,7 +2266,7 @@ namespace Spartan
         const auto& shader_v  = GetShader(Renderer_Shader::font_v);
         const auto& shader_p  = GetShader(Renderer_Shader::font_p);
         shared_ptr<Font> font = GetFont();
-        if (!shader_v->IsCompiled() || !shader_p->IsCompiled() || !draw || !font->HasText())
+        if (!shader_v || !shader_v->IsCompiled() || !shader_p || !shader_p->IsCompiled() || !draw || !font->HasText())
             return;
 
         // if the performance metrics are being drawn, the profiler has to be enabled.
