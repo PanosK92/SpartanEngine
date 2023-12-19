@@ -82,6 +82,8 @@ namespace Spartan
                 info_images[image_index].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
                 descriptor_index_start = image_index;
+
+                SP_ASSERT(info_images[image_index].imageView != nullptr);
             }
             else if (descriptor.type == RHI_Descriptor_Type::Texture || descriptor.type == RHI_Descriptor_Type::TextureStorage)
             {
@@ -138,6 +140,8 @@ namespace Spartan
 
                     descriptor_count = descriptor.mip_range != 0 ? descriptor.mip_range : descriptor_count;
                 }
+
+                SP_ASSERT(info_images[image_index].imageView != nullptr);
             }
             else if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
             {
