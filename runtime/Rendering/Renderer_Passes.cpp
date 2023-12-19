@@ -143,7 +143,6 @@ namespace Spartan
         if (!m_brdf_specular_lut_rendered)
         {
             Pass_BrdfSpecularLut(cmd_list);
-            m_brdf_specular_lut_rendered = true;
         }
 
         if (shared_ptr<Camera> camera = GetCamera())
@@ -2361,6 +2360,8 @@ namespace Spartan
         cmd_list->Dispatch(thread_group_count_x(tex_brdf_specular_lut), thread_group_count_y(tex_brdf_specular_lut));
 
         cmd_list->EndTimeblock();
+
+        m_brdf_specular_lut_rendered = true;
     }
 
     void Renderer::Pass_GenerateMips(RHI_CommandList* cmd_list, RHI_Texture* texture)
