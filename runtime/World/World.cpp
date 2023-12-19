@@ -149,6 +149,8 @@ namespace Spartan
                 // add physics components
                 shared_ptr<PhysicsBody> rigid_body = m_default_model_floor->AddComponent<PhysicsBody>();
                 rigid_body->SetMass(0.0f); // static
+                rigid_body->SetFriction(1.0f);
+                rigid_body->SetFrictionRolling(1.0f);
                 rigid_body->SetShapeType(PhysicsShape::StaticPlane);
             }
         }
@@ -856,6 +858,17 @@ namespace Spartan
                 audio_source->SetAudioClip("project\\music\\underwater.mp3");
                 audio_source->SetPlayOnStart(false);
             }
+
+            // wind
+            {
+                shared_ptr<Entity> sound = World::CreateEntity();
+                sound->SetObjectName("skyrim");
+                sound->SetParent(entity);
+
+                shared_ptr<AudioSource> audio_source = sound->AddComponent<AudioSource>();
+                audio_source->SetAudioClip("project\\music\\skyrim.mp3");
+                audio_source->SetLoop(true);
+            }
         }
 
         // terrain
@@ -906,6 +919,8 @@ namespace Spartan
                 // add physics so we can walk on it
                 PhysicsBody* rigid_body = m_default_terrain->AddComponent<PhysicsBody>().get();
                 rigid_body->SetMass(0.0f);
+                rigid_body->SetFriction(0.9f);
+                rigid_body->SetFrictionRolling(0.9f);
 
                 // water
                 {
