@@ -40,6 +40,8 @@ namespace Spartan
 {
     namespace
     {
+        const uint32_t smoothing_iterations = 1; // smooths out the data of the height map by averaging the neighboring pixels
+
         bool generate_height_points_from_height_map(vector<float>& height_data_out, shared_ptr<RHI_Texture> height_texture, float min_y, float max_y)
         {
             vector<byte> height_data = height_texture->GetMip(0, 0).bytes;
@@ -75,9 +77,8 @@ namespace Spartan
 
             // smooth out the height map values, this will reduce hard terrain edges
             {
-                const uint32_t smoothing_iterations = 1;
-                const uint32_t width                = height_texture->GetWidth();
-                const uint32_t height               = height_texture->GetHeight();
+                const uint32_t width  = height_texture->GetWidth();
+                const uint32_t height = height_texture->GetHeight();
 
                 for (uint32_t iteration = 0; iteration < smoothing_iterations; iteration++)
                 {

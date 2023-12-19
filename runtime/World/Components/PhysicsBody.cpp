@@ -876,10 +876,11 @@ namespace Spartan
                 m_shape = shape_local;
 
                 // calculate the offset needed to re-center the terrain
-                float offset = (terrain->GetMaxY() + terrain->GetMinY()) / 2.0f;
+                float offset_xz = -0.5f; // don't know why bullet needs this
+                float offset_y  = (terrain->GetMaxY() + terrain->GetMinY()) / 2.0f;
 
                 // set the center of mass to adjust for Bullet's re-centering
-                SetCenterOfMass(Vector3(0, offset, 0));
+                SetCenterOfMass(Vector3(offset_xz, offset_y, offset_xz));
 
                 break;
             }
