@@ -955,7 +955,7 @@ namespace Spartan
                 }
 
                 // vegetation_tree_1
-                if (shared_ptr<Mesh> tree = ResourceCache::Load<Mesh>("project\\models\\vegetation_tree_1\\tree.fbx"))
+                if (shared_ptr<Mesh> tree = ResourceCache::Load<Mesh>("project\\terrain\\vegetation_tree_1\\tree.fbx"))
                 {
                     shared_ptr<Entity> entity = tree->GetRootEntity().lock();
                     entity->SetObjectName("tree_1");
@@ -967,7 +967,7 @@ namespace Spartan
                     if (Entity* bark = entity->GetDescendantByName("Mobile_Tree_1_1"))
                     {
                         Renderable* renderable = bark->GetComponent<Renderable>().get();
-                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\models\\vegetation_tree_1\\bark.png");
+                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\terrain\\vegetation_tree_1\\bark.png");
 
                         // generate instances
                         terrain->GenerateTransforms(&instances, 10000, TerrainProp::Tree);
@@ -981,7 +981,7 @@ namespace Spartan
 
                         // tweak material
                         Material* material = renderable->GetMaterial();
-                        material->SetTexture(MaterialTexture::Color,                  "project\\models\\vegetation_tree_1\\leaf.png");
+                        material->SetTexture(MaterialTexture::Color,                  "project\\terrain\\vegetation_tree_1\\leaf.png");
                         material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
                         material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                         material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
@@ -989,7 +989,7 @@ namespace Spartan
                 }
 
                 // vegetation_plant_1
-                if (shared_ptr<Mesh> plant = ResourceCache::Load<Mesh>("project\\models\\vegetation_plant_1\\ormbunke.obj"))
+                if (shared_ptr<Mesh> plant = ResourceCache::Load<Mesh>("project\\terrain\\vegetation_plant_1\\ormbunke.obj"))
                 {
                     shared_ptr<Entity> entity = plant->GetRootEntity().lock();
                     entity->SetObjectName("plant_1");
@@ -1003,7 +1003,7 @@ namespace Spartan
 
                         // tweak material
                         Material* material = renderable->GetMaterial();
-                        material->SetTexture(MaterialTexture::Color,                  "project\\models\\vegetation_plant_1\\ormbunke.png");
+                        material->SetTexture(MaterialTexture::Color,                  "project\\terrain\\vegetation_plant_1\\ormbunke.png");
                         material->SetProperty(MaterialProperty::ColorR,               1.0f);
                         material->SetProperty(MaterialProperty::ColorG,               1.0f);
                         material->SetProperty(MaterialProperty::ColorB,               1.0f);
@@ -1019,7 +1019,7 @@ namespace Spartan
                 }
 
                 // vegetation_plant_2
-                //if (shared_ptr<Mesh> plant = ResourceCache::Load<Mesh>("project\\models\\vegetation_plant_2\\trawa01.obj"))
+                //if (shared_ptr<Mesh> plant = ResourceCache::Load<Mesh>("project\\terrain\\vegetation_plant_2\\trawa01.obj"))
                 //{
                 //    Entity* entity = plant->GetRootEntity();
                 //    entity->SetObjectName("plant_2");
