@@ -823,24 +823,30 @@ namespace Spartan
             }
 
             // enable certain features
-            VkPhysicalDeviceVulkan13Features device_features_to_enable_1_3 = {};
-            device_features_to_enable_1_3.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-            VkPhysicalDeviceVulkan12Features device_features_to_enable_1_2 = {};
-            device_features_to_enable_1_2.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-            device_features_to_enable_1_2.pNext                            = &device_features_to_enable_1_3;
-            VkPhysicalDeviceFeatures2 device_features_to_enable            = {};
-            device_features_to_enable.sType                                = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-            device_features_to_enable.pNext                                = &device_features_to_enable_1_2;
+            VkPhysicalDeviceRobustness2FeaturesEXT robustness_features_2 = {};
+            robustness_features_2.sType                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
+            VkPhysicalDeviceVulkan13Features device_features_1_3         = {};
+            device_features_1_3.sType                                    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+            device_features_1_3.pNext                                    = &robustness_features_2;
+            VkPhysicalDeviceVulkan12Features device_features_1_2         = {};
+            device_features_1_2.sType                                    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+            device_features_1_2.pNext                                    = &device_features_1_3;
+            VkPhysicalDeviceFeatures2 device_features                    = {};
+            device_features.sType                                        = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+            device_features.pNext                                        = &device_features_1_2;
             {
                 // check feature support
-                VkPhysicalDeviceVulkan13Features features_supported_1_3 = {};
-                features_supported_1_3.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-                VkPhysicalDeviceVulkan12Features features_supported_1_2 = {};
-                features_supported_1_2.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-                features_supported_1_2.pNext                            = &features_supported_1_3;
-                VkPhysicalDeviceFeatures2 features_supported            = {};
-                features_supported.sType                                = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-                features_supported.pNext                                = &features_supported_1_2;
+                VkPhysicalDeviceRobustness2FeaturesEXT robustness_supported_2 = {};
+                robustness_supported_2.sType                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
+                VkPhysicalDeviceVulkan13Features features_supported_1_3       = {};
+                features_supported_1_3.sType                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+                features_supported_1_3.pNext                                  = &robustness_supported_2;
+                VkPhysicalDeviceVulkan12Features features_supported_1_2       = {};
+                features_supported_1_2.sType                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+                features_supported_1_2.pNext                                  = &features_supported_1_3;
+                VkPhysicalDeviceFeatures2 features_supported                  = {};
+                features_supported.sType                                      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+                features_supported.pNext                                      = &features_supported_1_2;
                 vkGetPhysicalDeviceFeatures2(RHI_Context::device_physical, &features_supported);
 
                 // check if certain features are supported and enable them
@@ -848,72 +854,75 @@ namespace Spartan
                     // descriptors
                     {
                         SP_ASSERT(features_supported_1_2.descriptorBindingVariableDescriptorCount == VK_TRUE);
-                        device_features_to_enable_1_2.descriptorBindingVariableDescriptorCount = VK_TRUE;
+                        device_features_1_2.descriptorBindingVariableDescriptorCount = VK_TRUE;
 
                         SP_ASSERT(features_supported_1_2.descriptorBindingVariableDescriptorCount == VK_TRUE);
-                        device_features_to_enable_1_2.descriptorBindingVariableDescriptorCount = VK_TRUE;
+                        device_features_1_2.descriptorBindingVariableDescriptorCount = VK_TRUE;
 
                         SP_ASSERT(features_supported_1_2.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE);
-                        device_features_to_enable_1_2.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+                        device_features_1_2.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
 
                         SP_ASSERT(features_supported_1_2.descriptorBindingPartiallyBound == VK_TRUE);
-                        device_features_to_enable_1_2.descriptorBindingPartiallyBound = VK_TRUE;
+                        device_features_1_2.descriptorBindingPartiallyBound = VK_TRUE;
 
                         SP_ASSERT(features_supported_1_2.runtimeDescriptorArray == VK_TRUE);
-                        device_features_to_enable_1_2.runtimeDescriptorArray = VK_TRUE;
+                        device_features_1_2.runtimeDescriptorArray = VK_TRUE;
+
+                        SP_ASSERT(robustness_supported_2.nullDescriptor == VK_TRUE);
+                        robustness_features_2.nullDescriptor = VK_TRUE;
                     }
 
                     // types
                     {
                         // extended types (int8, int16, int64, etc) - SPD
                         SP_ASSERT(features_supported_1_2.shaderSubgroupExtendedTypes == VK_TRUE);
-                        device_features_to_enable_1_2.shaderSubgroupExtendedTypes = VK_TRUE;
+                        device_features_1_2.shaderSubgroupExtendedTypes = VK_TRUE;
 
                         // float16 - If supported, FSR 2 will opt for it, so don't assert.
                         if (features_supported_1_2.shaderFloat16 == VK_TRUE)
                         {
-                            device_features_to_enable_1_2.shaderFloat16 = VK_TRUE;
+                            device_features_1_2.shaderFloat16 = VK_TRUE;
                         }
 
                         // int16 - If supported, FSR 2 will opt for it, so don't assert.
                         if (features_supported.features.shaderInt16 == VK_TRUE)
                         {
-                            device_features_to_enable.features.shaderInt16 = VK_TRUE;
+                            device_features.features.shaderInt16 = VK_TRUE;
                         }
                     }
 
                     // anisotropic filtering
                     SP_ASSERT(features_supported.features.samplerAnisotropy == VK_TRUE);
-                    device_features_to_enable.features.samplerAnisotropy = VK_TRUE;
+                    device_features.features.samplerAnisotropy = VK_TRUE;
 
                     // line and point rendering
                     SP_ASSERT(features_supported.features.fillModeNonSolid == VK_TRUE);
-                    device_features_to_enable.features.fillModeNonSolid = VK_TRUE;
+                    device_features.features.fillModeNonSolid = VK_TRUE;
 
                     // lines with adjustable thickness
                     SP_ASSERT(features_supported.features.wideLines == VK_TRUE);
-                    device_features_to_enable.features.wideLines = VK_TRUE;
+                    device_features.features.wideLines = VK_TRUE;
 
                     // cubemaps
                     SP_ASSERT(features_supported.features.imageCubeArray == VK_TRUE);
-                    device_features_to_enable.features.imageCubeArray = VK_TRUE;
+                    device_features.features.imageCubeArray = VK_TRUE;
 
                     // timeline semaphores
                     SP_ASSERT(features_supported_1_2.timelineSemaphore == VK_TRUE);
-                    device_features_to_enable_1_2.timelineSemaphore = VK_TRUE;
+                    device_features_1_2.timelineSemaphore = VK_TRUE;
 
                     // rendering without render passes and frame buffer objects
                     SP_ASSERT(features_supported_1_3.dynamicRendering == VK_TRUE);
-                    device_features_to_enable_1_3.dynamicRendering = VK_TRUE;
+                    device_features_1_3.dynamicRendering = VK_TRUE;
 
                     // wave64
                     SP_ASSERT(features_supported_1_3.shaderDemoteToHelperInvocation == VK_TRUE);
-                    device_features_to_enable_1_3.shaderDemoteToHelperInvocation = VK_TRUE;
+                    device_features_1_3.shaderDemoteToHelperInvocation = VK_TRUE;
 
                     // wave64 - If supported, FSR 2 will opt for it, so don't assert.
                     if (features_supported_1_3.subgroupSizeControl == VK_TRUE)
                     {
-                        device_features_to_enable_1_3.subgroupSizeControl = VK_TRUE;
+                        device_features_1_3.subgroupSizeControl = VK_TRUE;
                     }
                 }
             }
@@ -921,11 +930,11 @@ namespace Spartan
             // enable certain graphics shader stages
             {
                 m_enabled_graphics_shader_stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-                if (device_features_to_enable.features.geometryShader)
+                if (device_features.features.geometryShader)
                 {
                     m_enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
                 }
-                if (device_features_to_enable.features.tessellationShader)
+                if (device_features.features.tessellationShader)
                 {
                     m_enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
                 }
@@ -940,7 +949,7 @@ namespace Spartan
                 create_info.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
                 create_info.queueCreateInfoCount    = static_cast<uint32_t>(queue_create_infos.size());
                 create_info.pQueueCreateInfos       = queue_create_infos.data();
-                create_info.pNext                   = &device_features_to_enable;
+                create_info.pNext                   = &device_features;
                 create_info.enabledExtensionCount   = static_cast<uint32_t>(extensions_supported.size());
                 create_info.ppEnabledExtensionNames = extensions_supported.data();
 
