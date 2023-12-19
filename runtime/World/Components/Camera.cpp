@@ -565,7 +565,7 @@ namespace Spartan
                             // movement
                             Vector3 velocity_current = m_physics_body_to_control->GetLinearVelocity();
                             Vector3 velocity_new     = Vector3(m_movement_speed.x * 20.0f, velocity_current.y, m_movement_speed.z * 20.0f);
-                            m_physics_body_to_control->ApplyForce(velocity_new, PhysicsForce::Constant);
+                            m_physics_body_to_control->SetLinearVelocity(velocity_new);
                         }
                         
                         // jump
