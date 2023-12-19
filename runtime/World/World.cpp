@@ -1086,19 +1086,13 @@ namespace Spartan
             shared_ptr<Entity> entity = m_default_model_sponza->GetRootEntity().lock();
             entity->SetObjectName("sponza");
             entity->SetPosition(Vector3(0.0f, 1.5f, 0.0f));
-            entity->SetScale(Vector3(2.0f, 2.0f, 2.0f)); // I actually walked in Sponza, it's that big
+            entity->SetScale(Vector3(2.0f, 2.0f, 2.0f)); // I actually walked in sponza, it's that big
 
             // make the lamp frame not cast shadows, so we can place a light within it
             if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("lamp_1stfloor_entrance_1")->GetComponent<Renderable>())
             {
                 renderable->SetCastShadows(false);
             }
-
-            // Delete dirt decals since they look bad.
-            // They are hovering over the surfaces, to avoid z-fighting, and they also cast shadows underneath them.
-            RemoveEntity(entity->GetDescendantByName("decals_1st_floor"));
-            RemoveEntity(entity->GetDescendantByName("decals_2nd_floor"));
-            RemoveEntity(entity->GetDescendantByName("decals_3rd_floor"));
 
             // enable physics for all meshes
             vector<Entity*> entities;
@@ -1119,8 +1113,17 @@ namespace Spartan
                 entity = m_default_model_sponza_curtains->GetRootEntity().lock();
                 entity->SetObjectName("sponza_curtains");
                 entity->SetPosition(Vector3(0.0f, 0.15f, 0.0f));
-                entity->SetScale(Vector3(2.0f, 2.0f, 2.0f)); // I actually walked in Sponza, it's that big
+                entity->SetScale(Vector3(2.0f, 2.0f, 2.0f));
             }
+        }
+
+        // delete dirt decals since they look bad
+        // they are hovering over the surfaces, to avoid z-fighting, and they also cast shadows underneath them
+        {
+            shared_ptr<Entity> entity = m_default_model_sponza->GetRootEntity().lock();
+            RemoveEntity(entity->GetDescendantByName("decals_1st_floor"));
+            RemoveEntity(entity->GetDescendantByName("decals_2nd_floor"));
+            RemoveEntity(entity->GetDescendantByName("decals_3rd_floor"));
         }
 
         // start simulating (for the physics and the music to work)
