@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // technique - all
 static const uint   g_shadow_samples                 = 3;
 static const float  g_shadow_filter_size             = 2.0f;
-static const float  g_shadow_cascade_blend_threshold = 0.8f;
+static const float  g_shadow_cascade_blend_threshold = 0.7f; // above that, you start to see the cascade line
 // technique - vogel                       
 static const uint   g_penumbra_samples     = 8;
 static const float  g_penumbra_filter_size = 128.0f;
