@@ -41,7 +41,8 @@ namespace Spartan
 {
     namespace
     {
-        const uint32_t smoothing_iterations = 1; // smooths out the data of the height map by averaging the neighboring pixels
+        const uint32_t smoothing_iterations = 1; // the number of height map neighboring pixel averaging
+        const uint32_t tile_count           = 8; // the number of tiles in each dimension to split the terrain into
 
         bool generate_height_points_from_height_map(vector<float>& height_data_out, shared_ptr<RHI_Texture> height_texture, float min_y, float max_y)
         {
@@ -374,36 +375,35 @@ namespace Spartan
             const vector<RHI_Vertex_PosTexNorTan>& vertices, const vector<uint32_t>& indices,
             vector<vector<RHI_Vertex_PosTexNorTan>>& tiled_vertices, vector<vector<uint32_t>>& tiled_indices)
         {
-            const uint32_t tile_count = 16;
-
             // initialize min and max values for terrain bounds
             float min_x = numeric_limits<float>::max();
             float max_x = numeric_limits<float>::lowest();
             float min_z = numeric_limits<float>::max();
             float max_z = numeric_limits<float>::lowest();
 
-            // find min and max X and Z values
-            for (const auto& vertex : vertices)
+            // iterate over all vertices to find the minimum and maximum x and z values
+            for (const RHI_Vertex_PosTexNorTan& vertex : vertices)
             {
-                if (vertex.pos[0] < min_x) min_x = vertex.pos[0]; // x coordinate
+                // compare and store the minimum and maximum x coordinates
+                if (vertex.pos[0] < min_x) min_x = vertex.pos[0];
                 if (vertex.pos[0] > max_x) max_x = vertex.pos[0];
-                if (vertex.pos[2] < min_z) min_z = vertex.pos[2]; // z coordinate
+
+                // compare and store the minimum and maximum z coordinates
+                if (vertex.pos[2] < min_z) min_z = vertex.pos[2];
                 if (vertex.pos[2] > max_z) max_z = vertex.pos[2];
             }
 
-            // calculate terrain dimensions
+            // calculate dimensions
             float terrain_width = max_x - min_x;
             float terrain_depth = max_z - min_z;
-
-            // calculate tile dimensions in world units
-            float tile_width = terrain_width / static_cast<float>(tile_count);
-            float tile_depth = terrain_depth / static_cast<float>(tile_count);
+            float tile_width    = terrain_width / static_cast<float>(tile_count);
+            float tile_depth    = terrain_depth / static_cast<float>(tile_count);
 
             // initialize tiled vertices and indices
             tiled_vertices.resize(tile_count * tile_count);
             tiled_indices.resize(tile_count * tile_count);
 
-            // map for storing the mapping of global index to local index in each tile
+            // create a mapping for each tile to track vertex global indices to their new local indices
             vector<unordered_map<uint32_t, uint32_t>> global_to_local_indices(tile_count * tile_count);
 
             // assign vertices to tiles and track their indices
@@ -411,24 +411,26 @@ namespace Spartan
             {
                 const RHI_Vertex_PosTexNorTan& vertex = vertices[global_index];
 
-                uint32_t tile_x     = static_cast<uint32_t>((vertex.pos[0] - min_x) / tile_width);
-                uint32_t tile_z     = static_cast<uint32_t>((vertex.pos[2] - min_z) / tile_depth);
-                tile_x              = min(tile_x, tile_count - 1);
-                tile_z              = min(tile_z, tile_count - 1);
+                uint32_t tile_x = static_cast<uint32_t>((vertex.pos[0] - min_x) / tile_width);
+                uint32_t tile_z = static_cast<uint32_t>((vertex.pos[2] - min_z) / tile_depth);
+                tile_x          = min(tile_x, tile_count - 1);
+                tile_z          = min(tile_z, tile_count - 1);
+
+                // convert the 2D tile coordinates into a single index for the 1D output array
                 uint32_t tile_index = tile_z * tile_count + tile_x;
 
                 // add vertex to the appropriate tile
                 tiled_vertices[tile_index].push_back(vertex);
 
                 // track the local index of this vertex in the tile
-                uint32_t local_index = tiled_vertices[tile_index].size() - 1;
+                uint32_t local_index = static_cast<uint32_t>(tiled_vertices[tile_index].size() - 1);
                 global_to_local_indices[tile_index][global_index] = local_index;
             }
 
             // adjust and assign indices to tiles
-            for (uint32_t global_index : indices)
+            for (uint32_t index : indices)
             {
-                const RHI_Vertex_PosTexNorTan& vertex = vertices[global_index];
+                const RHI_Vertex_PosTexNorTan& vertex = vertices[index];
 
                 uint32_t tile_x     = static_cast<uint32_t>((vertex.pos[0] - min_x) / tile_width);
                 uint32_t tile_z     = static_cast<uint32_t>((vertex.pos[2] - min_z) / tile_depth);
@@ -437,7 +439,7 @@ namespace Spartan
                 uint32_t tile_index = tile_z * tile_count + tile_x;
 
                 // use the global to local index map to find the local index
-                uint32_t local_index = global_to_local_indices[tile_index][global_index];
+                uint32_t local_index = global_to_local_indices[tile_index][index];
                 tiled_indices[tile_index].push_back(local_index);
             }
         }
@@ -469,7 +471,7 @@ namespace Spartan
         m_height_texture = height_map;
     }
 
-	void Terrain::GenerateTransforms(std::vector<Math::Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop)
+	void Terrain::GenerateTransforms(vector<Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop)
 	{
         bool rotate_match_surface_normal = false;
         float max_slope                  = 0.0f;
@@ -518,8 +520,6 @@ namespace Spartan
             uint32_t width  = 0;
             uint32_t height = 0;
             vector<Vector3> positions;
-            m_vertices.clear();
-            m_indices.clear();
 
             // 1. process height map        
             {
@@ -591,6 +591,12 @@ namespace Spartan
             {
                 on_complete();
             }
+
+            // free memory
+            m_vertices.clear();
+            m_indices.clear();
+            m_tile_vertices.clear();
+            m_tile_indices.clear();
 
             m_is_generating = false;
         });

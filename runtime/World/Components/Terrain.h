@@ -86,10 +86,10 @@ namespace Spartan
         std::shared_ptr<RHI_Texture> m_height_texture;
         std::vector<float> m_height_data;
         std::vector<std::vector<RHI_Vertex_PosTexNorTan>> m_tile_vertices;
-        std::vector<std::vector<uint32_t>> m_tile_indices;
-        std::vector<std::shared_ptr<Mesh>> m_tile_meshes;
         std::vector<RHI_Vertex_PosTexNorTan> m_vertices;
         std::vector<uint32_t> m_indices;
+        std::vector<std::vector<uint32_t>> m_tile_indices;
+        std::vector<std::shared_ptr<Mesh>> m_tile_meshes;
         std::shared_ptr<Material> m_material;
     };
 }

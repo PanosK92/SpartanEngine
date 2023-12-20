@@ -37,7 +37,7 @@ namespace Spartan
 {
     namespace
     {
-        static VkImageTiling get_format_tiling(const RHI_Format format, VkFormatFeatureFlags feature_flags)
+        VkImageTiling get_format_tiling(const RHI_Format format, VkFormatFeatureFlags feature_flags)
         {
             // Get format properties
             VkFormatProperties format_properties;
@@ -54,7 +54,7 @@ namespace Spartan
             return VK_IMAGE_TILING_MAX_ENUM;
         }
 
-        static VkImageAspectFlags get_aspect_mask(const RHI_Texture* texture, const bool only_depth = false, const bool only_stencil = false)
+        VkImageAspectFlags get_aspect_mask(const RHI_Texture* texture, const bool only_depth = false, const bool only_stencil = false)
         {
             VkImageAspectFlags aspect_mask = 0;
 
@@ -78,7 +78,7 @@ namespace Spartan
             return aspect_mask;
         }
 
-        static void create_image(RHI_Texture* texture)
+        void create_image(RHI_Texture* texture)
         {
             // deduce format flags
             bool is_render_target_depth_stencil = texture->IsRenderTargetDepthStencil();
@@ -97,7 +97,7 @@ namespace Spartan
             RHI_Device::MemoryTextureCreate(texture);
         }
 
-        static void create_image_view(
+        void create_image_view(
             void* image,
             void*& image_view,
             const RHI_Texture* texture,
@@ -144,7 +144,7 @@ namespace Spartan
             SP_ASSERT_MSG(vkCreateImageView(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkImageView*>(&image_view)) == VK_SUCCESS, "Failed to create image view");
         }
 
-        static void set_debug_name(RHI_Texture* texture)
+        void set_debug_name(RHI_Texture* texture)
         {
             string name = texture->GetObjectName();
 
@@ -183,7 +183,7 @@ namespace Spartan
             }
         }
 
-        static bool copy_to_staging_buffer(RHI_Texture* texture, vector<VkBufferImageCopy>& regions, void*& staging_buffer)
+        bool copy_to_staging_buffer(RHI_Texture* texture, vector<VkBufferImageCopy>& regions, void*& staging_buffer)
         {
             if (!texture->HasData())
             {
@@ -257,7 +257,7 @@ namespace Spartan
             return true;
         }
 
-        static bool stage(RHI_Texture* texture)
+        bool stage(RHI_Texture* texture)
         {
             // copy the texture's data to a staging buffer
             void* staging_buffer = nullptr;
@@ -297,7 +297,7 @@ namespace Spartan
             return true;
         }
 
-        static RHI_Image_Layout GetAppropriateLayout(RHI_Texture* texture)
+        RHI_Image_Layout GetAppropriateLayout(RHI_Texture* texture)
         {
             RHI_Image_Layout target_layout = RHI_Image_Layout::Preinitialized;
 
