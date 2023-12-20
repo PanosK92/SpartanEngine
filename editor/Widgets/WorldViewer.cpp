@@ -64,14 +64,13 @@ namespace
                 static const char* items[] =
                 {
                     "1. Empty",
-                    "2. Cube",
-                    "3. Helmets",
-                    "4. Car",
-                    "5. Forest",
-                    "6. Sponza",
-                    "7. Doom E1M1"
+                    "2. Objects",
+                    "3. Car",
+                    "4. Forest",
+                    "5. Sponza",
+                    "6. Doom E1M1"
                 };
-                static int item_index = 4; // forest
+                static int item_index = 3; // forest
                 static int item_count = IM_ARRAYSIZE(items);
                 ImGui::PushItemWidth(450.0f * Spartan::Window::GetDpiScale());
                 ImGui::ListBox("##list_box", &item_index, items, item_count, item_count);
@@ -84,18 +83,10 @@ namespace
                     {
                         Spartan::ThreadPool::AddTask([]()
                         {
-                            Spartan::World::CreateDefaultWorldCube();
+                            Spartan::World::CreateDefaultWorldObjects();
                         });
                     }
                     else if (item_index == 2)
-                    {
-                        Spartan::ThreadPool::AddTask([]()
-                        {
-                            Spartan::World::CreateDefaultWorldHelmets();
-                        });
-    
-                    }
-                    else if (item_index == 3)
                     {
                         Spartan::ThreadPool::AddTask([]()
                         {
@@ -103,7 +94,7 @@ namespace
                         });
     
                     }
-                    else if (item_index == 4)
+                    else if (item_index == 3)
                     {
                         Spartan::ThreadPool::AddTask([]()
                         {
@@ -111,7 +102,7 @@ namespace
                         });
     
                     }
-                    else if (item_index == 5)
+                    else if (item_index == 4)
                     {
                         Spartan::ThreadPool::AddTask([]()
                         {
@@ -119,12 +110,12 @@ namespace
                         });
     
                     }
-                    else if (item_index == 6)
+                    else if (item_index == 5)
                     {
                         Spartan::ThreadPool::AddTask([]()
-                            {
-                                Spartan::World::CreateDefaultWorldDoomE1M1();
-                            });
+                        {
+                            Spartan::World::CreateDefaultWorldDoomE1M1();
+                        });
 
                     }
     
