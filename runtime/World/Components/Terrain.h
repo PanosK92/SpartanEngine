@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
     class Mesh;
+    class Material;
     namespace Math
     {
         class Vector3;
@@ -62,17 +63,17 @@ namespace Spartan
         void SetMaxY(float max_z) { m_max_y = max_z; }
 
         void GenerateTransforms(std::vector<Math::Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop);
-
-        uint32_t GetVertexCount() const       { return m_vertex_count; }
-        uint32_t GetIndexCount() const        { return m_index_count; }
-        uint64_t GetHeightSampleCount() const { return m_height_samples; }
-        float* GetHeightData()                { return !m_height_data.empty() ? &m_height_data[0] : nullptr; }
-
         void GenerateAsync(std::function<void()> on_complete = nullptr);
+        
+        uint32_t GetVertexCount() const         { return m_vertex_count; }
+        uint32_t GetIndexCount() const          { return m_index_count; }
+        uint64_t GetHeightSampleCount() const   { return m_height_samples; }
+        float* GetHeightData()                  { return !m_height_data.empty() ? &m_height_data[0] : nullptr; }
+        std::shared_ptr<Material> GetMaterial() { return m_material; }
 
     private:
-        void UpdateFromMesh(const std::shared_ptr<Mesh> mesh) const;
-        void UpdateFromVertices(const std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices);
+        void UpdateMesh(const uint32_t tile_index);
+        void Clear();
 
         float m_min_y                     = -20.0f; // everything below 0.0 is assumed to be below sea level
         float m_max_y                     = 100.0f;
@@ -84,6 +85,11 @@ namespace Spartan
         uint32_t m_triangle_count         = 0;
         std::shared_ptr<RHI_Texture> m_height_texture;
         std::vector<float> m_height_data;
-        std::shared_ptr<Mesh> m_mesh;
+        std::vector<std::vector<RHI_Vertex_PosTexNorTan>> m_tile_vertices;
+        std::vector<std::vector<uint32_t>> m_tile_indices;
+        std::vector<std::shared_ptr<Mesh>> m_tile_meshes;
+        std::vector<RHI_Vertex_PosTexNorTan> m_vertices;
+        std::vector<uint32_t> m_indices;
+        std::shared_ptr<Material> m_material;
     };
 }

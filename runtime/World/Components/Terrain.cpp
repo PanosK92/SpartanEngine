@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Terrain.h"
 #include "Renderable.h"
 #include "../Entity.h"
+#include "../World.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
@@ -308,14 +309,8 @@ namespace Spartan
             return static_cast<float>(distr(gen));
         }
 
-        vector<Matrix> generate_transforms(
-            const vector<RHI_Vertex_PosTexNorTan>& vertices,
-            const vector<uint32_t>& indices,
-            uint32_t tree_count,
-            float max_slope_radians,
-            bool rotate_to_match_surface_normal,
-            float terrain_offset
-        )
+        vector<Matrix> generate_transforms(const vector<RHI_Vertex_PosTexNorTan>& vertices, const vector<uint32_t>& indices,
+            uint32_t tree_count, float max_slope_radians, bool rotate_to_match_surface_normal,float terrain_offset)
         {
             vector<Matrix> transforms;
             random_device seed;
@@ -376,71 +371,82 @@ namespace Spartan
         }
 
         void split_terrain_into_tiles(
-            const vector<RHI_Vertex_PosTexNorTan>& vertices,
-            const vector<uint32_t>& indices,
-            uint32_t total_width_vertices,
-            uint32_t total_height_vertices,
-            uint32_t tile_count_x,
-            uint32_t tile_count_y,
-            vector<vector<RHI_Vertex_PosTexNorTan>>& tiled_vertices,
-            vector<vector<uint32_t>>& tiled_indices)
+            const vector<RHI_Vertex_PosTexNorTan>& vertices, const vector<uint32_t>& indices,
+            vector<vector<RHI_Vertex_PosTexNorTan>>& tiled_vertices, vector<vector<uint32_t>>& tiled_indices)
         {
-            // Calculate the number of vertices per tile
-            uint32_t vertices_per_tile_x = total_width_vertices / tile_count_x;
-            uint32_t vertices_per_tile_y = total_height_vertices / tile_count_y;
+            const uint32_t tile_count = 16;
 
-            for (uint32_t tile_y = 0; tile_y < tile_count_y; ++tile_y)
+            // initialize min and max values for terrain bounds
+            float min_x = numeric_limits<float>::max();
+            float max_x = numeric_limits<float>::lowest();
+            float min_z = numeric_limits<float>::max();
+            float max_z = numeric_limits<float>::lowest();
+
+            // find min and max X and Z values
+            for (const auto& vertex : vertices)
             {
-                for (uint32_t tile_x = 0; tile_x < tile_count_x; ++tile_x)
-                {
-                    uint32_t start_x = tile_x * vertices_per_tile_x;
-                    uint32_t end_x   = min(start_x + vertices_per_tile_x, total_width_vertices);
-                    uint32_t start_y = tile_y * vertices_per_tile_y;
-                    uint32_t end_y   = min(start_y + vertices_per_tile_y, total_height_vertices);
+                if (vertex.pos[0] < min_x) min_x = vertex.pos[0]; // x coordinate
+                if (vertex.pos[0] > max_x) max_x = vertex.pos[0];
+                if (vertex.pos[2] < min_z) min_z = vertex.pos[2]; // z coordinate
+                if (vertex.pos[2] > max_z) max_z = vertex.pos[2];
+            }
 
-                    vector<RHI_Vertex_PosTexNorTan> tile_vertices;
-                    vector<uint32_t> tile_indices;
+            // calculate terrain dimensions
+            float terrain_width = max_x - min_x;
+            float terrain_depth = max_z - min_z;
 
-                    // Iterate over vertices in the range for this tile
-                    for (uint32_t y = start_y; y < end_y; ++y)
-                    {
-                        for (uint32_t x = start_x; x < end_x; ++x)
-                        {
-                            uint32_t vertex_index = y * total_width_vertices + x;
-                            tile_vertices.push_back(vertices[vertex_index]);
-                        }
-                    }
+            // calculate tile dimensions in world units
+            float tile_width = terrain_width / static_cast<float>(tile_count);
+            float tile_depth = terrain_depth / static_cast<float>(tile_count);
 
-                    // Generate indices for the tile
-                    for (uint32_t y = 0; y < end_y - start_y - 1; ++y)
-                    {
-                        for (uint32_t x = 0; x < end_x - start_x - 1; ++x)
-                        {
-                            uint32_t base_index = y * vertices_per_tile_x + x;
+            // initialize tiled vertices and indices
+            tiled_vertices.resize(tile_count * tile_count);
+            tiled_indices.resize(tile_count * tile_count);
 
-                            // Triangle 1
-                            tile_indices.push_back(base_index);
-                            tile_indices.push_back(base_index + vertices_per_tile_x);
-                            tile_indices.push_back(base_index + 1);
+            // map for storing the mapping of global index to local index in each tile
+            vector<unordered_map<uint32_t, uint32_t>> global_to_local_indices(tile_count * tile_count);
 
-                            // Triangle 2
-                            tile_indices.push_back(base_index + 1);
-                            tile_indices.push_back(base_index + vertices_per_tile_x);
-                            tile_indices.push_back(base_index + vertices_per_tile_x + 1);
-                        }
-                    }
+            // assign vertices to tiles and track their indices
+            for (uint32_t global_index = 0; global_index < vertices.size(); ++global_index)
+            {
+                const RHI_Vertex_PosTexNorTan& vertex = vertices[global_index];
 
-                    // Add the tile's vertices and indices to the respective vectors
-                    tiled_vertices.push_back(tile_vertices);
-                    tiled_indices.push_back(tile_indices);
-                }
+                uint32_t tile_x     = static_cast<uint32_t>((vertex.pos[0] - min_x) / tile_width);
+                uint32_t tile_z     = static_cast<uint32_t>((vertex.pos[2] - min_z) / tile_depth);
+                tile_x              = min(tile_x, tile_count - 1);
+                tile_z              = min(tile_z, tile_count - 1);
+                uint32_t tile_index = tile_z * tile_count + tile_x;
+
+                // add vertex to the appropriate tile
+                tiled_vertices[tile_index].push_back(vertex);
+
+                // track the local index of this vertex in the tile
+                uint32_t local_index = tiled_vertices[tile_index].size() - 1;
+                global_to_local_indices[tile_index][global_index] = local_index;
+            }
+
+            // adjust and assign indices to tiles
+            for (uint32_t global_index : indices)
+            {
+                const RHI_Vertex_PosTexNorTan& vertex = vertices[global_index];
+
+                uint32_t tile_x     = static_cast<uint32_t>((vertex.pos[0] - min_x) / tile_width);
+                uint32_t tile_z     = static_cast<uint32_t>((vertex.pos[2] - min_z) / tile_depth);
+                tile_x              = min(tile_x, tile_count - 1);
+                tile_z              = min(tile_z, tile_count - 1);
+                uint32_t tile_index = tile_z * tile_count + tile_x;
+
+                // use the global to local index map to find the local index
+                uint32_t local_index = global_to_local_indices[tile_index][global_index];
+                tiled_indices[tile_index].push_back(local_index);
             }
         }
     }
 
     Terrain::Terrain(weak_ptr<Entity> entity) : Component(entity)
     {
-
+        m_material = make_shared<Material>();
+        m_material->SetObjectName("terrain");
     }
 
     Terrain::~Terrain()
@@ -450,22 +456,12 @@ namespace Spartan
 
     void Terrain::Serialize(FileStream* stream)
     {
-        const string no_path;
-
-        stream->Write(m_height_texture ? m_height_texture->GetResourceFilePathNative() : no_path);
-        stream->Write(m_mesh ? m_mesh->GetObjectName() : no_path);
-        stream->Write(m_min_y);
-        stream->Write(m_max_y);
+        SP_LOG_WARNING("Not implemented");
     }
 
     void Terrain::Deserialize(FileStream* stream)
     {
-        m_height_texture = ResourceCache::GetByPath<RHI_Texture2D>(stream->ReadAs<string>());
-        m_mesh           = ResourceCache::GetByName<Mesh>(stream->ReadAs<string>());
-        stream->Read(&m_min_y);
-        stream->Read(&m_max_y);
-
-        UpdateFromMesh(m_mesh);
+        SP_LOG_WARNING("Not implemented");
     }
 
     void Terrain::SetHeightMap(const shared_ptr<RHI_Texture>& height_map)
@@ -493,7 +489,7 @@ namespace Spartan
             terrain_offset              = 0.0f;
         }
 
-        *transforms = generate_transforms(m_mesh->GetVertices(), m_mesh->GetIndices(), count, max_slope, rotate_match_surface_normal, terrain_offset);
+        *transforms = generate_transforms(m_vertices, m_indices, count, max_slope, rotate_match_surface_normal, terrain_offset);
 	}
 
 	void Terrain::GenerateAsync(function<void()> on_complete)
@@ -507,14 +503,7 @@ namespace Spartan
         if (!m_height_texture)
         {
             SP_LOG_WARNING("You need to assign a height map before trying to generate a terrain");
-
-            ResourceCache::Remove(m_mesh);
-            m_mesh = nullptr;
-            if (shared_ptr<Renderable> renderable = m_entity_ptr->GetComponent<Renderable>())
-            {
-                renderable->SetGeometry(nullptr);
-            }
-
+            Clear();
             return;
         }
 
@@ -523,14 +512,14 @@ namespace Spartan
             m_is_generating = true;
 
             // star progress tracking
-            uint32_t job_count = 5;
+            uint32_t job_count = 6;
             ProgressTracker::GetProgress(ProgressType::Terrain).Start(job_count, "Generating terrain...");
 
             uint32_t width  = 0;
             uint32_t height = 0;
             vector<Vector3> positions;
-            vector<RHI_Vertex_PosTexNorTan> vertices;
-            vector<uint32_t> indices;
+            m_vertices.clear();
+            m_indices.clear();
 
             // 1. process height map        
             {
@@ -551,9 +540,9 @@ namespace Spartan
                 m_triangle_count = m_index_count / 3;
 
                 // allocate memory for the calculations that follow
-                positions = vector<Vector3>(m_height_samples);
-                vertices  = vector<RHI_Vertex_PosTexNorTan>(m_vertex_count);
-                indices   = vector<uint32_t>(m_index_count);
+                positions  = vector<Vector3>(m_height_samples);
+                m_vertices = vector<RHI_Vertex_PosTexNorTan>(m_vertex_count);
+                m_indices  = vector<uint32_t>(m_index_count);
 
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
@@ -568,44 +557,33 @@ namespace Spartan
             // 3. compute vertices and indices
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating vertices and indices...");
-                generate_vertices_and_indices(vertices, indices, positions, width, height);
+                generate_vertices_and_indices(m_vertices, m_indices, positions, width, height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
 
             // 4. compute normals and tangents
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating normals...");
-                generate_normals(indices, vertices);
+                generate_normals(m_indices, m_vertices);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
 
-            //// 5. split into tiles
-            //{
-            //    ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Splitting into tiles...");
-
-            //    // containers for tiled vertices and indices
-            //    vector<vector<RHI_Vertex_PosTexNorTan>> tiled_vertices;
-            //    vector<vector<uint32_t>> tiled_indices;
-
-            //    // call the split_terrain_into_tiles function with the appropriate arguments
-            //    split_terrain_into_tiles(
-            //        vertices,       // the original vertices of the entire terrain
-            //        indices,        // the original indices of the entire terrain
-            //        1024,           // total number of vertices along the width (X-axis)
-            //        1024,           // total number of vertices along the height (Z-axis)
-            //        12,             // number of tiles along the X-axis
-            //        12,             // number of tiles along the Z-axis
-            //        tiled_vertices, // container for tiled vertices
-            //        tiled_indices   // container for tiled indices
-            //    );
-
-            //    ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-            //}
-
-            // 6. create a mesh
+            // 5. split into tiles
             {
-                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Creating mesh...");
-                UpdateFromVertices(indices, vertices);
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Splitting into tiles...");
+                split_terrain_into_tiles(m_vertices, m_indices, m_tile_vertices, m_tile_indices);
+                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            }
+
+            // 6. create a mesh for each tile
+            {
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Creating tile meshes");
+
+                for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(m_tile_vertices.size()); tile_index++)
+                {
+                    UpdateMesh(tile_index);
+                }
+
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
 
@@ -618,53 +596,65 @@ namespace Spartan
         });
     }
 
-    void Terrain::UpdateFromMesh(const shared_ptr<Mesh> mesh) const
+    void Terrain::UpdateMesh(const uint32_t tile_index)
     {
-        // A renderable is needed, so add it, if it's already there it will just be returned
-        if (shared_ptr<Renderable> renderable = m_entity_ptr->AddComponent<Renderable>())
+        string name = "tile_" + to_string(tile_index);
+
+        // create mesh if it doesn't exist
+        if (m_tile_meshes.size() <= tile_index)
         {
-            renderable->SetGeometry(
-                mesh.get(),
-                mesh->GetAabb(),
-                0,                     // index offset
-                mesh->GetIndexCount(), // index count
-                0,                     // vertex offset
-                mesh->GetVertexCount() // vertex count
-            );
+            shared_ptr<Mesh>& mesh = m_tile_meshes.emplace_back(make_shared<Mesh>());
+            mesh->SetObjectName(name);
+        }
+
+        // update with geometry
+        shared_ptr<Mesh>& mesh = m_tile_meshes[tile_index];
+        mesh->Clear();
+        mesh->AddIndices(m_tile_indices[tile_index]);
+        mesh->AddVertices(m_tile_vertices[tile_index]);
+        mesh->CreateGpuBuffers();
+        mesh->ComputeNormalizedScale();
+        mesh->ComputeAabb();
+
+        // create a child entity, add a renderable, and this mesh tile to it
+        {
+            shared_ptr<Entity> entity = World::CreateEntity();
+            entity->SetObjectName(name);
+            entity->SetParent(World::GetEntityById(m_entity_ptr->GetObjectId()));
+
+            if (shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>())
+            {
+                renderable->SetGeometry(
+                    mesh.get(),
+                    mesh->GetAabb(),
+                    0,                     // index offset
+                    mesh->GetIndexCount(), // index count
+                    0,                     // vertex offset
+                    mesh->GetVertexCount() // vertex count
+                );
+
+                renderable->SetMaterial(m_material);
+            }
         }
     }
 
-    void Terrain::UpdateFromVertices(const vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
+    void Terrain::Clear()
     {
-        // add vertices and indices into a mesh struct (and cache that)
-        if (!m_mesh)
+        for (auto& mesh : m_tile_meshes)
         {
-            // create new model
-            m_mesh = make_shared<Mesh>();
-            m_mesh->SetObjectName("Terrain");
-
-            // set geometry
-            m_mesh->AddIndices(indices);
-            m_mesh->AddVertices(vertices);
-            m_mesh->CreateGpuBuffers();
-            m_mesh->ComputeNormalizedScale();
-            m_mesh->ComputeAabb();
-
-            // set a file path so the model can be used by the resource cache
-            m_mesh->SetResourceFilePath(ResourceCache::GetProjectDirectory() + m_entity_ptr->GetObjectName() + "_terrain_" + to_string(m_object_id) + string(EXTENSION_MODEL));
-            m_mesh = ResourceCache::Cache(m_mesh);
-        }
-        else
-        {
-            // update with new geometry
-            m_mesh->Clear();
-            m_mesh->AddIndices(indices);
-            m_mesh->AddVertices(vertices);
-            m_mesh->CreateGpuBuffers();
-            m_mesh->ComputeNormalizedScale();
-            m_mesh->ComputeAabb();
+            ResourceCache::Remove(mesh);
         }
 
-        UpdateFromMesh(m_mesh);
+        m_tile_meshes.clear();
+        m_tile_vertices.clear();
+        m_tile_indices.clear();
+
+        for (Entity* child : m_entity_ptr->GetChildren())
+        {
+            if (shared_ptr<Renderable> renderable = child->AddComponent<Renderable>())
+            {
+                renderable->SetGeometry(nullptr);
+            }
+        }
     }
 }
