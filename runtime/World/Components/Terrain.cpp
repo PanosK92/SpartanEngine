@@ -371,30 +371,6 @@ namespace Spartan
             return transforms;
         }
 
-        void AddSharedVertex(
-            uint32_t tile_x, uint32_t tile_z, uint32_t global_index,
-            const vector<RHI_Vertex_PosTexNorTan>& vertices, vector<vector<RHI_Vertex_PosTexNorTan>>& tiled_vertices,
-            vector<unordered_map<uint32_t, uint32_t>>& global_to_local_indices, vector<vector<uint32_t>>& tiled_indices)
-        {
-            // Check if tile_x and tile_z are within the valid range
-            if (tile_x >= tile_count || tile_z >= tile_count)
-            {
-                return; // Out of valid tile range, do nothing
-            }
-
-            uint32_t tile_count = static_cast<uint32_t>(sqrt(tiled_vertices.size())); // assuming square number of tiles
-            uint32_t tile_index = tile_z * tile_count + tile_x;
-            const RHI_Vertex_PosTexNorTan& vertex = vertices[global_index];
-
-            // add the vertex if it doesn't exist in the tile
-            if (global_to_local_indices[tile_index].find(global_index) == global_to_local_indices[tile_index].end())
-            {
-                tiled_vertices[tile_index].push_back(vertex);
-                uint32_t local_index = static_cast<uint32_t>(tiled_vertices[tile_index].size() - 1);
-                global_to_local_indices[tile_index][global_index] = local_index;
-            }
-        }
-
         void split_terrain_into_tiles(
             const vector<RHI_Vertex_PosTexNorTan>& vertices, const vector<uint32_t>& indices,
             vector<vector<RHI_Vertex_PosTexNorTan>>& tiled_vertices, vector<vector<uint32_t>>& tiled_indices)
@@ -451,6 +427,28 @@ namespace Spartan
                 global_to_local_indices[tile_index][global_index] = local_index;
             }
 
+            auto add_shared_vertex = [](
+                uint32_t tile_x, uint32_t tile_z, uint32_t global_index,
+                const vector<RHI_Vertex_PosTexNorTan>&vertices, vector<vector<RHI_Vertex_PosTexNorTan>>&tiled_vertices,
+                vector<unordered_map<uint32_t, uint32_t>>&global_to_local_indices, vector<vector<uint32_t>>&tiled_indices)
+            {
+                // check if tile_x and tile_z are within the valid range
+                if (tile_x >= tile_count || tile_z >= tile_count)
+                    return; // out of valid tile range, do nothing
+
+                uint32_t tile_count = static_cast<uint32_t>(sqrt(tiled_vertices.size())); // assuming square number of tiles
+                uint32_t tile_index = tile_z * tile_count + tile_x;
+                const RHI_Vertex_PosTexNorTan& vertex = vertices[global_index];
+
+                // add the vertex if it doesn't exist in the tile
+                if (global_to_local_indices[tile_index].find(global_index) == global_to_local_indices[tile_index].end())
+                {
+                    tiled_vertices[tile_index].push_back(vertex);
+                    uint32_t local_index = static_cast<uint32_t>(tiled_vertices[tile_index].size() - 1);
+                    global_to_local_indices[tile_index][global_index] = local_index;
+                }
+            };
+
             // adjust and assign indices to tiles
             for (uint32_t global_index = 0; global_index < indices.size(); global_index += 3)
             {
@@ -504,19 +502,19 @@ namespace Spartan
                     if (is_on_horizontal_edge)
                     {
                         // add to tile on the left
-                        AddSharedVertex(tile_x - 1, tile_z, current_global_index, vertices, tiled_vertices, global_to_local_indices, tiled_indices);
+                        add_shared_vertex(tile_x - 1, tile_z, current_global_index, vertices, tiled_vertices, global_to_local_indices, tiled_indices);
                     }
 
                     if (is_on_vertical_edge)
                     {
                         // add to tile below
-                        AddSharedVertex(tile_x, tile_z - 1, current_global_index, vertices, tiled_vertices, global_to_local_indices, tiled_indices);
+                        add_shared_vertex(tile_x, tile_z - 1, current_global_index, vertices, tiled_vertices, global_to_local_indices, tiled_indices);
                     }
 
                     if (is_on_horizontal_edge && is_on_vertical_edge)
                     {
                         // add to the diagonal tile (bottom left)
-                        AddSharedVertex(tile_x - 1, tile_z - 1, current_global_index, vertices, tiled_vertices, global_to_local_indices, tiled_indices);
+                        add_shared_vertex(tile_x - 1, tile_z - 1, current_global_index, vertices, tiled_vertices, global_to_local_indices, tiled_indices);
                     }
                 }
             }
