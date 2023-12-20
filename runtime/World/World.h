@@ -41,8 +41,7 @@ namespace Spartan
         static bool LoadFromFile(const std::string& file_path);
 
         // default worlds
-        static void CreateDefaultWorldCube();
-        static void CreateDefaultWorldHelmets();
+        static void CreateDefaultWorldObjects();
         static void CreateDefaultWorldCar();
         static void CreateDefaultWorldForest();
         static void CreateDefaultWorldSponza();
