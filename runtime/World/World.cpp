@@ -801,7 +801,7 @@ namespace Spartan
 
     void World::CreateDefaultWorldForest()
     {
-        Vector3 camera_position = Vector3(-259.1407f, 71.0f, 432.8229f);
+        Vector3 camera_position = Vector3(-244.5046f, 68.0f, 407.8690f);
         Vector3 camera_rotation = Vector3(0.0f, 144.0f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, nullptr, true, false);
 
@@ -917,9 +917,7 @@ namespace Spartan
                 // add physics so we can walk on it
                 PhysicsBody* rigid_body = m_default_terrain->AddComponent<PhysicsBody>().get();
                 rigid_body->SetMass(0.0f);
-                rigid_body->SetFriction(0.9f);
-                rigid_body->SetFrictionRolling(0.9f);
-
+   
                 // water
                 {
                     shared_ptr<Entity> water = CreateEntity();
