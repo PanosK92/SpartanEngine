@@ -974,6 +974,48 @@ namespace Spartan
                     }
                 }
 
+                // vegetation_tree_2
+                if (shared_ptr<Mesh> tree = ResourceCache::Load<Mesh>("project\\terrain\\vegetation_tree_2\\tree.fbx"))
+                {
+                    shared_ptr<Entity> entity = tree->GetRootEntity().lock();
+                    entity->SetObjectName("tree_2");
+                    entity->SetScale(Vector3(0.3f, 0.3f, 0.3f));
+                    entity->SetParent(m_default_terrain);
+
+                    vector<Matrix> instances;
+
+                    if (Entity* bark = entity->GetDescendantByName("Trunk"))
+                    {
+                        bark->SetScaleLocal(Vector3::One);
+
+                        Renderable* renderable = bark->GetComponent<Renderable>().get();
+                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\terrain\\vegetation_tree_2\\trunk_color.png");
+                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\terrain\\vegetation_tree_2\\trunk_normal.png");
+
+                        // generate instances
+                        terrain->GenerateTransforms(&instances, 5000, TerrainProp::Tree);
+                        renderable->SetInstances(instances);
+                    }
+
+                    if (Entity* branches = entity->GetDescendantByName("Branches"))
+                    {
+                        branches->SetScaleLocal(Vector3::One);
+
+                        Renderable* renderable = branches->GetComponent<Renderable>().get();
+                        renderable->SetInstances(instances);
+
+                        // tweak material
+                        Material* material = renderable->GetMaterial();
+                        material->SetTexture(MaterialTexture::Color,                 "project\\terrain\\vegetation_tree_2\\branches_color.png");
+                        material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\vegetation_tree_2\\branches_normal.png");
+                        material->SetTexture(MaterialTexture::Roughness,             "project\\terrain\\vegetation_tree_2\\branches_roughness.png");
+                        material->SetTexture(MaterialTexture::Occlusion,             "project\\terrain\\vegetation_tree_2\\branches_ao.png");
+                        material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
+                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                        material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
+                    }
+                }
+
                 // vegetation_plant_1
                 if (shared_ptr<Mesh> plant = ResourceCache::Load<Mesh>("project\\terrain\\vegetation_plant_1\\ormbunke.obj"))
                 {
