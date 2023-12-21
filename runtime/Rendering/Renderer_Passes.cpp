@@ -951,22 +951,9 @@ namespace Spartan
             cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
 
             // generate mips
-            Pass_Ffx_Spd(cmd_list, tex_out, Renderer_DownsampleFilter::Average);
-
-            // pre-filter mips
-            for (uint32_t mip = 1; mip < tex_out->GetMipCount(); mip++)
-            {
-                // calculate blur parameters based on mip level
-                float blur_scale = static_cast<float>(mip) / static_cast<float>(tex_out->GetMipCount() - 1);
-
-                // linearly scale the radius and sigma with the mip level
-                float radius = 1.0f + blur_scale * 5.0f;
-                float sigma  = 1.0f + blur_scale * 2.0f;
-
-                Pass_Blur_Gaussian(cmd_list, tex_out, false, radius, sigma, mip);
-            }
-
+            Pass_Ffx_Spd(cmd_list, tex_out, Renderer_DownsampleFilter::Antiflicker);
         }
+
         cmd_list->EndTimeblock();
     }
 
