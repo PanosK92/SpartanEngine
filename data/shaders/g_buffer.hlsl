@@ -96,7 +96,7 @@ struct sampling
         const float sea_level         = 0.0f;
         const float sand_offset       = 4.0f;  // how high above sea level the sand should extend
         const float snow_level        = 55.0f;
-        const float snow_height       = 60.0f; // this is the height at which the terrain is fully covered in snow
+        const float snow_height       = 80.0f; // this is the height at which the terrain is fully covered in snow
         const uint texture_index_rock = texture_index + 1;
         const uint texture_index_sand = texture_index + 2;
         const uint texture_index_snow = texture_index + 3;
@@ -137,10 +137,19 @@ struct sampling
         float4 color = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
         
         // implies vegetation - in which case, blend with some white/snow if the elevation is high enough
-        if (material_vertex_animate_wind() && (position_world.y > snow_level + 15.0f))
-        {
-            float blend_factor = saturate((position_world.y - snow_level) / (snow_height - snow_level));
-            color.rgb          = lerp(color.rgb, 1.0f, saturate(blend_factor - 0.2f));         
+        if (material_vertex_animate_wind() && (position_world.y > snow_level))
+        {   
+            // calculate a smooth blend factor
+            float elevation_difference = position_world.y - snow_level;
+            float transition_range     = snow_height - snow_level;
+            float blend_factor         = elevation_difference / transition_range;
+            blend_factor               = saturate(blend_factor);
+            
+            // smooth step for even smooth transition
+            blend_factor = smoothstep(0.0f, 1.0f, blend_factor);
+        
+            // blend the vegetation color with white
+            color.rgb = lerp(color.rgb, 1.0f, blend_factor);         
         }
     
         return color;
