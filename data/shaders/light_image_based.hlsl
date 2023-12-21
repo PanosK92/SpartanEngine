@@ -32,9 +32,22 @@ float3 get_dominant_specular_direction(float3 normal, float3 reflection, float r
     return lerp(normal, reflection, alpha);
 }
 
-float3 sample_environment(float2 uv, float mip_level)
+float3 sample_environment(float2 uv, float roughness)
 {
-    return tex_environment.SampleLevel(samplers[sampler_trilinear_clamp], uv, mip_level).rgb;
+    // calculate the base mip level and the next higher mip level based on roughness
+    float mipLevelBase = lerp(0, ENVIRONMENT_MAX_MIP - 1, roughness);
+    uint mipLevelLower = uint(floor(mipLevelBase));
+    uint mipLevelUpper = min(mipLevelLower + 1, ENVIRONMENT_MAX_MIP - 1);
+
+    // calculate the blend factor between the two mip levels
+    float mipBlendFactor = mipLevelBase - float(mipLevelLower);
+
+    // sample the two mip levels
+    float3 colorLower = tex_environment.SampleLevel(samplers[sampler_trilinear_clamp], uv, mipLevelLower).rgb;
+    float3 colorUpper = tex_environment.SampleLevel(samplers[sampler_trilinear_clamp], uv, mipLevelUpper).rgb;
+
+    // interpolate between the two mip levels
+    return lerp(colorLower, colorUpper, mipBlendFactor);
 }
 
 float3 get_parallax_corrected_reflection(Surface surface, float3 position_probe, float3 box_min, float3 box_max)
