@@ -1389,13 +1389,19 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(m_pipeline != nullptr);
 
-        // begin new render pass
         if (!m_render_pass_active && m_pso.IsGraphics())
         {
             BeginRenderPass();
 
             m_cull_mode = RHI_CullMode::Undefined;
             SetCullMode(m_pso.rasterizer_state->GetCullMode());
+
+            Math::Rectangle scissor_rect;
+            scissor_rect.left   = 0.0f;
+            scissor_rect.top    = 0.0f;
+            scissor_rect.right  = static_cast<float>(m_pso.GetWidth());
+            scissor_rect.bottom = static_cast<float>(m_pso.GetHeight());
+            SetScissorRectangle(scissor_rect);
         }
 
         // set dynamic resources
