@@ -96,7 +96,7 @@ struct sampling
         const float sea_level         = 0.0f;
         const float sand_offset       = 4.0f;  // how high above sea level the sand should extend
         const float snow_level        = 55.0f;
-        const float snow_height       = 80.0f; // this is the height at which the terrain is fully covered in snow
+        const float snow_height       = 70.0f; // this is the height at which the terrain is fully covered in snow
         const uint texture_index_rock = texture_index + 1;
         const uint texture_index_sand = texture_index + 2;
         const uint texture_index_snow = texture_index + 3;
@@ -149,7 +149,8 @@ struct sampling
             blend_factor = smoothstep(0.0f, 1.0f, blend_factor);
         
             // blend the vegetation color with white
-            color.rgb = lerp(color.rgb, 1.0f, blend_factor);         
+            float albedo_snow = 0.95f;
+            color.rgb = lerp(color.rgb, albedo_snow, blend_factor);         
         }
     
         return color;

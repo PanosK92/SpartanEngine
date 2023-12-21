@@ -989,8 +989,9 @@ namespace Spartan
                         bark->SetScaleLocal(Vector3::One);
 
                         Renderable* renderable = bark->GetComponent<Renderable>().get();
-                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\terrain\\vegetation_tree_2\\trunk_color.png");
-                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\terrain\\vegetation_tree_2\\trunk_normal.png");
+                        renderable->GetMaterial()->SetColor(Color::standard_white);
+                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color,  "project\\terrain\\vegetation_tree_2\\trunk_color.png");
+                        renderable->GetMaterial()->SetTexture(MaterialTexture::Normal, "project\\terrain\\vegetation_tree_2\\trunk_normal.png");
 
                         // generate instances
                         terrain->GenerateTransforms(&instances, 5000, TerrainProp::Tree);
@@ -1006,6 +1007,7 @@ namespace Spartan
 
                         // tweak material
                         Material* material = renderable->GetMaterial();
+                        material->SetColor(Color::standard_white);
                         material->SetTexture(MaterialTexture::Color,                 "project\\terrain\\vegetation_tree_2\\branches_color.png");
                         material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\vegetation_tree_2\\branches_normal.png");
                         material->SetTexture(MaterialTexture::Roughness,             "project\\terrain\\vegetation_tree_2\\branches_roughness.png");
