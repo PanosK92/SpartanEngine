@@ -73,7 +73,7 @@ namespace Spartan
                 case MaterialProperty::VertexAnimateWind:               return "vertex_animate_wind";
                 case MaterialProperty::VertexAnimateWater:              return "vertex_animate_water";
                 case MaterialProperty::CullMode:                        return "cull_mode";
-                case MaterialProperty::Undefined:                       return "undefined";
+                case MaterialProperty::Max:                             return "max";
                 default:
                 {
                     SP_ASSERT_MSG(false, "Unknown material property");
@@ -116,7 +116,7 @@ namespace Spartan
         pugi::xml_node node_material = doc.child("Material");
 
         // load properties
-        for (uint32_t i = 0; i < static_cast<uint32_t>(MaterialProperty::Undefined); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(MaterialProperty::Max); ++i)
         {
             const char* attribute_name = material_property_to_char_ptr(static_cast<MaterialProperty>(i));
             m_properties[i] = node_material.child(attribute_name).text().as_float();
@@ -157,7 +157,7 @@ namespace Spartan
         pugi::xml_node materialNode = doc.append_child("Material");
 
         // save properties
-        for (uint32_t i = 0; i < static_cast<uint32_t>(MaterialProperty::Undefined); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(MaterialProperty::Max); ++i)
         {
             const char* attributeName = material_property_to_char_ptr(static_cast<MaterialProperty>(i));
             materialNode.append_child(attributeName).text().set(m_properties[i]);
@@ -295,21 +295,18 @@ namespace Spartan
 
         if (property_type == MaterialProperty::ColorA)
         {
-            // If an object switches from opaque to transparent or vice versa, make the world update so that the renderer
+            // if an object switches from opaque to transparent or vice versa, make the world update so that the renderer
             // goes through the entities and makes the ones that use this material, render in the correct mode.
             float current_alpha = m_properties[static_cast<uint32_t>(property_type)];
             if ((current_alpha != 1.0f && value == 1.0f) || (current_alpha == 1.0f && value != 1.0f))
             {
+                RHI_CullMode cull_mode = value < 1.0f ? RHI_CullMode::None : RHI_CullMode::Back;
+                m_properties[static_cast<uint32_t>(MaterialProperty::CullMode)] = static_cast<float>(cull_mode);
                 World::Resolve();
             }
 
             // transparent objects are typically see-through (low roughness) so use the alpha as the roughness multiplier.
             m_properties[static_cast<uint32_t>(MaterialProperty::Roughness)] = value * 0.5f;
-
-            if (value < 1.0f)
-            {
-                m_properties[static_cast<uint32_t>(MaterialProperty::CullMode)] = static_cast<float>(RHI_CullMode::None);
-            }
         }
 
         if (property_type == MaterialProperty::Ior)

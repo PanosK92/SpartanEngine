@@ -478,15 +478,30 @@ namespace Spartan
             // bind
             VkPipelineBindPoint pipeline_bind_point = m_pso.IsCompute() ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
             vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_rhi_resource), pipeline_bind_point, vk_pipeline);
+            m_pipeline_dirty = false;
 
             // profile
             Profiler::m_rhi_bindings_pipeline++;
 
-            m_pipeline_dirty = false;
+            // set some dynamic states
+            if (m_pso.IsGraphics())
+            {
+                m_primitive_topology = RHI_PrimitiveTopology::Undefined;
+                SetPrimitiveTopology(RHI_PrimitiveTopology::TriangleList);
 
-            // also, If the pipeline changed, resources have to be set again
-            m_vertex_buffer_id = 0;
-            m_index_buffer_id  = 0;
+                m_cull_mode = RHI_CullMode::Undefined;
+                SetCullMode(m_pso.rasterizer_state->GetCullMode());
+
+                Math::Rectangle scissor_rect;
+                scissor_rect.left   = 0.0f;
+                scissor_rect.top    = 0.0f;
+                scissor_rect.right  = static_cast<float>(m_pso.GetWidth());
+                scissor_rect.bottom = static_cast<float>(m_pso.GetHeight());
+                SetScissorRectangle(scissor_rect);
+
+                m_index_buffer_id  = 0;
+                m_vertex_buffer_id = 0;
+            }
         }
 
         if (m_render_pass_active)
@@ -1069,6 +1084,20 @@ namespace Spartan
         );
     }
 
+    void RHI_CommandList::SetPrimitiveTopology(const RHI_PrimitiveTopology primitive_topology)
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        if (m_primitive_topology == primitive_topology)
+            return;
+
+        vkCmdSetPrimitiveTopology(
+            static_cast<VkCommandBuffer>(m_rhi_resource),
+            vulkan_primitive_topology[static_cast<uint32_t>(primitive_topology)]
+        );
+
+        m_primitive_topology = primitive_topology;
+    }
+
     void RHI_CommandList::SetCullMode(const RHI_CullMode cull_mode)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
@@ -1392,16 +1421,6 @@ namespace Spartan
         if (!m_render_pass_active && m_pso.IsGraphics())
         {
             BeginRenderPass();
-
-            m_cull_mode = RHI_CullMode::Undefined;
-            SetCullMode(m_pso.rasterizer_state->GetCullMode());
-
-            Math::Rectangle scissor_rect;
-            scissor_rect.left   = 0.0f;
-            scissor_rect.top    = 0.0f;
-            scissor_rect.right  = static_cast<float>(m_pso.GetWidth());
-            scissor_rect.bottom = static_cast<float>(m_pso.GetHeight());
-            SetScissorRectangle(scissor_rect);
         }
 
         // set dynamic resources

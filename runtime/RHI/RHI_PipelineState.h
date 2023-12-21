@@ -43,22 +43,21 @@ namespace Spartan
         bool IsGraphics()     const { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
         bool IsCompute()      const { return shader_compute != nullptr && !IsGraphics(); }
         
-        //= STATIC - Can cause PSO generation ================================================
-        RHI_Shader* shader_vertex                     = nullptr;
-        RHI_Shader* shader_pixel                      = nullptr;
-        RHI_Shader* shader_compute                    = nullptr;
-        RHI_RasterizerState* rasterizer_state         = nullptr;
-        RHI_BlendState* blend_state                   = nullptr;
-        RHI_DepthStencilState* depth_stencil_state    = nullptr;
-        RHI_SwapChain* render_target_swapchain        = nullptr;
-        RHI_PrimitiveTopology_Mode primitive_topology = RHI_PrimitiveTopology_Mode::Undefined;
-        bool is_fullscreen_triangle                   = false;
-        bool instancing                               = false;
+        //= STATIC - Can cause PSO generation =============================================
+        RHI_Shader* shader_vertex = nullptr;
+        RHI_Shader* shader_pixel = nullptr;
+        RHI_Shader* shader_compute = nullptr;
+        RHI_RasterizerState* rasterizer_state = nullptr;
+        RHI_BlendState* blend_state = nullptr;
+        RHI_DepthStencilState* depth_stencil_state = nullptr;
+        RHI_SwapChain* render_target_swapchain = nullptr;
+        bool is_fullscreen_triangle = false;
+        bool instancing = false;
 
         // RTs
         RHI_Texture* render_target_depth_texture = nullptr;
         std::array<RHI_Texture*, rhi_max_render_target_count> render_target_color_textures;
-        //====================================================================================
+        //=================================================================================
 
         //= DYNAMIC - Will not cause PSO generation =================
         uint32_t render_target_color_texture_array_index         = 0;

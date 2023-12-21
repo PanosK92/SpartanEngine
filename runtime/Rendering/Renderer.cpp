@@ -314,13 +314,13 @@ namespace Spartan
         {
             ThreadPool::AddTask([]()
             {
+                CreateStandardMeshes();
                 CreateStandardTextures();
                 CreateStandardMaterials();
                 CreateFonts();
                 CreateShaders();
             });
 
-            CreateStandardMeshes();
             CreateConstantBuffers();
             CreateDepthStencilStates();
             CreateRasterizerStates();
