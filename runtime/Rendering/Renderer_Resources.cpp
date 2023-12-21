@@ -215,13 +215,16 @@ namespace Spartan
             // g-buffer
             {
                 uint32_t g_buffer_flags = RHI_Texture_Rtv | RHI_Texture_Srv;
+
                 render_target(Renderer_RenderTexture::gbuffer_color)             = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     g_buffer_flags,                         "rt_gbuffer_color");
                 render_target(Renderer_RenderTexture::gbuffer_normal)            = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, g_buffer_flags,                         "rt_gbuffer_normal");
                 render_target(Renderer_RenderTexture::gbuffer_material)          = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     g_buffer_flags,                         "rt_gbuffer_material");
                 render_target(Renderer_RenderTexture::gbuffer_velocity)          = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16_Float,       g_buffer_flags | RHI_Texture_ClearBlit, "rt_gbuffer_velocity");
-                render_target(Renderer_RenderTexture::gbuffer_depth)             = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          g_buffer_flags,                         "rt_gbuffer_depth");
+                render_target(Renderer_RenderTexture::gbuffer_depth)             = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          g_buffer_flags | RHI_Texture_ClearBlit, "rt_gbuffer_depth");
 
+                // g-buffer complementary
                 render_target(Renderer_RenderTexture::gbuffer_velocity_previous) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16_Float, g_buffer_flags | RHI_Texture_ClearBlit, "rt_gbuffer_velocity_previous");
+                //render_target(Renderer_RenderTexture::hi_z) = make_shared<RHI_Texture2D>(width_render, height_render, 5, RHI_Format::D32_Float, g_buffer_flags | RHI_Texture_Uav | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "rt_hi_z");
             }
 
             // light
@@ -272,16 +275,9 @@ namespace Spartan
 
             // atmospheric scattering
             render_target(Renderer_RenderTexture::skysphere) = make_unique<RHI_Texture2D>(2048, 2048, mip_count, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_skysphere");
-        }
 
-        // dynamic resolution
-        if (create_dynamic)
-        {
-            // blur
-            bool is_output_larger = width_output > width_render && height_output > height_render;
-            uint32_t width        = is_output_larger ? width_output : width_render;
-            uint32_t height       = is_output_larger ? height_output : height_render;
-            render_target(Renderer_RenderTexture::blur) = make_unique<RHI_Texture2D>(width, height, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_blur");
+            // blur scratch texture
+            render_target(Renderer_RenderTexture::blur) = make_unique<RHI_Texture2D>(3840, 2160, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_blur");
         }
 
         RHI_Device::QueueWaitAll();
@@ -503,8 +499,19 @@ namespace Spartan
         // compiled immediately, they are needed the moment the engine starts.
         {
             // amd fidelityfx spd - single pass downsample
-            shader(Renderer_Shader::ffx_spd_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::ffx_spd_c)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
+            {
+                shader(Renderer_Shader::ffx_spd_c_average) = make_shared<RHI_Shader>();
+                shader(Renderer_Shader::ffx_spd_c_average)->AddDefine("AVERAGE");
+                shader(Renderer_Shader::ffx_spd_c_average)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
+
+                shader(Renderer_Shader::ffx_spd_c_highest) = make_shared<RHI_Shader>();
+                shader(Renderer_Shader::ffx_spd_c_highest)->AddDefine("HIGHEST");
+                shader(Renderer_Shader::ffx_spd_c_highest)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
+
+                shader(Renderer_Shader::ffx_spd_c_antiflicker) = make_shared<RHI_Shader>();
+                shader(Renderer_Shader::ffx_spd_c_antiflicker)->AddDefine("ANTIFLICKER");
+                shader(Renderer_Shader::ffx_spd_c_antiflicker)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
+            }
 
             // brdf - Specular Lut
             shader(Renderer_Shader::brdf_specular_lut_c) = make_shared<RHI_Shader>();

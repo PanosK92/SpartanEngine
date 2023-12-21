@@ -156,6 +156,7 @@ namespace Spartan
         static void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
         static void Pass_ReflectionProbes(RHI_CommandList* cmd_list);
         static void Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
+        static void Pass_Hi_Z(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
         static void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
         static void Pass_Ssgi(RHI_CommandList* cmd_list);
         static void Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool is_transparent_pass = false);
@@ -186,7 +187,7 @@ namespace Spartan
         static void Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass = false);
         // passes - amd fidelityfx
         static void Pass_Ffx_Cas(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_Ffx_Spd(RHI_CommandList* cmd_list, RHI_Texture* tex);
+        static void Pass_Ffx_Spd(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter);
         static void Pass_Ffx_Fsr2(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
 
         // event handlers

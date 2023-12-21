@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "brdf.hlsl"
 //==================
 
-// From Sebastien Lagarde Moving Frostbite to PBR page 69
+// from Sebastien Lagarde Moving Frostbite to PBR page 69
 float3 get_dominant_specular_direction(float3 normal, float3 reflection, float roughness)
 {
     const float smoothness = 1.0f - roughness;
@@ -34,13 +34,6 @@ float3 get_dominant_specular_direction(float3 normal, float3 reflection, float r
 
 float3 sample_environment(float2 uv, float mip_level)
 {
-    // We are currently using a spherical environment map which has a smallest mip size of 2x1.
-    // So we have to do a bit of blending otherwise we'll get a visible seem in the middle.
-    if (mip_level >= ENVIRONMENT_MAX_MIP)
-    {
-        uv = float2(0.5f, 0.0);
-    }
-
     return tex_environment.SampleLevel(samplers[sampler_trilinear_clamp], uv, mip_level).rgb;
 }
 
@@ -49,21 +42,21 @@ float3 get_parallax_corrected_reflection(Surface surface, float3 position_probe,
     float3 camera_to_pixel = surface.position - buffer_frame.camera_position;
     float3 reflection      = reflect(camera_to_pixel, surface.normal);
     
-    // Find the ray intersection with box plane
+    // find the ray intersection with box plane
     float3 FirstPlaneIntersect  = (box_max - surface.position) / reflection;
     float3 SecondPlaneIntersect = (box_min - surface.position) / reflection;
 
-    // Get the furthest of these intersections along the ray
-    // (Ok because x/0 give +inf and -x/0 give –inf )
+    // get the furthest of these intersections along the ray
+    // (ok because x/0 give +inf and -x/0 give –inf )
     float3 furthest_plane = max(FirstPlaneIntersect, SecondPlaneIntersect);
 
-    // Find the closest far intersection
+    // find the closest far intersection
     float distance = min3(furthest_plane);
     
-    // Get the intersection position
+    // get the intersection position
     float3 position_intersection = surface.position + reflection * distance;
 
-    // Get corrected reflection
+    // get corrected reflection
     reflection = position_intersection - position_probe;
     
     return reflection;

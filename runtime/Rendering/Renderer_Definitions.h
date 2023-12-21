@@ -29,8 +29,8 @@ namespace Spartan
 {
     #define debug_color Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
     constexpr uint8_t resources_frame_lifetime = 5;
-    constexpr uint8_t shader_count             = 52;
-    constexpr uint8_t render_target_count      = 28;
+    constexpr uint8_t shader_count             = 54;
+    constexpr uint8_t render_target_count      = 29;
 
     enum class Renderer_Option : uint32_t
     {
@@ -215,7 +215,9 @@ namespace Spartan
         reflection_probe_v,
         reflection_probe_p,
         ffx_cas_c,
-        ffx_spd_c
+        ffx_spd_c_average,
+        ffx_spd_c_highest,
+        ffx_spd_c_antiflicker
     };
     
     enum class Renderer_RenderTexture : uint8_t
@@ -247,7 +249,8 @@ namespace Spartan
         skysphere,
         bloom,
         blur,
-        outline
+        outline,
+        hi_z
     };
     
     enum class Renderer_Entity
@@ -335,5 +338,12 @@ namespace Spartan
         Disabled,
         Alpha,
         Additive
+    };
+
+    enum class Renderer_DownsampleFilter
+    {
+        Average,
+        Highest,
+        Antiflicker
     };
 }
