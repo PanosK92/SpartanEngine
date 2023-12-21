@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const float g_ssr_max_distance        = 1000.0f;
 static const uint g_ssr_max_steps            = 128;
 static const uint g_ssr_binary_search_steps  = 64;
-static const float g_ssr_thickness           = 0.08f;
+static const float g_ssr_thickness           = 0.01f;
 static const float g_ssr_roughness_threshold = 0.8f;
 
 float compute_alpha(uint2 screen_pos, float2 hit_uv, float v_dot_r)

@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderer_Buffers.h"
 #include "Font/Font.h"
 #include <unordered_map>
+#include <atomic>
 //===============================
 
 namespace Spartan
@@ -222,5 +223,6 @@ namespace Spartan
         static RHI_CommandPool* m_cmd_pool;
         static std::shared_ptr<Camera> m_camera;
         static uint32_t m_resource_index;
+        static std::atomic<bool> m_resources_created;
     };
 }
