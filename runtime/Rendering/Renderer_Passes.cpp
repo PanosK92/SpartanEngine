@@ -504,16 +504,16 @@ namespace Spartan
             pso.instancing                  = i == 1 || i == 3;
             pso.shader_vertex               = !pso.instancing ? shader_v : shader_instanced_v;
             pso.shader_pixel                = shader_p; // alpha testing
-            pso.rasterizer_state            = is_transparent_pass ? GetRasterizerState(Renderer_RasterizerState::Solid_cull_none).get() : GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
+            pso.rasterizer_state            = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
             pso.blend_state                 = GetBlendState(Renderer_BlendState::Disabled).get();
             pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
             pso.render_target_depth_texture = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
             pso.clear_depth                 = (is_transparent_pass || pso.instancing) ? rhi_depth_load : 0.0f; // reverse-z
             pso.primitive_topology          = RHI_PrimitiveTopology_Mode::TriangleList;
+            pso.dynamic_cull_mode           = true;
 
             // set pso
             cmd_list->SetPipelineState(pso);
-
             for (shared_ptr<Entity> entity : entities)
             {
                 // when async loading certain things can be null
@@ -526,6 +526,10 @@ namespace Spartan
                 renderable->SetIsVisible(GetCamera()->IsInViewFrustum(renderable));
                 if (!renderable->GetIsVisible())
                     continue;
+
+                // set cull mode
+                RHI_CullMode material_cull_mode = static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode));
+                cmd_list->SetCullMode(material_cull_mode);
 
                 // set vertex, index and instance buffers
                 {
@@ -604,7 +608,7 @@ namespace Spartan
 
         // deduce rasterizer state
         bool wireframe                        = GetOption<bool>(Renderer_Option::Debug_Wireframe);
-        RHI_RasterizerState* rasterizer_state = is_transparent_pass ? GetRasterizerState(Renderer_RasterizerState::Solid_cull_none).get() : GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
+        RHI_RasterizerState* rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
         rasterizer_state                      = wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe_cull_none).get() : rasterizer_state;
 
         uint32_t start_index = !is_transparent_pass ? 0 : 2;
@@ -640,6 +644,7 @@ namespace Spartan
             pso.render_target_depth_texture     = tex_depth;
             pso.clear_depth                     = rhi_depth_load;
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
+            pso.dynamic_cull_mode               = true;
 
             // set pso
             cmd_list->SetPipelineState(pso);
@@ -650,6 +655,11 @@ namespace Spartan
                 shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
                 if (!renderable || !renderable->ReadToRender() || !renderable->GetIsVisible())
                     continue;
+
+                // set cull mode
+                RHI_CullMode material_cull_mode = static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode));
+                material_cull_mode              = is_transparent_pass ? RHI_CullMode::None : material_cull_mode;
+                cmd_list->SetCullMode(material_cull_mode);
 
                 // set vertex, index and instance buffers
                 {

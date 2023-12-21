@@ -53,8 +53,9 @@ namespace Spartan
         RHI_SwapChain* render_target_swapchain        = nullptr;
         RHI_PrimitiveTopology_Mode primitive_topology = RHI_PrimitiveTopology_Mode::Undefined;
         bool is_fullscreen_triangle                   = false;
-        bool dynamic_scissor                          = false;
         bool instancing                               = false;
+        bool dynamic_scissor                          = false;
+        bool dynamic_cull_mode                        = false;
 
         // RTs
         RHI_Texture* render_target_depth_texture = nullptr;

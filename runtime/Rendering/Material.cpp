@@ -72,6 +72,7 @@ namespace Spartan
                 case MaterialProperty::TextureSlopeBased:               return "texture_slope_based";
                 case MaterialProperty::VertexAnimateWind:               return "vertex_animate_wind";
                 case MaterialProperty::VertexAnimateWater:              return "vertex_animate_water";
+                case MaterialProperty::CullMode:                        return "cull_mode";
                 case MaterialProperty::Undefined:                       return "undefined";
                 default:
                 {
@@ -88,6 +89,7 @@ namespace Spartan
         m_properties.fill(0.0f);
 
         // initialize properties
+        SetProperty(MaterialProperty::CullMode,         static_cast<float>(RHI_CullMode::Back));
         SetProperty(MaterialProperty::CanBeEdited,      1.0f);
         SetProperty(MaterialProperty::ColorR,           1.0f);
         SetProperty(MaterialProperty::ColorG,           1.0f);
@@ -303,6 +305,11 @@ namespace Spartan
 
             // transparent objects are typically see-through (low roughness) so use the alpha as the roughness multiplier.
             m_properties[static_cast<uint32_t>(MaterialProperty::Roughness)] = value * 0.5f;
+
+            if (value < 1.0f)
+            {
+                m_properties[static_cast<uint32_t>(MaterialProperty::CullMode)] = static_cast<float>(RHI_CullMode::None);
+            }
         }
 
         if (property_type == MaterialProperty::Ior)

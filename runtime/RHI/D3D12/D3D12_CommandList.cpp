@@ -216,7 +216,6 @@ namespace Spartan
 
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         D3D12_VIEWPORT d3d12_viewport = {};
@@ -232,7 +231,6 @@ namespace Spartan
     
     void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         const D3D12_RECT d3d12_rectangle =
@@ -245,10 +243,14 @@ namespace Spartan
 
         static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->RSSetScissorRects(1, &d3d12_rectangle);
     }
-    
+
+    void RHI_CommandList::SetCullMode(const RHI_CullMode cull_mode)
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+    }
+
     void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint32_t binding /*= 0*/)
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Skip if already set
