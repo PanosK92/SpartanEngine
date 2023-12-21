@@ -297,7 +297,7 @@ namespace Spartan
         SetOption(Renderer_Option::Gamma,                         2.2f);                                                 
         SetOption(Renderer_Option::Exposure,                      1.0f);                                                 
         SetOption(Renderer_Option::Sharpness,                     1.0f);                                                 
-        SetOption(Renderer_Option::Fog,                           20.0f);                                                 
+        SetOption(Renderer_Option::Fog,                           5.0f);                                                 
         SetOption(Renderer_Option::Antialiasing,                  static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 2 for taa
         SetOption(Renderer_Option::Upsampling,                    static_cast<float>(Renderer_Upsampling::FSR2));
         SetOption(Renderer_Option::Vsync,                         0.0f);
@@ -630,7 +630,7 @@ namespace Spartan
         cmd_list->PushConstants(0, sizeof(Pcb_Pass), &m_cb_pass_cpu);
     }
 
-    void Renderer::OnWorldResolved(sp_variant data)
+	void Renderer::OnWorldResolved(sp_variant data)
     {
         // note: m_renderables is a vector of shared pointers.
         // this ensures that if any entities are deallocated by the world.

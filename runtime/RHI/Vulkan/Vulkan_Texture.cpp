@@ -43,11 +43,11 @@ namespace Spartan
             VkFormatProperties format_properties;
             vkGetPhysicalDeviceFormatProperties(RHI_Context::device_physical, vulkan_format[rhi_format_to_index(format)], &format_properties);
 
-            // Check for optimal support
+            // check for optimal support
             if (format_properties.optimalTilingFeatures & feature_flags)
                 return VK_IMAGE_TILING_OPTIMAL;
 
-            // Check for linear support
+            // check for linear support
             if (format_properties.linearTilingFeatures & feature_flags)
                 return VK_IMAGE_TILING_LINEAR;
 

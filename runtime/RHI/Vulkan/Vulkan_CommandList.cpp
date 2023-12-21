@@ -832,13 +832,13 @@ namespace Spartan
             blit_region.srcSubresource.mipLevel       = mip_index;
             blit_region.srcSubresource.baseArrayLayer = 0;
             blit_region.srcSubresource.layerCount     = 1;
-            blit_region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+            blit_region.srcSubresource.aspectMask     = source->IsDepthFormat() ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
             blit_region.srcOffsets[0]                 = { 0, 0, 0 };
             blit_region.srcOffsets[1]                 = source_blit_size;
             blit_region.dstSubresource.mipLevel       = mip_index;
             blit_region.dstSubresource.baseArrayLayer = 0;
             blit_region.dstSubresource.layerCount     = 1;
-            blit_region.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+            blit_region.dstSubresource.aspectMask     = destination->IsDepthFormat() ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
             blit_region.dstOffsets[0]                 = { 0, 0, 0 };
             blit_region.dstOffsets[1]                 = destination_blit_size;
         }
@@ -848,7 +848,7 @@ namespace Spartan
         array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_destination = destination->GetLayouts();
 
         // Transition to blit appropriate layouts
-        source->SetLayout(RHI_Image_Layout::Transfer_Source,      this);
+        source->SetLayout(RHI_Image_Layout::Transfer_Source, this);
         destination->SetLayout(RHI_Image_Layout::Transfer_Destination, this);
 
         // Blit
@@ -857,7 +857,7 @@ namespace Spartan
             static_cast<VkImage>(source->GetRhiResource()),      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             static_cast<VkImage>(destination->GetRhiResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             blit_region_count, &blit_regions[0],
-            vulkan_filter[static_cast<uint32_t>(RHI_Filter::Linear)]
+            vulkan_filter[static_cast<uint32_t>(destination->IsDepthFormat() ? RHI_Filter::Nearest : RHI_Filter::Linear)]
         );
 
         // Transition to the initial layouts

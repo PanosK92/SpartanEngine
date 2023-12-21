@@ -164,6 +164,7 @@ namespace Spartan
             // opaque
             {
                 Pass_Depth_Prepass(cmd_list);
+                //Pass_Hi_Z(cmd_list);
                 Pass_GBuffer(cmd_list);
                 Pass_Skysphere(cmd_list);
                 Pass_Ssgi(cmd_list);
@@ -184,7 +185,7 @@ namespace Spartan
                     cmd_list->Copy(rt_render, rt_render_2, true);
             
                     // generate frame mips so that the reflections can simulate roughness
-                    Pass_Ffx_Spd(cmd_list, rt_render_2);
+                    Pass_Ffx_Spd(cmd_list, rt_render_2, Renderer_DownsampleFilter::Average);
             
                     // blur the smaller mips to reduce blockiness/flickering
                     for (uint32_t i = 1; i < rt_render_2->GetMipCount(); i++)
@@ -566,6 +567,20 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
+    void Renderer::Pass_Hi_Z(RHI_CommandList* cmd_list, const bool is_transparent_pass /*= false*/)
+    {
+        cmd_list->BeginTimeblock(!is_transparent_pass ? "hi_z" : "hi_z_transparent");
+
+        RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
+        RHI_Texture* tex_hi_z  = GetRenderTarget(Renderer_RenderTexture::hi_z).get();
+
+        cmd_list->Blit(tex_depth, tex_hi_z, false);
+
+        Pass_Ffx_Spd(cmd_list, tex_hi_z, Renderer_DownsampleFilter::Highest);
+
+        cmd_list->EndTimeblock();
+    }
+
     void Renderer::Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // acquire shaders
@@ -779,7 +794,7 @@ namespace Spartan
         cmd_list->Dispatch(thread_group_count_x(tex_ssr), thread_group_count_y(tex_ssr));
 
         // generate frame mips so that we can simulate roughness
-        Pass_Ffx_Spd(cmd_list, tex_ssr);
+        Pass_Ffx_Spd(cmd_list, tex_ssr, Renderer_DownsampleFilter::Average);
 
         // blur the smaller mips to reduce blockiness/flickering
         for (uint32_t i = 1; i < tex_ssr->GetMipCount(); i++)
@@ -936,7 +951,20 @@ namespace Spartan
             cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
 
             // generate mips
-            Pass_Ffx_Spd(cmd_list, tex_out);
+            Pass_Ffx_Spd(cmd_list, tex_out, Renderer_DownsampleFilter::Average);
+
+            // pre-filter mips
+            for (uint32_t mip = 1; mip < tex_out->GetMipCount(); mip++)
+            {
+                // calculate blur parameters based on mip level
+                float blur_scale = static_cast<float>(mip) / static_cast<float>(tex_out->GetMipCount() - 1);
+
+                // linearly scale the radius and sigma with the mip level
+                float radius = 1.0f + blur_scale * 5.0f;
+                float sigma  = 1.0f + blur_scale * 2.0f;
+
+                Pass_Blur_Gaussian(cmd_list, tex_out, false, radius, sigma, mip);
+            }
 
         }
         cmd_list->EndTimeblock();
@@ -1408,7 +1436,7 @@ namespace Spartan
         cmd_list->EndMarker();
 
         // Generate mips
-        Pass_Ffx_Spd(cmd_list, tex_bloom);
+        Pass_Ffx_Spd(cmd_list, tex_bloom, Renderer_DownsampleFilter::Antiflicker);
 
         // Starting from the lowest mip, upsample and blend with the higher one
         cmd_list->BeginMarker("upsample_and_blend_with_higher_mip");
@@ -1813,7 +1841,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Ffx_Spd(RHI_CommandList* cmd_list, RHI_Texture* tex)
+    void Renderer::Pass_Ffx_Spd(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter)
     {
         // AMD FidelityFX Single Pass Downsampler.
         // Provides an RDNA™-optimized solution for generating up to 12 MIP levels of a texture.
@@ -1828,8 +1856,13 @@ namespace Spartan
         SP_ASSERT(tex->HasPerMipViews());
         SP_ASSERT(tex->GetWidth() <= 4096 && tex->GetHeight() <= 4096 && output_mip_count <= 12); // as per documentation (page 22)
 
+        // deduce appropriate shader
+        Renderer_Shader shader = Renderer_Shader::ffx_spd_c_average;
+        if (filter == Renderer_DownsampleFilter::Highest)     shader = Renderer_Shader::ffx_spd_c_highest;
+        if (filter == Renderer_DownsampleFilter::Antiflicker) shader = Renderer_Shader::ffx_spd_c_antiflicker;
+
         // acquire shader
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::ffx_spd_c).get();
+        RHI_Shader* shader_c = GetShader(shader).get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -2375,7 +2408,7 @@ namespace Spartan
         lock_guard<mutex> lock(mutex_generate_mips);
 
         // downsample
-        Pass_Ffx_Spd(cmd_list, texture);
+        Pass_Ffx_Spd(cmd_list, texture, Renderer_DownsampleFilter::Average);
 
         // set all generated mips to read only optimal
         texture->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list, 0, texture->GetMipCount());
