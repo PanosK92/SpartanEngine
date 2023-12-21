@@ -54,7 +54,6 @@ namespace Spartan
         RHI_PrimitiveTopology_Mode primitive_topology = RHI_PrimitiveTopology_Mode::Undefined;
         bool is_fullscreen_triangle                   = false;
         bool instancing                               = false;
-        bool dynamic_scissor                          = false;
 
         // RTs
         RHI_Texture* render_target_depth_texture = nullptr;

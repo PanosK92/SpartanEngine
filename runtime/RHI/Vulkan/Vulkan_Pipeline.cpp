@@ -106,14 +106,11 @@ namespace Spartan
         VkPipelineViewportStateCreateInfo viewport_state = {};
         {
             // enable dynamic states
-            dynamic_states.emplace_back(VK_DYNAMIC_STATE_VIEWPORT);
-            if (m_state.dynamic_scissor)
-            {
-                dynamic_states.emplace_back(VK_DYNAMIC_STATE_SCISSOR);
-            }
+            dynamic_states.push_back(VK_DYNAMIC_STATE_VIEWPORT);
             if (m_state.IsGraphics())
             {
-                dynamic_states.emplace_back(VK_DYNAMIC_STATE_CULL_MODE);
+                dynamic_states.push_back(VK_DYNAMIC_STATE_SCISSOR);
+                dynamic_states.push_back(VK_DYNAMIC_STATE_CULL_MODE);
             }
 
             // dynamic states
