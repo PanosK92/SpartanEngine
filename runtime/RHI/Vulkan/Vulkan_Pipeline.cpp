@@ -111,7 +111,7 @@ namespace Spartan
             {
                 dynamic_states.emplace_back(VK_DYNAMIC_STATE_SCISSOR);
             }
-            if (m_state.dynamic_cull_mode)
+            if (m_state.IsGraphics())
             {
                 dynamic_states.emplace_back(VK_DYNAMIC_STATE_CULL_MODE);
             }

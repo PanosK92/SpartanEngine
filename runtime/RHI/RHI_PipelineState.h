@@ -55,7 +55,6 @@ namespace Spartan
         bool is_fullscreen_triangle                   = false;
         bool instancing                               = false;
         bool dynamic_scissor                          = false;
-        bool dynamic_cull_mode                        = false;
 
         // RTs
         RHI_Texture* render_target_depth_texture = nullptr;

@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Semaphore.h"
 #include "../RHI_Fence.h"
 #include "../RHI_SwapChain.h"
+#include "../RHI_RasterizerState.h"
 #include "../Rendering/Renderer.h"
 #include "../../Profiling/Profiler.h"
 //=====================================
@@ -1392,7 +1393,9 @@ namespace Spartan
         if (!m_render_pass_active && m_pso.IsGraphics())
         {
             BeginRenderPass();
+
             m_cull_mode = RHI_CullMode::Undefined;
+            SetCullMode(m_pso.rasterizer_state->GetCullMode());
         }
 
         // set dynamic resources

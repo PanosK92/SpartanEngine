@@ -510,7 +510,6 @@ namespace Spartan
             pso.render_target_depth_texture = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
             pso.clear_depth                 = (is_transparent_pass || pso.instancing) ? rhi_depth_load : 0.0f; // reverse-z
             pso.primitive_topology          = RHI_PrimitiveTopology_Mode::TriangleList;
-            pso.dynamic_cull_mode           = true;
 
             // set pso
             cmd_list->SetPipelineState(pso);
@@ -644,7 +643,6 @@ namespace Spartan
             pso.render_target_depth_texture     = tex_depth;
             pso.clear_depth                     = rhi_depth_load;
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
-            pso.dynamic_cull_mode               = true;
 
             // set pso
             cmd_list->SetPipelineState(pso);
