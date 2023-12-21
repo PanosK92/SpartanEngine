@@ -63,9 +63,10 @@ namespace Spartan
     // misc
     unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
     bool Renderer::m_brdf_specular_lut_rendered;
-    RHI_CommandPool* Renderer::m_cmd_pool = nullptr;
-    shared_ptr<Camera> Renderer::m_camera = nullptr;
-    uint32_t Renderer::m_resource_index   = 0;
+    RHI_CommandPool* Renderer::m_cmd_pool      = nullptr;
+    shared_ptr<Camera> Renderer::m_camera      = nullptr;
+    uint32_t Renderer::m_resource_index        = 0;
+    atomic<bool> Renderer::m_resources_created = false;
 
     namespace
     {
@@ -314,11 +315,13 @@ namespace Spartan
         {
             ThreadPool::AddTask([]()
             {
+                m_resources_created = false;
                 CreateStandardMeshes();
                 CreateStandardTextures();
                 CreateStandardMaterials();
                 CreateFonts();
                 CreateShaders();
+                m_resources_created = true;
             });
 
             CreateConstantBuffers();
@@ -366,8 +369,7 @@ namespace Spartan
 
     void Renderer::Tick()
     {
-        // don't produce frames if the window is minimized
-        if (Window::IsMinimised())
+        if (Window::IsMinimised() || !m_resources_created)
             return;
 
         if (frame_num == 1)

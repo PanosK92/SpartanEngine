@@ -44,15 +44,15 @@ namespace Spartan
         bool IsCompute()      const { return shader_compute != nullptr && !IsGraphics(); }
         
         //= STATIC - Can cause PSO generation =============================================
-        RHI_Shader* shader_vertex = nullptr;
-        RHI_Shader* shader_pixel = nullptr;
-        RHI_Shader* shader_compute = nullptr;
-        RHI_RasterizerState* rasterizer_state = nullptr;
-        RHI_BlendState* blend_state = nullptr;
+        RHI_Shader* shader_vertex                  = nullptr;
+        RHI_Shader* shader_pixel                   = nullptr;
+        RHI_Shader* shader_compute                 = nullptr;
+        RHI_RasterizerState* rasterizer_state      = nullptr;
+        RHI_BlendState* blend_state                = nullptr;
         RHI_DepthStencilState* depth_stencil_state = nullptr;
-        RHI_SwapChain* render_target_swapchain = nullptr;
-        bool is_fullscreen_triangle = false;
-        bool instancing = false;
+        RHI_SwapChain* render_target_swapchain     = nullptr;
+        bool is_fullscreen_triangle                = false;
+        bool instancing                            = false;
 
         // RTs
         RHI_Texture* render_target_depth_texture = nullptr;

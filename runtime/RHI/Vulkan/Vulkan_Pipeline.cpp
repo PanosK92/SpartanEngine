@@ -236,7 +236,7 @@ namespace Spartan
             {
                 // update the attribute descriptions to pass the entire matrix
                 // each row of the matrix is treated as a separate attribute
-                for (uint32_t i = 0; i < 4; ++i)
+                for (uint32_t i = 0; i < 4; i++)
                 {
                     vertex_attribute_descs.push_back
                     ({

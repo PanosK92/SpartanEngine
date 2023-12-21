@@ -108,9 +108,9 @@ struct vertex_processing
     {
         static float3 apply_wave(float3 position_vertex, float time)
         {
-            static const float base_wave_height    = 0.06f;
+            static const float base_wave_height    = 0.1f;
             static const float base_wave_frequency = 20.0f;
-            static const float base_wave_speed     = 0.5f;
+            static const float base_wave_speed     = 0.01f;
 
             // interleave 4 waves to have a more complex wave pattern
             float3 offset = 0.0f;
