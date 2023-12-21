@@ -689,7 +689,7 @@ void Properties::ShowMaterial(Material* material) const
                 const auto show_property = [this, &material](const char* name, const char* tooltip, const MaterialTexture mat_tex, const MaterialProperty mat_property)
                 {
                     bool show_texture  = mat_tex      != MaterialTexture::Max;
-                    bool show_modifier = mat_property != MaterialProperty::Undefined;
+                    bool show_modifier = mat_property != MaterialProperty::Max;
 
                     // Name
                     if (name)
@@ -774,9 +774,9 @@ void Properties::ShowMaterial(Material* material) const
                 show_property("Metalness",            "Blends between a non-metallic and metallic material model",                         MaterialTexture::Metalness, MaterialProperty::Metalness);
                 show_property("Normal",               "Controls the normals of the base layers",                                           MaterialTexture::Normal,    MaterialProperty::Normal);
                 show_property("Height",               "Perceived depth for parallax mapping",                                              MaterialTexture::Height,    MaterialProperty::Height);
-                show_property("Occlusion",            "Amount of light loss, can be complementary to SSAO",                                MaterialTexture::Occlusion, MaterialProperty::Undefined);
-                show_property("Emission",             "Light emission from the surface, works nice with bloom",                            MaterialTexture::Emission,  MaterialProperty::Undefined);
-                show_property("Alpha mask",           "Discards pixels",                                                                   MaterialTexture::AlphaMask, MaterialProperty::Undefined);
+                show_property("Occlusion",            "Amount of light loss, can be complementary to SSAO",                                MaterialTexture::Occlusion, MaterialProperty::Max);
+                show_property("Emission",             "Light emission from the surface, works nice with bloom",                            MaterialTexture::Emission,  MaterialProperty::Max);
+                show_property("Alpha mask",           "Discards pixels",                                                                   MaterialTexture::AlphaMask, MaterialProperty::Max);
                 // properties with only a multiplier                                                                                                                   
                 show_property("Clearcoat",            "Extra white specular layer on top of others",                                       MaterialTexture::Max, MaterialProperty::Clearcoat);
                 show_property("Clearcoat roughness",  "Roughness of clearcoat specular",                                                   MaterialTexture::Max, MaterialProperty::Clearcoat_Roughness);

@@ -915,7 +915,7 @@ namespace Spartan
                     shared_ptr<Entity> water = CreateEntity();
                     water->SetObjectName("water");
                     water->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
-                    water->SetScale(Vector3(5000.0f, 1.0f, 5000.0f));
+                    water->SetScale(Vector3(1024.0f, 1.0f, 1024.0f));
 
                     Renderable* renderable = water->AddComponent<Renderable>().get();
                     renderable->SetGeometry(Renderer_MeshType::Grid);
@@ -930,8 +930,8 @@ namespace Spartan
                         material->SetProperty(MaterialProperty::Ior,                1.33f); // water
                         material->SetProperty(MaterialProperty::Roughness,          0.0f);
                         material->SetProperty(MaterialProperty::Normal,             0.1f);
-                        material->SetProperty(MaterialProperty::TextureTilingX,     2000.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingY,     2000.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingX,     500.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingY,     500.0f);
                         material->SetProperty(MaterialProperty::VertexAnimateWater, 1.0f);
                         material->SetProperty(MaterialProperty::CullMode,           static_cast<float>(RHI_CullMode::None));
 
@@ -1042,6 +1042,7 @@ namespace Spartan
                         material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                         material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
                         material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
+                        material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
 
                         // generate instances
                         vector<Matrix> instances;
@@ -1050,35 +1051,7 @@ namespace Spartan
                     }
                 }
 
-                // vegetation_grass_1
-                if (shared_ptr<Mesh> plant = ResourceCache::Load<Mesh>("project\\terrain\\vegetation_grass_1\\grass.fbx"))
-                {
-                    shared_ptr<Entity> entity = plant->GetRootEntity().lock();
-                    entity->SetObjectName("grass_1");
-                    entity->SetScale(Vector3(0.015f, 0.015f, 0.015f));
-                    entity->SetParent(m_default_terrain);
 
-                    if (Entity* child = entity->GetDescendantByName("Grass_green.013_1"))
-                    {
-                        Renderable* renderable = child->GetComponent<Renderable>().get();
-                        renderable->SetCastShadows(false); // cheaper and screen space shadows are enough
-
-                        // tweak material
-                        Material* material = renderable->GetMaterial();
-                        material->SetColor(Color::standard_white);
-                        material->SetTexture(MaterialTexture::Color,                  "project\\terrain\\vegetation_grass_1\\color.png");
-                        material->SetTexture(MaterialTexture::Normal,                 "project\\terrain\\vegetation_grass_1\\normal.png");
-                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
-                        material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
-                        material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
-                        material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
-
-                        // generate instances
-                        vector<Matrix> instances;
-                        terrain->GenerateTransforms(&instances, 2000000, TerrainProp::Grass);
-                        renderable->SetInstances(instances);
-                    }
-                }
 
                 // because this is loading in a different thread, we need to resolve the world after we enable instancing
                 World::Resolve();

@@ -244,6 +244,11 @@ namespace Spartan
         static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->RSSetScissorRects(1, &d3d12_rectangle);
     }
 
+    void RHI_CommandList::SetPrimitiveTopology(const RHI_PrimitiveTopology primitive_topology)
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+    }
+
     void RHI_CommandList::SetCullMode(const RHI_CullMode cull_mode)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);

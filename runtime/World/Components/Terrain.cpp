@@ -557,7 +557,7 @@ namespace Spartan
         {
             max_slope                   = 30.0f * Math::Helper::DEG_TO_RAD;
             rotate_match_surface_normal = false; // trees tend to grow upwards, towards the sun
-            terrain_offset              = -0.3f;
+            terrain_offset              = -0.5f;
         }
 
         if (terrain_prop == TerrainProp::Plant)

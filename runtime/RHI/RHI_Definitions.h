@@ -102,7 +102,7 @@ namespace Spartan
         Timestamp_Disjoint
     };
 
-    enum class RHI_PrimitiveTopology_Mode
+    enum class RHI_PrimitiveTopology
     {
         TriangleList,
         LineList,

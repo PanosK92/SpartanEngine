@@ -89,6 +89,9 @@ namespace Spartan
         // scissor
         void SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const;
 
+        // topology
+        void SetPrimitiveTopology(const RHI_PrimitiveTopology primitive_topology);
+
         // cull mode
         void SetCullMode(const RHI_CullMode cull_mode);
         
@@ -174,6 +177,7 @@ namespace Spartan
         std::atomic<RHI_CommandListState> m_state            = RHI_CommandListState::Idle;
         RHI_Queue_Type m_queue_type                          = RHI_Queue_Type::Undefined;
         RHI_CullMode m_cull_mode                             = RHI_CullMode::Undefined;
+        RHI_PrimitiveTopology m_primitive_topology           = RHI_PrimitiveTopology::Undefined;
         static bool m_memory_query_support;
         std::mutex m_mutex_reset;
         RHI_PipelineState m_pso;

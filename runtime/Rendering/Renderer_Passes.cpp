@@ -279,7 +279,6 @@ namespace Spartan
                 pso.depth_stencil_state             = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
                 pso.render_target_color_textures[0] = light->GetColorTexture(); // always bind so we can clear to white (in case there are no transparent objects)
                 pso.render_target_depth_texture     = light->GetDepthTexture();
-                pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
                 pso.name                            = "Pass_ShadowMaps";
 
                 // go through all of the cascades/faces
@@ -409,7 +408,6 @@ namespace Spartan
             pso.clear_color[0]                  = Color::standard_black;
             pso.clear_depth                     = 0.0f; // reverse-z
             pso.clear_stencil                   = rhi_stencil_dont_care;
-            pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
             // update cube faces
             uint32_t index_start = probe->GetUpdateFaceStartIndex();
@@ -509,7 +507,6 @@ namespace Spartan
             pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
             pso.render_target_depth_texture = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
             pso.clear_depth                 = (is_transparent_pass || pso.instancing) ? rhi_depth_load : 0.0f; // reverse-z
-            pso.primitive_topology          = RHI_PrimitiveTopology_Mode::TriangleList;
 
             // set pso
             cmd_list->SetPipelineState(pso);
@@ -527,8 +524,7 @@ namespace Spartan
                     continue;
 
                 // set cull mode
-                RHI_CullMode material_cull_mode = static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode));
-                cmd_list->SetCullMode(material_cull_mode);
+                cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
 
                 // set vertex, index and instance buffers
                 {
@@ -642,7 +638,6 @@ namespace Spartan
             pso.clear_color[3]                  = pso.clear_color[0];
             pso.render_target_depth_texture     = tex_depth;
             pso.clear_depth                     = rhi_depth_load;
-            pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
             // set pso
             cmd_list->SetPipelineState(pso);
@@ -655,9 +650,7 @@ namespace Spartan
                     continue;
 
                 // set cull mode
-                RHI_CullMode material_cull_mode = static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode));
-                material_cull_mode              = is_transparent_pass ? RHI_CullMode::None : material_cull_mode;
-                cmd_list->SetCullMode(material_cull_mode);
+                cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
 
                 // set vertex, index and instance buffers
                 {
@@ -1129,7 +1122,6 @@ namespace Spartan
         pso.blend_state                     = GetBlendState(Renderer_BlendState::Additive).get();
         pso.render_target_color_textures[0] = tex_out;
         pso.clear_color[0]                  = rhi_color_load;
-        pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.is_fullscreen_triangle          = true;
 
         // set pipeline state
@@ -1939,7 +1931,6 @@ namespace Spartan
         pso.blend_state                     = GetBlendState(Renderer_BlendState::Alpha).get();
         pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
         pso.render_target_color_textures[0] = tex_out;
-        pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
         // set pipeline state
         cmd_list->SetPipelineState(pso);
@@ -2027,7 +2018,6 @@ namespace Spartan
         pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
         pso.render_target_color_textures[0] = tex_out;
         pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
-        pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
         // draw
         cmd_list->BeginTimeblock("grid");
@@ -2079,7 +2069,6 @@ namespace Spartan
         pso.render_target_color_textures[0] = tex_out;
         pso.clear_color[0]                  = rhi_color_load;
         pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
-        pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
 
         // world space rendering
         m_cb_pass_cpu.transform = Matrix::Identity;
@@ -2113,6 +2102,7 @@ namespace Spartan
                     pso.blend_state         = GetBlendState(Renderer_BlendState::Disabled).get();
                     pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
 
+                    cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology::LineList);
                     cmd_list->SetPipelineState(pso);
                     cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
                     cmd_list->Draw(m_lines_index_depth_off + 1);
@@ -2128,6 +2118,7 @@ namespace Spartan
                     pso.blend_state         = GetBlendState(Renderer_BlendState::Alpha).get();
                     pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
 
+                    cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology::LineList);
                     cmd_list->SetPipelineState(pso);
                     cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
                     cmd_list->Draw((m_lines_index_depth_on - (vertex_count / 2)) + 1, vertex_count / 2);
@@ -2157,7 +2148,7 @@ namespace Spartan
 
         cmd_list->BeginTimeblock("debug_meshes");
 
-        // Define pipeline state
+        // define pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
         pso.shader_pixel                    = shader_p;
@@ -2166,7 +2157,6 @@ namespace Spartan
         pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
         pso.render_target_color_textures[0] = tex_out;
         pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
-        pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
         // set pipeline state
         cmd_list->SetPipelineState(pso);
@@ -2231,7 +2221,6 @@ namespace Spartan
                             pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
                             pso.render_target_color_textures[0] = tex_outline;
                             pso.clear_color[0]                  = clear_color;
-                            pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
                         
                             // set pipeline state
                             cmd_list->SetPipelineState(pso);
@@ -2313,7 +2302,6 @@ namespace Spartan
         pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
         pso.render_target_color_textures[0] = tex_out;
         pso.clear_color[0]                  = rhi_color_load;
-        pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.name                            = "Pass_Text";
 
         font->UpdateVertexAndIndexBuffers();
