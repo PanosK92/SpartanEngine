@@ -795,6 +795,8 @@ namespace Spartan
         Vector3 camera_rotation = Vector3(0.0f, 144.0f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, nullptr, true, false);
 
+        Renderer::SetOption(Renderer_Option::Debug_Grid, 0.0f);
+
         // create
         m_default_terrain = CreateEntity();
         m_default_terrain->SetObjectName("terrain");
@@ -931,6 +933,7 @@ namespace Spartan
                         material->SetProperty(MaterialProperty::TextureTilingX,     2000.0f);
                         material->SetProperty(MaterialProperty::TextureTilingY,     2000.0f);
                         material->SetProperty(MaterialProperty::VertexAnimateWater, 1.0f);
+                        material->SetProperty(MaterialProperty::CullMode,           static_cast<float>(RHI_CullMode::None));
 
                         // create a file path for this material (required for the material to be able to be cached by the resource cache)
                         const string file_path = "project\\terrain\\water_material" + string(EXTENSION_MATERIAL);
@@ -1015,6 +1018,7 @@ namespace Spartan
                         material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
                         material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                         material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
+                        material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
                     }
                 }
 
@@ -1033,10 +1037,8 @@ namespace Spartan
 
                         // tweak material
                         Material* material = renderable->GetMaterial();
+                        material->SetColor(Color::standard_white);
                         material->SetTexture(MaterialTexture::Color,                  "project\\terrain\\vegetation_plant_1\\ormbunke.png");
-                        material->SetProperty(MaterialProperty::ColorR,               1.0f);
-                        material->SetProperty(MaterialProperty::ColorG,               1.0f);
-                        material->SetProperty(MaterialProperty::ColorB,               1.0f);
                         material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                         material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
                         material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
@@ -1048,39 +1050,35 @@ namespace Spartan
                     }
                 }
 
-                // vegetation_plant_2
-                //if (shared_ptr<Mesh> plant = ResourceCache::Load<Mesh>("project\\terrain\\vegetation_plant_2\\trawa01.obj"))
-                //{
-                //    Entity* entity = plant->GetRootEntity();
-                //    entity->SetObjectName("plant_2");
-                //    entity->SetScale(Vector3(1.0f, 1.0f, 1.0f));
-                //    entity->SetParent(m_default_terrain.get());
+                // vegetation_grass_1
+                if (shared_ptr<Mesh> plant = ResourceCache::Load<Mesh>("project\\terrain\\vegetation_grass_1\\grass.fbx"))
+                {
+                    shared_ptr<Entity> entity = plant->GetRootEntity().lock();
+                    entity->SetObjectName("grass_1");
+                    entity->SetScale(Vector3(0.015f, 0.015f, 0.015f));
+                    entity->SetParent(m_default_terrain);
 
-                //    if (Entity* child = entity->GetDescendantByName("trawa01_wip.001_NaturePlants0014_1_alphamasked_S.005"))
-                //    {
-                //        Renderable* renderable = child->GetComponent<Renderable>().get();
-                //        renderable->SetCastShadows(false); // cheaper and screen space shadows are enough
+                    if (Entity* child = entity->GetDescendantByName("Grass_green.013_1"))
+                    {
+                        Renderable* renderable = child->GetComponent<Renderable>().get();
+                        renderable->SetCastShadows(false); // cheaper and screen space shadows are enough
 
-                //        // tweak material
-                //        Material* material = renderable->GetMaterial();
-                //        material->SetTexture(MaterialTexture::Color,                  "project\\models\\vegetation_plant_2\\grass02_albedo.png");
-                //        material->SetTexture(MaterialTexture::AlphaMask,              "project\\models\\vegetation_plant_2\\grass02_mask02.png");
-                //        material->SetProperty(MaterialProperty::ColorR,               1.0f);
-                //        material->SetProperty(MaterialProperty::ColorG,               1.0f);
-                //        material->SetProperty(MaterialProperty::ColorB,               1.0f);
-                //        material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
-                //        material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
-                //        material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
+                        // tweak material
+                        Material* material = renderable->GetMaterial();
+                        material->SetColor(Color::standard_white);
+                        material->SetTexture(MaterialTexture::Color,                  "project\\terrain\\vegetation_grass_1\\color.png");
+                        material->SetTexture(MaterialTexture::Normal,                 "project\\terrain\\vegetation_grass_1\\normal.png");
+                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                        material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
+                        material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
+                        material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
 
-                //        // generate instances
-                //        vector<Matrix> instances;
-                //        terrain->GenerateTransforms(&instances, 1000000, TerrainProp::Plant);
-                //        renderable->SetInstances(instances);
-                //    }
-                //}
-
-
-                Renderer::SetOption(Renderer_Option::Debug_Grid, 0.0f);
+                        // generate instances
+                        vector<Matrix> instances;
+                        terrain->GenerateTransforms(&instances, 2000000, TerrainProp::Grass);
+                        renderable->SetInstances(instances);
+                    }
+                }
 
                 // because this is loading in a different thread, we need to resolve the world after we enable instancing
                 World::Resolve();

@@ -39,7 +39,8 @@ namespace Spartan
     enum class TerrainProp
     {
         Tree,
-        Plant
+        Plant,
+        Grass
     };
 
     class SP_CLASS Terrain : public Component

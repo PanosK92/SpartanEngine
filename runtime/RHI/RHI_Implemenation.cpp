@@ -45,7 +45,7 @@ namespace Spartan
     vector<VkValidationFeatureEnableEXT> RHI_Context::validation_extensions;
     vector<const char*> RHI_Context::extensions_instance = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_swapchain_colorspace" };
     vector<const char*> RHI_Context::validation_layers   = { "VK_LAYER_KHRONOS_validation" };
-    vector<const char*> RHI_Context::extensions_device   = { "VK_KHR_swapchain", "VK_EXT_memory_budget" };
+    vector<const char*> RHI_Context::extensions_device   = { "VK_KHR_swapchain", "VK_EXT_memory_budget", "VK_EXT_extended_dynamic_state" };
     // hardware capability viewer: https://vulkan.gpuinfo.org/
 #endif
 

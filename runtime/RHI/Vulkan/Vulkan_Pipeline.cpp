@@ -105,14 +105,15 @@ namespace Spartan
         VkRect2D scissor                                 = {};
         VkPipelineViewportStateCreateInfo viewport_state = {};
         {
-            // always allow dynamic viewport
+            // enable dynamic states
             dynamic_states.emplace_back(VK_DYNAMIC_STATE_VIEWPORT);
-
-            // If this is always on, Vulkan will expect you to set a scissor rectangle dynamically.
-            // Because of this, we just rely on dynamic_scissor.
             if (m_state.dynamic_scissor)
             {
                 dynamic_states.emplace_back(VK_DYNAMIC_STATE_SCISSOR);
+            }
+            if (m_state.dynamic_cull_mode)
+            {
+                dynamic_states.emplace_back(VK_DYNAMIC_STATE_CULL_MODE);
             }
 
             // dynamic states

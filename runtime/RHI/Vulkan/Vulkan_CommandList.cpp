@@ -1068,6 +1068,20 @@ namespace Spartan
         );
     }
 
+    void RHI_CommandList::SetCullMode(const RHI_CullMode cull_mode)
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        if (m_cull_mode == cull_mode)
+            return;
+
+        vkCmdSetCullMode(
+            static_cast<VkCommandBuffer>(m_rhi_resource),
+            vulkan_cull_mode[static_cast<uint32_t>(cull_mode)]
+        );
+
+        m_cull_mode = cull_mode;
+    }
+
     void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint32_t binding /*= 0*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
@@ -1378,6 +1392,7 @@ namespace Spartan
         if (!m_render_pass_active && m_pso.IsGraphics())
         {
             BeginRenderPass();
+            m_cull_mode = RHI_CullMode::Undefined;
         }
 
         // set dynamic resources

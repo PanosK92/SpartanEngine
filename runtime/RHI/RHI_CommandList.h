@@ -56,7 +56,7 @@ namespace Spartan
         void WaitForExecution();
         void SetPipelineState(RHI_PipelineState& pso);
 
-        // Clear
+        // clear
         void ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state);
         void ClearRenderTarget(
             RHI_Texture* texture,
@@ -68,78 +68,81 @@ namespace Spartan
             const uint32_t clear_stencil       = rhi_stencil_load
         );
 
-        // Draw
+        // draw
         void Draw(const uint32_t vertex_count, const uint32_t vertex_start_index = 0);
         void DrawIndexed(const uint32_t index_count, const uint32_t index_offset = 0, const uint32_t vertex_offset = 0, const uint32_t instance_start_index = 0, const uint32_t instance_count = 1);
 
-        // Dispatch
+        // dispatch
         void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1, bool async = false);
 
-        // Blit
+        // blit
         void Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips);
         void Blit(RHI_Texture* source, RHI_SwapChain* destination);
 
-        // Copy
+        // copy
         void Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips);
         void Copy(RHI_Texture* source, RHI_SwapChain* destination);
 
-        // Viewport
+        // viewport
         void SetViewport(const RHI_Viewport& viewport) const;
         
-        // Scissor
+        // scissor
         void SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const;
+
+        // cull mode
+        void SetCullMode(const RHI_CullMode cull_mode);
         
-        // Vertex buffer
+        // vertex buffer
         void SetBufferVertex(const RHI_VertexBuffer* buffer, const uint32_t binding = 0);
         
-        // Index buffer
+        // index buffer
         void SetBufferIndex(const RHI_IndexBuffer* buffer);
 
-        // Constant buffer
+        // constant buffer
         void SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer) const;
         void SetConstantBuffer(const Renderer_BindingsCb slot, const std::shared_ptr<RHI_ConstantBuffer>& constant_buffer) const { SetConstantBuffer(static_cast<uint32_t>(slot), constant_buffer.get()); }
 
-        // Push constant buffer
+        // push constant buffer
         void PushConstants(const uint32_t offset, const uint32_t size, const void* data);
 
-        // Sampler
+        // sampler
         void SetSampler(const uint32_t slot, RHI_Sampler* sampler) const;
         void SetSampler(const uint32_t slot, const std::shared_ptr<RHI_Sampler>& sampler) const { SetSampler(slot, sampler.get()); }
 
-        // Texture
+        // texture
         void SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const bool uav = false);
         void SetTexture(const Renderer_BindingsUav slot,                       RHI_Texture* texture,  const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0) { SetTexture(static_cast<uint32_t>(slot), texture,       mip_index, mip_range, true); }
         void SetTexture(const Renderer_BindingsUav slot, const std::shared_ptr<RHI_Texture>& texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0) { SetTexture(static_cast<uint32_t>(slot), texture.get(), mip_index, mip_range, true); }
         void SetTexture(const Renderer_BindingsSrv slot,                       RHI_Texture* texture,  const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0) { SetTexture(static_cast<uint32_t>(slot), texture,       mip_index, mip_range, false); }
         void SetTexture(const Renderer_BindingsSrv slot, const std::shared_ptr<RHI_Texture>& texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0) { SetTexture(static_cast<uint32_t>(slot), texture.get(), mip_index, mip_range, false); }
 
-        // Structured buffer
+        // structured buffer
         void SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer) const;
         void SetStructuredBuffer(const Renderer_BindingsUav slot, const std::shared_ptr<RHI_StructuredBuffer>& structured_buffer) const { SetStructuredBuffer(static_cast<uint32_t>(slot), structured_buffer.get()); }
 
-        // Markers
+        // markers
         void BeginMarker(const char* name);
         void EndMarker();
 
-        // Timestamps
+        // timestamps
         uint32_t BeginTimestamp();
         void EndTimestamp();
         float GetTimestampDuration(const uint32_t timestamp_index);
 
-        // Timeblocks (Markers + Timestamps)
+        // timeblocks (Markers + Timestamps)
         void BeginTimeblock(const char* name, const bool gpu_marker = true, const bool gpu_timing = true);
         void EndTimeblock();
 
-        // State
+        // state
         const RHI_CommandListState GetState() const { return m_state; }
         bool IsExecuting();
 
-        // Memory Barriers
+        // memory Barriers
         void InsertMemoryBarrierImage(void* image, const uint32_t aspect_mask, const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new);
         void InsertMemoryBarrierImage(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new);
         void InsertMemoryBarrierImageWaitForWrite(RHI_Texture* texture);
 
-        // Misc
+        // misc
         RHI_Semaphore* GetSemaphoreProccessed() { return m_proccessed_semaphore.get(); }
         void* GetRhiResource() const { return m_rhi_resource; }
 
@@ -170,6 +173,7 @@ namespace Spartan
         RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
         std::atomic<RHI_CommandListState> m_state            = RHI_CommandListState::Idle;
         RHI_Queue_Type m_queue_type                          = RHI_Queue_Type::Undefined;
+        RHI_CullMode m_cull_mode                             = RHI_CullMode::Undefined;
         static bool m_memory_query_support;
         std::mutex m_mutex_reset;
         RHI_PipelineState m_pso;

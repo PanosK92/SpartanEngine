@@ -557,7 +557,7 @@ namespace Spartan
         {
             max_slope                   = 30.0f * Math::Helper::DEG_TO_RAD;
             rotate_match_surface_normal = false; // trees tend to grow upwards, towards the sun
-            terrain_offset              = -0.2f;
+            terrain_offset              = -0.3f;
         }
 
         if (terrain_prop == TerrainProp::Plant)
@@ -565,6 +565,13 @@ namespace Spartan
             max_slope                   = 40.0f * Math::Helper::DEG_TO_RAD;
             rotate_match_surface_normal = true; // small plants tend to grow towards the sun but they can have some wonky angles due to low mass
             terrain_offset              = 0.0f;
+        }
+
+        if (terrain_prop == TerrainProp::Grass)
+        {
+            max_slope                   = 40.0f * Math::Helper::DEG_TO_RAD;
+            rotate_match_surface_normal = true;
+            terrain_offset              = -0.9f;
         }
 
         *transforms = generate_transforms(m_vertices, m_indices, count, max_slope, rotate_match_surface_normal, terrain_offset);

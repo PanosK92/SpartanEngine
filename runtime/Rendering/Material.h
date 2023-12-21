@@ -76,6 +76,7 @@ namespace Spartan
         TextureSlopeBased,
         VertexAnimateWind,
         VertexAnimateWater,
+        CullMode, // 0 - none, 1 - front, 2 - back
         Undefined
     };
 
@@ -113,7 +114,7 @@ namespace Spartan
 
     private:
         std::array<std::shared_ptr<RHI_Texture>, material_texture_count_support> m_textures;
-        std::array<float, 28> m_properties;
+        std::array<float, 29> m_properties;
 
         uint32_t m_index = 0;
     };
