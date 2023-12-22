@@ -106,7 +106,7 @@ namespace Spartan
         uint32_t GetIndexCount() const   { return m_geometry_index_count; }
         uint32_t GetVertexOffset() const { return m_geometry_vertex_offset; }
         uint32_t GetVertexCount() const  { return m_geometry_vertex_count; }
-        bool ReadToRender() const;
+        bool ReadyToRender() const;
 
     private:
         // geometry/mesh

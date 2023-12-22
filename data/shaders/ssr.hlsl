@@ -23,20 +23,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const float g_ssr_max_distance        = 1000.0f;
-static const uint g_ssr_max_steps            = 128;
-static const uint g_ssr_binary_search_steps  = 64;
-static const float g_ssr_thickness           = 0.01f;
-static const float g_ssr_roughness_threshold = 0.8f;
+static const uint g_ssr_binary_search_steps = 64;
+static const float g_ssr_thickness          = 15.0f;
+
+uint compute_step_count(float roughness)
+{
+    float steps_min = 8.0;    // for very rough surfaces
+    float steps_max = 128.0f; // for very reflective surfaces
+
+    return (uint)lerp(steps_max, steps_min, roughness);
+}
 
 float compute_alpha(uint2 screen_pos, float2 hit_uv, float v_dot_r)
 {
     float alpha = 1.0f;
 
-    alpha *= screen_fade(hit_uv);
-
-    // If the UV is invalid fade completely
-    alpha *= all(hit_uv);
+    alpha *= screen_fade(hit_uv); // fade toward the edges of the screen
+    alpha *= all(hit_uv);         // fade if the uv is invalid
 
     return alpha;
 }
@@ -56,65 +59,58 @@ bool intersect_depth_buffer(float2 ray_pos, float2 ray_start, float ray_length, 
     return depth_delta >= 0.0f;
 }
 
-float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs)
+float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs, float roughness)
 {
-    // Compute ray end and start depth
-    float3 ray_end_vs = ray_start_vs + ray_dir_vs * g_ssr_max_distance;
+    // compute ray end and start depth
+    float3 ray_end_vs = ray_start_vs + ray_dir_vs * buffer_frame.camera_far;
     float depth_end   = ray_end_vs.z;
     float depth_start = ray_start_vs.z;
     
-    // Compute ray start and end (in UV space)
+    // compute ray start and end (in UV space)
     float2 ray_start = view_to_uv(ray_start_vs);
     float2 ray_end   = view_to_uv(ray_end_vs);
 
-    // Compute ray step
+    // compute ray step
+    uint step_count         = compute_step_count(roughness);
     float2 ray_start_to_end = ray_end - ray_start;
     float ray_length        = length(ray_start_to_end);
-    float2 ray_step         = (ray_start_to_end + FLT_MIN) / (float)(g_ssr_max_steps);
+    float2 ray_step         = (ray_start_to_end + FLT_MIN) / (float)(step_count);
     float2 ray_pos          = ray_start;
 
-    // Adjust position with some noise
-    float offset = get_noise_interleaved_gradient(screen_pos, false, false);
+    // adjust position with some noise
+    float offset = get_noise_interleaved_gradient(screen_pos, true, false);
     ray_pos      += ray_step * offset;
     
-    // Ray-march
-    for (uint i = 0; i < g_ssr_max_steps; i++)
+    // improved binary search variables
+    float depth_delta = 0.0f;
+    float step_size   = 1.0; // initial step size
+
+    // ray-march
+    for (uint i = 0; i < step_count; i++)
     {
-        // Early exit if the ray is out of screen
+        // early exit if the ray is out of screen
         if (!is_valid_uv(ray_pos))
             return 0.0f;
         
-        // Intersect depth buffer
-        float depth_delta = 0.0f;
+        // intersect depth buffer
         if (intersect_depth_buffer(ray_pos, ray_start, ray_length, depth_start, depth_end, depth_delta))
         {
-            // Binary search
-            float depth_delta_previous_sign = -1.0f;
-            for (uint j = 0; j < g_ssr_binary_search_steps; j++)
-            {
-                // Depth test
-                if (abs(depth_delta) <= g_ssr_thickness)
-                    return ray_pos;
+            // smaller steps as we get closer to the actual intersection
+            step_size *= 0.5f;
 
-                // Half direction and flip (if necessary)
-                if (sign(depth_delta) != depth_delta_previous_sign)
-                {
-                    ray_step *= -0.5f;
-                    depth_delta_previous_sign = sign(depth_delta);
-                }
+            // test if we are within the threshold
+            if (abs(depth_delta) <= g_ssr_thickness)
+                return ray_pos;
 
-                // Step ray
-                ray_pos += ray_step;
-
-                // Intersect depth buffer
-                intersect_depth_buffer(ray_pos, ray_start, ray_length, depth_start, depth_end, depth_delta);
-            }
-
-            return 0.0f;
+            // adjust ray position
+            ray_pos += sign(depth_delta) * ray_step * step_size;
         }
-
-        // Step ray
-        ray_pos += ray_step;
+        else
+        {
+            // increase step size if not intersecting
+            step_size = min(step_size * 2.0f, 1.0f);
+            ray_pos += ray_step * step_size;
+        }
     }
 
     return 0.0f;
@@ -140,21 +136,20 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float v_dot_r          = dot(-camera_to_pixel, reflection);
 
     // compute early exit cases
-    bool early_exit_1 = pass_is_opaque() && surface.is_transparent();   // if this is an opaque pass, ignore all transparent pixels.
-    bool early_exit_2 = pass_is_transparent() && surface.is_opaque();   // if this is an transparent pass, ignore all opaque pixels.
-    bool early_exit_3 = surface.is_sky();                               // fe don't want to do SSR on the sky itself.
-    bool early_exit_4 = surface.roughness >= g_ssr_roughness_threshold; // don't trace very rough surfaces
-    bool early_exit_5 = v_dot_r >= 0.0f;                                // don't trace rays which are facing the camera
-    if (early_exit_1 || early_exit_2 || early_exit_3 || early_exit_4 || early_exit_5)
+    bool early_exit_1 = pass_is_opaque() && surface.is_transparent(); // if this is an opaque pass, ignore all transparent pixels
+    bool early_exit_2 = pass_is_transparent() && surface.is_opaque(); // if this is a transparent pass, ignore all opaque pixels
+    bool early_exit_3 = surface.is_sky();                             // skip sky pixels
+    bool early_exit_4 = v_dot_r >= 0.0f;                              // skip camera facing rays
+    if (early_exit_1 || early_exit_2 || early_exit_3 || early_exit_4)
         return;
 
     // trace
-    float2 hit_uv = trace_ray(thread_id.xy, position, reflection);
+    float2 hit_uv = trace_ray(thread_id.xy, position, reflection, surface.roughness);
     float alpha   = compute_alpha(thread_id.xy, hit_uv, v_dot_r);
 
     // sample scene color
     hit_uv          -= get_velocity_ndc(hit_uv); // reproject
-    bool valid_uv    = hit_uv.x != - 1.0f;
+    bool valid_uv    = hit_uv.x != -1.0f && hit_uv.y != -1.0f;
     bool valid_alpha = alpha != 0.0f;
     float3 color     = (valid_uv && valid_alpha) ? tex.SampleLevel(samplers[sampler_bilinear_clamp], hit_uv, 0).rgb : 0.0f;
 

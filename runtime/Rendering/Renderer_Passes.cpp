@@ -317,7 +317,7 @@ namespace Spartan
                     {
                         // acquire renderable component
                         shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                        if (!renderable || !renderable->ReadToRender() || !renderable->GetCastShadows())
+                        if (!renderable || !renderable->ReadyToRender() || !renderable->GetCastShadows())
                             continue;
 
                         // skip objects outside of the view frustum
@@ -514,7 +514,7 @@ namespace Spartan
             {
                 // when async loading certain things can be null
                 shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                if (!renderable || !renderable->ReadToRender())
+                if (!renderable || !renderable->ReadyToRender())
                     continue;
 
                 // skip objects outside of the view frustum
@@ -646,7 +646,7 @@ namespace Spartan
             {
                 // when async loading certain things can be null (also frustum cull)
                 shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                if (!renderable || !renderable->ReadToRender() || !renderable->GetIsVisible())
+                if (!renderable || !renderable->ReadyToRender() || !renderable->GetIsVisible())
                     continue;
 
                 // set cull mode
