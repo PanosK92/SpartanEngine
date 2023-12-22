@@ -412,6 +412,8 @@ namespace Spartan
 
     bool Light::IsInViewFrustum(const BoundingBox& bounding_box, const uint32_t index) const
     {
+        SP_ASSERT(bounding_box != BoundingBox::Undefined);
+
         const Vector3 center  = bounding_box.GetCenter();
         const Vector3 extents = bounding_box.GetExtents();
 
@@ -423,7 +425,7 @@ namespace Spartan
 
     bool Light::IsInViewFrustum(Renderable* renderable, uint32_t index) const
     {
-        return IsInViewFrustum(renderable->GetBoundingBox(BoundingBoxType::TransformedInstances), index);
+        return IsInViewFrustum(renderable->GetBoundingBox(BoundingBoxType::Transformed), index);
     }
 
     void Light::CreateShadowMap()

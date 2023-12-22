@@ -167,21 +167,18 @@ namespace Spartan::Math
             Axis2 = Axis1.Cross(*this);
         }
 
-        inline float Distance(const Vector3& x)                                 { return ((*this) - x).Length(); }
-        inline float DistanceSquared(const Vector3& x)                          { return ((*this) - x).LengthSquared(); }
-        // Returns the distance between to vectors
-        static inline float Distance(const Vector3& a, const Vector3& b)        { return (b - a).Length(); }
-        // Returns the squared distance between to vectors
-        static inline float DistanceSquared(const Vector3& a, const Vector3& b) { return (b - a).LengthSquared(); }
+        // distance
+        inline float Distance(const Vector3& x)                          { return ((*this) - x).Length(); }
+        inline float DistanceSquared(const Vector3& x)                   { return ((*this) - x).LengthSquared(); }
+        static float Distance(const Vector3& a, const Vector3& b)        { return (b - a).Length(); }
+        static float DistanceSquared(const Vector3& a, const Vector3& b) { return (b - a).LengthSquared(); }
 
-        // Floor
         void Floor()
         {
             x = floor(x);
             y = floor(y);
             z = floor(z);
         }
-
 
         static Vector3 Round(const Vector3& vec)
         {
@@ -192,10 +189,10 @@ namespace Spartan::Math
             };
         }
 
-        // Return absolute vector
+        // return absolute vector
         [[nodiscard]] Vector3 Abs() const { return Vector3(Helper::Abs(x), Helper::Abs(y), Helper::Abs(z)); }
 
-        // Linear interpolation with another vector.
+        // linear interpolation with another vector.
         Vector3 Lerp(const Vector3& v, float t)                                    const { return *this * (1.0f - t) + v * t; }
         static inline Vector3 Lerp(const Vector3& a, const Vector3& b, const float t)    { return a + (b - a) * t; }
 
@@ -268,13 +265,13 @@ namespace Spartan::Math
             z /= rhs.z;
         }
 
-        // Test for equality without using epsilon
+        // test for equality without using epsilon
         bool operator==(const Vector3& rhs) const
         {
             return x == rhs.x && y == rhs.y && z == rhs.z;
         }
 
-        // Test for inequality without using epsilon
+        // test for inequality without using epsilon
         bool operator!=(const Vector3& rhs) const
         {
             return !(*this == rhs);
@@ -283,8 +280,9 @@ namespace Spartan::Math
         // Return negation.
         Vector3 operator -() const { return Vector3(-x, -y, -z); }
 
-        [[nodiscard]] std::string ToString() const;
-        [[nodiscard]] const float* Data() const { return &x; }
+        bool IsNaN() const { return std::isnan(x) || std::isnan(y) || std::isnan(z); }
+        std::string ToString() const;
+        const float* Data() const { return &x; }
 
         float x;
         float y;
