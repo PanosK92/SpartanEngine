@@ -944,9 +944,9 @@ namespace Spartan
                 }
 
                 // vegetation_tree_1
-                if (shared_ptr<Mesh> tree = ResourceCache::Load<Mesh>("project\\terrain\\vegetation_tree_1\\tree.fbx"))
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\vegetation_tree_1\\tree.fbx"))
                 {
-                    shared_ptr<Entity> entity = tree->GetRootEntity().lock();
+                    shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                     entity->SetObjectName("tree_1");
                     entity->SetScale(Vector3(0.01f, 0.01f, 0.01f));
                     entity->SetParent(m_default_terrain);
@@ -978,9 +978,9 @@ namespace Spartan
                 }
 
                 // vegetation_tree_2
-                if (shared_ptr<Mesh> tree = ResourceCache::Load<Mesh>("project\\terrain\\vegetation_tree_2\\tree.fbx"))
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\vegetation_tree_2\\tree.fbx"))
                 {
-                    shared_ptr<Entity> entity = tree->GetRootEntity().lock();
+                    shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                     entity->SetObjectName("tree_2");
                     entity->SetScale(Vector3(0.3f, 0.3f, 0.3f));
                     entity->SetParent(m_default_terrain);
@@ -1023,9 +1023,9 @@ namespace Spartan
                 }
 
                 // vegetation_plant_1
-                if (shared_ptr<Mesh> plant = ResourceCache::Load<Mesh>("project\\terrain\\vegetation_plant_1\\ormbunke.obj"))
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\vegetation_plant_1\\ormbunke.obj"))
                 {
-                    shared_ptr<Entity> entity = plant->GetRootEntity().lock();
+                    shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                     entity->SetObjectName("plant_1");
                     entity->SetScale(Vector3(1.0f, 1.0f, 1.0f));
                     entity->SetParent(m_default_terrain);
@@ -1051,7 +1051,29 @@ namespace Spartan
                     }
                 }
 
+                // vegetation_grass_1
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\vegetation_grass_1\\grass.fbx"))
+                {
+                    shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                    entity->SetObjectName("grass_1");
+                    entity->SetScale(Vector3(0.01f, 0.01f, 0.01f));
+                    entity->SetParent(m_default_terrain);
 
+                    vector<Matrix> instances;
+
+                    if (Entity* leafs = entity->GetDescendantByName("Mobile_Tree_1_2"))
+                    {
+                        Renderable* renderable = leafs->GetComponent<Renderable>().get();
+                        renderable->SetInstances(instances);
+
+                        // tweak material
+                        Material* material = renderable->GetMaterial();
+                        material->SetTexture(MaterialTexture::Color,                  "project\\terrain\\vegetation_grass_1\\leaf.png");
+                        material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
+                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                        material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
+                    }
+                }
 
                 // because this is loading in a different thread, we need to resolve the world after we enable instancing
                 World::Resolve();
