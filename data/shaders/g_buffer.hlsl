@@ -283,26 +283,19 @@ PixelOutputType mainPS(PixelInputType input)
         
         // roughness + metalness
         {
-            if (has_single_texture_roughness_metalness()) // gltf
+            float4 roughness_sample = 1.0f;    
+            if (has_texture_roughness())
             {
-                if (has_texture_roughness())
-                {
-                    float4 sample  = sampling::smart(material_roughness, uv, slope, input.position_world);      
-                    roughness     *= sample.g;
-                    metalness     *= sample.b;
-                }
+                roughness_sample  = sampling::smart(material_roughness, uv, slope, input.position_world);
+                roughness        *= roughness_sample.g;
             }
-            else
+            
+            float is_single_texture_roughness_metalness = has_single_texture_roughness_metalness() ? 1.0f : 0.0f;
+            metalness *= (1.0 - is_single_texture_roughness_metalness) + (roughness_sample.b * is_single_texture_roughness_metalness);
+            
+            if (has_texture_metalness() && !has_single_texture_roughness_metalness())
             {
-                if (has_texture_roughness())
-                {
-                    roughness *= sampling::smart(material_roughness, uv, slope, input.position_world).r;
-                }
-
-                if (has_texture_metalness())
-                {
-                    metalness *= sampling::smart(material_metalness, uv, slope, input.position_world).r;
-                }
+                metalness *= sampling::smart(material_metalness, uv, slope, input.position_world).r;
             }
         }
         
