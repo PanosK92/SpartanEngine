@@ -2278,7 +2278,7 @@ namespace Spartan
         if (!shader_v || !shader_v->IsCompiled() || !shader_p || !shader_p->IsCompiled() || !draw || !font->HasText())
             return;
 
-        // if the performance metrics are being drawn, the profiler has to be enabled.
+        // if the performance metrics are being drawn, the profiler has to be enabled
         if (!Profiler::GetEnabled())
         {
             Profiler::SetEnabled(true);

@@ -149,8 +149,14 @@ namespace Spartan
         m_is_dirty           = true;
     }
 
-    bool Camera::IsInViewFrustum(const Math::BoundingBox& bounding_box) const
+    bool Camera::IsInViewFrustum(const BoundingBox& bounding_box) const
     {
+        if (bounding_box == BoundingBox::Undefined)
+        {
+            SP_LOG_WARNING("Undefined bounding box, treating as outside of the view frustum");
+            return false;
+        }
+
         const Vector3 center  = bounding_box.GetCenter();
         const Vector3 extents = bounding_box.GetExtents();
 
@@ -159,7 +165,7 @@ namespace Spartan
 
     bool Camera::IsInViewFrustum(shared_ptr<Renderable> renderable) const
     {
-        BoundingBoxType type  = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+        BoundingBoxType type   = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
         const BoundingBox& box = renderable->GetBoundingBox(type);
 
         return IsInViewFrustum(box);
