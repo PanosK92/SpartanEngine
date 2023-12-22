@@ -134,7 +134,7 @@ namespace Spartan
             desc.BlendState                         = desc_blend_state;
             desc.DepthStencilState                  = desc_depth_stencil_state;
             desc.SampleMask                         = UINT_MAX;
-            desc.PrimitiveTopologyType              = d3d12_primitive_topology[static_cast<uint32_t>(pipeline_state.primitive_topology)];
+            desc.PrimitiveTopologyType              = d3d12_primitive_topology[static_cast<uint32_t>(RHI_PrimitiveTopology::TriangleList)];
             desc.NumRenderTargets                   = 1;
             desc.RTVFormats[0]                      = DXGI_FORMAT_R8G8B8A8_UNORM;
             desc.SampleDesc.Count                   = 1;

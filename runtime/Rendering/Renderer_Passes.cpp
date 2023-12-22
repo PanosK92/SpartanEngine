@@ -671,15 +671,8 @@ namespace Spartan
                     PushPassConstants(cmd_list);
                     entity->SetMatrixPrevious(m_cb_pass_cpu.transform);
 
-                    if (Material* material = renderable->GetMaterial())
-                    {
-                        m_cb_frame_cpu.material_index = material->GetIndex();
-                        UpdateConstantBufferFrame(cmd_list);
-                    }
-                    else
-                    {
-                        SP_LOG_WARNING("Entity \"%s\" has no material assigned to it, skipping draw call", entity->GetObjectName().c_str());
-                    }
+                    m_cb_frame_cpu.material_index = renderable->GetMaterial()->GetIndex();
+                    UpdateConstantBufferFrame(cmd_list);
                 }
 
                 draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
