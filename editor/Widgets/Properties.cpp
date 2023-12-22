@@ -53,10 +53,10 @@ namespace
     #define column_pos_x 180.0f * Spartan::Window::GetDpiScale()
     #define item_width   120.0f * Spartan::Window::GetDpiScale()
 
-    static string context_menu_id;
-    static shared_ptr<Component> copied_component = nullptr;
+    string context_menu_id;
+    shared_ptr<Component> copied_component = nullptr;
 
-    static void component_context_menu_options(const string& id, shared_ptr<Component> component, const bool removable)
+    void component_context_menu_options(const string& id, shared_ptr<Component> component, const bool removable)
     {
         if (ImGui::BeginPopup(id.c_str()))
         {
@@ -91,7 +91,7 @@ namespace
         }
     }
 
-    static bool component_begin(const string& name, const IconType icon_enum, shared_ptr<Component> component_instance, bool options = true, const bool removable = true)
+    bool component_begin(const string& name, const IconType icon_enum, shared_ptr<Component> component_instance, bool options = true, const bool removable = true)
     {
         // Collapsible contents
         const bool collapsed = ImGuiSp::collapsing_header(name.c_str(), ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_DefaultOpen);
@@ -129,7 +129,7 @@ namespace
         return collapsed;
     }
 
-    static void component_end()
+    void component_end()
     {
         ImGui::Separator();
     }
@@ -659,7 +659,7 @@ void Properties::ShowMaterial(Material* material) const
 
     if (component_begin("Material", IconType::Component_Material, nullptr, false))
     {
-        //= REFLECT ===========================================
+        //= REFLECT ================================================
         Math::Vector2 tiling = Vector2(
             material->GetProperty(MaterialProperty::TextureTilingX),
             material->GetProperty(MaterialProperty::TextureTilingY)
@@ -676,9 +676,9 @@ void Properties::ShowMaterial(Material* material) const
             material->GetProperty(MaterialProperty::ColorB),
             material->GetProperty(MaterialProperty::ColorA)
         ));
-        //=====================================================
+        //==========================================================
 
-        // Name
+        // name
         ImGui::Text("Name");
         ImGui::SameLine(column_pos_x); ImGui::Text(material->GetObjectName().c_str());
 
@@ -752,7 +752,7 @@ void Properties::ShowMaterial(Material* material) const
                                     max = 2.4f; // diamond
                                 }
 
-                                ImGuiSp::draw_float_wrap("", &value, 0.004f, min, max);
+                                ImGuiSp::draw_float_wrap("##material_property_slider", &value, 0.004f, min, max);
                             }
                             else
                             {
@@ -762,7 +762,7 @@ void Properties::ShowMaterial(Material* material) const
                                 ImGui::PopID();
                                 value = is_metallic ? 1.0f : 0.0f;
                             }
-
+                         
                             material->SetProperty(mat_property, value);
                         }
                     }
@@ -788,16 +788,16 @@ void Properties::ShowMaterial(Material* material) const
                 show_property("IOR",                  "Index of refraction, color must be transparent for this have any effect",           MaterialTexture::Max, MaterialProperty::Ior);
             }
 
-            // UV
+            // uv
             {
-                // Tiling
+                // tiling
                 ImGui::Text("Tiling");
                 ImGui::SameLine(column_pos_x); ImGui::Text("X");
                 ImGui::SameLine(); ImGui::InputFloat("##matTilingX", &tiling.x, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
                 ImGui::SameLine(); ImGui::Text("Y");
                 ImGui::SameLine(); ImGui::InputFloat("##matTilingY", &tiling.y, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
 
-                // Offset
+                // offset
                 ImGui::Text("Offset");
                 ImGui::SameLine(column_pos_x); ImGui::Text("X");
                 ImGui::SameLine(); ImGui::InputFloat("##matOffsetX", &offset.x, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);

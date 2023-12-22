@@ -110,7 +110,7 @@ struct vertex_processing
         {
             static const float base_wave_height    = 0.1f;
             static const float base_wave_frequency = 20.0f;
-            static const float base_wave_speed     = 0.01f;
+            static const float base_wave_speed     = 0.2f;
 
             // interleave 4 waves to have a more complex wave pattern
             float3 offset = 0.0f;
