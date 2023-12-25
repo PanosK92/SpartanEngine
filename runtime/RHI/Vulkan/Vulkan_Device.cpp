@@ -501,7 +501,7 @@ namespace Spartan
                 return a.slot < b.slot;
             });
 
-            // Cache the newly created descriptors
+            // cache the newly created descriptors
             descriptor_cache[pipeline_state_hash] = descriptors;
         }
 
