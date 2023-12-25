@@ -41,12 +41,12 @@ namespace Spartan
 {
     namespace
     {
-        // Queues
-        static void* m_queue_graphics = nullptr;
-        static void* m_queue_compute  = nullptr;
-        static void* m_queue_copy     = nullptr;
+        // queues
+        void* m_queue_graphics = nullptr;
+        void* m_queue_compute  = nullptr;
+        void* m_queue_copy     = nullptr;
 
-        static vector<shared_ptr<RHI_CommandPool>> cmd_pools;
+        vector<shared_ptr<RHI_CommandPool>> cmd_pools;
     }
 
     void RHI_Device::Initialize()
