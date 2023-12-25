@@ -53,7 +53,7 @@ public:
     virtual void OnVisible() {};
 
     // Called when the window becomes invisible
-    virtual void OnHidden() {};
+    virtual void OnInvisible() {};
 
     // Called just before ImGui::Begin()
     virtual void OnPreBegin();
