@@ -116,8 +116,8 @@ namespace Spartan
         // todo: see if something can be made bindless (noise textures can)
    
         // constant buffers
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame,    GetConstantBuffer(Renderer_ConstantBuffer::Frame));
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::light,    GetConstantBuffer(Renderer_ConstantBuffer::Light));
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetConstantBuffer(Renderer_ConstantBuffer::Frame));
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::light, GetConstantBuffer(Renderer_ConstantBuffer::Light));
 
         // textures
         cmd_list->SetTexture(Renderer_BindingsSrv::noise_normal, GetStandardTexture(Renderer_StandardTexture::Noise_normal));
@@ -313,7 +313,7 @@ namespace Spartan
                     }
 
                     // go through all of the entities
-                    for (shared_ptr<Entity> entity : entities)
+                    for (shared_ptr<Entity>& entity : entities)
                     {
                         // acquire renderable component
                         shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
@@ -510,7 +510,7 @@ namespace Spartan
 
             // set pso
             cmd_list->SetPipelineState(pso);
-            for (shared_ptr<Entity> entity : entities)
+            for (shared_ptr<Entity>& entity : entities)
             {
                 // when async loading certain things can be null
                 shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
@@ -642,7 +642,7 @@ namespace Spartan
             // set pso
             cmd_list->SetPipelineState(pso);
 
-            for (shared_ptr<Entity> entity : entities)
+            for (shared_ptr<Entity>& entity : entities)
             {
                 // when async loading certain things can be null (also frustum cull)
                 shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
@@ -2277,12 +2277,6 @@ namespace Spartan
         shared_ptr<Font> font = GetFont();
         if (!shader_v || !shader_v->IsCompiled() || !shader_p || !shader_p->IsCompiled() || !draw || !font->HasText())
             return;
-
-        // if the performance metrics are being drawn, the profiler has to be enabled
-        if (!Profiler::GetEnabled())
-        {
-            Profiler::SetEnabled(true);
-        }
 
         cmd_list->BeginMarker("text");
 

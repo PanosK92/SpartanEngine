@@ -43,6 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_ConstantBuffer.h"
 #include "RHI/RHI_RasterizerState.h"
 #include "RHI/RHI_DepthStencilState.h"
+#include "Profiling/Profiler.h"
 //======================================
 
 namespace ImGui::RHI
@@ -309,7 +310,7 @@ namespace ImGui::RHI
             }
         }
 
-        cmd_list->BeginTimeblock(name, true, gpu_timing);
+        cmd_list->BeginTimeblock(name, true, Spartan::Profiler::IsGpuTimingEnabled() && gpu_timing);
         cmd_list->SetBufferVertex(vertex_buffer);
         cmd_list->SetBufferIndex(index_buffer);
         cmd_list->SetPipelineState(pso);

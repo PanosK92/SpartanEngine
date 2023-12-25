@@ -86,8 +86,6 @@ namespace Spartan
 
     void Font::AddText(const string& text, const Vector2& position_screen_percentage)
     {
-        SP_ASSERT(m_vertex_buffer && m_index_buffer);
-
         const float viewport_width  = Renderer::GetViewport().width;
         const float viewport_height = Renderer::GetViewport().height;
         const float aspect_ratio    = viewport_width / viewport_height;

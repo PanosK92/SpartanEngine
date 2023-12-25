@@ -63,16 +63,6 @@ Profiler::Profiler(Editor* editor) : Widget(editor)
     m_size_initial = Vector2(1000, 715);
 }
 
-void Profiler::OnVisible()
-{
-    Spartan::Profiler::SetEnabled(true);
-}
-
-void Profiler::OnHidden()
-{
-    Spartan::Profiler::SetEnabled(false);
-}
-
 void Profiler::OnTickVisible()
 {
     int previous_item_type = m_item_type;

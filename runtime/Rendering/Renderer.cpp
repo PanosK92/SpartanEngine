@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/AudioSource.h"
 #include "../World/Components/ReflectionProbe.h"
 #include "ThreadPool.h"
+#include "../Profiling/Profiler.h"
 //==============================================
 
 //= NAMESPACES ===============
@@ -240,7 +241,7 @@ namespace Spartan
 
         // rhi initialization
         {
-            if (RHI_Context::renderdoc)
+            if (Profiler::IsRenderdocEnabled())
             {
                 RenderDoc::OnPreDeviceCreation();
             }
@@ -824,7 +825,10 @@ namespace Spartan
 
 	void Renderer::DrawString(const string& text, const Vector2& position_screen_percentage)
 	{
-        GetFont()->AddText(text, position_screen_percentage);
+        if (shared_ptr<Font>& font = GetFont())
+        {
+            font->AddText(text, position_screen_percentage);
+        }
 	}
 
 	void Renderer::SetOption(Renderer_Option option, float value)

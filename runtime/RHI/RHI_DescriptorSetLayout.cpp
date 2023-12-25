@@ -163,14 +163,16 @@ namespace Spartan
         return descriptor_set;
     }
 
-    void RHI_DescriptorSetLayout::GetDynamicOffsets(vector<uint32_t>* offsets)
+    void RHI_DescriptorSetLayout::GetDynamicOffsets(std::array<uint32_t, 10>* offsets, uint32_t* count)
     {
-        // offsets should be ordered by the binding slots in the descriptor set layouts, so m_descriptors should already be sorted by slot
+        // offsets should be ordered by the binding slots in the descriptor
+        // set layouts, so m_descriptors should already be sorted by slot
+
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
             if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer || descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
             {
-                (*offsets).emplace_back(descriptor.dynamic_offset);
+                (*offsets)[(*count)++] = descriptor.dynamic_offset;
             }
         }
     }

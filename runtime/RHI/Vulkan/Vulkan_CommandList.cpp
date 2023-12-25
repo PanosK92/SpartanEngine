@@ -254,6 +254,8 @@ namespace Spartan
 
         namespace descriptor_sets
         {
+            bool dynamic_descriptor_needs_to_bind = false;
+
             void set_dynamic(const RHI_PipelineState pso, void* resource, void* pipeline_layout, RHI_DescriptorSetLayout* layout)
             {
                 array<void*, 1> resources =
@@ -262,20 +264,21 @@ namespace Spartan
                 };
 
                 // get dynamic offsets
-                vector<uint32_t> dynamic_offsets;
-                layout->GetDynamicOffsets(&dynamic_offsets);
+                array<uint32_t, 10> dynamic_offsets;
+                uint32_t dynamic_offset_count = 0;
+                layout->GetDynamicOffsets(&dynamic_offsets, &dynamic_offset_count);
 
                 VkPipelineBindPoint bind_point = pso.IsCompute() ? VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE : VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
                 vkCmdBindDescriptorSets
                 (
-                    static_cast<VkCommandBuffer>(resource),                 // commandBuffer
-                    bind_point,                                             // pipelineBindPoint
-                    static_cast<VkPipelineLayout>(pipeline_layout),         // layout
-                    0,                                                      // firstSet
-                    static_cast<uint32_t>(resources.size()),                // descriptorSetCount
-                    reinterpret_cast<VkDescriptorSet*>(resources.data()),   // pDescriptorSets
-                    static_cast<uint32_t>(dynamic_offsets.size()),          // dynamicOffsetCount
-                    dynamic_offsets.data()                                  // pDynamicOffsets
+                    static_cast<VkCommandBuffer>(resource),               // commandBuffer
+                    bind_point,                                           // pipelineBindPoint
+                    static_cast<VkPipelineLayout>(pipeline_layout),       // layout
+                    0,                                                    // firstSet
+                    static_cast<uint32_t>(resources.size()),              // descriptorSetCount
+                    reinterpret_cast<VkDescriptorSet*>(resources.data()), // pDescriptorSets
+                    dynamic_offset_count,                                 // dynamicOffsetCount
+                    dynamic_offsets.data()                                // pDynamicOffsets
                 );
 
                 Profiler::m_rhi_bindings_descriptor_set++;
@@ -331,7 +334,7 @@ namespace Spartan
         }
 
         // query pool
-        if (RHI_Context::gpu_profiling)
+        if (Profiler::IsGpuTimingEnabled())
         {
             VkQueryPoolCreateInfo query_pool_create_info = {};
             query_pool_create_info.sType                 = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
@@ -370,7 +373,7 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
         // get queries
-        if (RHI_Context::gpu_profiling && m_queue_type != RHI_Queue_Type::Copy)
+        if (Profiler::IsGpuTimingEnabled() && m_queue_type != RHI_Queue_Type::Copy)
         {
             if (m_timestamp_index != 0)
             {
@@ -400,7 +403,7 @@ namespace Spartan
         SP_ASSERT_MSG(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource), &begin_info) == VK_SUCCESS, "Failed to begin command buffer");
 
         // reset query pool - has to be done after vkBeginCommandBuffer or a VK_DEVICE_LOST will occur
-        if (RHI_Context::gpu_profiling && m_queue_type != RHI_Queue_Type::Copy)
+        if (Profiler::IsGpuTimingEnabled() && m_queue_type != RHI_Queue_Type::Copy)
         {
             vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkQueryPool>(m_rhi_query_pool), 0, m_max_timestamps);
         }
@@ -510,6 +513,7 @@ namespace Spartan
         }
 
         descriptor_sets::set_bindless(m_pso, m_rhi_resource, m_pipeline->GetResource_PipelineLayout());
+        descriptor_sets::dynamic_descriptor_needs_to_bind = true;
     }
 
     void RHI_CommandList::BeginRenderPass()
@@ -778,7 +782,7 @@ namespace Spartan
             0                                             // firstInstance
         );
 
-        if (Profiler::m_granularity == ProfilerGranularity::Full)
+        if (Profiler::GetGranularity() == ProfilerGranularity::Full)
         {
             Profiler::m_rhi_draw++;
         }
@@ -798,7 +802,7 @@ namespace Spartan
             instance_start_index                          // firstInstance
         );
 
-        if (Profiler::m_granularity == ProfilerGranularity::Full)
+        if (Profiler::GetGranularity() == ProfilerGranularity::Full)
         {
             Profiler::m_rhi_draw++;
         }
@@ -867,7 +871,7 @@ namespace Spartan
         source->SetLayout(RHI_Image_Layout::Transfer_Source, this);
         destination->SetLayout(RHI_Image_Layout::Transfer_Destination, this);
 
-        // Blit
+        // blit
         vkCmdBlitImage(
             static_cast<VkCommandBuffer>(m_rhi_resource),
             static_cast<VkImage>(source->GetRhiResource()),      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -1318,7 +1322,7 @@ namespace Spartan
 
     void RHI_CommandList::BeginMarker(const char* name)
     {
-        if (RHI_Context::gpu_markers)
+        if (Profiler::IsGpuMarkingEnabled())
         {
             RHI_Device::MarkerBegin(this, name, Vector4::Zero);
         }
@@ -1326,7 +1330,7 @@ namespace Spartan
 
     void RHI_CommandList::EndMarker()
     {
-        if (RHI_Context::gpu_markers)
+        if (Profiler::IsGpuMarkingEnabled())
         {
             RHI_Device::MarkerEnd(this);
         }
@@ -1335,7 +1339,6 @@ namespace Spartan
     uint32_t RHI_CommandList::BeginTimestamp()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        SP_ASSERT(RHI_Context::gpu_profiling);
 
         uint32_t timestamp_index = m_timestamp_index;
         vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_rhi_query_pool), m_timestamp_index++);
@@ -1346,7 +1349,6 @@ namespace Spartan
     void RHI_CommandList::EndTimestamp()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        SP_ASSERT(RHI_Context::gpu_profiling);
 
         vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_rhi_query_pool), m_timestamp_index++);
     }
@@ -1377,15 +1379,15 @@ namespace Spartan
         SP_ASSERT_MSG(m_timeblock_active == nullptr, "The previous time block is still active");
         SP_ASSERT(name != nullptr);
 
-        // Allowed profiler ?
-        if (RHI_Context::gpu_profiling && gpu_timing)
+        // allowed timing ?
+        if (Profiler::IsGpuTimingEnabled() && gpu_timing)
         {
             Profiler::TimeBlockStart(name, TimeBlockType::Cpu, this);
             Profiler::TimeBlockStart(name, TimeBlockType::Gpu, this);
         }
 
-        // Allowed to markers ?
-        if (RHI_Context::gpu_markers && gpu_marker)
+        // allowed marking ?
+        if (Profiler::IsGpuMarkingEnabled() && gpu_marker)
         {
             RHI_Device::MarkerBegin(this, name, Vector4::Zero);
         }
@@ -1397,14 +1399,14 @@ namespace Spartan
     {
         SP_ASSERT_MSG(m_timeblock_active != nullptr, "A time block wasn't started");
 
-        // Allowed markers ?
-        if (RHI_Context::gpu_markers)
+        // allowed markers ?
+        if (Profiler::IsGpuTimingEnabled())
         {
             RHI_Device::MarkerEnd(this);
         }
 
-        // Allowed profiler ?
-        if (RHI_Context::gpu_profiling)
+        // aAllowed profiler ?
+        if (Profiler::IsGpuTimingEnabled())
         {
             Profiler::TimeBlockEnd(); // cpu
             Profiler::TimeBlockEnd(); // gpu
@@ -1423,9 +1425,14 @@ namespace Spartan
             BeginRenderPass();
         }
 
-        // set dynamic resources
         Renderer::SetStandardResources(this);
-        descriptor_sets::set_dynamic(m_pso, m_rhi_resource, m_pipeline->GetResource_PipelineLayout(), m_descriptor_layout_current);
+
+        // set dynamic resources
+        if (descriptor_sets::dynamic_descriptor_needs_to_bind)
+        {
+            descriptor_sets::set_dynamic(m_pso, m_rhi_resource, m_pipeline->GetResource_PipelineLayout(), m_descriptor_layout_current);
+            descriptor_sets::dynamic_descriptor_needs_to_bind = true;
+        }
     }
 
     void RHI_CommandList::InsertMemoryBarrierImage(void* image, const uint32_t aspect_mask,

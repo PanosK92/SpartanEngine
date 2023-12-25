@@ -70,16 +70,14 @@ namespace Spartan
     float Profiler::m_time_gpu_max    = numeric_limits<float>::lowest();
     float Profiler::m_time_gpu_last   = 0.0f;
 
-    // memory
+    // misc
     uint32_t Profiler::m_descriptor_set_count = 0;
-
-    ProfilerGranularity Profiler::m_granularity = ProfilerGranularity::Full;
+    ProfilerGranularity granularity           = ProfilerGranularity::Light;
 
     namespace
     {
         // profiling options
         const uint32_t initial_capacity = 256;
-        bool profiling_enabled          = false;
         bool profile_cpu                = true;
         bool profile_gpu                = true;
         float profiling_interval_sec    = 0.25f;
@@ -118,6 +116,35 @@ namespace Spartan
         bool poll                 = false;
         bool increase_capacity    = false;
         bool allow_time_block_end = true;
+
+        // RHI - dynamically set at Initialize()
+        bool is_validation_layer_enabled        = false;
+        bool is_gpu_assisted_validation_enabled = false;
+        bool is_gpu_marking_enabled             = false;
+        bool is_gpu_timing_enabled              = false;
+        bool is_renderdoc_enabled               = false;
+
+        static string format_float(float value)
+        {
+            std::stringstream ss;
+
+            // clamp to a certain range to avoid padding and alignment headaches
+            value = Math::Helper::Clamp(value, 0.0f, 99.99f);
+
+            // set fixed-point notation with 2 decimal places
+            ss << std::fixed << std::setprecision(2);
+
+            // output the integer part with the fill character '0' and the minimum width of 2 characters
+            int integer_part = static_cast<int>(value);
+            ss << std::setfill('0') << std::setw(2) << integer_part;
+
+            // output the decimal point and decimal part
+            float decimal_part = value - integer_part;
+            ss << "." << std::setfill('0') << std::setw(2) << static_cast<int>(round(decimal_part * 100));
+
+            return ss.str();
+        }
+
     }
   
     void Profiler::Initialize()
@@ -127,7 +154,11 @@ namespace Spartan
         m_time_blocks_write.reserve(initial_capacity);
         m_time_blocks_write.resize(initial_capacity);
 
-        profiling_enabled = RHI_Context::gpu_profiling;
+        is_validation_layer_enabled        = granularity == ProfilerGranularity::Full; // cpu cost: high - per draw cost, especially high with large bindless arrays
+        is_gpu_assisted_validation_enabled = granularity == ProfilerGranularity::Full; // cpu cost: high - per draw cost
+        is_renderdoc_enabled               = granularity == ProfilerGranularity::Full; // cpu cost: high - intercepts every API call and wraps it
+        is_gpu_marking_enabled             = true;                                     // cpu cost: imperceptible
+        is_gpu_timing_enabled              = true;                                     // cpu cost: imperceptible
     }
 
     void Profiler::Shutdown()
@@ -137,7 +168,7 @@ namespace Spartan
 
     void Profiler::PreTick()
     {
-        if (!profiling_enabled)
+        if (!Profiler::IsGpuTimingEnabled())
             return;
 
         if (increase_capacity)
@@ -219,7 +250,7 @@ namespace Spartan
             poll = false;
         }
 
-        if (poll && profiling_enabled)
+        if (poll && Profiler::IsGpuTimingEnabled())
         {
             AcquireGpuData();
             SwapBuffers();
@@ -267,7 +298,7 @@ namespace Spartan
 
     void Profiler::TimeBlockStart(const char* func_name, TimeBlockType type, RHI_CommandList* cmd_list /*= nullptr*/)
     {
-        if (!profiling_enabled || !poll)
+        if (!Profiler::IsGpuTimingEnabled() || !poll)
             return;
 
         const bool can_profile_cpu = (type == TimeBlockType::Cpu) && profile_cpu;
@@ -307,16 +338,6 @@ namespace Spartan
         m_time_gpu_min    = numeric_limits<float>::max();
         m_time_gpu_max    = numeric_limits<float>::lowest();
         m_time_gpu_last   = 0.0f;
-    }
-
-    bool Profiler::GetEnabled()
-    {
-        return profiling_enabled;
-    }
-
-    void Profiler::SetEnabled(const bool enabled)
-    {
-        profiling_enabled = enabled;
     }
 
     const vector<TimeBlock>& Profiler::GetTimeBlocks()
@@ -381,14 +402,14 @@ namespace Spartan
 
     TimeBlock* Profiler::GetNewTimeBlock()
     {
-        // Increase capacity if needed
+        // increase capacity if needed
         if (m_time_block_index + 1 >= static_cast<int>(m_time_blocks_write.size()))
         {
             increase_capacity = true;
             return nullptr;
         }
 
-        // Return a time block
+        // return a time block
         return &m_time_blocks_write[++m_time_block_index];
     }
 
@@ -418,27 +439,6 @@ namespace Spartan
             gpu_driver           = physical_device->GetDriverVersion();
             gpu_api              = RHI_Context::api_version_str;
         }
-    }
-
-    static string format_float(float value)
-    {
-        std::stringstream ss;
-
-        // clamp to a certain range to avoid padding and alignment headaches
-        value = Math::Helper::Clamp(value, 0.0f, 99.99f);
-
-        // set fixed-point notation with 2 decimal places
-        ss << std::fixed << std::setprecision(2);
-
-        // output the integer part with the fill character '0' and the minimum width of 2 characters
-        int integer_part = static_cast<int>(value);
-        ss << std::setfill('0') << std::setw(2) << integer_part;
-
-        // output the decimal point and decimal part
-        float decimal_part = value - integer_part;
-        ss << "." << std::setfill('0') << std::setw(2) << static_cast<int>(round(decimal_part * 100));
-
-        return ss.str();
     }
 
     void Profiler::DrawPerformanceMetrics()
@@ -502,7 +502,7 @@ namespace Spartan
 
         // api calls
         oss_metrics << "\nAPI calls" << endl;
-            if (m_granularity == ProfilerGranularity::Full)
+            if (granularity == ProfilerGranularity::Full)
             {
                 oss_metrics << "Draw:\t\t\t\t\t\t\t\t\t" << m_rhi_draw << endl;
             }
@@ -524,5 +524,35 @@ namespace Spartan
         // draw at the top-left of the screen
         metrics_str = oss_metrics.str();
         Renderer::DrawString(metrics_str, Math::Vector2(0.01f, 0.01f));
+    }
+
+    ProfilerGranularity Profiler::GetGranularity()
+    {
+        return granularity;
+    }
+
+    bool Profiler::IsValidationLayerEnabled()
+    {
+        return is_validation_layer_enabled;
+    }
+
+    bool Profiler::IsGpuAssistedValidationEnabled()
+    {
+        return is_gpu_assisted_validation_enabled;
+    }
+
+    bool Profiler::IsGpuMarkingEnabled()
+    {
+        return is_gpu_marking_enabled;
+    }
+
+    bool Profiler::IsGpuTimingEnabled()
+    {
+        return is_gpu_timing_enabled;
+    }
+
+    bool Profiler::IsRenderdocEnabled()
+    {
+        return is_renderdoc_enabled;
     }
 }

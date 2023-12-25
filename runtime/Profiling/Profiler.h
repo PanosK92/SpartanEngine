@@ -53,8 +53,6 @@ namespace Spartan
         static void ClearMetrics();
         
         // properties
-        static bool GetEnabled();
-        static void SetEnabled(const bool enabled);
         static const std::vector<TimeBlock>& GetTimeBlocks();
         static float GetTimeCpuLast();
         static float GetTimeGpuLast();
@@ -101,11 +99,14 @@ namespace Spartan
         static float m_time_gpu_max;
         static float m_time_gpu_last;
 
-        // memory
-        static uint32_t m_descriptor_set_count;
-
         // misc
-        static ProfilerGranularity m_granularity;
+        static uint32_t m_descriptor_set_count;
+        static ProfilerGranularity GetGranularity();
+        static bool IsValidationLayerEnabled();
+        static bool IsGpuAssistedValidationEnabled();
+        static bool IsGpuMarkingEnabled();
+        static bool IsGpuTimingEnabled();
+        static bool IsRenderdocEnabled();
 
     private:
         static void SwapBuffers();
