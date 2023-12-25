@@ -428,16 +428,31 @@ namespace Spartan
     namespace descriptors
     {
         uint32_t allocated_descriptor_sets = 0;
-        VkDescriptorPool descriptor_pool   = nullptr;
+        VkDescriptorPool descriptor_pool = nullptr;
 
         // cache
         unordered_map<uint64_t, RHI_DescriptorSet> sets;
         unordered_map<uint64_t, shared_ptr<RHI_DescriptorSetLayout>> layouts;
         unordered_map<uint64_t, shared_ptr<RHI_Pipeline>> pipelines;
+        unordered_map<uint64_t, vector<RHI_Descriptor>> descriptor_cache;
 
         void get_descriptors_from_pipeline_state(RHI_PipelineState& pipeline_state, vector<RHI_Descriptor>& descriptors)
         {
             SP_ASSERT(pipeline_state.IsValid());
+
+            // use the hash of the pipeline state as the key for the cache
+            uint64_t pipeline_state_hash = pipeline_state.GetHash();
+
+            // check if descriptors for this pipeline state are already cached
+            auto cached_descriptors = descriptor_cache.find(pipeline_state_hash);
+            if (cached_descriptors != descriptor_cache.end())
+            {
+                // fetch from cache
+                descriptors = cached_descriptors->second;
+                return;
+            }
+
+            // if not cached, generate descriptors
             descriptors.clear();
 
             if (pipeline_state.IsCompute())
@@ -450,26 +465,26 @@ namespace Spartan
                 SP_ASSERT(pipeline_state.shader_vertex->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
                 descriptors = pipeline_state.shader_vertex->GetDescriptors();
 
-                // if there is a pixel shader, merge it's resources into our map as well
+                // if there is a pixel shader, merge its resources into our map as well
                 if (pipeline_state.shader_pixel)
                 {
                     SP_ASSERT(pipeline_state.shader_pixel->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
 
                     for (const RHI_Descriptor& descriptor_pixel : pipeline_state.shader_pixel->GetDescriptors())
                     {
-                        // assume that the descriptor has been created in the vertex shader and only try to update it's shader stage
+                        // assume that the descriptor has been created in the vertex shader and only try to update its shader stage
                         bool updated_existing = false;
                         for (RHI_Descriptor& descriptor_vertex : descriptors)
                         {
                             if (descriptor_vertex.slot == descriptor_pixel.slot)
                             {
                                 descriptor_vertex.stage |= descriptor_pixel.stage;
-                                updated_existing         = true;
+                                updated_existing = true;
                                 break;
                             }
                         }
 
-                        // if no updating took place, this a pixel shader only resource, add it
+                        // if no updating took place, this is a pixel shader only resource, add it
                         if (!updated_existing)
                         {
                             descriptors.emplace_back(descriptor_pixel);
@@ -478,12 +493,16 @@ namespace Spartan
                 }
             }
 
-            // sort descriptors by slot, this is because dynamic offsets (which are computed in a serialized
-            // manner in RHI_DescriptorSetLayout::GetDynamicOffsets()) need to be ordered by their slot
+            // sort descriptors by slot
+            // this makes things easier to work with, for example dynamic offsets
+            // are expected as a list which should be ordered by a slot
             sort(descriptors.begin(), descriptors.end(), [](const RHI_Descriptor& a, const RHI_Descriptor& b)
             {
                 return a.slot < b.slot;
             });
+
+            // Cache the newly created descriptors
+            descriptor_cache[pipeline_state_hash] = descriptors;
         }
 
         shared_ptr<RHI_DescriptorSetLayout> get_or_create_descriptor_set_layout(RHI_PipelineState& pipeline_state)
