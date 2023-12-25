@@ -28,22 +28,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 float3 subsurface_scattering(Surface surface, Light light)
 {
-    float sss_strength = 2.0f * surface.subsurface_scattering;
+    float sss_strength = 0.005f * surface.subsurface_scattering;
     float sss_width    = 1.0f;
 
     // calculate backlit effect - light penetrating through the surface
     float backlit    = max(dot(surface.normal, -light.to_pixel), 0);
     float sss_effect = exp(-backlit * sss_width) * sss_strength;
 
-    // angle based color
-    float3 color_a     = float3(0.6, 0.8, 0.5);
-    float3 color_b     = float3(0.3, 0.6, 0.2);
-    float angle_factor = pow(backlit, 1.5f);
-    float3 sss_color   = lerp(color_a, color_b, angle_factor) * sss_effect;
+    // calculate attenuation and color contribution for SSS
+    float attenuation = light.compute_attenuation(surface.position);
+    float3 light_color_contribution = light.color * light.intensity * attenuation;
 
-    float fresnel = dot(surface.normal, -light.to_pixel);
-    
-    return surface.albedo * sss_color * fresnel * light.radiance;
+    // use surface albedo and light color contribution for SSS color
+    float3 sss_color = surface.albedo * light_color_contribution * sss_effect;
+
+    // fresnel effect using Schlick's approximation
+    float fresnel = pow(1.0f - dot(surface.normal, -light.to_pixel), 5.0f);
+    fresnel = lerp(0.04f, 1.0f, fresnel);  // Base reflectivity for non-metallic surfaces
+
+    // final color calculation considering fresnel effect
+    return sss_color * fresnel;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -146,3 +150,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     tex_uav[thread_id.xy]  += float4(saturate_11(light_diffuse * light.radiance + emissive + light_subsurface), 1.0f);
     tex_uav2[thread_id.xy] += float4(saturate_11(light_specular * light.radiance), 1.0f);
 }
+
+
+
+

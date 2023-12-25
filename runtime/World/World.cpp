@@ -930,8 +930,8 @@ namespace Spartan
                         material->SetProperty(MaterialProperty::Ior,                1.33f); // water
                         material->SetProperty(MaterialProperty::Roughness,          0.0f);
                         material->SetProperty(MaterialProperty::Normal,             0.1f);
-                        material->SetProperty(MaterialProperty::TextureTilingX,     500.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingY,     500.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingX,     200.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingY,     200.0f);
                         material->SetProperty(MaterialProperty::VertexAnimateWater, 1.0f);
                         material->SetProperty(MaterialProperty::CullMode,           static_cast<float>(RHI_CullMode::None));
 
