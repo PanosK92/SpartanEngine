@@ -264,12 +264,16 @@ namespace Spartan
                 {
                     get_func(create_messenger, vkCreateDebugUtilsMessengerEXT);
                     get_func(destroy_messenger, vkDestroyDebugUtilsMessengerEXT);
+
+                    SP_ASSERT(create_messenger && destroy_messenger);
                 }
         
                 if (gpu_markers_enabled)
                 {
                     get_func(marker_begin, vkCmdBeginDebugUtilsLabelEXT);
                     get_func(marker_end, vkCmdEndDebugUtilsLabelEXT);
+
+                    SP_ASSERT(marker_begin && marker_end);
                 }
             }
         
@@ -278,6 +282,8 @@ namespace Spartan
             {
                 get_func(set_object_tag, vkSetDebugUtilsObjectTagEXT);
                 get_func(set_object_name, vkSetDebugUtilsObjectNameEXT);
+
+                SP_ASSERT(set_object_tag && set_object_name);
             }
         }
     }
@@ -667,8 +673,9 @@ namespace Spartan
         RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
         // add debugging related extensions
         RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_report");
-        RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_utils");
         #endif
+        // among various things, this enables support for GPU markers, which we utilize in Release mode as well
+        RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_utils"); 
 
         // create instance
         VkApplicationInfo app_info = {};

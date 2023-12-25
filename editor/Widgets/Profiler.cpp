@@ -166,3 +166,14 @@ void Profiler::OnTickVisible()
         ImGui::ProgressBar((float)memory_used / (float)memory_available, ImVec2(-1, 0), overlay.c_str());
     }
 }
+
+void Profiler::OnVisible()
+{
+    m_is_gpu_timing_enabled = Spartan::Profiler::IsGpuTimingEnabled();
+    Spartan::Profiler::SetGpuTimingEnabled(true);
+}
+
+void Profiler::OnInvisible()
+{
+    Spartan::Profiler::SetGpuTimingEnabled(true);
+}

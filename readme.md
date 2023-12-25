@@ -46,7 +46,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - Unified deferred rendering with transparency (BSDF with same render path).
 - Vulkan and DirectX 12 (WIP) backends with universal HLSL shaders.
 - Screen space shadows from Bend Studio's Days Gone.
-- Screen space global illumination, reflections.
+- Screen space global illumination & reflections.
 - Advanced shadow features with penumbra and colored translucency.
 - Physical light units (intensity from lumens and color from kelvin).
 - Comprehensive debug rendering options.

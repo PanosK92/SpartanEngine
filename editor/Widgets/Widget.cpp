@@ -88,7 +88,7 @@ void Widget::Tick()
         }
         else if (!m_visible)
         {
-            OnHidden();
+            OnInvisible();
         }
     }
 

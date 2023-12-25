@@ -106,6 +106,7 @@ namespace Spartan
         static bool IsGpuAssistedValidationEnabled();
         static bool IsGpuMarkingEnabled();
         static bool IsGpuTimingEnabled();
+        static void SetGpuTimingEnabled(const bool enabled);
         static bool IsRenderdocEnabled();
 
     private:

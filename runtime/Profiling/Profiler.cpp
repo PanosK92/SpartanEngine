@@ -144,7 +144,6 @@ namespace Spartan
 
             return ss.str();
         }
-
     }
   
     void Profiler::Initialize()
@@ -549,6 +548,11 @@ namespace Spartan
     bool Profiler::IsGpuTimingEnabled()
     {
         return is_gpu_timing_enabled;
+    }
+
+    void Profiler::SetGpuTimingEnabled(const bool enabled)
+    {
+        is_gpu_timing_enabled = enabled;
     }
 
     bool Profiler::IsRenderdocEnabled()
