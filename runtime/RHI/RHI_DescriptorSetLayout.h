@@ -51,7 +51,7 @@ namespace Spartan
         void SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index, const uint32_t mip_range);
 
         // dynamic offsets
-        void GetDynamicOffsets(std::vector<uint32_t>* offsets);
+        void GetDynamicOffsets(std::array<uint32_t, 10>* offsets, uint32_t* count);
 
         // misc
         void ClearDescriptorData();

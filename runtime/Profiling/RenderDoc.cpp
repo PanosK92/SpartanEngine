@@ -247,10 +247,4 @@ namespace Spartan
             }
         }
     }
-
-    bool RenderDoc::IsEnabled()
-    {
-        return RHI_Context::renderdoc;
-    }
-    
 }

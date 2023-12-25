@@ -101,13 +101,13 @@ void Toolbar::OnTick()
         IconType::Button_RenderDoc, "Captures the next frame and then launches RenderDoc",
         []() { return false; },
         []() {
-            if (Spartan::RenderDoc::IsEnabled())
+            if (Spartan::Profiler::IsRenderdocEnabled())
             {
                 Spartan::RenderDoc::FrameCapture();
             }
             else
             {
-                SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"RHI_Implemenation.cpp\", and set \"renderdoc\" to \"true\"");
+                SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"Profiler.cpp\", and set \"is_renderdoc_enabled\" to \"true\"");
             }
         }
     );

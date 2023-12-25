@@ -738,7 +738,7 @@ namespace Spartan
         return standard_meshes[static_cast<uint8_t>(type)];
     }
 
-    shared_ptr<Font> Renderer::GetFont()
+    shared_ptr<Font>& Renderer::GetFont()
     {
         return standard_font[m_resource_index];
     }

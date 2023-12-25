@@ -659,7 +659,10 @@ namespace Spartan
 
         #ifdef DEBUG
         // add validation related extensions
-        RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT);
+        if (Profiler::IsGpuAssistedValidationEnabled())
+        {
+            RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT);
+        }
         RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
         RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
         // add debugging related extensions
@@ -733,7 +736,7 @@ namespace Spartan
             validation_features.enabledValidationFeatureCount = static_cast<uint32_t>(RHI_Context::validation_extensions.size());
             validation_features.pEnabledValidationFeatures    = RHI_Context::validation_extensions.data();
 
-            if (RHI_Context::validation)
+            if (Profiler::IsValidationLayerEnabled())
             {
                 // enable validation layer
                 if (is_present_instance_layer(RHI_Context::validation_layers.front()))
@@ -753,10 +756,10 @@ namespace Spartan
         }
 
         // get function pointers (from extensions)
-        functions::initialize(RHI_Context::validation, RHI_Context::gpu_markers);
+        functions::initialize(Profiler::IsValidationLayerEnabled(), Profiler::IsGpuMarkingEnabled());
 
-        // debug
-        if (RHI_Context::validation)
+        // validation layer logging
+        if (Profiler::IsValidationLayerEnabled())
         {
             validation_layer_logging::initialize(RHI_Context::instance);
         }
@@ -815,10 +818,9 @@ namespace Spartan
                 m_max_push_constant_size              = properties_device.properties.limits.maxPushConstantsSize;
 
                 // disable profiler if timestamps are not supported
-                if (RHI_Context::gpu_profiling && !properties_device.properties.limits.timestampComputeAndGraphics)
+                if (Profiler::IsGpuTimingEnabled())
                 {
-                    SP_LOG_ERROR("Device doesn't support timestamps, disabling gpu profiling");
-                    RHI_Context::gpu_profiling = false;
+                    SP_ASSERT_MSG(properties_device.properties.limits.timestampComputeAndGraphics, "Device doesn't support timestamps");
                 }
             }
 
@@ -953,7 +955,7 @@ namespace Spartan
                 create_info.enabledExtensionCount   = static_cast<uint32_t>(extensions_supported.size());
                 create_info.ppEnabledExtensionNames = extensions_supported.data();
 
-                if (RHI_Context::validation)
+                if (Profiler::IsValidationLayerEnabled())
                 {
                     create_info.enabledLayerCount   = static_cast<uint32_t>(RHI_Context::validation_layers.size());
                     create_info.ppEnabledLayerNames = RHI_Context::validation_layers.data();
@@ -1021,7 +1023,7 @@ namespace Spartan
         vulkan_memory_allocator::destroy();
 
         // debug messenger
-        if (RHI_Context::validation)
+        if (Profiler::IsValidationLayerEnabled())
         {
             validation_layer_logging::shutdown(RHI_Context::instance);
         }
@@ -1880,9 +1882,6 @@ namespace Spartan
 
     void RHI_Device::MarkerBegin(RHI_CommandList* cmd_list, const char* name, const Math::Vector4& color)
     {
-        SP_ASSERT(RHI_Context::gpu_markers);
-        SP_ASSERT(functions::marker_begin != nullptr);
-
         VkDebugUtilsLabelEXT label = {};
         label.sType                = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
         label.pNext                = nullptr;
@@ -1897,8 +1896,6 @@ namespace Spartan
 
     void RHI_Device::MarkerEnd(RHI_CommandList* cmd_list)
     {
-        SP_ASSERT(RHI_Context::gpu_markers);
-
         functions::marker_end(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
     }
 
@@ -1906,7 +1903,7 @@ namespace Spartan
 
     void RHI_Device::SetResourceName(void* resource, const RHI_Resource_Type resource_type, const std::string name)
     {
-        if (RHI_Context::validation) // function pointers are not initialized if validation disabled 
+        if (Profiler::IsValidationLayerEnabled()) // function pointers are not initialized if validation disabled 
         {
             SP_ASSERT(resource != nullptr);
             SP_ASSERT(functions::set_object_name != nullptr);

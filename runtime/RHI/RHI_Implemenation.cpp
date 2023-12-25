@@ -51,15 +51,4 @@ namespace Spartan
 
    // api agnostic
     string RHI_Context::api_version_str;
-#ifdef DEBUG
-    bool RHI_Context::validation    = true;
-    bool RHI_Context::gpu_markers   = true;
-    bool RHI_Context::gpu_profiling = true;
-    bool RHI_Context::renderdoc     = false;
-#else
-    bool RHI_Context::validation    = false;
-    bool RHI_Context::gpu_markers   = false;
-    bool RHI_Context::gpu_profiling = true;
-    bool RHI_Context::renderdoc     = false;
-#endif
 }

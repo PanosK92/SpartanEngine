@@ -36,6 +36,5 @@ namespace Spartan
         static void StartCapture();
         static void EndCapture();
         static void LaunchRenderDocUi();
-        static bool IsEnabled();
     };
 }
