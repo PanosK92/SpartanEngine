@@ -81,7 +81,7 @@ namespace Spartan
         Microsoft::WRL::ComPtr<IDXGIFactory4> factory;
         {
             INT dxgiFactoryFlags = 0;
-            if (!RHI_Context::validation)
+            if (!Profiler::IsValidationLayerEnabled())
             {
                 dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
             }
