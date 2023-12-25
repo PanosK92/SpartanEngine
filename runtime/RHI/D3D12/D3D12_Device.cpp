@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_InputLayout.h"
 #include <wrl/client.h>
 #include "../RHI_CommandPool.h"
+#include "../Profiling/Profiler.h"
 //=================================
 
 //= NAMESPACES ===============
@@ -67,7 +68,7 @@ namespace Spartan
 
         // Debug layer
         UINT dxgi_factory_flags = 0;
-        if (RHI_Context::validation)
+        if (Profiler::IsValidationLayerEnabled())
         {
             Microsoft::WRL::ComPtr<ID3D12Debug1> debug_interface;
             if (d3d12_utility::error::check(D3D12GetDebugInterface(IID_PPV_ARGS(&debug_interface))))
