@@ -91,66 +91,80 @@ struct sampling
         return blended_color;
     }
 
+    static float apply_snow_level_variation(float3 position_world, float base_snow_level)
+    {
+        // define constants
+        const float frequency = 0.3f;
+        const float amplitude = 10.0f;
+    
+        // apply sine wave based on world position
+        float sine_value = sin(position_world.x * frequency);
+    
+        // map sine value from [-1, 1] to [0, 1]
+        sine_value = sine_value * 0.5 + 0.5;
+    
+        // apply height variation and add to base snow level
+        return base_snow_level + sine_value * amplitude;
+    }
+    
     static float4 smart(uint texture_index, float2 uv, float slope, float3 position_world)
     {
-        const float sea_level         = 0.0f;
-        const float sand_offset       = 4.0f;  // how high above sea level the sand should extend
-        const float snow_level        = 55.0f;
-        const float snow_height       = 70.0f; // this is the height at which the terrain is fully covered in snow
+        // texture indices
         const uint texture_index_rock = texture_index + 1;
         const uint texture_index_sand = texture_index + 2;
         const uint texture_index_snow = texture_index + 3;
+
+        // parameters
+        const float sea_level   = 0.0f; // this is an engine wide assumption
+        const float sand_offset = 4.0f;
+        float snow_level        = 75.0f;
+        float blend_speed       = 0.1f;
         
-        // in case of water, we just interleave the normal
+        // calculate snow level and blend factor
+        snow_level              = apply_snow_level_variation(position_world, snow_level);
+        float distance_to_snow  = position_world.y - snow_level;
+        float snow_blend_factor = saturate(1.0 - max(0.0, -distance_to_snow) * blend_speed);
+
+        // in case of water, just interleave the normal
         if (material_vertex_animate_water())
         {
             float4 normal = interleave(texture_index, texture_index, uv);
             return float4(normalize(normal.xyz), 0.0f);
         }
     
-        // in case of the terrain, we do slope based texturing with tiling removal
+        // in case of the terrain, do slope based texturing with tiling removal
         if (material_texture_slope_based())
         {
             float variation  = 1.0f;
             float4 tex_flat  = reduce_tiling(texture_index, uv * 0.5f, variation);
             float4 tex_slope = reduce_tiling(texture_index_rock, uv * 0.5f, variation);
             float4 terrain   = lerp(tex_flat, tex_slope, slope);
-
-            if (position_world.y <= sea_level + sand_offset) // sand below sea level
+    
+            if (position_world.y <= sea_level + sand_offset)
             {
-                float blend_factor = saturate(position_world.y / sand_offset);          
-                float4 tex_sand    = reduce_tiling(texture_index_sand, uv, variation);
-                terrain            = lerp(tex_sand, terrain, blend_factor);   
+                float sand_blend_factor = saturate(position_world.y / sand_offset);          
+                float4 tex_sand         = reduce_tiling(texture_index_sand, uv, variation);
+                terrain                 = lerp(tex_sand, terrain, sand_blend_factor);   
             }
-            else if (position_world.y > snow_level) // snow above snow level
+    
+            // blend with snow texture based on blend factor
+            if (snow_blend_factor > 0.0)
             {
-                float blend_factor = saturate((position_world.y - snow_level) / (snow_height - snow_level));
-                float4 tex_snow    = reduce_tiling(texture_index_snow, uv, variation);
-                terrain            = lerp(terrain, tex_snow, blend_factor);
+                float4 tex_snow = reduce_tiling(texture_index_snow, uv, variation);
+                terrain = lerp(terrain, tex_snow, snow_blend_factor);
             }
-
-            // a final lerp with the slope/rock texture as it should show with and sand as well
+    
             return lerp(terrain, tex_slope, slope);
         }
-
-        // this is a regular sample
+    
+        // regular sample
         float4 color = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
         
-        // implies vegetation - in which case, blend with some white/snow if the elevation is high enough
-        if (material_vertex_animate_wind() && (position_world.y > snow_level))
-        {   
-            // calculate a smooth blend factor
-            float elevation_difference = position_world.y - snow_level;
-            float transition_range     = snow_height - snow_level;
-            float blend_factor         = elevation_difference / transition_range;
-            blend_factor               = saturate(blend_factor);
-            
-            // smooth step for even smooth transition
-            blend_factor = smoothstep(0.0f, 1.0f, blend_factor);
-        
-            // blend the vegetation color with white
+        // blend with snow for vegetation
+        if (material_vertex_animate_wind())
+        {
             float albedo_snow = 0.95f;
-            color.rgb = lerp(color.rgb, albedo_snow, blend_factor);         
+            color.rgb = lerp(color.rgb, albedo_snow, snow_blend_factor);
         }
     
         return color;
@@ -336,3 +350,6 @@ PixelOutputType mainPS(PixelInputType input)
 
     return g_buffer;
 }
+
+
+
