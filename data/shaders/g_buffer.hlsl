@@ -107,7 +107,7 @@ struct sampling
         return base_snow_level + sine_value * amplitude;
     }
     
-    static float4 smart(uint texture_index, float2 uv, float slope, float3 position_world)
+    static float4 smart(uint texture_index, float2 uv, float3 position_world, float3 normal_world)
     {
         // texture indices
         const uint texture_index_rock = texture_index + 1;
@@ -117,11 +117,10 @@ struct sampling
         // parameters
         const float sea_level   = 0.0f; // this is an engine wide assumption
         const float sand_offset = 4.0f;
-        float snow_level        = 75.0f;
-        float blend_speed       = 0.1f;
+        const float snow_level  = apply_snow_level_variation(position_world, 75.0f);
+        const float blend_speed = 0.1f;
         
         // calculate snow level and blend factor
-        snow_level              = apply_snow_level_variation(position_world, snow_level);
         float distance_to_snow  = position_world.y - snow_level;
         float snow_blend_factor = saturate(1.0 - max(0.0, -distance_to_snow) * blend_speed);
 
@@ -135,6 +134,11 @@ struct sampling
         // in case of the terrain, do slope based texturing with tiling removal
         if (material_texture_slope_based())
         {
+            float bias  = -0.25f; // increase the bias to favour the slope/rock texture
+            float slope = saturate(dot(normal_world, float3(0.0f, 1.0f, 0.0f)) - bias);
+            slope       = pow(slope, 24.0f); // increase the exponent to sharpen the transition
+            slope       = saturate(1.0f - slope);
+            
             float variation  = 1.0f;
             float4 tex_flat  = reduce_tiling(texture_index, uv * 0.5f, variation);
             float4 tex_slope = reduce_tiling(texture_index_rock, uv * 0.5f, variation);
@@ -170,15 +174,6 @@ struct sampling
         return color;
     }
 };
-
-float compute_slope(float3 normal)
-{
-    float bias  = -0.25f; // increase the bias to favour the slope/rock texture
-    float slope = saturate(dot(normal, float3(0.0f, 1.0f, 0.0f)) - bias);
-    slope       = pow(slope, 24.0f); // increase the exponent to sharpen the transition
-
-    return saturate(1.0f - slope);
-}
 
 PixelInputType mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
@@ -249,10 +244,9 @@ PixelOutputType mainPS(PixelInputType input)
     }
     
     // albedo
-    float slope = compute_slope(normal);
     if (has_texture_albedo())
     {
-        float4 albedo_sample = sampling::smart(material_albedo, uv, slope, input.position_world);
+        float4 albedo_sample = sampling::smart(material_albedo, uv, input.position_world, input.normal_world);
 
         // read albedo's alpha channel as an alpha mask as well
         alpha_mask      = min(alpha_mask, albedo_sample.a);
@@ -287,7 +281,7 @@ PixelOutputType mainPS(PixelInputType input)
         if (has_texture_normal())
         {
             // get tangent space normal and apply the user defined intensity, then transform it to world space
-            float3 normal_sample       = sampling::smart(material_normal, uv, slope, input.position_world).xyz;
+            float3 normal_sample       = sampling::smart(material_normal, uv, input.position_world, input.normal_world).xyz;
             float3 tangent_normal      = normalize(unpack(normal_sample));
             float normal_intensity     = clamp(GetMaterial().normal, 0.012f, GetMaterial().normal);
             tangent_normal.xy         *= saturate(normal_intensity);
@@ -300,7 +294,7 @@ PixelOutputType mainPS(PixelInputType input)
             float4 roughness_sample = 1.0f;    
             if (has_texture_roughness())
             {
-                roughness_sample  = sampling::smart(material_roughness, uv, slope, input.position_world);
+                roughness_sample  = sampling::smart(material_roughness, uv, input.position_world, input.normal_world);
                 roughness        *= roughness_sample.g;
             }
             
@@ -309,14 +303,14 @@ PixelOutputType mainPS(PixelInputType input)
             
             if (has_texture_metalness() && !has_single_texture_roughness_metalness())
             {
-                metalness *= sampling::smart(material_metalness, uv, slope, input.position_world).r;
+                metalness *= sampling::smart(material_metalness, uv, input.position_world, input.normal_world).r;
             }
         }
         
         // occlusion
         if (has_texture_occlusion())
         {
-            occlusion = sampling::smart(material_occlusion, uv, slope, input.position_world).r;
+            occlusion = sampling::smart(material_occlusion, uv, input.position_world, input.normal_world).r;
         }
 
         // emission
