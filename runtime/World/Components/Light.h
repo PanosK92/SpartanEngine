@@ -71,7 +71,6 @@ namespace Spartan
         ~Light() = default;
 
         //= COMPONENT ================================
-        void OnInitialize() override;
         void OnTick() override;
         void OnTransformChanged() override;
         void Serialize(FileStream* stream) override;
@@ -136,6 +135,7 @@ namespace Spartan
         uint32_t GetIndex() const { return m_index; }
 
     private:
+        void UpdateMatrices();
         void ComputeViewMatrix();
         void ComputeProjectionMatrix();
 
@@ -160,11 +160,6 @@ namespace Spartan
         bool m_volumetric_enabled  = true;
         float m_range              = 0.0f;
         float m_angle_rad          = Math::Helper::DEG_TO_RAD * 30.0f;
-        bool m_initialized         = false;
         uint32_t m_index           = 0;
-
-        // dirty checks
-        bool m_is_dirty                     = true;
-        Math::Matrix m_previous_camera_view = Math::Matrix::Identity;
     };
 }
