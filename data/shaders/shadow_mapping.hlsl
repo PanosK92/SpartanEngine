@@ -301,13 +301,15 @@ float4 Shadow_Map(Surface surface, Light light)
     // process only if the pixel is within the light's effective range
     if (light.distance_to_pixel <= light.far)
     {
+        Light_ light_ = GetLight();
+        
         // compute world position with normal offset bias to reduce shadow acne
         float3 normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * light.normal_bias * get_shadow_texel_size();
         float3 position_world     = surface.position + normal_offset_bias;
 
         // project to light space
         uint slice_index = light_is_point() ? direction_to_cube_face_index(light.to_pixel) : 0;
-        float3 pos_ndc   = world_to_ndc(position_world, buffer_light.view_projection[slice_index]);
+        float3 pos_ndc   = world_to_ndc(position_world, light_.view_projection[slice_index]);
         float2 pos_uv    = ndc_to_uv(pos_ndc);
 
         // sample shadow map
@@ -330,7 +332,7 @@ float4 Shadow_Map(Surface surface, Light light)
         {
             // sample shadow map
             slice_index      = 1;
-            pos_ndc          = world_to_ndc(position_world, buffer_light.view_projection[slice_index]);
+            pos_ndc          = world_to_ndc(position_world, light_.view_projection[slice_index]);
             pos_uv           = ndc_to_uv(pos_ndc);
             float shadow_far = SampleShadowMap(surface, float3(pos_uv, slice_index), pos_ndc.z);
 

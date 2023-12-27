@@ -114,8 +114,8 @@ namespace Spartan
         // get all
         static std::array<std::shared_ptr<RHI_Texture>, render_target_count>& GetRenderTargets();
         static std::array<std::shared_ptr<RHI_Shader>, shader_count>& GetShaders();
-        static std::array<std::shared_ptr<RHI_ConstantBuffer>, 2>& GetConstantBuffers();
-        static std::array<std::shared_ptr<RHI_StructuredBuffer>, 2>& GetStructuredBuffers();
+        static std::array<std::shared_ptr<RHI_ConstantBuffer>, 1>& GetConstantBuffers();
+        static std::array<std::shared_ptr<RHI_StructuredBuffer>, 3>& GetStructuredBuffers();
 
         // get individual
         static std::shared_ptr<RHI_RasterizerState> GetRasterizerState(const Renderer_RasterizerState type);
@@ -133,9 +133,8 @@ namespace Spartan
         //=======================================================================================================
 
     private:
-        // constant buffers
+        // constant and push constant buffers
         static void UpdateConstantBufferFrame(RHI_CommandList* cmd_list, const bool set = true);
-        static void UpdateConstantBufferLight(RHI_CommandList* cmd_list, const std::shared_ptr<Light> light);
         static void PushPassConstants(RHI_CommandList* cmd_list);
 
         // resource creation
@@ -213,7 +212,6 @@ namespace Spartan
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>> m_renderables;
         static Cb_Frame m_cb_frame_cpu;
         static Pcb_Pass m_cb_pass_cpu;
-        static Cb_Light m_cb_light_cpu;
         static std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
         static bool m_brdf_specular_lut_rendered;
         static std::vector<RHI_Vertex_PosCol> m_line_vertices;

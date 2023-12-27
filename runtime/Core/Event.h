@@ -77,8 +77,9 @@ namespace Spartan
         // Window                      
         WindowResized,                 // The window has been resized
         WindowFullScreenToggled,       // The window has been toggled to fullscreen
-        // Material
-        MaterialOnChanged
+        // Resources
+        MaterialOnChanged,
+        LightOnChanged
     };
 
     class Entity;

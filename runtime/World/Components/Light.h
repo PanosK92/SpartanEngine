@@ -130,6 +130,10 @@ namespace Spartan
         bool IsInViewFrustum(const Math::BoundingBox& bounding_box, const uint32_t index) const;
         bool IsInViewFrustum(Renderable* renderable, const uint32_t index) const;
 
+        // index
+        void SetIndex(const uint32_t index) { m_index = index; }
+        uint32_t GetIndex() const { return m_index; }
+
     private:
         void ComputeViewMatrix();
         void ComputeProjectionMatrix();
@@ -156,6 +160,7 @@ namespace Spartan
         float m_range              = 0.0f;
         float m_angle_rad          = Math::Helper::DEG_TO_RAD * 30.0f;
         bool m_initialized         = false;
+        uint32_t m_index           = 0;
 
         // dirty checks
         bool m_is_dirty                     = true;

@@ -60,8 +60,8 @@ namespace Spartan
         array<shared_ptr<RHI_Texture>, render_target_count> render_targets;
         array<shared_ptr<RHI_Shader>, shader_count>         shaders;
         array<shared_ptr<RHI_Sampler>, 8>                   samplers;
-        array<shared_ptr<RHI_ConstantBuffer>, 2>            constant_buffers;
-        array<shared_ptr<RHI_StructuredBuffer>, 2>          structured_buffers;
+        array<shared_ptr<RHI_ConstantBuffer>, 1>            constant_buffers;
+        array<shared_ptr<RHI_StructuredBuffer>, 3>          structured_buffers;
 
         // asset resources
         array<shared_ptr<RHI_Texture>, 10>                standard_textures;
@@ -72,9 +72,7 @@ namespace Spartan
 
     void Renderer::CreateConstantBuffers()
     {
-        // todo:
-        // the material index has to be removed from the frame buffer so that it only needs one update per frame
-        // the light buffer has be deleted and replaced with a structured buffer/array of all the lights
+        // todo: the material index has to be removed from the frame buffer so that it only needs one update per frame
 
         uint32_t times_used_in_frame = 4096;
         uint32_t element_count       = times_used_in_frame * resources_frame_lifetime;
@@ -83,9 +81,6 @@ namespace Spartan
 
         constant_buffer(Renderer_ConstantBuffer::Frame) = make_shared<RHI_ConstantBuffer>(string("frame"));
         constant_buffer(Renderer_ConstantBuffer::Frame)->Create<Cb_Frame>(element_count);
-
-        constant_buffer(Renderer_ConstantBuffer::Light) = make_shared<RHI_ConstantBuffer>(string("light"));
-        constant_buffer(Renderer_ConstantBuffer::Light)->Create<Cb_Light>(element_count);
     }
 
     void Renderer::CreateStructuredBuffers()
@@ -103,9 +98,12 @@ namespace Spartan
             structured_buffer(Renderer_StructuredBuffer::Spd)->Update(&counter_value);
         }
 
-        uint32_t stride        = static_cast<uint32_t>(sizeof(Sb_Materials)) * rhi_max_array_size;
+        uint32_t stride        = static_cast<uint32_t>(sizeof(Sb_Material)) * rhi_max_array_size;
         uint32_t element_count = 1; // only need one element since this buffer is not dynamic and it's offset resets at OnSyncPoint()
-        structured_buffer(Renderer_StructuredBuffer::Material) = make_shared<RHI_StructuredBuffer>(stride, element_count, "materials");
+        structured_buffer(Renderer_StructuredBuffer::Materials) = make_shared<RHI_StructuredBuffer>(stride, element_count, "materials");
+
+        stride = static_cast<uint32_t>(sizeof(Sb_Light)) * rhi_max_array_size;
+        structured_buffer(Renderer_StructuredBuffer::Lights) = make_shared<RHI_StructuredBuffer>(stride, element_count, "lights");
     }
 
     void Renderer::CreateDepthStencilStates()
@@ -678,12 +676,12 @@ namespace Spartan
         return shaders;
     }
 
-    array<shared_ptr<RHI_ConstantBuffer>, 2>& Renderer::GetConstantBuffers()
+    array<shared_ptr<RHI_ConstantBuffer>, 1>& Renderer::GetConstantBuffers()
     {
         return constant_buffers;
     }
 
-    array<shared_ptr<RHI_StructuredBuffer>, 2>& Renderer::GetStructuredBuffers()
+    array<shared_ptr<RHI_StructuredBuffer>, 3>& Renderer::GetStructuredBuffers()
     {
         return structured_buffers;
     }

@@ -100,45 +100,6 @@ namespace Spartan
 
         bool operator!=(const Cb_Frame& rhs) const { return !(*this == rhs); }
     };
-      
-    // medium frequency - updates per light
-    struct Cb_Light
-    {
-        Math::Matrix view_projection[6];
-
-        float intensity;
-        float range;
-        float angle;
-        float bias;
-
-        Color color;
-
-        Math::Vector3 position;
-        float normal_bias;
-
-        Math::Vector3 direction;
-        uint32_t options;
-
-        bool operator==(const Cb_Light& rhs)
-        {
-            return
-                view_projection[0] == rhs.view_projection[0] &&
-                view_projection[1] == rhs.view_projection[1] &&
-                view_projection[2] == rhs.view_projection[2] &&
-                view_projection[3] == rhs.view_projection[3] &&
-                view_projection[4] == rhs.view_projection[4] &&
-                view_projection[5] == rhs.view_projection[5] &&
-                intensity          == rhs.intensity          &&
-                range              == rhs.range              &&
-                angle              == rhs.angle              &&
-                bias               == rhs.bias               &&
-                normal_bias        == rhs.normal_bias        &&
-                color              == rhs.color              &&
-                position           == rhs.position           &&
-                direction          == rhs.direction          &&
-                options            == rhs.options;
-        }
-    };
 
     // 128 byte push constant buffer - updates per pass/draw
     struct Pcb_Pass
@@ -231,7 +192,7 @@ namespace Spartan
         bool operator!=(const Pcb_Pass& rhs) const { return !(*this == rhs); }
     };
 
-    struct Sb_Materials
+    struct Sb_Material
     {
         Math::Vector4 color = Math::Vector4::Zero;
 
@@ -258,5 +219,43 @@ namespace Spartan
 
         float subsurface_scattering;
         Math::Vector3 padding_2;
+    };
+
+    struct Sb_Light
+    {
+        Math::Matrix view_projection[6];
+
+        float intensity;
+        float range;
+        float angle;
+        float bias;
+
+        Color color;
+
+        Math::Vector3 position;
+        float normal_bias;
+
+        Math::Vector3 direction;
+        uint32_t options;
+
+        bool operator==(const Sb_Light& rhs)
+        {
+            return
+                view_projection[0] == rhs.view_projection[0] &&
+                view_projection[1] == rhs.view_projection[1] &&
+                view_projection[2] == rhs.view_projection[2] &&
+                view_projection[3] == rhs.view_projection[3] &&
+                view_projection[4] == rhs.view_projection[4] &&
+                view_projection[5] == rhs.view_projection[5] &&
+                intensity          == rhs.intensity &&
+                range              == rhs.range &&
+                angle              == rhs.angle &&
+                bias               == rhs.bias &&
+                normal_bias        == rhs.normal_bias &&
+                color              == rhs.color &&
+                position           == rhs.position &&
+                direction          == rhs.direction &&
+                options            == rhs.options;
+        }
     };
 }
