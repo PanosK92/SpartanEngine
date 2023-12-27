@@ -99,7 +99,7 @@ namespace Spartan
         }
 
         uint32_t stride        = static_cast<uint32_t>(sizeof(Sb_Material)) * rhi_max_array_size;
-        uint32_t element_count = 1; // only need one element since this buffer is not dynamic and it's offset resets at OnSyncPoint()
+        uint32_t element_count = 1; // non dynamic (multiple offsets)
         structured_buffer(Renderer_StructuredBuffer::Materials) = make_shared<RHI_StructuredBuffer>(stride, element_count, "materials");
 
         stride = static_cast<uint32_t>(sizeof(Sb_Light)) * rhi_max_array_size;

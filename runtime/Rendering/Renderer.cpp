@@ -716,17 +716,16 @@ namespace Spartan
 
     void Renderer::OnSyncPoint()
     {
-        // this function is called at a synchronization point in the rendering process
-        // at this sync point, the command pool has exhausted its command lists and 
-        // is about to reset them, this is an opportune moment for us to perform
-        // certain operations, knowing that no rendering commands are currently
-        // executing and no resources are being used by any command list
-
         m_resource_index++;
         bool is_sync_point = m_resource_index == resources_frame_lifetime;
 
         if (is_sync_point)
         {
+            // is_sync_point: the command pool has exhausted its command lists and 
+            // is about to reset them, this is an opportune moment for us to perform
+            // certain operations, knowing that no rendering commands are currently
+            // executing and no resources are being used by any command list
+
             m_resource_index = 0;
 
             // delete any rhi resources that have accumulated
@@ -749,23 +748,28 @@ namespace Spartan
                     structured_buffer->ResetOffset();
                 }
             }
+        }
 
-            // update and set bindless resources
+        // bindless
+        {
+            // these two map to two arrays on the gpu
+            // it should be ok to update them without syncing with the gpu
+            
+            // materials
+            if (materials::dirty)
             {
-                // materials
-                if (materials::dirty)
-                {
-                    materials::update(m_renderables);
-                    GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->Update(&materials::properties[0]);
-                    RHI_Device::UpdateBindlessResources(nullptr, &materials::textures);
-                }
+                materials::update(m_renderables);
+                GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->ResetOffset();
+                GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->Update(&materials::properties[0]);
+                RHI_Device::UpdateBindlessResources(nullptr, &materials::textures);
+            }
 
-                // lights
-                if (lights::dirty)
-                {
-                    lights::update(m_renderables[Renderer_Entity::Light], GetCamera().get());
-                    GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->Update(&lights::properties[0]);
-                }
+            // lights
+            if (lights::dirty)
+            {
+                lights::update(m_renderables[Renderer_Entity::Light], GetCamera().get());
+                GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->ResetOffset();
+                GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->Update(&lights::properties[0]);
             }
         }
     }
