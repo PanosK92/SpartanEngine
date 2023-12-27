@@ -91,12 +91,6 @@ namespace Spartan
 
         // dirty checks
         {
-            // Position, rotation
-            if (m_entity_ptr->HasPositionChangedThisFrame() || m_entity_ptr->HasRotationChangedThisFrame())
-            {
-                m_is_dirty = true;
-            }
-
             // camera (needed for directional light cascade computations)
             if (m_light_type == LightType::Directional)
             {
@@ -115,14 +109,16 @@ namespace Spartan
             return;
 
         // update matrices
-        if (m_shadows_enabled)
-        {
-            ComputeViewMatrix();
-            ComputeProjectionMatrix();
-        }
+        ComputeViewMatrix();
+        ComputeProjectionMatrix();
 
         m_is_dirty = false;
         SP_FIRE_EVENT(EventType::LightOnChanged);
+    }
+
+    void Light::OnTransformChanged()
+    {
+        m_is_dirty = true;
     }
 
     void Light::Serialize(FileStream* stream)

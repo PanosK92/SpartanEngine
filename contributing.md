@@ -2,8 +2,8 @@
 For self-driven elevation: The true essence of growth lies in pushing the envelope beyond what your employer or a typical 9-to-5 job expects of you.
 It's about venturing into territories where your curiosity leads, not just where job descriptions box you in.
 By taking this initiative, you unlock a higher level of knowledge and open doors to opportunities that otherwise remain hidden.
-This isn't just about meeting expectations;it's about exceeding them and, in the process, discovering your true potential.
-In Spartan, you have the liberty to explore, experiment, and excel. How far you want to leverage this opportunity for personal and professional growth is entirely up to you.
+This isn't just about meeting expectations, it's about exceeding them and, in the process, discovering your true potential.
+In Spartan, you have the liberty to explore, experiment, and excel. How far you want to leverage this opportunity for personal and professional growth is entirely up to you, I only provide the platform.
 Make the most of it, and see how far beyond the horizon you can go.
 
 # How to do it

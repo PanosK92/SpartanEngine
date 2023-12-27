@@ -142,11 +142,6 @@ namespace Spartan
         Math::Vector3 GetLeft() const;
         //================================
 
-        //= DIRTY CHECKS =================================================================
-        bool HasPositionChangedThisFrame() const { return m_position_changed_this_frame; }
-        bool HasRotationChangedThisFrame() const { return m_rotation_changed_this_frame; }
-        //================================================================================
-
         //= HIERARCHY ===================================================================================
         void SetParent(std::weak_ptr<Entity> new_parent);
         Entity* GetChildByIndex(uint32_t index);
@@ -191,8 +186,6 @@ namespace Spartan
         std::vector<Entity*> m_children; // the children of this entity
 
         // misc
-        bool m_position_changed_this_frame = false;
-        bool m_rotation_changed_this_frame = false;
         std::mutex m_mutex_children;
         std::mutex m_mutex_parent;
     };

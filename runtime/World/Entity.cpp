@@ -146,9 +146,6 @@ namespace Spartan
                 component->OnTick();
             }
         }
-
-        m_position_changed_this_frame = false;
-        m_rotation_changed_this_frame = false;
     }
 
     void Entity::Serialize(FileStream* stream)
@@ -372,6 +369,14 @@ namespace Spartan
         {
             child->UpdateTransform();
         }
+
+        for (shared_ptr<Component>& component : m_components)
+        {
+            if (component)
+            {
+                component->OnTransformChanged();
+            }
+        }
     }
 
     void Entity::SetPosition(const Vector3& position)
@@ -389,8 +394,6 @@ namespace Spartan
 
         m_position_local = position;
         UpdateTransform();
-
-        m_position_changed_this_frame = true;
     }
 
     void Entity::SetRotation(const Quaternion& rotation)
@@ -408,8 +411,6 @@ namespace Spartan
 
         m_rotation_local = rotation;
         UpdateTransform();
-
-        m_rotation_changed_this_frame = true;
     }
 
     void Entity::SetScale(const Vector3& scale)
