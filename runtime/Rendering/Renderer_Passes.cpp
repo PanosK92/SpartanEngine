@@ -988,31 +988,28 @@ namespace Spartan
                 cmd_list->SetTexture(Renderer_BindingsSrv::ssgi, GetRenderTarget(Renderer_RenderTexture::ssgi_filtered));
    
                 // set shadow maps
-                if (light->GetShadowsEnabled())
                 {
+                    RHI_Texture* tex_depth = light->GetShadowsEnabled()            ? light->GetDepthTexture() : nullptr;
                     RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : nullptr;
 
                     if (light->GetLightType() == LightType::Directional)
                     {
-                        cmd_list->SetTexture(Renderer_BindingsSrv::light_directional_depth, light->GetDepthTexture());
+                        cmd_list->SetTexture(Renderer_BindingsSrv::light_directional_depth, tex_depth);
                         cmd_list->SetTexture(Renderer_BindingsSrv::light_directional_color, tex_color);
                     }
                     else if (light->GetLightType() == LightType::Point)
                     {
-                        cmd_list->SetTexture(Renderer_BindingsSrv::light_point_depth, light->GetDepthTexture());
+                        cmd_list->SetTexture(Renderer_BindingsSrv::light_point_depth, tex_depth);
                         cmd_list->SetTexture(Renderer_BindingsSrv::light_point_color, tex_color);
                     }
                     else if (light->GetLightType() == LightType::Spot)
                     {
-                        cmd_list->SetTexture(Renderer_BindingsSrv::light_spot_depth, light->GetDepthTexture());
+                        cmd_list->SetTexture(Renderer_BindingsSrv::light_spot_depth, tex_depth);
                         cmd_list->SetTexture(Renderer_BindingsSrv::light_spot_color, tex_color);
                     }
 
                     // light index reads from the texture array index (sss)
-                    if (light->GetShadowsEnabled())
-                    {
-                        m_cb_pass_cpu.set_f3_value2(array_slice_index++, static_cast<float>(light->GetIndex()), 0.0f);
-                    }
+                    m_cb_pass_cpu.set_f3_value2(array_slice_index++, static_cast<float>(light->GetIndex()), 0.0f);
                     cmd_list->SetTexture(Renderer_BindingsSrv::sss, GetRenderTarget(Renderer_RenderTexture::sss));
                 }
                 

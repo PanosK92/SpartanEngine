@@ -81,7 +81,7 @@ namespace Spartan
 
     void Light::OnTick()
     {
-        // During engine startup, keep checking until the rhi device gets
+        // during engine startup, keep checking until the rhi device gets
         // created so we can create potentially required shadow maps
         if (!m_initialized)
         {
@@ -97,7 +97,7 @@ namespace Spartan
                 m_is_dirty = true;
             }
 
-            // Camera (needed for directional light cascade computations)
+            // camera (needed for directional light cascade computations)
             if (m_light_type == LightType::Directional)
             {
                 if (shared_ptr<Camera> camera = Renderer::GetCamera())
@@ -361,8 +361,6 @@ namespace Spartan
             m_matrix_view[4] = Matrix::CreateLookAtLH(position, position + Vector3::Forward,  Vector3::Up);
             m_matrix_view[5] = Matrix::CreateLookAtLH(position, position + Vector3::Backward, Vector3::Up);
         }
-
-        SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
     void Light::ComputeProjectionMatrix()
@@ -409,8 +407,6 @@ namespace Spartan
                 m_frustums[i]          = Frustum(m_matrix_view[i], projection, m_range);
             }
         }
-
-        SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
     const Matrix& Light::GetViewMatrix(uint32_t index) const
