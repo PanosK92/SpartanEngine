@@ -127,12 +127,13 @@ namespace Spartan
         RHI_Texture* GetColorTexture() const { return m_texture_color.get(); }
         void CreateShadowMap();
 
+        // frustum
         bool IsInViewFrustum(const Math::BoundingBox& bounding_box, const uint32_t index) const;
         bool IsInViewFrustum(Renderable* renderable, const uint32_t index) const;
 
         // index
         void SetIndex(const uint32_t index) { m_index = index; }
-        uint32_t GetIndex() const { return m_index; }
+        uint32_t GetIndex() const           { return m_index; }
 
     private:
         void UpdateMatrices();

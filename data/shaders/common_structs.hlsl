@@ -109,14 +109,14 @@ struct Surface
             occlusion = 1.0f;
             gi        = 0.0f;
 
-            if (is_ssgi_enabled() && use_ssgi)
+            if (is_ssgi_enabled() && use_ssgi && !pass_is_transparent())
             {
                 // Sample ssgi texture
                 float4 ssgi = tex_ssgi[position_screen];
                 occlusion   = ssgi.a;
                 gi          = ssgi.rgb;
 
-                // combine occlusion with material occlusion (baked texture).
+                // combine occlusion with material occlusion
                 occlusion = min(sample_material.a, occlusion);
             }
         }

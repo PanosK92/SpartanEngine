@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_COMMON_BUFFERS
 #define SPARTAN_COMMON_BUFFERS
 
-//= CONSTANT AND PUSH CONSTANT BUFFERS ===================================================
+//= CONSTANT AND PUSH CONSTANT BUFFERS ===============================
 struct FrameBufferData
 {
     matrix view;
@@ -61,13 +61,13 @@ struct FrameBufferData
 struct PassBufferData
 {
     matrix transform;
-    matrix values; // in the g-buffer this is used for the previous, transformation matrix
+    matrix values;
 };
 
 [[vk::push_constant]]
 PassBufferData buffer_pass;
 cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame;  };
-//========================================================================================
+//====================================================================
 
 //= EASY PROPERTY ACCESS =======================================================================================================================================                                   
 // frame properties                       

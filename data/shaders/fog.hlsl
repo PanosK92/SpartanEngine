@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,7 @@ static const float g_fog_radius         = 150.0f; // how far away from the camer
 static const float g_fog_fade_rate      = 0.05f;  // higher values make the fog fade in more abruptly
 static const float3 g_atmospheric_color = float3(0.4f, 0.4f, 0.8f);  // soft blue
 
-float3 get_fog_factor(const float3 pixel_position, const float3 camera_position)
+float3 got_fog_radial(const float3 pixel_position, const float3 camera_position)
 {
     float distance_from_camera = length(pixel_position - camera_position) - g_fog_radius;
     float distance_factor      = max(0.0f, distance_from_camera) / g_fog_radius; // normalize the distance
@@ -179,3 +179,5 @@ float3 VolumetricLighting(Surface surface, Light light)
     return light.color * light.intensity * light.attenuation;
 }
 */
+
+
