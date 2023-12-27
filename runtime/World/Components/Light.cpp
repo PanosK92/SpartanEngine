@@ -282,7 +282,7 @@ namespace Spartan
 
     void Light::SetRange(float range)
     {
-        m_range = Helper::Clamp(range, 0.0f, std::numeric_limits<float>::max());
+        m_range = Helper::Clamp(range, 0.0f, numeric_limits<float>::max());
         UpdateMatrices();
     }
 

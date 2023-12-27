@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 #include "brdf.hlsl"
 #include "shadow_mapping.hlsl"
-#include "fog.hlsl"
 //============================
 
 float3 subsurface_scattering(Surface surface, Light light)
@@ -150,7 +149,4 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     tex_uav[thread_id.xy]  += float4(saturate_11(light_diffuse * light.radiance + emissive + light_subsurface), 1.0f);
     tex_uav2[thread_id.xy] += float4(saturate_11(light_specular * light.radiance), 1.0f);
 }
-
-
-
 
