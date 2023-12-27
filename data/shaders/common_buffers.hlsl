@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_COMMON_BUFFERS
 #define SPARTAN_COMMON_BUFFERS
 
-//= STRUCT DEFINITIONS =========================================================================================================================================
+//= CONSTANT AND PUSH CONSTANT BUFFERS ===================================================
 struct FrameBufferData
 {
     matrix view;
@@ -58,47 +58,18 @@ struct FrameBufferData
     uint material_index;
 };
 
-struct LightBufferData
-{
-    matrix view_projection[6];
-    
-    float intensity;
-    float range;
-    float angle;
-    float bias;
-
-    float4 color;
-    
-    float3 position;
-    float normal_bias;
-    
-    float3 direction;
-    uint options;
-};
-
 struct PassBufferData
 {
     matrix transform;
     matrix values; // in the g-buffer this is used for the previous, transformation matrix
 };
-//==============================================================================================================================================================
 
-//= RESOURCE DECLARATIONS ======================================================================================================================================
 [[vk::push_constant]]
 PassBufferData buffer_pass;
 cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame;  };
-cbuffer BufferLight : register(b1) { LightBufferData buffer_light;  };
-//==============================================================================================================================================================
+//========================================================================================
 
-//= EASY PROPERTY ACCESS =======================================================================================================================================
-// lighting properties
-bool light_is_directional()               { return buffer_light.options & uint(1U << 0); }
-bool light_is_point()                     { return buffer_light.options & uint(1U << 1); }
-bool light_is_spot()                      { return buffer_light.options & uint(1U << 2); }
-bool light_has_shadows()                  { return buffer_light.options & uint(1U << 3); }
-bool light_has_shadows_transparent()      { return buffer_light.options & uint(1U << 4); }
-bool light_is_volumetric()                { return buffer_light.options & uint(1U << 5); }
-                                          
+//= EASY PROPERTY ACCESS =======================================================================================================================================                                   
 // frame properties                       
 bool is_taa_enabled()                     { return any(buffer_frame.taa_jitter_current); }
 bool is_ssr_enabled()                     { return buffer_frame.options & uint(1U << 0); }

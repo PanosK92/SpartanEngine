@@ -113,19 +113,17 @@ namespace Spartan
 
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
     {
-        // todo: see if something can be made bindless (noise textures can)
-   
         // constant buffers
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetConstantBuffer(Renderer_ConstantBuffer::Frame));
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::light, GetConstantBuffer(Renderer_ConstantBuffer::Light));
-
-        // textures
-        cmd_list->SetTexture(Renderer_BindingsSrv::noise_normal, GetStandardTexture(Renderer_StandardTexture::Noise_normal));
-        cmd_list->SetTexture(Renderer_BindingsSrv::noise_blue,   GetStandardTexture(Renderer_StandardTexture::Noise_blue));
 
         // structure buffers
-        cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_materials, GetStructuredBuffer(Renderer_StructuredBuffer::Material));
+        cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_materials, GetStructuredBuffer(Renderer_StructuredBuffer::Materials));
+        cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_lights,    GetStructuredBuffer(Renderer_StructuredBuffer::Lights));
         cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_spd,       GetStructuredBuffer(Renderer_StructuredBuffer::Spd));
+
+        // textures - todo: could at these two in the bindless array
+        cmd_list->SetTexture(Renderer_BindingsSrv::noise_normal, GetStandardTexture(Renderer_StandardTexture::Noise_normal));
+        cmd_list->SetTexture(Renderer_BindingsSrv::noise_blue,   GetStandardTexture(Renderer_StandardTexture::Noise_blue));
     }
 
     void Renderer::Pass_Frame(RHI_CommandList* cmd_list)
@@ -306,12 +304,6 @@ namespace Spartan
                     // start pso
                     cmd_list->SetPipelineState(pso);
 
-                    // set light (only needs to be done once for each light)
-                    if (array_index == 0)
-                    {
-                        UpdateConstantBufferLight(cmd_list, light);
-                    }
-
                     // go through all of the entities
                     for (shared_ptr<Entity>& entity : entities)
                     {
@@ -337,7 +329,7 @@ namespace Spartan
 
                         // set pass constants
                         {
-                            m_cb_pass_cpu.set_f3_value2(static_cast<float>(array_index), 0.0f, 0.0f);
+                            m_cb_pass_cpu.set_f3_value2(static_cast<float>(array_index), static_cast<float>(light->GetIndex()), 0.0f);
                             m_cb_pass_cpu.transform = entity->GetMatrix();
 
                             if (Material* material = renderable->GetMaterial())
@@ -459,10 +451,8 @@ namespace Spartan
 
                                 // set pass constants with cascade transform
                                 m_cb_pass_cpu.transform = entity->GetMatrix() * view_projection;
+                                m_cb_pass_cpu.set_f3_value2(0.0f, static_cast<float>(light->GetIndex()), 0.0f);
                                 PushPassConstants(cmd_list);
-
-                                // update light buffer
-                                UpdateConstantBufferLight(cmd_list, light);
 
                                 cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
                             }
@@ -902,16 +892,19 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        // acquire directional light
+        // get directional light
         shared_ptr<Light> light_directional = nullptr;
-        const vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Light];
-        for (shared_ptr<Entity> entity : entities)
         {
-            if (shared_ptr<Light> light = entity->GetComponent<Light>())
+            const vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Light];
+            for (size_t i = 0; i < entities.size(); ++i)
             {
-                if (light->GetLightType() == LightType::Directional)
+                if (shared_ptr<Light> light = entities[i]->GetComponent<Light>())
                 {
-                    light_directional = light;
+                    if (light->GetLightType() == LightType::Directional)
+                    {
+                        light_directional = light;
+                        break;
+                    }
                 }
             }
         }
@@ -933,13 +926,11 @@ namespace Spartan
 
             // set pass constants
             m_cb_pass_cpu.set_resolution_out(tex_out);
+            m_cb_pass_cpu.set_f3_value2(0.0f, static_cast<float>(light_directional->GetIndex()), 0.0f);
             PushPassConstants(cmd_list);
 
             // set textures
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
-
-            // set directional light
-            UpdateConstantBufferLight(cmd_list, light_directional);
 
             // render
             cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
@@ -984,9 +975,9 @@ namespace Spartan
 
         // iterate through all the lights
         static float array_slice_index = 0.0f;
-        for (shared_ptr<Entity> entity : entities)
+        for (uint32_t light_index = 0; light_index < static_cast<uint32_t>(entities.size()); light_index++)
         {
-            if (shared_ptr<Light> light = entity->GetComponent<Light>())
+            if (shared_ptr<Light> light = entities[light_index]->GetComponent<Light>())
             {
                 // note: do lighting even at zero intensity as there can be emissive materials
 
@@ -1020,13 +1011,10 @@ namespace Spartan
                     // light index reads from the texture array index (sss)
                     if (light->GetShadowsEnabled())
                     {
-                        m_cb_pass_cpu.set_f3_value2(array_slice_index++, 0.0f, 0.0f);
+                        m_cb_pass_cpu.set_f3_value2(array_slice_index++, static_cast<float>(light->GetIndex()), 0.0f);
                     }
                     cmd_list->SetTexture(Renderer_BindingsSrv::sss, GetRenderTarget(Renderer_RenderTexture::sss));
                 }
-                
-                // update light buffer
-                UpdateConstantBufferLight(cmd_list, light);
                 
                 // push pass constants
                 m_cb_pass_cpu.set_resolution_out(tex_diffuse);
@@ -1064,19 +1052,6 @@ namespace Spartan
         m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
         m_cb_pass_cpu.set_f3_value(static_cast<float>(GetRenderTarget(Renderer_RenderTexture::frame_render)->GetMipCount()), GetOption<float>(Renderer_Option::Fog), 0.0f);
         PushPassConstants(cmd_list);
-
-        // update light buffer with the directional light
-        {
-            const vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Light];
-            for (shared_ptr<Entity> entity : entities)
-            {
-                if (entity->GetComponent<Light>()->GetLightType() == LightType::Directional)
-                {
-                    UpdateConstantBufferLight(cmd_list, entity->GetComponent<Light>());
-                    break;
-                }
-            }
-        }
 
         // set textures
         SetGbufferTextures(cmd_list);
@@ -1141,21 +1116,8 @@ namespace Spartan
         // set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_out);
         m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
-        m_cb_pass_cpu.set_f4_value(!probes.empty() ? 1.0f : 0.0f, static_cast<float>(GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount()), 0.0f, 0.0f); // reflection probe available
+        m_cb_pass_cpu.set_f4_value(!probes.empty() ? 1.0f : 0.0f, static_cast<float>(GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount()), 0.0f, 0.0f);
         PushPassConstants(cmd_list);
-
-        // update light buffer with the directional light
-        {
-            const vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Light];
-            for (shared_ptr<Entity> entity : entities)
-            {
-                if (entity->GetComponent<Light>()->GetLightType() == LightType::Directional)
-                {
-                    UpdateConstantBufferLight(cmd_list, entity->GetComponent<Light>());
-                    break;
-                }
-            }
-        }
 
         // render
         cmd_list->Draw(3, 0);

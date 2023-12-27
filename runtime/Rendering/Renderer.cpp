@@ -49,10 +49,9 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    // constant buffers
+    // constant and push constant buffers
     Cb_Frame Renderer::m_cb_frame_cpu;
     Pcb_Pass Renderer::m_cb_pass_cpu;
-    Cb_Light Renderer::m_cb_light_cpu;
 
     // line rendering
     shared_ptr<RHI_VertexBuffer> Renderer::m_vertex_buffer_lines;
@@ -126,17 +125,17 @@ namespace Spartan
             });
         }
 
-        namespace bindless_materials
+        namespace materials
         {
-            array<RHI_Texture*, rhi_max_array_size> textures;   // mapped to the GPU as a bindless texture array
-            array<Sb_Materials, rhi_max_array_size> properties; // mapped to the GPU as a structured properties buffer
+            array<RHI_Texture*, rhi_max_array_size> textures;  // mapped to the GPU as a bindless texture array
+            array<Sb_Material, rhi_max_array_size> properties; // mapped to the GPU as a structured properties buffer
             unordered_set<uint64_t> unique_material_ids;
             uint32_t index = 0;
             bool dirty     = true;
 
             void clear()
             {
-                properties.fill(Sb_Materials{});
+                properties.fill(Sb_Material{});
                 textures.fill(nullptr);
                 unique_material_ids.clear();
                 index = 0;
@@ -227,6 +226,61 @@ namespace Spartan
                 update(renderables[Renderer_Entity::GeometryInstanced]);
                 update(renderables[Renderer_Entity::GeometryTransparent]);
                 update(renderables[Renderer_Entity::GeometryTransparentInstanced]);
+
+                dirty = false;
+            }
+        }
+
+        namespace lights
+        {
+            array<Light*, rhi_max_array_size> lights;       // mapped to the GPU as a bindless texture array
+            array<Sb_Light, rhi_max_array_size> properties; // mapped to the GPU as a structured properties buffer
+            uint32_t index = 0;
+            bool dirty     = true;
+
+            void clear()
+            {
+                properties.fill(Sb_Light{});
+                lights.fill(nullptr);
+                index = 0;
+            }
+
+            void update(vector<shared_ptr<Entity>>& entities, Camera* camera)
+            {
+                clear();
+
+                for (shared_ptr<Entity>& entity : entities)
+                {
+                    Light* light = entity->GetComponent<Light>().get();
+
+                    if (RHI_Texture* texture = light->GetDepthTexture())
+                    {
+                        for (uint32_t i = 0; i < texture->GetArrayLength(); i++)
+                        {
+                            properties[index].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
+                        }
+                    }
+
+                    properties[index].intensity    = light->GetIntensityWatt(camera);
+                    properties[index].range        = light->GetRange();
+                    properties[index].angle        = light->GetAngle();
+                    properties[index].bias         = light->GetBias();
+                    properties[index].color        = light->GetColor();
+                    properties[index].normal_bias  = light->GetNormalBias();
+                    properties[index].position     = light->GetEntity()->GetPosition();
+                    properties[index].direction    = light->GetEntity()->GetForward();
+                    properties[index].options      = 0;
+                    properties[index].options     |= light->GetLightType() == LightType::Directional ? (1 << 0) : 0;
+                    properties[index].options     |= light->GetLightType() == LightType::Point       ? (1 << 1) : 0;
+                    properties[index].options     |= light->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
+                    properties[index].options     |= light->GetShadowsEnabled()                      ? (1 << 3) : 0;
+                    properties[index].options     |= light->GetShadowsTransparentEnabled()           ? (1 << 4) : 0;
+                    properties[index].options     |= light->GetVolumetricEnabled()                   ? (1 << 5) : 0;
+
+                    light->SetIndex(index);
+
+                    index++;
+                }
 
                 dirty = false;
             }
@@ -340,7 +394,8 @@ namespace Spartan
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,           SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,              SP_EVENT_HANDLER_STATIC(OnClear));
             SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
-            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_EXPRESSION_STATIC( bindless_materials::dirty = true; ));
+            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_EXPRESSION_STATIC( materials::dirty = true; ));
+            SP_SUBSCRIBE_TO_EVENT(EventType::LightOnChanged,          SP_EVENT_HANDLER_EXPRESSION_STATIC( lights::dirty = true; ));
 
             // fire
             SP_FIRE_EVENT(EventType::RendererOnInitialized);
@@ -355,7 +410,7 @@ namespace Spartan
         // releases their rhi resources before device destruction
         {
             DestroyResources();
-            bindless_materials::clear();
+            materials::clear();
 
             m_entities_to_add.clear();
             m_renderables.clear();
@@ -598,36 +653,6 @@ namespace Spartan
         }
     }
 
-    void Renderer::UpdateConstantBufferLight(RHI_CommandList* cmd_list, shared_ptr<Light> light)
-    {
-        if (RHI_Texture* texture = light->GetDepthTexture())
-        {
-            for (uint32_t i = 0; i < texture->GetArrayLength(); i++)
-            {
-                m_cb_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
-            }
-        }
-
-        m_cb_light_cpu.intensity    = light->GetIntensityWatt(m_camera.get());
-        m_cb_light_cpu.range        = light->GetRange();
-        m_cb_light_cpu.angle        = light->GetAngle();
-        m_cb_light_cpu.bias         = light->GetBias();
-        m_cb_light_cpu.color        = light->GetColor();
-        m_cb_light_cpu.normal_bias  = light->GetNormalBias();
-        m_cb_light_cpu.position     = light->GetEntity()->GetPosition();
-        m_cb_light_cpu.direction    = light->GetEntity()->GetForward();
-        m_cb_light_cpu.options      = 0;
-        m_cb_light_cpu.options     |= light->GetLightType() == LightType::Directional ? (1 << 0) : 0;
-        m_cb_light_cpu.options     |= light->GetLightType() == LightType::Point       ? (1 << 1) : 0;
-        m_cb_light_cpu.options     |= light->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
-        m_cb_light_cpu.options     |= light->GetShadowsEnabled()                      ? (1 << 3) : 0;
-        m_cb_light_cpu.options     |= light->GetShadowsTransparentEnabled()           ? (1 << 4) : 0;
-        m_cb_light_cpu.options     |= light->GetVolumetricEnabled()                   ? (1 << 5) : 0;
-
-        GetConstantBuffer(Renderer_ConstantBuffer::Light)->Update(&m_cb_light_cpu);
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::light, GetConstantBuffer(Renderer_ConstantBuffer::Light));
-    }
-
     void Renderer::PushPassConstants(RHI_CommandList* cmd_list)
     {
         cmd_list->PushConstants(0, sizeof(Pcb_Pass), &m_cb_pass_cpu);
@@ -726,14 +751,21 @@ namespace Spartan
             }
 
             // update and set bindless resources
-            if (bindless_materials::dirty)
             {
-                // update
-                bindless_materials::update(m_renderables);
+                // materials
+                if (materials::dirty)
+                {
+                    materials::update(m_renderables);
+                    GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->Update(&materials::properties[0]);
+                    RHI_Device::UpdateBindlessResources(nullptr, &materials::textures);
+                }
 
-                // set
-                GetStructuredBuffer(Renderer_StructuredBuffer::Material)->Update(&bindless_materials::properties[0]);
-                RHI_Device::UpdateBindlessResources(nullptr, &bindless_materials::textures);
+                // lights
+                if (lights::dirty)
+                {
+                    lights::update(m_renderables[Renderer_Entity::Light], GetCamera().get());
+                    GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->Update(&lights::properties[0]);
+                }
             }
         }
     }
@@ -802,7 +834,8 @@ namespace Spartan
 
             m_entities_to_add.clear();
 
-            bindless_materials::dirty = true;
+            materials::dirty = true;
+            lights::dirty    = true;
         }
 
         // generate mips

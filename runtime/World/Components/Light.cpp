@@ -89,7 +89,7 @@ namespace Spartan
             m_initialized = true;
         }
 
-        // Dirty checks
+        // dirty checks
         {
             // Position, rotation
             if (m_entity_ptr->HasPositionChangedThisFrame() || m_entity_ptr->HasRotationChangedThisFrame())
@@ -122,6 +122,7 @@ namespace Spartan
         }
 
         m_is_dirty = false;
+        SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
     void Light::Serialize(FileStream* stream)
@@ -170,6 +171,8 @@ namespace Spartan
     {
         m_temperature_kelvin = temperature_kelvin;
         m_color_rgb          = Color(temperature_kelvin);
+
+        SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
     void Light::SetColor(const Color& rgb)
@@ -198,6 +201,8 @@ namespace Spartan
             m_temperature_kelvin = 2700.0f;
         else if (rgb == Color::light_photo_flash)
             m_temperature_kelvin = 5500.0f;
+
+        SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
     void Light::SetIntensity(const LightIntensity intensity)
@@ -252,12 +257,16 @@ namespace Spartan
         {
             m_intensity_lumens = 0.0f;
         }
+
+        SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
     void Light::SetIntensityLumens(const float lumens)
     {
         m_intensity_lumens = lumens;
         m_intensity        = LightIntensity::custom;
+
+        SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
     float Light::GetIntensityWatt(Camera* camera) const
@@ -352,6 +361,8 @@ namespace Spartan
             m_matrix_view[4] = Matrix::CreateLookAtLH(position, position + Vector3::Forward,  Vector3::Up);
             m_matrix_view[5] = Matrix::CreateLookAtLH(position, position + Vector3::Backward, Vector3::Up);
         }
+
+        SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
     void Light::ComputeProjectionMatrix()
@@ -398,6 +409,8 @@ namespace Spartan
                 m_frustums[i]          = Frustum(m_matrix_view[i], projection, m_range);
             }
         }
+
+        SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
     const Matrix& Light::GetViewMatrix(uint32_t index) const

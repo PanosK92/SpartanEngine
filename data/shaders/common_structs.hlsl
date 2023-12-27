@@ -76,7 +76,7 @@ struct Surface
 
         // access the material structured buffer to get additional properties
         // the normal's alpha channel holds the material index
-        Materials material = buffer_materials[sample_normal.a];
+        Material material = buffer_materials[sample_normal.a];
         
         // misc
         uv     = (position_screen + 0.5f) / pass_get_resolution_out();
@@ -214,14 +214,16 @@ struct Light
 
     void Build(float3 surface_position, float3 surface_normal, float occlusion)
     {
-        color             = buffer_light.color.rgb;
-        position          = buffer_light.position.xyz;
-        intensity         = buffer_light.intensity;
-        far               = buffer_light.range;
-        angle             = buffer_light.angle;
-        bias              = buffer_light.bias;
-        forward           = buffer_light.direction.xyz;
-        normal_bias       = buffer_light.normal_bias;
+        Light_ light = GetLight();
+        
+        color             = light.color.rgb;
+        position          = light.position.xyz;
+        intensity         = light.intensity;
+        far               = light.range;
+        angle             = light.angle;
+        bias              = light.bias;
+        forward           = light.direction.xyz;
+        normal_bias       = light.normal_bias;
         near              = 0.1f;
         distance_to_pixel = length(surface_position - position);
         to_pixel          = compute_direction(position, surface_position);

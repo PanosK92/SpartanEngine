@@ -78,7 +78,7 @@ Texture2D tex_materials[] : register(t29, space1);
 #define GET_TEXTURE(index_texture) tex_materials[buffer_frame.material_index + index_texture]
 
 // property buffer containg all materials present in the world
-struct Materials
+struct Material
 {
     float4 color;
 
@@ -106,10 +106,10 @@ struct Materials
     float subsurface_scattering;  
     float3 padding_2;
 };
-RWStructuredBuffer<Materials> buffer_materials : register(u0);
+RWStructuredBuffer<Material> buffer_materials : register(u0);
 
-// easy access to certain material properties (and the material itself)
-Materials GetMaterial()                       { return buffer_materials[buffer_frame.material_index]; }
+// easy access properties
+Material GetMaterial()                        { return buffer_materials[buffer_frame.material_index]; }
 bool has_single_texture_roughness_metalness() { return GetMaterial().properties & uint(1U << 0);      }
 bool has_texture_height()                     { return GetMaterial().properties & uint(1U << 1);      }
 bool has_texture_normal()                     { return GetMaterial().properties & uint(1U << 2);      }
@@ -124,12 +124,42 @@ bool material_vertex_animate_wind()           { return GetMaterial().properties 
 bool material_vertex_animate_water()          { return GetMaterial().properties & uint(1U << 11);     }
 //=====================================================================================================
 
+//= LIGHTS =================================================================================
+struct Light_
+{
+    matrix view_projection[6];
+    
+    float intensity;
+    float range;
+    float angle;
+    float bias;
+
+    float4 color;
+    
+    float3 position;
+    float normal_bias;
+    
+    float3 direction;
+    uint options;
+};
+RWStructuredBuffer<Light_> buffer_lights : register(u1);
+
+// easy access properties
+Light_ GetLight()                    { return buffer_lights[(uint)pass_get_f3_value2().y]; }
+bool light_is_directional()          { return GetLight().options & uint(1U << 0); }
+bool light_is_point()                { return GetLight().options & uint(1U << 1); }
+bool light_is_spot()                 { return GetLight().options & uint(1U << 2); }
+bool light_has_shadows()             { return GetLight().options & uint(1U << 3); }
+bool light_has_shadows_transparent() { return GetLight().options & uint(1U << 4); }
+bool light_is_volumetric()           { return GetLight().options & uint(1U << 5); }
+//==========================================================================================
+
 // various storage textures/buffers
-RWTexture2D<float4> tex_uav                                : register(u1);
-RWTexture2D<float4> tex_uav2                               : register(u2);
-RWTexture2D<float4> tex_uav3                               : register(u3);
-RWTexture2DArray<float4> tex_uav_sss                       : register(u4);
-globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u5); // used by FidelityFX SPD
-globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u6); // used by FidelityFX SPD
+RWTexture2D<float4> tex_uav                                : register(u2);
+RWTexture2D<float4> tex_uav2                               : register(u3);
+RWTexture2D<float4> tex_uav3                               : register(u4);
+RWTexture2DArray<float4> tex_uav_sss                       : register(u5);
+globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u6); // used by FidelityFX SPD
+globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u7); // used by FidelityFX SPD
 
 #endif // SPARTAN_COMMON_TEXTURES
