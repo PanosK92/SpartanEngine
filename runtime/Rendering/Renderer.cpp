@@ -226,8 +226,6 @@ namespace Spartan
                 update(renderables[Renderer_Entity::GeometryInstanced]);
                 update(renderables[Renderer_Entity::GeometryTransparent]);
                 update(renderables[Renderer_Entity::GeometryTransparentInstanced]);
-
-                dirty = false;
             }
         }
 
@@ -281,8 +279,6 @@ namespace Spartan
 
                     index++;
                 }
-
-                dirty = false;
             }
         }
     }
@@ -762,6 +758,7 @@ namespace Spartan
                 GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->ResetOffset();
                 GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->Update(&materials::properties[0]);
                 RHI_Device::UpdateBindlessResources(nullptr, &materials::textures);
+                materials::dirty = false;
             }
 
             // lights
@@ -770,6 +767,7 @@ namespace Spartan
                 lights::update(m_renderables[Renderer_Entity::Light], GetCamera().get());
                 GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->ResetOffset();
                 GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->Update(&lights::properties[0]);
+                lights::dirty = false;
             }
         }
     }

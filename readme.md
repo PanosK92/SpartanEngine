@@ -42,7 +42,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 #### Rendering
 - 128-byte push constant buffer for lightning fast CPU to GPU data transfer.
 - On the fly GPU-based mip generation - with only one dispatch.
-- Bindless design.
+- Fully bindless design (materials, lights, even the samplers).
 - Unified deferred rendering with transparency (BSDF with same render path).
 - Vulkan and DirectX 12 (WIP) backends with universal HLSL shaders.
 - Screen space shadows from Bend Studio's Days Gone.
