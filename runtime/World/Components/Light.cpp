@@ -24,12 +24,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Light.h"
 #include "Camera.h"
 #include "../World.h"
+#include "../Entity.h"
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../RHI/RHI_TextureCube.h"
 #include "../../RHI/RHI_Texture2DArray.h"
-#include "../Entity.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -72,53 +72,26 @@ namespace Spartan
             SetIntensity(LightIntensity::bulb_flashlight);
             m_range = 10.0f;
         }
-    }
 
-    void Light::OnInitialize()
-    {
-        Component::OnInitialize();
+        m_matrix_view.fill(Matrix::Identity);
+        m_matrix_projection.fill(Matrix::Identity);
+
+        CreateShadowMap();
+
+        SP_SUBSCRIBE_TO_EVENT(EventType::CameraOnChanged, SP_EVENT_HANDLER(OnTransformChanged));
     }
 
     void Light::OnTick()
     {
-        // during engine startup, keep checking until the rhi device gets
-        // created so we can create potentially required shadow maps
-        if (!m_initialized)
+        if (m_matrix_view[0] == Matrix::Identity)
         {
-            CreateShadowMap();
-            m_initialized = true;
+            UpdateMatrices();
         }
-
-        // dirty checks
-        {
-            // camera (needed for directional light cascade computations)
-            if (m_light_type == LightType::Directional)
-            {
-                if (shared_ptr<Camera> camera = Renderer::GetCamera())
-                {
-                    if (m_previous_camera_view != camera->GetViewMatrix())
-                    {
-                        m_previous_camera_view = camera->GetViewMatrix();
-                        m_is_dirty = true;
-                    }
-                }
-            }
-        }
-
-        if (!m_is_dirty)
-            return;
-
-        // update matrices
-        ComputeViewMatrix();
-        ComputeProjectionMatrix();
-
-        m_is_dirty = false;
-        SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
     void Light::OnTransformChanged()
     {
-        m_is_dirty = true;
+        UpdateMatrices();
     }
 
     void Light::Serialize(FileStream* stream)
@@ -153,13 +126,12 @@ namespace Spartan
             return;
 
         m_light_type = type;
-        m_is_dirty   = true;
-
         if (m_shadows_enabled)
         {
             CreateShadowMap();
         }
 
+        UpdateMatrices();
         World::Resolve();
     }
 
@@ -296,8 +268,6 @@ namespace Spartan
             return;
 
         m_shadows_enabled = cast_shadows;
-        m_is_dirty        = true;
-
         CreateShadowMap();
     }
 
@@ -307,24 +277,29 @@ namespace Spartan
             return;
 
         m_shadows_transparent_enabled = cast_transparent_shadows;
-        m_is_dirty                    = true;
-
         CreateShadowMap();
     }
 
     void Light::SetRange(float range)
     {
-        m_range    = Helper::Clamp(range, 0.0f, std::numeric_limits<float>::max());
-        m_is_dirty = true;
+        m_range = Helper::Clamp(range, 0.0f, std::numeric_limits<float>::max());
+        UpdateMatrices();
     }
 
     void Light::SetAngle(float angle)
     {
         m_angle_rad = Helper::Clamp(angle, 0.0f, Math::Helper::PI_2);
-        m_is_dirty  = true;
+        UpdateMatrices();
     }
 
-    void Light::ComputeViewMatrix()
+	void Light::UpdateMatrices()
+	{
+        ComputeViewMatrix();
+        ComputeProjectionMatrix();
+        SP_FIRE_EVENT(EventType::LightOnChanged);
+	}
+
+	void Light::ComputeViewMatrix()
     {
         const Vector3 position = GetEntity()->GetPosition();
         const Vector3 forward  = GetEntity()->GetForward();
@@ -437,8 +412,8 @@ namespace Spartan
     {
         // early exit if there is no change in shadow map resolution
         const uint32_t resolution     = Renderer::GetOption<uint32_t>(Renderer_Option::ShadowResolution);
-        const bool resolution_changed = m_texture_depth ? (resolution != m_texture_depth->GetWidth()) : false;
-        if ((!m_is_dirty && !resolution_changed))
+        const bool resolution_changed = m_texture_depth ? (resolution != m_texture_depth->GetWidth()) : true;
+        if (!resolution_changed)
             return;
 
         // early exit if this light casts no shadows
