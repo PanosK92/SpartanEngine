@@ -1,6 +1,10 @@
 # Why do it
-To elevate yourself: Don't settle for the 9-to-5 grind. Step outside your comfort zone, expand your knowledge, and engage with the carefully curated Spartan community.
-Remember, neither this project nor you will be around forever. So seize the opportunity, life can be exciting when you make it so.
+For self-driven elevation: The true essence of growth lies in pushing the envelope beyond what your employer or a typical 9-to-5 job expects of you.
+It's about venturing into territories where your curiosity leads, not just where job descriptions box you in.
+By taking this initiative, you unlock a higher level of knowledge and open doors to opportunities that otherwise remain hidden.
+This isn't just about meeting expectations;it's about exceeding them and, in the process, discovering your true potential.
+In Spartan, you have the liberty to explore, experiment, and excel. How far you want to leverage this opportunity for personal and professional growth is entirely up to you.
+Make the most of it, and see how far beyond the horizon you can go.
 
 # How to do it
 - Starting small: If it's your first time contributing, pick a small task and go through the process of cloning, working, and submitting. This will give you an idea of the workflow, the scale of the project, and maybe even how to have fun while doing it.

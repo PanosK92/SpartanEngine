@@ -39,9 +39,9 @@ struct vertex_processing
 
         static float3 apply_wind(uint instance_id, float3 position_vertex, float3 animation_pivot, float time)
         {
-            static const float3 base_wind_direction     = float3(1, 0, 0);
-            static const float  wind_vertex_sway_extent = 0.4f; // oscillation amplitude
-            static const float  wind_vertex_sway_speed  = 4.0f; // oscillation frequency
+            const float3 base_wind_direction     = float3(1, 0, 0);
+            const float  wind_vertex_sway_extent = 0.4f; // oscillation amplitude
+            const float  wind_vertex_sway_speed  = 4.0f; // oscillation frequency
         
             // base oscillation, a combination of two sine waves with a phase difference
             float phase_offset = float(instance_id) * PI_HALF;
