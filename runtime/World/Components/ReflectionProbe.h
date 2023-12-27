@@ -37,6 +37,7 @@ namespace Spartan
 
         //= COMPONENT ================================
         void OnTick() override;
+        void OnTransformChanged() override;
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
         //============================================

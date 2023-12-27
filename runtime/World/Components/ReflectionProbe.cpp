@@ -84,29 +84,26 @@ namespace Spartan
             return;
 
         ComputeProjectionMatrix();
+    }
 
-        if (m_entity_ptr->HasPositionChangedThisFrame())
-        { 
-            // Compute view for each side of the cube map
-            const Vector3 position = m_entity_ptr->GetPosition();
-            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Right,    Vector3::Up);       // x+
-            m_matrix_view[1] = Matrix::CreateLookAtLH(position, position + Vector3::Left,     Vector3::Up);       // x-
-            m_matrix_view[2] = Matrix::CreateLookAtLH(position, position + Vector3::Up,       Vector3::Backward); // y+
-            m_matrix_view[3] = Matrix::CreateLookAtLH(position, position + Vector3::Down,     Vector3::Forward);  // y-
-            m_matrix_view[4] = Matrix::CreateLookAtLH(position, position + Vector3::Forward,  Vector3::Up);       // z+
-            m_matrix_view[5] = Matrix::CreateLookAtLH(position, position + Vector3::Backward, Vector3::Up);       // z-
+    void ReflectionProbe::OnTransformChanged()
+    {
+        // compute view for each side of the cube map
+        const Vector3 position = m_entity_ptr->GetPosition();
+        m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Right, Vector3::Up);     // x+
+        m_matrix_view[1] = Matrix::CreateLookAtLH(position, position + Vector3::Left, Vector3::Up);      // x-
+        m_matrix_view[2] = Matrix::CreateLookAtLH(position, position + Vector3::Up, Vector3::Backward);  // y+
+        m_matrix_view[3] = Matrix::CreateLookAtLH(position, position + Vector3::Down, Vector3::Forward); // y-
+        m_matrix_view[4] = Matrix::CreateLookAtLH(position, position + Vector3::Forward, Vector3::Up);   // z+
+        m_matrix_view[5] = Matrix::CreateLookAtLH(position, position + Vector3::Backward, Vector3::Up);  // z-
 
-            m_aabb = BoundingBox(position - m_extents, position + m_extents);
-        }
+        m_aabb = BoundingBox(position - m_extents, position + m_extents);
 
-        if (m_entity_ptr->HasPositionChangedThisFrame())
+        // compute frustum
+        for (uint32_t i = 0; i < m_texture_color->GetArrayLength(); i++)
         {
-            // Compute frustum
-            for (uint32_t i = 0; i < m_texture_color->GetArrayLength(); i++)
-            {
-                const float far_plane = m_plane_near; // reverse-z
-                m_frustum[i] = Frustum(m_matrix_view[i], m_matrix_projection, far_plane);
-            }
+            const float far_plane = m_plane_near; // reverse-z
+            m_frustum[i] = Frustum(m_matrix_view[i], m_matrix_projection, far_plane);
         }
     }
 

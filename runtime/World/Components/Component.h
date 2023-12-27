@@ -82,6 +82,8 @@ namespace Spartan
         // Runs when the entity is being loaded
         virtual void Deserialize(FileStream* stream) {}
 
+        virtual void OnTransformChanged() {}
+
         //= TYPE ===================================
         template <typename T>
         static constexpr ComponentType TypeToEnum();
