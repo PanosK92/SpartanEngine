@@ -277,11 +277,6 @@ namespace Spartan
         Anisotropic_wrap
     };
 
-    enum class Renderer_ConstantBuffer
-    {
-        Frame
-    };
-
     enum class Renderer_StructuredBuffer
     {
         Spd,

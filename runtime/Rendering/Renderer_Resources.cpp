@@ -60,7 +60,7 @@ namespace Spartan
         array<shared_ptr<RHI_Texture>, render_target_count> render_targets;
         array<shared_ptr<RHI_Shader>, shader_count>         shaders;
         array<shared_ptr<RHI_Sampler>, 8>                   samplers;
-        array<shared_ptr<RHI_ConstantBuffer>, 1>            constant_buffers;
+        shared_ptr<RHI_ConstantBuffer>                      constant_buffer_frame;
         array<shared_ptr<RHI_StructuredBuffer>, 3>          structured_buffers;
 
         // asset resources
@@ -77,10 +77,8 @@ namespace Spartan
         uint32_t times_used_in_frame = 4096;
         uint32_t element_count       = times_used_in_frame * resources_frame_lifetime;
 
-        #define constant_buffer(x) constant_buffers[static_cast<uint8_t>(x)]
-
-        constant_buffer(Renderer_ConstantBuffer::Frame) = make_shared<RHI_ConstantBuffer>(string("frame"));
-        constant_buffer(Renderer_ConstantBuffer::Frame)->Create<Cb_Frame>(element_count);
+        constant_buffer_frame = make_shared<RHI_ConstantBuffer>(string("frame"));
+        constant_buffer_frame->Create<Cb_Frame>(element_count);
     }
 
     void Renderer::CreateStructuredBuffers()
@@ -660,10 +658,10 @@ namespace Spartan
         samplers.fill(nullptr);
         standard_textures.fill(nullptr);
         standard_meshes.fill(nullptr);
-        constant_buffers.fill(nullptr);
         structured_buffers.fill(nullptr);
         standard_font.fill(nullptr);
         standard_material = nullptr;
+        constant_buffer_frame = nullptr;
     }
 
     array<shared_ptr<RHI_Texture>, render_target_count>& Renderer::GetRenderTargets()
@@ -674,11 +672,6 @@ namespace Spartan
     array<shared_ptr<RHI_Shader>, shader_count>& Renderer::GetShaders()
     {
         return shaders;
-    }
-
-    array<shared_ptr<RHI_ConstantBuffer>, 1>& Renderer::GetConstantBuffers()
-    {
-        return constant_buffers;
     }
 
     array<shared_ptr<RHI_StructuredBuffer>, 3>& Renderer::GetStructuredBuffers()
@@ -716,9 +709,9 @@ namespace Spartan
         return samplers[static_cast<uint8_t>(type)];
     }
 
-    shared_ptr<RHI_ConstantBuffer> Renderer::GetConstantBuffer(const Renderer_ConstantBuffer type)
+    shared_ptr<RHI_ConstantBuffer>& Renderer::GetConstantBufferFrame()
     {
-        return constant_buffers[static_cast<uint8_t>(type)];
+        return constant_buffer_frame;
     }
 
     shared_ptr<RHI_StructuredBuffer> Renderer::GetStructuredBuffer(const Renderer_StructuredBuffer type)

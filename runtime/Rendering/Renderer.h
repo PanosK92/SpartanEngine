@@ -114,7 +114,6 @@ namespace Spartan
         // get all
         static std::array<std::shared_ptr<RHI_Texture>, render_target_count>& GetRenderTargets();
         static std::array<std::shared_ptr<RHI_Shader>, shader_count>& GetShaders();
-        static std::array<std::shared_ptr<RHI_ConstantBuffer>, 1>& GetConstantBuffers();
         static std::array<std::shared_ptr<RHI_StructuredBuffer>, 3>& GetStructuredBuffers();
 
         // get individual
@@ -124,7 +123,7 @@ namespace Spartan
         static std::shared_ptr<RHI_Texture> GetRenderTarget(const Renderer_RenderTexture type);
         static std::shared_ptr<RHI_Shader> GetShader(const Renderer_Shader type);
         static std::shared_ptr<RHI_Sampler> GetSampler(const Renderer_Sampler type);
-        static std::shared_ptr<RHI_ConstantBuffer> GetConstantBuffer(const Renderer_ConstantBuffer type);
+        static std::shared_ptr<RHI_ConstantBuffer>& GetConstantBufferFrame();
         static std::shared_ptr<RHI_StructuredBuffer> GetStructuredBuffer(const Renderer_StructuredBuffer type);
         static std::shared_ptr<RHI_Texture> GetStandardTexture(const Renderer_StandardTexture type);
         static std::shared_ptr<Mesh> GetStandardMesh(const Renderer_MeshType type);
