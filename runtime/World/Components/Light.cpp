@@ -421,16 +421,10 @@ namespace Spartan
 
     void Light::CreateShadowMap()
     {
-        // early exit if there is no change in shadow map resolution
-        const uint32_t resolution     = Renderer::GetOption<uint32_t>(Renderer_Option::ShadowResolution);
-        const bool resolution_changed = m_texture_depth ? (resolution != m_texture_depth->GetWidth()) : true;
-        if (!resolution_changed)
-            return;
-
-        // early exit if this light casts no shadows
         if (!m_shadows_enabled)
         {
             m_texture_depth.reset();
+            m_texture_color.reset();
             return;
         }
 
@@ -439,6 +433,7 @@ namespace Spartan
             m_texture_color.reset();
         }
 
+        uint32_t resolution     = Renderer::GetOption<uint32_t>(Renderer_Option::ShadowResolution);
         RHI_Format format_depth = RHI_Format::D32_Float;
         RHI_Format format_color = RHI_Format::R8G8B8A8_Unorm;
         uint32_t flags          = RHI_Texture_Rtv | RHI_Texture_Srv;
