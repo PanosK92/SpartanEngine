@@ -81,7 +81,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
                 shadow = Shadow_Map(surface, light);
             }
             
-             // screen space shadows - for opaque objects
+            // screen space shadows - for opaque objects
             uint array_slice_index = (uint)pass_get_f3_value2().x;
             if (is_screen_space_shadows_enabled() && pass_is_opaque() && array_slice_index != -1)
             {
@@ -147,7 +147,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float3 volumetric_fog = 0.0f;
     if (light_is_volumetric())
     {
-        volumetric_fog = compute_volumetric_fog(surface, light);
+        volumetric_fog = compute_volumetric_fog(surface, light, thread_id.xy);
     }
     
     float3 emissive = surface.emissive * surface.albedo;
