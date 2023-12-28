@@ -1101,6 +1101,7 @@ namespace Spartan
             light->SetColor(Color::light_light_bulb);
             light->SetRange(39.66f);
             light->SetIntensity(LightIntensity::bulb_150_watt);
+            light->SetShadowsTransparentEnabled(false);
         }
 
         // 3d model - Sponza
@@ -1111,7 +1112,7 @@ namespace Spartan
             entity->SetPosition(Vector3(0.0f, 1.5f, 0.0f));
             entity->SetScale(Vector3(2.0f, 2.0f, 2.0f)); // I actually walked in sponza, it's that big
 
-            // make the lamp frame not cast shadows, so we can place a light within it
+            // make the lamp frame not cast shadows
             if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("lamp_1stfloor_entrance_1")->GetComponent<Renderable>())
             {
                 renderable->SetCastShadows(false);
