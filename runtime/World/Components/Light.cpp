@@ -272,6 +272,8 @@ namespace Spartan
 
         m_shadows_enabled = cast_shadows;
         CreateShadowMap();
+
+        SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
     void Light::SetShadowsTransparentEnabled(bool cast_transparent_shadows)
@@ -281,6 +283,8 @@ namespace Spartan
 
         m_shadows_transparent_enabled = cast_transparent_shadows;
         CreateShadowMap();
+
+        SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
     void Light::SetRange(float range)
