@@ -30,7 +30,6 @@ namespace Spartan
     #define debug_color Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
     constexpr uint8_t resources_frame_lifetime = 5;
     constexpr uint8_t shader_count             = 54;
-    constexpr uint8_t render_target_count      = 29;
 
     enum class Renderer_Option : uint32_t
     {
@@ -222,7 +221,6 @@ namespace Spartan
     
     enum class Renderer_RenderTexture : uint8_t
     {
-        undefined,
         gbuffer_color,
         gbuffer_normal,
         gbuffer_material,
@@ -250,9 +248,10 @@ namespace Spartan
         bloom,
         blur,
         outline,
-        hi_z
+        hi_z,
+        max
     };
-    
+
     enum class Renderer_Entity
     {
         Geometry,

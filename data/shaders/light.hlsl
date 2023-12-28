@@ -23,27 +23,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 #include "brdf.hlsl"
 #include "shadow_mapping.hlsl"
+#include "fog.hlsl"
 //============================
 
 float3 subsurface_scattering(Surface surface, Light light)
 {
     float sss_strength = 0.005f * surface.subsurface_scattering;
-    float sss_width    = 1.0f;
+    float sss_width    = 1.0f; // the last missing puzzle piece - determine actual surface thickness
 
     // calculate backlit effect - light penetrating through the surface
     float backlit    = max(dot(surface.normal, -light.to_pixel), 0);
     float sss_effect = exp(-backlit * sss_width) * sss_strength;
 
-    // calculate attenuation and color contribution for SSS
+    // calculate attenuation and color contribution
     float attenuation = light.compute_attenuation(surface.position);
     float3 light_color_contribution = light.color * light.intensity * attenuation;
 
     // use surface albedo and light color contribution for SSS color
     float3 sss_color = surface.albedo * light_color_contribution * sss_effect;
 
-    // fresnel effect using Schlick's approximation
+    // fresnel effect using schlick's approximation
     float fresnel = pow(1.0f - dot(surface.normal, -light.to_pixel), 5.0f);
-    fresnel = lerp(0.04f, 1.0f, fresnel);  // Base reflectivity for non-metallic surfaces
+    fresnel       = lerp(0.04f, 1.0f, fresnel);  // base reflectivity for non-metallic surfaces
 
     // final color calculation considering fresnel effect
     return sss_color * fresnel;
@@ -97,11 +98,10 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // compute final radiance
     light.radiance *= shadow.rgb * shadow.a;
-    
+
+    // reflectance equation(s)
     float3 light_diffuse  = 0.0f;
     float3 light_specular = 0.0f;
-
-    // reflectance equation
     float3 light_subsurface = 0.0f;
     if (!surface.is_sky())
     {
@@ -143,10 +143,16 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         light_diffuse *= surface.diffuse_energy;
     }
 
+    // volumetric
+    float3 volumetric_fog = 0.0f;
+    if (light_is_volumetric())
+    {
+        volumetric_fog = compute_volumetric_fog(surface, light);
+    }
+    
     float3 emissive = surface.emissive * surface.albedo;
-
-     // diffuse and specular
-    tex_uav[thread_id.xy]  += float4(saturate_11(light_diffuse * light.radiance + emissive + light_subsurface), 1.0f);
-    tex_uav2[thread_id.xy] += float4(saturate_11(light_specular * light.radiance), 1.0f);
+    
+    /* diffuse  */   tex_uav[thread_id.xy]  += float4(saturate_11(light_diffuse * light.radiance + emissive + light_subsurface), 1.0f);
+    /* specular */   tex_uav2[thread_id.xy] += float4(saturate_11(light_specular * light.radiance), 1.0f);
+    /* volumetric */ tex_uav3[thread_id.xy] += float4(saturate_11(volumetric_fog), 1.0f);
 }
-

@@ -57,11 +57,11 @@ namespace Spartan
         array<shared_ptr<RHI_BlendState>, 3>        blend_states;
 
         // renderer resources
-        array<shared_ptr<RHI_Texture>, render_target_count> render_targets;
-        array<shared_ptr<RHI_Shader>, shader_count>         shaders;
-        array<shared_ptr<RHI_Sampler>, 8>                   samplers;
-        shared_ptr<RHI_ConstantBuffer>                      constant_buffer_frame;
-        array<shared_ptr<RHI_StructuredBuffer>, 3>          structured_buffers;
+        array<shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTexture::max)> render_targets;
+        array<shared_ptr<RHI_Shader>, shader_count>                                        shaders;
+        array<shared_ptr<RHI_Sampler>, 8>                                                  samplers;
+        shared_ptr<RHI_ConstantBuffer>                                                     constant_buffer_frame;
+        array<shared_ptr<RHI_StructuredBuffer>, 3>                                         structured_buffers;
 
         // asset resources
         array<shared_ptr<RHI_Texture>, 10>                standard_textures;
@@ -664,7 +664,7 @@ namespace Spartan
         constant_buffer_frame = nullptr;
     }
 
-    array<shared_ptr<RHI_Texture>, render_target_count>& Renderer::GetRenderTargets()
+    array<shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTexture::max)>& Renderer::GetRenderTargets()
     {
         return render_targets;
     }
