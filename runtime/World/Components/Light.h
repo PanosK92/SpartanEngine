@@ -119,8 +119,8 @@ namespace Spartan
         auto GetAngle() const { return m_angle_rad; }
 
         // matrices
-        const Math::Matrix& GetViewMatrix(uint32_t index) const;
-        const Math::Matrix& GetProjectionMatrix(uint32_t index) const;
+        const Math::Matrix& GetViewMatrix(uint32_t index) const       { return m_matrix_view[index]; }
+        const Math::Matrix& GetProjectionMatrix(uint32_t index) const { return m_matrix_projection[index]; }
 
         // textures
         RHI_Texture* GetDepthTexture() const { return m_texture_depth.get(); }

@@ -114,7 +114,7 @@ namespace Spartan
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
     {
         // constant buffers
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetConstantBuffer(Renderer_ConstantBuffer::Frame));
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetConstantBufferFrame());
 
         // structure buffers
         cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_materials, GetStructuredBuffer(Renderer_StructuredBuffer::Materials));
@@ -609,7 +609,7 @@ namespace Spartan
             // note: if is_transparent_pass is true we could simply clear the RTs, however we don't do this as fsr
             // can be enabled, and if it is, it will expect the RTs to contain both the opaque and transparent data
 
-            // define pipeline state
+            // set pipeline state
             RHI_PipelineState pso;
             pso.name                            = is_transparent_pass ? "g_buffer_transparent" : "g_buffer";
             pso.instancing                      = i == 1 || i == 3;
@@ -628,8 +628,6 @@ namespace Spartan
             pso.clear_color[3]                  = pso.clear_color[0];
             pso.render_target_depth_texture     = tex_depth;
             pso.clear_depth                     = rhi_depth_load;
-
-            // set pso
             cmd_list->SetPipelineState(pso);
 
             for (shared_ptr<Entity>& entity : entities)

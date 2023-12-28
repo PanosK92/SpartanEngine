@@ -637,10 +637,10 @@ namespace Spartan
         }
 
         // set
-        GetConstantBuffer(Renderer_ConstantBuffer::Frame)->Update(&m_cb_frame_cpu);
+        GetConstantBufferFrame()->Update(&m_cb_frame_cpu);
         if (set)
         {
-            cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetConstantBuffer(Renderer_ConstantBuffer::Frame));
+            cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetConstantBufferFrame());
         }
     }
 
@@ -729,10 +729,7 @@ namespace Spartan
 
             // reset buffers with dynamic offsets
             {
-                for (shared_ptr<RHI_ConstantBuffer> constant_buffer : GetConstantBuffers())
-                {
-                    constant_buffer->ResetOffset();
-                }
+                GetConstantBufferFrame()->ResetOffset();
 
                 for (shared_ptr<RHI_StructuredBuffer> structured_buffer : GetStructuredBuffers())
                 {

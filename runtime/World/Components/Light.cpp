@@ -244,7 +244,7 @@ namespace Spartan
     {
         SP_ASSERT(camera != nullptr);
 
-        // This magic values are chosen empirically based on how the lights
+        // this magic values are chosen empirically based on how the lights
         // types in the LightIntensity enum should look in the engine
         const float magic_value_a = 150.0f;
         const float magic_value_b = 0.025f;
@@ -393,16 +393,6 @@ namespace Spartan
                 m_frustums[i]          = Frustum(m_matrix_view[i], projection, m_range);
             }
         }
-    }
-
-    const Matrix& Light::GetViewMatrix(uint32_t index) const
-    {
-        return m_matrix_view[index];
-    }
-
-    const Spartan::Math::Matrix& Light::GetProjectionMatrix(uint32_t index) const
-    {
-        return m_matrix_projection[index];
     }
 
     bool Light::IsInViewFrustum(const BoundingBox& bounding_box, const uint32_t index) const
