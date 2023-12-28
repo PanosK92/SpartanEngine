@@ -24,15 +24,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 /*------------------------------------------------------------------------------
-    REGULAR FOG
+    FOG - RADIAL
 ------------------------------------------------------------------------------*/
-
-static const float g_fog_radius         = 150.0f; // how far away from the camera the fog starts
-static const float g_fog_fade_rate      = 0.05f;  // higher values make the fog fade in more abruptly
-static const float3 g_atmospheric_color = float3(0.4f, 0.4f, 0.8f);  // soft blue
-
 float3 got_fog_radial(const float3 pixel_position, const float3 camera_position)
 {
+    // parameters
+    const float g_fog_radius         = 150.0f; // how far away from the camera the fog starts
+    const float g_fog_fade_rate      = 0.05f;  // higher values make the fog fade in more abruptly
+    const float3 g_atmospheric_color = float3(0.4f, 0.4f, 0.8f);  // soft blue
+    
     float distance_from_camera = length(pixel_position - camera_position) - g_fog_radius;
     float distance_factor      = max(0.0f, distance_from_camera) / g_fog_radius; // normalize the distance
     float fog_factor           = 1.0f - exp(-g_fog_fade_rate * distance_factor); // exponential fog factor
@@ -42,7 +42,7 @@ float3 got_fog_radial(const float3 pixel_position, const float3 camera_position)
 }
 
 /*------------------------------------------------------------------------------
-    VOLUMETRIC FOG
+    FOG - VOLUMETRIC
 ------------------------------------------------------------------------------*/
 float sample_shadow_map(float3 uv)
 {
@@ -61,32 +61,30 @@ float sample_shadow_map(float3 uv)
     return 0.0f;
 }
 
-bool check_visibility(float3 position, Light light)
+float visibility(float3 position, Light light, uint2 pixel_pos)
 {
     // project to light space
     uint slice_index = light_is_point() ? direction_to_cube_face_index(light.to_pixel) : 0;
     float3 pos_ndc   = world_to_ndc(position, GetLight().view_projection[slice_index]);
     float2 pos_uv    = ndc_to_uv(pos_ndc);
 
-    // sample shadow map
+    // shadow map comparison
+    bool shadow_map_comparison = true;
     if (is_valid_uv(pos_uv))
     {
-        float3 sample_coords = light_is_point() ? light.to_pixel : float3(pos_uv.x, pos_uv.y, slice_index);
-        float shadow_depth   = sample_shadow_map(sample_coords);
-
-        // determine visibility based on depth comparison
-        float compare_value = pos_ndc.z;
-        return compare_value <= shadow_depth;
+        float3 sample_coords  = light_is_point() ? light.to_pixel : float3(pos_uv.x, pos_uv.y, slice_index);
+        float shadow_depth    = sample_shadow_map(sample_coords);
+        shadow_map_comparison = pos_ndc.z <= shadow_depth;
     }
 
-    return false; // if uv is not valid, assume the point is visible
+    return shadow_map_comparison ? 0.0f : 1.0f;
 }
 
-float3 compute_volumetric_fog(Surface surface, Light light)
+float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
 {
     // parameters
-    const float fog_density = pass_get_f3_value().x * 0.0002f;
-    const int num_steps     = 128;
+    const float fog_density = pass_get_f3_value().x * 0.00005f;
+    const uint num_steps    = 128;
     
     float total_distance = surface.camera_to_pixel_length;
     float step_length    = total_distance / num_steps; 
@@ -95,16 +93,15 @@ float3 compute_volumetric_fog(Surface surface, Light light)
     float3 ray_step      = ray_direction * step_length;
     float3 ray_pos       = ray_origin + get_noise_interleaved_gradient(surface.uv * pass_get_resolution_out(), true, false) * 0.1f;
 
-    float3 fog = 0.0f;
+    float fog = 0.0f;
     [unroll]
-    for (int i = 0; i < num_steps; i++)
+    for (uint i = 0; i < num_steps; i++)
     {
         if (length(ray_pos - ray_origin) > total_distance)
             break;
 
         // accumulate fog
-        float visibility_factor = 1.0f - check_visibility(ray_pos, light);
-        fog += fog_density * visibility_factor;
+        fog += fog_density * visibility(ray_pos, light, pixel_pos);
 
         // step ray
         ray_pos += ray_step;
@@ -112,3 +109,4 @@ float3 compute_volumetric_fog(Surface surface, Light light)
 
     return fog * light.color * light.intensity * light.attenuation;
 }
+

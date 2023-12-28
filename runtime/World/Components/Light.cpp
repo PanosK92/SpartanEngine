@@ -41,9 +41,9 @@ namespace Spartan
 {
     namespace
     {
-        float orthographic_depth  = 1024.0; // depth of all cascades
-        float orthographic_extent = 20.0f;  // size of the near cascade
-        float far_cascade_scale   = 5.0f;   // size of the far cascade compared to the near one
+        float orthographic_depth       = 2048;   // depth of all cascades
+        float orthographic_extent_near = 40.0f;  // size of the near cascade
+        float orthographic_extent_far  = 175.0f; // size of the far cascade compared to the near one
     }
 
     Light::Light(weak_ptr<Entity> entity) : Component(entity)
@@ -75,6 +75,8 @@ namespace Spartan
             SetIntensity(LightIntensity::bulb_flashlight);
             m_range = 10.0f;
         }
+
+        m_volumetric_enabled = false;
 
         m_matrix_view.fill(Matrix::Identity);
         m_matrix_projection.fill(Matrix::Identity);
@@ -328,9 +330,7 @@ namespace Spartan
                 // near cascade
                 Vector3 position = target - forward * m_range * 0.5f; // center on camera
                 m_matrix_view[0] = Matrix::CreateLookAtLH(position, target, Vector3::Up);
-
                 // far cascade
-                position         = target - forward * (m_range * far_cascade_scale) * 0.5f;
                 m_matrix_view[1] = Matrix::CreateLookAtLH(position, target, Vector3::Up);
             }
         }
@@ -359,8 +359,7 @@ namespace Spartan
             for (uint32_t i = 0; i < 2; i++)
             { 
                 // determine the orthographic extent based on the cascade index
-                float cascade_extent_multiplier = (i == 0) ? 1.0f : far_cascade_scale;
-                float extent                    = orthographic_extent * cascade_extent_multiplier;
+                float extent = (i == 0) ? orthographic_extent_near : orthographic_extent_far;
 
                 // orthographic bounds
                 float left       = -extent;
@@ -368,7 +367,7 @@ namespace Spartan
                 float bottom     = -extent;
                 float top        = extent;
                 float near_plane = 0.0f;
-                float far_plane  = m_range * cascade_extent_multiplier;
+                float far_plane  = orthographic_depth;
 
                 // snap the orthographic bounds to the nearest texel (to avoid shimmering)
                 //float world_units_per_texel = (2.0f * orthographic_extent) / static_cast<float>(m_texture_depth->GetWidth());

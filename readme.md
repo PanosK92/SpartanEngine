@@ -53,6 +53,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - Frustum culling.
 - Physically based camera.
 - Atmospheric scattering.
+- Volumetric fog.
 - Temporal anti-aliasing for smooth visuals.
 - Post-process effects like fxaa, bloom, motion-blur, depth of field, chromatic aberration etc.
 - AMD FidelityFX features like FSR 2, SPD, etc.
