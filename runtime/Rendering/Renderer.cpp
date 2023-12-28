@@ -231,26 +231,24 @@ namespace Spartan
 
         namespace lights
         {
-            array<Light*, rhi_max_array_size> lights;       // mapped to the GPU as a bindless texture array
-            array<Sb_Light, rhi_max_array_size> properties; // mapped to the GPU as a structured properties buffer
-            uint32_t index = 0;
-            bool dirty     = true;
-
-            void clear()
-            {
-                properties.fill(Sb_Light{});
-                lights.fill(nullptr);
-                index = 0;
-            }
+            array<Sb_Light, rhi_max_array_size> properties;
+            bool dirty = true;
 
             void update(vector<shared_ptr<Entity>>& entities, Camera* camera)
             {
-                clear();
+                // clear
+                properties.fill(Sb_Light{});
 
+                // go through each light
+                uint32_t index = 0;
                 for (shared_ptr<Entity>& entity : entities)
                 {
                     Light* light = entity->GetComponent<Light>().get();
 
+                    // set light index
+                    light->SetIndex(index);
+
+                    // set light properties
                     if (RHI_Texture* texture = light->GetDepthTexture())
                     {
                         for (uint32_t i = 0; i < texture->GetArrayLength(); i++)
@@ -258,7 +256,6 @@ namespace Spartan
                             properties[index].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
                         }
                     }
-
                     properties[index].intensity    = light->GetIntensityWatt(camera);
                     properties[index].range        = light->GetRange();
                     properties[index].angle        = light->GetAngle();
@@ -274,8 +271,6 @@ namespace Spartan
                     properties[index].options     |= light->GetShadowsEnabled()                      ? (1 << 3) : 0;
                     properties[index].options     |= light->GetShadowsTransparentEnabled()           ? (1 << 4) : 0;
                     properties[index].options     |= light->GetVolumetricEnabled()                   ? (1 << 5) : 0;
-
-                    light->SetIndex(index);
 
                     index++;
                 }

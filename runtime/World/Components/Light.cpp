@@ -88,6 +88,7 @@ namespace Spartan
         if (m_matrix_view[0] == Matrix::Identity)
         {
             UpdateMatrices();
+            SP_FIRE_EVENT(EventType::LightOnChanged);
         }
     }
 
@@ -284,13 +285,21 @@ namespace Spartan
 
     void Light::SetRange(float range)
     {
-        m_range = Helper::Clamp(range, 0.0f, numeric_limits<float>::max());
+        range = Helper::Clamp(range, 0.0f, numeric_limits<float>::max());
+        if (range == m_range)
+            return;
+
+        m_range = range;
         UpdateMatrices();
     }
 
     void Light::SetAngle(float angle)
     {
-        m_angle_rad = Helper::Clamp(angle, 0.0f, Math::Helper::PI_2);
+        angle = Helper::Clamp(angle, 0.0f, Math::Helper::PI_2);
+        if (angle == m_angle_rad)
+            return;
+
+        m_angle_rad = angle;
         UpdateMatrices();
     }
 
