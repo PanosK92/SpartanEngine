@@ -57,6 +57,9 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bias_normal, float);
         SP_REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
 
+        SetColor(Color::light_sky_sunrise);
+
+        // intensity
         if (m_light_type == LightType::Directional)
         {
             SetIntensity(LightIntensity::sky_sunlight_noon);
@@ -75,7 +78,6 @@ namespace Spartan
 
         m_matrix_view.fill(Matrix::Identity);
         m_matrix_projection.fill(Matrix::Identity);
-
         CreateShadowMap();
 
         SP_SUBSCRIBE_TO_EVENT(EventType::CameraOnChanged, SP_EVENT_HANDLER(OnTransformChanged));
