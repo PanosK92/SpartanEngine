@@ -107,6 +107,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     float4 color = float4(0.0f, 0.0f, 0.0f, surface.alpha); // maintain surface alpha, in case FSR benefits when generating the masks
 
+    // volumetric fog/light
+    color.rgb += tex_light_volumetric[thread_id.xy].rgb;
+    
     // sky
     if (surface.is_sky()) 
     {
@@ -115,10 +118,11 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     }
     else // anything else
     {
-        // diffuse and specular
-        float3 light_diffuse  = tex_light_diffuse[thread_id.xy].rgb;
-        float3 light_specular = tex_light_specular[thread_id.xy].rgb;
+        // get light samples
+        float3 light_diffuse    = tex_light_diffuse[thread_id.xy].rgb;
+        float3 light_specular   = tex_light_specular[thread_id.xy].rgb;
 
+        
         // refraction
         float3 light_refraction = 0.0f;
         if (surface.is_transparent() && surface.ior > 1.0f)
@@ -128,8 +132,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         }
         
         // compose
-        float3 light = (light_diffuse + surface.gi) * surface.albedo + light_specular;
-        color.rgb    = lerp(light, light_refraction, 1.0f - surface.alpha);
+        float3 light  = (light_diffuse + surface.gi) * surface.albedo + light_specular;
+        color.rgb    += lerp(light, light_refraction, 1.0f - surface.alpha);
 
         // fog
         float fog_intensity = luminance(tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(surface.camera_to_pixel), 11));

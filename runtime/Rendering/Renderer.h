@@ -112,7 +112,7 @@ namespace Spartan
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
 
         // get all
-        static std::array<std::shared_ptr<RHI_Texture>, render_target_count>& GetRenderTargets();
+        static std::array<std::shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTexture::max)>& GetRenderTargets();
         static std::array<std::shared_ptr<RHI_Shader>, shader_count>& GetShaders();
         static std::array<std::shared_ptr<RHI_StructuredBuffer>, 3>& GetStructuredBuffers();
 
@@ -180,7 +180,7 @@ namespace Spartan
         static void Pass_DepthOfField(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Debanding(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        // passes - Lighting
+        // passes - lighting
         static void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
         static void Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass = false);
         static void Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass = false);

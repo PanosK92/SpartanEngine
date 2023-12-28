@@ -113,6 +113,8 @@ namespace Spartan
 
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
     {
+        // these will only bind if needed
+
         // constant buffers
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetConstantBufferFrame());
 
@@ -1014,7 +1016,7 @@ namespace Spartan
                 // push pass constants
                 m_cb_pass_cpu.set_resolution_out(tex_diffuse);
                 m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
-                m_cb_pass_cpu.set_f3_value(0.0f, GetOption<float>(Renderer_Option::ShadowResolution), 0.0f);
+                m_cb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Fog), GetOption<float>(Renderer_Option::ShadowResolution), 0.0f);
                 PushPassConstants(cmd_list);
                 
                 cmd_list->Dispatch(thread_group_count_x(tex_diffuse), thread_group_count_y(tex_diffuse));
