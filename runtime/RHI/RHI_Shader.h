@@ -48,7 +48,7 @@ namespace Spartan
         ~RHI_Shader();
 
         // compilation
-        void Compile(const RHI_Shader_Stage type, const std::string& file_path, bool async, const RHI_Vertex_Type vertex_type = RHI_Vertex_Type::Undefined);
+        void Compile(const RHI_Shader_Stage type, const std::string& file_path, bool async, const RHI_Vertex_Type vertex_type = RHI_Vertex_Type::Max);
         RHI_ShaderCompilationState GetCompilationState() const { return m_compilation_state; }
         bool IsCompiled() const                                { return m_compilation_state == RHI_ShaderCompilationState::Succeeded; }
 
@@ -90,7 +90,7 @@ namespace Spartan
         std::shared_ptr<RHI_InputLayout> m_input_layout;
         std::atomic<RHI_ShaderCompilationState> m_compilation_state = RHI_ShaderCompilationState::Idle;
         RHI_Shader_Stage m_shader_type                              = RHI_Shader_Unknown;
-        RHI_Vertex_Type m_vertex_type                               = RHI_Vertex_Type::Undefined;
+        RHI_Vertex_Type m_vertex_type                               = RHI_Vertex_Type::Max;
         uint64_t m_hash                                             = 0;
 
         void* m_rhi_resource = nullptr;

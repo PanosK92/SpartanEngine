@@ -152,7 +152,7 @@ namespace Spartan
         uint32_t m_channel_count    = 0;
         uint32_t m_array_length     = 1;
         uint32_t m_mip_count        = 1;
-        RHI_Format m_format         = RHI_Format::Undefined;
+        RHI_Format m_format         = RHI_Format::Max;
         RHI_Viewport m_viewport;
         std::vector<RHI_Texture_Slice> m_slices;
         std::array<RHI_Image_Layout, rhi_max_mip_count> m_layout;

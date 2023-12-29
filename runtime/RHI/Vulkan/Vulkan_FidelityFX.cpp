@@ -101,7 +101,7 @@ namespace Spartan
             case RHI_Format::R32_Float:
             case RHI_Format::D32_Float:
                 return FFX_SURFACE_FORMAT_R32_FLOAT;
-            case RHI_Format::Undefined:
+            case RHI_Format::Max:
                 return FFX_SURFACE_FORMAT_UNKNOWN;
             default:
                 SP_ASSERT_MSG(false, "Unsupported format");

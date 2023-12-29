@@ -185,7 +185,7 @@ namespace Spartan
 
     RHI_Texture::RHI_Texture() : IResource(ResourceType::Texture)
     {
-        m_layout.fill(RHI_Image_Layout::Undefined);
+        m_layout.fill(RHI_Image_Layout::Max);
         m_rhi_srv_mips.fill(nullptr);
         m_rhi_uav_mips.fill(nullptr);
         m_rhi_rtv.fill(nullptr);

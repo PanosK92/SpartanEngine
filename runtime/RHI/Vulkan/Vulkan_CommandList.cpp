@@ -489,10 +489,10 @@ namespace Spartan
             // set some dynamic states
             if (m_pso.IsGraphics())
             {
-                m_primitive_topology = RHI_PrimitiveTopology::Undefined;
+                m_primitive_topology = RHI_PrimitiveTopology::Max;
                 SetPrimitiveTopology(RHI_PrimitiveTopology::TriangleList);
 
-                m_cull_mode = RHI_CullMode::Undefined;
+                m_cull_mode = RHI_CullMode::Max;
                 SetCullMode(m_pso.rasterizer_state->GetCullMode());
 
                 Math::Rectangle scissor_rect;
@@ -1244,11 +1244,11 @@ namespace Spartan
         RHI_Image_Layout current_layout = texture->GetLayout(mip_start);
 
         SP_ASSERT_MSG(texture->GetRhiSrv() != nullptr, "The texture has no srv"); // Vulkan only has SRVs
-        SP_ASSERT_MSG(current_layout != RHI_Image_Layout::Undefined && current_layout != RHI_Image_Layout::Preinitialized, "Invalid layout");
+        SP_ASSERT_MSG(current_layout != RHI_Image_Layout::Max && current_layout != RHI_Image_Layout::Preinitialized, "Invalid layout");
 
         // Transition to appropriate layout (if needed)
         {
-            RHI_Image_Layout target_layout = RHI_Image_Layout::Undefined;
+            RHI_Image_Layout target_layout = RHI_Image_Layout::Max;
 
             if (uav)
             {
@@ -1276,7 +1276,7 @@ namespace Spartan
             }
 
             // Verify that an appropriate layout has been deduced
-            SP_ASSERT(target_layout != RHI_Image_Layout::Undefined);
+            SP_ASSERT(target_layout != RHI_Image_Layout::Max);
 
             // Determine if a layout transition is needed
             bool transition_required = current_layout != target_layout;

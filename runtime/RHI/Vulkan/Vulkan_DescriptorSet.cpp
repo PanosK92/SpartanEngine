@@ -98,7 +98,7 @@ namespace Spartan
 
                     // get texture, if unable to do so, fallback to a checkerboard texture, so we can spot it by eye
                     void* resource          = texture ? (mip_specified ? texture->GetRhiSrvMip(descriptor.mip) : texture->GetRhiSrv()) : nullptr;
-                    RHI_Image_Layout layout = texture ? texture->GetLayout(mip_start) : RHI_Image_Layout::Undefined;
+                    RHI_Image_Layout layout = texture ? texture->GetLayout(mip_start) : RHI_Image_Layout::Max;
                     if (descriptor.type == RHI_Descriptor_Type::Texture && descriptor.data == nullptr)
                     {
                         resource = srv_fallback;
@@ -119,7 +119,7 @@ namespace Spartan
 
                         // get texture, if unable to do so, fallback to a checkerboard texture, so we can spot it by eye
                         void* resource          = texture ? texture->GetRhiSrvMip(mip_index) : nullptr;
-                        RHI_Image_Layout layout = texture ? texture->GetLayout(mip_index) : RHI_Image_Layout::Undefined;
+                        RHI_Image_Layout layout = texture ? texture->GetLayout(mip_index) : RHI_Image_Layout::Max;
                         if (descriptor.type == RHI_Descriptor_Type::Texture && descriptor.data == nullptr)
                         {
                             resource = srv_fallback;

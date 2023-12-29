@@ -129,7 +129,7 @@ namespace Spartan
         SP_ASSERT(bits_per_channel != 0);
         SP_ASSERT(channel_count != 0);
 
-        RHI_Format format = RHI_Format::Undefined;
+        RHI_Format format = RHI_Format::Max;
 
         if (channel_count == 1)
         {
@@ -172,7 +172,7 @@ namespace Spartan
             }
         }
 
-        SP_ASSERT(format != RHI_Format::Undefined);
+        SP_ASSERT(format != RHI_Format::Max);
 
         return format;
     }
