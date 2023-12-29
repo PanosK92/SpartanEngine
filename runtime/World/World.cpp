@@ -796,6 +796,7 @@ namespace Spartan
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, nullptr, true, false);
 
         Renderer::SetOption(Renderer_Option::Debug_Grid, 0.0f);
+        Renderer::SetOption(Renderer_Option::Fog, 10.0f);
 
         // create
         m_default_terrain = CreateEntity();
