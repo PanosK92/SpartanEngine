@@ -123,6 +123,10 @@ namespace Spartan
         void SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer) const;
         void SetStructuredBuffer(const Renderer_BindingsUav slot, const std::shared_ptr<RHI_StructuredBuffer>& structured_buffer) const { SetStructuredBuffer(static_cast<uint32_t>(slot), structured_buffer.get()); }
 
+        // occlusion
+        uint32_t BeginOcclusionQuery();
+        void EndOcclusionQuery();
+
         // markers
         void BeginMarker(const char* name);
         void EndMarker();

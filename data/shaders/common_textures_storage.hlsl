@@ -124,7 +124,7 @@ bool material_vertex_animate_wind()           { return GetMaterial().properties 
 bool material_vertex_animate_water()          { return GetMaterial().properties & uint(1U << 11);     }
 //=====================================================================================================
 
-//= LIGHTS =================================================================================
+//= LIGHTS ==============================================================
 struct Light_
 {
     matrix view_projection[6];
@@ -145,14 +145,8 @@ struct Light_
 RWStructuredBuffer<Light_> buffer_lights : register(u1);
 
 // easy access properties
-Light_ GetLight()                    { return buffer_lights[(uint)pass_get_f3_value2().y]; }
-bool light_is_directional()          { return GetLight().options & uint(1U << 0); }
-bool light_is_point()                { return GetLight().options & uint(1U << 1); }
-bool light_is_spot()                 { return GetLight().options & uint(1U << 2); }
-bool light_has_shadows()             { return GetLight().options & uint(1U << 3); }
-bool light_has_shadows_transparent() { return GetLight().options & uint(1U << 4); }
-bool light_is_volumetric()           { return GetLight().options & uint(1U << 5); }
-//==========================================================================================
+Light_ GetLight() { return buffer_lights[(uint)pass_get_f3_value2().y]; }
+//=======================================================================
 
 // various storage textures/buffers
 RWTexture2D<float4> tex_uav                                : register(u2);

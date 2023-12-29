@@ -44,18 +44,18 @@ float3 got_fog_radial(const float3 pixel_position, const float3 camera_position)
 /*------------------------------------------------------------------------------
     FOG - VOLUMETRIC
 ------------------------------------------------------------------------------*/
-float sample_shadow_map(float3 uv)
+float sample_shadow_map(Light light, float3 uv)
 {
     // float3 -> uv, slice
-    if (light_is_directional())
+    if (light.is_directional())
         return tex_light_directional_depth.SampleLevel(samplers[sampler_point_clamp_edge], uv, 0).r;
     
     // float3 -> direction
-    if (light_is_point())
+    if (light.is_point())
         return tex_light_point_depth.SampleLevel(samplers[sampler_point_clamp_edge], uv, 0).r;
 
     // float3 -> uv, 0
-    if (light_is_spot())
+    if (light.is_spot())
         return tex_light_spot_depth.SampleLevel(samplers[sampler_point_clamp_edge], uv.xy, 0).r;
 
     return 0.0f;
@@ -64,7 +64,7 @@ float sample_shadow_map(float3 uv)
 float visibility(float3 position, Light light, uint2 pixel_pos)
 {
     // project to light space
-    uint slice_index = light_is_point() ? direction_to_cube_face_index(light.to_pixel) : 0;
+    uint slice_index = light.is_point() ? direction_to_cube_face_index(light.to_pixel) : 0;
     float3 pos_ndc   = world_to_ndc(position, GetLight().view_projection[slice_index]);
     float2 pos_uv    = ndc_to_uv(pos_ndc);
 
@@ -72,8 +72,8 @@ float visibility(float3 position, Light light, uint2 pixel_pos)
     bool shadow_map_comparison = true;
     if (is_valid_uv(pos_uv))
     {
-        float3 sample_coords  = light_is_point() ? light.to_pixel : float3(pos_uv.x, pos_uv.y, slice_index);
-        float shadow_depth    = sample_shadow_map(sample_coords);
+        float3 sample_coords  = light.is_point() ? light.to_pixel : float3(pos_uv.x, pos_uv.y, slice_index);
+        float shadow_depth    = sample_shadow_map(light, sample_coords);
         shadow_map_comparison = pos_ndc.z <= shadow_depth;
     }
 

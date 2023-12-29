@@ -114,8 +114,8 @@ namespace Spartan
                 light->SetLightType(LightType::Directional);
                 light->SetTemperature(2300.0f);
                 light->SetIntensity(sun_intensity);
-                light->SetShadowsEnabled(shadows_enabled ? (light->GetIntensityLumens() > 0.0f) : false);
-                light->SetShadowsTransparentEnabled(false);
+                light->SetFlag(LightFlags::Shadows, shadows_enabled ? (light->GetIntensityLumens() > 0.0f) : false);
+                light->SetFlag(LightFlags::ShadowsTransparent, false);
             }
 
             // music
@@ -586,10 +586,20 @@ namespace Spartan
                         if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
                         {
                             material->SetColor(Color::material_aluminum);
-                            material->SetProperty(MaterialProperty::Roughness, 0.5f);
+                            material->SetProperty(MaterialProperty::Roughness, 0.08f);
                             material->SetProperty(MaterialProperty::Metalness, 0.15f);
                             material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
                             material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f);
+                        }
+                    }
+
+                    if (Entity* body = entity_car->GetDescendantByName("CarBody_Mirror_0"))
+                    {
+                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                        {
+                            material->SetColor(Color::standard_black);
+                            material->SetProperty(MaterialProperty::Roughness, 0.0f);
+                            material->SetProperty(MaterialProperty::Metalness, 1.0f);
                         }
                     }
 
@@ -731,7 +741,7 @@ namespace Spartan
                         light->SetLightType(LightType::Spot);
                         light->SetColor(Color::light_light_bulb);
                         light->SetIntensity(LightIntensity::bulb_500_watt);
-                        light->SetShadowsEnabled(false);
+                        light->SetFlag(LightFlags::Shadows, false);
                         light->SetRange(20.0f);
                         light->SetAngle(30.0f * Math::Helper::DEG_TO_RAD);
 
@@ -753,7 +763,7 @@ namespace Spartan
                         light->SetLightType(LightType::Spot);
                         light->SetColor(Color(1.0f, 0.0f, 0.0f, 1.0f));
                         light->SetIntensity(LightIntensity::bulb_500_watt);
-                        light->SetShadowsEnabled(false);
+                        light->SetFlag(LightFlags::Shadows, false);
                         light->SetRange(3.0f);
                         light->SetAngle(145.0f * Math::Helper::DEG_TO_RAD);
                     }
@@ -1102,7 +1112,7 @@ namespace Spartan
             light->SetColor(Color::light_light_bulb);
             light->SetRange(39.66f);
             light->SetIntensity(LightIntensity::bulb_150_watt);
-            light->SetShadowsTransparentEnabled(false);
+            light->SetFlag(LightFlags::ShadowsTransparent, false);
         }
 
         // 3d model - Sponza

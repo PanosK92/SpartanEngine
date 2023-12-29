@@ -227,18 +227,19 @@ void Properties::ShowLight(shared_ptr<Light> light) const
 
     if (component_begin("Light", IconType::Component_Light, light))
     {
-        //= REFLECT ======================================================================
+        //= REFLECT ============================================================================
         static vector<string> types = { "Directional", "Point", "Spot" };
         float intensity             = light->GetIntensityLumens();
         float temperature_kelvin    = light->GetTemperature();
         float angle                 = light->GetAngle() * Math::Helper::RAD_TO_DEG * 2.0f;
-        bool shadows                = light->GetShadowsEnabled();
-        bool shadows_transparent    = light->GetShadowsTransparentEnabled();
-        bool volumetric             = light->GetVolumetricEnabled();
+        bool shadows                = light->IsFlagSet(Spartan::LightFlags::Shadows);
+        bool shadows_transparent    = light->IsFlagSet(Spartan::LightFlags::ShadowsTransparent);
+        bool shadows_screen_space   = light->IsFlagSet(Spartan::LightFlags::ShadowsScreenSpace);
+        bool volumetric             = light->IsFlagSet(Spartan::LightFlags::Volumetric);
         float normal_bias           = light->GetNormalBias();
         float range                 = light->GetRange();
         m_colorPicker_light->SetColor(light->GetColor());
-        //================================================================================
+        //======================================================================================
 
         // type
         ImGui::Text("Type");
@@ -299,25 +300,29 @@ void Properties::ShowLight(shared_ptr<Light> light) const
             ImGuiSp::tooltip("Intensity expressed in lumens");
         }
 
-        // Shadows
-        ImGui::Text("Shadows");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##light_shadows", &shadows);
-
-        // Shadow supplements
-        ImGui::BeginDisabled(!shadows);
+        // shadows
         {
-            // Transparent shadows
-            ImGui::Text("Transparent Shadows");
-            ImGui::SameLine(column_pos_x); ImGui::Checkbox("##light_shadows_transparent", &shadows_transparent);
-            ImGuiSp::tooltip("Allows transparent objects to cast colored translucent shadows");
+            ImGui::Text("Shadows");
+            ImGui::SameLine(column_pos_x); ImGui::Checkbox("##light_shadows", &shadows);
 
-            // Volumetric
-            ImGui::Text("Volumetric");
-            ImGui::SameLine(column_pos_x); ImGui::Checkbox("##light_volumetric", &volumetric);
-            ImGuiSp::tooltip("The shadow map is used to determine which parts of the \"air\" should be lit");
+            if (shadows);
+            {
+                // transparent shadows
+                ImGui::Text("Transparent Shadows");
+                ImGui::SameLine(column_pos_x); ImGui::Checkbox("##light_shadows_transparent", &shadows_transparent);
+                ImGuiSp::tooltip("Allows transparent objects to cast colored translucent shadows");
 
+                // transparent shadows
+                ImGui::Text("Screen Space Shadows");
+                ImGui::SameLine(column_pos_x); ImGui::Checkbox("##light_shadows_screen_space", &shadows_screen_space);
+                ImGuiSp::tooltip("Screen space shadows from Days Gone - PS4");
+
+                // volumetric
+                ImGui::Text("Volumetric");
+                ImGui::SameLine(column_pos_x); ImGui::Checkbox("##light_volumetric", &volumetric);
+                ImGuiSp::tooltip("The shadow map is used to determine which parts of the \"air\" should be lit");
+            }
         }
-        ImGui::EndDisabled();
 
         // Normal Bias
         ImGui::Text("Normal Bias");
@@ -342,14 +347,15 @@ void Properties::ShowLight(shared_ptr<Light> light) const
 
         //= MAP ===================================================================================================================
         if (intensity != light->GetIntensityLumens())                     light->SetIntensityLumens(intensity);
-        if (shadows != light->GetShadowsEnabled())                        light->SetShadowsEnabled(shadows);
-        if (shadows_transparent != light->GetShadowsTransparentEnabled()) light->SetShadowsTransparentEnabled(shadows_transparent);
-        if (volumetric != light->GetVolumetricEnabled())                  light->SetVolumetricEnabled(volumetric);
         if (normal_bias != light->GetNormalBias())                        light->SetNormalBias(normal_bias);
         if (angle != light->GetAngle() * Math::Helper::RAD_TO_DEG * 0.5f) light->SetAngle(angle * Math::Helper::DEG_TO_RAD * 0.5f);
         if (range != light->GetRange())                                   light->SetRange(range);
         if (m_colorPicker_light->GetColor() != light->GetColor())         light->SetColor(m_colorPicker_light->GetColor());
-        if (temperature_kelvin != light->GetTemperature())                light->SetTemperature(temperature_kelvin);
+        if (temperature_kelvin != light->GetTemperature())                light->SetTemperature(temperature_kelvin);   
+        light->SetFlag(Spartan::LightFlags::ShadowsTransparent, shadows_transparent);
+        light->SetFlag(Spartan::LightFlags::ShadowsScreenSpace, shadows_screen_space);
+        light->SetFlag(Spartan::LightFlags::Volumetric, volumetric);
+        light->SetFlag(Spartan::LightFlags::Shadows, shadows);
         //=========================================================================================================================
     }
     component_end();

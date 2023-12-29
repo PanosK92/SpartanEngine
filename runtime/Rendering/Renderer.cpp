@@ -265,12 +265,13 @@ namespace Spartan
                     properties[index].position     = light->GetEntity()->GetPosition();
                     properties[index].direction    = light->GetEntity()->GetForward();
                     properties[index].options      = 0;
-                    properties[index].options     |= light->GetLightType() == LightType::Directional ? (1 << 0) : 0;
-                    properties[index].options     |= light->GetLightType() == LightType::Point       ? (1 << 1) : 0;
-                    properties[index].options     |= light->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
-                    properties[index].options     |= light->GetShadowsEnabled()                      ? (1 << 3) : 0;
-                    properties[index].options     |= light->GetShadowsTransparentEnabled()           ? (1 << 4) : 0;
-                    properties[index].options     |= light->GetVolumetricEnabled()                   ? (1 << 5) : 0;
+                    properties[index].options     |= light->GetLightType() == LightType::Directional                                                                      ? (1 << 0) : 0;
+                    properties[index].options     |= light->GetLightType() == LightType::Point                                                                            ? (1 << 1) : 0;
+                    properties[index].options     |= light->GetLightType() == LightType::Spot                                                                             ? (1 << 2) : 0;
+                    properties[index].options     |= light->IsFlagSet(LightFlags::Shadows)                                                                                ? (1 << 3) : 0;
+                    properties[index].options     |= light->IsFlagSet(LightFlags::ShadowsTransparent)                                                                     ? (1 << 4) : 0;
+                    properties[index].options     |= (light->IsFlagSet(LightFlags::ShadowsScreenSpace) && Renderer::GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
+                    properties[index].options     |= (light->IsFlagSet(LightFlags::Volumetric)         && Renderer::GetOption<bool>(Renderer_Option::FogVolumetric))      ? (1 << 6) : 0;
 
                     index++;
                 }
@@ -631,9 +632,7 @@ namespace Spartan
             // these must match what common_buffer.hlsl is reading
             m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections),        1 << 0);
             m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceGlobalIllumination), 1 << 1);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceShadows),            1 << 2);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Fog),                           1 << 3);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::FogVolumetric),                 1 << 4);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Fog),                           1 << 2);
         }
 
         // set
@@ -946,16 +945,16 @@ namespace Spartan
                     }
                 }
             }
-            // Shadow resolution
+            // shadow resolution
             else if (option == Renderer_Option::ShadowResolution)
             {
                 const auto& light_entities = m_renderables[Renderer_Entity::Light];
                 for (const auto& light_entity : light_entities)
                 {
                     auto light = light_entity->GetComponent<Light>();
-                    if (light->GetShadowsEnabled())
+                    if (light->IsFlagSet(LightFlags::Shadows))
                     {
-                        light->CreateShadowMap();
+                        light->RefreshShadowMap();
                     }
                 }
             }

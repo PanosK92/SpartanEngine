@@ -149,6 +149,17 @@ struct Light
     float3 radiance;
     float  n_dot_l;
     float  attenuation;
+    matrix view_projection[6];
+    uint   flags;
+
+    // easy access to flags
+    bool is_directional()           { return flags & uint(1U << 0); }
+    bool is_point()                 { return flags & uint(1U << 1); }
+    bool is_spot()                  { return flags & uint(1U << 2); }
+    bool has_shadows()              { return flags & uint(1U << 3); }
+    bool has_shadows_transparent()  { return flags & uint(1U << 4); }
+    bool has_shadows_screen_space() { return flags & uint(1U << 5); }
+    bool is_volumetric()            { return flags & uint(1U << 6); }
 
     // attenuation functions are derived from Frostbite
     // https://media.contentapi.ea.com/content/dam/eacom/frostbite/files/course-notes-moving-frostbite-to-pbr-v2.pdf
@@ -180,15 +191,15 @@ struct Light
     {
         float attenuation = 0.0f;
         
-        if (light_is_directional())
+        if (is_directional())
         {
             attenuation = saturate(dot(-forward.xyz, float3(0.0f, 1.0f, 0.0f)));
         }
-        else if (light_is_point())
+        else if (is_point())
         {
             attenuation = compute_attenuation_distance(surface_position);
         }
-        else if (light_is_spot())
+        else if (is_spot())
         {
             attenuation = compute_attenuation_distance(surface_position) * compute_attenuation_angle();
         }
@@ -200,11 +211,11 @@ struct Light
     {
         float3 direction = 0.0f;
         
-        if (light_is_directional())
+        if (is_directional())
         {
             direction = normalize(forward.xyz);
         }
-        else if (light_is_point() || light_is_spot())
+        else if (is_point() || is_spot())
         {
             direction = normalize(fragment_position - light_position);
         }
@@ -215,7 +226,9 @@ struct Light
     void Build(float3 surface_position, float3 surface_normal, float occlusion)
     {
         Light_ light = GetLight();
-        
+
+        view_projection   = light.view_projection;
+        flags             = light.options;
         color             = light.color.rgb;
         position          = light.position.xyz;
         intensity         = light.intensity;
