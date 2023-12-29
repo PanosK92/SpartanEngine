@@ -72,7 +72,7 @@ namespace Spartan
 
     // misc
     uint32_t Profiler::m_descriptor_set_count = 0;
-    ProfilerGranularity granularity           = ProfilerGranularity::Full;
+    ProfilerGranularity granularity           = ProfilerGranularity::Light;
 
     namespace
     {
