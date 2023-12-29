@@ -23,8 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const uint g_ssr_binary_search_steps = 64;
-static const float g_ssr_thickness          = 15.0f;
+static const float g_ssr_thickness = 15.0f;
 
 uint compute_step_count(float roughness)
 {
@@ -81,7 +80,12 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs, float
     float offset = get_noise_interleaved_gradient(screen_pos, true, false);
     ray_pos      += ray_step * offset;
     
-    // improved binary search variables
+    // adaptive ray-marching variables
+    const float min_step_size = 0.1f; // minimum step size
+    const float max_step_size = 1.0f; // maximum step size
+    float current_step_size   = max_step_size; // start with the largest step
+
+    // binary search variables
     float depth_delta = 0.0f;
     float step_size   = 1.0; // initial step size
 
@@ -95,21 +99,23 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs, float
         // intersect depth buffer
         if (intersect_depth_buffer(ray_pos, ray_start, ray_length, depth_start, depth_end, depth_delta))
         {
-            // smaller steps as we get closer to the actual intersection
-            step_size *= 0.5f;
+            // adjust step size based on depth delta
+            float depth_difference = abs(depth_delta);
+            current_step_size      = lerp(min_step_size, max_step_size, depth_difference / g_ssr_thickness);
+            current_step_size      = max(current_step_size, min_step_size);
 
             // test if we are within the threshold
-            if (abs(depth_delta) <= g_ssr_thickness)
+            if (depth_difference <= g_ssr_thickness)
                 return ray_pos;
 
             // adjust ray position
-            ray_pos += sign(depth_delta) * ray_step * step_size;
+            ray_pos += sign(depth_delta) * ray_step * current_step_size;
         }
         else
         {
-            // increase step size if not intersecting
-            step_size = min(step_size * 2.0f, 1.0f);
-            ray_pos += ray_step * step_size;
+            // reset step size to max if not intersecting
+            current_step_size  = max_step_size;
+            ray_pos           += ray_step * current_step_size;
         }
     }
 
@@ -155,3 +161,4 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = float4(color, alpha);
 }
+
