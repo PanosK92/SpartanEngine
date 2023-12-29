@@ -795,8 +795,6 @@ namespace Spartan
         Vector3 camera_rotation = Vector3(0.0f, 144.0f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, nullptr, true, false);
 
-        GetEntityByName("light_directional")->GetComponent<Light>()->SetVolumetricEnabled(true);
-
         Renderer::SetOption(Renderer_Option::Debug_Grid, 0.0f);
 
         // create
