@@ -500,7 +500,7 @@ namespace Spartan
             pso.clear_depth                 = 0.0f; // reverse-z
             cmd_list->SetPipelineState(pso);
 
-            cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology::LineList);
+            //cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology::LineList);
 
             for (shared_ptr<Entity>& entity : entities)
             {
@@ -515,7 +515,7 @@ namespace Spartan
                     continue;
 
                 // occlusion check
-                {
+                /*{
                     // set bounding box min max via push constants for maximum speed
                     BoundingBox bounding_box = renderable->GetBoundingBox(BoundingBoxType::Transformed);
                     m_cb_pass_cpu.set_f3_value(bounding_box.GetMin());
@@ -525,7 +525,7 @@ namespace Spartan
                     // draw 8 vertices and generate a screen space bounding box on the fly on the gpu
                     cmd_list->Draw(8);
                     cmd_list->EndOcclusionQuery();
-                }
+                }*/
             }
         }
 
