@@ -166,6 +166,8 @@ namespace Spartan
         gbuffer_v,
         gbuffer_instanced_v,
         gbuffer_p,
+        occlusion_query_v,
+        occlusion_query_instanced_v,
         depth_prepass_v,
         depth_prepass_instanced_v,
         depth_prepass_alpha_test_p,
@@ -216,7 +218,8 @@ namespace Spartan
         ffx_cas_c,
         ffx_spd_c_average,
         ffx_spd_c_highest,
-        ffx_spd_c_antiflicker
+        ffx_spd_c_antiflicker,
+        max
     };
     
     enum class Renderer_RenderTexture : uint8_t
@@ -248,7 +251,7 @@ namespace Spartan
         bloom,
         blur,
         outline,
-        hi_z,
+        occlusion,
         max
     };
 

@@ -58,7 +58,7 @@ namespace Spartan
 
         // renderer resources
         array<shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTexture::max)> render_targets;
-        array<shared_ptr<RHI_Shader>, shader_count>                                        shaders;
+        array<shared_ptr<RHI_Shader>, static_cast<uint32_t>(Renderer_Shader::max)>         shaders;
         array<shared_ptr<RHI_Sampler>, 8>                                                  samplers;
         shared_ptr<RHI_ConstantBuffer>                                                     constant_buffer_frame;
         array<shared_ptr<RHI_StructuredBuffer>, 3>                                         structured_buffers;
@@ -220,7 +220,6 @@ namespace Spartan
 
                 // g-buffer complementary
                 render_target(Renderer_RenderTexture::gbuffer_velocity_previous) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16_Float, g_buffer_flags | RHI_Texture_ClearBlit, "rt_gbuffer_velocity_previous");
-                //render_target(Renderer_RenderTexture::hi_z) = make_shared<RHI_Texture2D>(width_render, height_render, 5, RHI_Format::D32_Float, g_buffer_flags | RHI_Texture_Uav | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "rt_hi_z");
             }
 
             // light
@@ -248,6 +247,9 @@ namespace Spartan
 
             // selection outline
             render_target(Renderer_RenderTexture::outline) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_Uav, "rt_outline");
+
+            // occlusion
+            render_target(Renderer_RenderTexture::occlusion) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float, RHI_Texture_Rtv, "rt_occlusion");
         }
 
         // output resolution
@@ -313,7 +315,17 @@ namespace Spartan
             shader(Renderer_Shader::outline_c)->Compile(RHI_Shader_Compute, shader_dir + "outline.hlsl", async);
         }
 
-        // depth prepass
+        // occlusion query
+        {
+            shader(Renderer_Shader::occlusion_query_v) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::occlusion_query_v)->Compile(RHI_Shader_Vertex, shader_dir + "occlusion_query.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+
+            shader(Renderer_Shader::occlusion_query_instanced_v) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::occlusion_query_instanced_v)->AddDefine("INSTANCED");
+            shader(Renderer_Shader::occlusion_query_instanced_v)->Compile(RHI_Shader_Vertex, shader_dir + "occlusion_query.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+        }
+
+        // depth pre-pass
         {
             shader(Renderer_Shader::depth_prepass_v) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::depth_prepass_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_prepass.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
@@ -669,7 +681,7 @@ namespace Spartan
         return render_targets;
     }
 
-    array<shared_ptr<RHI_Shader>, shader_count>& Renderer::GetShaders()
+    array<shared_ptr<RHI_Shader>, static_cast<uint32_t>(Renderer_Shader::max)>& Renderer::GetShaders()
     {
         return shaders;
     }

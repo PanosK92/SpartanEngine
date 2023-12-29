@@ -163,8 +163,8 @@ namespace Spartan
             
             // opaque
             {
+                Pass_FrustumOcclusionQueries(cmd_list);
                 Pass_Depth_Prepass(cmd_list);
-                //Pass_Hi_Z(cmd_list);
                 Pass_GBuffer(cmd_list);
                 Pass_Skysphere(cmd_list);
                 Pass_Ssgi(cmd_list);
@@ -467,6 +467,64 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
+    void Renderer::Pass_FrustumOcclusionQueries(RHI_CommandList* cmd_list)
+    {
+        // acquire shaders
+        RHI_Shader* shader_v           = GetShader(Renderer_Shader::occlusion_query_v).get();
+        RHI_Shader* shader_instanced_v = GetShader(Renderer_Shader::occlusion_query_instanced_v).get();
+        if (!shader_v->IsCompiled() || !shader_instanced_v->IsCompiled())
+            return;
+
+        cmd_list->BeginTimeblock("occlusion_queries");
+
+        bool is_transparent_pass = false;
+        uint32_t start_index     = !is_transparent_pass ? 0 : 2;
+        uint32_t end_index       = !is_transparent_pass ? 2 : 4;
+        bool is_first_pass       = true;
+        for (uint32_t i = start_index; i < end_index; i++)
+        {
+            // acquire entities
+            auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
+            if (entities.empty())
+                continue;
+
+            // define pipeline state
+            static RHI_PipelineState pso;
+            pso.name                        = !is_transparent_pass ? "occlusion_queries" : "occlusion_queries";
+            pso.instancing                  = i == 1 || i == 3;
+            pso.shader_vertex               = !pso.instancing ? shader_v : shader_instanced_v;
+            pso.rasterizer_state            = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
+            pso.blend_state                 = GetBlendState(Renderer_BlendState::Disabled).get();
+            pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
+            pso.render_target_depth_texture = GetRenderTarget(Renderer_RenderTexture::occlusion).get();
+            pso.clear_depth                 = 0.0f; // reverse-z  
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology::LineList);
+
+            for (shared_ptr<Entity>& entity : entities)
+            {
+                // when async loading certain things can be null
+                shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                if (!renderable || !renderable->ReadyToRender())
+                    continue;
+
+                // frustum check
+                renderable->SetIsVisible(GetCamera()->IsInViewFrustum(renderable));
+                if (!renderable->GetIsVisible())
+                    continue;
+
+                // occlusion check (on the fly generated bounding box against depth buffer)
+                BoundingBox bounding_box = renderable->GetBoundingBox(BoundingBoxType::Transformed);
+                m_cb_pass_cpu.set_f3_value(bounding_box.GetMin());
+                m_cb_pass_cpu.set_f3_value2(bounding_box.GetMax());
+                cmd_list->Draw(8);
+            }
+        }
+
+        cmd_list->EndTimeblock();
+    }
+
     void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // acquire shaders
@@ -499,20 +557,13 @@ namespace Spartan
             pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
             pso.render_target_depth_texture = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
             pso.clear_depth                 = (is_transparent_pass || pso.instancing) ? rhi_depth_load : 0.0f; // reverse-z
-
-            // set pso
             cmd_list->SetPipelineState(pso);
+
             for (shared_ptr<Entity>& entity : entities)
             {
                 // when async loading certain things can be null
                 shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                if (!renderable || !renderable->ReadyToRender())
-                    continue;
-
-                // skip objects outside of the view frustum
-                // the renderable component saves visibility for the g-buffer pass
-                renderable->SetIsVisible(GetCamera()->IsInViewFrustum(renderable));
-                if (!renderable->GetIsVisible())
+                if (!renderable || !renderable->ReadyToRender() || !renderable->GetIsVisible())
                     continue;
 
                 // set cull mode
@@ -554,20 +605,6 @@ namespace Spartan
                 draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
             }
         }
-
-        cmd_list->EndTimeblock();
-    }
-
-    void Renderer::Pass_Hi_Z(RHI_CommandList* cmd_list, const bool is_transparent_pass /*= false*/)
-    {
-        cmd_list->BeginTimeblock(!is_transparent_pass ? "hi_z" : "hi_z_transparent");
-
-        RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
-        RHI_Texture* tex_hi_z  = GetRenderTarget(Renderer_RenderTexture::hi_z).get();
-
-        cmd_list->Blit(tex_depth, tex_hi_z, false);
-
-        Pass_Ffx_Spd(cmd_list, tex_hi_z, Renderer_DownsampleFilter::Highest);
 
         cmd_list->EndTimeblock();
     }
@@ -1117,7 +1154,7 @@ namespace Spartan
         PushPassConstants(cmd_list);
 
         // render
-        cmd_list->Draw(3, 0);
+        cmd_list->Draw(3);
 
         cmd_list->EndTimeblock();
     }

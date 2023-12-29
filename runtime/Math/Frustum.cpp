@@ -101,10 +101,10 @@ namespace Spartan::Math
 
         // check sphere first as it's cheaper
         if (CheckSphere(center, radius) != Intersection::Outside)
-            return true;
-
-        if (CheckCube(center, extent) != Intersection::Outside)
-            return true;
+        {
+            if (CheckCube(center, extent) != Intersection::Outside)
+                return true;
+        }
 
         return false;
     }
