@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 struct Surface
 {
     // properties
+    uint   flags;
     float3 albedo;
     float  alpha;
     float  roughness;
@@ -55,34 +56,38 @@ struct Surface
     float  camera_to_pixel_length;
     float3 specular_energy;
     float3 diffuse_energy;
-    
-    // activision gtao paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
-    float3 multi_bounce_ao(float visibility, float3 albedo)
-    {
-        float3 a = 2.0404 * albedo - 0.3324;
-        float3 b = -4.7951 * albedo + 0.6417;
-        float3 c = 2.7552 * albedo + 0.6903;
-        float x  = visibility;
-        return max(x, ((x * a + b) * x + c) * x);
-    }
+
+    // easy access to certain properties
+    bool has_single_texture_roughness_metalness() { return flags & uint(1U << 0);  }
+    bool has_texture_height()                     { return flags & uint(1U << 1);  }
+    bool has_texture_normal()                     { return flags & uint(1U << 2);  }
+    bool has_texture_albedo()                     { return flags & uint(1U << 3);  }
+    bool has_texture_roughness()                  { return flags & uint(1U << 4);  }
+    bool has_texture_metalness()                  { return flags & uint(1U << 5);  }
+    bool has_texture_alpha_mask()                 { return flags & uint(1U << 6);  }
+    bool has_texture_emissive()                   { return flags & uint(1U << 7);  }
+    bool has_texture_occlusion()                  { return flags & uint(1U << 8);  }
+    bool texture_slope_based()                    { return flags & uint(1U << 9);  }
+    bool vertex_animate_wind()                    { return flags & uint(1U << 10); }
+    bool vertex_animate_water()                   { return flags & uint(1U << 11); }
+    bool is_sky()                                 { return alpha == 0.0f; }
+    bool is_opaque()                              { return alpha == 1.0f; }
+    bool is_transparent()                         { return alpha > 0.0f && alpha < 1.0f; }
     
     void Build(uint2 position_screen, bool use_albedo, bool use_ssgi, bool replace_color_with_one)
     {
-        // sample render targets
-        float4 sample_albedo     = use_albedo ? tex_albedo[position_screen] : 0.0f;
-        float4 sample_normal     = tex_normal[position_screen];
-        float4 sample_material   = tex_material[position_screen];
-        float sample_depth       = tex_depth[position_screen].r;
-
-        // access the material structured buffer to get additional properties
-        // the normal's alpha channel holds the material index
-        Material material = buffer_materials[sample_normal.a];
+        // access resources
+        float4 sample_albedo   = use_albedo ? tex_albedo[position_screen] : 0.0f;
+        float4 sample_normal   = tex_normal[position_screen];
+        float4 sample_material = tex_material[position_screen];
+        float sample_depth     = tex_depth[position_screen].r;
+        Material material      = buffer_materials[sample_normal.a];
         
-        // misc
-        uv     = (position_screen + 0.5f) / pass_get_resolution_out();
-        depth  = sample_depth;
-        normal = sample_normal.xyz;
- 
+        // fill properties
+        uv                    = (position_screen + 0.5f) / pass_get_resolution_out();
+        depth                 = sample_depth;
+        normal                = sample_normal.xyz;
+        flags                 = material.flags;
         albedo                = replace_color_with_one ? 1.0f : sample_albedo.rgb;
         alpha                 = sample_albedo.a;
         roughness             = sample_material.r;
@@ -126,15 +131,12 @@ struct Surface
         camera_to_pixel_length = length(camera_to_pixel);
         camera_to_pixel        = normalize(camera_to_pixel);
     }
-
-    bool is_sky()         { return alpha == 0.0f; }
-    bool is_opaque()      { return alpha == 1.0f; }
-    bool is_transparent() { return alpha > 0.0f && alpha < 1.0f; }
 };
 
 struct Light
 {
     // properties
+    uint   flags;
     float3 color;
     float3 position;
     float  intensity;
@@ -150,8 +152,7 @@ struct Light
     float  n_dot_l;
     float  attenuation;
     matrix view_projection[6];
-    uint   flags;
-
+    
     // easy access to flags
     bool is_directional()           { return flags & uint(1U << 0); }
     bool is_point()                 { return flags & uint(1U << 1); }
@@ -161,9 +162,6 @@ struct Light
     bool has_shadows_screen_space() { return flags & uint(1U << 5); }
     bool is_volumetric()            { return flags & uint(1U << 6); }
 
-    // attenuation functions are derived from Frostbite
-    // https://media.contentapi.ea.com/content/dam/eacom/frostbite/files/course-notes-moving-frostbite-to-pbr-v2.pdf
-
     // attenuation over distance
     float compute_attenuation_distance(const float3 surface_position)
     {
@@ -172,7 +170,6 @@ struct Light
         return attenuation * attenuation;
     }
 
-    // attenuation over angle (approaching the outer cone)
     float compute_attenuation_angle()
     {
         float cos_outer         = cos(angle);
@@ -186,7 +183,6 @@ struct Light
         return attenuation * attenuation;
     }
 
-    // final attenuation for all supported lights
     float compute_attenuation(const float3 surface_position)
     {
         float attenuation = 0.0f;
@@ -227,8 +223,8 @@ struct Light
     {
         Light_ light = GetLight();
 
-        view_projection   = light.view_projection;
         flags             = light.flags;
+        view_projection   = light.view_projection;   
         color             = light.color.rgb;
         position          = light.position.xyz;
         intensity         = light.intensity;
@@ -240,7 +236,7 @@ struct Light
         near              = 0.1f;
         distance_to_pixel = length(surface_position - position);
         to_pixel          = compute_direction(position, surface_position);
-        n_dot_l           = saturate(dot(surface_normal, -to_pixel)); // pre-compute n_dot_l since it's used in many places
+        n_dot_l           = saturate(dot(surface_normal, -to_pixel));
         attenuation       = compute_attenuation(surface_position);
 
         // apply occlusion

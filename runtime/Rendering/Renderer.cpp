@@ -182,12 +182,12 @@ namespace Spartan
                     properties[index].flags                 |= material->GetProperty(MaterialProperty::TextureSlopeBased)               ? (1U << 9)  : 0;
                     properties[index].flags                 |= material->GetProperty(MaterialProperty::VertexAnimateWind)               ? (1U << 10) : 0;
                     properties[index].flags                 |= material->GetProperty(MaterialProperty::VertexAnimateWater)              ? (1U << 11) : 0;
+                    // when changing the bit flags, ensure that you also update the Surface struct in common_structs.hlsl, so that it reads those flags as expected
                 }
                 
                 // textures
                 {
-         
-
+ 
                     for (uint32_t type = 0; type < material_texture_type_count; type++)
                     {
                         for (uint32_t variation = 0; variation < material_texture_count_per_type; variation++)

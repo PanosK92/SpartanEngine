@@ -63,7 +63,7 @@ Texture2D tex_font_atlas         : register(t26);
 TextureCube tex_reflection_probe : register(t27);
 Texture2DArray tex_sss			 : register(t28);
 
-//= MATERIALS =========================================================================================
+//= MATERIALS ===============================================================================
 // texture array containing all material present int the world
 static const uint material_albedo    = 0; 
 static const uint material_roughness = 4; 
@@ -103,23 +103,10 @@ struct Material
     float clearcoat;
     float clearcoat_roughness;
 };
-RWStructuredBuffer<Material> buffer_materials : register(u0);
 
-// easy access properties
-Material GetMaterial()                        { return buffer_materials[buffer_frame.material_index]; }
-bool has_single_texture_roughness_metalness() { return GetMaterial().flags & uint(1U << 0);  }
-bool has_texture_height()                     { return GetMaterial().flags & uint(1U << 1);  }
-bool has_texture_normal()                     { return GetMaterial().flags & uint(1U << 2);  }
-bool has_texture_albedo()                     { return GetMaterial().flags & uint(1U << 3);  }
-bool has_texture_roughness()                  { return GetMaterial().flags & uint(1U << 4);  }
-bool has_texture_metalness()                  { return GetMaterial().flags & uint(1U << 5);  }
-bool has_texture_alpha_mask()                 { return GetMaterial().flags & uint(1U << 6);  }
-bool has_texture_emissive()                   { return GetMaterial().flags & uint(1U << 7);  }
-bool has_texture_occlusion()                  { return GetMaterial().flags & uint(1U << 8);  }
-bool material_texture_slope_based()           { return GetMaterial().flags & uint(1U << 9);  }
-bool material_vertex_animate_wind()           { return GetMaterial().flags & uint(1U << 10); }
-bool material_vertex_animate_water()          { return GetMaterial().flags & uint(1U << 11); }
-//=====================================================================================================
+RWStructuredBuffer<Material> buffer_materials : register(u0);
+Material GetMaterial() { return buffer_materials[buffer_frame.material_index]; }
+//===========================================================================================
 
 //= LIGHTS ==============================================================
 struct Light_
@@ -139,9 +126,8 @@ struct Light_
     float3 direction;
     uint flags;
 };
-RWStructuredBuffer<Light_> buffer_lights : register(u1);
 
-// easy access properties
+RWStructuredBuffer<Light_> buffer_lights : register(u1);
 Light_ GetLight() { return buffer_lights[(uint)pass_get_f3_value2().y]; }
 //=======================================================================
 
