@@ -106,14 +106,14 @@ namespace Spartan
         static RHI_CommandList* GetCmdList();
         //===================================
 
-        //= RESOURCES ===========================================================================================
+        //= RESOURCES ==========================================================================================================
         static RHI_Texture* GetFrameTexture();
         static std::shared_ptr<Camera> GetCamera();
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
 
         // get all
         static std::array<std::shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTexture::max)>& GetRenderTargets();
-        static std::array<std::shared_ptr<RHI_Shader>, shader_count>& GetShaders();
+        static std::array<std::shared_ptr<RHI_Shader>, static_cast<uint32_t>(Renderer_Shader::max)>& GetShaders();
         static std::array<std::shared_ptr<RHI_StructuredBuffer>, 3>& GetStructuredBuffers();
 
         // get individual
@@ -129,7 +129,7 @@ namespace Spartan
         static std::shared_ptr<Mesh> GetStandardMesh(const Renderer_MeshType type);
         static std::shared_ptr<Font>& GetFont();
         static std::shared_ptr<Material> GetStandardMaterial();
-        //=======================================================================================================
+        //======================================================================================================================
 
     private:
         // constant and push constant buffers
@@ -154,8 +154,8 @@ namespace Spartan
         static void Pass_Frame(RHI_CommandList* cmd_list);
         static void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
         static void Pass_ReflectionProbes(RHI_CommandList* cmd_list);
+        static void Pass_FrustumOcclusionQueries(RHI_CommandList* cmd_list);
         static void Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
-        static void Pass_Hi_Z(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
         static void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
         static void Pass_Ssgi(RHI_CommandList* cmd_list);
         static void Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool is_transparent_pass = false);

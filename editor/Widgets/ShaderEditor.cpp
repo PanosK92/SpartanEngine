@@ -207,9 +207,8 @@ void ShaderEditor::ShowControls()
 
 void ShaderEditor::GetShaderInstances()
 {
-    array<shared_ptr<RHI_Shader>, shader_count> shaders = Renderer::GetShaders();
+    auto shaders = Renderer::GetShaders();
     m_shaders.clear();
-
     for (const shared_ptr<RHI_Shader>& shader : shaders)
     {
         if (shader && shader->IsCompiled())
@@ -218,6 +217,6 @@ void ShaderEditor::GetShaderInstances()
         }
     }
 
-    // Order them alphabetically
+    // order them alphabetically
     sort(m_shaders.begin(), m_shaders.end(), [](RHI_Shader* a, RHI_Shader* b) { return a->GetObjectName() < b->GetObjectName(); });
 }
