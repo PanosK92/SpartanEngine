@@ -822,16 +822,7 @@ namespace Spartan
         cmd_list->Dispatch(thread_group_count_x(tex_ssr), thread_group_count_y(tex_ssr));
 
         // generate frame mips so that we can simulate roughness
-        Pass_Ffx_Spd(cmd_list, tex_ssr, Renderer_DownsampleFilter::Average);
-
-        // blur the smaller mips to reduce blockiness/flickering
-        for (uint32_t i = 1; i < tex_ssr->GetMipCount(); i++)
-        {
-            const bool depth_aware = true;
-            const float radius     = 5.0f;
-            const float sigma      = 2.0f;
-            Pass_Blur_Gaussian(cmd_list, tex_ssr, depth_aware, radius, sigma, i);
-        }
+        Pass_Ffx_Spd(cmd_list, tex_ssr, Renderer_DownsampleFilter::Antiflicker);
 
         cmd_list->EndTimeblock();
     }
