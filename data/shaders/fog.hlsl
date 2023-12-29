@@ -23,15 +23,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
+// ideally I fetch this from my atmospheric texture
+static const float3 g_atmospheric_color = float3(0.4f, 0.4f, 0.8f);
+
 /*------------------------------------------------------------------------------
     FOG - RADIAL
 ------------------------------------------------------------------------------*/
 float3 got_fog_radial(const float3 pixel_position, const float3 camera_position)
 {
     // parameters
-    const float g_fog_radius         = 150.0f; // how far away from the camera the fog starts
-    const float g_fog_fade_rate      = 0.05f;  // higher values make the fog fade in more abruptly
-    const float3 g_atmospheric_color = float3(0.4f, 0.4f, 0.8f);  // soft blue
+    const float g_fog_radius    = 150.0f; // how far away from the camera the fog starts
+    const float g_fog_fade_rate = 0.05f;  // higher values make the fog fade in more abruptly
     
     float distance_from_camera = length(pixel_position - camera_position) - g_fog_radius;
     float distance_factor      = max(0.0f, distance_from_camera) / g_fog_radius; // normalize the distance
@@ -83,7 +85,7 @@ float visibility(float3 position, Light light, uint2 pixel_pos)
 float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
 {
     // parameters
-    const float fog_density = pass_get_f3_value().x * 0.00005f;
+    const float fog_density = pass_get_f3_value().x * 0.00013f;
     const uint num_steps    = 45;
     
     float total_distance = surface.camera_to_pixel_length;
@@ -106,6 +108,6 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
         ray_pos += ray_step;
     }
 
-    return fog * light.color * light.intensity * light.attenuation;
+    return fog * light.intensity * light.color * g_atmospheric_color;
 }
 
