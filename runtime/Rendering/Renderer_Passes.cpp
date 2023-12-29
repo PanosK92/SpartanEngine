@@ -497,7 +497,7 @@ namespace Spartan
             pso.blend_state                 = GetBlendState(Renderer_BlendState::Disabled).get();
             pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
             pso.render_target_depth_texture = GetRenderTarget(Renderer_RenderTexture::occlusion).get();
-            pso.clear_depth                 = 0.0f; // reverse-z  
+            pso.clear_depth                 = 0.0f; // reverse-z
             cmd_list->SetPipelineState(pso);
 
             cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology::LineList);

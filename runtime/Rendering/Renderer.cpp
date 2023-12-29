@@ -170,18 +170,18 @@ namespace Spartan
                     properties[index].sheen_tint             = material->GetProperty(MaterialProperty::SheenTint);
                     properties[index].subsurface_scattering  = material->GetProperty(MaterialProperty::SubsurfaceScattering);
                     properties[index].ior                    = material->GetProperty(MaterialProperty::Ior);
-                    properties[index].properties            |= material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness) ? (1U << 0)  : 0;
-                    properties[index].properties            |= material->HasTexture(MaterialTexture::Height)                            ? (1U << 1)  : 0;
-                    properties[index].properties            |= material->HasTexture(MaterialTexture::Normal)                            ? (1U << 2)  : 0;
-                    properties[index].properties            |= material->HasTexture(MaterialTexture::Color)                             ? (1U << 3)  : 0;
-                    properties[index].properties            |= material->HasTexture(MaterialTexture::Roughness)                         ? (1U << 4)  : 0;
-                    properties[index].properties            |= material->HasTexture(MaterialTexture::Metalness)                         ? (1U << 5)  : 0;
-                    properties[index].properties            |= material->HasTexture(MaterialTexture::AlphaMask)                         ? (1U << 6)  : 0;
-                    properties[index].properties            |= material->HasTexture(MaterialTexture::Emission)                          ? (1U << 7)  : 0;
-                    properties[index].properties            |= material->HasTexture(MaterialTexture::Occlusion)                         ? (1U << 8)  : 0;
-                    properties[index].properties            |= material->GetProperty(MaterialProperty::TextureSlopeBased)               ? (1U << 9)  : 0;
-                    properties[index].properties            |= material->GetProperty(MaterialProperty::VertexAnimateWind)               ? (1U << 10) : 0;
-                    properties[index].properties            |= material->GetProperty(MaterialProperty::VertexAnimateWater)              ? (1U << 11) : 0;
+                    properties[index].flags                 |= material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness) ? (1U << 0)  : 0;
+                    properties[index].flags                 |= material->HasTexture(MaterialTexture::Height)                            ? (1U << 1)  : 0;
+                    properties[index].flags                 |= material->HasTexture(MaterialTexture::Normal)                            ? (1U << 2)  : 0;
+                    properties[index].flags                 |= material->HasTexture(MaterialTexture::Color)                             ? (1U << 3)  : 0;
+                    properties[index].flags                 |= material->HasTexture(MaterialTexture::Roughness)                         ? (1U << 4)  : 0;
+                    properties[index].flags                 |= material->HasTexture(MaterialTexture::Metalness)                         ? (1U << 5)  : 0;
+                    properties[index].flags                 |= material->HasTexture(MaterialTexture::AlphaMask)                         ? (1U << 6)  : 0;
+                    properties[index].flags                 |= material->HasTexture(MaterialTexture::Emission)                          ? (1U << 7)  : 0;
+                    properties[index].flags                 |= material->HasTexture(MaterialTexture::Occlusion)                         ? (1U << 8)  : 0;
+                    properties[index].flags                 |= material->GetProperty(MaterialProperty::TextureSlopeBased)               ? (1U << 9)  : 0;
+                    properties[index].flags                 |= material->GetProperty(MaterialProperty::VertexAnimateWind)               ? (1U << 10) : 0;
+                    properties[index].flags                 |= material->GetProperty(MaterialProperty::VertexAnimateWater)              ? (1U << 11) : 0;
                 }
                 
                 // textures
@@ -264,14 +264,15 @@ namespace Spartan
                     properties[index].normal_bias  = light->GetNormalBias();
                     properties[index].position     = light->GetEntity()->GetPosition();
                     properties[index].direction    = light->GetEntity()->GetForward();
-                    properties[index].options      = 0;
-                    properties[index].options     |= light->GetLightType() == LightType::Directional                                                                      ? (1 << 0) : 0;
-                    properties[index].options     |= light->GetLightType() == LightType::Point                                                                            ? (1 << 1) : 0;
-                    properties[index].options     |= light->GetLightType() == LightType::Spot                                                                             ? (1 << 2) : 0;
-                    properties[index].options     |= light->IsFlagSet(LightFlags::Shadows)                                                                                ? (1 << 3) : 0;
-                    properties[index].options     |= light->IsFlagSet(LightFlags::ShadowsTransparent)                                                                     ? (1 << 4) : 0;
-                    properties[index].options     |= (light->IsFlagSet(LightFlags::ShadowsScreenSpace) && Renderer::GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
-                    properties[index].options     |= (light->IsFlagSet(LightFlags::Volumetric)         && Renderer::GetOption<bool>(Renderer_Option::FogVolumetric))      ? (1 << 6) : 0;
+                    properties[index].flags        = 0;
+                    properties[index].flags       |= light->GetLightType() == LightType::Directional                                                                      ? (1 << 0) : 0;
+                    properties[index].flags       |= light->GetLightType() == LightType::Point                                                                            ? (1 << 1) : 0;
+                    properties[index].flags       |= light->GetLightType() == LightType::Spot                                                                             ? (1 << 2) : 0;
+                    properties[index].flags       |= light->IsFlagSet(LightFlags::Shadows)                                                                                ? (1 << 3) : 0;
+                    properties[index].flags       |= light->IsFlagSet(LightFlags::ShadowsTransparent)                                                                     ? (1 << 4) : 0;
+                    properties[index].flags       |= (light->IsFlagSet(LightFlags::ShadowsScreenSpace) && Renderer::GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
+                    properties[index].flags       |= (light->IsFlagSet(LightFlags::Volumetric)         && Renderer::GetOption<bool>(Renderer_Option::FogVolumetric))      ? (1 << 6) : 0;
+                    // when changing the bit flags, ensure that you also update the Light struct in common_structs.hlsl, so that it reads those flags as expected
 
                     index++;
                 }

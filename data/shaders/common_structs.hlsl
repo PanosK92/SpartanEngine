@@ -228,7 +228,7 @@ struct Light
         Light_ light = GetLight();
 
         view_projection   = light.view_projection;
-        flags             = light.options;
+        flags             = light.flags;
         color             = light.color.rgb;
         position          = light.position.xyz;
         intensity         = light.intensity;

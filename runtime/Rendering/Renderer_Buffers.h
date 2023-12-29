@@ -204,10 +204,10 @@ namespace Spartan
         float normal_mul    = 0.0f;
         float height_mul    = 0.0f;
 
-        uint32_t properties      = 0;
+        uint32_t flags           = 0;
         float world_space_height = 0.0f;
         float ior                = 1.0f;
-        uint32_t padding_1       = 0;
+        float subsurface_scattering;
 
         float sheen;
         Math::Vector3 sheen_tint;
@@ -216,9 +216,6 @@ namespace Spartan
         float anisotropic_rotation;
         float clearcoat;
         float clearcoat_roughness;
-
-        float subsurface_scattering;
-        Math::Vector3 padding_2;
     };
 
     struct Sb_Light
@@ -236,7 +233,7 @@ namespace Spartan
         float normal_bias;
 
         Math::Vector3 direction;
-        uint32_t options;
+        uint32_t flags;
 
         bool operator==(const Sb_Light& rhs)
         {
@@ -247,15 +244,15 @@ namespace Spartan
                 view_projection[3] == rhs.view_projection[3] &&
                 view_projection[4] == rhs.view_projection[4] &&
                 view_projection[5] == rhs.view_projection[5] &&
-                intensity          == rhs.intensity &&
-                range              == rhs.range &&
-                angle              == rhs.angle &&
-                bias               == rhs.bias &&
-                normal_bias        == rhs.normal_bias &&
-                color              == rhs.color &&
-                position           == rhs.position &&
-                direction          == rhs.direction &&
-                options            == rhs.options;
+                intensity          == rhs.intensity          &&
+                range              == rhs.range              &&
+                angle              == rhs.angle              &&
+                bias               == rhs.bias               &&
+                normal_bias        == rhs.normal_bias        &&
+                color              == rhs.color              &&
+                position           == rhs.position           &&
+                direction          == rhs.direction          &&
+                flags              == rhs.flags;
         }
     };
 }
