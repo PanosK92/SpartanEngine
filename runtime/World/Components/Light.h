@@ -64,6 +64,14 @@ namespace Spartan
         custom                        // Custom intensity
     };
 
+    enum LightFlags : uint32_t
+    {
+        Shadows            = 1U << 0,
+        ShadowsTransparent = 1U << 1,
+        ShadowsScreenSpace = 1U << 2,
+        Volumetric         = 1U << 3
+    };
+
     class SP_CLASS Light : public Component
     {
     public:
@@ -76,6 +84,10 @@ namespace Spartan
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
         //============================================
+
+        // flags
+        bool IsFlagSet(const LightFlags flag) { return m_flags & flag; }
+        void SetFlag(const LightFlags flag, const bool enable = true);
 
         // type
         const LightType GetLightType() const { return m_light_type; }
@@ -94,21 +106,11 @@ namespace Spartan
         LightIntensity GetIntensity() const { return m_intensity; }
         float GetIntensityWatt(Camera* camera) const;
 
-        // shadows
-        bool GetShadowsEnabled() const { return m_shadows_enabled; }
-        void SetShadowsEnabled(bool cast_shadows);
-        bool GetShadowsTransparentEnabled() const { return m_shadows_transparent_enabled; }
-        void SetShadowsTransparentEnabled(bool cast_transparent_shadows);
-
         // bias
         static float GetBias()            { return -0.004f; }
         static float GetBiasSlopeScaled() { return -2.0f; }
         void SetNormalBias(float value)   { m_bias_normal = value; }
         auto GetNormalBias() const        { return m_bias_normal; }
-
-        // volumetric
-        bool GetVolumetricEnabled() const             { return m_volumetric_enabled; }
-        void SetVolumetricEnabled(bool is_volumetric) { m_volumetric_enabled = is_volumetric; }
 
         // range
         void SetRange(float range);
@@ -125,7 +127,7 @@ namespace Spartan
         // textures
         RHI_Texture* GetDepthTexture() const { return m_texture_depth.get(); }
         RHI_Texture* GetColorTexture() const { return m_texture_color.get(); }
-        void CreateShadowMap();
+        void RefreshShadowMap();
 
         // frustum
         bool IsInViewFrustum(const Math::BoundingBox& bounding_box, const uint32_t index) const;
@@ -145,9 +147,7 @@ namespace Spartan
         float m_intensity_lumens   = 2600.0f;
 
         // shadows
-        bool m_shadows_enabled             = true;
-        bool m_shadows_transparent_enabled = true;
-        float m_bias_normal                = 0.0f;
+        float m_bias_normal = 0.0f;
         std::shared_ptr<RHI_Texture> m_texture_color;
         std::shared_ptr<RHI_Texture> m_texture_depth;
         std::array<Math::Frustum, 6> m_frustums;
@@ -155,10 +155,10 @@ namespace Spartan
         std::array<Math::Matrix, 6> m_matrix_projection;
 
         // misc
+        uint32_t m_flags           = 0;
         LightType m_light_type     = LightType::Directional;
         Color m_color_rgb          = Color::standard_black;;
         float m_temperature_kelvin = 0.0f;
-        bool m_volumetric_enabled  = true;
         float m_range              = 0.0f;
         float m_angle_rad          = Math::Helper::DEG_TO_RAD * 30.0f;
         uint32_t m_index           = 0;

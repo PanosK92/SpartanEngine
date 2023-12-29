@@ -102,8 +102,7 @@ namespace Spartan
 
     Light::Light(weak_ptr<Entity> entity) : Component(entity)
     {
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_enabled, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_transparent_enabled, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flags, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_range, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_intensity_lumens, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_angle_rad, float);
@@ -111,18 +110,19 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bias_normal, float);
         SP_REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
 
+        m_matrix_view.fill(Matrix::Identity);
+        m_matrix_projection.fill(Matrix::Identity);
+
         SetColor(get_sensible_color(m_light_type));
         SetIntensity(get_sensible_intensity(m_light_type));
         SetRange(get_sensible_range(m_range, m_light_type));
-
-        if (m_light_type == LightType::Point)
+        SetFlag(Shadows);
+        SetFlag(ShadowsTransparent);
+        SetFlag(ShadowsScreenSpace);
+        if (m_light_type != LightType::Point)
         {
-            m_volumetric_enabled = false;
+            SetFlag(Volumetric);
         }
-
-        m_matrix_view.fill(Matrix::Identity);
-        m_matrix_projection.fill(Matrix::Identity);
-        CreateShadowMap();
 
         SP_SUBSCRIBE_TO_EVENT(EventType::CameraOnChanged, SP_EVENT_HANDLER(OnTransformChanged));
     }
@@ -144,9 +144,7 @@ namespace Spartan
     void Light::Serialize(FileStream* stream)
     {
         stream->Write(static_cast<uint32_t>(m_light_type));
-        stream->Write(m_shadows_enabled);
-        stream->Write(m_shadows_transparent_enabled);
-        stream->Write(m_volumetric_enabled);
+        stream->Write(m_flags);
         stream->Write(m_color_rgb);
         stream->Write(m_range);
         stream->Write(m_intensity_lumens);
@@ -157,14 +155,52 @@ namespace Spartan
     void Light::Deserialize(FileStream* stream)
     {
         SetLightType(static_cast<LightType>(stream->ReadAs<uint32_t>()));
-        stream->Read(&m_shadows_enabled);
-        stream->Read(&m_shadows_transparent_enabled);
-        stream->Read(&m_volumetric_enabled);
+        stream->Read(&m_flags);
         stream->Read(&m_color_rgb);
         stream->Read(&m_range);
         stream->Read(&m_intensity_lumens);
         stream->Read(&m_angle_rad);
         stream->Read(&m_bias_normal);
+    }
+
+    void Light::SetFlag(const LightFlags flag, const bool enable)
+    {
+        bool enabled      = false;
+        bool disabled     = false;
+        bool flag_present = m_flags & flag;
+
+        if (enable && !flag_present)
+        {
+            m_flags |= static_cast<uint32_t>(flag);
+            enabled  = true;
+
+        }
+        else if (!enable && flag_present)
+        {
+            m_flags  &= ~static_cast<uint32_t>(flag);
+            disabled  = true;
+        }
+
+        if (enabled || disabled)
+        {
+            if (disabled)
+            {
+                // if the shadows have been disabled, disable properties which rely on them
+                if (flag & LightFlags::Shadows)
+                {
+                    m_flags &= ~static_cast<uint32_t>(LightFlags::ShadowsScreenSpace);
+                    m_flags &= ~static_cast<uint32_t>(LightFlags::ShadowsTransparent);
+                    m_flags &= ~static_cast<uint32_t>(LightFlags::Volumetric);
+                }
+            }
+
+            if (flag & LightFlags::Shadows || flag & LightFlags::ShadowsTransparent)
+            {
+                RefreshShadowMap();
+            }
+
+            SP_FIRE_EVENT(EventType::LightOnChanged);
+        }
     }
 
     void Light::SetLightType(LightType type)
@@ -178,9 +214,9 @@ namespace Spartan
         SetRange(get_sensible_range(m_range, m_light_type));
         SetIntensity(get_sensible_intensity(m_light_type));
 
-        if (m_shadows_enabled)
+        if (IsFlagSet(Shadows) || IsFlagSet(ShadowsTransparent))
         {
-            CreateShadowMap();
+            RefreshShadowMap();
         }
 
         UpdateMatrices();
@@ -314,28 +350,6 @@ namespace Spartan
         return power_watts * camera->GetExposure();
     }
 
-    void Light::SetShadowsEnabled(bool cast_shadows)
-    {
-        if (m_shadows_enabled == cast_shadows)
-            return;
-
-        m_shadows_enabled = cast_shadows;
-        CreateShadowMap();
-
-        SP_FIRE_EVENT(EventType::LightOnChanged);
-    }
-
-    void Light::SetShadowsTransparentEnabled(bool cast_transparent_shadows)
-    {
-        if (m_shadows_transparent_enabled == cast_transparent_shadows)
-            return;
-
-        m_shadows_transparent_enabled = cast_transparent_shadows;
-        CreateShadowMap();
-
-        SP_FIRE_EVENT(EventType::LightOnChanged);
-    }
-
     void Light::SetRange(float range)
     {
         range = Helper::Clamp(range, 0.0f, numeric_limits<float>::max());
@@ -459,16 +473,16 @@ namespace Spartan
         return IsInViewFrustum(renderable->GetBoundingBox(BoundingBoxType::Transformed), index);
     }
 
-    void Light::CreateShadowMap()
+    void Light::RefreshShadowMap()
     {
-        if (!m_shadows_enabled)
+        if (!IsFlagSet(LightFlags::Shadows))
         {
             m_texture_depth.reset();
             m_texture_color.reset();
             return;
         }
 
-        if (!m_shadows_transparent_enabled)
+        if (!IsFlagSet(LightFlags::ShadowsTransparent))
         {
             m_texture_color.reset();
         }
@@ -482,7 +496,7 @@ namespace Spartan
         {
             m_texture_depth = make_unique<RHI_Texture2DArray>(resolution, resolution, format_depth, 2, flags, "light_directional_depth");
 
-            if (m_shadows_transparent_enabled)
+            if (IsFlagSet(LightFlags::ShadowsTransparent))
             {
                 m_texture_color = make_unique<RHI_Texture2DArray>(resolution, resolution, format_color, 2, flags, "light_directional_color");
             }          
@@ -491,7 +505,7 @@ namespace Spartan
         {
             m_texture_depth = make_unique<RHI_Texture2D>(resolution, resolution, 1, format_depth, flags, "light_spot_depth");
 
-            if (m_shadows_transparent_enabled)
+            if (IsFlagSet(LightFlags::ShadowsTransparent))
             {
                 m_texture_color = make_unique<RHI_Texture2D>(resolution, resolution, 1, format_color, flags, "light_spot_color");
             }
@@ -500,7 +514,7 @@ namespace Spartan
         {
             m_texture_depth = make_unique<RHI_TextureCube>(resolution, resolution, format_depth, flags, "light_point_depth");
 
-            if (m_shadows_transparent_enabled)
+            if (IsFlagSet(LightFlags::ShadowsTransparent))
             {
                 m_texture_color = make_unique<RHI_TextureCube>(resolution, resolution, format_color, flags, "light_point_color");
             }

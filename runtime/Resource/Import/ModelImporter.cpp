@@ -558,8 +558,8 @@ namespace Spartan
                 shared_ptr<Light> light = new_entity->AddComponent<Light>();
 
                 // disable shadows (to avoid tanking the framerate)
-                light->SetShadowsEnabled(false);
-                light->SetShadowsTransparentEnabled(false);
+                light->SetFlag(LightFlags::Shadows, false);
+                light->SetFlag(LightFlags::ShadowsTransparent, false);
 
                 // local transform
                 light->GetEntity()->SetPositionLocal(convert_vector3(light_assimp->mPosition));

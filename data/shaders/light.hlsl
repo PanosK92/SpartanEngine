@@ -73,17 +73,17 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // shadows
     float4 shadow = 1.0f;
     {
-        if (light_has_shadows())
+        if (light.has_shadows())
         {
             // shadow maps
-            if (pass_is_opaque() || (surface.is_transparent() && light_has_shadows_transparent()))
+            if (pass_is_opaque() || (surface.is_transparent() && light.has_shadows_transparent()))
             {
                 shadow = Shadow_Map(surface, light);
             }
             
             // screen space shadows - for opaque objects
             uint array_slice_index = (uint)pass_get_f3_value2().x;
-            if (is_screen_space_shadows_enabled() && pass_is_opaque() && array_slice_index != -1)
+            if (light.has_shadows_screen_space() && pass_is_opaque() && array_slice_index != -1)
             {
                 shadow.a = min(shadow.a, tex_sss[int3(thread_id.xy, array_slice_index)].x);
             }
@@ -100,8 +100,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     light.radiance *= shadow.rgb * shadow.a;
 
     // reflectance equation(s)
-    float3 light_diffuse  = 0.0f;
-    float3 light_specular = 0.0f;
+    float3 light_diffuse    = 0.0f;
+    float3 light_specular   = 0.0f;
     float3 light_subsurface = 0.0f;
     if (!surface.is_sky())
     {
@@ -145,7 +145,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // volumetric
     float3 volumetric_fog = 0.0f;
-    if (light_is_volumetric())
+    if (light.is_volumetric() && pass_is_opaque())
     {
         volumetric_fog = compute_volumetric_fog(surface, light, thread_id.xy);
     }

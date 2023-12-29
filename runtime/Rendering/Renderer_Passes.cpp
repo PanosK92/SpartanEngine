@@ -263,11 +263,11 @@ namespace Spartan
                     continue;
 
                 // skip lights which don't cast shadows or have an intensity of zero
-                if (!light->GetShadowsEnabled() || light->GetIntensityWatt(GetCamera().get()) == 0.0f)
+                if (!light->IsFlagSet(LightFlags::Shadows) || light->GetIntensityWatt(GetCamera().get()) == 0.0f)
                     continue;
 
                 // skip lights that don't cast transparent shadows (if this is a transparent pass)
-                if (is_transparent_pass && !light->GetShadowsTransparentEnabled())
+                if (is_transparent_pass && !light->IsFlagSet(LightFlags::ShadowsTransparent))
                     continue;
 
                 // define pipeline state
@@ -279,7 +279,7 @@ namespace Spartan
                 pso.depth_stencil_state             = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
                 pso.render_target_color_textures[0] = light->GetColorTexture(); // always bind so we can clear to white (in case there are no transparent objects)
                 pso.render_target_depth_texture     = light->GetDepthTexture();
-                pso.name                            = "Pass_ShadowMaps";
+                pso.name                            = "shadow_maps";
 
                 // go through all of the cascades/faces
                 for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetArrayLength(); array_index++)
@@ -490,7 +490,7 @@ namespace Spartan
 
             // define pipeline state
             static RHI_PipelineState pso;
-            pso.name                        = !is_transparent_pass ? "occlusion_queries" : "occlusion_queries";
+            pso.name                        = "occlusion_queries";
             pso.instancing                  = i == 1 || i == 3;
             pso.shader_vertex               = !pso.instancing ? shader_v : shader_instanced_v;
             pso.rasterizer_state            = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
@@ -514,11 +514,18 @@ namespace Spartan
                 if (!renderable->GetIsVisible())
                     continue;
 
-                // occlusion check (on the fly generated bounding box against depth buffer)
-                BoundingBox bounding_box = renderable->GetBoundingBox(BoundingBoxType::Transformed);
-                m_cb_pass_cpu.set_f3_value(bounding_box.GetMin());
-                m_cb_pass_cpu.set_f3_value2(bounding_box.GetMax());
-                cmd_list->Draw(8);
+                // occlusion check
+                {
+                    // set bounding box min max via push constants for maximum speed
+                    BoundingBox bounding_box = renderable->GetBoundingBox(BoundingBoxType::Transformed);
+                    m_cb_pass_cpu.set_f3_value(bounding_box.GetMin());
+                    m_cb_pass_cpu.set_f3_value2(bounding_box.GetMax());
+
+                    uint32_t occlusion_query_id = cmd_list->BeginOcclusionQuery();
+                    // draw 8 vertices and generate a screen space bounding box on the fly on the gpu
+                    cmd_list->Draw(8);
+                    cmd_list->EndOcclusionQuery();
+                }
             }
         }
 
@@ -849,15 +856,13 @@ namespace Spartan
 
         cmd_list->BeginTimeblock("sss_bend");
         {
-            // define pipeline state
+            // set pipeline state
             static RHI_PipelineState pso;
             pso.shader_compute = shader_c;
-
-            // set pipeline state
             cmd_list->SetPipelineState(pso);
 
             // set textures
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex,  GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));  // read from that
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));  // read from that
             cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, tex_sss); // write to that
 
             // iterate through all the lights
@@ -866,7 +871,7 @@ namespace Spartan
             {
                 if (shared_ptr<Light> light = entity->GetComponent<Light>())
                 {
-                    if (!light->GetShadowsEnabled())
+                    if (!light->IsFlagSet(LightFlags::ShadowsScreenSpace))
                         continue;
 
                     if (array_slice_index == tex_sss->GetArrayLength())
@@ -1019,15 +1024,16 @@ namespace Spartan
                 // note: do lighting even at zero intensity as there can be emissive materials
 
                 SetGbufferTextures(cmd_list);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_diffuse);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_specular);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex3, tex_volumetric);
-                cmd_list->SetTexture(Renderer_BindingsSrv::ssgi, GetRenderTarget(Renderer_RenderTexture::ssgi_filtered));
+                cmd_list->SetTexture(Renderer_BindingsUav::tex,     tex_diffuse);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex2,    tex_specular);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex3,    tex_volumetric);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTexture::sss).get());
+                cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,    GetRenderTarget(Renderer_RenderTexture::ssgi_filtered));
    
                 // set shadow maps
                 {
-                    RHI_Texture* tex_depth = light->GetShadowsEnabled()            ? light->GetDepthTexture() : nullptr;
-                    RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : nullptr;
+                    RHI_Texture* tex_depth = light->IsFlagSet(LightFlags::Shadows)            ? light->GetDepthTexture() : nullptr;
+                    RHI_Texture* tex_color = light->IsFlagSet(LightFlags::ShadowsTransparent) ? light->GetColorTexture() : nullptr;
 
                     if (light->GetLightType() == LightType::Directional)
                     {
