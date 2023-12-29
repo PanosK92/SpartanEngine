@@ -33,26 +33,27 @@ using namespace Math;
 
 namespace
 {
-    static string name;
-    static RHI_Format rhi_format          = RHI_Format::Undefined;
-    static uint32_t m_texture_index       = 1;
-    static int mip_level                  = 0;
-    static int  mip_count                 = 0;
-    static bool m_magnifying_glass        = false;
-    static bool m_channel_r               = true;
-    static bool m_channel_g               = true;
-    static bool m_channel_b               = true;
-    static bool m_channel_a               = true;
-    static bool m_gamma_correct           = true;
-    static bool m_pack                    = false;
-    static bool m_boost                   = false;
-    static bool m_abs                     = false;
-    static bool m_point_sampling          = false;
-    static uint32_t width                 = 0;
-    static uint32_t height                = 0;
-    static uint32_t channel_count         = 0;
-    static uint64_t texture_id            = 0;
-    static uint32_t m_visualisation_flags = 0;
+    string name;
+    RHI_Format rhi_format          = RHI_Format::Undefined;
+    uint32_t m_texture_index       = 0;
+    int mip_level                  = 0;
+    int  mip_count                 = 0;
+    bool m_magnifying_glass        = false;
+    bool m_channel_r               = true;
+    bool m_channel_g               = true;
+    bool m_channel_b               = true;
+    bool m_channel_a               = true;
+    bool m_gamma_correct           = true;
+    bool m_pack                    = false;
+    bool m_boost                   = false;
+    bool m_abs                     = false;
+    bool m_point_sampling          = false;
+    uint32_t width                 = 0;
+    uint32_t height                = 0;
+    uint32_t channel_count         = 0;
+    uint64_t texture_id            = 0;
+    uint32_t m_visualisation_flags = 0;
+    vector<string> render_targets;
 }
 
 TextureViewer::TextureViewer(Editor* editor) : Widget(editor)
@@ -71,15 +72,13 @@ void TextureViewer::OnTick()
 void TextureViewer::OnTickVisible()
 {
     // get render targets
-    static vector<string> render_target_options;
-    if (render_target_options.empty())
+    if (render_targets.empty())
     {
-        render_target_options.emplace_back("None");
         for (const shared_ptr<RHI_Texture>& render_target : Renderer::GetRenderTargets())
         {
             if (render_target)
             {
-                render_target_options.emplace_back(render_target->GetObjectName());
+                render_targets.emplace_back(render_target->GetObjectName());
             }
         }
     }
@@ -145,14 +144,17 @@ void TextureViewer::OnTickVisible()
         // render target
         ImGui::Text("Render target");
         ImGui::SameLine();
-        ImGuiSp::combo_box("##render_target", render_target_options, &m_texture_index);
+        ImGuiSp::combo_box("##render_target", render_targets, &m_texture_index);
 
-        // mip level
-        ImGui::SameLine();
-        ImGui::PushItemWidth(85 * Spartan::Window::GetDpiScale());
-        ImGui::InputInt("Mip", &mip_level);
-        ImGui::PopItemWidth();
-        mip_level = Math::Helper::Clamp(mip_level, 0, static_cast<int>(mip_count) - 1);
+        // mip level control
+        if (mip_count > 1)
+        {
+            ImGui::SameLine();
+            ImGui::PushItemWidth(85 * Spartan::Window::GetDpiScale());
+            ImGui::InputInt("Mip", &mip_level);      
+            ImGui::PopItemWidth();
+            mip_level = Math::Helper::Clamp(mip_level, 0, static_cast<int>(mip_count) - 1);
+        }
 
         ImGui::BeginGroup();
         {
