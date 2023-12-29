@@ -385,7 +385,7 @@ namespace Spartan
         // triangle & quad
         {
             shader(Renderer_Shader::fullscreen_triangle_v) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::fullscreen_triangle_v)->Compile(RHI_Shader_Vertex, shader_dir + "fullscreen_triangle.hlsl", async, RHI_Vertex_Type::Undefined);
+            shader(Renderer_Shader::fullscreen_triangle_v)->Compile(RHI_Shader_Vertex, shader_dir + "fullscreen_triangle.hlsl", async, RHI_Vertex_Type::Max);
 
             shader(Renderer_Shader::quad_v) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::quad_v)->Compile(RHI_Shader_Vertex, shader_dir + "quad.hlsl", async, RHI_Vertex_Type::PosUvNorTan);

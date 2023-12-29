@@ -60,7 +60,7 @@ namespace Spartan
         {
             const uint32_t binding = 0;
 
-            if (vertex_type == RHI_Vertex_Type::Undefined)
+            if (vertex_type == RHI_Vertex_Type::Max)
             {
                 // The full-screen triangle vertex shaders generates it's own vertices.
                 // Therefore it doesn't need to define a vertex type for an input layout.

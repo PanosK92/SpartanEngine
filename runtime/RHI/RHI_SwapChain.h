@@ -85,7 +85,7 @@ namespace Spartan
         uint32_t m_buffer_count         = 0;
         uint32_t m_width                = 0;
         uint32_t m_height               = 0;
-        RHI_Format m_format             = RHI_Format::Undefined;
+        RHI_Format m_format             = RHI_Format::Max;
         RHI_Present_Mode m_present_mode = RHI_Present_Mode::Immediate;
 
         // Misc
@@ -93,7 +93,7 @@ namespace Spartan
         uint32_t m_image_index                                   = std::numeric_limits<uint32_t>::max();
         uint32_t m_image_index_previous                          = m_image_index;
         void* m_sdl_window                                       = nullptr;
-        std::array<RHI_Image_Layout, max_buffer_count> m_layouts = { RHI_Image_Layout::Undefined, RHI_Image_Layout::Undefined, RHI_Image_Layout::Undefined };
+        std::array<RHI_Image_Layout, max_buffer_count> m_layouts = { RHI_Image_Layout::Max, RHI_Image_Layout::Max, RHI_Image_Layout::Max };
         std::array<std::shared_ptr<RHI_Semaphore>, max_buffer_count> m_acquire_semaphore;
         std::vector<RHI_Semaphore*> m_wait_semaphores;
 

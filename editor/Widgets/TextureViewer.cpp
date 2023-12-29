@@ -34,7 +34,7 @@ using namespace Math;
 namespace
 {
     string name;
-    RHI_Format rhi_format          = RHI_Format::Undefined;
+    RHI_Format rhi_format          = RHI_Format::Max;
     uint32_t m_texture_index       = 0;
     int mip_level                  = 0;
     int  mip_count                 = 0;

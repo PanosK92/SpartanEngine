@@ -179,9 +179,9 @@ namespace Spartan
         static const uint8_t m_resource_array_length_max     = 16;
         RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
         std::atomic<RHI_CommandListState> m_state            = RHI_CommandListState::Idle;
-        RHI_Queue_Type m_queue_type                          = RHI_Queue_Type::Undefined;
-        RHI_CullMode m_cull_mode                             = RHI_CullMode::Undefined;
-        RHI_PrimitiveTopology m_primitive_topology           = RHI_PrimitiveTopology::Undefined;
+        RHI_Queue_Type m_queue_type                          = RHI_Queue_Type::Max;
+        RHI_CullMode m_cull_mode                             = RHI_CullMode::Max;
+        RHI_PrimitiveTopology m_primitive_topology           = RHI_PrimitiveTopology::Max;
         static bool m_memory_query_support;
         std::mutex m_mutex_reset;
         RHI_PipelineState m_pso;

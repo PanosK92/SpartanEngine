@@ -71,14 +71,14 @@ namespace Spartan
         Discrete,
         Virtual,
         Cpu,
-        Undefined
+        Max
     };
 
     enum class RHI_Api_Type
     {
         D3d12,
         Vulkan,
-        Undefined
+        Max
     };
 
     enum class RHI_Present_Mode
@@ -93,7 +93,7 @@ namespace Spartan
         Graphics,
         Compute,
         Copy,
-        Undefined
+        Max
     };
 
     enum class RHI_Query_Type
@@ -106,7 +106,7 @@ namespace Spartan
     {
         TriangleList,
         LineList,
-        Undefined
+        Max
     };
 
     enum class RHI_CullMode
@@ -114,14 +114,14 @@ namespace Spartan
         None,
         Front,
         Back,
-        Undefined
+        Max
     };
 
     enum class RHI_PolygonMode
     {
         Solid,
         Wireframe,
-        Undefined
+        Max
     };
 
     enum class RHI_Filter
@@ -197,7 +197,7 @@ namespace Spartan
         // Surface
         B8R8G8A8_Unorm,
         // End
-        Undefined
+        Max
     };
 
     enum class RHI_Resource_Type
@@ -218,7 +218,7 @@ namespace Spartan
         Pipeline,
         PipelineLayout,
         Queue,
-        Undefined
+        Max
     };
 
     enum class RHI_Vertex_Type
@@ -229,7 +229,7 @@ namespace Spartan
         PosUv,
         PosUvNorTan,
         Pos2dUvCol8,
-        Undefined
+        Max
     };
 
     enum class RHI_Blend
@@ -271,7 +271,7 @@ namespace Spartan
         PushConstantBuffer,
         ConstantBuffer,
         StructuredBuffer,
-        Undefined
+        Max
     };
 
     enum class RHI_Image_Layout
@@ -286,14 +286,14 @@ namespace Spartan
         Transfer_Source,
         Transfer_Destination,
         Present_Source,
-        Undefined
+        Max
     };
 
     enum class RHI_Sync_State
     {
         Idle,
         Submitted,
-        Undefined,
+        Max,
     };
 
     enum RHI_Shader_Stage : uint32_t
@@ -393,7 +393,7 @@ namespace Spartan
             case RHI_Format::D32_Float:            return "RHI_Format_D32_Float";
             case RHI_Format::D32_Float_S8X24_Uint: return "RHI_Format_D32_Float_S8X24_Uint";
             case RHI_Format::BC7:                  return "RHI_Format_BC7";
-            case RHI_Format::Undefined:            return "RHI_Format_Undefined";
+            case RHI_Format::Max:            return "RHI_Format_Undefined";
         }
 
         assert(false && "Unsupported format");

@@ -78,8 +78,8 @@ namespace Spartan
         void* data         = nullptr;
 
         // properties that don't affect any hash
-        RHI_Descriptor_Type type = RHI_Descriptor_Type::Undefined;
-        RHI_Image_Layout layout  = RHI_Image_Layout::Undefined;
+        RHI_Descriptor_Type type = RHI_Descriptor_Type::Max;
+        RHI_Image_Layout layout  = RHI_Image_Layout::Max;
         uint64_t range           = 0;
         uint32_t dynamic_offset  = 0;
         uint32_t struct_size     = 0;

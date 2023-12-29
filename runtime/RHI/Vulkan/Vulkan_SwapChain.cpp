@@ -288,7 +288,7 @@ namespace Spartan
                         0,
                         1,
                         1,
-                        RHI_Image_Layout::Undefined,
+                        RHI_Image_Layout::Max,
                         RHI_Image_Layout::Color_Attachment
                     );
 

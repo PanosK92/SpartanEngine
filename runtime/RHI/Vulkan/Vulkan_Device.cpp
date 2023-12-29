@@ -1087,7 +1087,7 @@ namespace Spartan
             VkPhysicalDeviceMemoryProperties device_memory_properties = {};
             vkGetPhysicalDeviceMemoryProperties(device_physical, &device_memory_properties);
         
-            RHI_PhysicalDevice_Type type = RHI_PhysicalDevice_Type::Undefined;
+            RHI_PhysicalDevice_Type type = RHI_PhysicalDevice_Type::Max;
             if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) type = RHI_PhysicalDevice_Type::Integrated;
             if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)   type = RHI_PhysicalDevice_Type::Discrete;
             if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)    type = RHI_PhysicalDevice_Type::Virtual;
