@@ -87,7 +87,7 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs, float
 
     // binary search variables
     float depth_delta = 0.0f;
-    float step_size   = 1.0; // initial step size
+    float step_size   = 1.0;
 
     // ray-march
     for (uint i = 0; i < step_count; i++)
@@ -161,4 +161,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = float4(color, alpha);
 }
-

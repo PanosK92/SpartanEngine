@@ -44,6 +44,60 @@ namespace Spartan
         float orthographic_depth       = 2048;   // depth of all cascades
         float orthographic_extent_near = 40.0f;  // size of the near cascade
         float orthographic_extent_far  = 175.0f; // size of the far cascade compared to the near one
+
+        float get_sensible_range(const float range, const LightType type)
+        {
+            if (type == LightType::Directional)
+            {
+                return orthographic_depth;
+            }
+            else if (type == LightType::Point)
+            {
+                return 15.0f;
+            }
+            else if (type == LightType::Spot)
+            {
+                return 15.0f;
+            }
+
+            return 0.0f;
+        }
+
+        LightIntensity get_sensible_intensity(const LightType type)
+        {
+            if (type == LightType::Directional)
+            {
+                return LightIntensity::sky_sunlight_noon;
+            }
+            else if (type == LightType::Point)
+            {
+                return LightIntensity::bulb_150_watt;
+            }
+            else if (type == LightType::Spot)
+            {
+                return LightIntensity::bulb_flashlight;
+            }
+
+            return LightIntensity::black_hole;
+        }
+
+        Color get_sensible_color(const LightType type)
+        {
+            if (type == LightType::Directional)
+            {
+                return Color::light_sky_sunrise;
+            }
+            else if (type == LightType::Point)
+            {
+                return Color::light_light_bulb;
+            }
+            else if (type == LightType::Spot)
+            {
+                return Color::light_light_bulb;
+            }
+
+            return Color::light_direct_sunlight;
+        }
     }
 
     Light::Light(weak_ptr<Entity> entity) : Component(entity)
@@ -57,26 +111,14 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bias_normal, float);
         SP_REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
 
-        SetColor(Color::light_sky_sunrise);
+        SetColor(get_sensible_color(m_light_type));
+        SetIntensity(get_sensible_intensity(m_light_type));
+        SetRange(get_sensible_range(m_range, m_light_type));
 
-        // intensity
-        if (m_light_type == LightType::Directional)
+        if (m_light_type == LightType::Point)
         {
-            SetIntensity(LightIntensity::sky_sunlight_noon);
-            m_range = orthographic_depth;
+            m_volumetric_enabled = false;
         }
-        else if (m_light_type == LightType::Point)
-        {
-            SetIntensity(LightIntensity::bulb_150_watt);
-            m_range = 10.0f;
-        }
-        else if (m_light_type == LightType::Spot)
-        {
-            SetIntensity(LightIntensity::bulb_flashlight);
-            m_range = 10.0f;
-        }
-
-        m_volumetric_enabled = false;
 
         m_matrix_view.fill(Matrix::Identity);
         m_matrix_projection.fill(Matrix::Identity);
@@ -131,6 +173,11 @@ namespace Spartan
             return;
 
         m_light_type = type;
+
+        SetColor(get_sensible_color(m_light_type));
+        SetRange(get_sensible_range(m_range, m_light_type));
+        SetIntensity(get_sensible_intensity(m_light_type));
+
         if (m_shadows_enabled)
         {
             CreateShadowMap();
