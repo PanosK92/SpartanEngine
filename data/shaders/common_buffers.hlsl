@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_COMMON_BUFFERS
 #define SPARTAN_COMMON_BUFFERS
 
-//= CONSTANT AND PUSH CONSTANT BUFFERS ===============================
+// constant buffer holding data related to the currenty frame
 struct FrameBufferData
 {
     matrix view;
@@ -58,6 +58,7 @@ struct FrameBufferData
     uint material_index;
 };
 
+// 128 byte push constant buffer used by everything in the engine
 struct PassBufferData
 {
     matrix transform;
@@ -67,15 +68,13 @@ struct PassBufferData
 [[vk::push_constant]]
 PassBufferData buffer_pass;
 cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame;  };
-//====================================================================
+                          
+// easy access to certain frame constant buffer properties                   
+bool is_taa_enabled()  { return any(buffer_frame.taa_jitter_current); }
+bool is_ssr_enabled()  { return buffer_frame.options & uint(1U << 0); }
+bool is_ssgi_enabled() { return buffer_frame.options & uint(1U << 1); }
 
-//= EASY PROPERTY ACCESS =======================================================================================================================================                                   
-// frame properties                       
-bool is_taa_enabled()                     { return any(buffer_frame.taa_jitter_current); }
-bool is_ssr_enabled()                     { return buffer_frame.options & uint(1U << 0); }
-bool is_ssgi_enabled()                    { return buffer_frame.options & uint(1U << 1); }
-
-// pass properties
+// easy access to the push constant properties
 matrix pass_get_transform_previous()      { return buffer_pass.values; }
 float2 pass_get_resolution_in()           { return float2(buffer_pass.values._m03, buffer_pass.values._m22); }
 float2 pass_get_resolution_out()          { return float2(buffer_pass.values._m23, buffer_pass.values._m30); }
@@ -86,6 +85,5 @@ bool pass_is_transparent()                { return buffer_pass.values._m33; }
 bool pass_is_opaque()                     { return !pass_is_transparent(); }
 bool pass_is_reflection_probe_available() { return pass_get_f4_value().x == 1.0f; } // this is more risky
 // _m32 is available for use
-//==============================================================================================================================================================
 
 #endif // SPARTAN_COMMON_BUFFERS

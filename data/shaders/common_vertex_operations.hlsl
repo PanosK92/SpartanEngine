@@ -27,11 +27,14 @@ float4 compute_screen_space_position(Vertex_PosUvNorTan input, uint instance_id,
     position.w      = 1.0f;
 
     world_position = mul(position, transform).xyz;
+
+    Surface surface;
+    surface.flags = GetMaterial().flags;
     
     #if INSTANCED // implies vegetation
     matrix instance = input.instance_transform;
     world_position  = mul(float4(world_position, 1.0f), instance).xyz;
-    if (material_vertex_animate_wind()) // vegetation
+    if (surface.vertex_animate_wind()) // vegetation
     {
         float3 animation_pivot = float3(instance._31, instance._32, instance._33); // position
         world_position = vertex_processing::vegetation::apply_wind(instance_id, world_position, animation_pivot, time);
@@ -39,7 +42,7 @@ float4 compute_screen_space_position(Vertex_PosUvNorTan input, uint instance_id,
     }
     #endif
 
-    if (material_vertex_animate_water())
+    if (surface.vertex_animate_water())
     {
         world_position = vertex_processing::water::apply_wave(world_position, time);
         world_position = vertex_processing::water::apply_ripple(world_position, time);

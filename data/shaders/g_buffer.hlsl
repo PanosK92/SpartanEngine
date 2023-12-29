@@ -107,7 +107,7 @@ struct sampling
         return base_snow_level + sine_value * amplitude;
     }
     
-    static float4 smart(uint texture_index, float2 uv, float3 position_world, float3 normal_world)
+    static float4 smart(Surface surface, uint texture_index, float2 uv, float3 position_world, float3 normal_world)
     {
         // texture indices
         const uint texture_index_rock = texture_index + 1;
@@ -125,14 +125,14 @@ struct sampling
         float snow_blend_factor = saturate(1.0 - max(0.0, -distance_to_snow) * blend_speed);
 
         // in case of water, just interleave the normal
-        if (material_vertex_animate_water())
+        if (surface.vertex_animate_water())
         {
             float4 normal = interleave(texture_index, texture_index, uv);
             return float4(normalize(normal.xyz), 0.0f);
         }
     
         // in case of the terrain, do slope based texturing with tiling removal
-        if (material_texture_slope_based())
+        if (surface.texture_slope_based())
         {
             float bias  = -0.25f; // increase the bias to favour the slope/rock texture
             float slope = saturate(dot(normal_world, float3(0.0f, 1.0f, 0.0f)) - bias);
@@ -165,7 +165,7 @@ struct sampling
         float4 color = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
         
         // blend with snow for vegetation
-        if (material_vertex_animate_wind())
+        if (surface.vertex_animate_wind())
         {
             float albedo_snow = 0.95f;
             color.rgb = lerp(color.rgb, albedo_snow, snow_blend_factor);
@@ -232,21 +232,25 @@ PixelOutputType mainPS(PixelInputType input)
         velocity = ndc_to_uv(position_ndc_current) - ndc_to_uv(position_ndc_previous);
     }
 
+    Material material = GetMaterial();
+    Surface surface; // a surface can interpret the material flags
+    surface.flags = material.flags;
+    
     // uv
     float2 uv = input.uv;
-    uv        = float2(uv.x * GetMaterial().tiling.x + GetMaterial().offset.x, uv.y * GetMaterial().tiling.y + GetMaterial().offset.y);
-    
+    uv        = float2(uv.x * material.tiling.x + material.offset.x, uv.y * material.tiling.y + material.offset.y);
+
     // alpha mask
     float alpha_mask = 1.0f;
-    if (has_texture_alpha_mask())
+    if (surface.has_texture_alpha_mask())
     {
         alpha_mask = GET_TEXTURE(material_mask).Sample(samplers[sampler_anisotropic_wrap], uv).r;
     }
     
     // albedo
-    if (has_texture_albedo())
+    if (surface.has_texture_albedo())
     {
-        float4 albedo_sample = sampling::smart(material_albedo, uv, input.position_world, input.normal_world);
+        float4 albedo_sample = sampling::smart(surface, material_albedo, uv, input.position_world, input.normal_world);
 
         // read albedo's alpha channel as an alpha mask as well
         alpha_mask      = min(alpha_mask, albedo_sample.a);
@@ -267,7 +271,7 @@ PixelOutputType mainPS(PixelInputType input)
     if (pixel_distance < g_quality_distance_low)
     {
         // parallax mapping
-        if (has_texture_height())
+        if (surface.has_texture_height())
         {
             float scale = GetMaterial().height * 0.01f;
 
@@ -278,10 +282,10 @@ PixelOutputType mainPS(PixelInputType input)
         }
         
         // normal mapping
-        if (has_texture_normal())
+        if (surface.has_texture_normal())
         {
             // get tangent space normal and apply the user defined intensity, then transform it to world space
-            float3 normal_sample       = sampling::smart(material_normal, uv, input.position_world, input.normal_world).xyz;
+            float3 normal_sample       = sampling::smart(surface, material_normal, uv, input.position_world, input.normal_world).xyz;
             float3 tangent_normal      = normalize(unpack(normal_sample));
             float normal_intensity     = clamp(GetMaterial().normal, 0.012f, GetMaterial().normal);
             tangent_normal.xy         *= saturate(normal_intensity);
@@ -292,29 +296,29 @@ PixelOutputType mainPS(PixelInputType input)
         // roughness + metalness
         {
             float4 roughness_sample = 1.0f;    
-            if (has_texture_roughness())
+            if (surface.has_texture_roughness())
             {
-                roughness_sample  = sampling::smart(material_roughness, uv, input.position_world, input.normal_world);
+                roughness_sample  = sampling::smart(surface, material_roughness, uv, input.position_world, input.normal_world);
                 roughness        *= roughness_sample.g;
             }
             
-            float is_single_texture_roughness_metalness = has_single_texture_roughness_metalness() ? 1.0f : 0.0f;
+            float is_single_texture_roughness_metalness = surface.has_single_texture_roughness_metalness() ? 1.0f : 0.0f;
             metalness *= (1.0 - is_single_texture_roughness_metalness) + (roughness_sample.b * is_single_texture_roughness_metalness);
             
-            if (has_texture_metalness() && !has_single_texture_roughness_metalness())
+            if (surface.has_texture_metalness() && !surface.has_single_texture_roughness_metalness())
             {
-                metalness *= sampling::smart(material_metalness, uv, input.position_world, input.normal_world).r;
+                metalness *= sampling::smart(surface, material_metalness, uv, input.position_world, input.normal_world).r;
             }
         }
         
         // occlusion
-        if (has_texture_occlusion())
+        if (surface.has_texture_occlusion())
         {
-            occlusion = sampling::smart(material_occlusion, uv, input.position_world, input.normal_world).r;
+            occlusion = sampling::smart(surface, material_occlusion, uv, input.position_world, input.normal_world).r;
         }
 
         // emission
-        if (has_texture_emissive())
+        if (surface.has_texture_emissive())
         {
             float3 emissive_color  = GET_TEXTURE(material_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).rgb;
             emission               = luminance(emissive_color);
