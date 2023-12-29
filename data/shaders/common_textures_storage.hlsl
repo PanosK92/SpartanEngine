@@ -90,10 +90,10 @@ struct Material
     float normal;
     float height;
 
-    uint properties;
+    uint flags;
     float world_space_height;
     float ior;
-    float padding_1;
+    float subsurface_scattering;
     
     float  sheen;
     float3 sheen_tint;
@@ -102,26 +102,23 @@ struct Material
     float anisotropic_rotation;
     float clearcoat;
     float clearcoat_roughness;
-    
-    float subsurface_scattering;  
-    float3 padding_2;
 };
 RWStructuredBuffer<Material> buffer_materials : register(u0);
 
 // easy access properties
 Material GetMaterial()                        { return buffer_materials[buffer_frame.material_index]; }
-bool has_single_texture_roughness_metalness() { return GetMaterial().properties & uint(1U << 0);      }
-bool has_texture_height()                     { return GetMaterial().properties & uint(1U << 1);      }
-bool has_texture_normal()                     { return GetMaterial().properties & uint(1U << 2);      }
-bool has_texture_albedo()                     { return GetMaterial().properties & uint(1U << 3);      }
-bool has_texture_roughness()                  { return GetMaterial().properties & uint(1U << 4);      }
-bool has_texture_metalness()                  { return GetMaterial().properties & uint(1U << 5);      }
-bool has_texture_alpha_mask()                 { return GetMaterial().properties & uint(1U << 6);      }
-bool has_texture_emissive()                   { return GetMaterial().properties & uint(1U << 7);      }
-bool has_texture_occlusion()                  { return GetMaterial().properties & uint(1U << 8);      }
-bool material_texture_slope_based()           { return GetMaterial().properties & uint(1U << 9);      }
-bool material_vertex_animate_wind()           { return GetMaterial().properties & uint(1U << 10);     }
-bool material_vertex_animate_water()          { return GetMaterial().properties & uint(1U << 11);     }
+bool has_single_texture_roughness_metalness() { return GetMaterial().flags & uint(1U << 0);  }
+bool has_texture_height()                     { return GetMaterial().flags & uint(1U << 1);  }
+bool has_texture_normal()                     { return GetMaterial().flags & uint(1U << 2);  }
+bool has_texture_albedo()                     { return GetMaterial().flags & uint(1U << 3);  }
+bool has_texture_roughness()                  { return GetMaterial().flags & uint(1U << 4);  }
+bool has_texture_metalness()                  { return GetMaterial().flags & uint(1U << 5);  }
+bool has_texture_alpha_mask()                 { return GetMaterial().flags & uint(1U << 6);  }
+bool has_texture_emissive()                   { return GetMaterial().flags & uint(1U << 7);  }
+bool has_texture_occlusion()                  { return GetMaterial().flags & uint(1U << 8);  }
+bool material_texture_slope_based()           { return GetMaterial().flags & uint(1U << 9);  }
+bool material_vertex_animate_wind()           { return GetMaterial().flags & uint(1U << 10); }
+bool material_vertex_animate_water()          { return GetMaterial().flags & uint(1U << 11); }
 //=====================================================================================================
 
 //= LIGHTS ==============================================================
@@ -140,7 +137,7 @@ struct Light_
     float normal_bias;
     
     float3 direction;
-    uint options;
+    uint flags;
 };
 RWStructuredBuffer<Light_> buffer_lights : register(u1);
 

@@ -72,7 +72,7 @@ namespace Spartan
 
     // misc
     uint32_t Profiler::m_descriptor_set_count = 0;
-    ProfilerGranularity granularity           = ProfilerGranularity::Light;
+    ProfilerGranularity granularity           = ProfilerGranularity::Full;
 
     namespace
     {
@@ -155,7 +155,7 @@ namespace Spartan
 
         is_validation_layer_enabled        = granularity == ProfilerGranularity::Full; // cpu cost: high - per draw cost, especially high with large bindless arrays
         is_gpu_assisted_validation_enabled = granularity == ProfilerGranularity::Full; // cpu cost: high - per draw cost
-        is_renderdoc_enabled               = true; // cpu cost: high - intercepts every API call and wraps it
+        is_renderdoc_enabled               = granularity == ProfilerGranularity::Full; // cpu cost: high - intercepts every API call and wraps it
         is_gpu_marking_enabled             = true;                                     // cpu cost: imperceptible
         is_gpu_timing_enabled              = true;                                     // cpu cost: imperceptible
     }
