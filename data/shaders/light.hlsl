@@ -70,87 +70,91 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     Light light;
     light.Build(surface);
 
-    // shadows
-    float4 shadow = 1.0f;
-    {
-        if (light.has_shadows())
-        {
-            // shadow maps
-            if (pass_is_opaque() || (surface.is_transparent() && light.has_shadows_transparent()))
-            {
-                shadow = Shadow_Map(surface, light);
-            }
-            
-            // screen space shadows - for opaque objects
-            uint array_slice_index = (uint)pass_get_f3_value2().x;
-            if (light.has_shadows_screen_space() && pass_is_opaque() && array_slice_index != -1)
-            {
-                shadow.a = min(shadow.a, tex_sss[int3(thread_id.xy, array_slice_index)].x);
-            }
-        }
-        
-        // ensure that the shadow is as transparent as the material
-        if (pass_is_transparent())
-        {
-            shadow.a = clamp(shadow.a, surface.alpha, 1.0f);
-        }
-    }
-
-    // compute final radiance
-    light.radiance *= shadow.rgb * shadow.a;
-
-    // reflectance equation(s)
+    float4 shadow           = 1.0f;
     float3 light_diffuse    = 0.0f;
     float3 light_specular   = 0.0f;
+    float3 volumetric_fog   = 0.0f;
     float3 light_subsurface = 0.0f;
+    float3 emissive         = 0.0f;
+
     if (!surface.is_sky())
     {
-        AngularInfo angular_info;
-        angular_info.Build(light, surface);
-
-        // specular
-        if (surface.anisotropic > 0.0f)
+        // shadows
         {
-            light_specular += BRDF_Specular_Anisotropic(surface, angular_info);
-        }
-        else
-        {
-            light_specular += BRDF_Specular_Isotropic(surface, angular_info);
-        }
-
-        // specular clearcoat
-        if (surface.clearcoat > 0.0f)
-        {
-            light_specular += BRDF_Specular_Clearcoat(surface, angular_info);
-        }
-
-        // sheen
-        if (surface.sheen > 0.0f)
-        {
-            light_specular += BRDF_Specular_Sheen(surface, angular_info);
-        }
-
-        // subsurface scattering
-        if (surface.subsurface_scattering > 0.0f)
-        {
-            light_subsurface += subsurface_scattering(surface, light);
-        }
+            if (light.has_shadows())
+            {
+                // shadow maps
+                if (pass_is_opaque() || (surface.is_transparent() && light.has_shadows_transparent()))
+                {
+                    shadow = Shadow_Map(surface, light);
+                }
+            
+                // screen space shadows - for opaque objects
+                uint array_slice_index = (uint) pass_get_f3_value2().x;
+                if (light.has_shadows_screen_space() && pass_is_opaque() && array_slice_index != -1)
+                {
+                    shadow.a = min(shadow.a, tex_sss[int3(thread_id.xy, array_slice_index)].x);
+                }
+            }
         
-        // diffuse
-        light_diffuse += BRDF_Diffuse(surface, angular_info);
+            // ensure that the shadow is as transparent as the material
+            if (pass_is_transparent())
+            {
+                shadow.a = clamp(shadow.a, surface.alpha, 1.0f);
+            }
+        }
 
-        // energy conservation - only non metals have diffuse
-        light_diffuse *= surface.diffuse_energy;
+        // compute final radiance
+        light.radiance *= shadow.rgb * shadow.a;
+
+        // reflectance equation(s)
+        {
+            AngularInfo angular_info;
+            angular_info.Build(light, surface);
+
+            // specular
+            if (surface.anisotropic > 0.0f)
+            {
+                light_specular += BRDF_Specular_Anisotropic(surface, angular_info);
+            }
+            else
+            {
+                light_specular += BRDF_Specular_Isotropic(surface, angular_info);
+            }
+
+            // specular clearcoat
+            if (surface.clearcoat > 0.0f)
+            {
+                light_specular += BRDF_Specular_Clearcoat(surface, angular_info);
+            }
+
+            // sheen
+            if (surface.sheen > 0.0f)
+            {
+                light_specular += BRDF_Specular_Sheen(surface, angular_info);
+            }
+
+            // subsurface scattering
+            if (surface.subsurface_scattering > 0.0f)
+            {
+                light_subsurface += subsurface_scattering(surface, light);
+            }
+        
+            // diffuse
+            light_diffuse += BRDF_Diffuse(surface, angular_info);
+
+            // energy conservation - only non metals have diffuse
+            light_diffuse *= surface.diffuse_energy;
+        }
+
+        emissive = surface.emissive * surface.albedo;
     }
-
+    
     // volumetric
-    float3 volumetric_fog = 0.0f;
     if (light.is_volumetric() && pass_is_opaque())
     {
         volumetric_fog = compute_volumetric_fog(surface, light, thread_id.xy);
     }
-    
-    float3 emissive = surface.emissive * surface.albedo;
     
     /* diffuse  */   tex_uav[thread_id.xy]  += float4(saturate_11(light_diffuse * light.radiance + emissive + light_subsurface), 1.0f);
     /* specular */   tex_uav2[thread_id.xy] += float4(saturate_11(light_specular * light.radiance), 1.0f);

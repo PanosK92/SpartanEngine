@@ -967,6 +967,11 @@ namespace Spartan
             {
                 swap_chain->SetVsync(value == 1.0f);
             }
+
+            if (option == Renderer_Option::FogVolumetric || option == Renderer_Option::ScreenSpaceShadows)
+            {
+                SP_FIRE_EVENT(EventType::LightOnChanged);
+            }
         }
     }
 
