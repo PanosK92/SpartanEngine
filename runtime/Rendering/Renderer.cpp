@@ -313,7 +313,7 @@ namespace Spartan
         SetOption(Renderer_Option::ScreenSpaceShadows,            static_cast<float>(Renderer_ScreenspaceShadow::Bend)); 
         SetOption(Renderer_Option::ScreenSpaceReflections,        1.0f);
         SetOption(Renderer_Option::Anisotropy,                    16.0f);
-        SetOption(Renderer_Option::ShadowResolution,              4096);
+        SetOption(Renderer_Option::ShadowResolution,              2048.0f);
         SetOption(Renderer_Option::Tonemapping,                   static_cast<float>(Renderer_Tonemapping::Aces));
         SetOption(Renderer_Option::Gamma,                         2.2f);
         SetOption(Renderer_Option::Exposure,                      1.0f);
