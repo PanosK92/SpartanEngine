@@ -85,18 +85,18 @@ float visibility(float3 position, Light light, uint2 pixel_pos)
 float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
 {
     // parameters
-    const float fog_density = pass_get_f3_value().x * 0.00013f;
-    const uint num_steps    = 45;
+    const float fog_density = pass_get_f3_value().x * 0.005f;
+    const uint step_count   = 64;
     
     float total_distance = surface.camera_to_pixel_length;
-    float step_length    = total_distance / num_steps; 
+    float step_length    = total_distance / step_count; 
     float3 ray_origin    = buffer_frame.camera_position;
     float3 ray_direction = normalize(surface.camera_to_pixel);
     float3 ray_step      = ray_direction * step_length;
-    float3 ray_pos       = ray_origin + get_noise_interleaved_gradient(surface.uv * pass_get_resolution_out(), true, false) * 0.05f;
+    float3 ray_pos       = ray_origin + get_noise_interleaved_gradient(pixel_pos, true, true) * 0.05f;
 
     float fog = 0.0f;
-    for (uint i = 0; i < num_steps; i++)
+    for (uint i = 0; i < step_count; i++)
     {
         if (length(ray_pos - ray_origin) > total_distance)
             break;
@@ -107,6 +107,8 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
         // step ray
         ray_pos += ray_step;
     }
+
+    fog /= float(step_count);
 
     return fog * light.intensity * light.color * g_atmospheric_color;
 }
