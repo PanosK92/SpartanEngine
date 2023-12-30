@@ -452,18 +452,25 @@ namespace Spartan
     {
         SP_ASSERT(bounding_box != BoundingBox::Undefined);
 
-        const Vector3 center  = bounding_box.GetCenter();
-        const Vector3 extents = bounding_box.GetExtents();
+        const Vector3 center    = bounding_box.GetCenter();
+        const Vector3 extents   = bounding_box.GetExtents();
+        const bool ignore_depth = m_light_type == LightType::Directional; // orthographic
 
-        // ensure that potential shadow casters from behind the near plane are not rejected
-        const bool ignore_near_plane = (m_light_type == LightType::Directional) ? true : false;
-
-        return m_frustums[index].IsVisible(center, extents, ignore_near_plane);
+        return m_frustums[index].IsVisible(center, extents, ignore_depth);
     }
 
     bool Light::IsInViewFrustum(Renderable* renderable, uint32_t index) const
     {
-        return IsInViewFrustum(renderable->GetBoundingBox(BoundingBoxType::Transformed), index);
+        BoundingBoxType type   = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+        const BoundingBox& box = renderable->GetBoundingBox(type);
+
+        if (box == BoundingBox::Undefined)
+        {
+            SP_LOG_WARNING("Bounding box undefined, treating as outside of the view frustum");
+            return false;
+        }
+
+        return IsInViewFrustum(box, index);
     }
 
     void Light::RefreshShadowMap()
