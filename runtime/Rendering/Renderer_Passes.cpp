@@ -65,7 +65,7 @@ namespace Spartan
 
                     // skip instance groups outside of the view frustum
                     {
-                        const Math::BoundingBox& bounding_box_group = renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
+                        const BoundingBox& bounding_box_group = renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
 
                         if (light)
                         {
