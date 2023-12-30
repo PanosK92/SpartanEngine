@@ -297,10 +297,10 @@ namespace Spartan
             if (m_textures[i])
             {
                 // determine the texture type by dividing the index by 4 (since there are 4 of each type)
-                size_t typeIndex = i / material_texture_slots_per_type;
+                size_t type_index = i / material_texture_slots_per_type;
 
                 // find the max index for this texture type
-                max_index[typeIndex] = std::max(max_index[typeIndex], static_cast<uint32_t>(i % material_texture_slots_per_type + 1));
+                max_index[type_index] = max(max_index[type_index], static_cast<uint32_t>(i % material_texture_slots_per_type + 1));
             }
         }
 

@@ -41,8 +41,8 @@ namespace Spartan::Math
         if (box == BoundingBox::Undefined)
             return Helper::INFINITY_;
         
-        // Check for ray origin being inside the box
-        if (box.IsInside(m_origin) == Intersection::Inside)
+        // check for ray origin being inside the box
+        if (box.Intersects(m_origin) == Intersection::Inside)
             return 0.0f;
 
         float distance = Helper::INFINITY_;

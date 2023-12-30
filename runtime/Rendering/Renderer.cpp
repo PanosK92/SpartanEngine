@@ -97,34 +97,6 @@ namespace Spartan
         float far_plane                      = 1.0f;
         bool dirty_orthographic_projection   = true;
 
-        void sort_renderables(Camera* camera, vector<shared_ptr<Entity>>* renderables, const bool are_transparent)
-        {
-            if (!camera || renderables->size() <= 2)
-                return;
-
-            auto comparison_op = [camera](shared_ptr<Entity> entity)
-            {
-                auto renderable = entity->GetComponent<Renderable>();
-                if (!renderable)
-                    return 0.0f;
-
-                return (renderable->GetBoundingBox(BoundingBoxType::TransformedInstances).GetCenter() - camera->GetEntity()->GetPosition()).LengthSquared();
-            };
-
-            // sort by depth
-            sort(renderables->begin(), renderables->end(), [&comparison_op, &are_transparent](shared_ptr<Entity> a, shared_ptr<Entity> b)
-            {
-                if (are_transparent)
-                {
-                    return comparison_op(a) > comparison_op(b); // back-to-front for transparent
-                }
-                else
-                {
-                    return comparison_op(a) < comparison_op(b); // front-to-back for opaque
-                }
-            });
-        }
-
         namespace materials
         {
             array<RHI_Texture*, rhi_max_array_size> textures;  // mapped to the GPU as a bindless texture array
@@ -821,10 +793,6 @@ namespace Spartan
                     m_renderables[Renderer_Entity::AudioSource].emplace_back(entity);
                 }
             }
-
-            // sort them by distance
-            sort_renderables(m_camera.get(), &m_renderables[Renderer_Entity::Geometry], false);
-            sort_renderables(m_camera.get(), &m_renderables[Renderer_Entity::GeometryTransparent], true);
 
             m_entities_to_add.clear();
 

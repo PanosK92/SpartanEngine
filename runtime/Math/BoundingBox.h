@@ -37,42 +37,44 @@ namespace Spartan
         class SP_CLASS BoundingBox
         {
         public:
-            // Construct with zero size
+            // construct with zero size
             BoundingBox();
 
-            // Construct from minimum and maximum vectors
+            // construct from minimum and maximum vectors
             BoundingBox(const Vector3& min, const Vector3& max);
 
-            // Construct from points
+            // construct from points
             BoundingBox(const Vector3* vertices, const uint32_t point_count);
 
-            // Construct from vertices
+            // construct from vertices
             BoundingBox(const RHI_Vertex_PosTexNorTan* vertices, const uint32_t vertex_count);
 
             ~BoundingBox() = default;
 
-            // Assign from bounding box
+            // assign from bounding box
             BoundingBox& operator =(const BoundingBox& rhs) = default;
 
-            // Returns the center
+            // returns the center
             Vector3 GetCenter() const { return (m_max + m_min) * 0.5f; }
 
-            // Returns the size
+            // returns the size
             Vector3 GetSize() const { return m_max - m_min; }
 
-            // Returns extents
+            // returns extents
             Vector3 GetExtents() const { return (m_max - m_min) * 0.5f; }
 
-            // Test if a point is inside
-            Intersection IsInside(const Vector3& point) const;
+            // test if a point is inside
+            Intersection Intersects(const Vector3& point) const;
 
-            // Test if a bounding box is inside
-            Intersection IsInside(const BoundingBox& box) const;
+            // test if a bounding box is inside
+            Intersection Intersects(const BoundingBox& box) const;
+
+            bool Occluded(const BoundingBox& occluder) const;
 
             // Returns a transformed bounding box
             BoundingBox Transform(const Matrix& transform) const;
 
-            // Merge with another bounding box
+            // merge with another bounding box
             void Merge(const BoundingBox& box);
 
             bool operator==(const BoundingBox& other) const

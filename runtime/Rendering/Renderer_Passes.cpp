@@ -469,13 +469,54 @@ namespace Spartan
 
     void Renderer::Pass_FrustumOcclusionQueries(RHI_CommandList* cmd_list)
     {
-        // acquire shaders
-        RHI_Shader* shader_v           = GetShader(Renderer_Shader::occlusion_query_v).get();
-        RHI_Shader* shader_instanced_v = GetShader(Renderer_Shader::occlusion_query_instanced_v).get();
-        if (!shader_v->IsCompiled() || !shader_instanced_v->IsCompiled())
-            return;
+        struct Occluder
+        {
+            BoundingBox box;
+            bool is_occluded;
+        };
+        vector<Occluder> occluders;
 
-        cmd_list->BeginTimeblock("occlusion_queries");
+        bool gpu = false; // CPU time block
+        cmd_list->BeginTimeblock("occlusion_queries", gpu, gpu);
+
+        // sort entities by depth
+        {
+            auto sort_renderables = [](Renderer_Entity entity_type, const bool are_transparent)
+            {
+                vector<shared_ptr<Entity>>& renderables = m_renderables[entity_type];
+
+                if (renderables.size() <= 2)
+                    return;
+
+                Vector3 camera_position = GetCamera()->GetEntity()->GetPosition();
+
+                auto squared_distance = [&camera_position](const shared_ptr<Entity>& entity)
+                {
+                    shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                    Vector3 position = renderable->GetBoundingBox(BoundingBoxType::TransformedInstances).GetCenter();
+
+                    // calculate squared distance
+                    return (position - camera_position).LengthSquared();
+                };
+
+                sort(renderables.begin(), renderables.end(), [&squared_distance, &are_transparent](const shared_ptr<Entity>& a, const shared_ptr<Entity>& b)
+                {
+                    if (are_transparent)
+                    {
+                        // back-to-front for transparent
+                        return squared_distance(a) < squared_distance(b);
+                    }
+                    else
+                    {
+                        // front-to-back for opaque
+                        return squared_distance(a) > squared_distance(b);
+                    }
+                });
+            };
+
+            sort_renderables(Renderer_Entity::Geometry, false);
+            sort_renderables(Renderer_Entity::GeometryTransparent, true);
+        }
 
         bool is_transparent_pass = false;
         uint32_t start_index     = !is_transparent_pass ? 0 : 2;
@@ -488,20 +529,6 @@ namespace Spartan
             if (entities.empty())
                 continue;
 
-            // define pipeline state
-            static RHI_PipelineState pso;
-            pso.name                        = "occlusion_queries";
-            pso.instancing                  = i == 1 || i == 3;
-            pso.shader_vertex               = !pso.instancing ? shader_v : shader_instanced_v;
-            pso.rasterizer_state            = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
-            pso.blend_state                 = GetBlendState(Renderer_BlendState::Disabled).get();
-            pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
-            pso.render_target_depth_texture = GetRenderTarget(Renderer_RenderTexture::occlusion).get();
-            pso.clear_depth                 = 0.0f; // reverse-z
-            cmd_list->SetPipelineState(pso);
-
-            //cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology::LineList);
-
             for (shared_ptr<Entity>& entity : entities)
             {
                 // when async loading certain things can be null
@@ -510,22 +537,32 @@ namespace Spartan
                     continue;
 
                 // frustum check
-                renderable->SetIsVisible(GetCamera()->IsInViewFrustum(renderable));
-                if (!renderable->GetIsVisible())
-                    continue;
-
+                bool visible = GetCamera()->IsInViewFrustum(renderable);
+                
                 // occlusion check
-                /*{
-                    // set bounding box min max via push constants for maximum speed
-                    BoundingBox bounding_box = renderable->GetBoundingBox(BoundingBoxType::Transformed);
-                    m_cb_pass_cpu.set_f3_value(bounding_box.GetMin());
-                    m_cb_pass_cpu.set_f3_value2(bounding_box.GetMax());
+                /*if (visible)
+                {
+                    BoundingBox bounding_box = renderable->GetBoundingBox(BoundingBoxType::Transformed).Transform(m_cb_frame_cpu.view);
 
-                    uint32_t occlusion_query_id = cmd_list->BeginOcclusionQuery();
-                    // draw 8 vertices and generate a screen space bounding box on the fly on the gpu
-                    cmd_list->Draw(8);
-                    cmd_list->EndOcclusionQuery();
+                    bool occluded = false;
+                    for (const Occluder& occluder : occluders)
+                    {
+                        if (bounding_box.Occluded(occluder.box))
+                        {
+                            occluded = true;
+                            break;
+                        }
+                    }
+
+                    if (!occluded)
+                    {
+                        occluders.emplace_back(bounding_box, false);
+                    }
+
+                    visible = !occluded;
                 }*/
+
+                renderable->SetIsVisible(visible);
             }
         }
 
