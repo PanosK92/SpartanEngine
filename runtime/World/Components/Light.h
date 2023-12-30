@@ -108,7 +108,7 @@ namespace Spartan
 
         // bias
         static float GetBias()            { return -0.0005f; } // small values to avoid disconnected shadows
-        static float GetBiasSlopeScaled() { return -1.0f; }
+        static float GetBiasSlopeScaled() { return -2.0f; }
         void SetNormalBias(float value)   { m_bias_normal = value; }
         auto GetNormalBias() const        { return m_bias_normal; }
 
