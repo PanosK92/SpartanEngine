@@ -17,18 +17,20 @@
 -- IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 -- CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-CPP_VERSION          = "C++20"
-SOLUTION_NAME        = "spartan"
-EDITOR_PROJECT_NAME  = "editor"
-RUNTIME_PROJECT_NAME = "runtime"
-EXECUTABLE_NAME      = "spartan"
-EDITOR_DIR           = "../" .. EDITOR_PROJECT_NAME
-RUNTIME_DIR          = "../" .. RUNTIME_PROJECT_NAME
-LIBRARY_DIR          = "../third_party/libraries"
-OBJ_DIR              = "../binaries/obj"
-TARGET_DIR           = "../binaries"
-API_CPP_DEFINE		 = ""
-ARG_API_GRAPHICS     = _ARGS[1]
+CPP_VERSION          		= "C++20"
+SOLUTION_NAME        		= "spartan"
+EDITOR_PROJECT_NAME  		= "editor"
+RUNTIME_PROJECT_NAME 		= "runtime"
+SCRIPTING_SDK_PROJECT_NAME  = "scripting.sdk"  -- TODO: rename ? 
+EXECUTABLE_NAME      		= "spartan"
+EDITOR_DIR           		= "../" .. EDITOR_PROJECT_NAME
+SCRIPTING_SDK_DIR           = "../scripting/sdk" -- TODO: Is it correct ? 
+RUNTIME_DIR          		= "../" .. RUNTIME_PROJECT_NAME
+LIBRARY_DIR          		= "../third_party/libraries"
+OBJ_DIR              		= "../binaries/obj"
+TARGET_DIR           		= "../binaries"
+API_CPP_DEFINE		 		= ""
+ARG_API_GRAPHICS     		= _ARGS[1]
 
 API_INCLUDES = {
 	vulkan = {
@@ -115,7 +117,7 @@ function solution_configuration()
         -- "Debug"
         filter "configurations:debug"
             if os.target() == "windows" then
-                defines { "DEBUG", "SPARTAN_RUNTIME_STATIC=1", "SPARTAN_RUNTIME_SHARED=0" }
+                defines { "WINDOWS", "WIN32","DEBUG", "SPARTAN_RUNTIME_STATIC=1", "SPARTAN_RUNTIME_SHARED=0" }
             else
                 defines { "DEBUG", "SPARTAN_RUNTIME_STATIC=0", "SPARTAN_RUNTIME_SHARED=1" }
             end
@@ -127,7 +129,7 @@ function solution_configuration()
         -- "Release"
         filter "configurations:release"
             if os.target() == "windows" then
-                defines { "SPARTAN_RUNTIME_STATIC=1", "SPARTAN_RUNTIME_SHARED=0" }
+                defines { "WINDOWS", "WIN32","SPARTAN_RUNTIME_STATIC=1", "SPARTAN_RUNTIME_SHARED=0" }
             else
                 defines { "SPARTAN_RUNTIME_STATIC=0", "SPARTAN_RUNTIME_SHARED=1" }
             end
@@ -180,6 +182,7 @@ function runtime_project_configuration()
             includedirs { "../third_party/compressonator" }
             includedirs { "../third_party/renderdoc" }
             includedirs { "../third_party/pugixml" }
+            includedirs { "../third_party/dotnet" }
             includedirs(API_INCLUDES[ARG_API_GRAPHICS] or {})
         else
             includedirs { "/usr/include/SDL2" }
@@ -187,10 +190,11 @@ function runtime_project_configuration()
             includedirs { "/usr/include/bullet" }
             includedirs { "/usr/include/freetype2" }
             includedirs { "/usr/include/renderdoc" }
+			includedirs { "../third_party/dotnet" }
         end
 
   includedirs { "../runtime/Core" } -- This is here because clang needs the full pre-compiled header path
-
+  includedirs { "../runtime/Scripting" }
         -- Libraries
         libdirs (LIBRARY_DIR)
 
@@ -206,8 +210,9 @@ function runtime_project_configuration()
             links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
             links { "SDL2" }
             links { "Compressonator_MT" }
-			links(API_LIBRARIES[ARG_API_GRAPHICS].release or {})
-			
+            links { "nethost.lib" }
+            links(API_LIBRARIES[ARG_API_GRAPHICS].release or {})
+            
         -- "Debug"
         filter "configurations:debug"
             debugdir (TARGET_DIR)
@@ -221,6 +226,7 @@ function runtime_project_configuration()
                 links { "BulletCollision_debug", "BulletDynamics_debug", "BulletSoftBody_debug", "LinearMath_debug" }
                 links { "SDL2_debug.lib" }
                 links { "Compressonator_MT_debug.lib" }
+                links { "nethost.lib" }
                 links(API_LIBRARIES[ARG_API_GRAPHICS].debug or {})
             else
                 links { "dxcompiler" }
@@ -231,6 +237,7 @@ function runtime_project_configuration()
                 links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
                 links { "SDL2" }
                 links { "Compressonator_MT" }
+				links { "nethost.lib" }
             end
 end
 
@@ -304,7 +311,15 @@ function editor_project_configuration()
             end
 end
 
+function scripting_sdk_project_configuration()
+ project (SCRIPTING_SDK_PROJECT_NAME)
+        location (SCRIPTING_SDK_DIR)
+		kind "SharedLib"
+		language "C#"
+end
+
 configure_graphics_api()
 solution_configuration()
 runtime_project_configuration()
 editor_project_configuration()
+scripting_sdk_project_configuration()

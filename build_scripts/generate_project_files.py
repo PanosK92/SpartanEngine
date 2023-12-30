@@ -16,6 +16,7 @@ paths = {
         "dx": Path("third_party/libraries/dxcompiler.dll"),
         "fmod": Path("third_party/libraries/fmod.dll"),
         "fmod_debug": Path("third_party/libraries/fmodL.dll"),
+        "nethost": Path("third_party/libraries/nethost.dll"),
     },
     "assets": {
         "models": Path("assets/models"),

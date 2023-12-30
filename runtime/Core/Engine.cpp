@@ -21,6 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================================
 #include "pch.h"
+
+#include "ScriptEngine.h"
 #include "Window.h"
 #include "ThreadPool.h"
 #include "../Audio/Audio.h"
@@ -71,7 +73,7 @@ namespace Spartan
             Physics::Initialize();
             Renderer::Initialize();
             World::Initialize();
-
+            ScriptEngine::Initialize();
             // post
             Settings::PostInitialize();
         }
@@ -83,6 +85,7 @@ namespace Spartan
     {
         SP_FIRE_EVENT(EventType::EngineShutdown);
 
+        ScriptEngine::Shutdown();
         ResourceCache::Shutdown();
         World::Shutdown();
         Renderer::Shutdown();
@@ -95,6 +98,7 @@ namespace Spartan
         ImageImporterExporter::Shutdown();
         FontImporter::Shutdown();
         Settings::Shutdown();
+        
     }
 
     void Engine::Tick()
@@ -109,6 +113,7 @@ namespace Spartan
         Physics::Tick();
         World::Tick();
         Renderer::Tick();
+        ScriptEngine::Tick();
 
         // post-tick
         Input::PostTick();
