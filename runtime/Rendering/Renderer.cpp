@@ -308,17 +308,18 @@ namespace Spartan
         m_options.clear();
         SetOption(Renderer_Option::Hdr,                           swap_chain->IsHdr() ? 1.0f : 0.0f);                    // hdr is enabled by default if the swapchain is hdr
         SetOption(Renderer_Option::Bloom,                         0.03f);                                                // non-zero values activate it and define the blend factor
-        SetOption(Renderer_Option::MotionBlur,                    1.0f);                                                 
-        SetOption(Renderer_Option::ScreenSpaceGlobalIllumination, 1.0f);                                                 
+        SetOption(Renderer_Option::MotionBlur,                    1.0f);
+        SetOption(Renderer_Option::ScreenSpaceGlobalIllumination, 1.0f);
         SetOption(Renderer_Option::ScreenSpaceShadows,            static_cast<float>(Renderer_ScreenspaceShadow::Bend)); 
-        SetOption(Renderer_Option::ScreenSpaceReflections,        1.0f);                                                 
-        SetOption(Renderer_Option::Anisotropy,                    16.0f);                                                
-        SetOption(Renderer_Option::ShadowResolution,              2048.0f);                                              
-        SetOption(Renderer_Option::Tonemapping,                   static_cast<float>(Renderer_Tonemapping::Aces));       
-        SetOption(Renderer_Option::Gamma,                         2.2f);                                                 
-        SetOption(Renderer_Option::Exposure,                      1.0f);                                                 
-        SetOption(Renderer_Option::Sharpness,                     1.0f);                                                 
-        SetOption(Renderer_Option::Fog,                           5.0f);                                                 
+        SetOption(Renderer_Option::ScreenSpaceReflections,        1.0f);
+        SetOption(Renderer_Option::Anisotropy,                    16.0f);
+        SetOption(Renderer_Option::ShadowResolution,              2048.0f);
+        SetOption(Renderer_Option::Tonemapping,                   static_cast<float>(Renderer_Tonemapping::Aces));
+        SetOption(Renderer_Option::Gamma,                         2.2f);
+        SetOption(Renderer_Option::Exposure,                      1.0f);
+        SetOption(Renderer_Option::Sharpness,                     1.0f);
+        SetOption(Renderer_Option::Fog,                           5.0f);
+        SetOption(Renderer_Option::FogVolumetric,                 1.0f);
         SetOption(Renderer_Option::Antialiasing,                  static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 2 for taa
         SetOption(Renderer_Option::Upsampling,                    static_cast<float>(Renderer_Upsampling::FSR2));
         SetOption(Renderer_Option::Vsync,                         0.0f);
