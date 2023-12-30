@@ -84,40 +84,37 @@ namespace Spartan::Math
         m_planes[5].Normalize();
     }
 
-    bool Frustum::IsVisible(const Vector3& center, const Vector3& extent, bool ignore_near_plane /*= false*/) const
+    bool Frustum::IsVisible(const Vector3& center, const Vector3& extent, bool ignore_depth /*= false*/) const
     {
         SP_ASSERT(!center.IsNaN() && !extent.IsNaN());
 
-        float radius = 0.0f;
-        if (!ignore_near_plane)
-        {
-            radius = Helper::Max3(extent.x, extent.y, extent.z);
-        }
-        else
-        {
-            constexpr float z = numeric_limits<float>::infinity(); // reverse-z
-            radius = Helper::Max3(extent.x, extent.y, z);
-        }
-
         // cheaper, so we do it first
-        if (CheckSphere(center, radius) == Intersection::Outside)
+        float radius = Helper::Max3(extent.x, extent.y, extent.z);
+        if (CheckSphere(center, radius, ignore_depth) == Intersection::Outside)
             return false;
 
         // slightly more expensive, so we do it second
-        if (CheckCube(center, extent) == Intersection::Outside)
+        if (CheckCube(center, extent, ignore_depth) == Intersection::Outside)
             return false;
 
         return true;
     }
 
-    Intersection Frustum::CheckCube(const Vector3& center, const Vector3& extent) const
+    Intersection Frustum::CheckCube(const Vector3& center, const Vector3& extent, float ignore_depth /*= false*/) const
     {
         SP_ASSERT(!center.IsNaN() && !extent.IsNaN());
 
         Intersection result = Intersection::Inside;
         Plane plane_abs;
-        for (const Plane& plane : m_planes)
+
+        for (size_t i = 0; i < 6; i++)
         {
+            // skip near and far plane checks if depth is to be ignored
+            if (ignore_depth && (i == 0 || i == 1))
+                continue;
+
+            const Plane& plane = m_planes[i];
+
             plane_abs.normal = plane.normal.Abs();
             plane_abs.d      = plane.d;
 
@@ -142,13 +139,19 @@ namespace Spartan::Math
         return result;
     }
 
-    Intersection Frustum::CheckSphere(const Vector3& center, float radius) const
+    Intersection Frustum::CheckSphere(const Vector3& center, float radius, float ignore_depth) const
     {
         SP_ASSERT(!center.IsNaN() && radius > 0.0f);
 
         // calculate our distances to each of the planes
-        for (const auto& plane : m_planes)
+        for (size_t i = 0; i < 6; i++)
         {
+            // skip near and far plane checks if depth is to be ignored
+            if (ignore_depth && (i == 0 || i == 1))
+                continue;
+
+            const auto& plane = m_planes[i];
+
             // find the distance to this plane
             const float distance = Vector3::Dot(plane.normal, center) + plane.d;
 

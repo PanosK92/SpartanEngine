@@ -69,11 +69,11 @@ namespace Spartan
 
                         if (light)
                         {
-                            //if (!light->IsInViewFrustum(renderable, array_index))
-                            //{
-                            //    instance_start_index = group_end_index;
-                            //    continue;
-                            //}
+                            if (!light->IsInViewFrustum(renderable, array_index))
+                            {
+                                instance_start_index = group_end_index;
+                                continue;
+                            }
                         }
                         else if (!camera->IsInViewFrustum(bounding_box_group))
                         {
@@ -315,8 +315,8 @@ namespace Spartan
                             continue;
 
                         // skip objects outside of the view frustum
-                        //if (!light->IsInViewFrustum(renderable.get(), array_index))
-                            //continue;
+                        if (!light->IsInViewFrustum(renderable.get(), array_index))
+                            continue;
 
                         // set vertex, index and instance buffers
                         {
@@ -493,7 +493,8 @@ namespace Spartan
                 auto squared_distance = [&camera_position](const shared_ptr<Entity>& entity)
                 {
                     shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                    Vector3 position = renderable->GetBoundingBox(BoundingBoxType::TransformedInstances).GetCenter();
+                    BoundingBoxType type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+                    Vector3 position = renderable->GetBoundingBox(type).GetCenter();
 
                     // calculate squared distance
                     return (position - camera_position).LengthSquared();
