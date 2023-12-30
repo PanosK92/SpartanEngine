@@ -341,3 +341,4 @@ float4 Shadow_Map(Surface surface, Light light)
 
     return shadow;
 }
+
