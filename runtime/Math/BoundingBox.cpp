@@ -74,7 +74,7 @@ namespace Spartan::Math
         }
     }
 
-    Intersection BoundingBox::IsInside(const Vector3& point) const
+    Intersection BoundingBox::Intersects(const Vector3& point) const
     {
         if (point.x < m_min.x || point.x > m_max.x ||
             point.y < m_min.y || point.y > m_max.y ||
@@ -88,7 +88,7 @@ namespace Spartan::Math
         }
     }
 
-    Intersection BoundingBox::IsInside(const BoundingBox& box) const
+    Intersection BoundingBox::Intersects(const BoundingBox& box) const
     {
         if (box.m_max.x < m_min.x || box.m_min.x > m_max.x ||
             box.m_max.y < m_min.y || box.m_min.y > m_max.y ||
@@ -133,4 +133,34 @@ namespace Spartan::Math
         m_max.y = Helper::Max(m_max.y, box.m_max.y);
         m_max.z = Helper::Max(m_max.z, box.m_max.z);
     }
+
+	bool BoundingBox::Occluded(const BoundingBox& occluder) const
+	{
+        // lambda for getting a corner of the bounding box
+        auto get_corner = [this](uint32_t index) -> Vector3
+        {
+            return Vector3(
+                index & 1 ? m_max.x : m_min.x,
+                index & 2 ? m_max.y : m_min.y,
+                index & 4 ? m_max.z : m_min.z
+            );
+        };
+
+        // lambda for checking if a point is behind all planes of the bounding box
+        auto is_point_behind_all_planes = [&occluder](const Vector3& point) -> bool
+        {
+            return (point.x <= occluder.m_max.x && point.x >= occluder.m_min.x &&
+                    point.y <= occluder.m_max.y && point.y >= occluder.m_min.y &&
+                    point.z <= occluder.m_max.z && point.z >= occluder.m_min.z);
+        };
+
+        // check if all corners of this box are behind all the planes of the occluder
+        for (uint32_t i = 0; i < 8; i++)
+        {
+            if (!is_point_behind_all_planes(get_corner(i)))
+                return false;
+        }
+
+        return true;
+	}
 }

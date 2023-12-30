@@ -247,9 +247,6 @@ namespace Spartan
 
             // selection outline
             render_target(Renderer_RenderTexture::outline) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_Uav, "rt_outline");
-
-            // occlusion
-            render_target(Renderer_RenderTexture::occlusion) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float, RHI_Texture_Rtv, "rt_occlusion");
         }
 
         // output resolution
@@ -313,16 +310,6 @@ namespace Spartan
             shader(Renderer_Shader::outline_p)->Compile(RHI_Shader_Pixel, shader_dir + "outline.hlsl", async);
             shader(Renderer_Shader::outline_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::outline_c)->Compile(RHI_Shader_Compute, shader_dir + "outline.hlsl", async);
-        }
-
-        // occlusion query
-        {
-            shader(Renderer_Shader::occlusion_query_v) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::occlusion_query_v)->Compile(RHI_Shader_Vertex, shader_dir + "occlusion_query.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-
-            shader(Renderer_Shader::occlusion_query_instanced_v) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::occlusion_query_instanced_v)->AddDefine("INSTANCED");
-            shader(Renderer_Shader::occlusion_query_instanced_v)->Compile(RHI_Shader_Vertex, shader_dir + "occlusion_query.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
         }
 
         // depth pre-pass

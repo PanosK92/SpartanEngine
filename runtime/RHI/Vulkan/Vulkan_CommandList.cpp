@@ -1320,16 +1320,6 @@ namespace Spartan
         m_descriptor_layout_current->SetStructuredBuffer(slot, structured_buffer);
     }
 
-    uint32_t RHI_CommandList::BeginOcclusionQuery()
-    {
-        return 0;
-    }
-
-    void RHI_CommandList::EndOcclusionQuery()
-    {
-
-    }
-
     void RHI_CommandList::BeginMarker(const char* name)
     {
         if (Profiler::IsGpuMarkingEnabled())

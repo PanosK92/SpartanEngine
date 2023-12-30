@@ -166,8 +166,6 @@ namespace Spartan
         gbuffer_v,
         gbuffer_instanced_v,
         gbuffer_p,
-        occlusion_query_v,
-        occlusion_query_instanced_v,
         depth_prepass_v,
         depth_prepass_instanced_v,
         depth_prepass_alpha_test_p,
@@ -251,7 +249,6 @@ namespace Spartan
         bloom,
         blur,
         outline,
-        occlusion,
         max
     };
 
