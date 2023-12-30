@@ -304,6 +304,13 @@ namespace Spartan
         RHI_Shader_Compute = 1 << 2,
     };
 
+    enum class RHI_Device_Resource
+    {
+        sampler_comparison,
+        sampler_regular,
+        textures_material
+    };
+
     static uint64_t rhi_hash_combine(uint64_t seed, uint64_t x)
     {
         // xxHash is probably the best hashing lib out there.

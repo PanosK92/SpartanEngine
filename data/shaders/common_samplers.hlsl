@@ -19,17 +19,20 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+// note: clamp to border uses black transparent RGBA(0, 0, 0, 0)
+
 // comparison
 static const uint sampler_compare_depth = 0;
 
 // regular
-static const uint sampler_point_clamp_edge   = 0;
-static const uint sampler_point_clamp_border = 1;
-static const uint sampler_point_wrap         = 2;
-static const uint sampler_bilinear_clamp     = 3;
-static const uint sampler_bilinear_wrap      = 4;
-static const uint sampler_trilinear_clamp    = 5;
-static const uint sampler_anisotropic_wrap   = 6;
+static const uint sampler_point_clamp_edge      = 0;
+static const uint sampler_point_clamp_border    = 1;
+static const uint sampler_point_wrap            = 2;
+static const uint sampler_bilinear_clamp        = 3;
+static const uint sampler_bilinear_clamp_border = 4;
+static const uint sampler_bilinear_wrap         = 5;
+static const uint sampler_trilinear_clamp       = 6;
+static const uint sampler_anisotropic_wrap      = 7;
 
 // samplers
 SamplerComparisonState samplers_comparison[] : register(s0, space2);

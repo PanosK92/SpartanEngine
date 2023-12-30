@@ -1530,7 +1530,7 @@ namespace Spartan
         return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
 
-    void RHI_Device::UpdateBindlessResources(const array<shared_ptr<RHI_Sampler>, 8>* samplers, array<RHI_Texture*, rhi_max_array_size>* textures)
+    void RHI_Device::UpdateBindlessResources(const array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers, array<RHI_Texture*, rhi_max_array_size>* textures)
     {
         if (samplers)
         {
@@ -1551,10 +1551,11 @@ namespace Spartan
                     (*samplers)[1], // point_clamp_edge
                     (*samplers)[2], // point_clamp_border
                     (*samplers)[3], // point_wrap
-                    (*samplers)[4], // bilinear_clamp
-                    (*samplers)[5], // bilinear_wrap
-                    (*samplers)[6], // trilinear_clamp
-                    (*samplers)[7]  // anisotropic_wrap
+                    (*samplers)[4], // bilinear_clamp_edge
+                    (*samplers)[5], // bilinear_clamp_border
+                    (*samplers)[6], // bilinear_wrap
+                    (*samplers)[7], // trilinear_clamp
+                    (*samplers)[8]  // anisotropic_wrap
                 };
 
                 descriptors::bindless::update_samplers(data, 1, RHI_Device_Resource::sampler_regular);
