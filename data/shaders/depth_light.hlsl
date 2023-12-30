@@ -26,9 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 Pixel_PosUv mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     Pixel_PosUv output;
-
-    uint array_index = (uint)pass_get_f3_value2().x;
-    output.position  = compute_screen_space_position(input, instance_id, buffer_pass.transform, GetLight().view_projection[array_index], buffer_frame.time);
+    
+    uint index_light = (uint)pass_get_f3_value2().y;
+    uint index_array = (uint)pass_get_f3_value2().x;
+    Light_ light     = buffer_lights[index_light];
+    
+    output.position  = compute_screen_space_position(input, instance_id, buffer_pass.transform, light.view_projection[index_array], buffer_frame.time);
     output.uv        = input.uv;
 
     return output;
