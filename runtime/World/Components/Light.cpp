@@ -389,7 +389,7 @@ namespace Spartan
                 Vector3 target = camera->GetEntity()->GetPosition();
 
                 // near cascade
-                Vector3 position = target - forward * m_range * 0.5f; // center on camera
+                Vector3 position = target - forward * orthographic_depth * 0.8f;
                 m_matrix_view[0] = Matrix::CreateLookAtLH(position, target, Vector3::Up);
                 // far cascade
                 m_matrix_view[1] = Matrix::CreateLookAtLH(position, target, Vector3::Up);
@@ -429,13 +429,6 @@ namespace Spartan
                 float top        = extent;
                 float near_plane = 0.0f;
                 float far_plane  = orthographic_depth;
-
-                // snap the orthographic bounds to the nearest texel (to avoid shimmering)
-                //float world_units_per_texel = (2.0f * orthographic_extent) / static_cast<float>(m_texture_depth->GetWidth());
-                //left                        = floor(left / world_units_per_texel) * world_units_per_texel;
-                //right                       = floor(right / world_units_per_texel) * world_units_per_texel;
-                //bottom                      = floor(bottom / world_units_per_texel) * world_units_per_texel;
-                //top                         = floor(top / world_units_per_texel) * world_units_per_texel;
 
                 m_matrix_projection[i] = Matrix::CreateOrthoOffCenterLH(left, right, bottom, top, far_plane, near_plane);
                 m_frustums[i]          = Frustum(m_matrix_view[i], m_matrix_projection[i], far_plane - near_plane);
