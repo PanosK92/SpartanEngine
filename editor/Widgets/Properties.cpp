@@ -305,7 +305,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
             ImGui::Text("Shadows");
             ImGui::SameLine(column_pos_x); ImGui::Checkbox("##light_shadows", &shadows);
 
-            if (shadows);
+            if (shadows)
             {
                 // transparent shadows
                 ImGui::Text("Transparent Shadows");

@@ -99,14 +99,15 @@ namespace Spartan::Math
             radius = Helper::Max3(extent.x, extent.y, z);
         }
 
-        // check sphere first as it's cheaper
-        if (CheckSphere(center, radius) != Intersection::Outside)
-        {
-            if (CheckCube(center, extent) != Intersection::Outside)
-                return true;
-        }
+        // cheaper, so we do it first
+        if (CheckSphere(center, radius) == Intersection::Outside)
+            return false;
 
-        return false;
+        // slightly more expensive, so we do it second
+        if (CheckCube(center, extent) == Intersection::Outside)
+            return false;
+
+        return true;
     }
 
     Intersection Frustum::CheckCube(const Vector3& center, const Vector3& extent) const
