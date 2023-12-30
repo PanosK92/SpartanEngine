@@ -79,19 +79,22 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
     float3 ray_pos       = ray_origin + get_noise_interleaved_gradient(pixel_pos, true, true) * 0.05f;
 
     float fog = 0.0f;
-    for (uint i = 0; i < step_count; i++)
+    if (surface.is_sky())
     {
-        if (length(ray_pos - ray_origin) > total_distance)
-            break;
-
-        // accumulate fog
-        fog += fog_density * visibility(ray_pos, light, pixel_pos);
-
-        // step ray
-        ray_pos += ray_step;
+        fog = fog_density * 1.0f;
     }
+    else
+    {
+        for (uint i = 0; i < step_count; i++)
+        {
+            // accumulate fog
+            fog += fog_density * visibility(ray_pos, light, pixel_pos);
 
-    fog /= float(step_count);
+             // step ray
+            ray_pos += ray_step;
+        }
+        fog /= float(step_count);
+    }
 
     return fog * light.intensity * light.color * g_atmospheric_color;
 }
