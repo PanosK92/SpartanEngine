@@ -69,11 +69,11 @@ namespace Spartan
 
                         if (light)
                         {
-                            if (!light->IsInViewFrustum(renderable, array_index))
-                            {
-                                instance_start_index = group_end_index;
-                                continue;
-                            }
+                            //if (!light->IsInViewFrustum(renderable, array_index))
+                            //{
+                            //    instance_start_index = group_end_index;
+                            //    continue;
+                            //}
                         }
                         else if (!camera->IsInViewFrustum(bounding_box_group))
                         {
@@ -315,8 +315,8 @@ namespace Spartan
                             continue;
 
                         // skip objects outside of the view frustum
-                        if (!light->IsInViewFrustum(renderable.get(), array_index))
-                            continue;
+                        //if (!light->IsInViewFrustum(renderable.get(), array_index))
+                            //continue;
 
                         // set vertex, index and instance buffers
                         {

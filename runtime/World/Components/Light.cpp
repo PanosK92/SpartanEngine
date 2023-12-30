@@ -41,7 +41,7 @@ namespace Spartan
 {
     namespace
     {
-        float orthographic_depth       = 4096;   // depth of all cascades
+        float orthographic_depth       = 2048;   // depth of all cascades
         float orthographic_extent_near = 20.0f;  // size of the near cascade
         float orthographic_extent_far  = 175.0f; // size of the far cascade compared to the near one
 
