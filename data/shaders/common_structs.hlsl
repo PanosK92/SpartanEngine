@@ -254,6 +254,57 @@ struct Light
         Surface surface;
         Build(surface.position, surface.normal, surface.occlusion);
     }
+
+    float compare_depth(float3 uv, float compare)
+    {
+        // float3 -> uv, slice
+        if (is_directional())
+            return tex_light_directional_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv, compare).r;
+        
+        // float3 -> direction
+        if (is_point())
+            return tex_light_point_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv, compare).r;
+        
+        // float3 -> uv, 0
+        if (is_spot()) 
+            return tex_light_spot_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv.xy, compare).r;
+    
+        return 0.0f;
+    }
+    
+    float sample_depth(float3 uv)
+    {
+        // float3 -> uv, slice
+        if (is_directional())
+            return tex_light_directional_depth.SampleLevel(samplers[sampler_point_clamp_edge], uv, 0).r;
+        
+        // float3 -> direction
+        if (is_point())
+            return tex_light_point_depth.SampleLevel(samplers[sampler_point_clamp_edge], uv, 0).r;
+    
+        // float3 -> uv, 0
+        if (is_spot())
+            return tex_light_spot_depth.SampleLevel(samplers[sampler_point_clamp_edge], uv.xy, 0).r;
+    
+        return 0.0f;
+    }
+    
+    float3 sample_color(float3 uv)
+    {
+        // float3 -> uv, slice
+        if (is_directional())
+            return tex_light_directional_color.SampleLevel(samplers[sampler_point_clamp_edge], uv, 0).rgb;
+    
+        // float3 -> direction
+        if (is_point())
+            return tex_light_point_color.SampleLevel(samplers[sampler_point_clamp_edge], uv, 0).rgb;
+    
+        // float3 -> uv, 0
+        if (is_spot())
+            return tex_light_spot_color.SampleLevel(samplers[sampler_point_clamp_edge], uv.xy, 0).rgb;
+        
+        return 0.0f;
+    }
 };
 
 struct AngularInfo

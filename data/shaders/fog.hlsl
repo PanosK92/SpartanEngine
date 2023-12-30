@@ -46,23 +46,6 @@ float3 got_fog_radial(const float3 pixel_position, const float3 camera_position)
 /*------------------------------------------------------------------------------
     FOG - VOLUMETRIC
 ------------------------------------------------------------------------------*/
-float sample_shadow_map(Light light, float3 uv)
-{
-    // float3 -> uv, slice
-    if (light.is_directional())
-        return tex_light_directional_depth.SampleLevel(samplers[sampler_point_clamp_edge], uv, 0).r;
-    
-    // float3 -> direction
-    if (light.is_point())
-        return tex_light_point_depth.SampleLevel(samplers[sampler_point_clamp_edge], uv, 0).r;
-
-    // float3 -> uv, 0
-    if (light.is_spot())
-        return tex_light_spot_depth.SampleLevel(samplers[sampler_point_clamp_edge], uv.xy, 0).r;
-
-    return 0.0f;
-}
-
 float visibility(float3 position, Light light, uint2 pixel_pos)
 {
     // project to light space
@@ -75,7 +58,7 @@ float visibility(float3 position, Light light, uint2 pixel_pos)
     if (is_valid_uv(pos_uv))
     {
         float3 sample_coords  = light.is_point() ? light.to_pixel : float3(pos_uv.x, pos_uv.y, slice_index);
-        float shadow_depth    = sample_shadow_map(light, sample_coords);
+        float shadow_depth    = light.sample_depth(sample_coords);
         shadow_map_comparison = pos_ndc.z <= shadow_depth;
     }
 
