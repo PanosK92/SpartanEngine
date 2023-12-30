@@ -288,7 +288,27 @@ namespace Spartan
         return HasTexture(texture_type) ? m_textures[static_cast<uint32_t>(texture_type)] : texture_empty;
     }
 
-    void Material::SetProperty(const MaterialProperty property_type, float value)
+    uint32_t Material::GetArraySize()
+    {
+        uint32_t max_index[static_cast<size_t>(MaterialTexture::Max)] = { 0 };
+
+        for (size_t i = 0; i < m_textures.size(); ++i)
+        {
+            if (m_textures[i])
+            {
+                // determine the texture type by dividing the index by 4 (since there are 4 of each type)
+                size_t typeIndex = i / material_texture_slots_per_type;
+
+                // find the max index for this texture type
+                max_index[typeIndex] = std::max(max_index[typeIndex], static_cast<uint32_t>(i % material_texture_slots_per_type + 1));
+            }
+        }
+
+        // find the overall max array size among all texture types
+        return *max_element(begin(max_index), end(max_index));
+    }
+
+	void Material::SetProperty(const MaterialProperty property_type, float value)
     {
         if (m_properties[static_cast<uint32_t>(property_type)] == value)
             return;

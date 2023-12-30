@@ -42,6 +42,7 @@ namespace Spartan
         AlphaMask, AlphaMask2, AlphaMask3, AlphaMask4,
         Max
     };
+    const uint32_t material_texture_slots_per_type = 4;
 
     enum class MaterialProperty
     {
@@ -72,7 +73,7 @@ namespace Spartan
         TextureSlopeBased,
         VertexAnimateWind,
         VertexAnimateWater,
-        CullMode, // 0 - none, 1 - front, 2 - back
+        CullMode, // 0 - none, 1 - front, 2 - back - Same as RHI_CullMode
         Max
     };
 
@@ -103,6 +104,7 @@ namespace Spartan
         std::vector<std::string> GetTexturePaths();
         RHI_Texture* GetTexture(const MaterialTexture texture_type);
         std::shared_ptr<RHI_Texture>& GetTexture_PtrShared(const MaterialTexture texturtexture_type);
+        uint32_t GetArraySize();
 
         // properties
         float GetProperty(const MaterialProperty property_type) const { return m_properties[static_cast<uint32_t>(property_type)]; }
@@ -116,7 +118,6 @@ namespace Spartan
     private:
         std::array<std::shared_ptr<RHI_Texture>, material_texture_count_support> m_textures;
         std::array<float, material_property_count> m_properties;
-
         uint32_t m_index = 0;
     };
 }

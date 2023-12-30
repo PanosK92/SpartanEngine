@@ -716,8 +716,7 @@ void Properties::ShowMaterial(Material* material) const
                     // texture
                     if (show_texture)
                     {
-                        const uint32_t textures_count_per_type = 4;
-                        for (uint32_t i = 0; i < textures_count_per_type; ++i)
+                        for (uint32_t i = 0; i < material->GetArraySize(); ++i)
                         {
                             MaterialTexture textureType = static_cast<MaterialTexture>(static_cast<uint32_t>(mat_tex) + i);
                             auto setter = [&, textureType](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(textureType, texture); };
