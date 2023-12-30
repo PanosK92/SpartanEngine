@@ -221,10 +221,10 @@ struct Light
 
     void Build(float3 surface_position, float3 surface_normal, float occlusion)
     {
-        Light_ light = GetLight();
+        Light_ light = buffer_lights[(uint)pass_get_f3_value2().y];
 
         flags             = light.flags;
-        view_projection   = light.view_projection;   
+        view_projection   = light.view_projection;
         color             = light.color.rgb;
         position          = light.position.xyz;
         intensity         = light.intensity;
@@ -246,6 +246,12 @@ struct Light
 
     void Build(Surface surface)
     {
+        Build(surface.position, surface.normal, surface.occlusion);
+    }
+
+    void Build()
+    {
+        Surface surface;
         Build(surface.position, surface.normal, surface.occlusion);
     }
 };

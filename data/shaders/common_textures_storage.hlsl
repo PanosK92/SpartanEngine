@@ -108,7 +108,7 @@ RWStructuredBuffer<Material> buffer_materials : register(u0);
 Material GetMaterial() { return buffer_materials[buffer_frame.material_index]; }
 //===========================================================================================
 
-//= LIGHTS ==============================================================
+//= LIGHTS =============================================
 struct Light_
 {
     matrix view_projection[6];
@@ -128,8 +128,7 @@ struct Light_
 };
 
 RWStructuredBuffer<Light_> buffer_lights : register(u1);
-Light_ GetLight() { return buffer_lights[(uint)pass_get_f3_value2().y]; }
-//=======================================================================
+//======================================================
 
 // various storage textures/buffers
 RWTexture2D<float4> tex_uav                                : register(u2);

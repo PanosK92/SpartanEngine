@@ -67,7 +67,7 @@ float visibility(float3 position, Light light, uint2 pixel_pos)
 {
     // project to light space
     uint slice_index = light.is_point() ? direction_to_cube_face_index(light.to_pixel) : 0;
-    float3 pos_ndc   = world_to_ndc(position, GetLight().view_projection[slice_index]);
+    float3 pos_ndc   = world_to_ndc(position, light.view_projection[slice_index]);
     float2 pos_uv    = ndc_to_uv(pos_ndc);
 
     // shadow map comparison

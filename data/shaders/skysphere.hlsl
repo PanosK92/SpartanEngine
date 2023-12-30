@@ -157,10 +157,13 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float theta           = (1.0f - uv.y) * PI;
     float3 view_direction = normalize(float3(sin(theta) * cos(phi), cos(theta), sin(theta) * sin(phi)));
 
+    // create light
+    Light light;
+    light.Build();
+
     // compute individual factors that contribute to what we see when we look up there
-    Light_ light  = GetLight();
-    float3 color  = atmosphere::compute_color(view_direction, light.direction, buffer_frame.camera_position) * light.intensity * 0.03f;
-    color        += sun::compute_color(view_direction, light.direction) * light.color.rgb * light.intensity;
+    float3 color  = atmosphere::compute_color(view_direction, light.forward, buffer_frame.camera_position) * light.intensity * 0.03f;
+    color        += sun::compute_color(view_direction, light.forward) * light.color.rgb * light.intensity;
     color        += space::compute_color(view_direction, color, buffer_frame.time);
       
     tex_uav[thread_id.xy] = float4(color, 1.0f);
