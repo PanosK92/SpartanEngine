@@ -270,10 +270,12 @@ namespace Spartan
         Point_clamp_edge,
         Point_clamp_border,
         Point_wrap,
-        Bilinear_clamp,
+        Bilinear_clamp_edge,
+        Bilienar_clamp_border,
         Bilinear_wrap,
         Trilinear_clamp,
-        Anisotropic_wrap
+        Anisotropic_wrap,
+        Max
     };
 
     enum class Renderer_StructuredBuffer

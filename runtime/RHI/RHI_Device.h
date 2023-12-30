@@ -21,22 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES =================================
 #include "../Display/DisplayMode.h"
 #include "RHI_PhysicalDevice.h"
 #include <memory>
 #include "RHI_Descriptor.h"
-//=================================
+#include "../Rendering/Renderer_Definitions.h"
+//============================================
 
 namespace Spartan
 {
-    enum class RHI_Device_Resource
-    {
-        sampler_comparison,
-        sampler_regular,
-        textures_material
-    };
-
     class SP_CLASS RHI_Device
     {
     public:
@@ -59,7 +53,7 @@ namespace Spartan
         static std::unordered_map<uint64_t, RHI_DescriptorSet>& GetDescriptorSets();
         static void* GetDescriptorSet(const RHI_Device_Resource resource_type);
         static void* GetDescriptorSetLayout(const RHI_Device_Resource resource_type);
-        static void UpdateBindlessResources(const std::array<std::shared_ptr<RHI_Sampler>, 8>* samplers, std::array<RHI_Texture*, rhi_max_array_size>* textures);
+        static void UpdateBindlessResources(const std::array<std::shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers, std::array<RHI_Texture*, rhi_max_array_size>* textures);
 
         // Pipelines
         static void GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout);
