@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // technique - all
 static const uint   g_shadow_samples                 = 3;
-static const float  g_shadow_filter_size             = 2.0f;
+static const float  g_shadow_filter_size             = 3.5f;
 static const float  g_shadow_cascade_blend_threshold = 0.7f; // above that, you start to see the cascade line
 // technique - vogel                       
 static const uint   g_penumbra_samples     = 8;
@@ -73,15 +73,15 @@ float shadow_sample_depth(Light light, float3 uv)
 {
     // float3 -> uv, slice
     if (light.is_directional())
-        return tex_light_directional_depth.SampleLevel(samplers[sampler_point_clamp_edge], uv, 0).r;
+        return tex_light_directional_depth.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).r;
     
     // float3 -> direction
     if (light.is_point())
-        return tex_light_point_depth.SampleLevel(samplers[sampler_point_clamp_edge], uv, 0).r;
+        return tex_light_point_depth.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).r;
 
     // float3 -> uv, 0
     if (light.is_spot())
-        return tex_light_spot_depth.SampleLevel(samplers[sampler_point_clamp_edge], uv.xy, 0).r;
+        return tex_light_spot_depth.SampleLevel(samplers[sampler_bilinear_clamp], uv.xy, 0).r;
 
     return 0.0f;
 }
@@ -90,15 +90,15 @@ float3 shadow_sample_color(Light light, float3 uv)
 {
     // float3 -> uv, slice
     if (light.is_directional())
-        return tex_light_directional_color.SampleLevel(samplers[sampler_point_clamp_edge], uv, 0).rgb;
+        return tex_light_directional_color.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).rgb;
 
     // float3 -> direction
     if (light.is_point())
-        return tex_light_point_color.SampleLevel(samplers[sampler_point_clamp_edge], uv, 0).rgb;
+        return tex_light_point_color.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).rgb;
 
     // float3 -> uv, 0
     if (light.is_spot())
-        return tex_light_spot_color.SampleLevel(samplers[sampler_point_clamp_edge], uv.xy, 0).rgb;
+        return tex_light_spot_color.SampleLevel(samplers[sampler_bilinear_clamp], uv.xy, 0).rgb;
     
     return 0.0f;
 }
@@ -154,7 +154,7 @@ float compute_penumbra(Light light, float vogel_angle, float3 uv, float compare)
 float Technique_Vogel(Light light, Surface surface, float3 uv, float compare)
 {
     float shadow          = 0.0f;
-    float temporal_offset = get_noise_interleaved_gradient(surface.uv * pass_get_resolution_out(), true, false);
+    float temporal_offset = get_noise_interleaved_gradient(surface.uv * pass_get_resolution_out(), true, true);
     float temporal_angle  = temporal_offset * PI2;
     float penumbra        = light.is_directional() ? 1.0f : compute_penumbra(light, temporal_angle, uv, compare);
 
@@ -341,4 +341,3 @@ float4 Shadow_Map(Surface surface, Light light)
 
     return shadow;
 }
-
