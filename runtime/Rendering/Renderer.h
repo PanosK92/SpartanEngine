@@ -210,7 +210,7 @@ namespace Spartan
         // misc
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>> m_renderables;
         static Cb_Frame m_cb_frame_cpu;
-        static Pcb_Pass m_cb_pass_cpu;
+        static Pcb_Pass m_pcb_pass_cpu;
         static std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
         static bool m_brdf_specular_lut_rendered;
         static std::vector<RHI_Vertex_PosCol> m_line_vertices;

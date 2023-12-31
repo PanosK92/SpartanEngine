@@ -331,12 +331,12 @@ namespace Spartan
 
                         // set pass constants
                         {
-                            m_cb_pass_cpu.set_f3_value2(static_cast<float>(array_index), static_cast<float>(light->GetIndex()), 0.0f);
-                            m_cb_pass_cpu.transform = entity->GetMatrix();
+                            m_pcb_pass_cpu.set_f3_value2(static_cast<float>(array_index), static_cast<float>(light->GetIndex()), 0.0f);
+                            m_pcb_pass_cpu.transform = entity->GetMatrix();
 
                             if (Material* material = renderable->GetMaterial())
                             {
-                                m_cb_pass_cpu.set_f3_value(
+                                m_pcb_pass_cpu.set_f3_value(
                                     material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
                                     material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
                                     material->GetProperty(MaterialProperty::ColorA)
@@ -452,8 +452,8 @@ namespace Spartan
                                 cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
 
                                 // set pass constants with cascade transform
-                                m_cb_pass_cpu.transform = entity->GetMatrix() * view_projection;
-                                m_cb_pass_cpu.set_f3_value2(0.0f, static_cast<float>(light->GetIndex()), 0.0f);
+                                m_pcb_pass_cpu.transform = entity->GetMatrix() * view_projection;
+                                m_pcb_pass_cpu.set_f3_value2(0.0f, static_cast<float>(light->GetIndex()), 0.0f);
                                 PushPassConstants(cmd_list);
 
                                 cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
@@ -545,12 +545,14 @@ namespace Spartan
                 // occlusion check
                 if (visible)
                 {
-                    BoundingBox bounding_box = renderable->GetBoundingBox(BoundingBoxType::Transformed);
-        
+                    BoundingBoxType type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+                    BoundingBox box      = renderable->GetBoundingBox(type).Transform(m_cb_frame_cpu.view);
+                    DrawBox(box);
+
                     bool occluded = false;
                     for (const Occluder& occluder : occluders)
                     {
-                        if (bounding_box.Occluded(occluder.box, m_camera->GetEntity()))
+                        if (box.Occluded(occluder.box))
                         {
                             occluded = true;
                             break;
@@ -559,10 +561,10 @@ namespace Spartan
 
                     if (!occluded)
                     {
-                        occluders.emplace_back(bounding_box, false);
+                        occluders.emplace_back(box, false);
                     }
 
-                    visible = !occluded;
+                    //visible = !occluded;
                 }
 
                 renderable->SetIsVisible(visible);
@@ -631,7 +633,7 @@ namespace Spartan
                 {
                     if (Material* material = renderable->GetMaterial())
                     {
-                        m_cb_pass_cpu.set_f3_value(
+                        m_pcb_pass_cpu.set_f3_value(
                             material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
                             material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
                             material->GetProperty(MaterialProperty::ColorA)
@@ -645,7 +647,7 @@ namespace Spartan
                         // okay for a renderable to not have a material
                     }
 
-                    m_cb_pass_cpu.transform = entity->GetMatrix();
+                    m_pcb_pass_cpu.transform = entity->GetMatrix();
                     PushPassConstants(cmd_list);
                 }
 
@@ -739,11 +741,11 @@ namespace Spartan
 
                 // set pass constants
                 {
-                    m_cb_pass_cpu.transform = entity->GetMatrix();
-                    m_cb_pass_cpu.set_transform_previous(entity->GetMatrixPrevious());
-                    m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
+                    m_pcb_pass_cpu.transform = entity->GetMatrix();
+                    m_pcb_pass_cpu.set_transform_previous(entity->GetMatrixPrevious());
+                    m_pcb_pass_cpu.set_is_transparent(is_transparent_pass);
                     PushPassConstants(cmd_list);
-                    entity->SetMatrixPrevious(m_cb_pass_cpu.transform);
+                    entity->SetMatrixPrevious(m_pcb_pass_cpu.transform);
 
                     m_cb_frame_cpu.material_index = renderable->GetMaterial()->GetIndex();
                     UpdateConstantBufferFrame(cmd_list);
@@ -786,7 +788,7 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // set pass constants
-            m_cb_pass_cpu.set_resolution_out(tex_ssgi);
+            m_pcb_pass_cpu.set_resolution_out(tex_ssgi);
             PushPassConstants(cmd_list);
 
             // set textures
@@ -810,7 +812,7 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // set pass constants
-            m_cb_pass_cpu.set_resolution_out(tex_ssgi);
+            m_pcb_pass_cpu.set_resolution_out(tex_ssgi);
             PushPassConstants(cmd_list);
 
             // set textures
@@ -849,8 +851,8 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
-        m_cb_pass_cpu.set_resolution_out(tex_ssr);
-        m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
+        m_pcb_pass_cpu.set_resolution_out(tex_ssr);
+        m_pcb_pass_cpu.set_is_transparent(is_transparent_pass);
         PushPassConstants(cmd_list);
 
         // set textures
@@ -931,7 +933,7 @@ namespace Spartan
                     int32_t in_max_render_bounds[]   = { static_cast<int32_t>(tex_sss->GetWidth()), static_cast<int32_t>(tex_sss->GetHeight()) };
                     Bend::DispatchList dispatch_list = Bend::BuildDispatchList(in_light_projection, in_viewport_size, in_min_render_bounds, in_max_render_bounds, false);
 
-                    m_cb_pass_cpu.set_f4_value
+                    m_pcb_pass_cpu.set_f4_value
                     (
                         dispatch_list.LightCoordinate_Shader[0],
                         dispatch_list.LightCoordinate_Shader[1],
@@ -940,13 +942,13 @@ namespace Spartan
                     );
 
                     // light index writes into the texture array index
-                    m_cb_pass_cpu.set_f3_value(near, far, array_slice_index++);
-                    m_cb_pass_cpu.set_f3_value2(1.0f / tex_sss->GetWidth(), 1.0f / tex_sss->GetHeight(), 0.0f);
+                    m_pcb_pass_cpu.set_f3_value(near, far, array_slice_index++);
+                    m_pcb_pass_cpu.set_f3_value2(1.0f / tex_sss->GetWidth(), 1.0f / tex_sss->GetHeight(), 0.0f);
 
                     for (int32_t dispatch_index = 0; dispatch_index < dispatch_list.DispatchCount; ++dispatch_index)
                     {
                         const Bend::DispatchData& dispatch = dispatch_list.Dispatch[dispatch_index];
-                        m_cb_pass_cpu.set_resolution_in({ dispatch.WaveOffset_Shader[0], dispatch.WaveOffset_Shader[1] });
+                        m_pcb_pass_cpu.set_resolution_in({ dispatch.WaveOffset_Shader[0], dispatch.WaveOffset_Shader[1] });
                         PushPassConstants(cmd_list);
                         cmd_list->Dispatch(dispatch.WaveCount[0], dispatch.WaveCount[1], dispatch.WaveCount[2]);
                     }
@@ -998,8 +1000,8 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // set pass constants
-            m_cb_pass_cpu.set_resolution_out(tex_out);
-            m_cb_pass_cpu.set_f3_value2(0.0f, static_cast<float>(light_directional->GetIndex()), 0.0f);
+            m_pcb_pass_cpu.set_resolution_out(tex_out);
+            m_pcb_pass_cpu.set_f3_value2(0.0f, static_cast<float>(light_directional->GetIndex()), 0.0f);
             PushPassConstants(cmd_list);
 
             // set textures
@@ -1083,14 +1085,14 @@ namespace Spartan
                     }
 
                     // light index reads from the texture array index (sss)
-                    m_cb_pass_cpu.set_f3_value2(array_slice_index++, static_cast<float>(light->GetIndex()), 0.0f);
+                    m_pcb_pass_cpu.set_f3_value2(array_slice_index++, static_cast<float>(light->GetIndex()), 0.0f);
                     cmd_list->SetTexture(Renderer_BindingsSrv::sss, GetRenderTarget(Renderer_RenderTexture::sss));
                 }
                 
                 // push pass constants
-                m_cb_pass_cpu.set_resolution_out(tex_diffuse);
-                m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
-                m_cb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Fog), GetOption<float>(Renderer_Option::ShadowResolution), 0.0f);
+                m_pcb_pass_cpu.set_resolution_out(tex_diffuse);
+                m_pcb_pass_cpu.set_is_transparent(is_transparent_pass);
+                m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Fog), GetOption<float>(Renderer_Option::ShadowResolution), 0.0f);
                 PushPassConstants(cmd_list);
                 
                 cmd_list->Dispatch(thread_group_count_x(tex_diffuse), thread_group_count_y(tex_diffuse));
@@ -1119,9 +1121,9 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // push pass constants
-        m_cb_pass_cpu.set_resolution_out(tex_out);
-        m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
-        m_cb_pass_cpu.set_f3_value(static_cast<float>(GetRenderTarget(Renderer_RenderTexture::frame_render)->GetMipCount()), GetOption<float>(Renderer_Option::Fog), 0.0f);
+        m_pcb_pass_cpu.set_resolution_out(tex_out);
+        m_pcb_pass_cpu.set_is_transparent(is_transparent_pass);
+        m_pcb_pass_cpu.set_f3_value(static_cast<float>(GetRenderTarget(Renderer_RenderTexture::frame_render)->GetMipCount()), GetOption<float>(Renderer_Option::Fog), 0.0f);
         PushPassConstants(cmd_list);
 
         // set textures
@@ -1180,14 +1182,14 @@ namespace Spartan
             shared_ptr<ReflectionProbe> probe = probes[0]->GetComponent<ReflectionProbe>();
 
             cmd_list->SetTexture(Renderer_BindingsSrv::reflection_probe, probe->GetColorTexture());
-            m_cb_pass_cpu.set_f3_value(probe->GetEntity()->GetPosition());
-            m_cb_pass_cpu.set_f3_value2(probe->GetExtents());
+            m_pcb_pass_cpu.set_f3_value(probe->GetEntity()->GetPosition());
+            m_pcb_pass_cpu.set_f3_value2(probe->GetExtents());
         }
 
         // set pass constants
-        m_cb_pass_cpu.set_resolution_out(tex_out);
-        m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
-        m_cb_pass_cpu.set_f4_value(!probes.empty() ? 1.0f : 0.0f, static_cast<float>(GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount()), 0.0f, 0.0f);
+        m_pcb_pass_cpu.set_resolution_out(tex_out);
+        m_pcb_pass_cpu.set_is_transparent(is_transparent_pass);
+        m_pcb_pass_cpu.set_f4_value(!probes.empty() ? 1.0f : 0.0f, static_cast<float>(GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount()), 0.0f, 0.0f);
         PushPassConstants(cmd_list);
 
         // render
@@ -1241,10 +1243,10 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // set pass constants
-            m_cb_pass_cpu.set_resolution_in(Vector2(static_cast<float>(width), static_cast<float>(height)));
-            m_cb_pass_cpu.set_resolution_out(tex_blur);
-            m_cb_pass_cpu.set_f3_value(pixel_stride, 0.0f, radius);
-            m_cb_pass_cpu.set_f3_value2(sigma);
+            m_pcb_pass_cpu.set_resolution_in(Vector2(static_cast<float>(width), static_cast<float>(height)));
+            m_pcb_pass_cpu.set_resolution_out(tex_blur);
+            m_pcb_pass_cpu.set_f3_value(pixel_stride, 0.0f, radius);
+            m_pcb_pass_cpu.set_f3_value2(sigma);
             PushPassConstants(cmd_list);
 
             // set textures
@@ -1269,10 +1271,10 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // set pass constants
-            m_cb_pass_cpu.set_resolution_in(Vector2(static_cast<float>(width), static_cast<float>(height)));
-            m_cb_pass_cpu.set_resolution_out(tex_blur);
-            m_cb_pass_cpu.set_f3_value(0.0f, pixel_stride, radius);
-            m_cb_pass_cpu.set_f3_value2(sigma);
+            m_pcb_pass_cpu.set_resolution_in(Vector2(static_cast<float>(width), static_cast<float>(height)));
+            m_pcb_pass_cpu.set_resolution_out(tex_blur);
+            m_pcb_pass_cpu.set_f3_value(0.0f, pixel_stride, radius);
+            m_pcb_pass_cpu.set_f3_value2(sigma);
             PushPassConstants(cmd_list);
 
             // set textures
@@ -1436,7 +1438,7 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // Set pass constants
-            m_cb_pass_cpu.set_resolution_out(tex_bloom);
+            m_pcb_pass_cpu.set_resolution_out(tex_bloom);
             PushPassConstants(cmd_list);
 
             // Set textures
@@ -1470,7 +1472,7 @@ namespace Spartan
                 int mip_height_height = tex_bloom->GetHeight() >> mip_index_big;
 
                 // Set pass constants
-                m_cb_pass_cpu.set_resolution_out(Vector2(static_cast<float>(mip_width_large), static_cast<float>(mip_height_height)));
+                m_pcb_pass_cpu.set_resolution_out(Vector2(static_cast<float>(mip_width_large), static_cast<float>(mip_height_height)));
                 PushPassConstants(cmd_list);
 
                 // Set textures
@@ -1496,8 +1498,8 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // Set pass constants
-            m_cb_pass_cpu.set_resolution_out(tex_out);
-            m_cb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Bloom), 0.0f, 0.0f);
+            m_pcb_pass_cpu.set_resolution_out(tex_out);
+            m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Bloom), 0.0f, 0.0f);
             PushPassConstants(cmd_list);
 
             // Set textures
@@ -1530,9 +1532,9 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
-        m_cb_pass_cpu.set_resolution_out(tex_out);
-        m_cb_pass_cpu.set_f3_value(Display::GetLuminanceMax(), GetOption<float>(Renderer_Option::Tonemapping), GetOption<float>(Renderer_Option::Exposure));
-        m_cb_pass_cpu.set_f3_value2(GetOption<float>(Renderer_Option::Hdr), 0.0f, 0.0f);
+        m_pcb_pass_cpu.set_resolution_out(tex_out);
+        m_pcb_pass_cpu.set_f3_value(Display::GetLuminanceMax(), GetOption<float>(Renderer_Option::Tonemapping), GetOption<float>(Renderer_Option::Exposure));
+        m_pcb_pass_cpu.set_f3_value2(GetOption<float>(Renderer_Option::Hdr), 0.0f, 0.0f);
         PushPassConstants(cmd_list);
 
         // set textures
@@ -1562,7 +1564,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // Set pass constants
-        m_cb_pass_cpu.set_resolution_out(tex_out);
+        m_pcb_pass_cpu.set_resolution_out(tex_out);
         PushPassConstants(cmd_list);
 
         // Set textures
@@ -1592,8 +1594,8 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
-        m_cb_pass_cpu.set_resolution_out(tex_out);
-        m_cb_pass_cpu.set_f3_value(m_camera->GetAperture(), 0.0f, 0.0f);
+        m_pcb_pass_cpu.set_resolution_out(tex_out);
+        m_pcb_pass_cpu.set_f3_value(m_camera->GetAperture(), 0.0f, 0.0f);
         PushPassConstants(cmd_list);
 
         // set textures
@@ -1623,8 +1625,8 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
-        m_cb_pass_cpu.set_resolution_out(tex_out);
-        m_cb_pass_cpu.set_f3_value(m_camera->GetShutterSpeed(), 0.0f, 0.0f);
+        m_pcb_pass_cpu.set_resolution_out(tex_out);
+        m_pcb_pass_cpu.set_f3_value(m_camera->GetShutterSpeed(), 0.0f, 0.0f);
         PushPassConstants(cmd_list);
 
         // set textures
@@ -1665,8 +1667,8 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // set pass constants
-            m_cb_pass_cpu.set_resolution_out(tex_bokeh_half);
-            m_cb_pass_cpu.set_f3_value(m_camera->GetAperture(), 0.0f, 0.0f);
+            m_pcb_pass_cpu.set_resolution_out(tex_bokeh_half);
+            m_pcb_pass_cpu.set_f3_value(m_camera->GetAperture(), 0.0f, 0.0f);
             PushPassConstants(cmd_list);
 
             // set textures
@@ -1690,8 +1692,8 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // set pass constants
-            m_cb_pass_cpu.set_resolution_out(tex_bokeh_half_2);
-            m_cb_pass_cpu.set_f3_value(m_camera->GetAperture(), 0.0f, 0.0f);
+            m_pcb_pass_cpu.set_resolution_out(tex_bokeh_half_2);
+            m_pcb_pass_cpu.set_f3_value(m_camera->GetAperture(), 0.0f, 0.0f);
             PushPassConstants(cmd_list);
 
             // set textures
@@ -1714,8 +1716,8 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // set pass constants
-            m_cb_pass_cpu.set_resolution_out(tex_bokeh_half);
-            m_cb_pass_cpu.set_f3_value(m_camera->GetAperture(), 0.0f, 0.0f);
+            m_pcb_pass_cpu.set_resolution_out(tex_bokeh_half);
+            m_pcb_pass_cpu.set_f3_value(m_camera->GetAperture(), 0.0f, 0.0f);
             PushPassConstants(cmd_list);
 
             // set textures
@@ -1738,8 +1740,8 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // set pass constants
-            m_cb_pass_cpu.set_resolution_out(tex_out);
-            m_cb_pass_cpu.set_f3_value(m_camera->GetAperture(), 0.0f, 0.0f);
+            m_pcb_pass_cpu.set_resolution_out(tex_out);
+            m_pcb_pass_cpu.set_f3_value(m_camera->GetAperture(), 0.0f, 0.0f);
             PushPassConstants(cmd_list);
 
             // set textures
@@ -1773,7 +1775,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // Set pass constants
-        m_cb_pass_cpu.set_resolution_out(tex_out);
+        m_pcb_pass_cpu.set_resolution_out(tex_out);
         PushPassConstants(cmd_list);
 
         // Set textures
@@ -1803,8 +1805,8 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
-        m_cb_pass_cpu.set_resolution_out(tex_out);
-        m_cb_pass_cpu.set_f3_value(m_camera->GetIso(), 0.0f, 0.0f);
+        m_pcb_pass_cpu.set_resolution_out(tex_out);
+        m_pcb_pass_cpu.set_f3_value(m_camera->GetIso(), 0.0f, 0.0f);
         PushPassConstants(cmd_list);
 
         // set textures
@@ -1839,8 +1841,8 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // set pass constants
-            m_cb_pass_cpu.set_resolution_out(tex_out);
-            m_cb_pass_cpu.set_f3_value(sharpness, 0.0f, 0.0f);
+            m_pcb_pass_cpu.set_resolution_out(tex_out);
+            m_pcb_pass_cpu.set_f3_value(sharpness, 0.0f, 0.0f);
             PushPassConstants(cmd_list);
 
             // set textures
@@ -1894,8 +1896,8 @@ namespace Spartan
         const uint32_t thread_group_count_y_ = (tex->GetHeight() + 63) >> 6;
 
         // push pass data
-        m_cb_pass_cpu.set_resolution_out(tex);
-        m_cb_pass_cpu.set_f3_value(static_cast<float>(output_mip_count), static_cast<float>(thread_group_count_x_ * thread_group_count_y_), 0.0f);
+        m_pcb_pass_cpu.set_resolution_out(tex);
+        m_pcb_pass_cpu.set_f3_value(static_cast<float>(output_mip_count), static_cast<float>(thread_group_count_x_ * thread_group_count_y_), 0.0f);
         PushPassConstants(cmd_list);
 
         // set textures
@@ -1986,7 +1988,7 @@ namespace Spartan
                     Matrix transform = Matrix(pos_world, rotation_camera_billboard * rotation_reorient_quad, scale);
 
                     // set transform
-                    m_cb_pass_cpu.transform = transform * m_cb_frame_cpu.view_projection_unjittered;
+                    m_pcb_pass_cpu.transform = transform * m_cb_frame_cpu.view_projection_unjittered;
                     PushPassConstants(cmd_list);
                 }
 
@@ -2060,12 +2062,12 @@ namespace Spartan
                 floor(camera_position.z / grid_spacing) * grid_spacing
             );
             Matrix quad_transform   = Matrix::CreateScale(Vector3(1000.0f, 1.0f, 1000.0f)) * Matrix::CreateTranslation(translation);
-            m_cb_pass_cpu.transform = quad_transform * m_cb_frame_cpu.view_projection_unjittered;
+            m_pcb_pass_cpu.transform = quad_transform * m_cb_frame_cpu.view_projection_unjittered;
 
             // style
             const float line_internval  = 0.001f;
             const float line_thickeness = 0.00001f;
-            m_cb_pass_cpu.set_f3_value(line_internval, line_thickeness, 0.0f);
+            m_pcb_pass_cpu.set_f3_value(line_internval, line_thickeness, 0.0f);
 
             PushPassConstants(cmd_list);
         }
@@ -2097,7 +2099,7 @@ namespace Spartan
         pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
 
         // world space rendering
-        m_cb_pass_cpu.transform = Matrix::Identity;
+        m_pcb_pass_cpu.transform = Matrix::Identity;
         PushPassConstants(cmd_list);
 
         // draw independent lines
@@ -2199,7 +2201,7 @@ namespace Spartan
                 if (shared_ptr<ReflectionProbe> probe = probes[probe_index]->GetComponent<ReflectionProbe>())
                 {
                     // Set pass constants
-                    m_cb_pass_cpu.transform = probe->GetEntity()->GetMatrix();
+                    m_pcb_pass_cpu.transform = probe->GetEntity()->GetMatrix();
                     PushPassConstants(cmd_list);
 
                     cmd_list->SetTexture(Renderer_BindingsSrv::reflection_probe, probe->GetColorTexture());
@@ -2256,8 +2258,8 @@ namespace Spartan
                             // render
                             {
                                 // push draw data
-                                m_cb_pass_cpu.set_f4_value(debug_color);
-                                m_cb_pass_cpu.transform = entity_selected->GetMatrix();
+                                m_pcb_pass_cpu.set_f4_value(debug_color);
+                                m_pcb_pass_cpu.transform = entity_selected->GetMatrix();
                                 PushPassConstants(cmd_list);
                         
                                 cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
@@ -2285,7 +2287,7 @@ namespace Spartan
                             cmd_list->SetPipelineState(pso);
                         
                             // Set pass constants
-                            m_cb_pass_cpu.set_resolution_out(tex_out);
+                            m_pcb_pass_cpu.set_resolution_out(tex_out);
                             PushPassConstants(cmd_list);
                         
                             // Set textures
@@ -2335,8 +2337,8 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
             {
                 // set pass constants
-                m_cb_pass_cpu.set_resolution_out(tex_out);
-                m_cb_pass_cpu.set_f4_value(font->GetColorOutline());
+                m_pcb_pass_cpu.set_resolution_out(tex_out);
+                m_pcb_pass_cpu.set_f4_value(font->GetColorOutline());
                 PushPassConstants(cmd_list);
 
                 cmd_list->SetBufferVertex(font->GetVertexBuffer());
@@ -2353,8 +2355,8 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
             {
                 // set pass constants
-                m_cb_pass_cpu.set_resolution_out(tex_out);
-                m_cb_pass_cpu.set_f4_value(font->GetColor());
+                m_pcb_pass_cpu.set_resolution_out(tex_out);
+                m_pcb_pass_cpu.set_f4_value(font->GetColor());
                 PushPassConstants(cmd_list);
 
                 cmd_list->SetBufferVertex(font->GetVertexBuffer());
@@ -2388,7 +2390,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
-        m_cb_pass_cpu.set_resolution_out(tex_brdf_specular_lut);
+        m_pcb_pass_cpu.set_resolution_out(tex_brdf_specular_lut);
         PushPassConstants(cmd_list);
 
         // set texture
