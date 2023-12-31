@@ -163,7 +163,7 @@ namespace Spartan
             
             // opaque
             {
-                Pass_FrustumOcclusionQueries(cmd_list);
+                Pass_Visibility(cmd_list);
                 Pass_Depth_Prepass(cmd_list);
                 Pass_GBuffer(cmd_list);
                 Pass_Skysphere(cmd_list);
@@ -467,7 +467,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_FrustumOcclusionQueries(RHI_CommandList* cmd_list)
+    void Renderer::Pass_Visibility(RHI_CommandList* cmd_list)
     {
         struct Occluder
         {
@@ -477,7 +477,7 @@ namespace Spartan
         vector<Occluder> occluders;
 
         bool gpu = false; // CPU time block
-        cmd_list->BeginTimeblock("occlusion_queries", gpu, gpu);
+        cmd_list->BeginTimeblock("visibility", gpu, gpu);
 
         // sort entities by depth
         {
@@ -541,9 +541,9 @@ namespace Spartan
                 bool visible = GetCamera()->IsInViewFrustum(renderable);
                 
                 // occlusion check
-                /*if (visible)
+                if (visible)
                 {
-                    BoundingBox bounding_box = renderable->GetBoundingBox(BoundingBoxType::Transformed).Transform(m_cb_frame_cpu.view);
+                    BoundingBox bounding_box = renderable->GetBoundingBox(BoundingBoxType::Transformed).Transform(m_cb_frame_cpu.view_projection);
 
                     bool occluded = false;
                     for (const Occluder& occluder : occluders)
@@ -561,7 +561,7 @@ namespace Spartan
                     }
 
                     visible = !occluded;
-                }*/
+                }
 
                 renderable->SetIsVisible(visible);
             }

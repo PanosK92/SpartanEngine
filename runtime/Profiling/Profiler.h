@@ -68,7 +68,6 @@ namespace Spartan
         
         // metrics - rhi
         static uint32_t m_rhi_draw;
-        static uint32_t m_rhi_dispatch;
         static uint32_t m_rhi_bindings_buffer_index;
         static uint32_t m_rhi_bindings_buffer_vertex;
         static uint32_t m_rhi_bindings_buffer_constant;
@@ -115,7 +114,6 @@ namespace Spartan
         static void ClearRhiMetrics()
         {
             m_rhi_draw                       = 0;
-            m_rhi_dispatch                   = 0;
             m_rhi_bindings_buffer_index      = 0;
             m_rhi_bindings_buffer_vertex     = 0;
             m_rhi_bindings_buffer_constant   = 0;
