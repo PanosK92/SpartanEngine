@@ -331,44 +331,41 @@ namespace Spartan
         // bounding boxes
         if (GetOption<bool>(Renderer_Option::Debug_Aabb))
         {
-            static const Vector4 color = Vector4(0.41f, 0.86f, 1.0f, 1.0f);
+            static const Vector4 color_visible  = Vector4(0.41f, 0.86f, 1.0f, 1.0f);
+            static const Vector4 color_occluded = Vector4(01.0f, 0.0f, 0.0f, 1.0f);
 
-            for (const auto& entity : GetEntities()[Renderer_Entity::Geometry])
+            auto draw_bounding_boxes = [](const Renderer_Entity entity_type)
             {
-                if (auto renderable = entity->GetComponent<Renderable>())
+                for (const auto& entity : GetEntities()[entity_type])
                 {
-                    DrawBox(renderable->GetBoundingBox(BoundingBoxType::Transformed), color);
+                    if (auto renderable = entity->GetComponent<Renderable>())
+                    {
+                        BoundingBoxType bounding_box_type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+                        DrawBox(renderable->GetBoundingBox(bounding_box_type), renderable->GetIsVisible() ? color_visible : color_occluded);
+                    }
                 }
-            }
-
-            for (const auto& entity : GetEntities()[Renderer_Entity::GeometryTransparent])
+            };
+            
+            auto draw_instance_group_bounding_boxes = [&](const Renderer_Entity entity_type)
             {
-                if (auto renderable = entity->GetComponent<Renderable>())
-                {
-                    DrawBox(renderable->GetBoundingBox(BoundingBoxType::Transformed), color);
-                }
-            }
-
-            // function to draw bounding boxes for instanced groups
-            auto drawInstanceGroupBoundingBoxes = [&](const auto& entities)
-            {
-                for (const auto& entity : entities)
+                for (const auto& entity : GetEntities()[entity_type])
                 {
                     if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
                     {
-                        uint32_t groupCount = static_cast<uint32_t>(renderable->GetBoundingBoxGroupEndIndices().size()); // Assuming this method exists
-                        for (uint32_t group_index = 0; group_index < groupCount; group_index++)
+                        uint32_t group_count = static_cast<uint32_t>(renderable->GetBoundingBoxGroupEndIndices().size());
+                        for (uint32_t group_index = 0; group_index < group_count; group_index++)
                         {
-                            const Math::BoundingBox& bounding_box_group = renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
-                            DrawBox(bounding_box_group, color);
+                            const BoundingBox& bounding_box_group = renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
+                            DrawBox(bounding_box_group, renderable->GetIsVisible() ? color_visible : color_occluded);
                         }
                     }
                 }
             };
 
-            // draw bounding boxes for different entity types
-            drawInstanceGroupBoundingBoxes(GetEntities()[Renderer_Entity::GeometryInstanced]);
-            drawInstanceGroupBoundingBoxes(GetEntities()[Renderer_Entity::GeometryTransparentInstanced]);
+            draw_bounding_boxes(Renderer_Entity::Geometry);
+            draw_bounding_boxes(Renderer_Entity::GeometryTransparent);
+            draw_instance_group_bounding_boxes(Renderer_Entity::GeometryInstanced);
+            draw_instance_group_bounding_boxes(Renderer_Entity::GeometryTransparentInstanced);
         }
     }
 }

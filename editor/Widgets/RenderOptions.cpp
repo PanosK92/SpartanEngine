@@ -188,7 +188,7 @@ RenderOptions::RenderOptions(Editor* editor) : Widget(editor)
 
 void RenderOptions::OnVisible()
 {
-    // Get display modes
+    // get display modes
     {
         display_modes.clear();
         display_modes_string.clear();
@@ -209,7 +209,7 @@ void RenderOptions::OnVisible()
 
 void RenderOptions::OnTickVisible()
 {
-    // Reflect options from engine
+    // reflect options from engine
     bool do_dof                  = Renderer::GetOption<bool>(Renderer_Option::DepthOfField);
     bool do_volumetric_fog       = Renderer::GetOption<bool>(Renderer_Option::FogVolumetric);
     bool do_sss                  = Renderer::GetOption<bool>(Renderer_Option::ScreenSpaceShadows);
@@ -233,7 +233,7 @@ void RenderOptions::OnTickVisible()
     bool debug_wireframe         = Renderer::GetOption<bool>(Renderer_Option::Debug_Wireframe);
     int resolution_shadow        = Renderer::GetOption<int>(Renderer_Option::ShadowResolution);
 
-    // Present options (with a table)
+    // present options (with a table)
     if (ImGui::BeginTable("##render_options", column_count, flags, ImVec2(0.0f)))
     {
         ImGui::TableSetupColumn("Option");
@@ -242,7 +242,7 @@ void RenderOptions::OnTickVisible()
 
         if (option("Resolution"))
         {
-            // Render
+            // render
             Vector2 resolution_render        = Renderer::GetResolutionRender();
             uint32_t resolution_render_index = get_display_mode_index(resolution_render);
             if (option_combo_box("Render resolution", display_modes_string, resolution_render_index))
@@ -250,7 +250,7 @@ void RenderOptions::OnTickVisible()
                 Renderer::SetResolutionRender(display_modes[resolution_render_index].width, display_modes[resolution_render_index].height);
             }
 
-            // Output
+            // output
             Vector2 resolution_output        = Renderer::GetResolutionOutput();
             uint32_t resolution_output_index = get_display_mode_index(resolution_output);
             if (option_combo_box("Output resolution", display_modes_string, resolution_output_index))
@@ -258,7 +258,7 @@ void RenderOptions::OnTickVisible()
                 Renderer::SetResolutionOutput(display_modes[resolution_output_index].width, display_modes[resolution_output_index].height);
             }
 
-            // Upsampling
+            // upsampling
             {
                 static vector<string> upsampling_modes =
                 {
@@ -354,7 +354,7 @@ void RenderOptions::OnTickVisible()
             option_int("Shadow resolution", resolution_shadow);
         }
 
-        if (option("Misc"))
+        if (option("Misc", false))
         {
             option_value("Fog",             Renderer_Option::Fog, "Controls the density of the fog", 0.1f);
             option_value("Gamma",           Renderer_Option::Gamma);
@@ -407,19 +407,17 @@ void RenderOptions::OnTickVisible()
                     Profiler::ClearMetrics();
                 }
             }
-        }
 
-        if (option("Gizmos", false))
-        {
-            option_check_box("Transform",                           debug_transform);
-            option_check_box("Selection outline",                   debug_selection_outline);
-            option_check_box("Physics",                             debug_physics);
-            option_check_box("AABBs - Axis-aligned bounding boxes", debug_aabb);
-            option_check_box("Lights",                              debug_light);
-            option_check_box("Picking ray",                         debug_picking_ray);
-            option_check_box("Grid",                                debug_grid);
-            option_check_box("Reflection probes",                   debug_reflection_probes);
-            option_check_box("Wireframe",                           debug_wireframe);
+            option_check_box("Transform",         debug_transform);
+            option_check_box("Selection outline", debug_selection_outline);
+            option_check_box("Lights",            debug_light);
+            option_check_box("Reflection probes", debug_reflection_probes);
+            option_check_box("Grid",              debug_grid);
+            option_check_box("Picking ray",       debug_picking_ray);
+            option_check_box("Physics",           debug_physics);
+            option_check_box("AABBs",             debug_aabb);
+            option_check_box("Occluded AABBs",    debug_aabb);
+            option_check_box("Wireframe",         debug_wireframe);
         }
 
         ImGui::EndTable();
