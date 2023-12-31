@@ -39,7 +39,6 @@ namespace Spartan
 {
     // metrics - rhi
     uint32_t Profiler::m_rhi_draw                       = 0;
-    uint32_t Profiler::m_rhi_dispatch                   = 0;
     uint32_t Profiler::m_rhi_bindings_buffer_index      = 0;
     uint32_t Profiler::m_rhi_bindings_buffer_vertex     = 0;
     uint32_t Profiler::m_rhi_bindings_buffer_constant   = 0;
@@ -506,7 +505,6 @@ namespace Spartan
                 oss_metrics << "Draw:\t\t\t\t\t\t\t\t\t" << m_rhi_draw << endl;
             }
         oss_metrics
-            << "Dispatch:\t\t\t\t\t\t\t"     << m_rhi_dispatch                << endl
             << "Index buffer bindings:\t\t"  << m_rhi_bindings_buffer_index   << endl
             << "Vertex buffer bindings:\t"   << m_rhi_bindings_buffer_vertex  << endl
             << "Descriptor set bindings:\t"  << m_rhi_bindings_descriptor_set << endl
