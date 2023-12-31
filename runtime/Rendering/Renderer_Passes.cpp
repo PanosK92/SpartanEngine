@@ -480,6 +480,7 @@ namespace Spartan
         cmd_list->BeginTimeblock("visibility", gpu, gpu);
 
         // sort entities by depth
+        if (!m_sorted)
         {
             auto sort_renderables = [](Renderer_Entity entity_type, const bool are_transparent)
             {
@@ -517,6 +518,7 @@ namespace Spartan
 
             sort_renderables(Renderer_Entity::Geometry, false);
             sort_renderables(Renderer_Entity::GeometryTransparent, true);
+            m_sorted = true;
         }
 
         bool is_transparent_pass = false;
