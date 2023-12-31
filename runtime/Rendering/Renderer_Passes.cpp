@@ -547,7 +547,7 @@ namespace Spartan
                 {
                     BoundingBoxType type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
                     BoundingBox box      = renderable->GetBoundingBox(type).Transform(m_cb_frame_cpu.view);
-                    DrawBox(box);
+                    //DrawBox(box);
 
                     bool occluded = false;
                     for (const Occluder& occluder : occluders)
