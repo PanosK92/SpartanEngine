@@ -187,7 +187,6 @@ namespace Spartan
         OnPreDrawDispatch();
 
         static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->Dispatch(x, y, z);
-        Profiler::m_rhi_dispatch++;
     }
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)
