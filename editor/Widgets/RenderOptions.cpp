@@ -416,7 +416,6 @@ void RenderOptions::OnTickVisible()
             option_check_box("Picking ray",       debug_picking_ray);
             option_check_box("Physics",           debug_physics);
             option_check_box("AABBs",             debug_aabb);
-            option_check_box("Occluded AABBs",    debug_aabb);
             option_check_box("Wireframe",         debug_wireframe);
         }
 
