@@ -545,12 +545,12 @@ namespace Spartan
                 // occlusion check
                 if (visible)
                 {
-                    BoundingBox bounding_box = renderable->GetBoundingBox(BoundingBoxType::Transformed).Transform(m_cb_frame_cpu.view_projection);
-
+                    BoundingBox bounding_box = renderable->GetBoundingBox(BoundingBoxType::Transformed);
+        
                     bool occluded = false;
                     for (const Occluder& occluder : occluders)
                     {
-                        if (bounding_box.Occluded(occluder.box))
+                        if (bounding_box.Occluded(occluder.box, m_camera->GetEntity()))
                         {
                             occluded = true;
                             break;

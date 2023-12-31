@@ -19,10 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================
+//= INCLUDES ==========================
 #include "pch.h"
 #include "../RHI/RHI_Vertex.h"
-//============================
+#include "../World/Entity.h"
+#include "../World/Components/Camera.h"
+//=====================================
 
 namespace Spartan::Math
 {
@@ -134,9 +136,12 @@ namespace Spartan::Math
         m_max.z = Helper::Max(m_max.z, box.m_max.z);
     }
 
-	bool BoundingBox::Occluded(const BoundingBox& occluder) const
-	{
-        // lambda for getting a corner of the bounding box
+    bool BoundingBox::Occluded(const BoundingBox& occluder, Entity* camera) const
+    {
+        // get the camera's view matrix
+        Matrix view_matrix = camera->GetComponent<Camera>()->GetViewMatrix();
+
+        // lambda to get a corner of the bounding box
         auto get_corner = [this](uint32_t index) -> Vector3
         {
             return Vector3(
@@ -146,21 +151,31 @@ namespace Spartan::Math
             );
         };
 
-        // lambda for checking if a point is behind all planes of the bounding box
-        auto is_point_behind_all_planes = [&occluder](const Vector3& point) -> bool
+        // get corners in camera space
+        Vector3 corners[8];
+        for (int i = 0; i < 8; ++i)
         {
-            return (point.x <= occluder.m_max.x && point.x >= occluder.m_min.x &&
-                    point.y <= occluder.m_max.y && point.y >= occluder.m_min.y &&
-                    point.z <= occluder.m_max.z && point.z >= occluder.m_min.z);
-        };
-
-        // check if all corners of this box are behind all the planes of the occluder
-        for (uint32_t i = 0; i < 8; i++)
-        {
-            if (!is_point_behind_all_planes(get_corner(i)))
-                return false;
+            corners[i] = get_corner(i) * view_matrix;
         }
 
+        // transform occluder bounds to camera space
+        Vector3 occluder_min = occluder.m_min * view_matrix;
+        Vector3 occluder_max = occluder.m_max * view_matrix;
+
+        // Occlusion test in camera space
+        for (const auto& corner : corners)
+        {
+            // Check if the corner is within the occluder bounds in camera space
+            if (corner.x >= occluder_min.x && corner.x <= occluder_max.x &&
+                corner.y >= occluder_min.y && corner.y <= occluder_max.y &&
+                corner.z >= occluder_min.z && corner.z <= occluder_max.z)
+            {
+                // Corner is not occluded
+                return false;
+            }
+        }
+
+        // All corners are occluded
         return true;
-	}
+    }
 }

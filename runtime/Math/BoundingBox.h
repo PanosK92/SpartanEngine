@@ -69,7 +69,7 @@ namespace Spartan
             // test if a bounding box is inside
             Intersection Intersects(const BoundingBox& box) const;
 
-            bool Occluded(const BoundingBox& occluder) const;
+            bool Occluded(const BoundingBox& occluder, Entity* camera) const;
 
             // Returns a transformed bounding box
             BoundingBox Transform(const Matrix& transform) const;
