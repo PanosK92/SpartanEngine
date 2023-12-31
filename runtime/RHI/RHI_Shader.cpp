@@ -259,9 +259,9 @@ namespace Spartan
 
     const char* RHI_Shader::GetTargetProfile() const
     {
-        if (m_shader_type == RHI_Shader_Vertex)  return "vs_6_7";
-        if (m_shader_type == RHI_Shader_Pixel)   return "ps_6_7";
-        if (m_shader_type == RHI_Shader_Compute) return "cs_6_7";
+        if (m_shader_type == RHI_Shader_Vertex)  return "vs_6_8";
+        if (m_shader_type == RHI_Shader_Pixel)   return "ps_6_8";
+        if (m_shader_type == RHI_Shader_Compute) return "cs_6_8";
 
         return nullptr;
     }

@@ -76,7 +76,7 @@ namespace Spartan
                     resource.name,   // name
                     descriptor_type, // type
                     layout,          // layout
-                    slot,            // slot      
+                    slot,            // slot
                     shader_stage,    // stage
                     size,            // struct size
                     is_array,        // is array
