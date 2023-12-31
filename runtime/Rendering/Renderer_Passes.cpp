@@ -209,12 +209,12 @@ namespace Spartan
                 Pass_Lines(cmd_list, rt_render);
                 Pass_Outline(cmd_list, rt_render);
             }
-            
+
             Pass_PostProcess(cmd_list);
-                     
+
             // editor related stuff - passes that render on top of each other
             Pass_DebugMeshes(cmd_list, rt_output);
-            Pass_Icons(cmd_list, rt_output);         
+            Pass_Icons(cmd_list, rt_output);
         }
         else
         {
@@ -2125,11 +2125,12 @@ namespace Spartan
                     // set pipeline state
                     pso.blend_state         = GetBlendState(Renderer_BlendState::Disabled).get();
                     pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
-
-                    cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology::LineList);
+                    pso.primitive_toplogy   = RHI_PrimitiveTopology::LineList;
                     cmd_list->SetPipelineState(pso);
+
                     cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
                     cmd_list->Draw(m_lines_index_depth_off + 1);
+
                     cmd_list->EndMarker();
                 }
 
@@ -2141,11 +2142,12 @@ namespace Spartan
                     // set pipeline state
                     pso.blend_state         = GetBlendState(Renderer_BlendState::Alpha).get();
                     pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
-
-                    cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology::LineList);
+                    pso.primitive_toplogy = RHI_PrimitiveTopology::LineList;
                     cmd_list->SetPipelineState(pso);
+
                     cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
                     cmd_list->Draw((m_lines_index_depth_on - (vertex_count / 2)) + 1, vertex_count / 2);
+
                     cmd_list->EndMarker();
                 }
             }
