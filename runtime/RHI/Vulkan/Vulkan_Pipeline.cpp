@@ -109,7 +109,6 @@ namespace Spartan
             dynamic_states.push_back(VK_DYNAMIC_STATE_VIEWPORT);
             if (m_state.IsGraphics())
             {
-                dynamic_states.push_back(VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY);
                 dynamic_states.push_back(VK_DYNAMIC_STATE_SCISSOR);
                 dynamic_states.push_back(VK_DYNAMIC_STATE_CULL_MODE);
             }
@@ -263,7 +262,7 @@ namespace Spartan
         VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {};
         {
             input_assembly_state.sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-            input_assembly_state.topology               = vulkan_primitive_topology[static_cast<uint32_t>(RHI_PrimitiveTopology::TriangleList)];
+            input_assembly_state.topology               = vulkan_primitive_topology[static_cast<uint32_t>(m_state.primitive_toplogy)];
             input_assembly_state.primitiveRestartEnable = VK_FALSE;
         }
         

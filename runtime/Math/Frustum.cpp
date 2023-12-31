@@ -45,42 +45,42 @@ namespace Spartan::Math
         m_planes[0].normal.x = view_projection.m03 + view_projection.m02;
         m_planes[0].normal.y = view_projection.m13 + view_projection.m12;
         m_planes[0].normal.z = view_projection.m23 + view_projection.m22;
-        m_planes[0].d = view_projection.m33 + view_projection.m32;
+        m_planes[0].d        = view_projection.m33 + view_projection.m32;
         m_planes[0].Normalize();
 
         // far plane
         m_planes[1].normal.x = view_projection.m03 - view_projection.m02;
         m_planes[1].normal.y = view_projection.m13 - view_projection.m12;
         m_planes[1].normal.z = view_projection.m23 - view_projection.m22;
-        m_planes[1].d = view_projection.m33 - view_projection.m32;
+        m_planes[1].d        = view_projection.m33 - view_projection.m32;
         m_planes[1].Normalize();
 
         // left plane
         m_planes[2].normal.x = view_projection.m03 + view_projection.m00;
         m_planes[2].normal.y = view_projection.m13 + view_projection.m10;
         m_planes[2].normal.z = view_projection.m23 + view_projection.m20;
-        m_planes[2].d = view_projection.m33 + view_projection.m30;
+        m_planes[2].d        = view_projection.m33 + view_projection.m30;
         m_planes[2].Normalize();
 
         // right plane
         m_planes[3].normal.x = view_projection.m03 - view_projection.m00;
         m_planes[3].normal.y = view_projection.m13 - view_projection.m10;
         m_planes[3].normal.z = view_projection.m23 - view_projection.m20;
-        m_planes[3].d = view_projection.m33 - view_projection.m30;
+        m_planes[3].d        = view_projection.m33 - view_projection.m30;
         m_planes[3].Normalize();
 
         // top plane
         m_planes[4].normal.x = view_projection.m03 - view_projection.m01;
         m_planes[4].normal.y = view_projection.m13 - view_projection.m11;
         m_planes[4].normal.z = view_projection.m23 - view_projection.m21;
-        m_planes[4].d = view_projection.m33 - view_projection.m31;
+        m_planes[4].d        = view_projection.m33 - view_projection.m31;
         m_planes[4].Normalize();
 
         // bottom plane
         m_planes[5].normal.x = view_projection.m03 + view_projection.m01;
         m_planes[5].normal.y = view_projection.m13 + view_projection.m11;
         m_planes[5].normal.z = view_projection.m23 + view_projection.m21;
-        m_planes[5].d = view_projection.m33 + view_projection.m31;
+        m_planes[5].d        = view_projection.m33 + view_projection.m31;
         m_planes[5].Normalize();
     }
 
@@ -88,16 +88,10 @@ namespace Spartan::Math
     {
         SP_ASSERT(!center.IsNaN() && !extent.IsNaN());
 
-        // cheaper, so we do it first
-        float radius = Helper::Max3(extent.x, extent.y, extent.z);
-        if (CheckSphere(center, radius, ignore_depth) == Intersection::Outside)
-            return false;
+        // note: we don't do a sphere check as it introduces inaccuracies
+        // if the bounding box is close to the camera's near plane
 
-        // slightly more expensive, so we do it second
-        if (CheckCube(center, extent, ignore_depth) == Intersection::Outside)
-            return false;
-
-        return true;
+        return CheckCube(center, extent, ignore_depth) != Intersection::Outside;
     }
 
     Intersection Frustum::CheckCube(const Vector3& center, const Vector3& extent, float ignore_depth /*= false*/) const

@@ -850,7 +850,7 @@ namespace Spartan
                 }
             }
 
-            // enable certain features
+            // enable certain device features
             VkPhysicalDeviceRobustness2FeaturesEXT robustness_features_2 = {};
             robustness_features_2.sType                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
             VkPhysicalDeviceVulkan13Features device_features_1_3         = {};
@@ -862,93 +862,97 @@ namespace Spartan
             VkPhysicalDeviceFeatures2 device_features                    = {};
             device_features.sType                                        = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
             device_features.pNext                                        = &device_features_1_2;
+
+            // check feature support and enable what's needed
             {
-                // check feature support
-                VkPhysicalDeviceRobustness2FeaturesEXT robustness_supported_2 = {};
-                robustness_supported_2.sType                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
-                VkPhysicalDeviceVulkan13Features features_supported_1_3       = {};
-                features_supported_1_3.sType                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-                features_supported_1_3.pNext                                  = &robustness_supported_2;
-                VkPhysicalDeviceVulkan12Features features_supported_1_2       = {};
-                features_supported_1_2.sType                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-                features_supported_1_2.pNext                                  = &features_supported_1_3;
-                VkPhysicalDeviceFeatures2 features_supported                  = {};
-                features_supported.sType                                      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-                features_supported.pNext                                      = &features_supported_1_2;
-                vkGetPhysicalDeviceFeatures2(RHI_Context::device_physical, &features_supported);
+                VkPhysicalDeviceRobustness2FeaturesEXT robustness_2_support = {};
+                robustness_2_support.sType                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
+                VkPhysicalDeviceVulkan13Features features_1_3_support       = {};
+                features_1_3_support.sType                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+                features_1_3_support.pNext                                  = &robustness_2_support;
+                VkPhysicalDeviceVulkan12Features features_1_2_support       = {};
+                features_1_2_support.sType                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+                features_1_2_support.pNext                                  = &features_1_3_support;
+                VkPhysicalDeviceFeatures2 features_support                  = {};
+                features_support.sType                                      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+                features_support.pNext                                      = &features_1_2_support;
+                vkGetPhysicalDeviceFeatures2(RHI_Context::device_physical, &features_support);
 
                 // check if certain features are supported and enable them
                 {
                     // descriptors
                     {
-                        SP_ASSERT(features_supported_1_2.descriptorBindingVariableDescriptorCount == VK_TRUE);
+                        SP_ASSERT(features_1_2_support.descriptorBindingVariableDescriptorCount == VK_TRUE);
                         device_features_1_2.descriptorBindingVariableDescriptorCount = VK_TRUE;
 
-                        SP_ASSERT(features_supported_1_2.descriptorBindingVariableDescriptorCount == VK_TRUE);
+                        SP_ASSERT(features_1_2_support.descriptorBindingVariableDescriptorCount == VK_TRUE);
                         device_features_1_2.descriptorBindingVariableDescriptorCount = VK_TRUE;
 
-                        SP_ASSERT(features_supported_1_2.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE);
+                        SP_ASSERT(features_1_2_support.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE);
                         device_features_1_2.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
 
-                        SP_ASSERT(features_supported_1_2.descriptorBindingPartiallyBound == VK_TRUE);
+                        SP_ASSERT(features_1_2_support.descriptorBindingPartiallyBound == VK_TRUE);
                         device_features_1_2.descriptorBindingPartiallyBound = VK_TRUE;
 
-                        SP_ASSERT(features_supported_1_2.runtimeDescriptorArray == VK_TRUE);
+                        SP_ASSERT(features_1_2_support.runtimeDescriptorArray == VK_TRUE);
                         device_features_1_2.runtimeDescriptorArray = VK_TRUE;
 
-                        SP_ASSERT(robustness_supported_2.nullDescriptor == VK_TRUE);
+                        SP_ASSERT(robustness_2_support.nullDescriptor == VK_TRUE);
                         robustness_features_2.nullDescriptor = VK_TRUE;
                     }
 
                     // types
                     {
                         // extended types (int8, int16, int64, etc) - SPD
-                        SP_ASSERT(features_supported_1_2.shaderSubgroupExtendedTypes == VK_TRUE);
+                        SP_ASSERT(features_1_2_support.shaderSubgroupExtendedTypes == VK_TRUE);
                         device_features_1_2.shaderSubgroupExtendedTypes = VK_TRUE;
 
                         // float16 - If supported, FSR 2 will opt for it, so don't assert.
-                        if (features_supported_1_2.shaderFloat16 == VK_TRUE)
+                        if (features_1_2_support.shaderFloat16 == VK_TRUE)
                         {
                             device_features_1_2.shaderFloat16 = VK_TRUE;
                         }
 
                         // int16 - If supported, FSR 2 will opt for it, so don't assert.
-                        if (features_supported.features.shaderInt16 == VK_TRUE)
+                        if (features_support.features.shaderInt16 == VK_TRUE)
                         {
                             device_features.features.shaderInt16 = VK_TRUE;
                         }
                     }
 
+                    // dynamic states
+                    {
+                        // rendering without render passes and frame buffer objects
+                        SP_ASSERT(features_1_3_support.dynamicRendering == VK_TRUE);
+                        device_features_1_3.dynamicRendering = VK_TRUE;
+                    }
+
                     // anisotropic filtering
-                    SP_ASSERT(features_supported.features.samplerAnisotropy == VK_TRUE);
+                    SP_ASSERT(features_support.features.samplerAnisotropy == VK_TRUE);
                     device_features.features.samplerAnisotropy = VK_TRUE;
 
                     // line and point rendering
-                    SP_ASSERT(features_supported.features.fillModeNonSolid == VK_TRUE);
+                    SP_ASSERT(features_support.features.fillModeNonSolid == VK_TRUE);
                     device_features.features.fillModeNonSolid = VK_TRUE;
 
                     // lines with adjustable thickness
-                    SP_ASSERT(features_supported.features.wideLines == VK_TRUE);
+                    SP_ASSERT(features_support.features.wideLines == VK_TRUE);
                     device_features.features.wideLines = VK_TRUE;
 
                     // cubemaps
-                    SP_ASSERT(features_supported.features.imageCubeArray == VK_TRUE);
+                    SP_ASSERT(features_support.features.imageCubeArray == VK_TRUE);
                     device_features.features.imageCubeArray = VK_TRUE;
 
                     // timeline semaphores
-                    SP_ASSERT(features_supported_1_2.timelineSemaphore == VK_TRUE);
+                    SP_ASSERT(features_1_2_support.timelineSemaphore == VK_TRUE);
                     device_features_1_2.timelineSemaphore = VK_TRUE;
 
-                    // rendering without render passes and frame buffer objects
-                    SP_ASSERT(features_supported_1_3.dynamicRendering == VK_TRUE);
-                    device_features_1_3.dynamicRendering = VK_TRUE;
-
                     // wave64
-                    SP_ASSERT(features_supported_1_3.shaderDemoteToHelperInvocation == VK_TRUE);
+                    SP_ASSERT(features_1_3_support.shaderDemoteToHelperInvocation == VK_TRUE);
                     device_features_1_3.shaderDemoteToHelperInvocation = VK_TRUE;
 
                     // wave64 - If supported, FSR 2 will opt for it, so don't assert.
-                    if (features_supported_1_3.subgroupSizeControl == VK_TRUE)
+                    if (features_1_3_support.subgroupSizeControl == VK_TRUE)
                     {
                         device_features_1_3.subgroupSizeControl = VK_TRUE;
                     }

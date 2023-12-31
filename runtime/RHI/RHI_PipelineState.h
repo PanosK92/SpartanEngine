@@ -51,6 +51,7 @@ namespace Spartan
         RHI_BlendState* blend_state                = nullptr;
         RHI_DepthStencilState* depth_stencil_state = nullptr;
         RHI_SwapChain* render_target_swapchain     = nullptr;
+        RHI_PrimitiveTopology primitive_toplogy    = RHI_PrimitiveTopology::TriangleList;
         bool is_fullscreen_triangle                = false;
         bool instancing                            = false;
 

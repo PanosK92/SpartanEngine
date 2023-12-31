@@ -489,9 +489,6 @@ namespace Spartan
             // set some dynamic states
             if (m_pso.IsGraphics())
             {
-                m_primitive_topology = RHI_PrimitiveTopology::Max;
-                SetPrimitiveTopology(RHI_PrimitiveTopology::TriangleList);
-
                 m_cull_mode = RHI_CullMode::Max;
                 SetCullMode(m_pso.rasterizer_state->GetCullMode());
 
@@ -1086,20 +1083,6 @@ namespace Spartan
             1,          // scissorCount
             &vk_scissor // pScissors
         );
-    }
-
-    void RHI_CommandList::SetPrimitiveTopology(const RHI_PrimitiveTopology primitive_topology)
-    {
-        SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        if (m_primitive_topology == primitive_topology)
-            return;
-
-        vkCmdSetPrimitiveTopology(
-            static_cast<VkCommandBuffer>(m_rhi_resource),
-            vulkan_primitive_topology[static_cast<uint32_t>(primitive_topology)]
-        );
-
-        m_primitive_topology = primitive_topology;
     }
 
     void RHI_CommandList::SetCullMode(const RHI_CullMode cull_mode)
