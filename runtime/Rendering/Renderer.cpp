@@ -51,7 +51,7 @@ namespace Spartan
 {
     // constant and push constant buffers
     Cb_Frame Renderer::m_cb_frame_cpu;
-    Pcb_Pass Renderer::m_cb_pass_cpu;
+    Pcb_Pass Renderer::m_pcb_pass_cpu;
 
     // line rendering
     shared_ptr<RHI_VertexBuffer> Renderer::m_vertex_buffer_lines;
@@ -620,7 +620,7 @@ namespace Spartan
 
     void Renderer::PushPassConstants(RHI_CommandList* cmd_list)
     {
-        cmd_list->PushConstants(0, sizeof(Pcb_Pass), &m_cb_pass_cpu);
+        cmd_list->PushConstants(0, sizeof(Pcb_Pass), &m_pcb_pass_cpu);
     }
 
 	void Renderer::OnWorldResolved(sp_variant data)

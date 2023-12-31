@@ -466,7 +466,7 @@ namespace Spartan
 
         if (box == BoundingBox::Undefined)
         {
-            SP_LOG_WARNING("Bounding box undefined, treating as outside of the view frustum");
+            SP_LOG_WARNING("Undefined bounding box, treating as outside of the view frustum");
             return false;
         }
 
