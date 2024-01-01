@@ -1023,7 +1023,7 @@ namespace Spartan
                         material->SetColor(Color::standard_white);
                         material->SetTexture(MaterialTexture::Color,                 "project\\terrain\\vegetation_tree_2\\branches_color.png");
                         material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\vegetation_tree_2\\branches_normal.png");
-                        //material->SetTexture(MaterialTexture::Roughness,             "project\\terrain\\vegetation_tree_2\\branches_roughness.png"); // not good, very low roughness
+                        material->SetTexture(MaterialTexture::Roughness,             "project\\terrain\\vegetation_tree_2\\branches_roughness.png");
                         material->SetTexture(MaterialTexture::Occlusion,             "project\\terrain\\vegetation_tree_2\\branches_ao.png");
                         material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
                         material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
