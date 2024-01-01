@@ -141,6 +141,9 @@ namespace Spartan
 
         UpdateConstantBufferFrame(cmd_list, false);
 
+        Pass_ReflectionProbes(cmd_list);
+        Pass_Skysphere(cmd_list);
+
         // light integration
         {
             if (!light_integration_brdf_speculat_lut_completed)
@@ -167,15 +170,12 @@ namespace Spartan
                     Pass_ShadowMaps(cmd_list, true);
                 }
             }
-            
-            Pass_ReflectionProbes(cmd_list);
-            
+ 
             // opaque
             {
                 Pass_Visibility(cmd_list);
                 Pass_Depth_Prepass(cmd_list);
                 Pass_GBuffer(cmd_list);
-                Pass_Skysphere(cmd_list);
                 Pass_Ssgi(cmd_list);
                 Pass_Ssr(cmd_list, rt_render);
                 Pass_Sss_Bend(cmd_list);
@@ -187,41 +187,35 @@ namespace Spartan
             }
             
             // transparent
+            if (do_transparent_pass) // actual geometry processing
             {
-                if (do_transparent_pass) // actual geometry processing
+                // blit the frame so that refraction can sample from it
+                cmd_list->Copy(rt_render, rt_render_2, true);
+            
+                // generate frame mips so that the reflections can simulate roughness
+                Pass_Ffx_Spd(cmd_list, rt_render_2, Renderer_DownsampleFilter::Average);
+            
+                // blur the smaller mips to reduce blockiness/flickering
+                for (uint32_t i = 1; i < rt_render_2->GetMipCount(); i++)
                 {
-                    // blit the frame so that refraction can sample from it
-                    cmd_list->Copy(rt_render, rt_render_2, true);
-            
-                    // generate frame mips so that the reflections can simulate roughness
-                    Pass_Ffx_Spd(cmd_list, rt_render_2, Renderer_DownsampleFilter::Average);
-            
-                    // blur the smaller mips to reduce blockiness/flickering
-                    for (uint32_t i = 1; i < rt_render_2->GetMipCount(); i++)
-                    {
-                        const bool depth_aware = false;
-                        const float radius     = 1.0f;
-                        const float sigma      = 12.0f;
-                        Pass_Blur_Gaussian(cmd_list, rt_render_2, depth_aware, radius, sigma, i);
-                    }
-            
-                    Pass_Depth_Prepass(cmd_list, do_transparent_pass);
-                    Pass_GBuffer(cmd_list, do_transparent_pass);
-                    Pass_Ssr(cmd_list, rt_render, do_transparent_pass);
-                    Pass_Light(cmd_list, do_transparent_pass);
-                    Pass_Light_Composition(cmd_list, rt_render, do_transparent_pass);
-                    Pass_Light_ImageBased(cmd_list, rt_render, do_transparent_pass);
+                    const bool depth_aware = false;
+                    const float radius     = 1.0f;
+                    const float sigma      = 12.0f;
+                    Pass_Blur_Gaussian(cmd_list, rt_render_2, depth_aware, radius, sigma, i);
                 }
             
-                // debug
-                Pass_Grid(cmd_list, rt_render);
-                Pass_Lines(cmd_list, rt_render);
-                Pass_Outline(cmd_list, rt_render);
+                Pass_Depth_Prepass(cmd_list, do_transparent_pass);
+                Pass_GBuffer(cmd_list, do_transparent_pass);
+                Pass_Ssr(cmd_list, rt_render, do_transparent_pass);
+                Pass_Light(cmd_list, do_transparent_pass);
+                Pass_Light_Composition(cmd_list, rt_render, do_transparent_pass);
+                Pass_Light_ImageBased(cmd_list, rt_render, do_transparent_pass);
             }
 
+            Pass_Grid(cmd_list, rt_render);
+            Pass_Lines(cmd_list, rt_render);
+            Pass_Outline(cmd_list, rt_render);
             Pass_PostProcess(cmd_list);
-
-            // editor related stuff - passes that render on top of each other
             Pass_DebugMeshes(cmd_list, rt_output);
             Pass_Icons(cmd_list, rt_output);
         }
@@ -1023,16 +1017,14 @@ namespace Spartan
         if (!light_directional)
             return;
 
-        // acquire render targets
-        RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTexture::skysphere).get();
-
-        // define pipeline state
-        static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
-
         cmd_list->BeginTimeblock("skysphere");
         {
+            // acquire render targets
+            RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTexture::skysphere).get();
+
             // set pipeline state
+            static RHI_PipelineState pso;
+            pso.shader_compute = shader_c;
             cmd_list->SetPipelineState(pso);
 
             // set pass constants
@@ -1040,13 +1032,10 @@ namespace Spartan
             m_pcb_pass_cpu.set_f3_value2(0.0f, static_cast<float>(light_directional->GetIndex()), 0.0f);
             PushPassConstants(cmd_list);
 
-            // set textures
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
-
-            // render
             cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
-        }
 
+        }
         cmd_list->EndTimeblock();
 
         light_integration_environment_prefilter_completed = false;

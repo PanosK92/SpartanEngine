@@ -127,7 +127,7 @@ float2 integrate_brdf(float n_dot_v, float roughness)
 
 float3 prefilter_environment(float2 uv)
 {
-    const uint sample_count  = 256;
+    const uint sample_count  = 1024;
     
     uint mip_level  = pass_get_f3_value().x;
     uint mip_count  = pass_get_f3_value().y;
@@ -140,13 +140,13 @@ float3 prefilter_environment(float2 uv)
 
     float3 color       = 0.0f;
     float total_weight = 0.0;
-    for(uint i = 0u; i < sample_count; ++i)
+    for(uint i = 0; i < sample_count; i++)
     {
         float2 Xi = hammersley(i, sample_count);
         float3 H  = importance_sample_ggx(Xi, direction, roughness);
         float3 L  = normalize(2.0 * dot(direction, H) * H - direction);
 
-        float n_dot_l = max(dot(direction, L), 0.0);
+        float n_dot_l = saturate(dot(direction, L));
         if (n_dot_l > 0.0)
         {
             // convert direction to spherical uv
@@ -155,11 +155,8 @@ float3 prefilter_environment(float2 uv)
             float u     = (phi + PI) / (2.0 * PI);
             float v     = 1.0 - (theta / PI);
 
-            // determine appropriate mip level for sampling based on roughness
-            float mip_level_to_sample = roughness * (mip_count - 1);
-            
             // sample the environment map
-            color        += tex_environment.SampleLevel(samplers[sampler_bilinear_wrap], float2(u, v), mip_level_to_sample).rgb * n_dot_l;
+            color        += tex_environment.SampleLevel(samplers[sampler_bilinear_wrap], float2(u, v), mip_level - 1).rgb * n_dot_l;
             total_weight += n_dot_l;
         }
     }
