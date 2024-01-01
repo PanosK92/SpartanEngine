@@ -304,8 +304,8 @@ namespace Spartan
             }
         }
 
-        // find the overall max array size among all texture types
-        return *max_element(begin(max_index), end(max_index));
+        // find the overall max array size among all texture types (minimum is 1 slot)
+        return max<uint32_t>(*max_element(begin(max_index), end(max_index)), 1);
     }
 
 	void Material::SetProperty(const MaterialProperty property_type, float value)

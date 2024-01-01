@@ -54,7 +54,7 @@ struct refraction
 
         // get base color (no refraction)
         float frame_mip_count = pass_get_f3_value().x;
-        float mip_level       = lerp(0, frame_mip_count, surface.roughness_alpha);    
+        float mip_level       = lerp(0, frame_mip_count, surface.roughness_alpha);
         float3 color          = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level).rgb;
         
         // dont refract surfaces which are behind this surface
@@ -122,7 +122,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         float3 light_diffuse    = tex_light_diffuse[thread_id.xy].rgb;
         float3 light_specular   = tex_light_specular[thread_id.xy].rgb;
 
-        
         // refraction
         float3 light_refraction = 0.0f;
         if (surface.is_transparent() && surface.ior > 1.0f)

@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
-// efficient VanDerCorpus calculation.
-float RadicalInverse_VdC(uint bits) 
+// efficient VanDerCorpus calculation
+float radical_inverse_vdc(uint bits)
 {
      bits = (bits << 16u) | (bits >> 16u);
      bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
@@ -35,12 +35,12 @@ float RadicalInverse_VdC(uint bits)
      return float(bits) * 2.3283064365386963e-10; // / 0x100000000
 }
 
-float2 Hammersley(uint i, uint n)
+float2 hammersley(uint i, uint n)
 {
-    return float2(float(i)/float(n), RadicalInverse_VdC(i));
+    return float2(float(i)/float(n), radical_inverse_vdc(i));
 }
 
-float3 ImportanceSampleGGX(float2 Xi, float3 N, float roughness)
+float3 importance_sample_ggx(float2 Xi, float3 N, float roughness)
 {
     float a = roughness*roughness;
     
@@ -63,7 +63,7 @@ float3 ImportanceSampleGGX(float2 Xi, float3 N, float roughness)
     return normalize(sampleVec);
 }
 
-float GeometrySchlickGGX(float NdotV, float roughness)
+float geometry_schlick_ggx(float NdotV, float roughness)
 {
     // note that we use a different k for IBL
     float a = roughness;
@@ -75,36 +75,35 @@ float GeometrySchlickGGX(float NdotV, float roughness)
     return nom / denom;
 }
 
-float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
+float geometry_smith(float3 N, float3 V, float3 L, float roughness)
 {
     float NdotV = saturate(dot(N, V));
     float NdotL = saturate(dot(N, L));
-    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
-    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+    float ggx2  = geometry_schlick_ggx(NdotV, roughness);
+    float ggx1  = geometry_schlick_ggx(NdotL, roughness);
 
     return ggx1 * ggx2;
 }
 
-float2 IntegrateBRDF(float n_dot_v, float roughness)
+float2 integrate_brdf(float n_dot_v, float roughness)
 {
+    const uint sample_count = 1024;
+
     float3 v;
     v.x = sqrt(1.0 - n_dot_v * n_dot_v);
     v.y = 0.0;
     v.z = n_dot_v;
 
-    float3 n = float3(0.0, 0.0, 1.0);
-
-    float A = 0.0;
-    float B = 0.0;
-
-    const uint SAMPLE_COUNT = 1024u;
-    for(uint i = 0u; i < SAMPLE_COUNT; ++i)
+    float3 n = float3(0.0f, 0.0f, 1.0f);
+    float A  = 0.0f;
+    float B  = 0.0f;
+    for(uint i = 0; i < sample_count; ++i)
     {
         // generates a sample vector that's biased towards the
-        // preferred alignment direction (importance sampling).
-        float2 Xi   = Hammersley(i, SAMPLE_COUNT);
-        float3 h    = ImportanceSampleGGX(Xi, n, roughness);
-        float3 l    = normalize(2.0 * dot(v, h) * h - v);
+        // preferred alignment direction (importance sampling)
+        float2 Xi = hammersley(i, sample_count);
+        float3 h  = importance_sample_ggx(Xi, n, roughness);
+        float3 l  = normalize(2.0 * dot(v, h) * h - v);
 
         float n_dot_l = saturate(l.z);
         float n_dot_h = saturate(h.z);
@@ -112,7 +111,7 @@ float2 IntegrateBRDF(float n_dot_v, float roughness)
 
         if(n_dot_l > 0.0)
         {
-            float G     = GeometrySmith(n, v, l, roughness);
+            float G     = geometry_smith(n, v, l, roughness);
             float G_Vis = (G * v_dot_h) / (n_dot_h * n_dot_v);
             float Fc    = pow(1.0 - v_dot_h, 5.0);
 
@@ -121,18 +120,69 @@ float2 IntegrateBRDF(float n_dot_v, float roughness)
         }
     }
     
-    A /= float(SAMPLE_COUNT);
-    B /= float(SAMPLE_COUNT);
+    A /= float(sample_count);
+    B /= float(sample_count);
     return float2(A, B);
+}
+
+float3 prefilter_environment(float2 uv)
+{
+    const uint sample_count  = 256;
+    
+    uint mip_level  = pass_get_f3_value().x;
+    uint mip_count  = pass_get_f3_value().y;
+    float roughness = (float)mip_level / (float)(mip_count - 1);
+    
+    // convert spherical uv to direction
+    float phi        = uv.x * 2.0 * PI;
+    float theta      = (1.0f - uv.y) * PI;
+    float3 direction = normalize(float3(sin(theta) * cos(phi), cos(theta), sin(theta) * sin(phi)));
+
+    float3 color       = 0.0f;
+    float total_weight = 0.0;
+    for(uint i = 0u; i < sample_count; ++i)
+    {
+        float2 Xi = hammersley(i, sample_count);
+        float3 H  = importance_sample_ggx(Xi, direction, roughness);
+        float3 L  = normalize(2.0 * dot(direction, H) * H - direction);
+
+        float n_dot_l = max(dot(direction, L), 0.0);
+        if (n_dot_l > 0.0)
+        {
+            // convert direction to spherical uv
+            float phi   = atan2(direction.z, direction.x) + PI;
+            float theta = acos(direction.y);
+            float u     = (phi + PI) / (2.0 * PI);
+            float v     = 1.0 - (theta / PI);
+
+            // determine appropriate mip level for sampling based on roughness
+            float mip_level_to_sample = roughness * (mip_count - 1);
+            
+            // sample the environment map
+            color        += tex_environment.SampleLevel(samplers[sampler_bilinear_wrap], float2(u, v), mip_level_to_sample).rgb * n_dot_l;
+            total_weight += n_dot_l;
+        }
+    }
+
+    return color / total_weight;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    // Out of bounds check
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
-    const float2 uv       = (thread_id.xy + 0.5f) / pass_get_resolution_out();
-    tex_uav[thread_id.xy] = float4(IntegrateBRDF(uv.x, uv.y), 1.0f, 1.0f);
+    const float2 uv = (thread_id.xy + 0.5f) / pass_get_resolution_out();
+    float4 color    = 1.0f;
+
+    #if BRDF_SPECULAR_LUT
+    color.rg = integrate_brdf(uv.x, uv.y);
+    #endif
+
+    #if ENVIRONMENT_PREFILTER
+    color.rgb = prefilter_environment(uv);
+    #endif
+
+    tex_uav[thread_id.xy] = color;
 }

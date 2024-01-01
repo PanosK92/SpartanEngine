@@ -174,7 +174,7 @@ namespace Spartan
         RHI_Device::UpdateBindlessResources(&samplers, nullptr);
     }
 
-    void Renderer::CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic)
+    void Renderer::CreateRenderTextures(const bool create_render, const bool create_output, const bool create_dynamic)
     {
         // get render resolution
         uint32_t width_render  = static_cast<uint32_t>(GetResolutionRender().x);
@@ -263,12 +263,11 @@ namespace Spartan
             render_target(Renderer_RenderTexture::bloom) = make_shared<RHI_Texture2D>(width_output, height_output, mip_count, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_bloom");
         }
 
-        // fixed resolution
-        if (create_fixed)
+        // fixed resolution - these are only done once
+        if (!render_target(Renderer_RenderTexture::brdf_specular_lut))
         {
             // brdf
             render_target(Renderer_RenderTexture::brdf_specular_lut) = make_unique<RHI_Texture2D>(512, 512, 1, RHI_Format::R8G8_Unorm, RHI_Texture_Uav | RHI_Texture_Srv, "rt_brdf_specular_lut");
-            m_brdf_specular_lut_rendered = false;
 
             // atmospheric scattering
             render_target(Renderer_RenderTexture::skysphere) = make_unique<RHI_Texture2D>(2048, 2048, mip_count, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_skysphere");
@@ -358,6 +357,16 @@ namespace Spartan
 
         // light
         {
+            // brdf specular lut - compiled synchronously as it's needed immediately
+            shader(Renderer_Shader::light_integration_brdf_specular_lut_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::light_integration_brdf_specular_lut_c)->AddDefine("BRDF_SPECULAR_LUT");
+            shader(Renderer_Shader::light_integration_brdf_specular_lut_c)->Compile(RHI_Shader_Compute, shader_dir + "light_integration.hlsl", false);
+
+            // environment prefilter - compiled synchronously as it's needed immediately
+            shader(Renderer_Shader::light_integration_environment_prefilter_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::light_integration_environment_prefilter_c)->AddDefine("ENVIRONMENT_PREFILTER");
+            shader(Renderer_Shader::light_integration_environment_prefilter_c)->Compile(RHI_Shader_Compute, shader_dir + "light_integration.hlsl", async);
+
             // light
             shader(Renderer_Shader::light_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::light_c)->Compile(RHI_Shader_Compute, shader_dir + "light.hlsl", async);
@@ -489,13 +498,13 @@ namespace Spartan
         shader(Renderer_Shader::temporal_filter_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::temporal_filter_c)->Compile(RHI_Shader_Compute, shader_dir + "temporal_filter.hlsl", async);
 
-        // amd fidelityfx cas - Contrast Adaptive Sharpening
-        shader(Renderer_Shader::ffx_cas_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::ffx_cas_c)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\cas.hlsl", async);
-
-        // compiled immediately, they are needed the moment the engine starts.
+        // amd fidelityfx
         {
-            // amd fidelityfx spd - single pass downsample
+            // cas - contrast adaptive sharpening
+            shader(Renderer_Shader::ffx_cas_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::ffx_cas_c)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\cas.hlsl", async);
+
+            // spd - single pass downsample - compile synchronously as they are needed everywhere
             {
                 shader(Renderer_Shader::ffx_spd_c_average) = make_shared<RHI_Shader>();
                 shader(Renderer_Shader::ffx_spd_c_average)->AddDefine("AVERAGE");
@@ -509,10 +518,6 @@ namespace Spartan
                 shader(Renderer_Shader::ffx_spd_c_antiflicker)->AddDefine("ANTIFLICKER");
                 shader(Renderer_Shader::ffx_spd_c_antiflicker)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
             }
-
-            // brdf - Specular Lut
-            shader(Renderer_Shader::brdf_specular_lut_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::brdf_specular_lut_c)->Compile(RHI_Shader_Compute, shader_dir + "brdf_specular_lut.hlsl", false);
         }
     }
 

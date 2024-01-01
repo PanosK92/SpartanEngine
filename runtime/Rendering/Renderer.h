@@ -144,7 +144,7 @@ namespace Spartan
         static void CreateBlendStates();
         static void CreateShaders();
         static void CreateSamplers(const bool create_only_anisotropic = false);
-        static void CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic);
+        static void CreateRenderTextures(const bool create_render, const bool create_output, const bool create_dynamic);
         static void CreateFonts();
         static void CreateStandardMeshes();
         static void CreateStandardTextures();
@@ -161,7 +161,8 @@ namespace Spartan
         static void Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool is_transparent_pass = false);
         static void Pass_Sss_Bend(RHI_CommandList* cmd_list);
         static void Pass_Skysphere(RHI_CommandList* cmd_list);
-        static void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
+        static void Pass_Light_Integration_BrdfSpecularLut(RHI_CommandList* cmd_list);
+        static void Pass_Light_Integration_EnvironmentPrefilter(RHI_CommandList* cmd_list);
         static void Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float radius, const float sigma, const uint32_t mip = rhi_all_mips);
         // passes - debug/editor
         static void Pass_Grid(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
@@ -212,7 +213,6 @@ namespace Spartan
         static Cb_Frame m_cb_frame_cpu;
         static Pcb_Pass m_pcb_pass_cpu;
         static std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
-        static bool m_brdf_specular_lut_rendered;
         static std::vector<RHI_Vertex_PosCol> m_line_vertices;
         static std::vector<float> m_lines_duration;
         static uint32_t m_lines_index_depth_off;

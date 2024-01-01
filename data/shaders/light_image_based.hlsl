@@ -23,6 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "brdf.hlsl"
 //==================
 
+static const float ENVIRONMENT_MAX_MIP = 10.0f; // has to go - push constant is the way
+
 // from Sebastien Lagarde Moving Frostbite to PBR page 69
 float3 get_dominant_specular_direction(float3 normal, float3 reflection, float roughness)
 {
@@ -32,9 +34,9 @@ float3 get_dominant_specular_direction(float3 normal, float3 reflection, float r
     return lerp(normal, reflection, alpha);
 }
 
-float3 sample_environment(float2 uv, float roughness)
+float3 sample_environment(float2 uv, float mip_level)
 {
-    return tex_environment.SampleLevel(samplers[sampler_trilinear_clamp], uv, ENVIRONMENT_MAX_MIP * roughness).rgb;
+    return tex_environment.SampleLevel(samplers[sampler_trilinear_clamp], uv, mip_level).rgb;
 }
 
 float3 get_parallax_corrected_reflection(Surface surface, float3 position_probe, float3 box_min, float3 box_max)
@@ -89,28 +91,22 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     const float3 specular_energy = F * envBRDF.x + envBRDF.y;
 
     // ibl - diffuse
-    float3 diffuse_energy = compute_diffuse_energy(specular_energy, surface.metallic); // used to town down diffuse such as that only non metals have it
-    float3 ibl_diffuse    = sample_environment(direction_sphere_uv(surface.normal), ENVIRONMENT_MAX_MIP) * surface.albedo.rgb * diffuse_energy;
+    uint mip_count_environment = (uint)pass_get_f4_value().z;
+    float3 diffuse_energy      = compute_diffuse_energy(specular_energy, surface.metallic); // used to town down diffuse such as that only non metals have it
+    float3 ibl_diffuse         = sample_environment(direction_sphere_uv(surface.normal), mip_count_environment) * surface.albedo.rgb * diffuse_energy;
 
     // ibl - specular
     const float3 reflection            = reflect(surface.camera_to_pixel, surface.normal);
     float3 dominant_specular_direction = get_dominant_specular_direction(surface.normal, reflection, surface.roughness);
-    float mip_level                    = lerp(0, ENVIRONMENT_MAX_MIP, surface.roughness);
+    float mip_level                    = lerp(0, mip_count_environment, surface.roughness);
     float3 ibl_specular_environment    = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level);
     
     // get ssr color
-    float ssr_mip_count     = pass_get_f4_value().y;
-    mip_level               = lerp(0, ssr_mip_count, surface.roughness);
+    uint mip_count_ssr      = (uint)pass_get_f4_value().y;
+    mip_level               = lerp(0, mip_count_ssr, surface.roughness);
     const float4 ssr_sample = is_ssr_enabled() ? tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level) : 0.0f;
     const float3 color_ssr  = ssr_sample.rgb;
     float ssr_alpha         = ssr_sample.a;
-
-    // remap alpha above a certain roughness threshold in order to hide blocky reflections (from very small mips)
-    static const float ssr_roughness_threshold = 0.8f;
-    if (surface.roughness > ssr_roughness_threshold)
-    {
-        ssr_alpha = lerp(ssr_alpha, 0.0f, (surface.roughness - ssr_roughness_threshold) / (1.0f - ssr_roughness_threshold));
-    }
 
     // sample reflection probe
     float3 ibl_specular_probe = 0.0f;

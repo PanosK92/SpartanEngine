@@ -46,7 +46,6 @@ static const float FLT_MAX_16U         = 65535.0f;
 static const float RPC_9               = 0.11111111111f;
 static const float RPC_16              = 0.0625f;
 static const float RPC_32              = 0.03125f;
-static const float ENVIRONMENT_MAX_MIP = 11.0f;
 static const uint THREAD_GROUP_COUNT_X = 8;
 static const uint THREAD_GROUP_COUNT_Y = 8;
 static const uint THREAD_GROUP_COUNT   = 64;
