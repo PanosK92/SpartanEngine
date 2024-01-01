@@ -54,15 +54,15 @@ float visibility(float3 position, Light light, uint2 pixel_pos)
     float2 pos_uv    = ndc_to_uv(pos_ndc);
 
     // shadow map comparison
-    bool shadow_map_comparison = true;
+    bool is_visible = true;
     if (is_valid_uv(pos_uv))
     {
         float3 sample_coords  = light.is_point() ? light.to_pixel : float3(pos_uv.x, pos_uv.y, slice_index);
         float shadow_depth    = light.sample_depth(sample_coords);
-        shadow_map_comparison = pos_ndc.z <= shadow_depth;
+        is_visible            = pos_ndc.z > shadow_depth;
     }
-
-    return shadow_map_comparison ? 0.0f : 1.0f;
+    
+    return is_visible ? 1.0f : 0.0f;
 }
 
 float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
@@ -81,7 +81,7 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
     float fog = 0.0f;
     if (surface.is_sky())
     {
-        fog = fog_density * 1.0f;
+        fog = fog_density;
     }
     else
     {
