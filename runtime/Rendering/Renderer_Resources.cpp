@@ -363,9 +363,9 @@ namespace Spartan
             shader(Renderer_Shader::light_integration_brdf_specular_lut_c)->Compile(RHI_Shader_Compute, shader_dir + "light_integration.hlsl", false);
 
             // environment prefilter - compiled synchronously as it's needed immediately
-            shader(Renderer_Shader::light_integration_environment_prefilter_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::light_integration_environment_prefilter_c)->AddDefine("ENVIRONMENT_PREFILTER");
-            shader(Renderer_Shader::light_integration_environment_prefilter_c)->Compile(RHI_Shader_Compute, shader_dir + "light_integration.hlsl", async);
+            shader(Renderer_Shader::light_integration_environment_filter_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::light_integration_environment_filter_c)->AddDefine("ENVIRONMENT_FILTER");
+            shader(Renderer_Shader::light_integration_environment_filter_c)->Compile(RHI_Shader_Compute, shader_dir + "light_integration.hlsl", async);
 
             // light
             shader(Renderer_Shader::light_c) = make_shared<RHI_Shader>();

@@ -44,9 +44,9 @@ float3 importance_sample_ggx(float2 Xi, float3 N, float roughness)
 {
     float a = roughness*roughness;
     
-    float phi = 2.0 * PI * Xi.x;
+    float phi      = 2.0 * PI * Xi.x;
     float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y));
-    float sinTheta = sqrt(1.0 - cosTheta*cosTheta);
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
     
     // from spherical coordinates to cartesian coordinates - halfway vector
     float3 H;
@@ -125,6 +125,12 @@ float2 integrate_brdf(float n_dot_v, float roughness)
     return float2(A, B);
 }
 
+float D_GGX(float n_dot_h, float roughness_alpha_squared)
+{
+    float f = (n_dot_h * roughness_alpha_squared - n_dot_h) * n_dot_h + 1.0f;
+    return roughness_alpha_squared / (PI * f * f + FLT_MIN);
+}
+
 float3 prefilter_environment(float2 uv)
 {
     const uint sample_count  = 1024;
@@ -132,31 +138,32 @@ float3 prefilter_environment(float2 uv)
     uint mip_level  = pass_get_f3_value().x;
     uint mip_count  = pass_get_f3_value().y;
     float roughness = (float)mip_level / (float)(mip_count - 1);
+    roughness = saturate(roughness - 0.01f); // bias to reduce sample spread a little bit
     
     // convert spherical uv to direction
-    float phi        = uv.x * 2.0 * PI;
-    float theta      = (1.0f - uv.y) * PI;
-    float3 direction = normalize(float3(sin(theta) * cos(phi), cos(theta), sin(theta) * sin(phi)));
-
+    float phi   = uv.x * 2.0 * PI;
+    float theta = (1.0f - uv.y) * PI;
+    float3 V    = normalize(float3(sin(theta) * cos(phi), cos(theta), sin(theta) * sin(phi)));
+    float3 N    = V;
+    
     float3 color       = 0.0f;
     float total_weight = 0.0;
     for(uint i = 0; i < sample_count; i++)
     {
         float2 Xi = hammersley(i, sample_count);
-        float3 H  = importance_sample_ggx(Xi, direction, roughness);
-        float3 L  = normalize(2.0 * dot(direction, H) * H - direction);
+        float3 H  = importance_sample_ggx(Xi, N, roughness);
+        float3 L  = normalize(2.0 * dot(V, H) * H - V);
 
-        float n_dot_l = saturate(dot(direction, L));
+        float n_dot_l = saturate(dot(N, L));
         if (n_dot_l > 0.0)
         {
-            // convert direction to spherical uv
-            float phi   = atan2(direction.z, direction.x) + PI;
-            float theta = acos(direction.y);
+            float phi   = atan2(L.z, L.x) + PI;
+            float theta = acos(L.y);
             float u     = (phi + PI) / (2.0 * PI);
             float v     = 1.0 - (theta / PI);
 
             // sample the environment map
-            color        += tex_environment.SampleLevel(samplers[sampler_bilinear_wrap], float2(u, v), mip_level - 1).rgb * n_dot_l;
+            color        += tex_environment.SampleLevel(samplers[sampler_bilinear_wrap], float2(u, v), 0).rgb * n_dot_l;
             total_weight += n_dot_l;
         }
     }
@@ -177,9 +184,10 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     color.rg = integrate_brdf(uv.x, uv.y);
     #endif
 
-    #if ENVIRONMENT_PREFILTER
+    #if ENVIRONMENT_FILTER
     color.rgb = prefilter_environment(uv);
     #endif
 
     tex_uav[thread_id.xy] = color;
 }
+

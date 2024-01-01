@@ -45,8 +45,7 @@ namespace Spartan
 {
     namespace
     {
-        bool light_integration_brdf_speculat_lut_completed     = false;
-        bool light_integration_environment_prefilter_completed = false;
+        bool light_integration_brdf_speculat_lut_completed = false;
         mutex mutex_generate_mips;
         const float thread_group_count = 8.0f;
         #define thread_group_count_x(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetWidth())  / thread_group_count))
@@ -151,7 +150,7 @@ namespace Spartan
                 Pass_Light_Integration_BrdfSpecularLut(cmd_list);
             }
 
-            if (!light_integration_environment_prefilter_completed)
+            if (m_environment_mips_to_filter_count > 0)
             {
                 Pass_Light_Integration_EnvironmentPrefilter(cmd_list);
             }
@@ -1037,8 +1036,6 @@ namespace Spartan
 
         }
         cmd_list->EndTimeblock();
-
-        light_integration_environment_prefilter_completed = false;
     }
 
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass)
@@ -2428,11 +2425,11 @@ namespace Spartan
     void Renderer::Pass_Light_Integration_EnvironmentPrefilter(RHI_CommandList* cmd_list)
     {
         // acquire shader
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::light_integration_environment_prefilter_c).get();
+        RHI_Shader* shader_c = GetShader(Renderer_Shader::light_integration_environment_filter_c).get();
         if (!shader_c || !shader_c->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("light_integration_environment_prefilter");
+        cmd_list->BeginTimeblock("light_integration_environment_filter");
         {
             // acquire render target
             RHI_Texture* tex_environment = GetRenderTarget(Renderer_RenderTexture::skysphere).get();
@@ -2442,12 +2439,14 @@ namespace Spartan
             pso.shader_compute = shader_c;
             cmd_list->SetPipelineState(pso);
 
-            // read from the top mip
-            cmd_list->SetTexture(Renderer_BindingsSrv::environment, tex_environment, 0, 1);
+            uint32_t mip_count = tex_environment->GetMipCount();
+            uint32_t mip_level = mip_count - m_environment_mips_to_filter_count;
+            SP_ASSERT(mip_level != 0);
+
+            // read from the previous mip
+            cmd_list->SetTexture(Renderer_BindingsSrv::environment, tex_environment, mip_level - 1, 1);
 
             // do one mip at a time, splitting the cost over a couple of frames
-            uint32_t mip_count = tex_environment->GetMipCount();
-            uint32_t mip_level = max<uint32_t>(1, m_cb_frame_cpu.frame % mip_count);
             Vector2 resolution = Vector2(tex_environment->GetWidth() >> mip_level, tex_environment->GetHeight() >> mip_level);
             {
                 // set pass constants
@@ -2461,10 +2460,21 @@ namespace Spartan
                     static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.y) / thread_group_count))
                 );
             }
+
+            // smooth out the sampling pattern
+            if (mip_level <= 2) // only the two first convoluted mips have sampling patterns
+            {
+                for (uint32_t i = 0; i < 5; i++)
+                {
+                    float radius = 20.0f; // pixel count
+                    float sigma  = 10.0f; // spread
+                    Pass_Blur_Gaussian(cmd_list, tex_environment, false, radius, sigma, mip_level);
+                }
+            }
         }
         cmd_list->EndTimeblock();
 
-        light_integration_environment_prefilter_completed = true;
+        m_environment_mips_to_filter_count--;
     }
 
     void Renderer::Pass_GenerateMips(RHI_CommandList* cmd_list, RHI_Texture* texture)

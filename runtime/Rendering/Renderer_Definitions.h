@@ -193,7 +193,7 @@ namespace Spartan
         debug_reflection_probe_v,
         debug_reflection_probe_p,
         light_integration_brdf_specular_lut_c,
-        light_integration_environment_prefilter_c,
+        light_integration_environment_filter_c,
         light_c,
         light_composition_c,
         light_image_based_p,
