@@ -2433,36 +2433,37 @@ namespace Spartan
             return;
 
         cmd_list->BeginTimeblock("light_integration_environment_prefilter");
-
-        // acquire render target
-        RHI_Texture* tex_environment = GetRenderTarget(Renderer_RenderTexture::skysphere).get();
-
-        // set pipeline state
-        static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
-        cmd_list->SetPipelineState(pso);
-
-        // read from the top mip
-        cmd_list->SetTexture(Renderer_BindingsSrv::environment, tex_environment, 0, 1);
-
-        // do one mip at a time, splitting the cost over a couple of frames
-        uint32_t mip_count = tex_environment->GetMipCount();
-        uint32_t mip_level = max<uint32_t>(1, m_cb_frame_cpu.frame % mip_count);
-        Vector2 resolution = Vector2(tex_environment->GetWidth() >> mip_level, tex_environment->GetHeight() >> mip_level);
         {
-            // set pass constants
-            m_pcb_pass_cpu.set_resolution_out(resolution);
-            m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(mip_count), 0.0f);
-            PushPassConstants(cmd_list);
+            // acquire render target
+            RHI_Texture* tex_environment = GetRenderTarget(Renderer_RenderTexture::skysphere).get();
 
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
-            cmd_list->Dispatch(
-                static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.x) / thread_group_count)),
-                static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.y) / thread_group_count))
-            );
+            // set pipeline state
+            static RHI_PipelineState pso;
+            pso.shader_compute = shader_c;
+            cmd_list->SetPipelineState(pso);
+
+            // read from the top mip
+            cmd_list->SetTexture(Renderer_BindingsSrv::environment, tex_environment, 0, 1);
+
+            // do one mip at a time, splitting the cost over a couple of frames
+            uint32_t mip_count = tex_environment->GetMipCount();
+            uint32_t mip_level = max<uint32_t>(1, m_cb_frame_cpu.frame % mip_count);
+            Vector2 resolution = Vector2(tex_environment->GetWidth() >> mip_level, tex_environment->GetHeight() >> mip_level);
+            {
+                // set pass constants
+                m_pcb_pass_cpu.set_resolution_out(resolution);
+                m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(mip_count), 0.0f);
+                PushPassConstants(cmd_list);
+
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
+                cmd_list->Dispatch(
+                    static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.x) / thread_group_count)),
+                    static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.y) / thread_group_count))
+                );
+            }
         }
-
         cmd_list->EndTimeblock();
+
         light_integration_environment_prefilter_completed = true;
     }
 
