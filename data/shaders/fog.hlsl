@@ -54,7 +54,7 @@ float visibility(float3 position, Light light, uint2 pixel_pos)
     float2 pos_uv    = ndc_to_uv(pos_ndc);
 
     // shadow map comparison
-    bool is_visible = true;
+    bool is_visible = light.is_directional(); // directioanl light is everywhere, so assume visible
     if (is_valid_uv(pos_uv))
     {
         float3 sample_coords  = light.is_point() ? light.to_pixel : float3(pos_uv.x, pos_uv.y, slice_index);
