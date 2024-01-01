@@ -62,7 +62,6 @@ namespace Spartan
 
     // misc
     unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
-    bool Renderer::m_brdf_specular_lut_rendered;
     RHI_CommandPool* Renderer::m_cmd_pool      = nullptr;
     shared_ptr<Camera> Renderer::m_camera      = nullptr;
     uint32_t Renderer::m_resource_index        = 0;
@@ -255,8 +254,6 @@ namespace Spartan
 
     void Renderer::Initialize()
     {
-        m_brdf_specular_lut_rendered = false;
-
         Display::DetectDisplayModes();
 
         // rhi initialization
@@ -350,7 +347,7 @@ namespace Spartan
             CreateDepthStencilStates();
             CreateRasterizerStates();
             CreateBlendStates();
-            CreateRenderTextures(true, true, true, true);
+            CreateRenderTextures(true, true, true);
             CreateSamplers(false);
             CreateStructuredBuffers();
         }
@@ -486,7 +483,7 @@ namespace Spartan
         if (recreate_resources)
         {
             // re-create render textures
-            CreateRenderTextures(true, false, false, true);
+            CreateRenderTextures(true, false, true);
 
             // re-create samplers
             CreateSamplers(true);
@@ -524,7 +521,7 @@ namespace Spartan
         if (recreate_resources)
         {
             // re-create render textures
-            CreateRenderTextures(false, true, false, true);
+            CreateRenderTextures(false, true, true);
 
             // re-create samplers
             CreateSamplers(true);
@@ -623,7 +620,7 @@ namespace Spartan
         cmd_list->PushConstants(0, sizeof(Pcb_Pass), &m_pcb_pass_cpu);
     }
 
-	void Renderer::OnWorldResolved(sp_variant data)
+    void Renderer::OnWorldResolved(sp_variant data)
     {
         // note: m_renderables is a vector of shared pointers.
         // this ensures that if any entities are deallocated by the world.
@@ -644,7 +641,7 @@ namespace Spartan
             }
         }
     }
-
+    
     void Renderer::OnClear()
     {
         m_renderables.clear();

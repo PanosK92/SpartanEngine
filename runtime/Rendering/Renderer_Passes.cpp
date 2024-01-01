@@ -45,6 +45,8 @@ namespace Spartan
 {
     namespace
     {
+        bool light_integration_brdf_speculat_lut_completed     = false;
+        bool light_integration_environment_prefilter_completed = false;
         mutex mutex_generate_mips;
         const float thread_group_count = 8.0f;
         #define thread_group_count_x(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetWidth())  / thread_group_count))
@@ -139,10 +141,17 @@ namespace Spartan
 
         UpdateConstantBufferFrame(cmd_list, false);
 
-        // generate brdf specular lut
-        if (!m_brdf_specular_lut_rendered)
+        // light integration
         {
-            Pass_BrdfSpecularLut(cmd_list);
+            if (!light_integration_brdf_speculat_lut_completed)
+            {
+                Pass_Light_Integration_BrdfSpecularLut(cmd_list);
+            }
+
+            if (!light_integration_environment_prefilter_completed)
+            {
+                Pass_Light_Integration_EnvironmentPrefilter(cmd_list);
+            }
         }
 
         if (shared_ptr<Camera> camera = GetCamera())
@@ -1036,12 +1045,11 @@ namespace Spartan
 
             // render
             cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
-
-            // generate mips
-            Pass_Ffx_Spd(cmd_list, tex_out, Renderer_DownsampleFilter::Antiflicker);
         }
 
         cmd_list->EndTimeblock();
+
+        light_integration_environment_prefilter_completed = false;
     }
 
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass)
@@ -1140,11 +1148,9 @@ namespace Spartan
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_composition_transparent" : "light_composition");
 
-        // define pipeline state
+        // set pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
-
-        // set pipeline state
         cmd_list->SetPipelineState(pso);
 
         // push pass constants
@@ -1216,7 +1222,9 @@ namespace Spartan
         // set pass constants
         m_pcb_pass_cpu.set_resolution_out(tex_out);
         m_pcb_pass_cpu.set_is_transparent(is_transparent_pass);
-        m_pcb_pass_cpu.set_f4_value(!probes.empty() ? 1.0f : 0.0f, static_cast<float>(GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount()), 0.0f, 0.0f);
+        uint32_t mip_count_skysphere = GetRenderTarget(Renderer_RenderTexture::skysphere)->GetMipCount();
+        uint32_t mip_count_ssr       = GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount();
+        m_pcb_pass_cpu.set_f4_value(!probes.empty() ? 1.0f : 0.0f, static_cast<float>(mip_count_ssr), static_cast<float>(mip_count_skysphere), 0.0f);
         PushPassConstants(cmd_list);
 
         // render
@@ -2397,23 +2405,21 @@ namespace Spartan
         cmd_list->EndMarker();
     }
 
-    void Renderer::Pass_BrdfSpecularLut(RHI_CommandList* cmd_list)
+    void Renderer::Pass_Light_Integration_BrdfSpecularLut(RHI_CommandList* cmd_list)
     {
         // acquire shader
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::brdf_specular_lut_c).get();
+        RHI_Shader* shader_c = GetShader(Renderer_Shader::light_integration_brdf_specular_lut_c).get();
         if (!shader_c || !shader_c->IsCompiled())
             return;
+
+        cmd_list->BeginTimeblock("light_integration_brdf_specular_lut");
 
         // acquire render target
         RHI_Texture* tex_brdf_specular_lut = GetRenderTarget(Renderer_RenderTexture::brdf_specular_lut).get();
 
-        // define render state
+        // set pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
-
-        cmd_list->BeginTimeblock("brdf_specular_lut");
-
-        // set pipeline state
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
@@ -2427,8 +2433,48 @@ namespace Spartan
         cmd_list->Dispatch(thread_group_count_x(tex_brdf_specular_lut), thread_group_count_y(tex_brdf_specular_lut));
 
         cmd_list->EndTimeblock();
+        light_integration_brdf_speculat_lut_completed = true;
+    }
 
-        m_brdf_specular_lut_rendered = true;
+    void Renderer::Pass_Light_Integration_EnvironmentPrefilter(RHI_CommandList* cmd_list)
+    {
+        // acquire shader
+        RHI_Shader* shader_c = GetShader(Renderer_Shader::light_integration_environment_prefilter_c).get();
+        if (!shader_c || !shader_c->IsCompiled())
+            return;
+
+        cmd_list->BeginTimeblock("light_integration_environment_prefilter");
+
+        // acquire render target
+        RHI_Texture* tex_environment = GetRenderTarget(Renderer_RenderTexture::skysphere).get();
+
+        // set pipeline state
+        static RHI_PipelineState pso;
+        pso.shader_compute = shader_c;
+        cmd_list->SetPipelineState(pso);
+
+        // read from the top mip
+        cmd_list->SetTexture(Renderer_BindingsSrv::environment, tex_environment, 0, 1);
+
+        // do one mip at a time, splitting the cost over a couple of frames
+        uint32_t mip_count = tex_environment->GetMipCount();
+        uint32_t mip_level = max<uint32_t>(1, m_cb_frame_cpu.frame % mip_count);
+        Vector2 resolution = Vector2(tex_environment->GetWidth() >> mip_level, tex_environment->GetHeight() >> mip_level);
+        {
+            // set pass constants
+            m_pcb_pass_cpu.set_resolution_out(resolution);
+            m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(mip_count), 0.0f);
+            PushPassConstants(cmd_list);
+
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
+            cmd_list->Dispatch(
+                static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.x) / thread_group_count)),
+                static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.y) / thread_group_count))
+            );
+        }
+
+        cmd_list->EndTimeblock();
+        light_integration_environment_prefilter_completed = true;
     }
 
     void Renderer::Pass_GenerateMips(RHI_CommandList* cmd_list, RHI_Texture* texture)
