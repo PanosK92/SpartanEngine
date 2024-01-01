@@ -1044,7 +1044,7 @@ namespace Spartan
                     if (Entity* child = entity->GetDescendantByName("Plane.010"))
                     {
                         Renderable* renderable = child->GetComponent<Renderable>().get();
-                        renderable->SetCastShadows(false); // cheaper and screen space shadows are enough
+                        renderable->SetFlag(RenderableFlags::CastsShadows, false); // cheaper and screen space shadows are enough
 
                         // tweak material
                         Material* material = renderable->GetMaterial();
@@ -1126,7 +1126,7 @@ namespace Spartan
             // make the lamp frame not cast shadows
             if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("lamp_1stfloor_entrance_1")->GetComponent<Renderable>())
             {
-                renderable->SetCastShadows(false);
+                renderable->SetFlag(RenderableFlags::CastsShadows, false);
             }
 
             // enable physics for all meshes

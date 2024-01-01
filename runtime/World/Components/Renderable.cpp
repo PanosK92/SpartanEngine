@@ -41,7 +41,7 @@ namespace Spartan
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,           bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,                   Material*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_cast_shadows,               bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flags,                      uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_offset,      uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_count,       uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_offset,     uint32_t);
@@ -66,7 +66,7 @@ namespace Spartan
         stream->Write(m_mesh ? m_mesh->GetObjectName() : "");
 
         // material
-        stream->Write(m_cast_shadows);
+        stream->Write(m_flags);
         stream->Write(m_material_default);
         if (!m_material_default)
         {
@@ -87,7 +87,7 @@ namespace Spartan
         m_mesh = ResourceCache::GetByName<Mesh>(model_name).get();
 
         // material
-        stream->Read(&m_cast_shadows);
+        stream->Read(&m_flags);
         stream->Read(&m_material_default);
         if (m_material_default)
         {
@@ -320,5 +320,24 @@ namespace Spartan
             return false;
 
         return true;
-	}
+    }
+    
+    void Renderable::SetFlag(const RenderableFlags flag, const bool enable /*= true*/)
+    {
+        bool enabled      = false;
+        bool disabled     = false;
+        bool flag_present = m_flags & flag;
+
+        if (enable && !flag_present)
+        {
+            m_flags |= static_cast<uint32_t>(flag);
+            enabled  = true;
+
+        }
+        else if (!enable && flag_present)
+        {
+            m_flags  &= ~static_cast<uint32_t>(flag);
+            disabled  = true;
+        }
+    }
 }
