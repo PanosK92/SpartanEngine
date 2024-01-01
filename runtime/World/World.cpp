@@ -1113,6 +1113,7 @@ namespace Spartan
             light->SetRange(39.66f);
             light->SetIntensity(LightIntensity::bulb_150_watt);
             light->SetFlag(LightFlags::ShadowsTransparent, false);
+            light->SetFlag(LightFlags::Volumetric, false); // volumetric fog looks bad with point lights
         }
 
         // 3d model - Sponza
