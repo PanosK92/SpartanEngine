@@ -87,7 +87,7 @@ float V_Neubelt(float n_dot_v, float n_dot_l)
 
 // GGX / Trowbridge-Reitz
 // [Walter et al. 2007, "Microfacet models for refraction through rough surfaces"]
-float D_GGX(Surface surface, float n_dot_h, float roughness_alpha_squared)
+float D_GGX(float n_dot_h, float roughness_alpha_squared)
 {
     float f = (n_dot_h * roughness_alpha_squared - n_dot_h) * n_dot_h + 1.0f;
     return roughness_alpha_squared / (PI * f * f + FLT_MIN);
@@ -154,7 +154,7 @@ float3 BRDF_Diffuse(Surface surface, AngularInfo angular_info)
 float3 BRDF_Specular_Isotropic(inout Surface surface, AngularInfo angular_info)
 {
     float  V = V_SmithJointApprox(surface.roughness_alpha, angular_info.n_dot_v, angular_info.n_dot_l);
-    float D  = D_GGX(surface, angular_info.n_dot_h, surface.roughness_alpha_squared);
+    float D  = D_GGX(angular_info.n_dot_h, surface.roughness_alpha_squared);
     float3 F = F_Schlick(surface.F0, angular_info.v_dot_h);
 
     surface.diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
@@ -200,7 +200,7 @@ float3 BRDF_Specular_Clearcoat(inout Surface surface, AngularInfo angular_info)
     float roughness_alpha         = surface.clearcoat_roughness * surface.clearcoat_roughness;
     float roughness_alpha_squared = roughness_alpha * roughness_alpha;
     
-    float D  = D_GGX(surface, angular_info.n_dot_h, roughness_alpha_squared);
+    float D  = D_GGX(angular_info.n_dot_h, roughness_alpha_squared);
     float V  = V_Kelemen(angular_info.v_dot_h);
     float3 F = F_Schlick(0.04, 1.0, angular_info.v_dot_h) * surface.clearcoat;
 

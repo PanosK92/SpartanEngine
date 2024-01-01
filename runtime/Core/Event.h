@@ -80,6 +80,7 @@ namespace Spartan
         // Resources
         MaterialOnChanged,
         LightOnChanged,
+        LightOnPrefilter,
         CameraOnChanged,
         // Max
         Max
