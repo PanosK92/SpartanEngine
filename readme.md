@@ -45,6 +45,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - Fully bindless design (materials, lights, even the samplers).
 - Vulkan (main) and DirectX 12 (wip) backends with universal HLSL shaders.
 - Unified deferred rendering with transparency (BSDF with same render path).
+- Atmospheric scattering, real-time filtering and image-based lighting.
 - Screen space shadows from Bend Studio's Days Gone.
 - Screen space global illumination & reflections.
 - Advanced shadow features with penumbra and colored translucency.
@@ -52,7 +53,6 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - Comprehensive debug rendering options.
 - Occlusion & frustum culling.
 - Physically based camera.
-- Atmospheric scattering.
 - Volumetric fog.
 - Temporal anti-aliasing for smooth visuals.
 - Post-process effects like fxaa, bloom, motion-blur, depth of field, chromatic aberration etc.

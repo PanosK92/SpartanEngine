@@ -133,13 +133,12 @@ float D_GGX(float n_dot_h, float roughness_alpha_squared)
 
 float3 prefilter_environment(float2 uv)
 {
-    const uint sample_count  = 1024;
+    const uint sample_count = 1024;
     
     uint mip_level  = pass_get_f3_value().x;
     uint mip_count  = pass_get_f3_value().y;
     float roughness = (float)mip_level / (float)(mip_count - 1);
-    roughness = saturate(roughness - 0.01f); // bias to reduce sample spread a little bit
-    
+
     // convert spherical uv to direction
     float phi   = uv.x * 2.0 * PI;
     float theta = (1.0f - uv.y) * PI;
@@ -162,8 +161,15 @@ float3 prefilter_environment(float2 uv)
             float u     = (phi + PI) / (2.0 * PI);
             float v     = 1.0 - (theta / PI);
 
-            // sample the environment map
-            color        += tex_environment.SampleLevel(samplers[sampler_bilinear_wrap], float2(u, v), 0).rgb * n_dot_l;
+            float3 sampled_color = tex_environment.SampleLevel(samplers[sampler_bilinear_wrap], float2(u, v), 0).rgb;
+
+            // apply dynamic dimming directly to the sampled color - this is to prevent small mips from being overblown
+            float intensity_threshold  = 0.5f;
+            float intensity            = max(max(sampled_color.r, sampled_color.g), sampled_color.b);
+            float dimming_factor       = lerp(1.0, 0.25f, saturate((intensity - intensity_threshold) * roughness));
+            sampled_color             *= dimming_factor;
+
+            color        += sampled_color * n_dot_l;
             total_weight += n_dot_l;
         }
     }
@@ -190,4 +196,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = color;
 }
-
