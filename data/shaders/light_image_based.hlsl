@@ -98,12 +98,12 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     // ibl - specular
     const float3 reflection            = reflect(surface.camera_to_pixel, surface.normal);
     float3 dominant_specular_direction = get_dominant_specular_direction(surface.normal, reflection, surface.roughness);
-    float mip_level                    = lerp(0, mip_count_environment, surface.roughness);
+    float mip_level                    = lerp(0, mip_count_environment - 1, surface.roughness);
     float3 ibl_specular_environment    = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level);
     
     // get ssr color
     uint mip_count_ssr      = (uint)pass_get_f4_value().y;
-    mip_level               = lerp(0, mip_count_ssr, surface.roughness);
+    mip_level               = lerp(0, mip_count_ssr - 1, surface.roughness);
     const float4 ssr_sample = is_ssr_enabled() ? tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level) : 0.0f;
     const float3 color_ssr  = ssr_sample.rgb;
     float ssr_alpha         = ssr_sample.a;

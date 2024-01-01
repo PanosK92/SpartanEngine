@@ -1877,56 +1877,58 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Ffx_Spd(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter)
+    void Renderer::Pass_Ffx_Spd(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter, const uint32_t mip_start)
     {
         // AMD FidelityFX Single Pass Downsampler.
         // Provides an RDNA™-optimized solution for generating up to 12 MIP levels of a texture.
         // GitHub:        https://github.com/GPUOpen-Effects/FidelityFX-SPD
         // Documentation: https://github.com/GPUOpen-Effects/FidelityFX-SPD/blob/master/docs/FidelityFX_SPD.pdf
 
-        uint32_t output_mip_count = tex->GetMipCount() - 1;
-        uint32_t smallest_width   = tex->GetWidth()  >> output_mip_count;
-        uint32_t smallest_height  = tex->GetHeight() >> output_mip_count;
+        // deduce information
+        const uint32_t output_mip_count      = tex->GetMipCount() - (mip_start + 1);
+        const uint32_t width                 = tex->GetWidth()  >> mip_start;
+        const uint32_t height                = tex->GetHeight() >> mip_start;
+        const uint32_t thread_group_count_x_ = (width + 63)  >> 6; // as per document documentation (page 22)
+        const uint32_t thread_group_count_y_ = (height + 63) >> 6; // as per document documentation (page 22)
 
-        // ensure that the input texture meets the requirements.
+        // ensure that the input texture meets the requirements
         SP_ASSERT(tex->HasPerMipViews());
-        SP_ASSERT(tex->GetWidth() <= 4096 && tex->GetHeight() <= 4096 && output_mip_count <= 12); // as per documentation (page 22)
-
-        // deduce appropriate shader
-        Renderer_Shader shader = Renderer_Shader::ffx_spd_c_average;
-        if (filter == Renderer_DownsampleFilter::Highest)     shader = Renderer_Shader::ffx_spd_c_highest;
-        if (filter == Renderer_DownsampleFilter::Antiflicker) shader = Renderer_Shader::ffx_spd_c_antiflicker;
+        SP_ASSERT(width <= 4096 && height <= 4096 && output_mip_count <= 12); // as per documentation (page 22)
+        SP_ASSERT(mip_start < output_mip_count);
 
         // acquire shader
-        RHI_Shader* shader_c = GetShader(shader).get();
-        if (!shader_c->IsCompiled())
-            return;
+        RHI_Shader* shader_c = nullptr;
+        {
+            // deduce appropriate shader
+            Renderer_Shader shader = Renderer_Shader::ffx_spd_c_average;
+            if (filter == Renderer_DownsampleFilter::Highest)     shader = Renderer_Shader::ffx_spd_c_highest;
+            if (filter == Renderer_DownsampleFilter::Antiflicker) shader = Renderer_Shader::ffx_spd_c_antiflicker;
+
+            shader_c = GetShader(shader).get();
+            if (!shader_c->IsCompiled())
+                return;
+        }
 
         cmd_list->BeginMarker("ffx_spd");
+        {
+            // set pipeline state
+            static RHI_PipelineState pso;
+            pso.name           = "ffx_spd";
+            pso.shader_compute = shader_c;
+            cmd_list->SetPipelineState(pso);
 
-        // define render state
-        static RHI_PipelineState pso;
-        pso.name           = "ffx_spd";
-        pso.shader_compute = shader_c;
+            // push pass data
+            m_pcb_pass_cpu.set_resolution_out(tex);
+            m_pcb_pass_cpu.set_f3_value(static_cast<float>(output_mip_count), static_cast<float>(thread_group_count_x_ * thread_group_count_y_), 0.0f);
+            PushPassConstants(cmd_list);
 
-        // set pipeline state
-        cmd_list->SetPipelineState(pso);
+            // set textures
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,     tex, mip_start, 1);                    // starting mip
+            cmd_list->SetTexture(Renderer_BindingsUav::tex_spd, tex, mip_start + 1, output_mip_count); // following mips
 
-        // as per document documentation (page 22)
-        const uint32_t thread_group_count_x_ = (tex->GetWidth()  + 63) >> 6;
-        const uint32_t thread_group_count_y_ = (tex->GetHeight() + 63) >> 6;
-
-        // push pass data
-        m_pcb_pass_cpu.set_resolution_out(tex);
-        m_pcb_pass_cpu.set_f3_value(static_cast<float>(output_mip_count), static_cast<float>(thread_group_count_x_ * thread_group_count_y_), 0.0f);
-        PushPassConstants(cmd_list);
-
-        // set textures
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex, 0, 1);                          // top mip
-        cmd_list->SetTexture(Renderer_BindingsUav::tex_spd, tex, 1, tex->GetMipCount() - 1); // rest of the mips
-
-        // render
-        cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
+            // render
+            cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
+        }
         cmd_list->EndMarker();
     }
 
@@ -2429,11 +2431,11 @@ namespace Spartan
         if (!shader_c || !shader_c->IsCompiled())
             return;
 
+        // acquire render target
+        RHI_Texture* tex_environment = GetRenderTarget(Renderer_RenderTexture::skysphere).get();
+
         cmd_list->BeginTimeblock("light_integration_environment_filter");
         {
-            // acquire render target
-            RHI_Texture* tex_environment = GetRenderTarget(Renderer_RenderTexture::skysphere).get();
-
             // set pipeline state
             static RHI_PipelineState pso;
             pso.shader_compute = shader_c;
@@ -2444,7 +2446,7 @@ namespace Spartan
             SP_ASSERT(mip_level != 0);
 
             // read from the previous mip
-            cmd_list->SetTexture(Renderer_BindingsSrv::environment, tex_environment, mip_level - 1, 1);
+            cmd_list->SetTexture(Renderer_BindingsSrv::environment, tex_environment, 0, 1);
 
             // do one mip at a time, splitting the cost over a couple of frames
             Vector2 resolution = Vector2(tex_environment->GetWidth() >> mip_level, tex_environment->GetHeight() >> mip_level);
@@ -2461,20 +2463,18 @@ namespace Spartan
                 );
             }
 
-            // smooth out the sampling pattern
-            if (mip_level <= 2) // only the two first convoluted mips have sampling patterns
+            // smooth out the sampling pattern - cheaper than increasing the sample count
+            for (uint32_t i = 0; i < 5; i++)
             {
-                for (uint32_t i = 0; i < 5; i++)
-                {
-                    float radius = 20.0f; // pixel count
-                    float sigma  = 10.0f; // spread
-                    Pass_Blur_Gaussian(cmd_list, tex_environment, false, radius, sigma, mip_level);
-                }
+                float radius = 20.0f; // pixel count
+                float sigma  = 10.0f; // spread
+                Pass_Blur_Gaussian(cmd_list, tex_environment, false, radius, sigma, mip_level);
             }
         }
-        cmd_list->EndTimeblock();
 
         m_environment_mips_to_filter_count--;
+
+        cmd_list->EndTimeblock();
     }
 
     void Renderer::Pass_GenerateMips(RHI_CommandList* cmd_list, RHI_Texture* texture)
