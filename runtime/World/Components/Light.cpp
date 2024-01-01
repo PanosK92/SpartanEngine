@@ -235,6 +235,11 @@ namespace Spartan
         m_color_rgb          = Color(temperature_kelvin);
 
         SP_FIRE_EVENT(EventType::LightOnChanged);
+
+        if (GetLightType() == LightType::Directional)
+        {
+            SP_FIRE_EVENT(EventType::LightOnPrefilter);
+        }
     }
 
     void Light::SetColor(const Color& rgb)
