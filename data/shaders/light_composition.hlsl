@@ -136,9 +136,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         color.rgb    += lerp(light, light_refraction, 1.0f - surface.alpha);
 
         // fog
-        float fog_intensity = luminance(tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(surface.camera_to_pixel), 11));
-        color.rgb += got_fog_radial(surface.position, buffer_frame.camera_position.xyz) * fog_intensity;
+        color.rgb += got_fog_radial(surface.position, buffer_frame.camera_position.xyz);
     }
 
     tex_uav[thread_id.xy] = saturate_16(color);
 }
+

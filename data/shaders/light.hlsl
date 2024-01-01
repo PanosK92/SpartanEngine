@@ -160,4 +160,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     /* specular */   tex_uav2[thread_id.xy] += float4(saturate_11(light_specular * light.radiance), 1.0f);
     /* volumetric */ tex_uav3[thread_id.xy] += float4(saturate_11(volumetric_fog), 1.0f);
 }
-
