@@ -820,15 +820,15 @@ namespace Spartan
         Lines_OnFrameEnd();
     }
 
-	void Renderer::DrawString(const string& text, const Vector2& position_screen_percentage)
+    void Renderer::DrawString(const string& text, const Vector2& position_screen_percentage)
 	{
         if (shared_ptr<Font>& font = GetFont())
         {
             font->AddText(text, position_screen_percentage);
         }
 	}
-
-	void Renderer::SetOption(Renderer_Option option, float value)
+    
+    void Renderer::SetOption(Renderer_Option option, float value)
     {
         // clamp value
         {

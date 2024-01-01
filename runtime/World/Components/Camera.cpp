@@ -277,13 +277,13 @@ namespace Spartan
     {
         const RHI_Viewport& viewport = Renderer::GetViewport();
 
-        // A non reverse-z projection matrix is need, we create it
+        // a non reverse-z projection matrix is need, we create it
         const Matrix projection = Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), viewport.GetAspectRatio(), m_near_plane, m_far_plane);
 
-        // Convert world space position to clip space position
+        // convert world space position to clip space position
         const Vector3 position_clip = position_world * m_view * projection;
 
-        // Convert clip space position to screen space position
+        // convert clip space position to screen space position
         Vector2 position_screen;
         position_screen.x = (position_clip.x / position_clip.z) * (0.5f * viewport.width) + (0.5f * viewport.width);
         position_screen.y = (position_clip.y / position_clip.z) * -(0.5f * viewport.height) + (0.5f * viewport.height);

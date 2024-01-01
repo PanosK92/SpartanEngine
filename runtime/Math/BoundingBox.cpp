@@ -136,33 +136,46 @@ namespace Spartan::Math
         m_max.z = Helper::Max(m_max.z, box.m_max.z);
     }
 
-    bool BoundingBox::Occluded(const BoundingBox& occluder) const
+    bool BoundingBox::IsBehind(const BoundingBox& other) const
     {
-        // lambda for getting a corner of the bounding box
-        auto get_corner = [this](uint32_t index) -> Vector3
+        auto get_corners = [](const BoundingBox& box, Vector3* corners)
         {
-            return Vector3(
-                index & 1 ? m_max.x : m_min.x,
-                index & 2 ? m_max.y : m_min.y,
-                index & 4 ? m_max.z : m_min.z
-            );
+            corners[0] = Vector3(box.m_min.x, box.m_min.y, box.m_min.z); // front bottom left
+            corners[1] = Vector3(box.m_max.x, box.m_min.y, box.m_min.z); // front bottom right
+            corners[2] = Vector3(box.m_max.x, box.m_max.y, box.m_min.z); // front top right
+            corners[3] = Vector3(box.m_min.x, box.m_max.y, box.m_min.z); // front top left
+            corners[4] = Vector3(box.m_min.x, box.m_min.y, box.m_max.z); // back bottom left
+            corners[5] = Vector3(box.m_max.x, box.m_min.y, box.m_max.z); // back bottom right
+            corners[6] = Vector3(box.m_max.x, box.m_max.y, box.m_max.z); // back top right
+            corners[7] = Vector3(box.m_min.x, box.m_max.y, box.m_max.z); // back top left
         };
 
-        // lambda for checking if a point is behind all planes of the bounding box
-        auto is_point_behind_all_planes = [&occluder](const Vector3& point) -> bool
-        {
-            return (point.x <= occluder.m_max.x && point.x >= occluder.m_min.x &&
-                    point.y <= occluder.m_max.y && point.y >= occluder.m_min.y &&
-                    point.z <= occluder.m_max.z && point.z >= occluder.m_min.z);
-        };
+        // get corners of this box
+        Vector3 corners_this[8];
+        get_corners(*this, corners_this);
 
-        // check if all corners of this box are behind all the planes of the occluder
-        for (uint32_t i = 0; i < 8; i++)
+        // get corners of the other box
+        Vector3 corners_other[8];
+        get_corners(other, corners_other);
+
+        // check if all corners of this box are behind all corners of the other box
+        for (const Vector3& corner_this : corners_this)
         {
-            if (!is_point_behind_all_planes(get_corner(i)))
-                return false;
+            bool is_corner_behind = true;
+            for (const Vector3& corner_other : corners_other)
+            {
+                if (corner_this.z < corner_other.z)
+                {
+                    is_corner_behind = false;
+                    break; // this corner of 'this' box is not behind the current corner of 'other' box
+                }
+            }
+            if (!is_corner_behind)
+            {
+                return false; // at least one corner of 'this' box is not behind 'other' box
+            }
         }
 
-        return true;
+        return true; // all corners of this box are behind all corners of the other box
     }
 }

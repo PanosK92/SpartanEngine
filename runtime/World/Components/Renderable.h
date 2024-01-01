@@ -44,6 +44,14 @@ namespace Spartan
         TransformedInstanceGroup, // the transformed bounding box of an instance group
     };
 
+    enum RenderableFlags : uint32_t
+    {
+        IsInViewFrustum = 1U << 0,
+        IsOccluded      = 1U << 1,
+        IsOccluding     = 1U << 2,
+        CastsShadows    = 1U << 3
+    };
+
     class SP_CLASS Renderable : public Component
     {
     public:
@@ -82,16 +90,8 @@ namespace Spartan
         auto HasMaterial() const      { return m_material != nullptr; }
         //===============================================================================
 
-        // visibility
-        void SetIsVisible(const bool is_visible) { m_is_visible = is_visible; }
-        bool GetIsVisible() const                { return m_is_visible; }
-
-        // shadows
-        void SetCastShadows(const bool cast_shadows) { m_cast_shadows = cast_shadows; }
-        bool GetCastShadows() const                  { return m_cast_shadows; }
-
         // mesh
-        RHI_IndexBuffer* GetIndexBuffer()   const;
+        RHI_IndexBuffer* GetIndexBuffer() const;
         RHI_VertexBuffer* GetVertexBuffer() const;
         const std::string& GetMeshName() const;
 
@@ -107,6 +107,11 @@ namespace Spartan
         uint32_t GetVertexOffset() const { return m_geometry_vertex_offset; }
         uint32_t GetVertexCount() const  { return m_geometry_vertex_count; }
         bool ReadyToRender() const;
+        bool IsVisible() { return IsFlagSet(RenderableFlags::IsInViewFrustum) && !IsFlagSet(RenderableFlags::IsOccluded); }
+
+        // flags
+        bool IsFlagSet(const RenderableFlags flag) { return m_flags & flag; }
+        void SetFlag(const RenderableFlags flag, const bool enable = true);
 
     private:
         // geometry/mesh
@@ -132,7 +137,6 @@ namespace Spartan
 
         // misc
         Math::Matrix m_transform_previous = Math::Matrix::Identity;
-        bool m_cast_shadows               = true;
-        bool m_is_visible                 = true;
+        uint32_t m_flags                  = RenderableFlags::IsInViewFrustum | RenderableFlags::CastsShadows;
     };
 }

@@ -368,15 +368,15 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
 
     if (component_begin("Renderable", IconType::Component_Renderable, renderable))
     {
-        //= REFLECT ================================================================
+        //= REFLECT ========================================================================
         string name_mesh             = renderable->GetMeshName();
         Material* material           = renderable->GetMaterial();
         uint32_t instance_count      = renderable->GetInstanceCount();
         uint32_t instance_partitions = renderable->GetInstancePartitionCount();
         string name_material         = material ? material->GetObjectName() : "N/A";
-        bool cast_shadows            = renderable->GetCastShadows();
-        bool is_visible              = renderable->GetIsVisible();
-        //==========================================================================
+        bool cast_shadows            = renderable->IsFlagSet(RenderableFlags::CastsShadows);
+        bool is_visible              = renderable->IsVisible();
+        //==================================================================================
 
         // mesh
         ImGui::Text("Mesh");
@@ -412,9 +412,9 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
         ImGui::SameLine(column_pos_x);
         ImGui::LabelText("##renderable_visible", is_visible ? "true" : "false", ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
 
-        //= MAP ===================================================================================
-        if (cast_shadows != renderable->GetCastShadows()) renderable->SetCastShadows(cast_shadows);
-        //=========================================================================================
+        //= MAP =========================================================
+        renderable->SetFlag(RenderableFlags::CastsShadows, cast_shadows);
+        //===============================================================
     }
     component_end();
 }

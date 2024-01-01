@@ -311,7 +311,7 @@ namespace Spartan
                     {
                         // acquire renderable component
                         shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                        if (!renderable || !renderable->ReadyToRender() || !renderable->GetCastShadows())
+                        if (!renderable || !renderable->ReadyToRender() || !renderable->IsFlagSet(RenderableFlags::CastsShadows))
                             continue;
 
                         // skip objects outside of the view frustum
@@ -469,17 +469,18 @@ namespace Spartan
 
     void Renderer::Pass_Visibility(RHI_CommandList* cmd_list)
     {
+        // forest cpu time: 0.3 ms
+
         struct Occluder
         {
+            Entity* entity;
             BoundingBox box;
-            bool is_occluded;
         };
-        vector<Occluder> occluders;
 
-        bool gpu = false; // CPU time block
+        bool gpu = false; // only measure cpu time
         cmd_list->BeginTimeblock("visibility", gpu, gpu);
 
-        // sort entities by depth
+        // 1. cpu: sort entities by depth - helps with the depth prep-pass
         if (!m_sorted)
         {
             auto sort_renderables = [](Renderer_Entity entity_type, const bool are_transparent)
@@ -521,13 +522,41 @@ namespace Spartan
             m_sorted = true;
         }
 
+        // 2. cpu: identify potential occluders - only deal with objects which are reasonably large
+        array<Occluder, 1024> occluders;
         bool is_transparent_pass = false;
         uint32_t start_index     = !is_transparent_pass ? 0 : 2;
         uint32_t end_index       = !is_transparent_pass ? 2 : 4;
-        bool is_first_pass       = true;
         for (uint32_t i = start_index; i < end_index; i++)
         {
-            // acquire entities
+            auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
+            if (entities.empty())
+                continue;
+
+            for (uint32_t index_entity = 0; index_entity < entities.size(); index_entity++)
+            {
+                shared_ptr<Entity>& entity = entities[index_entity];
+                shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                if (!renderable || !renderable->ReadyToRender())
+                    continue;
+
+                // get appropriate bounding box
+                BoundingBoxType type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+                BoundingBox box      = renderable->GetBoundingBox(type).Transform(m_cb_frame_cpu.view);
+
+                // larger than one cubic meter
+                if (box.Volume() >= 1.0f)
+                {
+                    occluders[index_entity] = Occluder(entity.get(), box);
+                    entity->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluded,  false);
+                    entity->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluding, false);
+                }
+            }
+        }
+
+        // 3. cpu: do fast approximate visibility tests
+        for (uint32_t i = start_index; i < end_index; i++)
+        {
             auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
             if (entities.empty())
                 continue;
@@ -540,36 +569,34 @@ namespace Spartan
                     continue;
 
                 // frustum check
-                bool visible = GetCamera()->IsInViewFrustum(renderable);
+                renderable->SetFlag(RenderableFlags::IsInViewFrustum, GetCamera()->IsInViewFrustum(renderable));
                 
-                // occlusion check
-                if (visible)
+                // fast approximate occlusion check
+                if (renderable->IsFlagSet(RenderableFlags::IsInViewFrustum))
                 {
                     BoundingBoxType type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
                     BoundingBox box      = renderable->GetBoundingBox(type).Transform(m_cb_frame_cpu.view);
-                    //DrawBox(box);
-
+    
                     bool occluded = false;
                     for (const Occluder& occluder : occluders)
                     {
-                        if (box.Occluded(occluder.box))
+                        // ignore self
+                        if (occluder.entity->GenerateObjectId() == entity->GenerateObjectId())
+                            continue;
+
+                        if (box.IsBehind(occluder.box))
                         {
-                            occluded = true;
+                            //renderable->SetFlag(RenderableFlags::IsOccluded);
+                            //occluder.entity->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluding, true);
                             break;
                         }
                     }
-
-                    if (!occluded)
-                    {
-                        occluders.emplace_back(box, false);
-                    }
-
-                    //visible = !occluded;
                 }
-
-                renderable->SetIsVisible(visible);
             }
         }
+
+        // 4. gpu: hardware occlusion queries on what's left
+        // this will yield pixel perfect results
 
         cmd_list->EndTimeblock();
     }
@@ -612,7 +639,7 @@ namespace Spartan
             {
                 // when async loading certain things can be null
                 shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                if (!renderable || !renderable->ReadyToRender() || !renderable->GetIsVisible())
+                if (!renderable || !renderable->ReadyToRender() || !renderable->IsVisible())
                     continue;
 
                 // set cull mode
@@ -722,7 +749,7 @@ namespace Spartan
             {
                 // when async loading certain things can be null (also frustum cull)
                 shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                if (!renderable || !renderable->ReadyToRender() || !renderable->GetIsVisible())
+                if (!renderable || !renderable->ReadyToRender() || !renderable->IsVisible())
                     continue;
 
                 // set cull mode

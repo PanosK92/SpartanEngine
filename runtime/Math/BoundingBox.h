@@ -69,13 +69,21 @@ namespace Spartan
             // test if a bounding box is inside
             Intersection Intersects(const BoundingBox& box) const;
 
-            bool Occluded(const BoundingBox& occluder) const;
-
             // Returns a transformed bounding box
             BoundingBox Transform(const Matrix& transform) const;
 
             // merge with another bounding box
             void Merge(const BoundingBox& box);
+
+            float Volume()
+            {
+                Vector3 size = GetSize();
+                return size.x * size.y * size.z;
+            }
+
+            // checks if this bounding box is behind the other
+            // bounding boxes need to be in view-space
+            bool IsBehind(const BoundingBox& other) const;
 
             bool operator==(const BoundingBox& other) const
             {
@@ -88,6 +96,7 @@ namespace Spartan
             static const BoundingBox Undefined;
 
         private:
+
             Vector3 m_min;
             Vector3 m_max;
         };

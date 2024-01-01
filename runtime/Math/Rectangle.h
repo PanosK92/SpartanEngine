@@ -33,13 +33,7 @@ namespace Spartan
         class Rectangle
         {
         public:
-            Rectangle()
-            {
-                left   = 0.0f;
-                top    = 0.0f;
-                right  = 0.0f;
-                bottom = 0.0f;
-            }
+            Rectangle() = default;
 
             Rectangle(const float left, const float top, const float right, const float bottom)
             {
@@ -88,7 +82,6 @@ namespace Spartan
             float Width()  const { return right - left; }
             float Height() const { return bottom - top; }
 
-            // Merge a point.
             void Merge(const Vector2& point)
             {
                 left   = Math::Helper::Min(left,   point.x);
@@ -97,10 +90,22 @@ namespace Spartan
                 bottom = Math::Helper::Max(bottom, point.y);
             }
 
-            float left   = 0.0f;
-            float top    = 0.0f;
-            float right  = 0.0f;
-            float bottom = 0.0f;
+            bool Intersects(const Rectangle& other) const
+            {
+                return !(left > other.right || right < other.left ||
+                         top > other.bottom || bottom < other.top);
+            }
+
+            bool Contains(const Rectangle& other) const
+            {
+                return left <= other.left && top <= other.top &&
+                       right >= other.right && bottom >= other.bottom;
+            }
+
+            float left   = FLT_MAX;
+            float top    = FLT_MAX;
+            float right  = -FLT_MAX;
+            float bottom = -FLT_MAX;
 
             static const Rectangle Zero;
         };

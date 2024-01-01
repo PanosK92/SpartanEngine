@@ -1361,10 +1361,16 @@ namespace Spartan
         SP_ASSERT(name != nullptr);
 
         // allowed timing ?
-        if (Profiler::IsGpuTimingEnabled() && gpu_timing)
         {
+            // cpu
             Profiler::TimeBlockStart(name, TimeBlockType::Cpu, this);
-            Profiler::TimeBlockStart(name, TimeBlockType::Gpu, this);
+
+            // gpu
+            if (Profiler::IsGpuTimingEnabled() && gpu_timing)
+            {
+               
+                Profiler::TimeBlockStart(name, TimeBlockType::Gpu, this);
+            }
         }
 
         // allowed marking ?
@@ -1386,11 +1392,15 @@ namespace Spartan
             RHI_Device::MarkerEnd(this);
         }
 
-        // aAllowed profiler ?
-        if (Profiler::IsGpuTimingEnabled())
+        // allowed timing
         {
+            if (Profiler::IsGpuTimingEnabled())
+            {
+                Profiler::TimeBlockEnd(); // gpu
+            }
+
             Profiler::TimeBlockEnd(); // cpu
-            Profiler::TimeBlockEnd(); // gpu
+
         }
 
         m_timeblock_active = nullptr;
