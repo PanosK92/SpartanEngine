@@ -76,7 +76,7 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
     float3 ray_origin    = buffer_frame.camera_position;
     float3 ray_direction = normalize(surface.camera_to_pixel);
     float3 ray_step      = ray_direction * step_length;
-    float3 ray_pos       = ray_origin + get_noise_interleaved_gradient(pixel_pos, true, true) * 0.05f;
+    float3 ray_pos       = ray_origin + get_noise_interleaved_gradient(pixel_pos, true, true) * 0.025f;
 
     float fog = 0.0f;
     if (surface.is_sky())
