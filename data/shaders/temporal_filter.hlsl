@@ -157,7 +157,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // get reprojected uv
     float2 uv             = (thread_id.xy + 0.5f) / pass_get_resolution_out();
-    float2 velocity       = get_velocity_ndc(thread_id.xy);
+    float2 velocity       = get_velocity_uv(thread_id.xy);
     float2 uv_reprojected = uv - velocity;
 
     // get history color
