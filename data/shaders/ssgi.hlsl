@@ -118,3 +118,4 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // out
     tex_uav[thread_id.xy] = float4(diffuse_bounce, visibility);
 }
+

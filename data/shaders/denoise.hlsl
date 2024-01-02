@@ -29,19 +29,16 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
-     // coordinates of the current pixel
-    int2 coord = thread_id.xy;
+    const int radius  = 8;
+    const float sigma = 10.0f; // sensitivity to color differences
 
     // read the original noisy pixel
-    float4 noisyPixel = tex_uav2[coord];
+    float4 noisyPixel = tex_uav2[thread_id.xy];
 
     // initialize variables for denoising calculations
     float4 denoisedPixel = noisyPixel;
     float weightSum      = 1.0;
     float3 averageColor  = noisyPixel.rgb;
-
-    // define the radius for the denoising kernel
-    int radius = 1; // You can adjust this based on your needs
 
     // iterate over neighboring pixels within the radius
     for (int dy = -radius; dy <= radius; dy++)
@@ -53,13 +50,15 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
                 continue;
 
             // get the neighboring pixel's coordinates
-            int2 neighborCoord = coord + int2(dx, dy);
+            int2 neighborCoord = thread_id.xy + int2(dx, dy);
 
             // read the neighboring pixel
             float4 neighborPixel = tex_uav2[neighborCoord];
 
-            // calculate a weight for blending (simple average in this case)
-            float weight = 1.0 / ((abs(dx) + abs(dy)) + 1);
+            // calculate color similarity-based weight
+            float colorDistance = length(noisyPixel.rgb - neighborPixel.rgb);
+            float similarityWeight = exp(-colorDistance * colorDistance / (2 * sigma * sigma));
+            float weight = similarityWeight / ((abs(dx) + abs(dy)) + 1);
             weightSum += weight;
 
             // accumulate the weighted color
@@ -71,5 +70,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     denoisedPixel.rgb = averageColor / weightSum;
 
     // write the denoised pixel back to the texture
-    tex_uav[coord] = denoisedPixel;
+    tex_uav[thread_id.xy] = denoisedPixel;
 }
