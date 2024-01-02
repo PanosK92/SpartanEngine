@@ -69,7 +69,7 @@ void TextureViewer::OnTick()
     texture_id            = 0;
 }
 
-void TextureViewer::OnTickVisible()
+void TextureViewer::OnVisible()
 {
     // get render targets
     if (render_targets.empty())
@@ -82,7 +82,15 @@ void TextureViewer::OnTickVisible()
             }
         }
     }
+}
 
+void TextureViewer::OnInvisible()
+{
+    render_targets.clear();
+}
+
+void TextureViewer::OnTickVisible()
+{
     // texture
     ImGui::BeginGroup();
     {

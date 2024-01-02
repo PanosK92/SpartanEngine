@@ -35,7 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/AudioSource.h"
 #include "World/Components/AudioListener.h"
 #include "World/Components/Terrain.h"
-#include "World/Components/ReflectionProbe.h"
 #include "Rendering/Mesh.h"
 //===============================================
 
@@ -161,7 +160,6 @@ void Properties::OnTickVisible()
         ShowTerrain(entity_ptr->GetComponent<Terrain>());
         ShowAudioSource(entity_ptr->GetComponent<AudioSource>());
         ShowAudioListener(entity_ptr->GetComponent<AudioListener>());
-        ShowReflectionProbe(entity_ptr->GetComponent<ReflectionProbe>());
         ShowRenderable(renderable);
         ShowMaterial(material);
         ShowPhysicsBody(entity_ptr->GetComponent<PhysicsBody>());
@@ -1048,69 +1046,6 @@ void Properties::ShowAudioListener(shared_ptr<AudioListener> audio_listener) con
     component_end();
 }
 
-void Properties::ShowReflectionProbe(shared_ptr<ReflectionProbe> reflection_probe) const
-{
-    if (!reflection_probe)
-        return;
-
-    if (component_begin("Reflection Probe", IconType::Component_ReflectionProbe, reflection_probe))
-    {
-        //= REFLECT =============================================================
-        int resolution             = reflection_probe->GetResolution();
-        Vector3 extents            = reflection_probe->GetExtents();
-        int update_interval_frames = reflection_probe->GetUpdateIntervalFrames();
-        int update_face_count      = reflection_probe->GetUpdateFaceCount();
-        float plane_near           = reflection_probe->GetNearPlane();
-        float plane_far            = reflection_probe->GetFarPlane();
-        //=======================================================================
-
-        // Resolution
-        ImGui::Text("Resolution");
-        ImGui::SameLine(column_pos_x);
-        ImGui::InputInt("##reflection_probe_resolution", &resolution);
-
-        // Update interval frames
-        ImGui::Text("Update interval frames");
-        ImGui::SameLine(column_pos_x);
-        ImGui::InputInt("##reflection_probe_update_interval_frames", &update_interval_frames);
-
-        // Update face count
-        ImGui::Text("Update face count");
-        ImGui::SameLine(column_pos_x);
-        ImGui::InputInt("##reflection_probe_update_face_count", &update_face_count);
-
-        // Near plane
-        ImGui::Text("Near plane");
-        ImGui::SameLine(column_pos_x);
-        ImGui::InputFloat("##reflection_probe_plane_near", &plane_near, 1.0f, 1.0f, "%.1f");
-
-        // Far plane
-        ImGui::Text("Far plane");
-        ImGui::SameLine(column_pos_x);
-        ImGui::InputFloat("##reflection_probe_plane_far", &plane_far, 1.0f, 1.0f, "%.1f");
-
-        // Extents
-        const ImGuiInputTextFlags_ input_text_flags = ImGuiInputTextFlags_CharsDecimal;
-        const float step                            = 0.1f;
-        const float step_fast                       = 0.1f;
-        const char* precision                       = "%.3f";
-        ImGui::Text("Extents");
-        ImGui::SameLine(column_pos_x); ImGui::PushID("##reflection_probe_extents_x"); ImGui::InputFloat("X", &extents.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();             ImGui::PushID("##reflection_probe_extents_y"); ImGui::InputFloat("Y", &extents.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();             ImGui::PushID("##reflection_probe_extents_z"); ImGui::InputFloat("Z", &extents.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
-
-        //= MAP =====================================================================================================================================
-        if (resolution             != reflection_probe->GetResolution())           reflection_probe->SetResolution(resolution);
-        if (extents                != reflection_probe->GetExtents())              reflection_probe->SetExtents(extents);
-        if (update_interval_frames != reflection_probe->GetUpdateIntervalFrames()) reflection_probe->SetUpdateIntervalFrames(update_interval_frames);
-        if (update_face_count      != reflection_probe->GetUpdateFaceCount())      reflection_probe->SetUpdateFaceCount(update_face_count);
-        if (plane_near             != reflection_probe->GetNearPlane())            reflection_probe->SetNearPlane(plane_near);
-        if (plane_far              != reflection_probe->GetFarPlane())             reflection_probe->SetFarPlane(plane_far);
-        //===========================================================================================================================================
-    }
-    component_end();
-}
-
 void Properties::ShowAddComponentButton() const
 {
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5);
@@ -1184,16 +1119,6 @@ void Properties::ComponentContextMenu_Add() const
                 else if (ImGui::MenuItem("Audio Listener"))
                 {
                     entity->AddComponent<AudioListener>();
-                }
-
-                ImGui::EndMenu();
-            }
-
-            if (ImGui::BeginMenu("Probe"))
-            {
-                if (ImGui::MenuItem("Reflection Probe"))
-                {
-                    entity->AddComponent<ReflectionProbe>();
                 }
 
                 ImGui::EndMenu();

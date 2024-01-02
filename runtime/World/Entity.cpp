@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES ========================
 #include "pch.h"
 #include "Entity.h"
 #include "World.h"
@@ -30,9 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/AudioSource.h"
 #include "Components/AudioListener.h"
 #include "Components/Terrain.h"
-#include "Components/ReflectionProbe.h"
 #include "../IO/FileStream.h"
-//=====================================
+//===================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -314,16 +313,15 @@ namespace Spartan
 
         switch (type)
         {
-            case ComponentType::AudioListener:   component = static_pointer_cast<Component>(AddComponent<AudioListener>());   break;
-            case ComponentType::AudioSource:     component = static_pointer_cast<Component>(AddComponent<AudioSource>());     break;
-            case ComponentType::Camera:          component = static_pointer_cast<Component>(AddComponent<Camera>());          break;
-            case ComponentType::Constraint:      component = static_pointer_cast<Component>(AddComponent<Constraint>());      break;
-            case ComponentType::Light:           component = static_pointer_cast<Component>(AddComponent<Light>());           break;
-            case ComponentType::Renderable:      component = static_pointer_cast<Component>(AddComponent<Renderable>());      break;
-            case ComponentType::PhysicsBody:     component = static_pointer_cast<Component>(AddComponent<PhysicsBody>());     break;
-            case ComponentType::Terrain:         component = static_pointer_cast<Component>(AddComponent<Terrain>());         break;
-            case ComponentType::ReflectionProbe: component = static_pointer_cast<Component>(AddComponent<ReflectionProbe>()); break;
-            default:                             component = nullptr;                                                         break;
+            case ComponentType::AudioListener: component = static_pointer_cast<Component>(AddComponent<AudioListener>()); break;
+            case ComponentType::AudioSource:   component = static_pointer_cast<Component>(AddComponent<AudioSource>());   break;
+            case ComponentType::Camera:        component = static_pointer_cast<Component>(AddComponent<Camera>());        break;
+            case ComponentType::Constraint:    component = static_pointer_cast<Component>(AddComponent<Constraint>());    break;
+            case ComponentType::Light:         component = static_pointer_cast<Component>(AddComponent<Light>());         break;
+            case ComponentType::Renderable:    component = static_pointer_cast<Component>(AddComponent<Renderable>());    break;
+            case ComponentType::PhysicsBody:   component = static_pointer_cast<Component>(AddComponent<PhysicsBody>());   break;
+            case ComponentType::Terrain:       component = static_pointer_cast<Component>(AddComponent<Terrain>());       break;
+            default:                           component = nullptr;                                                       break;
         }
 
         SP_ASSERT(component != nullptr);

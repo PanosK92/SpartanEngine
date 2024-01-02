@@ -63,21 +63,21 @@ namespace Spartan
         {
             const ComponentType type = Component::TypeToEnum<T>();
 
-            // Early exit if the component exists
+            // early exit if the component exists
             if (std::shared_ptr<T> component = GetComponent<T>())
                 return component;
 
-            // Create a new component
+            // create a new component
             std::shared_ptr<T> component = std::make_shared<T>(this->shared_from_this());
 
-            // Save new component
+            // save new component
             m_components[static_cast<uint32_t>(type)] = std::static_pointer_cast<Component>(component);
 
-            // Initialize component
+            // initialize component
             component->SetType(type);
             component->OnInitialize();
 
-            // Make the scene resolve
+            // make the scene resolve
             SP_FIRE_EVENT(EventType::WorldResolve);
 
             return component;

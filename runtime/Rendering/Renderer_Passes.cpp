@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================================
+//= INCLUDES ===========================
 #include "pch.h"
 #include "Renderer.h"
 #include "bend_sss_cpu.h"
@@ -28,13 +28,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Entity.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
-#include "../World/Components/ReflectionProbe.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_FidelityFX.h"
 #include "../RHI/RHI_StructuredBuffer.h"
-//==============================================
+//======================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -140,7 +139,6 @@ namespace Spartan
 
         UpdateConstantBufferFrame(cmd_list, false);
 
-        Pass_ReflectionProbes(cmd_list);
         Pass_Skysphere(cmd_list);
 
         // light integration
@@ -215,7 +213,6 @@ namespace Spartan
             Pass_Lines(cmd_list, rt_render);
             Pass_Outline(cmd_list, rt_render);
             Pass_PostProcess(cmd_list);
-            Pass_DebugMeshes(cmd_list, rt_output);
             Pass_Icons(cmd_list, rt_output);
         }
         else
@@ -352,115 +349,6 @@ namespace Spartan
                         }
 
                         draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get(), light.get(), array_index);
-                    }
-                }
-            }
-        }
-
-        cmd_list->EndTimeblock();
-    }
-
-    void Renderer::Pass_ReflectionProbes(RHI_CommandList* cmd_list)
-    {
-        // acquire shaders
-        RHI_Shader* shader_v = GetShader(Renderer_Shader::reflection_probe_v).get();
-        RHI_Shader* shader_p = GetShader(Renderer_Shader::reflection_probe_p).get();
-        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
-            return;
-
-        // acquire reflections probes
-        const vector<shared_ptr<Entity>>& probes = m_renderables[Renderer_Entity::ReflectionProbe];
-        if (probes.empty())
-            return;
-
-        // acquire renderables
-        const vector<shared_ptr<Entity>>& renderables = m_renderables[Renderer_Entity::Geometry];
-        if (renderables.empty())
-            return;
-
-        // acquire lights
-        const vector<shared_ptr<Entity>>& lights = m_renderables[Renderer_Entity::Light];
-        if (lights.empty())
-            return;
-
-        cmd_list->BeginTimeblock("reflection_probes");
-
-        // for each reflection probe
-        for (uint32_t probe_index = 0; probe_index < static_cast<uint32_t>(probes.size()); probe_index++)
-        {
-            shared_ptr<ReflectionProbe> probe = probes[probe_index]->GetComponent<ReflectionProbe>();
-            if (!probe || !probe->GetNeedsToUpdate())
-                continue;
-
-            // define pipeline state
-            static RHI_PipelineState pso;
-            pso.shader_vertex                   = shader_v;
-            pso.shader_pixel                    = shader_p;
-            pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
-            pso.blend_state                     = GetBlendState(Renderer_BlendState::Additive).get();
-            pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
-            pso.render_target_color_textures[0] = probe->GetColorTexture();
-            pso.render_target_depth_texture     = probe->GetDepthTexture();
-            pso.clear_color[0]                  = Color::standard_black;
-            pso.clear_depth                     = 0.0f; // reverse-z
-            pso.clear_stencil                   = rhi_stencil_dont_care;
-
-            // update cube faces
-            uint32_t index_start = probe->GetUpdateFaceStartIndex();
-            uint32_t index_end   = (index_start + probe->GetUpdateFaceCount()) % 7;
-            for (uint32_t face_index = index_start; face_index < index_end; face_index++)
-            {
-                // set render target texture array index
-                pso.render_target_color_texture_array_index = face_index;
-
-                // set pipeline state
-                cmd_list->SetPipelineState(pso);
-
-                // compute view projection matrix
-                Matrix view_projection = probe->GetViewMatrix(face_index) * probe->GetProjectionMatrix();
-
-                // for each renderable entity
-                for (uint32_t index_renderable = 0; index_renderable < static_cast<uint32_t>(renderables.size()); index_renderable++)
-                {
-                    shared_ptr<Entity> entity = renderables[index_renderable];
-
-                    // for each light entity
-                    for (uint32_t index_light = 0; index_light < static_cast<uint32_t>(lights.size()); index_light++)
-                    {
-                        if (shared_ptr<Light> light = lights[index_light]->GetComponent<Light>())
-                        {
-                            if (light->GetIntensityWatt(GetCamera().get()) != 0)
-                            {
-                                // get renderable
-                                shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                                if (!renderable)
-                                    continue;
-
-                                // get material
-                                Material* material = renderable->GetMaterial();
-                                if (!material)
-                                    continue;
-
-                                // get geometry
-                                if (!renderable->GetVertexBuffer() || !renderable->GetIndexBuffer())
-                                    continue;
-
-                                // skip objects outside of the view frustum
-                                if (!probe->IsInViewFrustum(renderable, face_index))
-                                    continue;
-
-                                // set geometry (will only happen if not already set)
-                                cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
-                                cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
-
-                                // set pass constants with cascade transform
-                                m_pcb_pass_cpu.transform = entity->GetMatrix() * view_projection;
-                                m_pcb_pass_cpu.set_f3_value2(0.0f, static_cast<float>(light->GetIndex()), 0.0f);
-                                PushPassConstants(cmd_list);
-
-                                cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
-                            }
-                        }
                     }
                 }
             }
@@ -1138,9 +1026,6 @@ namespace Spartan
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_image_based_transparent" : "light_image_based");
 
-        // get reflection probe entities
-        const vector<shared_ptr<Entity>>& probes = m_renderables[Renderer_Entity::ReflectionProbe];
-
         // define pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
@@ -1163,22 +1048,12 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::lutIbl,      GetRenderTarget(Renderer_RenderTexture::brdf_specular_lut));
         cmd_list->SetTexture(Renderer_BindingsSrv::environment, GetRenderTarget(Renderer_RenderTexture::skysphere));
 
-        // set probe textures and data
-        if (!probes.empty())
-        {
-            shared_ptr<ReflectionProbe> probe = probes[0]->GetComponent<ReflectionProbe>();
-
-            cmd_list->SetTexture(Renderer_BindingsSrv::reflection_probe, probe->GetColorTexture());
-            m_pcb_pass_cpu.set_f3_value(probe->GetEntity()->GetPosition());
-            m_pcb_pass_cpu.set_f3_value2(probe->GetExtents());
-        }
-
         // set pass constants
         m_pcb_pass_cpu.set_resolution_out(tex_out);
         m_pcb_pass_cpu.set_is_transparent(is_transparent_pass);
         uint32_t mip_count_skysphere = GetRenderTarget(Renderer_RenderTexture::skysphere)->GetMipCount();
         uint32_t mip_count_ssr       = GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount();
-        m_pcb_pass_cpu.set_f4_value(!probes.empty() ? 1.0f : 0.0f, static_cast<float>(mip_count_ssr), static_cast<float>(mip_count_skysphere), 0.0f);
+        m_pcb_pass_cpu.set_f4_value(0.0f, static_cast<float>(mip_count_ssr), static_cast<float>(mip_count_skysphere), 0.0f);
         PushPassConstants(cmd_list);
 
         // render
@@ -2173,63 +2048,6 @@ namespace Spartan
                     cmd_list->Draw((m_lines_index_depth_on - (vertex_count / 2)) + 1, vertex_count / 2);
 
                     cmd_list->EndMarker();
-                }
-            }
-        }
-
-        cmd_list->EndTimeblock();
-    }
-
-    void Renderer::Pass_DebugMeshes(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
-    {
-        if (!GetOption<bool>(Renderer_Option::Debug_ReflectionProbes))
-            return;
-
-        // Acquire color shaders.
-        RHI_Shader* shader_v = GetShader(Renderer_Shader::debug_reflection_probe_v).get();
-        RHI_Shader* shader_p = GetShader(Renderer_Shader::debug_reflection_probe_p).get();
-        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
-            return;
-
-        // Get reflection probe entities
-        const vector<shared_ptr<Entity>>& probes = m_renderables[Renderer_Entity::ReflectionProbe];
-        if (probes.empty())
-            return;
-
-        cmd_list->BeginTimeblock("debug_meshes");
-
-        // define pipeline state
-        static RHI_PipelineState pso;
-        pso.shader_vertex                   = shader_v;
-        pso.shader_pixel                    = shader_p;
-        pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
-        pso.blend_state                     = GetBlendState(Renderer_BlendState::Disabled).get();
-        pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
-        pso.render_target_color_textures[0] = tex_out;
-        pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
-
-        // set pipeline state
-        cmd_list->SetPipelineState(pso);
-
-        // render
-        {
-            cmd_list->SetBufferVertex(GetStandardMesh(Renderer_MeshType::Sphere)->GetVertexBuffer());
-            cmd_list->SetBufferIndex(GetStandardMesh(Renderer_MeshType::Sphere)->GetIndexBuffer());
-
-            for (uint32_t probe_index = 0; probe_index < static_cast<uint32_t>(probes.size()); probe_index++)
-            {
-                if (shared_ptr<ReflectionProbe> probe = probes[probe_index]->GetComponent<ReflectionProbe>())
-                {
-                    // Set pass constants
-                    m_pcb_pass_cpu.transform = probe->GetEntity()->GetMatrix();
-                    PushPassConstants(cmd_list);
-
-                    cmd_list->SetTexture(Renderer_BindingsSrv::reflection_probe, probe->GetColorTexture());
-                    cmd_list->DrawIndexed(GetStandardMesh(Renderer_MeshType::Sphere)->GetIndexCount());
-
-                    // Draw a box which represents the extents of the reflection probe (which is used as a geometry proxy for parallax corrected cubemap reflections)
-                    BoundingBox extents = BoundingBox(probe->GetEntity()->GetPosition() - probe->GetExtents(), probe->GetEntity()->GetPosition() + probe->GetExtents());
-                    DrawBox(extents);
                 }
             }
         }

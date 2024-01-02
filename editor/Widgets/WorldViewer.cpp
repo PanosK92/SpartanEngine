@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================================
+//= INCLUDES ==============================
 #include "WorldViewer.h"
 #include "Properties.h"
 #include "MenuBar.h"
@@ -32,9 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/PhysicsBody.h"
 #include "World/Components/Constraint.h"
 #include "World/Components/Terrain.h"
-#include "World/Components/ReflectionProbe.h"
 #include "Commands/CommandStack.h"
-//===========================================
+//=========================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -502,17 +501,6 @@ void WorldViewer::PopupContextMenu() const
         ImGui::EndMenu();
     }
 
-    // ENVIRONMENT
-    if (ImGui::BeginMenu("Environment"))
-    {
-        if (ImGui::MenuItem("Reflection Probe"))
-        {
-            ActionEntityCreateReflectionProbe();
-        }
-
-        ImGui::EndMenu();
-    }
-
     // TERRAIN
     if (ImGui::MenuItem("Terrain"))
     {
@@ -736,11 +724,4 @@ void WorldViewer::ActionEntityCreateAudioListener()
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Spartan::AudioListener>();
     entity->SetObjectName("AudioListener");
-}
-
-void WorldViewer::ActionEntityCreateReflectionProbe()
-{
-    auto entity = ActionEntityCreateEmpty();
-    entity->AddComponent<Spartan::ReflectionProbe>();
-    entity->SetObjectName("ReflectionProbe");
 }

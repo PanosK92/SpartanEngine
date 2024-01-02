@@ -174,7 +174,7 @@ namespace Spartan
         RHI_Device::UpdateBindlessResources(&samplers, nullptr);
     }
 
-    void Renderer::CreateRenderTextures(const bool create_render, const bool create_output, const bool create_dynamic)
+    void Renderer::CreateRenderTargets(const bool create_render, const bool create_output, const bool create_dynamic)
     {
         // get render resolution
         uint32_t width_render  = static_cast<uint32_t>(GetResolutionRender().x);
@@ -484,12 +484,6 @@ namespace Spartan
         shader(Renderer_Shader::font_v)->Compile(RHI_Shader_Vertex, shader_dir + "font.hlsl", async, RHI_Vertex_Type::PosUv);
         shader(Renderer_Shader::font_p) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::font_p)->Compile(RHI_Shader_Pixel, shader_dir + "font.hlsl", async);
-
-        // reflection probe
-        shader(Renderer_Shader::reflection_probe_v) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::reflection_probe_v)->Compile(RHI_Shader_Vertex, shader_dir + "reflection_probe.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-        shader(Renderer_Shader::reflection_probe_p) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::reflection_probe_p)->Compile(RHI_Shader_Pixel, shader_dir + "reflection_probe.hlsl", async);
 
         // film grain
         shader(Renderer_Shader::film_grain_c) = make_shared<RHI_Shader>();

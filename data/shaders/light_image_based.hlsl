@@ -38,37 +38,6 @@ float3 sample_environment(float2 uv, float mip_level)
 {
     return tex_environment.SampleLevel(samplers[sampler_trilinear_clamp], uv, mip_level).rgb;
 }
-
-float3 get_parallax_corrected_reflection(Surface surface, float3 position_probe, float3 box_min, float3 box_max)
-{
-    float3 camera_to_pixel = surface.position - buffer_frame.camera_position;
-    float3 reflection      = reflect(camera_to_pixel, surface.normal);
-    
-    // find the ray intersection with box plane
-    float3 FirstPlaneIntersect  = (box_max - surface.position) / reflection;
-    float3 SecondPlaneIntersect = (box_min - surface.position) / reflection;
-
-    // get the furthest of these intersections along the ray
-    // (ok because x/0 give +inf and -x/0 give –inf )
-    float3 furthest_plane = max(FirstPlaneIntersect, SecondPlaneIntersect);
-
-    // find the closest far intersection
-    float distance = min3(furthest_plane);
-    
-    // get the intersection position
-    float3 position_intersection = surface.position + reflection * distance;
-
-    // get corrected reflection
-    reflection = position_intersection - position_probe;
-    
-    return reflection;
-}
-
-bool is_inside_box(in float3 p, in float3 min, in float3 max)
-{
-    return (p.x < min.x || p.x > max.x || p.y < min.y || p.y > max.y || p.z < min.z || p.z > max.z) ? false : true;
-}
-
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     const uint2 pos = input.uv * pass_get_resolution_out();
@@ -108,39 +77,14 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     const float3 color_ssr  = ssr_sample.rgb;
     float ssr_alpha         = ssr_sample.a;
 
-    // sample reflection probe
-    float3 ibl_specular_probe = 0.0f;
-    float probe_alpha         = 0.0f;
-    if (pass_is_reflection_probe_available())
-    {
-        float3 probe_position = pass_get_f3_value();
-        float3 extents        = pass_get_f3_value2();
-        float3 box_min        = probe_position - extents;
-        float3 box_max        = probe_position + extents;
-
-        if (is_inside_box(surface.position, box_min, box_max))
-        {
-            float3 reflection   = get_parallax_corrected_reflection(surface, probe_position, box_min, box_max);
-            float4 probe_sample = tex_reflection_probe.SampleLevel(samplers[sampler_bilinear_clamp], reflection, 0.0f);
-            ibl_specular_probe  = probe_sample.rgb;
-            probe_alpha         = probe_sample.a;
-        }
-    }
-
-    // assume specular from SSR
-    float3 ibl_specular = color_ssr;
-
-    // if there are no SSR data, fallback to to the reflection probe.
-    ibl_specular = lerp(ibl_specular_probe, ibl_specular, ssr_alpha);
-
-    // if there are no reflection probe data, fallback to the environment texture
-    ibl_specular = lerp(ibl_specular_environment, ibl_specular, max(ssr_alpha, probe_alpha));
+    // blend between ssr and the envirnoment
+    float3 ibl_specular = lerp(ibl_specular_environment, color_ssr, ssr_alpha);
 
     // modulate outcoming energy
     ibl_specular *= specular_energy;
 
     float3 ibl = ibl_diffuse + ibl_specular;
-    
+
     // ssgi
     if (is_ssgi_enabled() && use_ssgi)
     {
