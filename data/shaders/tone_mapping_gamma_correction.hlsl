@@ -23,6 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
+//==========================================================================================
+// MISC
+//==========================================================================================
+
 float3 reinhard(float3 hdr, float k = 1.0f)
 {
     return hdr / (hdr + k);
@@ -46,6 +50,47 @@ float3 matrix_movie(float3 keannu)
     static const float pow_b = 4.0f / 5.0f;
 
     return float3(pow(abs(keannu.r), pow_a), pow(abs(keannu.g), pow_b), pow(abs(keannu.b), pow_a));
+}
+
+float3 realism(float3 color)
+{
+    // this attempts to do what most "realism" ENB and ReShade mods are doing
+    // which is to play aroudn with saturation, contrast, colors, dynamic range and so on
+    
+    const float desaturation   = 0.9;   // desaturate
+    const float contrast       = 1.02f; // increase contrast
+    const float dark_area_lift = 0.1;   // brighten the shadows
+    
+    // dynamic range compression
+    color = reinhard(color);
+
+    // color correction
+    {
+        float3 warm_color = float3(1.05, 1.0, 0.95);
+        float3 cool_color = float3(0.95, 1.0, 1.05);
+
+        // calculate the luminance of the color
+        float luminance = dot(color, float3(0.2126, 0.7152, 0.0722));
+
+        // determine the blending factor based on luminance or another property
+        float blend_factor = saturate(luminance); 
+
+        // apply the warm or cool tint based on the blend factor
+        float3 tint = lerp(cool_color, warm_color, blend_factor);
+        color *= tint;
+    }
+
+    // saturation
+    float luminance = dot(color, float3(0.2126, 0.7152, 0.0722));
+    color = lerp(float3(luminance, luminance, luminance), color, desaturation);
+
+    // contrast
+    color = (color - 0.5) * contrast + 0.5;
+
+    // brighten dark areas
+    color *= 1.0 + dark_area_lift * (1.0 - saturate(luminance));
+
+    return color;
 }
 
 //==========================================================================================
@@ -160,6 +205,10 @@ float3 amd(float3 color)
     return color;
 }
 
+//==========================================================================================
+// HDR
+//==========================================================================================
+
 // HDR10 ST2084 
 float3 rec2084_curve_to_color(float3 color, float max_nits)
 {
@@ -187,6 +236,10 @@ float3 rec2084_curve_to_color(float3 color, float max_nits)
     return color * luminance_ratio;
 }
 
+//==========================================================================================
+// ENTRY
+//==========================================================================================
+
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -205,7 +258,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float4 color = tex[thread_id.xy];
     color.rgb *= exposure;
 
-    // 2. tone-map (needed for SDR, optional for HDR)
+    // 2. tone-map (required for SDR output)
     switch (tone_mapping)
     {
         case 0:
@@ -223,6 +276,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         case 4:
             color.rgb = matrix_movie(color.rgb);
             break;
+        case 5:
+            color.rgb = realism(color.rgb);
+            break;
     }
 
     // 3. linear to color space conversion
@@ -237,3 +293,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = color;
 }
+
+
+
