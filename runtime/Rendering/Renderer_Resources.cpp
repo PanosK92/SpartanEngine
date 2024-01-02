@@ -206,9 +206,10 @@ namespace Spartan
             // frame - mips are used to emulate roughness for reflections
             uint32_t frame_render_flags    = RHI_Texture_Rtv | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit;
             RHI_Format frame_render_format = RHI_Format::R16G16B16A16_Float;
-            render_target(Renderer_RenderTexture::frame_render)              = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, frame_render_format, frame_render_flags | RHI_Texture_PerMipViews, "rt_frame_render");
-            render_target(Renderer_RenderTexture::frame_render_post_process) = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, frame_render_format, frame_render_flags | RHI_Texture_PerMipViews, "rt_frame_render_2");
-            render_target(Renderer_RenderTexture::frame_render_fsr2_opaque)  = make_unique<RHI_Texture2D>(width_render, height_render, 1,         frame_render_format, frame_render_flags,                           "rt_frame_render_opaque");
+            render_target(Renderer_RenderTexture::frame_render)         = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, frame_render_format, frame_render_flags | RHI_Texture_PerMipViews, "rt_frame_render");
+            render_target(Renderer_RenderTexture::frame_render_2)       = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, frame_render_format, frame_render_flags | RHI_Texture_PerMipViews, "rt_frame_render_2");
+            render_target(Renderer_RenderTexture::frame_render_history) = make_unique<RHI_Texture2D>(width_render, height_render, 1,         frame_render_format, frame_render_flags,                           "rt_frame_render_history");
+            render_target(Renderer_RenderTexture::frame_render_opaque)  = make_unique<RHI_Texture2D>(width_render, height_render, 1,         frame_render_format, frame_render_flags,                           "rt_frame_render_opaque");
 
             // g-buffer
             {
@@ -392,22 +393,6 @@ namespace Spartan
             shader(Renderer_Shader::quad_p)->Compile(RHI_Shader_Pixel, shader_dir + "quad.hlsl", async);
         }
 
-        // skysphere
-        shader(Renderer_Shader::skysphere_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::skysphere_c)->Compile(RHI_Shader_Compute, shader_dir + "skysphere.hlsl", async);
-
-        // font
-        shader(Renderer_Shader::font_v) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::font_v)->Compile(RHI_Shader_Vertex, shader_dir + "font.hlsl", async, RHI_Vertex_Type::PosUv);
-        shader(Renderer_Shader::font_p) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::font_p)->Compile(RHI_Shader_Pixel, shader_dir + "font.hlsl", async);
-
-        // reflection probe
-        shader(Renderer_Shader::reflection_probe_v) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::reflection_probe_v)->Compile(RHI_Shader_Vertex, shader_dir + "reflection_probe.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-        shader(Renderer_Shader::reflection_probe_p) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::reflection_probe_p)->Compile(RHI_Shader_Pixel, shader_dir + "reflection_probe.hlsl", async);
-
         // blur
         {
             // gaussian
@@ -439,22 +424,6 @@ namespace Spartan
             shader(Renderer_Shader::bloom_blend_frame_c)->Compile(RHI_Shader_Compute, shader_dir + "bloom.hlsl", async);
         }
 
-        // film grain
-        shader(Renderer_Shader::film_grain_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::film_grain_c)->Compile(RHI_Shader_Compute, shader_dir + "film_grain.hlsl", async);
-
-        // chromatic aberration
-        shader(Renderer_Shader::chromatic_aberration_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::chromatic_aberration_c)->Compile(RHI_Shader_Compute, shader_dir + "chromatic_aberration.hlsl", async);
-
-        // tone-mapping & gamma correction
-        shader(Renderer_Shader::tonemapping_gamma_correction_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::tonemapping_gamma_correction_c)->Compile(RHI_Shader_Compute, shader_dir + "tone_mapping_gamma_correction.hlsl", async);
-
-        // fxaa
-        shader(Renderer_Shader::fxaa_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::fxaa_c)->Compile(RHI_Shader_Compute, shader_dir + "fxaa\\fxaa.hlsl", async);
-
         // depth of field
         {
             shader(Renderer_Shader::dof_downsample_coc_c) = make_shared<RHI_Shader>();
@@ -473,6 +442,42 @@ namespace Spartan
             shader(Renderer_Shader::dof_upscale_blend_c)->AddDefine("UPSCALE_BLEND");
             shader(Renderer_Shader::dof_upscale_blend_c)->Compile(RHI_Shader_Compute, shader_dir + "depth_of_field.hlsl", async);
         }
+
+        // temporal anti-aliasing
+        shader(Renderer_Shader::taa_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::taa_c)->Compile(RHI_Shader_Compute, shader_dir + "temporal_antialiasing.hlsl", async);
+
+        // skysphere
+        shader(Renderer_Shader::skysphere_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::skysphere_c)->Compile(RHI_Shader_Compute, shader_dir + "skysphere.hlsl", async);
+
+        // font
+        shader(Renderer_Shader::font_v) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::font_v)->Compile(RHI_Shader_Vertex, shader_dir + "font.hlsl", async, RHI_Vertex_Type::PosUv);
+        shader(Renderer_Shader::font_p) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::font_p)->Compile(RHI_Shader_Pixel, shader_dir + "font.hlsl", async);
+
+        // reflection probe
+        shader(Renderer_Shader::reflection_probe_v) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::reflection_probe_v)->Compile(RHI_Shader_Vertex, shader_dir + "reflection_probe.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+        shader(Renderer_Shader::reflection_probe_p) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::reflection_probe_p)->Compile(RHI_Shader_Pixel, shader_dir + "reflection_probe.hlsl", async);
+
+        // film grain
+        shader(Renderer_Shader::film_grain_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::film_grain_c)->Compile(RHI_Shader_Compute, shader_dir + "film_grain.hlsl", async);
+
+        // chromatic aberration
+        shader(Renderer_Shader::chromatic_aberration_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::chromatic_aberration_c)->Compile(RHI_Shader_Compute, shader_dir + "chromatic_aberration.hlsl", async);
+
+        // tone-mapping & gamma correction
+        shader(Renderer_Shader::tonemapping_gamma_correction_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::tonemapping_gamma_correction_c)->Compile(RHI_Shader_Compute, shader_dir + "tone_mapping_gamma_correction.hlsl", async);
+
+        // fxaa
+        shader(Renderer_Shader::fxaa_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::fxaa_c)->Compile(RHI_Shader_Compute, shader_dir + "fxaa\\fxaa.hlsl", async);
 
         // motion blur
         shader(Renderer_Shader::motion_blur_c) = make_shared<RHI_Shader>();

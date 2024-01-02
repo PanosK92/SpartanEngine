@@ -37,6 +37,8 @@ using namespace std;
 
 namespace Spartan
 {
+    ProfilerGranularity granularity = ProfilerGranularity::Light;
+
     // metrics - rhi
     uint32_t Profiler::m_rhi_draw                       = 0;
     uint32_t Profiler::m_rhi_bindings_buffer_index      = 0;
@@ -71,7 +73,6 @@ namespace Spartan
 
     // misc
     uint32_t Profiler::m_descriptor_set_count = 0;
-    ProfilerGranularity granularity           = ProfilerGranularity::Light;
 
     namespace
     {
