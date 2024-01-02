@@ -226,7 +226,7 @@ namespace Spartan
         SP_ASSERT(result == FFX_OK);
 
         // adjust the jitter offset for the projection matrix, based on the function comments
-        *x = 2.0f * fsr2_dispatch_description.jitterOffset.x / resolution_render_x;
+        *x =  2.0f * fsr2_dispatch_description.jitterOffset.x / resolution_render_x;
         *y = -2.0f * fsr2_dispatch_description.jitterOffset.y / resolution_render_y;
     }
 

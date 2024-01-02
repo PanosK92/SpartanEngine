@@ -57,7 +57,7 @@ static const int2 kOffsets3x3[9] =
 ------------------------------------------------------------------------------*/
 void depth_test_min(uint2 screen_position, inout float min_depth, inout uint2 min_pos)
 {
-    float depth = tex_depth[screen_position];
+    float depth = tex_depth[screen_position].r;
 
     if (depth < min_depth)
     {
@@ -87,66 +87,55 @@ float2 get_closest_pixel_velocity_3x3(uint2 screen_position)
 }
 
 /*------------------------------------------------------------------------------
-                              HISTORY SAMPLING
+                             HISTORY PROCESSING
 ------------------------------------------------------------------------------*/
-float3 sample_catmull_rom_9(Texture2D stex, uint2 screen_position)
+float4 sample_catmull_rom(Texture2D tex_history, float2 uv, float2 texSize)
 {
-    // Source: https://gist.github.com/TheRealMJP/c83b8c0f46b63f3a88a5986f4fa982b1
-    // License: https://gist.github.com/TheRealMJP/bc503b0b87b643d3505d41eab8b332ae
+    // based on: https://gist.github.com/TheRealMJP/c83b8c0f46b63f3a88a5986f4fa982b1
+    
+    // scale UV coordinates by the texture size to work in texel space
+    float2 samplePos = uv * texSize;
 
-    // we're going to sample a a 4x4 grid of texels surrounding the target UV coordinate. We'll do this by rounding
-    // down the sample location to get the exact center of our "starting" texel. The starting texel will be at
-    // location [1, 1] in the grid, where [0, 0] is the top left corner.
-    float2 sample_pos = screen_position;
-    float2 texPos1    = floor(sample_pos - 0.5f) + 0.5f;
+    // calculate the center of the starting texel in a 4x4 grid. The grid's [1, 1] position.
+    float2 texPos1 = floor(samplePos - 0.5f) + 0.5f;
 
-    // compute the fractional offset from our starting texel to our original sample location, which we'll
-    // feed into the Catmull-Rom spline function to get our filter weights.
-    float2 f = sample_pos - texPos1;
+    // calculate the fractional part of the original sample position relative to the starting texel.
+    float2 fractionalOffset = samplePos - texPos1;
 
-    // compute the Catmull-Rom weights using the fractional offset that we calculated earlier.
-    // these equations are pre-expanded based on our knowledge of where the texels will be located,
-    // which lets us avoid having to evaluate a piece-wise function.
-    float2 w0 = f * (-0.5f + f * (1.0f - 0.5f * f));
-    float2 w1 = 1.0f + f * f * (-2.5f + 1.5f * f);
-    float2 w2 = f * (0.5f + f * (2.0f - 1.5f * f));
-    float2 w3 = f * f * (-0.5f + 0.5f * f);
+    // calculate the Catmull-Rom weights for each axis using the fractional offset.
+    float2 w0 = fractionalOffset * (-0.5f + fractionalOffset * (1.0f - 0.5f * fractionalOffset));
+    float2 w1 = 1.0f + fractionalOffset * fractionalOffset * (-2.5f + 1.5f * fractionalOffset);
+    float2 w2 = fractionalOffset * (0.5f + fractionalOffset * (2.0f - 1.5f * fractionalOffset));
+    float2 w3 = fractionalOffset * fractionalOffset * (-0.5f + 0.5f * fractionalOffset);
 
-    // work out weighting factors and sampling offsets that will let us use bilinear filtering to
-    // simultaneously evaluate the middle 2 samples from the 4x4 grid.
-    float2 w12 = w1 + w2;
-    float2 offset12 = w2 / (w1 + w2);
+    // combine weights for the middle two samples and calculate their combined offset.
+    float2 combinedWeightMiddleSamples = w1 + w2;
+    float2 combinedOffsetMiddleSamples = w2 / combinedWeightMiddleSamples;
 
-    // compute the final UV coordinates we'll use for sampling the texture
-    float2 texPos0  = texPos1 - 1.0f;
-    float2 texPos3  = texPos1 + 2.0f;
-    float2 texPos12 = texPos1 + offset12;
+    // calculate final UV coordinates for texture sampling.
+    float2 texPos0      = (texPos1 - 1) / texSize;
+    float2 texPos3      = (texPos1 + 2) / texSize;
+    float2 texPosMiddle = (texPos1 + combinedOffsetMiddleSamples) / texSize;
 
-    texPos0  /= pass_get_resolution_out();
-    texPos3  /= pass_get_resolution_out();
-    texPos12 /= pass_get_resolution_out();
+    // Sample the texture at the calculated UV coordinates and accumulate the results.
+    float4 result = 0.0f;
+    result += tex_history.SampleLevel(samplers[sampler_bilinear_clamp], float2(texPos0.x, texPos0.y), 0.0f) * w0.x * w0.y;
+    result += tex_history.SampleLevel(samplers[sampler_bilinear_clamp], float2(texPosMiddle.x, texPos0.y), 0.0f) * combinedWeightMiddleSamples.x * w0.y;
+    result += tex_history.SampleLevel(samplers[sampler_bilinear_clamp], float2(texPos3.x, texPos0.y), 0.0f) * w3.x * w0.y;
 
-    float3 result = float3(0.0f, 0.0f, 0.0f);
+    result += tex_history.SampleLevel(samplers[sampler_bilinear_clamp], float2(texPos0.x, texPosMiddle.y), 0.0f) * w0.x * combinedWeightMiddleSamples.y;
+    result += tex_history.SampleLevel(samplers[sampler_bilinear_clamp], float2(texPosMiddle.x, texPosMiddle.y), 0.0f) * combinedWeightMiddleSamples.x * combinedWeightMiddleSamples.y;
+    result += tex_history.SampleLevel(samplers[sampler_bilinear_clamp], float2(texPos3.x, texPosMiddle.y), 0.0f) * w3.x * combinedWeightMiddleSamples.y;
 
-    result += stex.SampleLevel(samplers[sampler_bilinear_clamp], float2(texPos0.x, texPos0.y), 0.0f).xyz * w0.x * w0.y;
-    result += stex.SampleLevel(samplers[sampler_bilinear_clamp], float2(texPos12.x, texPos0.y), 0.0f).xyz * w12.x * w0.y;
-    result += stex.SampleLevel(samplers[sampler_bilinear_clamp], float2(texPos3.x, texPos0.y), 0.0f).xyz * w3.x * w0.y;
+    result += tex_history.SampleLevel(samplers[sampler_bilinear_clamp], float2(texPos0.x, texPos3.y), 0.0f) * w0.x * w3.y;
+    result += tex_history.SampleLevel(samplers[sampler_bilinear_clamp], float2(texPosMiddle.x, texPos3.y), 0.0f) * combinedWeightMiddleSamples.x * w3.y;
+    result += tex_history.SampleLevel(samplers[sampler_bilinear_clamp], float2(texPos3.x, texPos3.y), 0.0f) * w3.x * w3.y;
 
-    result += stex.SampleLevel(samplers[sampler_bilinear_clamp], float2(texPos0.x, texPos12.y), 0.0f).xyz * w0.x * w12.y;
-    result += stex.SampleLevel(samplers[sampler_bilinear_clamp], float2(texPos12.x, texPos12.y), 0.0f).xyz * w12.x * w12.y;
-    result += stex.SampleLevel(samplers[sampler_bilinear_clamp], float2(texPos3.x, texPos12.y), 0.0f).xyz * w3.x * w12.y;
-
-    result += stex.SampleLevel(samplers[sampler_bilinear_clamp], float2(texPos0.x, texPos3.y), 0.0f).xyz * w0.x * w3.y;
-    result += stex.SampleLevel(samplers[sampler_bilinear_clamp], float2(texPos12.x, texPos3.y), 0.0f).xyz * w12.x * w3.y;
-    result += stex.SampleLevel(samplers[sampler_bilinear_clamp], float2(texPos3.x, texPos3.y), 0.0f).xyz * w3.x * w3.y;
-
-    return max(result, 0.0f);
+    return result;
 }
 
-/*------------------------------------------------------------------------------
-                              HISTORY CLIPPING
-------------------------------------------------------------------------------*/
-// based on "Temporal Reprojection Anti-Aliasing" - https://github.com/playdeadgames/temporal
+
+// based on "temporal reprojection anti-Aliasing" - https://github.com/playdeadgames/temporal
 float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 {
     float3 r    = q - p;
@@ -170,26 +159,27 @@ float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
     return p + r;
 }
 
-float3 clip_history_to_neighbourhood_of_current_sample(float3 color_history, float2 velocity_closest, uint2 screen_position)
+float3 clip_history_to_neighbourhood_of_current_sample(float3 color_history, uint2 screen_position)
 {
     // sample a 3x3 neighbourhood
-    float3 s1 = tex2[screen_position + kOffsets3x3[0]];
-    float3 s2 = tex2[screen_position + kOffsets3x3[1]];
-    float3 s3 = tex2[screen_position + kOffsets3x3[2]];
-    float3 s4 = tex2[screen_position + kOffsets3x3[3]];
-    float3 s5 = tex2[screen_position + kOffsets3x3[4]];
-    float3 s6 = tex2[screen_position + kOffsets3x3[5]];
-    float3 s7 = tex2[screen_position + kOffsets3x3[6]];
-    float3 s8 = tex2[screen_position + kOffsets3x3[7]];
-    float3 s9 = tex2[screen_position + kOffsets3x3[8]];
+    float3 s1 = tex2[screen_position + kOffsets3x3[0]].rgb;
+    float3 s2 = tex2[screen_position + kOffsets3x3[1]].rgb;
+    float3 s3 = tex2[screen_position + kOffsets3x3[2]].rgb;
+    float3 s4 = tex2[screen_position + kOffsets3x3[3]].rgb;
+    float3 s5 = tex2[screen_position + kOffsets3x3[4]].rgb;
+    float3 s6 = tex2[screen_position + kOffsets3x3[5]].rgb;
+    float3 s7 = tex2[screen_position + kOffsets3x3[6]].rgb;
+    float3 s8 = tex2[screen_position + kOffsets3x3[7]].rgb;
+    float3 s9 = tex2[screen_position + kOffsets3x3[8]].rgb;
 
     // compute min and max (with an adaptive box size, which greatly reduces ghosting)
-    float3 color_avg  = (s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8 + s9) * RPC_9;
-    float3 color_avg2 = ((s1 * s1) + (s2 * s2) + (s3 * s3) + (s4 * s4) + (s5 * s5) + (s6 * s6) + (s7 * s7) + (s8 * s8) + (s9 * s9)) * RPC_9;
-    float box_size    = lerp(0.0f, 2.5f, smoothstep(0.02f, 0.0f, length(velocity_closest)));
-    float3 dev        = sqrt(abs(color_avg2 - (color_avg * color_avg))) * box_size;
-    float3 color_min  = color_avg - dev;
-    float3 color_max  = color_avg + dev;
+    float3 color_avg        = (s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8 + s9) * RPC_9;
+    float3 color_avg2       = ((s1 * s1) + (s2 * s2) + (s3 * s3) + (s4 * s4) + (s5 * s5) + (s6 * s6) + (s7 * s7) + (s8 * s8) + (s9 * s9)) * RPC_9;
+    float2 velocity_closest = get_closest_pixel_velocity_3x3(screen_position);
+    float box_size          = lerp(0.0f, 2.5f, smoothstep(0.02f, 0.0f, length(velocity_closest)));
+    float3 dev              = sqrt(abs(color_avg2 - (color_avg * color_avg))) * box_size;
+    float3 color_min        = color_avg - dev;
+    float3 color_max        = color_avg + dev;
 
     // variance clipping
     float3 color = clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history);
@@ -203,15 +193,6 @@ float3 clip_history_to_neighbourhood_of_current_sample(float3 color_history, flo
 /*------------------------------------------------------------------------------
                                     TAA
 ------------------------------------------------------------------------------*/
-float get_factor_luminance(uint2 pos, Texture2D tex_history, float3 color_input)
-{
-    float luminance_history   = luminance(tex_history[pos].rgb);
-    float luminance_current   = luminance(color_input);
-    float unbiased_difference = abs(luminance_current - luminance_history) / (max(luminance_current, luminance_history) + FLT_MIN);
-
-    return saturate(unbiased_difference);
-}
-
 float get_factor_dissoclusion(float2 uv_reprojected, float2 velocity)
 {
 
@@ -224,24 +205,23 @@ float get_factor_dissoclusion(float2 uv_reprojected, float2 velocity)
 float3 temporal_antialiasing(uint2 screen_position)
 {
     // reproject uv
-    float2 velocity       = get_velocity_ndc(screen_position);
+    float2 velocity       = get_velocity_uv(screen_position);
     float2 uv             = (screen_position + 0.5f) / pass_get_resolution_out();
     float2 uv_reprojected = uv - velocity;
 
-    // get input and history colors
-    float3 color_input   = tex2[screen_position];
-    float3 color_history = sample_catmull_rom_9(tex, screen_position).rgb;// catmull-rom sampling reduces a lot of the blurring that you get under motion
-    
-    // clip history to the neighbourhood of the current sample - fixes a lot of the ghosting
-    float2 velocity_closest = get_closest_pixel_velocity_3x3(screen_position);
-    color_history           = clip_history_to_neighbourhood_of_current_sample(color_history, velocity_closest, screen_position);
+    // get input color
+    float3 color_input   = tex2[screen_position].rgb;
+
+    // get history color - not a raw sample though
+    float3 color_history = sample_catmull_rom(tex, uv, pass_get_resolution_out()).rgb;                      // ghosting reduction: low
+    color_history        = clip_history_to_neighbourhood_of_current_sample(color_history, screen_position); // ghosting reduction: high
 
     // compute blend factor
-    float blend_factor = RPC_16; // we want to be able to accumulate as many jitter samples as we generated, that is, 16
+    float blend_factor = RPC_32; // accumulate as many jitter samples as generated, that is, 32
     {
-        float factor_screen       = !is_valid_uv(uv_reprojected);                                   // if re-projected UV is out of screen, converge to current color immediately
-        float factor_dissoclusion = get_factor_dissoclusion(uv_reprojected, velocity);              // increase blend factor when there is dissoclusion - fixes the remaining ghosting
-        blend_factor              = saturate(blend_factor + factor_screen + factor_dissoclusion);   // add to the blend factor
+        float factor_screen       = !is_valid_uv(uv_reprojected);                                 // if the re-projected UV is out of screen, converge to current color immediately
+        float factor_dissoclusion = get_factor_dissoclusion(uv_reprojected, velocity);            // ghosting reduction: medium
+        blend_factor              = saturate(blend_factor + factor_screen + factor_dissoclusion); // add to the blend factor
     }
 
     // resolve
@@ -269,3 +249,4 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     
     tex_uav[thread_id.xy].rgb = temporal_antialiasing(thread_id.xy);
 }
+

@@ -361,12 +361,12 @@ float3 get_position_ws_from_depth(const float2 uv, const float depth)
 /*------------------------------------------------------------------------------
     VELOCITY
 ------------------------------------------------------------------------------*/
-float2 get_velocity_ndc(uint2 pos)
+float2 get_velocity_uv(uint2 pos)
 {
     return tex_velocity[pos].xy;
 }
 
-float2 get_velocity_ndc(float2 uv)
+float2 get_velocity_uv(float2 uv)
 {
     return tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).xy;
 }
