@@ -795,9 +795,9 @@ namespace Spartan
             return;
 
         // acquire shaders
-        RHI_Shader* shader_ssgi   = GetShader(Renderer_Shader::ssgi_c).get();
-        RHI_Shader* shader_filter = GetShader(Renderer_Shader::temporal_filter_c).get();
-        if (!shader_ssgi->IsCompiled() || !shader_filter->IsCompiled())
+        RHI_Shader* shader_ssgi    = GetShader(Renderer_Shader::ssgi_c).get();
+        RHI_Shader* shader_denoise = GetShader(Renderer_Shader::denoise_c).get();
+        if (!shader_ssgi->IsCompiled() || !shader_denoise->IsCompiled())
             return;
 
         // acquire render targets
@@ -808,12 +808,10 @@ namespace Spartan
 
         // ssgi
         {
-            // define pipeline state
+            // set pipeline state
             static RHI_PipelineState pso;
             pso.name           = "ssgi";
             pso.shader_compute = shader_ssgi;
-
-            // set pipeline state
             cmd_list->SetPipelineState(pso);
 
             // set pass constants
@@ -830,14 +828,11 @@ namespace Spartan
             cmd_list->InsertMemoryBarrierImageWaitForWrite(tex_ssgi);
         }
 
-        cmd_list->BeginMarker("ssgi_temporal_filterintg");
+        cmd_list->BeginMarker("denoise");
         {
-            // define pipeline state
-            static RHI_PipelineState pso;
-            pso.name           = "ssgi_temporal_filterintg";
-            pso.shader_compute = shader_filter;
-
             // set pipeline state
+            static RHI_PipelineState pso;
+            pso.shader_compute = shader_denoise;
             cmd_list->SetPipelineState(pso);
 
             // set pass constants
@@ -845,14 +840,15 @@ namespace Spartan
             PushPassConstants(cmd_list);
 
             // set textures
-            SetGbufferTextures(cmd_list);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_ssgi_filtered);
             cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_ssgi);
-                                                             
+            cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_ssgi_filtered);
+
             // render
             cmd_list->Dispatch(thread_group_count_x(tex_ssgi), thread_group_count_y(tex_ssgi));
         }
         cmd_list->EndMarker();
+
+        cmd_list->Blit(tex_ssgi_filtered, tex_ssgi, false);
 
         cmd_list->EndTimeblock();
     }
@@ -1348,28 +1344,15 @@ namespace Spartan
         bool fxaa_enabled                   = antialiasing == Renderer_Antialiasing::Fxaa || antialiasing == Renderer_Antialiasing::TaaFxaa;
 
         // RENDER RESOLUTION -> OUTPUT RESOLUTION
-        if (GetResolutionRender().x != GetResolutionOutput().x)
         {
+            // if render resolution equals output resolution, FSR 2 will act as TAA
+
             swap_render = !swap_render;
 
             // use FSR 2 for different resolutions if enabled, otherwise blit
             if (upsampling_mode == Renderer_Upsampling::FSR2)
             {
                 Pass_Ffx_Fsr2(cmd_list, get_render_in, rt_frame_output);
-            }
-            else
-            {
-                cmd_list->Blit(get_render_in, rt_frame_output, false);
-            }
-        }
-        else // resolutions are the same
-        {
-            swap_render = !swap_render;
-
-            // use TAA if enabled, otherwise use blit
-            if (taa_enabled)
-            {
-                Pass_Taa(cmd_list, get_render_in, rt_frame_output);
             }
             else
             {
@@ -1449,12 +1432,9 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("taa");
+        cmd_list->BeginMarker("taa");
 
-        RHI_Texture* tex_depth             = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
-        RHI_Texture* tex_velocity          = GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity).get();
-        RHI_Texture* tex_velocity_previous = GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity_previous).get();
-        RHI_Texture* tex_history           = GetRenderTarget(Renderer_RenderTexture::frame_render_history).get();
+        RHI_Texture* tex_history = GetRenderTarget(Renderer_RenderTexture::frame_render_history).get();
 
         // set pipeline state
         static RHI_PipelineState pso;
@@ -1466,12 +1446,10 @@ namespace Spartan
         PushPassConstants(cmd_list);
 
         // set textures
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,             tex_depth);
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity,          tex_velocity);
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity_previous, tex_velocity_previous);
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex2,                      tex_in);      // input
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex,                       tex_history); // history
-        cmd_list->SetTexture(Renderer_BindingsUav::tex,                       tex_out);     // output
+        SetGbufferTextures(cmd_list);
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_in);      // input
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_history); // history
+        cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_out);     // output
 
         // render
         cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
@@ -1479,7 +1457,7 @@ namespace Spartan
         // record history
         cmd_list->Blit(tex_out, tex_history, false);
 
-        cmd_list->EndTimeblock();
+        cmd_list->EndMarker();
     }
 
     void Renderer::Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)

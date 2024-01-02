@@ -89,35 +89,35 @@ float2 get_closest_pixel_velocity_3x3(uint2 screen_position)
 /*------------------------------------------------------------------------------
                              HISTORY PROCESSING
 ------------------------------------------------------------------------------*/
-float4 sample_catmull_rom(Texture2D tex_history, float2 uv, float2 texSize)
+float4 sample_catmull_rom(Texture2D tex_history, float2 uv, float2 texture_size)
 {
     // based on: https://gist.github.com/TheRealMJP/c83b8c0f46b63f3a88a5986f4fa982b1
     
     // scale UV coordinates by the texture size to work in texel space
-    float2 samplePos = uv * texSize;
+    float2 sample_position = uv * texture_size;
 
     // calculate the center of the starting texel in a 4x4 grid. The grid's [1, 1] position.
-    float2 texPos1 = floor(samplePos - 0.5f) + 0.5f;
+    float2 texPos1 = floor(sample_position - 0.5f) + 0.5f;
 
     // calculate the fractional part of the original sample position relative to the starting texel.
-    float2 fractionalOffset = samplePos - texPos1;
+    float2 fractional_offset = sample_position - texPos1;
 
     // calculate the Catmull-Rom weights for each axis using the fractional offset.
-    float2 w0 = fractionalOffset * (-0.5f + fractionalOffset * (1.0f - 0.5f * fractionalOffset));
-    float2 w1 = 1.0f + fractionalOffset * fractionalOffset * (-2.5f + 1.5f * fractionalOffset);
-    float2 w2 = fractionalOffset * (0.5f + fractionalOffset * (2.0f - 1.5f * fractionalOffset));
-    float2 w3 = fractionalOffset * fractionalOffset * (-0.5f + 0.5f * fractionalOffset);
+    float2 w0 = fractional_offset * (-0.5f + fractional_offset * (1.0f - 0.5f * fractional_offset));
+    float2 w1 = 1.0f + fractional_offset * fractional_offset * (-2.5f + 1.5f * fractional_offset);
+    float2 w2 = fractional_offset * (0.5f + fractional_offset * (2.0f - 1.5f * fractional_offset));
+    float2 w3 = fractional_offset * fractional_offset * (-0.5f + 0.5f * fractional_offset);
 
     // combine weights for the middle two samples and calculate their combined offset.
     float2 combinedWeightMiddleSamples = w1 + w2;
     float2 combinedOffsetMiddleSamples = w2 / combinedWeightMiddleSamples;
 
     // calculate final UV coordinates for texture sampling.
-    float2 texPos0      = (texPos1 - 1) / texSize;
-    float2 texPos3      = (texPos1 + 2) / texSize;
-    float2 texPosMiddle = (texPos1 + combinedOffsetMiddleSamples) / texSize;
+    float2 texPos0      = (texPos1 - 1) / texture_size;
+    float2 texPos3      = (texPos1 + 2) / texture_size;
+    float2 texPosMiddle = (texPos1 + combinedOffsetMiddleSamples) / texture_size;
 
-    // Sample the texture at the calculated UV coordinates and accumulate the results.
+    // sample the texture at the calculated UV coordinates and accumulate the results.
     float4 result = 0.0f;
     result += tex_history.SampleLevel(samplers[sampler_bilinear_clamp], float2(texPos0.x, texPos0.y), 0.0f) * w0.x * w0.y;
     result += tex_history.SampleLevel(samplers[sampler_bilinear_clamp], float2(texPosMiddle.x, texPos0.y), 0.0f) * combinedWeightMiddleSamples.x * w0.y;
@@ -133,7 +133,6 @@ float4 sample_catmull_rom(Texture2D tex_history, float2 uv, float2 texSize)
 
     return result;
 }
-
 
 // based on "temporal reprojection anti-Aliasing" - https://github.com/playdeadgames/temporal
 float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
@@ -199,7 +198,7 @@ float get_factor_dissoclusion(float2 uv_reprojected, float2 velocity)
     float2 velocity_previous = tex_velocity_previous[uv_reprojected * pass_get_resolution_out()].xy;
     float dissoclusion       = length(velocity_previous - velocity) - 0.0001f;
 
-    return saturate(dissoclusion * 2000.0f);
+    return saturate(dissoclusion * 5000.0f);
 }
 
 float3 temporal_antialiasing(uint2 screen_position)

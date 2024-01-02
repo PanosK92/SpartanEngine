@@ -208,7 +208,7 @@ namespace Spartan
             RHI_Format frame_render_format = RHI_Format::R16G16B16A16_Float;
             render_target(Renderer_RenderTexture::frame_render)         = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, frame_render_format, frame_render_flags | RHI_Texture_PerMipViews, "rt_frame_render");
             render_target(Renderer_RenderTexture::frame_render_2)       = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, frame_render_format, frame_render_flags | RHI_Texture_PerMipViews, "rt_frame_render_2");
-            render_target(Renderer_RenderTexture::frame_render_history) = make_unique<RHI_Texture2D>(width_render, height_render, 1,         frame_render_format, frame_render_flags,                           "rt_frame_render_history");
+            //render_target(Renderer_RenderTexture::frame_render_history) = make_unique<RHI_Texture2D>(width_render, height_render, 1,         frame_render_format, frame_render_flags,                           "rt_frame_render_history");
             render_target(Renderer_RenderTexture::frame_render_opaque)  = make_unique<RHI_Texture2D>(width_render, height_render, 1,         frame_render_format, frame_render_flags,                           "rt_frame_render_opaque");
 
             // g-buffer
@@ -241,8 +241,8 @@ namespace Spartan
             render_target(Renderer_RenderTexture::sss) = make_shared<RHI_Texture2DArray>(width_render, height_render, RHI_Format::R16_Float, 4, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "rt_sss");
 
             // ssgi
-            render_target(Renderer_RenderTexture::ssgi)          = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_ssgi");
-            render_target(Renderer_RenderTexture::ssgi_filtered) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_ssgi_filtered");
+            render_target(Renderer_RenderTexture::ssgi)          = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "rt_ssgi");
+            render_target(Renderer_RenderTexture::ssgi_filtered) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "rt_ssgi_filtered");
 
             // dof
             render_target(Renderer_RenderTexture::dof_half)   = make_unique<RHI_Texture2D>(width_render / 2, height_render / 2, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_dof_half");
@@ -443,9 +443,38 @@ namespace Spartan
             shader(Renderer_Shader::dof_upscale_blend_c)->Compile(RHI_Shader_Compute, shader_dir + "depth_of_field.hlsl", async);
         }
 
-        // temporal anti-aliasing
-        shader(Renderer_Shader::taa_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::taa_c)->Compile(RHI_Shader_Compute, shader_dir + "temporal_antialiasing.hlsl", async);
+        // filtering
+        {
+            // temporal anti-aliasing
+            shader(Renderer_Shader::taa_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::taa_c)->Compile(RHI_Shader_Compute, shader_dir + "temporal_antialiasing.hlsl", async);
+
+            // denoise
+            shader(Renderer_Shader::denoise_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::denoise_c)->Compile(RHI_Shader_Compute, shader_dir + "denoise.hlsl", async);
+        }
+
+        // amd fidelityfx
+        {
+            // cas - contrast adaptive sharpening
+            shader(Renderer_Shader::ffx_cas_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::ffx_cas_c)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\cas.hlsl", async);
+
+            // spd - single pass downsample - compile synchronously as they are needed everywhere
+            {
+                shader(Renderer_Shader::ffx_spd_c_average) = make_shared<RHI_Shader>();
+                shader(Renderer_Shader::ffx_spd_c_average)->AddDefine("AVERAGE");
+                shader(Renderer_Shader::ffx_spd_c_average)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
+
+                shader(Renderer_Shader::ffx_spd_c_highest) = make_shared<RHI_Shader>();
+                shader(Renderer_Shader::ffx_spd_c_highest)->AddDefine("HIGHEST");
+                shader(Renderer_Shader::ffx_spd_c_highest)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
+
+                shader(Renderer_Shader::ffx_spd_c_antiflicker) = make_shared<RHI_Shader>();
+                shader(Renderer_Shader::ffx_spd_c_antiflicker)->AddDefine("ANTIFLICKER");
+                shader(Renderer_Shader::ffx_spd_c_antiflicker)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
+            }
+        }
 
         // skysphere
         shader(Renderer_Shader::skysphere_c) = make_shared<RHI_Shader>();
@@ -498,32 +527,6 @@ namespace Spartan
         // screen space shadows
         shader(Renderer_Shader::sss_c_bend) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::sss_c_bend)->Compile(RHI_Shader_Compute, shader_dir + "screen_space_shadows\\bend_sss.hlsl", async);
-
-        // temporal filter
-        shader(Renderer_Shader::temporal_filter_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::temporal_filter_c)->Compile(RHI_Shader_Compute, shader_dir + "temporal_filter.hlsl", async);
-
-        // amd fidelityfx
-        {
-            // cas - contrast adaptive sharpening
-            shader(Renderer_Shader::ffx_cas_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::ffx_cas_c)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\cas.hlsl", async);
-
-            // spd - single pass downsample - compile synchronously as they are needed everywhere
-            {
-                shader(Renderer_Shader::ffx_spd_c_average) = make_shared<RHI_Shader>();
-                shader(Renderer_Shader::ffx_spd_c_average)->AddDefine("AVERAGE");
-                shader(Renderer_Shader::ffx_spd_c_average)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
-
-                shader(Renderer_Shader::ffx_spd_c_highest) = make_shared<RHI_Shader>();
-                shader(Renderer_Shader::ffx_spd_c_highest)->AddDefine("HIGHEST");
-                shader(Renderer_Shader::ffx_spd_c_highest)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
-
-                shader(Renderer_Shader::ffx_spd_c_antiflicker) = make_shared<RHI_Shader>();
-                shader(Renderer_Shader::ffx_spd_c_antiflicker)->AddDefine("ANTIFLICKER");
-                shader(Renderer_Shader::ffx_spd_c_antiflicker)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
-            }
-        }
     }
 
     void Renderer::CreateFonts()
