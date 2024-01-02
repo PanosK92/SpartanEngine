@@ -241,8 +241,7 @@ namespace Spartan
             render_target(Renderer_RenderTexture::sss) = make_shared<RHI_Texture2DArray>(width_render, height_render, RHI_Format::R16_Float, 4, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "rt_sss");
 
             // ssgi
-            render_target(Renderer_RenderTexture::ssgi)          = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "rt_ssgi");
-            render_target(Renderer_RenderTexture::ssgi_filtered) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "rt_ssgi_filtered");
+            render_target(Renderer_RenderTexture::ssgi) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_ssgi");
 
             // dof
             render_target(Renderer_RenderTexture::dof_half)   = make_unique<RHI_Texture2D>(width_render / 2, height_render / 2, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_dof_half");
@@ -443,17 +442,6 @@ namespace Spartan
             shader(Renderer_Shader::dof_upscale_blend_c)->Compile(RHI_Shader_Compute, shader_dir + "depth_of_field.hlsl", async);
         }
 
-        // filtering
-        {
-            // temporal anti-aliasing
-            shader(Renderer_Shader::taa_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::taa_c)->Compile(RHI_Shader_Compute, shader_dir + "temporal_antialiasing.hlsl", async);
-
-            // denoise
-            shader(Renderer_Shader::denoise_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::denoise_c)->Compile(RHI_Shader_Compute, shader_dir + "denoise.hlsl", async);
-        }
-
         // amd fidelityfx
         {
             // cas - contrast adaptive sharpening
@@ -474,6 +462,17 @@ namespace Spartan
                 shader(Renderer_Shader::ffx_spd_c_antiflicker)->AddDefine("ANTIFLICKER");
                 shader(Renderer_Shader::ffx_spd_c_antiflicker)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
             }
+        }
+
+        // anti-aliasing
+        {
+            // temporal
+            shader(Renderer_Shader::taa_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::taa_c)->Compile(RHI_Shader_Compute, shader_dir + "temporal_antialiasing.hlsl", async);
+
+            // fxaa
+            shader(Renderer_Shader::fxaa_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::fxaa_c)->Compile(RHI_Shader_Compute, shader_dir + "fxaa\\fxaa.hlsl", async);
         }
 
         // skysphere
@@ -503,10 +502,6 @@ namespace Spartan
         // tone-mapping & gamma correction
         shader(Renderer_Shader::tonemapping_gamma_correction_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::tonemapping_gamma_correction_c)->Compile(RHI_Shader_Compute, shader_dir + "tone_mapping_gamma_correction.hlsl", async);
-
-        // fxaa
-        shader(Renderer_Shader::fxaa_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::fxaa_c)->Compile(RHI_Shader_Compute, shader_dir + "fxaa\\fxaa.hlsl", async);
 
         // motion blur
         shader(Renderer_Shader::motion_blur_c) = make_shared<RHI_Shader>();
