@@ -90,7 +90,8 @@ namespace Spartan
         Reinhard,
         Uncharted2,
         Matrix,
-        Disabled,
+        Realism,
+        Max,
     };
 
     enum class Renderer_Upsampling : uint32_t

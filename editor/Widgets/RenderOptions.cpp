@@ -366,7 +366,7 @@ void RenderOptions::OnTickVisible()
             ImGui::EndDisabled();
 
             // tonemapping
-            static vector<string> tonemapping_options = { "AMD", "ACES", "Reinhard", "Uncharted 2", "Matrix", "Off" };
+            static vector<string> tonemapping_options = { "AMD", "ACES", "Reinhard", "Uncharted 2", "Matrix", "Realism", "Off" };
             uint32_t selection_index = Renderer::GetOption<uint32_t>(Renderer_Option::Tonemapping);
             if (option_combo_box("Tonemapping", tonemapping_options, selection_index))
             {
