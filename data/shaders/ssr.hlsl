@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const float g_ssr_thickness = 15.0f;
+static const float g_ssr_thickness = 10.0f;
 
 uint compute_step_count(float roughness)
 {
@@ -37,8 +37,9 @@ float compute_alpha(uint2 screen_pos, float2 hit_uv, float v_dot_r)
 {
     float alpha = 1.0f;
 
-    alpha *= screen_fade(hit_uv); // fade toward the edges of the screen
-    alpha *= all(hit_uv);         // fade if the uv is invalid
+    alpha *= screen_fade(hit_uv);                                 // fade toward the edges of the screen
+    alpha *= all(hit_uv);                                         // fade if the uv is invalid
+    alpha  = lerp(alpha, 0.0f, smoothstep(0.9f, 1.0f, v_dot_r)); // fade when facing the camera
 
     return alpha;
 }
@@ -133,6 +134,13 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
  
     Surface surface;
     surface.Build(thread_id.xy, true, false, false);
+    
+    // compute early exit cases
+    bool early_exit_1 = pass_is_opaque() && surface.is_transparent(); // if this is an opaque pass, ignore all transparent pixels
+    bool early_exit_2 = pass_is_transparent() && surface.is_opaque(); // if this is a transparent pass, ignore all opaque pixels
+    bool early_exit_3 = surface.is_sky();                             // skip sky pixels
+    if (early_exit_1 || early_exit_2 || early_exit_3)
+        return;
 
     // compute reflection direction in view space
     float3 normal          = world_to_view(surface.normal, false);
@@ -140,14 +148,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float3 camera_to_pixel = normalize(position);
     float3 reflection      = normalize(reflect(camera_to_pixel, normal));
     float v_dot_r          = dot(-camera_to_pixel, reflection);
-
-    // compute early exit cases
-    bool early_exit_1 = pass_is_opaque() && surface.is_transparent(); // if this is an opaque pass, ignore all transparent pixels
-    bool early_exit_2 = pass_is_transparent() && surface.is_opaque(); // if this is a transparent pass, ignore all opaque pixels
-    bool early_exit_3 = surface.is_sky();                             // skip sky pixels
-    bool early_exit_4 = v_dot_r >= 0.0f;                              // skip camera facing rays
-    if (early_exit_1 || early_exit_2 || early_exit_3 || early_exit_4)
-        return;
 
     // trace
     float2 hit_uv = trace_ray(thread_id.xy, position, reflection, surface.roughness);
