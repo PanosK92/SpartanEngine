@@ -45,6 +45,8 @@ public:
     TextureViewer(Editor* editor);
 
     void OnTick() override;
+    void OnVisible() override;
+    void OnInvisible() override;
     void OnTickVisible() override;
 
     static uint32_t GetVisualisationFlags();

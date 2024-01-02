@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============
+//= INCLUDES =============
 #include "pch.h"
 #include "Component.h"
 #include "Light.h"
@@ -29,8 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AudioSource.h"
 #include "AudioListener.h"
 #include "Terrain.h"
-#include "ReflectionProbe.h"
-//==========================
+//========================
 
 //= NAMESPACES =====
 using namespace std;
@@ -62,5 +61,5 @@ namespace Spartan
     REGISTER_COMPONENT(Renderable,      ComponentType::Renderable)
     REGISTER_COMPONENT(PhysicsBody,     ComponentType::PhysicsBody)
     REGISTER_COMPONENT(Terrain,         ComponentType::Terrain)
-    REGISTER_COMPONENT(ReflectionProbe, ComponentType::ReflectionProbe)
+ 
 }

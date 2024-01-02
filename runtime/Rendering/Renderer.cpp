@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================================
+//= INCLUDES ===============================
 #include "pch.h"
 #include "Renderer.h"
 #include "../Profiling/RenderDoc.h"
@@ -37,10 +37,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/AudioSource.h"
-#include "../World/Components/ReflectionProbe.h"
 #include "ThreadPool.h"
 #include "../Profiling/Profiler.h"
-//==============================================
+//==========================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -348,7 +347,7 @@ namespace Spartan
             CreateDepthStencilStates();
             CreateRasterizerStates();
             CreateBlendStates();
-            CreateRenderTextures(true, true, true);
+            CreateRenderTargets(true, true, true);
             CreateSamplers(false);
             CreateStructuredBuffers();
         }
@@ -485,7 +484,7 @@ namespace Spartan
         if (recreate_resources)
         {
             // re-create render textures
-            CreateRenderTextures(true, false, true);
+            CreateRenderTargets(true, false, true);
 
             // re-create samplers
             CreateSamplers(true);
@@ -523,7 +522,7 @@ namespace Spartan
         if (recreate_resources)
         {
             // re-create render textures
-            CreateRenderTextures(false, true, true);
+            CreateRenderTargets(false, true, true);
 
             // re-create samplers
             CreateSamplers(true);
@@ -782,11 +781,6 @@ namespace Spartan
                 {
                     m_renderables[Renderer_Entity::Camera].emplace_back(entity);
                     m_camera = camera;
-                }
-
-                if (shared_ptr<ReflectionProbe> reflection_probe = entity->GetComponent<ReflectionProbe>())
-                {
-                    m_renderables[Renderer_Entity::ReflectionProbe].emplace_back(entity);
                 }
 
                 if (shared_ptr<AudioSource> audio_source = entity->GetComponent<AudioSource>())

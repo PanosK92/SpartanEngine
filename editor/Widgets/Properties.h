@@ -71,7 +71,6 @@ private:
     void ShowTerrain(std::shared_ptr<Spartan::Terrain> terrain) const;
     void ShowAudioSource(std::shared_ptr<Spartan::AudioSource> audio_source) const;
     void ShowAudioListener(std::shared_ptr<Spartan::AudioListener> audio_listener) const;
-    void ShowReflectionProbe(std::shared_ptr<Spartan::ReflectionProbe> reflection_probe) const;
 
     void ShowAddComponentButton() const;
     void ComponentContextMenu_Add() const;

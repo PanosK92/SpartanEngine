@@ -144,7 +144,7 @@ namespace Spartan
         static void CreateBlendStates();
         static void CreateShaders();
         static void CreateSamplers(const bool create_only_anisotropic = false);
-        static void CreateRenderTextures(const bool create_render, const bool create_output, const bool create_dynamic);
+        static void CreateRenderTargets(const bool create_render, const bool create_output, const bool create_dynamic);
         static void CreateFonts();
         static void CreateStandardMeshes();
         static void CreateStandardTextures();
@@ -153,7 +153,6 @@ namespace Spartan
         // passes - core
         static void Pass_Frame(RHI_CommandList* cmd_list);
         static void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
-        static void Pass_ReflectionProbes(RHI_CommandList* cmd_list);
         static void Pass_Visibility(RHI_CommandList* cmd_list);
         static void Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
         static void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
@@ -167,7 +166,6 @@ namespace Spartan
         // passes - debug/editor
         static void Pass_Grid(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
-        static void Pass_DebugMeshes(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out);

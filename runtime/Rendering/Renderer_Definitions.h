@@ -213,8 +213,6 @@ namespace Spartan
         taa_c,
         blur_gaussian_c,
         blur_gaussian_bilaterial_c,
-        reflection_probe_v,
-        reflection_probe_p,
         ffx_cas_c,
         ffx_spd_c_average,
         ffx_spd_c_highest,
@@ -262,7 +260,6 @@ namespace Spartan
         GeometryTransparentInstanced,
         Light,
         Camera,
-        ReflectionProbe,
         AudioSource
     };
 
