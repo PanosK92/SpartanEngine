@@ -77,7 +77,7 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs, float
     float2 ray_pos          = ray_start;
 
     // adjust position with some noise
-    float offset = get_noise_interleaved_gradient(screen_pos, true, false);
+    float offset = get_noise_interleaved_gradient(screen_pos, true, false) * 0.1f;
     ray_pos      += ray_step * offset;
     
     // adaptive ray-marching variables
@@ -161,3 +161,4 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = float4(color, alpha);
 }
+
