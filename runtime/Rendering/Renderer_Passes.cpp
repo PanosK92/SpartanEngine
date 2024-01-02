@@ -135,7 +135,7 @@ namespace Spartan
 
         // acquire render targets
         RHI_Texture* rt_render   = GetRenderTarget(Renderer_RenderTexture::frame_render).get();
-        RHI_Texture* rt_render_2 = GetRenderTarget(Renderer_RenderTexture::frame_render_post_process).get();
+        RHI_Texture* rt_render_2 = GetRenderTarget(Renderer_RenderTexture::frame_render_2).get();
         RHI_Texture* rt_output   = GetRenderTarget(Renderer_RenderTexture::frame_output).get();
 
         UpdateConstantBufferFrame(cmd_list, false);
@@ -182,7 +182,7 @@ namespace Spartan
                 Pass_Light_Composition(cmd_list, rt_render); // compose diffuse, specular, ssgi, volumetric etc.
                 Pass_Light_ImageBased(cmd_list, rt_render);  // apply IBL and SSR
             
-                cmd_list->Blit(rt_render, GetRenderTarget(Renderer_RenderTexture::frame_render_fsr2_opaque).get(), false);
+                cmd_list->Blit(rt_render, GetRenderTarget(Renderer_RenderTexture::frame_render_opaque).get(), false);
             }
             
             // transparent
@@ -1151,7 +1151,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,    is_transparent_pass ? GetRenderTarget(Renderer_RenderTexture::light_diffuse_transparent).get()  : GetRenderTarget(Renderer_RenderTexture::light_diffuse).get());
         cmd_list->SetTexture(Renderer_BindingsSrv::light_specular,   is_transparent_pass ? GetRenderTarget(Renderer_RenderTexture::light_specular_transparent).get() : GetRenderTarget(Renderer_RenderTexture::light_specular).get());
         cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric, GetRenderTarget(Renderer_RenderTexture::light_volumetric));
-        cmd_list->SetTexture(Renderer_BindingsSrv::frame,            GetRenderTarget(Renderer_RenderTexture::frame_render_post_process)); // refraction
+        cmd_list->SetTexture(Renderer_BindingsSrv::frame,            GetRenderTarget(Renderer_RenderTexture::frame_render_2)); // refraction
         cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,             GetRenderTarget(Renderer_RenderTexture::ssgi_filtered));
         cmd_list->SetTexture(Renderer_BindingsSrv::environment,      GetRenderTarget(Renderer_RenderTexture::skysphere));
 
@@ -1315,14 +1315,11 @@ namespace Spartan
 
     void Renderer::Pass_PostProcess(RHI_CommandList* cmd_list)
     {
-        // IN:  frame_Render, an HDR render resolution render target (with a second texture so passes can alternate between them)
-        // OUT: frame_Output, an LDR output resolution render target (with a second texture so passes can alternate between them)
-
-        // acquire render targets (as references so that swapping the pointers around works)
+        // acquire render targets
         RHI_Texture* rt_frame_render         = GetRenderTarget(Renderer_RenderTexture::frame_render).get();
-        RHI_Texture* rt_frame_render_scratch = GetRenderTarget(Renderer_RenderTexture::frame_render_post_process).get();
-        RHI_Texture* rt_frame_output         = GetRenderTarget(Renderer_RenderTexture::frame_output).get();     
-        RHI_Texture* rt_frame_output_scratch = GetRenderTarget(Renderer_RenderTexture::frame_output_2).get();        
+        RHI_Texture* rt_frame_render_scratch = GetRenderTarget(Renderer_RenderTexture::frame_render_2).get();
+        RHI_Texture* rt_frame_output         = GetRenderTarget(Renderer_RenderTexture::frame_output).get();
+        RHI_Texture* rt_frame_output_scratch = GetRenderTarget(Renderer_RenderTexture::frame_output_2).get();
 
         cmd_list->BeginMarker("post_proccess");
 
@@ -1344,26 +1341,38 @@ namespace Spartan
             }
         }
 
-        // determine antialiasing modes
-        Renderer_Antialiasing antialiasing = GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing);
-        bool taa_enabled                   = antialiasing == Renderer_Antialiasing::Taa  || antialiasing == Renderer_Antialiasing::TaaFxaa;
-        bool fxaa_enabled                  = antialiasing == Renderer_Antialiasing::Fxaa || antialiasing == Renderer_Antialiasing::TaaFxaa;
-
-        // get upsampling mode
+        // deduce some information
         Renderer_Upsampling upsampling_mode = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling);
+        Renderer_Antialiasing antialiasing  = GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing);
+        bool taa_enabled                    = antialiasing == Renderer_Antialiasing::Taa  || antialiasing == Renderer_Antialiasing::TaaFxaa;
+        bool fxaa_enabled                   = antialiasing == Renderer_Antialiasing::Fxaa || antialiasing == Renderer_Antialiasing::TaaFxaa;
 
         // RENDER RESOLUTION -> OUTPUT RESOLUTION
+        if (GetResolutionRender().x != GetResolutionOutput().x)
         {
-            // fsr 2 - upsampling and taa
-            if (upsampling_mode == Renderer_Upsampling::FSR2 || taa_enabled)
+            swap_render = !swap_render;
+
+            // use FSR 2 for different resolutions if enabled, otherwise blit
+            if (upsampling_mode == Renderer_Upsampling::FSR2)
             {
-                swap_render = !swap_render;
                 Pass_Ffx_Fsr2(cmd_list, get_render_in, rt_frame_output);
             }
-            // linear
-            else if (upsampling_mode == Renderer_Upsampling::Linear)
+            else
             {
-                swap_render = !swap_render;
+                cmd_list->Blit(get_render_in, rt_frame_output, false);
+            }
+        }
+        else // resolutions are the same
+        {
+            swap_render = !swap_render;
+
+            // use TAA if enabled, otherwise use blit
+            if (taa_enabled)
+            {
+                Pass_Taa(cmd_list, get_render_in, rt_frame_output);
+            }
+            else
+            {
                 cmd_list->Blit(get_render_in, rt_frame_output, false);
             }
         }
@@ -1431,6 +1440,46 @@ namespace Spartan
         }
 
         cmd_list->EndMarker();
+    }
+
+    void Renderer::Pass_Taa(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
+    {
+        // acquire shader
+        RHI_Shader* shader_c = GetShader(Renderer_Shader::taa_c).get();
+        if (!shader_c->IsCompiled())
+            return;
+
+        cmd_list->BeginTimeblock("taa");
+
+        RHI_Texture* tex_depth             = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
+        RHI_Texture* tex_velocity          = GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity).get();
+        RHI_Texture* tex_velocity_previous = GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity_previous).get();
+        RHI_Texture* tex_history           = GetRenderTarget(Renderer_RenderTexture::frame_render_history).get();
+
+        // set pipeline state
+        static RHI_PipelineState pso;
+        pso.shader_compute = shader_c;
+        cmd_list->SetPipelineState(pso);
+
+        // set pass constants
+        m_pcb_pass_cpu.set_resolution_out(tex_out);
+        PushPassConstants(cmd_list);
+
+        // set textures
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,             tex_depth);
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity,          tex_velocity);
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity_previous, tex_velocity_previous);
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex2,                      tex_in);      // input
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex,                       tex_history); // history
+        cmd_list->SetTexture(Renderer_BindingsUav::tex,                       tex_out);     // output
+
+        // render
+        cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+
+        // record history
+        cmd_list->Blit(tex_out, tex_history, false);
+
+        cmd_list->EndTimeblock();
     }
 
     void Renderer::Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
@@ -1570,29 +1619,27 @@ namespace Spartan
 
     void Renderer::Pass_Fxaa(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
-        // Acquire shaders
+        // acquire shader
         RHI_Shader* shader_c = GetShader(Renderer_Shader::fxaa_c).get();
         if (!shader_c->IsCompiled())
             return;
 
         cmd_list->BeginTimeblock("fxaa");
 
-        // Define pipeline state
+        // set pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
-
-        // Set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // Set pass constants
+        // set pass constants
         m_pcb_pass_cpu.set_resolution_out(tex_out);
         PushPassConstants(cmd_list);
 
-        // Set textures
+        // set textures
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
         
-        // Render
+        // render
         cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
 
         cmd_list->EndTimeblock();
@@ -1942,7 +1989,7 @@ namespace Spartan
         RHI_FidelityFX::FSR2_Dispatch(
             cmd_list,
             tex_in,
-            GetRenderTarget(Renderer_RenderTexture::frame_render_fsr2_opaque).get(),
+            GetRenderTarget(Renderer_RenderTexture::frame_render_opaque).get(),
             GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get(),
             GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity).get(),
             tex_out,
