@@ -795,60 +795,32 @@ namespace Spartan
             return;
 
         // acquire shaders
-        RHI_Shader* shader_ssgi    = GetShader(Renderer_Shader::ssgi_c).get();
-        RHI_Shader* shader_denoise = GetShader(Renderer_Shader::denoise_c).get();
-        if (!shader_ssgi->IsCompiled() || !shader_denoise->IsCompiled())
+        RHI_Shader* shader_ssgi = GetShader(Renderer_Shader::ssgi_c).get();
+        if (!shader_ssgi->IsCompiled())
             return;
 
-        // acquire render targets
-        RHI_Texture* tex_ssgi          = GetRenderTarget(Renderer_RenderTexture::ssgi).get();
-        RHI_Texture* tex_ssgi_filtered = GetRenderTarget(Renderer_RenderTexture::ssgi_filtered).get();
+        // acquire render target
+        RHI_Texture* tex_ssgi = GetRenderTarget(Renderer_RenderTexture::ssgi).get();
 
         cmd_list->BeginTimeblock("ssgi");
 
-        // ssgi
-        {
-            // set pipeline state
-            static RHI_PipelineState pso;
-            pso.name           = "ssgi";
-            pso.shader_compute = shader_ssgi;
-            cmd_list->SetPipelineState(pso);
+        // set pipeline state
+        static RHI_PipelineState pso;
+        pso.name = "ssgi";
+        pso.shader_compute = shader_ssgi;
+        cmd_list->SetPipelineState(pso);
 
-            // set pass constants
-            m_pcb_pass_cpu.set_resolution_out(tex_ssgi);
-            PushPassConstants(cmd_list);
+        // set pass constants
+        m_pcb_pass_cpu.set_resolution_out(tex_ssgi);
+        PushPassConstants(cmd_list);
 
-            // set textures
-            SetGbufferTextures(cmd_list);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex,           tex_ssgi);
-            cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse, GetRenderTarget(Renderer_RenderTexture::light_diffuse));
+        // set textures
+        SetGbufferTextures(cmd_list);
+        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssgi);
+        cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse, GetRenderTarget(Renderer_RenderTexture::light_diffuse));
 
-            // render
-            cmd_list->Dispatch(thread_group_count_x(tex_ssgi), thread_group_count_y(tex_ssgi));
-            cmd_list->InsertMemoryBarrierImageWaitForWrite(tex_ssgi);
-        }
-
-        cmd_list->BeginMarker("denoise");
-        {
-            // set pipeline state
-            static RHI_PipelineState pso;
-            pso.shader_compute = shader_denoise;
-            cmd_list->SetPipelineState(pso);
-
-            // set pass constants
-            m_pcb_pass_cpu.set_resolution_out(tex_ssgi);
-            PushPassConstants(cmd_list);
-
-            // set textures
-            cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_ssgi);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_ssgi_filtered);
-
-            // render
-            cmd_list->Dispatch(thread_group_count_x(tex_ssgi), thread_group_count_y(tex_ssgi));
-        }
-        cmd_list->EndMarker();
-
-        cmd_list->Blit(tex_ssgi_filtered, tex_ssgi, false);
+        // render
+        cmd_list->Dispatch(thread_group_count_x(tex_ssgi), thread_group_count_y(tex_ssgi));
 
         cmd_list->EndTimeblock();
     }
@@ -1078,7 +1050,7 @@ namespace Spartan
                 cmd_list->SetTexture(Renderer_BindingsUav::tex2,    tex_specular);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex3,    tex_volumetric);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTexture::sss).get());
-                cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,    GetRenderTarget(Renderer_RenderTexture::ssgi_filtered));
+                cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,    GetRenderTarget(Renderer_RenderTexture::ssgi));
    
                 // set shadow maps
                 {
@@ -1148,7 +1120,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::light_specular,   is_transparent_pass ? GetRenderTarget(Renderer_RenderTexture::light_specular_transparent).get() : GetRenderTarget(Renderer_RenderTexture::light_specular).get());
         cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric, GetRenderTarget(Renderer_RenderTexture::light_volumetric));
         cmd_list->SetTexture(Renderer_BindingsSrv::frame,            GetRenderTarget(Renderer_RenderTexture::frame_render_2)); // refraction
-        cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,             GetRenderTarget(Renderer_RenderTexture::ssgi_filtered));
+        cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,             GetRenderTarget(Renderer_RenderTexture::ssgi));
         cmd_list->SetTexture(Renderer_BindingsSrv::environment,      GetRenderTarget(Renderer_RenderTexture::skysphere));
 
         // render
@@ -1185,7 +1157,7 @@ namespace Spartan
 
         // set textures
         SetGbufferTextures(cmd_list);
-        cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,        GetRenderTarget(Renderer_RenderTexture::ssgi_filtered));
+        cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,        GetRenderTarget(Renderer_RenderTexture::ssgi));
         cmd_list->SetTexture(Renderer_BindingsSrv::ssr,         GetRenderTarget(Renderer_RenderTexture::ssr));
         cmd_list->SetTexture(Renderer_BindingsSrv::sss,         GetRenderTarget(Renderer_RenderTexture::sss));
         cmd_list->SetTexture(Renderer_BindingsSrv::lutIbl,      GetRenderTarget(Renderer_RenderTexture::brdf_specular_lut));
