@@ -479,19 +479,11 @@ float get_noise_interleaved_gradient(float2 screen_pos, bool animate, bool anima
     return frac(magic.z * frac(dot(screen_pos, magic.xy)));
 }
 
-float get_noise_blue(float2 screen_pos)
+float get_noise_blue(float2 screen_pos, bool animate)
 {
-    // Temporal factor - animated blue noise image
-    //float taaOn      = (float)is_taa_enabled();
-    //float frameCount = (float)g_frame;
-    //float frameStep  = taaOn * float(frameCount % 16) * RPC_16;
-    //screen_pos.x     += frameStep * 4.7526;
-    //screen_pos.y    += frameStep * 3.1914;
-
-    // Temporal factor - alternate between blue noise images
-    float slice = (buffer_frame.frame % 8) * (float)is_taa_enabled();
-
-    float2 uv = (screen_pos + 0.5f) * get_tex_noise_blue_scale();
+    // temporal factor - alternate between blue noise images
+    float slice = (buffer_frame.frame % 8) * (float)is_taa_enabled() * float(animate);
+    float2 uv   = (screen_pos + 0.5f) * get_tex_noise_blue_scale();
     return tex_noise_blue.SampleLevel(samplers[sampler_point_wrap], float3(uv.x, uv.y, slice), 0).r;
 }
 
@@ -682,3 +674,4 @@ float get_alpha_threshold(float3 world_position)
 //======================================
 
 #endif // SPARTAN_COMMON
+

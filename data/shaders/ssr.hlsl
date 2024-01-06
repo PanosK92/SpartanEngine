@@ -37,8 +37,8 @@ float compute_alpha(uint2 screen_pos, float2 hit_uv, float v_dot_r)
 {
     float alpha = 1.0f;
 
-    alpha *= screen_fade(hit_uv);                                 // fade toward the edges of the screen
-    alpha *= all(hit_uv);                                         // fade if the uv is invalid
+    alpha *= screen_fade(hit_uv);                                // fade toward the edges of the screen
+    alpha *= all(hit_uv);                                        // fade if the uv is invalid
     alpha  = lerp(alpha, 0.0f, smoothstep(0.9f, 1.0f, v_dot_r)); // fade when facing the camera
 
     return alpha;
@@ -78,12 +78,12 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs, float
     float2 ray_pos          = ray_start;
 
     // adjust position with some noise
-    float offset = get_noise_interleaved_gradient(screen_pos, true, false) * 0.1f;
+    float offset = get_noise_interleaved_gradient(screen_pos, false, false) * 0.5f;
     ray_pos      += ray_step * offset;
     
     // adaptive ray-marching variables
-    const float min_step_size = 0.1f; // minimum step size
-    const float max_step_size = 1.0f; // maximum step size
+    const float min_step_size = 0.1f;          // minimum step size
+    const float max_step_size = 1.0f;          // maximum step size
     float current_step_size   = max_step_size; // start with the largest step
 
     // binary search variables
@@ -154,11 +154,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float alpha   = compute_alpha(thread_id.xy, hit_uv, v_dot_r);
 
     // sample scene color
-    hit_uv          -= get_velocity_uv(hit_uv); // reproject
     bool valid_uv    = hit_uv.x != -1.0f && hit_uv.y != -1.0f;
     bool valid_alpha = alpha != 0.0f;
     float3 color     = (valid_uv && valid_alpha) ? tex.SampleLevel(samplers[sampler_bilinear_clamp], hit_uv, 0).rgb : 0.0f;
 
     tex_uav[thread_id.xy] = float4(color, alpha);
 }
-
