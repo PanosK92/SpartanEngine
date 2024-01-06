@@ -59,18 +59,31 @@ bool intersect_depth_buffer(float2 ray_pos, float2 ray_start, float ray_length, 
     return depth_delta >= 0.0f;
 }
 
+float3 comute_ray_end(float3 ray_start_vs, float3 ray_dir_vs)
+{
+    // calculate intersection with the near and far planes of the view frustum
+    // t_near and t_far represent the distances along the ray to these intersections
+    float t_near = (buffer_frame.camera_near - ray_start_vs.z) / ray_dir_vs.z;
+    float t_far  = (buffer_frame.camera_far - ray_start_vs.z) / ray_dir_vs.z;
+
+    // determine which of these distances to use based on their positivity
+    // the goal is to find the point where the ray first intersects the frustum
+    float t = (t_near > 0) ? t_near : t_far;
+    if (t <= 0) // If both distances are negative, take the larger one
+    {
+        t = max(t_near, t_far);
+    }
+
+    // calculate the intersection point using the determined distance (t)
+    // this is the point where the ray either enters or exits the camera's view frustum
+    return ray_start_vs + ray_dir_vs * t;
+}
+
 float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs, float roughness)
 {
-    // compute ray end and start depth
-    float3 ray_end_vs = ray_start_vs + ray_dir_vs * buffer_frame.camera_far;
-    float depth_end   = ray_end_vs.z;
-    float depth_start = ray_start_vs.z;
-    
-    // compute ray start and end in uv space
-    float2 ray_start = view_to_uv(ray_start_vs);
-    float2 ray_end   = view_to_uv(ray_end_vs);
-
-    // compute ray step
+    float3 ray_end_vs       = comute_ray_end(ray_start_vs, ray_dir_vs);
+    float2 ray_start        = view_to_uv(ray_start_vs);
+    float2 ray_end          = view_to_uv(ray_end_vs);
     uint step_count         = compute_step_count(roughness);
     float2 ray_start_to_end = ray_end - ray_start;
     float ray_length        = length(ray_start_to_end);
@@ -96,9 +109,8 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs, float
         // early exit if the ray is out of screen
         if (!is_valid_uv(ray_pos))
             return -1.0f;
-
-        // intersect depth buffer
-        if (intersect_depth_buffer(ray_pos, ray_start, ray_length, depth_start, depth_end, depth_delta))
+        
+        if (intersect_depth_buffer(ray_pos, ray_start, ray_length, ray_start_vs.z, ray_end_vs.z, depth_delta))
         {
             // adjust step size based on depth delta
             float depth_difference = abs(depth_delta);
@@ -158,3 +170,4 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = reflection_color;
 }
+
