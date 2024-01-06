@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const float g_ssr_thickness = 10.0f;
+static const float g_ssr_depth_threshold = 10.0f;
 
 uint compute_step_count(float roughness)
 {
@@ -38,7 +38,7 @@ float compute_alpha(uint2 screen_pos, float2 hit_uv, float v_dot_r)
     float alpha = 1.0f;
 
     alpha *= screen_fade(hit_uv);                                // fade toward the edges of the screen
-    alpha *= all(hit_uv);                                        // fade if the uv is invalid
+    alpha *= is_valid_uv(hit_uv);                                // fade if the uv is invalid
     alpha  = lerp(alpha, 0.0f, smoothstep(0.9f, 1.0f, v_dot_r)); // fade when facing the camera
 
     return alpha;
@@ -66,7 +66,7 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs, float
     float depth_end   = ray_end_vs.z;
     float depth_start = ray_start_vs.z;
     
-    // compute ray start and end (in UV space)
+    // compute ray start and end in uv space
     float2 ray_start = view_to_uv(ray_start_vs);
     float2 ray_end   = view_to_uv(ray_end_vs);
 
@@ -95,18 +95,18 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs, float
     {
         // early exit if the ray is out of screen
         if (!is_valid_uv(ray_pos))
-            return 0.0f;
-        
+            return -1.0f;
+
         // intersect depth buffer
         if (intersect_depth_buffer(ray_pos, ray_start, ray_length, depth_start, depth_end, depth_delta))
         {
             // adjust step size based on depth delta
             float depth_difference = abs(depth_delta);
-            current_step_size      = lerp(min_step_size, max_step_size, depth_difference / g_ssr_thickness);
+            current_step_size      = lerp(min_step_size, max_step_size, depth_difference / g_ssr_depth_threshold);
             current_step_size      = max(current_step_size, min_step_size);
 
             // test if we are within the threshold
-            if (depth_difference <= g_ssr_thickness)
+            if (depth_difference <= g_ssr_depth_threshold)
                 return ray_pos;
 
             // adjust ray position
@@ -120,7 +120,7 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs, float
         }
     }
 
-    return 0.0f;
+    return -1.0f;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -151,12 +151,10 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // trace
     float2 hit_uv = trace_ray(thread_id.xy, position, reflection, surface.roughness);
-    float alpha   = compute_alpha(thread_id.xy, hit_uv, v_dot_r);
 
     // sample scene color
-    bool valid_uv    = hit_uv.x != -1.0f && hit_uv.y != -1.0f;
-    bool valid_alpha = alpha != 0.0f;
-    float3 color     = (valid_uv && valid_alpha) ? tex.SampleLevel(samplers[sampler_bilinear_clamp], hit_uv, 0).rgb : 0.0f;
+    float alpha             = compute_alpha(thread_id.xy, hit_uv, v_dot_r);
+    float4 reflection_color = lerp(0.0f, tex.SampleLevel(samplers[sampler_bilinear_clamp], hit_uv, 0), alpha);
 
-    tex_uav[thread_id.xy] = float4(color, alpha);
+    tex_uav[thread_id.xy] = reflection_color;
 }
