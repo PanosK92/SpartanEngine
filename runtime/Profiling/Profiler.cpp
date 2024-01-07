@@ -123,6 +123,7 @@ namespace Spartan
         bool is_gpu_marking_enabled             = false;
         bool is_gpu_timing_enabled              = false;
         bool is_renderdoc_enabled               = false;
+        bool is_shader_optimization_enabled     = true;
 
         static string format_float(float value)
         {
@@ -557,5 +558,10 @@ namespace Spartan
     bool Profiler::IsRenderdocEnabled()
     {
         return is_renderdoc_enabled;
+    }
+
+    bool Profiler::IsShaderOptimizationEnabled()
+    {
+        return is_shader_optimization_enabled;
     }
 }
