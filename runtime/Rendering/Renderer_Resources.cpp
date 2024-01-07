@@ -396,12 +396,11 @@ namespace Spartan
         {
             // gaussian
             shader(Renderer_Shader::blur_gaussian_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::blur_gaussian_c)->AddDefine("PASS_BLUR_GAUSSIAN");
             shader(Renderer_Shader::blur_gaussian_c)->Compile(RHI_Shader_Compute, shader_dir + "blur.hlsl", async);
 
-            // gaussian bilateral 
+            // gaussian bilateral - or depth aware
             shader(Renderer_Shader::blur_gaussian_bilaterial_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::blur_gaussian_bilaterial_c)->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
+            shader(Renderer_Shader::blur_gaussian_bilaterial_c)->AddDefine("PASS_BLUR_GAUSSIAN_BILATERAL");
             shader(Renderer_Shader::blur_gaussian_bilaterial_c)->Compile(RHI_Shader_Compute, shader_dir + "blur.hlsl", async);
         }
 

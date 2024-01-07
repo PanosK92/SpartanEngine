@@ -137,7 +137,7 @@ namespace Spartan
             m_value.m02 = value.z;
         };
 
-        void set_f3_value(const float x, const float y, const float z)
+        void set_f3_value(const float x, const float y = 0.0f, const float z = 0.0f)
         {
             m_value.m00 = x;
             m_value.m01 = y;

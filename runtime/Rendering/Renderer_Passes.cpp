@@ -197,8 +197,7 @@ namespace Spartan
                 {
                     const bool depth_aware = false;
                     const float radius     = 1.0f;
-                    const float sigma      = 12.0f;
-                    Pass_Blur_Gaussian(cmd_list, rt_render_2, depth_aware, radius, sigma, i);
+                    Pass_Blur_Gaussian(cmd_list, rt_render_2, depth_aware, radius, i);
                 }
             
                 Pass_Depth_Prepass(cmd_list, do_transparent_pass);
@@ -1062,34 +1061,22 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float radius, const float sigma, const uint32_t mip /*= all_mips*/)
+    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float radius, const uint32_t mip /*= all_mips*/)
     {
-        // acquire shaders
+        // acquire shader
         RHI_Shader* shader_c = GetShader(depth_aware ? Renderer_Shader::blur_gaussian_bilaterial_c : Renderer_Shader::blur_gaussian_c).get();
         if (!shader_c->IsCompiled())
             return;
 
-        const float pixel_stride = 1.0f;
+        // compute width and height
         const bool mip_requested = mip != rhi_all_mips;
         const uint32_t mip_range = mip_requested ? 1 : 0;
+        const uint32_t width     = mip_requested ? (tex_in->GetWidth()  >> mip) : tex_in->GetWidth();
+        const uint32_t height    = mip_requested ? (tex_in->GetHeight() >> mip) : tex_in->GetHeight();
 
-        // if we need to blur a specific mip, ensure that the texture has per mip views
-        if (mip_requested)
-        {
-            SP_ASSERT(tex_in->HasPerMipViews());
-        }
-
-        // compute width and height
-        const uint32_t width  = mip_requested ? (tex_in->GetWidth()  >> mip) : tex_in->GetWidth();
-        const uint32_t height = mip_requested ? (tex_in->GetHeight() >> mip) : tex_in->GetHeight();
-
-        // acquire render targets
-        RHI_Texture* tex_depth  = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
-        RHI_Texture* tex_normal = GetRenderTarget(Renderer_RenderTexture::gbuffer_normal).get();
+        // acquire blur scratch buffer
         RHI_Texture* tex_blur   = GetRenderTarget(Renderer_RenderTexture::blur).get();
-
-        // ensure that the blur scratch texture is big enough
-        SP_ASSERT(tex_blur->GetWidth() >= width && tex_blur->GetHeight() >= height);
+        SP_ASSERT_MSG(tex_blur->GetWidth() >= width && tex_blur->GetHeight() >= height, "Input texture is larget than the blur scratch buffer");
 
         // compute thread group count
         const uint32_t thread_group_count_x_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(width) / thread_group_count));
@@ -1099,27 +1086,21 @@ namespace Spartan
 
         // horizontal pass
         {
-            // define pipeline state
+            // set pipeline state
             static RHI_PipelineState pso;
             pso.shader_compute = shader_c;
-
-            // set pipeline state
             cmd_list->SetPipelineState(pso);
 
             // set pass constants
             m_pcb_pass_cpu.set_resolution_in(Vector2(static_cast<float>(width), static_cast<float>(height)));
             m_pcb_pass_cpu.set_resolution_out(tex_blur);
-            m_pcb_pass_cpu.set_f3_value(pixel_stride, 0.0f, radius);
-            m_pcb_pass_cpu.set_f3_value2(sigma);
+            m_pcb_pass_cpu.set_f3_value(radius, 0.0f);
             PushPassConstants(cmd_list);
 
             // set textures
+            SetGbufferTextures(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_blur);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in, mip, mip_range);
-            if (depth_aware)
-            {
-                SetGbufferTextures(cmd_list);
-            }
 
             // render
             cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
@@ -1127,27 +1108,13 @@ namespace Spartan
 
         // vertical pass
         {
-            // define pipeline state
-            static RHI_PipelineState pso;
-            pso.shader_compute = shader_c;
-
-            // set pipeline state
-            cmd_list->SetPipelineState(pso);
-
             // set pass constants
-            m_pcb_pass_cpu.set_resolution_in(Vector2(static_cast<float>(width), static_cast<float>(height)));
-            m_pcb_pass_cpu.set_resolution_out(tex_blur);
-            m_pcb_pass_cpu.set_f3_value(0.0f, pixel_stride, radius);
-            m_pcb_pass_cpu.set_f3_value2(sigma);
+            m_pcb_pass_cpu.set_f3_value(radius, 1.0f);
             PushPassConstants(cmd_list);
 
             // set textures
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_in, mip, mip_range);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_blur);
-            if (depth_aware)
-            {
-                SetGbufferTextures(cmd_list);
-            }
 
             // render
             cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
@@ -2112,7 +2079,7 @@ namespace Spartan
                             const bool depth_aware = false;
                             const float radius     = 30.0f;
                             const float sigma      = 32.0f;
-                            Pass_Blur_Gaussian(cmd_list, tex_outline, depth_aware, radius, sigma);
+                            Pass_Blur_Gaussian(cmd_list, tex_outline, depth_aware, radius);
                         }
                         
                         // Combine color silhouette with frame
@@ -2281,9 +2248,8 @@ namespace Spartan
             // smooth out the sampling pattern - cheaper than increasing the sample count
             for (uint32_t i = 0; i < 5; i++)
             {
-                float radius = 20.0f; // pixel count
-                float sigma  = 10.0f; // spread
-                Pass_Blur_Gaussian(cmd_list, tex_environment, false, radius, sigma, mip_level);
+                float radius = 20.0f;
+                Pass_Blur_Gaussian(cmd_list, tex_environment, false, radius, mip_level);
             }
         }
 
