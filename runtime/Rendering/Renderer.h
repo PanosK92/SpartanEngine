@@ -162,7 +162,7 @@ namespace Spartan
         static void Pass_Skysphere(RHI_CommandList* cmd_list);
         static void Pass_Light_Integration_BrdfSpecularLut(RHI_CommandList* cmd_list);
         static void Pass_Light_Integration_EnvironmentPrefilter(RHI_CommandList* cmd_list);
-        static void Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float radius, const float sigma, const uint32_t mip = rhi_all_mips);
+        static void Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float radius,  const uint32_t mip = rhi_all_mips);
         // passes - debug/editor
         static void Pass_Grid(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);

@@ -23,103 +23,62 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const float g_threshold = 0.1f;
-
-float compute_gaussian_weight(int sample_distance)
+float compute_gaussian_weight(int sample_distance, const float2 sigma2)
 {
-    float sigma  = pass_get_f3_value2().x;
-    float sigma2 = sigma * sigma;
-    float g      = 1.0f / sqrt(2.0f * 3.14159f * sigma2);
+    float g = 1.0f / sqrt(PI2 * sigma2);
     return (g * exp(-(sample_distance * sample_distance) / (2.0f * sigma2)));
 }
 
-// Gaussian blur
-// https://github.com/TheRealMJP/MSAAFilter/blob/master/MSAAFilter/PostProcessing.hlsl#L50
-float3 gaussian_blur(const uint2 pos)
+float2 adjust_sample_uv(const float2 uv, const float2 direction)
 {
-    const float3 f3_value = pass_get_f3_value();
-
-    const float2 uv             = (pos.xy + 0.5f) / pass_get_resolution_in();
-    const float2 texel_size     = float2(1.0f / pass_get_resolution_in().x, 1.0f / pass_get_resolution_in().y);
-    const float2 blur_direction = f3_value.xy;
-    const float2 direction      = texel_size * blur_direction;
-    const bool is_vertical_pass = blur_direction.y != 0.0f;
-
-    float weight_sum = 0.0f;
-    float3 color     = 0.0f;
-    float radius     = f3_value.z;
-    for (int i = -radius; i < radius; i++)
-    {
-        float2 sample_uv = uv + (i * direction);
-
-        // During the vertical pass, the input texture is secondary scratch texture which belongs to the blur pass.
-        // It's at least as big as the original input texture (to be blurred), so we have to adapt the sample uv.
-        sample_uv = lerp(sample_uv, (trunc(sample_uv * pass_get_resolution_in()) + 0.5f) / pass_get_resolution_out(), is_vertical_pass);
-        
-        float weight = compute_gaussian_weight(i);
-        color        += tex.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv, 0).rgb * weight;
-        weight_sum   += weight;
-    }
-
-    return color / weight_sum;
+    // during the vertical pass, the input texture is secondary scratch texture which belongs to the blur pass
+    // it's at least as big as the original input texture (to be blurred), so we have to adapt the sample uv
+    return lerp(uv, (trunc(uv * pass_get_resolution_in()) + 0.5f) / pass_get_resolution_out(), direction.y != 0.0f);
 }
 
-// Depth aware Gaussian blur
-float3 depth_aware_gaussian_blur(const uint2 pos)
+float3 gaussian_blur(const uint2 pos, const float2 uv, const float radius, const float sigma2, const float2 direction)
 {
-    const float3 f3_value = pass_get_f3_value();
+    const float center_depth   = get_linear_depth(pos);
+    const float3 center_normal = get_normal(pos);
 
-    const float2 uv             = (pos.xy + 0.5f) / pass_get_resolution_in();
-    const float2 texel_size     = float2(1.0f / pass_get_resolution_in().x, 1.0f / pass_get_resolution_in().y);
-    const float2 blur_direction = f3_value.xy;
-    const float2 direction      = texel_size * blur_direction;
-    const bool is_vertical_pass = blur_direction.y != 0.0f;
-    
-    const float center_depth   = get_linear_depth(uv);
-    const float3 center_normal = get_normal(uv);
-
-    float weight_sum = 0.0f;
-    float3 color     = 0.0f;
-    float radius     = f3_value.z;
+    float3 color  = 0.0f;
+    float weights = 0.0f;
     for (int i = -radius; i < radius; i++)
     {
         float2 sample_uv     = uv + (i * direction);
         float sample_depth   = get_linear_depth(sample_uv);
         float3 sample_normal = get_normal(sample_uv);
-        
-        // Depth-awareness
-        float awareness_depth  = saturate(g_threshold - abs(center_depth - sample_depth));
+
+        float depth_awareness = 1.0f; 
+        #if PASS_BLUR_GAUSSIAN_BILATERAL
+        float awareness_depth  = saturate(0.1f - abs(center_depth - sample_depth));
         float awareness_normal = saturate(dot(center_normal, sample_normal)) + FLT_MIN; // FLT_MIN prevents NaN
-        float awareness        = awareness_normal * awareness_depth;
+        depth_awareness        = awareness_normal * awareness_depth;
+        #endif
 
-        // During the vertical pass, the input texture is secondary scratch texture which belongs to the blur pass.
-        // It's at least as big as the original input texture (to be blurred), so we have to adapt the sample uv.
-        sample_uv = lerp(sample_uv, (trunc(sample_uv * pass_get_resolution_in()) + 0.5f) / pass_get_resolution_out(), is_vertical_pass);
-
-        float weight = compute_gaussian_weight(i) * awareness;
-        color        += tex.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv, 0).rgb * weight;
-        weight_sum   += weight; 
+        float weight  = compute_gaussian_weight(i, sigma2) * depth_awareness;
+        color        += tex.SampleLevel(samplers[sampler_bilinear_clamp], adjust_sample_uv(sample_uv, direction), 0).rgb * weight;
+        weights      += weight;
     }
 
-    return color / weight_sum;
+    return color / weights;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    // Out of bounds check
-    if (any(int2(thread_id.xy) >= pass_get_resolution_out().xy))
+    if (any(int2(thread_id.xy) >= pass_get_resolution_in()) || any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
-    float3 color = 0.0f;
-
-#if PASS_BLUR_GAUSSIAN
-    color = gaussian_blur(thread_id.xy);
-#endif
-
-#if PASS_BLUR_BILATERAL_GAUSSIAN
-    color = depth_aware_gaussian_blur(thread_id.xy);
-#endif
+    float3 color             = 0.0f;
+    const float3 f3_value    = pass_get_f3_value();
+    const float radius       = f3_value.x;
+    const float2 direction   = f3_value.y == 1.0f ? float2(0.0f, 1.0f) : float2(1.0f, 0.0f);
+    const float sigma        = radius / 3.0f;
+    const float2 uv          = (thread_id.xy + 0.5f) / pass_get_resolution_in();
+    const float2 texel_size  = 1.0f / pass_get_resolution_in();
     
+    color = gaussian_blur(thread_id.xy, uv, radius, sigma * sigma, direction * texel_size);
+
     tex_uav[thread_id.xy] = float4(color, tex_uav[thread_id.xy].a);
 }
