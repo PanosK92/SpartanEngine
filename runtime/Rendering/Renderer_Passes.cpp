@@ -1074,13 +1074,13 @@ namespace Spartan
         const uint32_t width     = mip_requested ? (tex_in->GetWidth()  >> mip) : tex_in->GetWidth();
         const uint32_t height    = mip_requested ? (tex_in->GetHeight() >> mip) : tex_in->GetHeight();
 
-        // acquire blur scratch buffer
-        RHI_Texture* tex_blur   = GetRenderTarget(Renderer_RenderTexture::blur).get();
-        SP_ASSERT_MSG(tex_blur->GetWidth() >= width && tex_blur->GetHeight() >= height, "Input texture is larget than the blur scratch buffer");
-
         // compute thread group count
         const uint32_t thread_group_count_x_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(width) / thread_group_count));
         const uint32_t thread_group_count_y_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(height) / thread_group_count));
+
+        // acquire blur scratch buffer
+        RHI_Texture* tex_blur   = GetRenderTarget(Renderer_RenderTexture::blur).get();
+        SP_ASSERT_MSG(tex_blur->GetWidth() >= width && tex_blur->GetHeight() >= height, "Input texture is larget than the blur scratch buffer");
 
         cmd_list->BeginMarker("blur_gaussian");
 
