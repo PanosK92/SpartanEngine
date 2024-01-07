@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const float g_ssr_depth_threshold = 10.0f;
+static const float g_ssr_depth_threshold = 15.0f;
 
 uint compute_step_count(float roughness)
 {
@@ -91,7 +91,7 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs, float
     float2 ray_pos          = ray_start;
 
     // adjust position with some noise
-    float offset = get_noise_interleaved_gradient(screen_pos, false, false) * 0.5f;
+    float offset = get_noise_interleaved_gradient(screen_pos, false, false);
     ray_pos      += ray_step * offset;
     
     // adaptive ray-marching variables
@@ -170,4 +170,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = reflection_color;
 }
-

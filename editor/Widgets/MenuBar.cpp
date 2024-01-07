@@ -434,9 +434,9 @@ void MenuBar::EntryHelp()
         ImGui::MenuItem("About", nullptr, &show_about_window);
         ImGui::MenuItem("Contributors", nullptr, &show_contributors_window);
 
-        if (ImGui::MenuItem("How to contribute", nullptr, nullptr))
+        if (ImGui::MenuItem("Contributing", nullptr, nullptr))
         {
-            Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/wiki/How-to-contribute");
+            Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/blob/master/contributing.md");
         }
 
         if (ImGui::MenuItem("Perks of a contributor", nullptr, nullptr))

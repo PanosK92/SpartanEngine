@@ -39,10 +39,10 @@ using namespace Spartan::Math;
 
 namespace
 {
-    static const float button_size = 15.0f;
+    const float button_size = 15.0f;
 
-    // A button that when pressed will call "on press" and derives it's color (active/inactive) based on "get_visibility".
-    static void toolbar_button(IconType icon_type, const string tooltip_text, const function<bool()>& get_visibility, const function<void()>& on_press)
+    // a button that when pressed will call "on press" and derives it's color (active/inactive) based on "get_visibility".
+    void toolbar_button(IconType icon_type, const string tooltip_text, const function<bool()>& get_visibility, const function<void()>& on_press)
     {
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Button, get_visibility() ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
