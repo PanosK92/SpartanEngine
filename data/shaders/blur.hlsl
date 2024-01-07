@@ -38,9 +38,11 @@ float2 adjust_sample_uv(const float2 uv, const float2 direction)
 
 float3 gaussian_blur(const uint2 pos, const float2 uv, const float radius, const float sigma2, const float2 direction)
 {
+    #if PASS_BLUR_GAUSSIAN_BILATERAL
     const float center_depth   = get_linear_depth(pos);
     const float3 center_normal = get_normal(pos);
-
+    #endif
+    
     float3 color  = 0.0f;
     float weights = 0.0f;
     for (int i = -radius; i < radius; i++)
@@ -70,15 +72,16 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= pass_get_resolution_in()) || any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
-    float3 color             = 0.0f;
+    // fetch properties and compute some information
     const float3 f3_value    = pass_get_f3_value();
     const float radius       = f3_value.x;
     const float2 direction   = f3_value.y == 1.0f ? float2(0.0f, 1.0f) : float2(1.0f, 0.0f);
     const float sigma        = radius / 3.0f;
     const float2 uv          = (thread_id.xy + 0.5f) / pass_get_resolution_in();
     const float2 texel_size  = 1.0f / pass_get_resolution_in();
-    
-    color = gaussian_blur(thread_id.xy, uv, radius, sigma * sigma, direction * texel_size);
 
-    tex_uav[thread_id.xy] = float4(color, tex_uav[thread_id.xy].a);
+    float4 color = tex_uav[thread_id.xy];
+    color.rgb    = gaussian_blur(thread_id.xy, uv, radius, sigma * sigma, direction * texel_size);
+
+    tex_uav[thread_id.xy] = color;
 }
