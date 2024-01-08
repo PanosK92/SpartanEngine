@@ -226,7 +226,7 @@ namespace Spartan
             }
 
             // light
-            uint32_t light_flags = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit;
+            uint32_t light_flags    = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit;
             RHI_Format light_format = RHI_Format::R11G11B10_Float;
             render_target(Renderer_RenderTexture::light_diffuse)              = make_unique<RHI_Texture2D>(width_render, height_render, 1, light_format, light_flags, "rt_light_diffuse");
             render_target(Renderer_RenderTexture::light_diffuse_transparent)  = make_unique<RHI_Texture2D>(width_render, height_render, 1, light_format, light_flags, "rt_light_diffuse_transparent");
@@ -234,8 +234,11 @@ namespace Spartan
             render_target(Renderer_RenderTexture::light_specular_transparent) = make_unique<RHI_Texture2D>(width_render, height_render, 1, light_format, light_flags, "rt_light_specular_transparent");
             render_target(Renderer_RenderTexture::light_volumetric)           = make_unique<RHI_Texture2D>(width_render, height_render, 1, light_format, light_flags, "rt_light_volumetric");
 
-            // ssr - mips are used to emulate roughness for surfaces which require it
-            render_target(Renderer_RenderTexture::ssr) = make_shared<RHI_Texture2D>(width_render, height_render, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_ssr");
+            // ssr
+            {
+                render_target(Renderer_RenderTexture::ssr)           = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_ssr");
+                render_target(Renderer_RenderTexture::ssr_roughness) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_ssr_roughness");
+            }
 
             // sss
             render_target(Renderer_RenderTexture::sss) = make_shared<RHI_Texture2DArray>(width_render, height_render, RHI_Format::R16_Float, 4, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "rt_sss");
@@ -402,6 +405,12 @@ namespace Spartan
             shader(Renderer_Shader::blur_gaussian_bilaterial_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::blur_gaussian_bilaterial_c)->AddDefine("PASS_BLUR_GAUSSIAN_BILATERAL");
             shader(Renderer_Shader::blur_gaussian_bilaterial_c)->Compile(RHI_Shader_Compute, shader_dir + "blur.hlsl", async);
+
+            // gaussian bilateral - where the alpha is used as the blur radius
+            shader(Renderer_Shader::blur_gaussian_bilaterial_radius_from_texture_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::blur_gaussian_bilaterial_radius_from_texture_c)->AddDefine("PASS_BLUR_GAUSSIAN_BILATERAL");
+            shader(Renderer_Shader::blur_gaussian_bilaterial_radius_from_texture_c)->AddDefine("RADIUS_FROM_TEXTURE");
+            shader(Renderer_Shader::blur_gaussian_bilaterial_radius_from_texture_c)->Compile(RHI_Shader_Compute, shader_dir + "blur.hlsl", async);
         }
 
         // bloom
