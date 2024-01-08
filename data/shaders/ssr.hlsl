@@ -87,12 +87,13 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs, float
     uint step_count         = compute_step_count(roughness);
     float2 ray_start_to_end = ray_end - ray_start;
     float ray_length        = length(ray_start_to_end);
-    float2 ray_step         = (ray_start_to_end + FLT_MIN) / (float)(step_count);
+    float2 ray_step_uv      = (ray_start_to_end + FLT_MIN) / (float)(step_count);
+    float3 ray_step_vs      = (ray_end_vs - ray_start_vs) / (float)(step_count);
     float2 ray_pos          = ray_start;
 
     // adjust position with some noise
     float offset = get_noise_interleaved_gradient(screen_pos, false, false);
-    ray_pos      += ray_step * offset;
+    ray_pos      += ray_step_uv * offset;
     
     // adaptive ray-marching variables
     const float min_step_size = 0.1f;          // minimum step size
@@ -104,6 +105,7 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs, float
     float step_size   = 1.0;
 
     // ray-march
+    reflection_distance = 0.0f;
     for (uint i = 0; i < step_count; i++)
     {
         // early exit if the ray is out of screen
@@ -122,15 +124,16 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs, float
                 return ray_pos;
             
             // adjust ray position
-            ray_pos             += sign(depth_delta) * ray_step * current_step_size;
-            reflection_distance  = length(ray_pos - ray_start) * ray_length;
+            ray_pos += sign(depth_delta) * ray_step_uv * current_step_size;
         }
         else
         {
             // reset step size to max if not intersecting
             current_step_size  = max_step_size;
-            ray_pos           += ray_step * current_step_size;
+            ray_pos           += ray_step_uv * current_step_size;
         }
+
+         reflection_distance += length(ray_step_vs * current_step_size);
     }
 
     return -1.0f;
@@ -169,11 +172,11 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float3 reflection_color   = tex.SampleLevel(samplers[sampler_bilinear_clamp], hit_uv, 0).rgb * alpha; // modulate with alpha because invalid UVs will get clamped colors
 
     // determine reflection roughness
-    float max_reflection_distance      = 30.0f;
-    float roughness_attenuation_factor = 0.5f;
-    float distance_attenuation         = reflection_distance / max_reflection_distance;
-    float reflection_roughness         = surface.roughness * (1.0 + roughness_attenuation_factor * distance_attenuation);
-    
+    float max_reflection_distance = 1.0f;
+    float distance_attenuation    = smoothstep(0.0f, max_reflection_distance, reflection_distance);
+    float reflection_roughness    = lerp(surface.roughness, clamp(surface.roughness * 1.5f, 0.0f, 1.0f), distance_attenuation);
+    reflection_roughness          = surface.roughness;
+
     tex_uav[thread_id.xy]  = float4(reflection_color, alpha);
-    tex_uav2[thread_id.xy] = surface.roughness_alpha * 32.0f;
+    tex_uav2[thread_id.xy] = (reflection_roughness * reflection_roughness) * 32.0f;
 }

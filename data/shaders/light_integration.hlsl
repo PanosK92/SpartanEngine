@@ -162,13 +162,7 @@ float3 prefilter_environment(float2 uv)
             float v     = 1.0 - (theta / PI);
 
             float3 sampled_color = tex_environment.SampleLevel(samplers[sampler_bilinear_wrap], float2(u, v), 0).rgb;
-
-            // apply dynamic dimming directly to the sampled color - this is to prevent small mips from being overblown
-            float intensity_threshold  = 0.5f;
-            float intensity            = max(max(sampled_color.r, sampled_color.g), sampled_color.b);
-            float dimming_factor       = lerp(1.0, 0.25f, saturate((intensity - intensity_threshold) * roughness));
-            sampled_color             *= dimming_factor;
-
+            
             color        += sampled_color * n_dot_l;
             total_weight += n_dot_l;
         }
