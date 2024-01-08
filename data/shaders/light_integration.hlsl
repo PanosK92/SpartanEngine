@@ -156,14 +156,12 @@ float3 prefilter_environment(float2 uv)
         float n_dot_l = saturate(dot(N, L));
         if (n_dot_l > 0.0)
         {
-            float phi   = atan2(L.z, L.x) + PI;
-            float theta = acos(L.y);
-            float u     = (phi + PI) / (2.0 * PI);
-            float v     = 1.0 - (theta / PI);
+            float phi    = atan2(L.z, L.x) + PI;
+            float theta  = acos(L.y);
+            float u      = (phi + PI) / (2.0 * PI);
+            float v      = 1.0 - (theta / PI);
 
-            float3 sampled_color = tex_environment.SampleLevel(samplers[sampler_bilinear_wrap], float2(u, v), 0).rgb;
-            
-            color        += sampled_color * n_dot_l;
+            color        += tex_environment.SampleLevel(samplers[sampler_bilinear_wrap], float2(u, v), 0).rgb * n_dot_l;
             total_weight += n_dot_l;
         }
     }

@@ -70,7 +70,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     // blend between ssr and the envirnoment
     const float4 ssr_sample = is_ssr_enabled() ? tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, 0.0f) : 0.0f;
-    float3 ibl_specular = lerp(ibl_specular_environment, ssr_sample.rgb, ssr_sample.a);
+    float3 ibl_specular     = lerp(ibl_specular_environment, ssr_sample.rgb, ssr_sample.a);
 
     // modulate outcoming energy
     ibl_specular *= specular_energy;
