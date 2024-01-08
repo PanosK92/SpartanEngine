@@ -77,7 +77,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // fetch properties and compute some information
     const float3 f3_value   = pass_get_f3_value();
     #if RADIUS_FROM_TEXTURE 
-    const float radius      = clamp(tex_uav2[thread_id.xy].r, 1.0f, 64.0f);
+    const float radius      = clamp(tex_uav2[thread_id.xy].r, 1.0f, 32.0f);
     #else
     const float radius      = f3_value.x;
     #endif

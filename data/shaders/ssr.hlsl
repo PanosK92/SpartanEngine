@@ -165,8 +165,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // trace
     float reflection_distance = 0.0f;
     float2 hit_uv             = trace_ray(thread_id.xy, position, reflection, surface.roughness, reflection_distance);
-    float3 reflection_color   = tex.SampleLevel(samplers[sampler_bilinear_clamp], hit_uv, 0).rgb;
     float alpha               = compute_alpha(thread_id.xy, hit_uv, v_dot_r);
+    float3 reflection_color   = tex.SampleLevel(samplers[sampler_bilinear_clamp], hit_uv, 0).rgb * alpha; // modulate with alpha because invalid UVs will get clamped colors
 
     // determine reflection roughness
     float max_reflection_distance      = 30.0f;
@@ -175,5 +175,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float reflection_roughness         = surface.roughness * (1.0 + roughness_attenuation_factor * distance_attenuation);
     
     tex_uav[thread_id.xy]  = float4(reflection_color, alpha);
-    tex_uav2[thread_id.xy] = reflection_roughness * 64.0f;
+    tex_uav2[thread_id.xy] = surface.roughness_alpha * 32.0f;
 }
