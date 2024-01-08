@@ -2225,7 +2225,7 @@ namespace Spartan
             SP_ASSERT(mip_level != 0);
 
             // read from the previous mip
-            cmd_list->SetTexture(Renderer_BindingsSrv::environment, tex_environment, 0, 1);
+            cmd_list->SetTexture(Renderer_BindingsSrv::environment, tex_environment, mip_level - 1, 1);
 
             // do one mip at a time, splitting the cost over a couple of frames
             Vector2 resolution = Vector2(tex_environment->GetWidth() >> mip_level, tex_environment->GetHeight() >> mip_level);
@@ -2240,13 +2240,6 @@ namespace Spartan
                     static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.x) / thread_group_count)),
                     static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.y) / thread_group_count))
                 );
-            }
-
-            // smooth out the sampling pattern - cheaper than increasing the sample count
-            for (uint32_t i = 0; i < 5; i++)
-            {
-                float radius = 20.0f;
-                Pass_Blur_Gaussian(cmd_list, tex_environment, nullptr, Renderer_Shader::blur_gaussian_c, radius, mip_level);
             }
         }
 

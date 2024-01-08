@@ -61,12 +61,12 @@ namespace Spartan
 
     // misc
     unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
-    RHI_CommandPool* Renderer::m_cmd_pool                 = nullptr;
-    shared_ptr<Camera> Renderer::m_camera                 = nullptr;
-    uint32_t Renderer::m_resource_index                   = 0;
-    atomic<bool> Renderer::m_resources_created            = false;
-    bool Renderer::m_sorted                               = false;
-    uint32_t Renderer::m_environment_mips_to_filter_count = 0;
+    RHI_CommandPool* Renderer::m_cmd_pool                         = nullptr;
+    shared_ptr<Camera> Renderer::m_camera                         = nullptr;
+    uint32_t Renderer::m_resource_index                           = 0;
+    atomic<bool> Renderer::m_resources_created                    = false;
+    bool Renderer::m_sorted                                       = false;
+    atomic<uint32_t> Renderer::m_environment_mips_to_filter_count = 0;
 
     namespace
     {
@@ -360,7 +360,6 @@ namespace Spartan
             SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
             SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_EXPRESSION_STATIC( materials::dirty = true; ));
             SP_SUBSCRIBE_TO_EVENT(EventType::LightOnChanged,          SP_EVENT_HANDLER_EXPRESSION_STATIC( lights::dirty    = true; ));
-            SP_SUBSCRIBE_TO_EVENT(EventType::LightOnPrefilter,        SP_EVENT_HANDLER_EXPRESSION_STATIC(m_environment_mips_to_filter_count = GetRenderTarget(Renderer_RenderTexture::skysphere)->GetMipCount() - 1; ));
 
             // fire
             SP_FIRE_EVENT(EventType::RendererOnInitialized);
@@ -775,6 +774,11 @@ namespace Spartan
                 if (shared_ptr<Light> light = entity->GetComponent<Light>())
                 {
                     m_renderables[Renderer_Entity::Light].emplace_back(entity);
+
+                    if (light->GetLightType() == LightType::Directional)
+                    {
+                        m_environment_mips_to_filter_count = GetRenderTarget(Renderer_RenderTexture::skysphere)->GetMipCount() - 1;
+                    }
                 }
 
                 if (shared_ptr<Camera> camera = entity->GetComponent<Camera>())
