@@ -76,6 +76,15 @@ namespace Spartan
 
     namespace
     {
+        //= DEBUGGING OPTIONS ========================================================================================================
+        bool is_validation_layer_enabled        = false; // cpu cost: high - per draw cost, especially high with large bindless arrays
+        bool is_gpu_assisted_validation_enabled = false; // cpu cost: high - per draw cost
+        bool is_renderdoc_enabled               = true;  // cpu cost: high - intercepts every API call and wraps it
+        bool is_gpu_marking_enabled             = true;  // cpu cost: imperceptible
+        bool is_gpu_timing_enabled              = true;  // cpu cost: imperceptible
+        bool is_shader_optimization_enabled     = true;  // gpu cost: high
+        //============================================================================================================================
+
         // profiling options
         const uint32_t initial_capacity = 256;
         bool profile_cpu                = true;
@@ -117,14 +126,6 @@ namespace Spartan
         bool increase_capacity    = false;
         bool allow_time_block_end = true;
 
-        // RHI - dynamically set at Initialize()
-        bool is_validation_layer_enabled        = false;
-        bool is_gpu_assisted_validation_enabled = false;
-        bool is_renderdoc_enabled               = false;
-        bool is_gpu_marking_enabled             = true;
-        bool is_gpu_timing_enabled              = true;
-        bool is_shader_optimization_enabled     = true;
-
         static string format_float(float value)
         {
             stringstream ss;
@@ -153,10 +154,6 @@ namespace Spartan
         m_time_blocks_read.resize(initial_capacity);
         m_time_blocks_write.reserve(initial_capacity);
         m_time_blocks_write.resize(initial_capacity);
-
-        is_validation_layer_enabled        = granularity == ProfilerGranularity::Full; // cpu cost: high - per draw cost, especially high with large bindless arrays
-        is_gpu_assisted_validation_enabled = granularity == ProfilerGranularity::Full; // cpu cost: high - per draw cost
-        is_renderdoc_enabled               = granularity == ProfilerGranularity::Full; // cpu cost: high - intercepts every API call and wraps it
     }
 
     void Profiler::Shutdown()
