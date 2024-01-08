@@ -72,16 +72,21 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= pass_get_resolution_in()) || any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
-    // fetch properties and compute some information
-    const float3 f3_value    = pass_get_f3_value();
-    const float radius       = f3_value.x;
-    const float2 direction   = f3_value.y == 1.0f ? float2(0.0f, 1.0f) : float2(1.0f, 0.0f);
-    const float sigma        = radius / 3.0f;
-    const float2 uv          = (thread_id.xy + 0.5f) / pass_get_resolution_in();
-    const float2 texel_size  = 1.0f / pass_get_resolution_in();
-
     float4 color = tex_uav[thread_id.xy];
-    color.rgb    = gaussian_blur(thread_id.xy, uv, radius, sigma * sigma, direction * texel_size);
+    
+    // fetch properties and compute some information
+    const float3 f3_value   = pass_get_f3_value();
+    #if RADIUS_FROM_TEXTURE 
+    const float radius      = clamp(tex_uav2[thread_id.xy].r, 1.0f, 64.0f);
+    #else
+    const float radius      = f3_value.x;
+    #endif
+    const float sigma       = radius / 3.0f;
+    const float2 direction  = f3_value.y == 1.0f ? float2(0.0f, 1.0f) : float2(1.0f, 0.0f);
+    const float2 uv         = (thread_id.xy + 0.5f) / pass_get_resolution_in();
+    const float2 texel_size = 1.0f / pass_get_resolution_in();
 
+    color.rgb = gaussian_blur(thread_id.xy, uv, radius, sigma * sigma, direction * texel_size);
+    
     tex_uav[thread_id.xy] = color;
 }

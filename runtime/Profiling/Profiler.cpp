@@ -120,28 +120,28 @@ namespace Spartan
         // RHI - dynamically set at Initialize()
         bool is_validation_layer_enabled        = false;
         bool is_gpu_assisted_validation_enabled = false;
-        bool is_gpu_marking_enabled             = false;
-        bool is_gpu_timing_enabled              = false;
         bool is_renderdoc_enabled               = false;
+        bool is_gpu_marking_enabled             = true;
+        bool is_gpu_timing_enabled              = true;
         bool is_shader_optimization_enabled     = true;
 
         static string format_float(float value)
         {
-            std::stringstream ss;
+            stringstream ss;
 
             // clamp to a certain range to avoid padding and alignment headaches
             value = Math::Helper::Clamp(value, 0.0f, 99.99f);
 
             // set fixed-point notation with 2 decimal places
-            ss << std::fixed << std::setprecision(2);
+            ss << fixed << setprecision(2);
 
             // output the integer part with the fill character '0' and the minimum width of 2 characters
             int integer_part = static_cast<int>(value);
-            ss << std::setfill('0') << std::setw(2) << integer_part;
+            ss << setfill('0') << setw(2) << integer_part;
 
             // output the decimal point and decimal part
             float decimal_part = value - integer_part;
-            ss << "." << std::setfill('0') << std::setw(2) << static_cast<int>(round(decimal_part * 100));
+            ss << "." << setfill('0') << setw(2) << static_cast<int>(round(decimal_part * 100));
 
             return ss.str();
         }
@@ -157,8 +157,6 @@ namespace Spartan
         is_validation_layer_enabled        = granularity == ProfilerGranularity::Full; // cpu cost: high - per draw cost, especially high with large bindless arrays
         is_gpu_assisted_validation_enabled = granularity == ProfilerGranularity::Full; // cpu cost: high - per draw cost
         is_renderdoc_enabled               = granularity == ProfilerGranularity::Full; // cpu cost: high - intercepts every API call and wraps it
-        is_gpu_marking_enabled             = true;                                     // cpu cost: imperceptible
-        is_gpu_timing_enabled              = true;                                     // cpu cost: imperceptible
     }
 
     void Profiler::Shutdown()

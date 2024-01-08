@@ -23,9 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "brdf.hlsl"
 //==================
 
-static const float ENVIRONMENT_MAX_MIP = 10.0f; // has to go - push constant is the way
-
-// from Sebastien Lagarde Moving Frostbite to PBR page 69
 float3 get_dominant_specular_direction(float3 normal, float3 reflection, float roughness)
 {
     const float smoothness = 1.0f - roughness;
@@ -38,6 +35,7 @@ float3 sample_environment(float2 uv, float mip_level)
 {
     return tex_environment.SampleLevel(samplers[sampler_trilinear_clamp], uv, mip_level).rgb;
 }
+
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     const uint2 pos = input.uv * pass_get_resolution_out();
@@ -49,7 +47,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
     bool early_exit_1 = pass_is_opaque() && surface.is_transparent(); // if this is an opaque pass, ignore all transparent pixels
     bool early_exit_2 = pass_is_transparent() && surface.is_opaque(); // if this is an transparent pass, ignore all opaque pixels
-    bool early_exit_3 = surface.is_sky();                             // we don't want to do IBL on the sky itself
+    bool early_exit_3 = surface.is_sky();                             // we don't want to do ibl on the sky itself
     if (early_exit_1 || early_exit_2 || early_exit_3)
         discard;
 
@@ -60,9 +58,9 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     const float3 specular_energy = F * envBRDF.x + envBRDF.y;
 
     // ibl - diffuse
-    uint mip_count_environment = (uint)pass_get_f4_value().z;
-    float3 diffuse_energy      = compute_diffuse_energy(specular_energy, surface.metallic); // used to town down diffuse such as that only non metals have it
-    float3 ibl_diffuse         = sample_environment(direction_sphere_uv(surface.normal), mip_count_environment) * surface.albedo.rgb * diffuse_energy;
+    float mip_count_environment = pass_get_f3_value().x;
+    float3 diffuse_energy       = compute_diffuse_energy(specular_energy, surface.metallic); // used to town down diffuse such as that only non metals have it
+    float3 ibl_diffuse          = sample_environment(direction_sphere_uv(surface.normal), mip_count_environment) * surface.albedo.rgb * diffuse_energy;
 
     // ibl - specular
     const float3 reflection            = reflect(surface.camera_to_pixel, surface.normal);
@@ -70,15 +68,9 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float mip_level                    = lerp(0, mip_count_environment - 1, surface.roughness);
     float3 ibl_specular_environment    = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level);
     
-    // get ssr color
-    uint mip_count_ssr      = (uint)pass_get_f4_value().y;
-    mip_level               = lerp(0, mip_count_ssr - 1, surface.roughness);
-    const float4 ssr_sample = is_ssr_enabled() ? tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level) : 0.0f;
-    const float3 color_ssr  = ssr_sample.rgb;
-    float ssr_alpha         = ssr_sample.a;
-
     // blend between ssr and the envirnoment
-    float3 ibl_specular = lerp(ibl_specular_environment, color_ssr, ssr_alpha);
+    const float4 ssr_sample = is_ssr_enabled() ? tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, 0.0f) : 0.0f;
+    float3 ibl_specular = lerp(ibl_specular_environment, ssr_sample.rgb, ssr_sample.a);
 
     // modulate outcoming energy
     ibl_specular *= specular_energy;
@@ -91,9 +83,9 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         ibl *= surface.occlusion;
     }
 
-    // fade out for transparents
+    // make transparent for transparents
     ibl *= surface.alpha;
-    
+
     // perfection achieved
     return float4(ibl, 0.0f);
 }
