@@ -713,11 +713,6 @@ namespace Spartan
                 if (shared_ptr<Light> light = entity->GetComponent<Light>())
                 {
                     m_renderables[Renderer_Entity::Light].emplace_back(entity);
-
-                    if (light->GetLightType() == LightType::Directional)
-                    {
-                        m_environment_mips_to_filter_count = GetRenderTarget(Renderer_RenderTexture::skysphere)->GetMipCount() - 1;
-                    }
                 }
 
                 if (shared_ptr<Camera> camera = entity->GetComponent<Camera>())
@@ -799,6 +794,34 @@ namespace Spartan
                 GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->ResetOffset();
                 GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->Update(&lights::properties[0]);
                 lights::dirty = false;
+            }
+        }
+
+        // fitler environment on directioanl light change
+        {
+            static Quaternion rotation;
+            static float intensity;
+            static Color color;
+
+            for (const shared_ptr<Entity>& entity : m_renderables[Renderer_Entity::Light])
+            {
+                if (const shared_ptr<Light>& light = entity->GetComponent<Light>())
+                {
+                    if (light->GetLightType() == LightType::Directional)
+                    {
+                        if (light->GetEntity()->GetRotation() != rotation ||
+                            light->GetIntensityLumens() != intensity ||
+                            light->GetColor() != color
+                            )
+                        {
+                            rotation  = light->GetEntity()->GetRotation();
+                            intensity = light->GetIntensityLumens();
+                            color     = light->GetColor();
+
+                            m_environment_mips_to_filter_count = GetRenderTarget(Renderer_RenderTexture::skysphere)->GetMipCount() - 1;
+                        }
+                    }
+                }
             }
         }
     }
