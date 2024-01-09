@@ -286,7 +286,7 @@ namespace Spartan
         
         // scratch textures
         {
-            render_target(Renderer_RenderTexture::scratch_blur)        = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, flags_standard, "rt_scratch_blur");
+            render_target(Renderer_RenderTexture::scratch_blur)        = make_unique<RHI_Texture2D>(4096, 4096, 1, RHI_Format::R16G16B16A16_Float, flags_standard, "rt_scratch_blur");
             render_target(Renderer_RenderTexture::scratch_antiflicker) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_standard | RHI_Texture_ClearBlit, "rt_scratch_antiflicker");
         }
 

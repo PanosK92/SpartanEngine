@@ -133,11 +133,10 @@ float D_GGX(float n_dot_h, float roughness_alpha_squared)
 
 float3 prefilter_environment(float2 uv)
 {
-    const uint sample_count = 1024;
-    
-    uint mip_level  = pass_get_f3_value().x;
-    uint mip_count  = pass_get_f3_value().y;
-    float roughness = (float)mip_level / (float)(mip_count - 1);
+    uint mip_level          = pass_get_f3_value().x;
+    uint mip_count          = pass_get_f3_value().y;
+    const uint sample_count = 8196 / max(mip_level, 1);
+    float roughness         = (float)mip_level / (float)(mip_count - 1);
 
     // convert spherical uv to direction
     float phi   = uv.x * 2.0 * PI;
