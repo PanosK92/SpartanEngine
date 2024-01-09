@@ -77,7 +77,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // fetch properties and compute some information
     const float3 f3_value   = pass_get_f3_value();
     #if RADIUS_FROM_TEXTURE 
-    const float radius      = clamp(tex_uav2[thread_id.xy].r, 1.0f, 32.0f);
+    const float radius      = clamp(tex_uav2[thread_id.xy].r, 0.0f, 10.0f);
     #else
     const float radius      = f3_value.x;
     #endif
@@ -86,6 +86,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     const float2 uv         = (thread_id.xy + 0.5f) / pass_get_resolution_in();
     const float2 texel_size = 1.0f / pass_get_resolution_in();
 
+    #if RADIUS_FROM_TEXTURE 
+    if (radius >= 1.0f)
+    #endif
     color.rgb = gaussian_blur(thread_id.xy, uv, radius, sigma * sigma, direction * texel_size);
     
     tex_uav[thread_id.xy] = color;
