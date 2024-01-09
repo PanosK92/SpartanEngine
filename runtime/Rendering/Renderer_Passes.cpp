@@ -2272,7 +2272,7 @@ namespace Spartan
             uint32_t mip_level = mip_count - m_environment_mips_to_filter_count;
             SP_ASSERT(mip_level != 0);
 
-            // read from the previous mip
+            // read from the previous mip (not the top) - this helps accumulate filtering without doing a lot of samples
             cmd_list->SetTexture(Renderer_BindingsSrv::environment, tex_environment, mip_level - 1, 1);
 
             // do one mip at a time, splitting the cost over a couple of frames
@@ -2289,10 +2289,16 @@ namespace Spartan
                     static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.y) / thread_group_count))
                 );
             }
+
+            m_environment_mips_to_filter_count--;
+
+            // the first two filtered mips have obvious sample patterns, so blur them
+            if (m_environment_mips_to_filter_count == 0)
+            {
+                Pass_Blur_Gaussian(cmd_list, tex_environment, nullptr, Renderer_Shader::blur_gaussian_c, 32.0f, 1);
+                Pass_Blur_Gaussian(cmd_list, tex_environment, nullptr, Renderer_Shader::blur_gaussian_c, 32.0f, 2);
+            }
         }
-
-        m_environment_mips_to_filter_count--;
-
         cmd_list->EndTimeblock();
     }
 
