@@ -244,7 +244,7 @@ namespace Spartan
 
             // ssr
             {
-                render_target(Renderer_RenderTexture::ssr)           = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_standard, "rt_ssr");
+                render_target(Renderer_RenderTexture::ssr)           = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_standard | RHI_Texture_ClearBlit, "rt_ssr");
                 render_target(Renderer_RenderTexture::ssr_roughness) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16_Float, flags_standard, "rt_ssr_roughness");
             }
 
@@ -282,9 +282,12 @@ namespace Spartan
 
             // atmospheric scattering
             render_target(Renderer_RenderTexture::skysphere) = make_unique<RHI_Texture2D>(4096, 2048, mip_count, RHI_Format::R11G11B10_Float, flags_standard | RHI_Texture_PerMipViews, "rt_skysphere");
-
-            // scratch textures
-            render_target(Renderer_RenderTexture::scratch_blur) = make_unique<RHI_Texture2D>(3840, 2160, 1, RHI_Format::R16G16B16A16_Float, flags_standard, "rt_scratch_blur");
+        }
+        
+        // scratch textures
+        {
+            render_target(Renderer_RenderTexture::scratch_blur)        = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, flags_standard, "rt_scratch_blur");
+            render_target(Renderer_RenderTexture::scratch_antiflicker) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_standard | RHI_Texture_ClearBlit, "rt_scratch_antiflicker");
         }
 
         RHI_Device::QueueWaitAll();
@@ -466,17 +469,17 @@ namespace Spartan
 
             // spd - single pass downsample - compile synchronously as they are needed everywhere
             {
-                shader(Renderer_Shader::ffx_spd_c_average) = make_shared<RHI_Shader>();
-                shader(Renderer_Shader::ffx_spd_c_average)->AddDefine("AVERAGE");
-                shader(Renderer_Shader::ffx_spd_c_average)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
+                shader(Renderer_Shader::ffx_spd_average_c) = make_shared<RHI_Shader>();
+                shader(Renderer_Shader::ffx_spd_average_c)->AddDefine("AVERAGE");
+                shader(Renderer_Shader::ffx_spd_average_c)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
 
-                shader(Renderer_Shader::ffx_spd_c_highest) = make_shared<RHI_Shader>();
-                shader(Renderer_Shader::ffx_spd_c_highest)->AddDefine("HIGHEST");
-                shader(Renderer_Shader::ffx_spd_c_highest)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
+                shader(Renderer_Shader::ffx_spd_highest_c) = make_shared<RHI_Shader>();
+                shader(Renderer_Shader::ffx_spd_highest_c)->AddDefine("HIGHEST");
+                shader(Renderer_Shader::ffx_spd_highest_c)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
 
-                shader(Renderer_Shader::ffx_spd_c_antiflicker) = make_shared<RHI_Shader>();
-                shader(Renderer_Shader::ffx_spd_c_antiflicker)->AddDefine("ANTIFLICKER");
-                shader(Renderer_Shader::ffx_spd_c_antiflicker)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
+                shader(Renderer_Shader::ffx_spd_antiflicker_c) = make_shared<RHI_Shader>();
+                shader(Renderer_Shader::ffx_spd_antiflicker_c)->AddDefine("ANTIFLICKER");
+                shader(Renderer_Shader::ffx_spd_antiflicker_c)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
             }
         }
 
@@ -532,6 +535,10 @@ namespace Spartan
         // screen space shadows
         shader(Renderer_Shader::sss_c_bend) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::sss_c_bend)->Compile(RHI_Shader_Compute, shader_dir + "screen_space_shadows\\bend_sss.hlsl", async);
+
+        // antiflicker
+        shader(Renderer_Shader::antiflicker_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::antiflicker_c)->Compile(RHI_Shader_Compute, shader_dir + "antiflicker.hlsl", async);
     }
 
     void Renderer::CreateFonts()
