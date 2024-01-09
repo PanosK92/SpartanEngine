@@ -22,6 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============================
 #include "pch.h"
 #include "Renderer.h"
+#include "ThreadPool.h"
+#include "../Profiling/Profiler.h"
 #include "../Profiling/RenderDoc.h"
 #include "../Core/Window.h"
 #include "../Input/Input.h"
@@ -37,8 +39,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/AudioSource.h"
-#include "ThreadPool.h"
-#include "../Profiling/Profiler.h"
 //==========================================
 
 //= NAMESPACES ===============
@@ -60,13 +60,13 @@ namespace Spartan
     uint32_t Renderer::m_lines_index_depth_on;
 
     // misc
-    unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
     RHI_CommandPool* Renderer::m_cmd_pool                         = nullptr;
     shared_ptr<Camera> Renderer::m_camera                         = nullptr;
     uint32_t Renderer::m_resource_index                           = 0;
     atomic<bool> Renderer::m_resources_created                    = false;
     bool Renderer::m_sorted                                       = false;
     atomic<uint32_t> Renderer::m_environment_mips_to_filter_count = 0;
+    unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
 
     namespace
     {
@@ -397,17 +397,16 @@ namespace Spartan
             SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
         }
 
-        OnSyncPoint();
-       
-        RHI_Device::Tick(frame_num);
-
-        // begin
+        // get a command list and begin recording
         m_cmd_pool->Tick();
         cmd_current = m_cmd_pool->GetCurrentCommandList();
         cmd_current->Begin();
 
-        OnFrameStart(cmd_current);
+        // do some logistics work
+        OnSyncPoint(cmd_current);
+        RHI_Device::Tick(frame_num);
 
+        // do all the render passes
         Pass_Frame(cmd_current);
 
         // blit to back buffer when in full screen
@@ -417,8 +416,6 @@ namespace Spartan
             cmd_current->Blit(GetRenderTarget(Renderer_RenderTexture::frame_output).get(), swap_chain.get());
             cmd_current->EndMarker();
         }
-
-        OnFrameEnd(cmd_current);
 
         // submit
         cmd_current->End();
@@ -676,18 +673,91 @@ namespace Spartan
         Input::SetMouseCursorVisible(!Window::IsFullScreen());
     }
 
-    void Renderer::OnSyncPoint()
+    void Renderer::OnSyncPoint(RHI_CommandList* cmd_list)
     {
+        // acquire renderables - if any
+        {
+            // acquire renderables
+            if (!m_entities_to_add.empty())
+            {
+                // clear previous state
+                m_renderables.clear();
+                m_camera = nullptr;
+
+                for (shared_ptr<Entity> entity : m_entities_to_add)
+                {
+                    if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
+                    {
+                        bool is_transparent = false;
+                        bool is_visible     = true;
+
+                        if (const Material* material = renderable->GetMaterial())
+                        {
+                            is_transparent = material->GetProperty(MaterialProperty::ColorA) < 1.0f;
+                            is_visible     = material->GetProperty(MaterialProperty::ColorA) != 0.0f;
+                        }
+
+                        if (is_visible)
+                        {
+                            if (is_transparent)
+                            {
+                                m_renderables[renderable->HasInstancing() ? Renderer_Entity::GeometryTransparentInstanced : Renderer_Entity::GeometryTransparent].emplace_back(entity);
+                            }
+                            else
+                            {
+                                m_renderables[renderable->HasInstancing() ? Renderer_Entity::GeometryInstanced : Renderer_Entity::Geometry].emplace_back(entity);
+                            }
+
+                        }
+                    }
+
+                    if (shared_ptr<Light> light = entity->GetComponent<Light>())
+                    {
+                        m_renderables[Renderer_Entity::Light].emplace_back(entity);
+
+                        if (light->GetLightType() == LightType::Directional)
+                        {
+                            m_environment_mips_to_filter_count = GetRenderTarget(Renderer_RenderTexture::skysphere)->GetMipCount() - 1;
+                        }
+                    }
+
+                    if (shared_ptr<Camera> camera = entity->GetComponent<Camera>())
+                    {
+                        m_renderables[Renderer_Entity::Camera].emplace_back(entity);
+                        m_camera = camera;
+                    }
+
+                    if (shared_ptr<AudioSource> audio_source = entity->GetComponent<AudioSource>())
+                    {
+                        m_renderables[Renderer_Entity::AudioSource].emplace_back(entity);
+                    }
+                }
+
+                m_entities_to_add.clear();
+                m_sorted = false;
+                materials::dirty = true;
+                lights::dirty = true;
+            }
+        }
+
+        // generate mips - if any
+        {
+            lock_guard lock(mutex_mip_generation);
+            for (RHI_Texture* texture : textures_mip_generation)
+            {
+                Pass_GenerateMips(cmd_list, texture);
+            }
+            textures_mip_generation.clear();
+        }
+
+        // is_sync_point: the command pool has exhausted its command lists and 
+        // is about to reset them, this is an opportune moment for us to perform
+        // certain operations, knowing that no rendering commands are currently
+        // executing and no resources are being used by any command list
         m_resource_index++;
         bool is_sync_point = m_resource_index == resources_frame_lifetime;
-
         if (is_sync_point)
         {
-            // is_sync_point: the command pool has exhausted its command lists and 
-            // is about to reset them, this is an opportune moment for us to perform
-            // certain operations, knowing that no rendering commands are currently
-            // executing and no resources are being used by any command list
-
             m_resource_index = 0;
 
             // delete any rhi resources that have accumulated
@@ -709,7 +779,7 @@ namespace Spartan
             }
         }
 
-        // bindless
+        // bindless work
         {
             // these two map to two arrays on the gpu
             // it should be ok to update them without syncing with the gpu
@@ -733,88 +803,6 @@ namespace Spartan
                 lights::dirty = false;
             }
         }
-    }
-
-    void Renderer::OnFrameStart(RHI_CommandList* cmd_list)
-    {
-        // acquire renderables
-        if (!m_entities_to_add.empty())
-        {
-            // clear previous state
-            m_renderables.clear();
-            m_camera = nullptr;
-
-            for (shared_ptr<Entity> entity : m_entities_to_add)
-            {
-                if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
-                {
-                    bool is_transparent = false;
-                    bool is_visible     = true;
-
-                    if (const Material* material = renderable->GetMaterial())
-                    {
-                        is_transparent = material->GetProperty(MaterialProperty::ColorA) < 1.0f;
-                        is_visible     = material->GetProperty(MaterialProperty::ColorA) != 0.0f;
-                    }
-
-                    if (is_visible)
-                    {
-                        if (is_transparent)
-                        {
-                            m_renderables[renderable->HasInstancing() ? Renderer_Entity::GeometryTransparentInstanced : Renderer_Entity::GeometryTransparent].emplace_back(entity);
-                        }
-                        else
-                        {
-                            m_renderables[renderable->HasInstancing() ? Renderer_Entity::GeometryInstanced : Renderer_Entity::Geometry].emplace_back(entity);
-                        }
-
-                    }
-                }
-
-                if (shared_ptr<Light> light = entity->GetComponent<Light>())
-                {
-                    m_renderables[Renderer_Entity::Light].emplace_back(entity);
-
-                    if (light->GetLightType() == LightType::Directional)
-                    {
-                        m_environment_mips_to_filter_count = GetRenderTarget(Renderer_RenderTexture::skysphere)->GetMipCount() - 1;
-                    }
-                }
-
-                if (shared_ptr<Camera> camera = entity->GetComponent<Camera>())
-                {
-                    m_renderables[Renderer_Entity::Camera].emplace_back(entity);
-                    m_camera = camera;
-                }
-
-                if (shared_ptr<AudioSource> audio_source = entity->GetComponent<AudioSource>())
-                {
-                    m_renderables[Renderer_Entity::AudioSource].emplace_back(entity);
-                }
-            }
-
-            m_entities_to_add.clear();
-            m_sorted         = false;
-            materials::dirty = true;
-            lights::dirty    = true;
-        }
-
-        // generate mips
-        {
-            lock_guard lock(mutex_mip_generation);
-            for (RHI_Texture* texture : textures_mip_generation)
-            {
-                Pass_GenerateMips(cmd_list, texture);
-            }
-            textures_mip_generation.clear();
-        }
-
-        Lines_OneFrameStart();
-    }
-
-    void Renderer::OnFrameEnd(RHI_CommandList* cmd_list)
-    {
-        Lines_OnFrameEnd();
     }
 
     void Renderer::DrawString(const string& text, const Vector2& position_screen_percentage)

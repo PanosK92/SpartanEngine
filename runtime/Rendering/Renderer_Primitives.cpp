@@ -19,15 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============================
+//= INCLUDES ==========================
 #include "pch.h"
 #include "Renderer.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
 #include "../World/Entity.h"
-#include "../World/Components/Renderable.h"
-#include "../RHI/RHI_Vertex.h"
-//=========================================
+//=====================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -36,10 +34,13 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    vector<RHI_Vertex_PosCol> m_line_vertices;
-    vector<float> m_lines_duration;
-    uint32_t m_lines_index_depth_off = 0;
-    uint32_t m_lines_index_depth_on  = 0;
+    namespace
+    {
+        vector<RHI_Vertex_PosCol> m_line_vertices;
+        vector<float> m_lines_duration;
+        uint32_t m_lines_index_depth_off = 0;
+        uint32_t m_lines_index_depth_on  = 0;
+    }
 
     void Renderer::DrawLine(const Vector3& from, const Vector3& to, const Vector4& color_from, const Vector4& color_to, const float duration /*= 0.0f*/, const bool depth /*= true*/)
     {
@@ -229,47 +230,9 @@ namespace Spartan
         DrawLine(plane_origin - V * scale, plane_origin + V * scale, color, color, duration, depth);
     }
 
-    void Renderer::Lines_OnFrameEnd()
+    void Renderer::AddLinesToBeRendered()
     {
-        // Generate lines for debug primitives supported by the renderer
-        m_lines_index_depth_off = numeric_limits<uint32_t>::max(); // max +1 will wrap it to 0.
-        m_lines_index_depth_on  = (static_cast<uint32_t>(m_line_vertices.size()) / 2) - 1; // -1 because +1 will make it go to size / 2.
-
-        // TODO
-        // Remove lines which have expired
-
-        //uint32_t end = static_cast<uint32_t>(m_lines_depth_disabled_duration.size());
-        //for (uint32_t i = 0; i < end; i++)
-        //{
-        //    m_lines_depth_disabled_duration[i] -= static_cast<float>(delta_time);
-        //
-        //    if (m_lines_depth_disabled_duration[i] <= 0.0f)
-        //    {
-        //        m_lines_depth_disabled_duration.erase(m_lines_depth_disabled_duration.begin() + i);
-        //        m_lines_depth_disabled.erase(m_lines_depth_disabled.begin() + i); 
-        //        i--;
-        //        end--;
-        //    }
-        //}
-        //
-        //end = static_cast<uint32_t>(m_lines_depth_enabled_duration.size());
-        //for (uint32_t i = 0; i < end; i++)
-        //{
-        //    m_lines_depth_enabled_duration[i] -= static_cast<float>(delta_time);
-        //
-        //    if (m_lines_depth_enabled_duration[i] <= 0.0f)
-        //    {
-        //        m_lines_depth_enabled_duration.erase(m_lines_depth_enabled_duration.begin() + i);
-        //        m_lines_depth_enabled.erase(m_lines_depth_enabled.begin() + i);
-        //        i--;
-        //        end--;
-        //    }
-        //}
-    }
-
-    void Renderer::Lines_OneFrameStart()
-    {
-        // Picking ray
+        // picking ray
         if (GetOption<bool>(Renderer_Option::Debug_PickingRay))
         {
             const auto& ray = GetCamera()->GetPickingRay();

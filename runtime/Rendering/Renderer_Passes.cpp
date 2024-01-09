@@ -1952,9 +1952,11 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
+        AddLinesToBeRendered();
+
         cmd_list->BeginTimeblock("lines");
 
-        // define the pipeline state
+        // set pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
         pso.shader_pixel                    = shader_p;
@@ -2021,6 +2023,9 @@ namespace Spartan
                 }
             }
         }
+
+        m_lines_index_depth_off = numeric_limits<uint32_t>::max(); // max +1 will wrap it to 0.
+        m_lines_index_depth_on  = (static_cast<uint32_t>(m_line_vertices.size()) / 2) - 1; // -1 because +1 will make it go to size / 2.
 
         cmd_list->EndTimeblock();
     }

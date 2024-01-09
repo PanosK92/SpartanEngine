@@ -101,7 +101,7 @@ namespace Spartan
         static const Math::Vector2& GetResolutionOutput();
         static void SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources = true);
         //===============================================================================================
-        // 
+  
         //= RHI RESOURCES====================
         static RHI_CommandList* GetCmdList();
         //===================================
@@ -193,17 +193,10 @@ namespace Spartan
         static void OnWorldResolved(sp_variant data);
         static void OnClear();
         static void OnFullScreenToggled();
-        static void OnSyncPoint();
-
-        // lines
-        static void Lines_OneFrameStart();
-        static void Lines_OnFrameEnd();
-
-        // frame
-        static void OnFrameStart(RHI_CommandList* cmd_list);
-        static void OnFrameEnd(RHI_CommandList* cmd_list);
+        static void OnSyncPoint(RHI_CommandList* cmd_list);
 
         // misc
+        static void AddLinesToBeRendered();
         static void SetGbufferTextures(RHI_CommandList* cmd_list);
         static void DestroyResources();
 
