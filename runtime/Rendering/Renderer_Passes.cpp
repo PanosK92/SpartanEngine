@@ -708,6 +708,10 @@ namespace Spartan
         // render
         cmd_list->Dispatch(thread_group_count_x(tex_ssgi), thread_group_count_y(tex_ssgi));
 
+        // blur to denoise
+        float radius = 8.0f;
+        Pass_Blur_Gaussian(cmd_list, tex_ssgi, nullptr, Renderer_Shader::blur_gaussian_bilaterial_c, radius);
+
         cmd_list->EndTimeblock();
     }
 
@@ -1077,7 +1081,7 @@ namespace Spartan
         const uint32_t thread_group_count_y_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(height) / thread_group_count));
 
         // acquire blur scratch buffer
-        RHI_Texture* tex_blur   = GetRenderTarget(Renderer_RenderTexture::blur).get();
+        RHI_Texture* tex_blur   = GetRenderTarget(Renderer_RenderTexture::scratch_blur).get();
         SP_ASSERT_MSG(tex_blur->GetWidth() >= width && tex_blur->GetHeight() >= height, "Input texture is larget than the blur scratch buffer");
 
         cmd_list->BeginMarker("blur_gaussian");
