@@ -389,6 +389,7 @@ namespace Spartan
 
     void Renderer::Tick()
     {
+        // don't waste cpu/gpu time if nothing can be seen
         if (Window::IsMinimised() || !m_resources_created)
             return;
 
@@ -417,7 +418,7 @@ namespace Spartan
             cmd_current->EndMarker();
         }
 
-        // submit
+        // submit render work
         cmd_current->End();
         cmd_current->Submit();
 
@@ -676,68 +677,65 @@ namespace Spartan
     void Renderer::OnSyncPoint(RHI_CommandList* cmd_list)
     {
         // acquire renderables - if any
+        if (!m_entities_to_add.empty())
         {
-            // acquire renderables
-            if (!m_entities_to_add.empty())
+            // clear previous state
+            m_renderables.clear();
+            m_camera = nullptr;
+
+            for (shared_ptr<Entity> entity : m_entities_to_add)
             {
-                // clear previous state
-                m_renderables.clear();
-                m_camera = nullptr;
-
-                for (shared_ptr<Entity> entity : m_entities_to_add)
+                if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
                 {
-                    if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
+                    bool is_transparent = false;
+                    bool is_visible     = true;
+
+                    if (const Material* material = renderable->GetMaterial())
                     {
-                        bool is_transparent = false;
-                        bool is_visible     = true;
-
-                        if (const Material* material = renderable->GetMaterial())
-                        {
-                            is_transparent = material->GetProperty(MaterialProperty::ColorA) < 1.0f;
-                            is_visible     = material->GetProperty(MaterialProperty::ColorA) != 0.0f;
-                        }
-
-                        if (is_visible)
-                        {
-                            if (is_transparent)
-                            {
-                                m_renderables[renderable->HasInstancing() ? Renderer_Entity::GeometryTransparentInstanced : Renderer_Entity::GeometryTransparent].emplace_back(entity);
-                            }
-                            else
-                            {
-                                m_renderables[renderable->HasInstancing() ? Renderer_Entity::GeometryInstanced : Renderer_Entity::Geometry].emplace_back(entity);
-                            }
-
-                        }
+                        is_transparent = material->GetProperty(MaterialProperty::ColorA) < 1.0f;
+                        is_visible     = material->GetProperty(MaterialProperty::ColorA) != 0.0f;
                     }
 
-                    if (shared_ptr<Light> light = entity->GetComponent<Light>())
+                    if (is_visible)
                     {
-                        m_renderables[Renderer_Entity::Light].emplace_back(entity);
-
-                        if (light->GetLightType() == LightType::Directional)
+                        if (is_transparent)
                         {
-                            m_environment_mips_to_filter_count = GetRenderTarget(Renderer_RenderTexture::skysphere)->GetMipCount() - 1;
+                            m_renderables[renderable->HasInstancing() ? Renderer_Entity::GeometryTransparentInstanced : Renderer_Entity::GeometryTransparent].emplace_back(entity);
                         }
-                    }
+                        else
+                        {
+                            m_renderables[renderable->HasInstancing() ? Renderer_Entity::GeometryInstanced : Renderer_Entity::Geometry].emplace_back(entity);
+                        }
 
-                    if (shared_ptr<Camera> camera = entity->GetComponent<Camera>())
-                    {
-                        m_renderables[Renderer_Entity::Camera].emplace_back(entity);
-                        m_camera = camera;
-                    }
-
-                    if (shared_ptr<AudioSource> audio_source = entity->GetComponent<AudioSource>())
-                    {
-                        m_renderables[Renderer_Entity::AudioSource].emplace_back(entity);
                     }
                 }
 
-                m_entities_to_add.clear();
-                m_sorted = false;
-                materials::dirty = true;
-                lights::dirty = true;
+                if (shared_ptr<Light> light = entity->GetComponent<Light>())
+                {
+                    m_renderables[Renderer_Entity::Light].emplace_back(entity);
+
+                    if (light->GetLightType() == LightType::Directional)
+                    {
+                        m_environment_mips_to_filter_count = GetRenderTarget(Renderer_RenderTexture::skysphere)->GetMipCount() - 1;
+                    }
+                }
+
+                if (shared_ptr<Camera> camera = entity->GetComponent<Camera>())
+                {
+                    m_renderables[Renderer_Entity::Camera].emplace_back(entity);
+                    m_camera = camera;
+                }
+
+                if (shared_ptr<AudioSource> audio_source = entity->GetComponent<AudioSource>())
+                {
+                    m_renderables[Renderer_Entity::AudioSource].emplace_back(entity);
+                }
             }
+
+            m_entities_to_add.clear();
+            m_sorted = false;
+            materials::dirty = true;
+            lights::dirty = true;
         }
 
         // generate mips - if any

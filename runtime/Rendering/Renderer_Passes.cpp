@@ -751,6 +751,8 @@ namespace Spartan
         cmd_list->Dispatch(thread_group_count_x(tex_ssr), thread_group_count_y(tex_ssr));
 
         // blur based on alpha - which contains the reflection roughness
+        cmd_list->InsertMemoryBarrierImageWaitForWrite(tex_ssr);
+        cmd_list->InsertMemoryBarrierImageWaitForWrite(tex_ssr_roughness);
         Pass_Blur_Gaussian(cmd_list, tex_ssr, tex_ssr_roughness, Renderer_Shader::blur_gaussian_bilaterial_radius_from_texture_c, 0.0f);
 
         cmd_list->EndTimeblock();
