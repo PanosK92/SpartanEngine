@@ -207,10 +207,10 @@ namespace Spartan
                 Pass_Light_ImageBased(cmd_list, rt_render, do_transparent_pass);
             }
 
-            Pass_Grid(cmd_list, rt_render);
-            Pass_Lines(cmd_list, rt_render);
-            Pass_Outline(cmd_list, rt_render);
             Pass_PostProcess(cmd_list);
+            Pass_Grid(cmd_list, rt_output);
+            Pass_Lines(cmd_list, rt_output);
+            Pass_Outline(cmd_list, rt_output);
             Pass_Icons(cmd_list, rt_output);
         }
         else
