@@ -708,6 +708,9 @@ namespace Spartan
         // render
         cmd_list->Dispatch(thread_group_count_x(tex_ssgi), thread_group_count_y(tex_ssgi));
 
+        // antiflicker pass to stabilize
+        Pass_Antiflicker(cmd_list, tex_ssgi);
+
         // blur to denoise
         float radius = 8.0f;
         Pass_Blur_Gaussian(cmd_list, tex_ssgi, nullptr, Renderer_Shader::blur_gaussian_bilaterial_c, radius);
