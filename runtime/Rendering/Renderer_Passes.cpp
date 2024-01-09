@@ -750,9 +750,13 @@ namespace Spartan
         // render
         cmd_list->Dispatch(thread_group_count_x(tex_ssr), thread_group_count_y(tex_ssr));
 
-        // blur based on alpha - which contains the reflection roughness
         cmd_list->InsertMemoryBarrierImageWaitForWrite(tex_ssr);
         cmd_list->InsertMemoryBarrierImageWaitForWrite(tex_ssr_roughness);
+
+        // antiflicker pass to stabilize
+        Pass_Antiflicker(cmd_list, tex_ssr);
+
+        // blur based on alpha - which contains the reflection roughness
         Pass_Blur_Gaussian(cmd_list, tex_ssr, tex_ssr_roughness, Renderer_Shader::blur_gaussian_bilaterial_radius_from_texture_c, 0.0f);
 
         cmd_list->EndTimeblock();
@@ -1083,8 +1087,8 @@ namespace Spartan
         const uint32_t thread_group_count_y_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(height) / thread_group_count));
 
         // acquire blur scratch buffer
-        RHI_Texture* tex_blur   = GetRenderTarget(Renderer_RenderTexture::scratch_blur).get();
-        SP_ASSERT_MSG(tex_blur->GetWidth() >= width && tex_blur->GetHeight() >= height, "Input texture is larget than the blur scratch buffer");
+        RHI_Texture* tex_blur = GetRenderTarget(Renderer_RenderTexture::scratch_blur).get();
+        SP_ASSERT_MSG(width <= tex_blur->GetWidth() && height <= tex_blur->GetHeight(), "Input texture is larger than the blur scratch buffer");
 
         cmd_list->BeginMarker("blur_gaussian");
 
@@ -1655,18 +1659,16 @@ namespace Spartan
 
     void Renderer::Pass_FilmGrain(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
-        // acquire shaders
+        // acquire shader
         RHI_Shader* shader_c = GetShader(Renderer_Shader::film_grain_c).get();
         if (!shader_c->IsCompiled())
             return;
 
         cmd_list->BeginTimeblock("film_grain");
 
-        // define pipeline state
+        // set pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
-
-        // set pipeline state
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
@@ -1682,6 +1684,38 @@ namespace Spartan
         cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
 
         cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_Antiflicker(RHI_CommandList* cmd_list, RHI_Texture* tex_in)
+    {
+        // acquire shader
+        RHI_Shader* shader_c = GetShader(Renderer_Shader::antiflicker_c).get();
+        if (!shader_c->IsCompiled())
+            return;
+
+        cmd_list->BeginMarker("antiflicker");
+
+        RHI_Texture* tex_scratch = GetRenderTarget(Renderer_RenderTexture::scratch_antiflicker).get();
+
+        // set pipeline state
+        static RHI_PipelineState pso;
+        pso.shader_compute = shader_c;
+        cmd_list->SetPipelineState(pso);
+
+        // set pass constants
+        m_pcb_pass_cpu.set_resolution_out(tex_in);
+        PushPassConstants(cmd_list);
+
+        // render
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
+        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_scratch);
+        cmd_list->Dispatch(thread_group_count_x(tex_in), thread_group_count_y(tex_in));
+
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_scratch);
+        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_in);
+        cmd_list->Dispatch(thread_group_count_x(tex_in), thread_group_count_y(tex_in));
+
+        cmd_list->EndMarker();
     }
 
     void Renderer::Pass_Ffx_Cas(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
@@ -1744,9 +1778,9 @@ namespace Spartan
         RHI_Shader* shader_c = nullptr;
         {
             // deduce appropriate shader
-            Renderer_Shader shader = Renderer_Shader::ffx_spd_c_average;
-            if (filter == Renderer_DownsampleFilter::Highest)     shader = Renderer_Shader::ffx_spd_c_highest;
-            if (filter == Renderer_DownsampleFilter::Antiflicker) shader = Renderer_Shader::ffx_spd_c_antiflicker;
+            Renderer_Shader shader = Renderer_Shader::ffx_spd_average_c;
+            if (filter == Renderer_DownsampleFilter::Highest)     shader = Renderer_Shader::ffx_spd_highest_c;
+            if (filter == Renderer_DownsampleFilter::Antiflicker) shader = Renderer_Shader::ffx_spd_antiflicker_c;
 
             shader_c = GetShader(shader).get();
             if (!shader_c->IsCompiled())
