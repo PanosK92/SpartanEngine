@@ -249,7 +249,7 @@ namespace Spartan
         sss,
         skysphere,
         bloom,
-        blur,
+        scratch_blur,
         outline,
         max
     };

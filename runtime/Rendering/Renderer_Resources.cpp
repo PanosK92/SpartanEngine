@@ -281,8 +281,8 @@ namespace Spartan
             // atmospheric scattering
             render_target(Renderer_RenderTexture::skysphere) = make_unique<RHI_Texture2D>(4096, 2048, mip_count, RHI_Format::R11G11B10_Float, flags_standard | RHI_Texture_PerMipViews, "rt_skysphere");
 
-            // blur scratch texture
-            render_target(Renderer_RenderTexture::blur) = make_unique<RHI_Texture2D>(3840, 2160, 1, RHI_Format::R16G16B16A16_Float, flags_standard, "rt_blur");
+            // scratch textures
+            render_target(Renderer_RenderTexture::scratch_blur) = make_unique<RHI_Texture2D>(3840, 2160, 1, RHI_Format::R16G16B16A16_Float, flags_standard, "rt_scratch_blur");
         }
 
         RHI_Device::QueueWaitAll();

@@ -24,10 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // constants
-static const uint g_ao_directions = 2;
-static const uint g_ao_steps      = 2;
+static const uint g_ao_directions = 3;
+static const uint g_ao_steps      = 3;
 static const float g_ao_radius    = 3.0f;
-static const float g_ao_intensity = 3.0f;
+static const float g_ao_intensity = 4.0f;
 
 // derived constants
 static const float ao_samples        = (float)(g_ao_directions * g_ao_steps);
