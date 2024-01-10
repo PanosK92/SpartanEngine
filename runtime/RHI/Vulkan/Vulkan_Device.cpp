@@ -811,19 +811,28 @@ namespace Spartan
     {
         SP_ASSERT_MSG(RHI_Context::api_type == RHI_Api_Type::Vulkan, "RHI context not initialized");
 
-        #ifdef DEBUG
         // add validation related extensions
-        if (Profiler::IsGpuAssistedValidationEnabled())
         {
-            RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT);
+            if (Profiler::IsGpuAssistedValidationEnabled())
+            {
+                RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT);
+            }
+
+            if (Profiler::IsValidationLayerEnabled())
+            {
+                RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
+                RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
+
+                // validation layer messaging/logging
+                RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_report");
+            }
+
+            if (Profiler::IsGpuMarkingEnabled())
+            {
+                // among various things, this enables support for GPU markers, which we utilize in Release mode as well
+                RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_utils");
+            }
         }
-        RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
-        RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
-        // add debugging related extensions
-        RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_report");
-        #endif
-        // among various things, this enables support for GPU markers, which we utilize in Release mode as well
-        RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_utils"); 
 
         // create instance
         VkApplicationInfo app_info = {};
