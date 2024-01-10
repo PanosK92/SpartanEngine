@@ -23,12 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const float g_ssr_depth_threshold = 32.0f;
+static const float g_ssr_depth_threshold = 8.0f;
 
 uint compute_step_count(float roughness)
 {
     float steps_min = 8.0;    // for very rough surfaces
-    float steps_max = 128.0f; // for very reflective surfaces
+    float steps_max = 512.0f; // for very reflective surfaces
 
     return (uint)lerp(steps_max, steps_min, roughness);
 }
