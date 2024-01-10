@@ -69,7 +69,9 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float3 ibl_specular_environment    = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level);
     
     // blend between ssr and the envirnoment
-    const float4 ssr_sample = is_ssr_enabled() ? tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, 0.0f) : 0.0f;
+    float mip_count_ssr     = pass_get_f3_value().y;
+    mip_level               = lerp(0, mip_count_ssr - 1, surface.roughness);
+    const float4 ssr_sample = is_ssr_enabled() ? tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level) : 0.0f;
     float3 ibl_specular     = lerp(ibl_specular_environment, ssr_sample.rgb, ssr_sample.a);
 
     // modulate outcoming energy
