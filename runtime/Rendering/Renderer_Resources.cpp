@@ -82,7 +82,7 @@ namespace Spartan
     }
 
     void Renderer::CreateStructuredBuffers()
-    { 
+    {
         #define structured_buffer(x) structured_buffers[static_cast<uint8_t>(x)]
 
         {
@@ -152,7 +152,7 @@ namespace Spartan
             mip_bias = log2(GetResolutionRender().x / GetResolutionOutput().x) - 1.0f;
             SP_LOG_INFO("Mip bias set to %f", mip_bias);
         }
-        
+
         #define sampler(x) samplers[static_cast<uint8_t>(x)]
         if (!create_only_anisotropic)
         {
@@ -399,7 +399,7 @@ namespace Spartan
             shader(Renderer_Shader::blur_gaussian_c)->AddDefine("PASS_BLUR_GAUSSIAN");
             shader(Renderer_Shader::blur_gaussian_c)->Compile(RHI_Shader_Compute, shader_dir + "blur.hlsl", async);
 
-            // gaussian bilateral 
+            // gaussian bilateral
             shader(Renderer_Shader::blur_gaussian_bilaterial_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::blur_gaussian_bilaterial_c)->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
             shader(Renderer_Shader::blur_gaussian_bilaterial_c)->Compile(RHI_Shader_Compute, shader_dir + "blur.hlsl", async);
@@ -527,7 +527,7 @@ namespace Spartan
         for (uint32_t i = 0; i < 5; i++) // as many as m_resources_frame_lifetime
         {
             // ResourceCache will ensure that the font resource is only loaded once
-            standard_font[i] = make_shared<Font>(dir_font + "CalibriBold.ttf", static_cast<uint32_t>(13 * Window::GetDpiScale()), Vector4(0.8f, 0.8f, 0.8f, 1.0f));
+            standard_font[i] = make_shared<Font>(dir_font + "OpenSans/OpenSans-Medium.ttf", static_cast<uint32_t>(11 * Window::GetDpiScale()), Vector4(0.9f, 0.9f, 0.9f, 1.0f));
         }
     }
 

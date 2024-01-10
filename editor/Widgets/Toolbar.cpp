@@ -21,6 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======================
 #include "Toolbar.h"
+
+#include "MenuBar.h"
 #include "Window.h"
 #include "Profiler.h"
 #include "ResourceViewer.h"
@@ -39,17 +41,33 @@ using namespace Spartan::Math;
 
 namespace
 {
-    static const float button_size = 15.0f;
+    constexpr float button_size = 17.0f;
+
+    constexpr ImVec4 button_color_play           = {0.2f, 0.7f, 0.35f, 1.0f};
+    constexpr ImVec4 button_color_play_hover     = {0.22f, 0.8f, 0.4f, 1.0f};
+    constexpr ImVec4 button_color_play_active    = {0.15f, 0.6f, 0.3f, 1.0f};
+
+    constexpr ImVec4 button_color_doc            = {0.8f, 0.15f, 0.25f, 1.0f};
+    constexpr ImVec4 button_color_doc_hover      = {0.85f, 0.2f, 0.3f, 1.0f};
+    constexpr ImVec4 button_color_doc_active     = {0.7f, 0.1f, 0.2f, 1.0f};
+
+    constexpr ImVec4 button_color_default        = {0.8f, 0.4f, 0.2f, 1.0f};
+    constexpr ImVec4 button_color_default_hover  = {0.9f, 0.3f, 0.20f, 1.0f};
+    constexpr ImVec4 button_color_default_active = {0.8f, 0.2f, 0.1f, 1.0f};
 
     // A button that when pressed will call "on press" and derives it's color (active/inactive) based on "get_visibility".
-    static void toolbar_button(IconType icon_type, const string tooltip_text, const function<bool()>& get_visibility, const function<void()>& on_press)
+    void toolbar_button(IconType icon_type, const string tooltip_text, const function<bool()>& get_visibility, const function<void()>& on_press, float offset_x = -1.0f)
     {
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Button, get_visibility() ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
+        if (offset_x > 0.0f)
+            ImGui::SetCursorPosX(offset_x);
+
         if (ImGuiSp::image_button(0, nullptr, icon_type, button_size * Spartan::Window::GetDpiScale(), false))
         {
             on_press();
         }
+
         ImGui::PopStyleColor();
 
         ImGuiSp::tooltip(tooltip_text.c_str());
@@ -80,21 +98,33 @@ Toolbar::Toolbar(Editor* editor) : Widget(editor)
 
 void Toolbar::OnTick()
 {
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    const float size_avail_x      = viewport->Size.x;
+    const float button_size_final = button_size + 2.0f * MenuBar::GetPadding().x;//(button_size > ImGui::GetContentRegionAvail().y ? button_size : ImGui::GetContentRegionAvail().y);
+
+    float num_buttons  = 2.0f;
+    float size_toolbar = num_buttons * button_size_final;
+    float offset_x     = (size_avail_x - size_toolbar) * 0.5f;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0.0f, 0.0f});
+
+    ImGui::PushStyleColor(ImGuiCol_Button, button_color_play);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, button_color_play_hover);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, button_color_play_active);
+
     // play
     toolbar_button(
         IconType::Button_Play, "Play",
         []() { return Spartan::Engine::IsFlagSet(Spartan::EngineMode::Game); },
-        []() { return Spartan::Engine::ToggleFlag(Spartan::EngineMode::Game); }
+        []() { return Spartan::Engine::ToggleFlag(Spartan::EngineMode::Game); },
+        offset_x
     );
 
-    //  widgets as buttons 
-    for (auto& widget_it : m_widgets)
-    {
-        Widget* widget             = widget_it.second;
-        const IconType widget_icon = widget_it.first;
+    ImGui::PopStyleColor(3);
 
-        toolbar_button(widget_icon, widget->GetTitle(), [this, &widget](){ return widget->GetVisible(); }, [this, &widget]() { widget->SetVisible(true); });
-    }
+    ImGui::PushStyleColor(ImGuiCol_Button, button_color_doc);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, button_color_doc_hover);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, button_color_doc_active);
 
     // RenderDoc
     toolbar_button(
@@ -111,6 +141,26 @@ void Toolbar::OnTick()
             }
         }
     );
+
+    ImGui::PopStyleColor(3);
+    ImGui::PopStyleVar(1);
+
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {2.0f, 0.0f});
+
+    num_buttons       = 5.0f;
+    size_toolbar      = num_buttons * button_size_final + (num_buttons - 1.0f) * ImGui::GetStyle().ItemSpacing.x;
+    offset_x          = size_avail_x - size_toolbar;
+
+    //  widgets as buttons
+    for (auto& widget_it : m_widgets)
+    {
+        Widget* widget             = widget_it.second;
+        const IconType widget_icon = widget_it.first;
+
+        toolbar_button(widget_icon, widget->GetTitle(), [this, &widget](){ return widget->GetVisible(); }, [this, &widget]() { widget->SetVisible(true); }, offset_x);
+        offset_x = -1.0f; // Dirty way to only consider offset in the first item
+    }
+    ImGui::PopStyleVar(1);
 
     // screenshot
     //toolbar_button(
