@@ -979,7 +979,7 @@ namespace Spartan
                     m_pcb_pass_cpu.set_f3_value2(array_slice_index++, static_cast<float>(light->GetIndex()), 0.0f);
                     cmd_list->SetTexture(Renderer_BindingsSrv::sss, GetRenderTarget(Renderer_RenderTexture::sss));
                 }
-                
+
                 // push pass constants
                 m_pcb_pass_cpu.set_resolution_out(tex_diffuse);
                 m_pcb_pass_cpu.set_is_transparent(is_transparent_pass);
@@ -2181,45 +2181,42 @@ namespace Spartan
         pso.render_target_color_textures[0] = tex_out;
         pso.clear_color[0]                  = rhi_color_load;
         pso.name                            = "Pass_Text";
+        cmd_list->SetPipelineState(pso);
 
-        font->UpdateVertexAndIndexBuffers();
+        // set vertex and index buffer
+        if (m_cb_frame_cpu.frame < 50)
+        {
+            font->UpdateVertexAndIndexBuffers();
+        }
+        cmd_list->SetBufferVertex(font->GetVertexBuffer());
+        cmd_list->SetBufferIndex(font->GetIndexBuffer());
 
         // outline
+        cmd_list->BeginTimeblock("outline");
         if (font->GetOutline() != Font_Outline_None && font->GetOutlineSize() != 0)
         {
-            cmd_list->BeginTimeblock("outline");
-            cmd_list->SetPipelineState(pso);
-            {
-                // set pass constants
-                m_pcb_pass_cpu.set_resolution_out(tex_out);
-                m_pcb_pass_cpu.set_f4_value(font->GetColorOutline());
-                PushPassConstants(cmd_list);
+            // set pass constants
+            m_pcb_pass_cpu.set_f4_value(font->GetColorOutline());
+            PushPassConstants(cmd_list);
 
-                cmd_list->SetBufferVertex(font->GetVertexBuffer());
-                cmd_list->SetBufferIndex(font->GetIndexBuffer());
-                cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlasOutline());
-                cmd_list->DrawIndexed(font->GetIndexCount());
-            }
-            cmd_list->EndTimeblock();
+            // draw
+            cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlasOutline());
+            cmd_list->DrawIndexed(font->GetIndexCount());
         }
+        cmd_list->EndTimeblock();
 
         // inline
+        cmd_list->BeginTimeblock("inline");
         {
-            cmd_list->BeginTimeblock("inline");
-            cmd_list->SetPipelineState(pso);
-            {
-                // set pass constants
-                m_pcb_pass_cpu.set_resolution_out(tex_out);
-                m_pcb_pass_cpu.set_f4_value(font->GetColor());
-                PushPassConstants(cmd_list);
+            // set pass constants
+            m_pcb_pass_cpu.set_f4_value(font->GetColor());
+            PushPassConstants(cmd_list);
 
-                cmd_list->SetBufferVertex(font->GetVertexBuffer());
-                cmd_list->SetBufferIndex(font->GetIndexBuffer());
-                cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlas());
-                cmd_list->DrawIndexed(font->GetIndexCount());
-            }
-            cmd_list->EndTimeblock();
+            // draw
+            cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlas());
+            cmd_list->DrawIndexed(font->GetIndexCount());
         }
+        cmd_list->EndTimeblock();
 
         cmd_list->EndMarker();
     }

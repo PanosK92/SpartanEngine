@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-float compute_gaussian_weight(int sample_distance, const float2 sigma2)
+float compute_gaussian_weight(int sample_distance, const float sigma2)
 {
     float g = 1.0f / sqrt(PI2 * sigma2);
     return (g * exp(-(sample_distance * sample_distance) / (2.0f * sigma2)));
