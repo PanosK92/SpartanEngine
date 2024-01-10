@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================================
+//= INCLUDES ==========================
 #include "pch.h"
 #include "ModelImporter.h"
 #include "../../Core/ProgressTracker.h"
@@ -36,7 +36,7 @@ SP_WARNINGS_OFF
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
 SP_WARNINGS_ON
-//============================================
+//=====================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -347,20 +347,13 @@ namespace Spartan
         // set up the importer
         Importer importer;
         {
-            // remove points and lines.
+            // remove points and lines
             importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);
 
-            // remove cameras and lights
-            {
-                uint32_t component_flags = aiComponent_CAMERAS;
-                if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshFlags::ImportLights))) == 0)
-                {
-                    component_flags |= aiComponent_LIGHTS;
-                }
-                importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, component_flags);
-            }
+            // remove cameras
+            importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_CAMERAS);
 
-            // Enable progress tracking
+            // enable progress tracking
             importer.SetPropertyBool(AI_CONFIG_GLOB_MEASURE_TIME, true);
             importer.SetProgressHandler(new AssimpProgress(file_path));
         }
@@ -560,6 +553,7 @@ namespace Spartan
                 // disable shadows (to avoid tanking the framerate)
                 light->SetFlag(LightFlags::Shadows, false);
                 light->SetFlag(LightFlags::ShadowsTransparent, false);
+                light->SetFlag(LightFlags::Volumetric, false);
 
                 // local transform
                 light->GetEntity()->SetPositionLocal(convert_vector3(light_assimp->mPosition));
