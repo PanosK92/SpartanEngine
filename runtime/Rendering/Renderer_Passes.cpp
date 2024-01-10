@@ -2184,10 +2184,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // set vertex and index buffer
-        if (m_cb_frame_cpu.frame < 50)
-        {
-            font->UpdateVertexAndIndexBuffers();
-        }
+        font->UpdateVertexAndIndexBuffers();
         cmd_list->SetBufferVertex(font->GetVertexBuffer());
         cmd_list->SetBufferIndex(font->GetIndexBuffer());
 
