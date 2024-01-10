@@ -675,3 +675,4 @@ float get_alpha_threshold(float3 world_position)
 
 #endif // SPARTAN_COMMON
 
+

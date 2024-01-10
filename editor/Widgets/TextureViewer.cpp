@@ -53,7 +53,8 @@ namespace
     uint32_t channel_count         = 0;
     uint64_t texture_id            = 0;
     uint32_t m_visualisation_flags = 0;
-    vector<string> render_targets;
+    vector<string> render_target_names;
+    vector<RHI_Texture*> render_targets;
 }
 
 TextureViewer::TextureViewer(Editor* editor) : Widget(editor)
@@ -72,21 +73,17 @@ void TextureViewer::OnTick()
 void TextureViewer::OnVisible()
 {
     // get render targets
-    if (render_targets.empty())
+    if (render_target_names.empty())
     {
         for (const shared_ptr<RHI_Texture>& render_target : Renderer::GetRenderTargets())
         {
             if (render_target)
             {
-                render_targets.emplace_back(render_target->GetObjectName());
+                render_target_names.emplace_back(render_target->GetObjectName());
+                render_targets.emplace_back(render_target.get());
             }
         }
     }
-}
-
-void TextureViewer::OnInvisible()
-{
-    render_targets.clear();
 }
 
 void TextureViewer::OnTickVisible()
@@ -94,7 +91,7 @@ void TextureViewer::OnTickVisible()
     // texture
     ImGui::BeginGroup();
     {
-        if (shared_ptr<RHI_Texture> texture = Renderer::GetRenderTarget(static_cast<Renderer_RenderTexture>(m_texture_index)))
+        if (RHI_Texture* texture = render_targets[m_texture_index])
         {
             // calculate a percentage that once multiplied with the texture dimensions, the texture will always be displayed within the window.
             float bottom_padding              = 200.0f * Spartan::Window::GetDpiScale(); // to fit the information text
@@ -105,7 +102,7 @@ void TextureViewer::OnTickVisible()
             // texture
             float virtual_width  = static_cast<float>(texture->GetWidth()) * texture_shrink_percentage;
             float virtual_height = static_cast<float>(texture->GetHeight()) * texture_shrink_percentage;
-            ImGuiSp::image(texture.get(), Vector2(virtual_width, virtual_height), ImColor(255, 255, 255, 255), ImColor(0, 0, 0, 255));
+            ImGuiSp::image(texture, Vector2(virtual_width, virtual_height), ImColor(255, 255, 255, 255), ImColor(0, 0, 0, 255));
 
             // magnifying glass
             if (m_magnifying_glass && ImGui::IsItemHovered())
@@ -127,12 +124,12 @@ void TextureViewer::OnTickVisible()
 
                     ImVec2 uv0 = ImVec2(region_x / virtual_width, region_y / virtual_height);
                     ImVec2 uv1 = ImVec2((region_x + region_sz) / virtual_width, (region_y + region_sz) / virtual_height);
-                    ImGui::Image(static_cast<ImTextureID>(texture.get()), ImVec2(region_sz * zoom, region_sz * zoom), uv0, uv1, tint_col, border_col);
+                    ImGui::Image(static_cast<ImTextureID>(texture), ImVec2(region_sz * zoom, region_sz * zoom), uv0, uv1, tint_col, border_col);
                 }
                 ImGui::EndTooltip();
             }
 
-            // disable for now as it's buggy.
+            // disable for now as it's buggy
             //ImGui::Checkbox("Magnifying glass", &m_magnifying_glass);
 
             name          = texture->GetObjectName();
@@ -152,14 +149,14 @@ void TextureViewer::OnTickVisible()
         // render target
         ImGui::Text("Render target");
         ImGui::SameLine();
-        ImGuiSp::combo_box("##render_target", render_targets, &m_texture_index);
+        ImGuiSp::combo_box("##render_target", render_target_names, &m_texture_index);
 
         // mip level control
         if (mip_count > 1)
         {
             ImGui::SameLine();
             ImGui::PushItemWidth(85 * Spartan::Window::GetDpiScale());
-            ImGui::InputInt("Mip", &mip_level);      
+            ImGui::InputInt("Mip", &mip_level);
             ImGui::PopItemWidth();
             mip_level = Math::Helper::Clamp(mip_level, 0, static_cast<int>(mip_count) - 1);
         }

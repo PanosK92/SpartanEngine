@@ -195,10 +195,8 @@ namespace Spartan
                 // blur the smaller mips to reduce blockiness/flickering
                 for (uint32_t i = 1; i < rt_render_2->GetMipCount(); i++)
                 {
-                    const bool depth_aware = false;
-                    const float radius     = 1.0f;
-                    const float sigma      = 12.0f;
-                    Pass_Blur_Gaussian(cmd_list, rt_render_2, depth_aware, radius, sigma, i);
+                    const float radius = 1.0f;
+                    Pass_Blur_Gaussian(cmd_list, rt_render_2, nullptr, Renderer_Shader::blur_gaussian_c, radius, i);
                 }
             
                 Pass_Depth_Prepass(cmd_list, do_transparent_pass);
@@ -209,10 +207,10 @@ namespace Spartan
                 Pass_Light_ImageBased(cmd_list, rt_render, do_transparent_pass);
             }
 
-            Pass_Grid(cmd_list, rt_render);
-            Pass_Lines(cmd_list, rt_render);
-            Pass_Outline(cmd_list, rt_render);
             Pass_PostProcess(cmd_list);
+            Pass_Grid(cmd_list, rt_output);
+            Pass_Lines(cmd_list, rt_output);
+            Pass_Outline(cmd_list, rt_output);
             Pass_Icons(cmd_list, rt_output);
         }
         else
@@ -710,6 +708,13 @@ namespace Spartan
         // render
         cmd_list->Dispatch(thread_group_count_x(tex_ssgi), thread_group_count_y(tex_ssgi));
 
+        // antiflicker pass to stabilize
+        Pass_Antiflicker(cmd_list, tex_ssgi);
+
+        // blur to denoise
+        float radius = 8.0f;
+        Pass_Blur_Gaussian(cmd_list, tex_ssgi, nullptr, Renderer_Shader::blur_gaussian_bilaterial_c, radius);
+
         cmd_list->EndTimeblock();
     }
 
@@ -724,15 +729,14 @@ namespace Spartan
             return;
 
         // acquire render targets
-        RHI_Texture* tex_ssr = GetRenderTarget(Renderer_RenderTexture::ssr).get();
+        RHI_Texture* tex_ssr           = GetRenderTarget(Renderer_RenderTexture::ssr).get();
+        RHI_Texture* tex_ssr_roughness = GetRenderTarget(Renderer_RenderTexture::ssr_roughness).get();
 
         cmd_list->BeginTimeblock(!is_transparent_pass ? "ssr" : "ssr_transparent");
 
-        // define pipeline state
+        // set pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
-
-        // set pipeline state
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
@@ -742,14 +746,24 @@ namespace Spartan
 
         // set textures
         SetGbufferTextures(cmd_list);
-        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssr); // write to that
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);  // reflect from that
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);             // read
+        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssr);            // write
+        cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_ssr_roughness); // write
 
         // render
         cmd_list->Dispatch(thread_group_count_x(tex_ssr), thread_group_count_y(tex_ssr));
 
-        // generate frame mips so that we can simulate roughness
-        Pass_Ffx_Spd(cmd_list, tex_ssr, Renderer_DownsampleFilter::Antiflicker);
+        cmd_list->InsertMemoryBarrierImageWaitForWrite(tex_ssr);
+        cmd_list->InsertMemoryBarrierImageWaitForWrite(tex_ssr_roughness);
+
+        // antiflicker pass to stabilize
+        Pass_Antiflicker(cmd_list, tex_ssr);
+
+        // blur based on alpha - which contains the reflection roughness
+        Pass_Blur_Gaussian(cmd_list, tex_ssr, tex_ssr_roughness, Renderer_Shader::blur_gaussian_bilaterial_radius_from_texture_c, 0.0f);
+
+        // real time blurring can only go so far, so generate mips that we can use to emulate very high roughness
+        Pass_Ffx_Spd(cmd_list, tex_ssr, Renderer_DownsampleFilter::Average);
 
         cmd_list->EndTimeblock();
     }
@@ -965,7 +979,7 @@ namespace Spartan
                     m_pcb_pass_cpu.set_f3_value2(array_slice_index++, static_cast<float>(light->GetIndex()), 0.0f);
                     cmd_list->SetTexture(Renderer_BindingsSrv::sss, GetRenderTarget(Renderer_RenderTexture::sss));
                 }
-                
+
                 // push pass constants
                 m_pcb_pass_cpu.set_resolution_out(tex_diffuse);
                 m_pcb_pass_cpu.set_is_transparent(is_transparent_pass);
@@ -1053,7 +1067,7 @@ namespace Spartan
         m_pcb_pass_cpu.set_is_transparent(is_transparent_pass);
         uint32_t mip_count_skysphere = GetRenderTarget(Renderer_RenderTexture::skysphere)->GetMipCount();
         uint32_t mip_count_ssr       = GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount();
-        m_pcb_pass_cpu.set_f4_value(0.0f, static_cast<float>(mip_count_ssr), static_cast<float>(mip_count_skysphere), 0.0f);
+        m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_count_skysphere), static_cast<float>(mip_count_ssr));
         PushPassConstants(cmd_list);
 
         // render
@@ -1062,64 +1076,47 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float radius, const float sigma, const uint32_t mip /*= all_mips*/)
+    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_radius, const Renderer_Shader shader_type, const float radius, const uint32_t mip /*= all_mips*/)
     {
-        // acquire shaders
-        RHI_Shader* shader_c = GetShader(depth_aware ? Renderer_Shader::blur_gaussian_bilaterial_c : Renderer_Shader::blur_gaussian_c).get();
+        // acquire shader
+        RHI_Shader* shader_c = GetShader(shader_type).get();
         if (!shader_c->IsCompiled())
             return;
 
-        const float pixel_stride = 1.0f;
+        // compute width and height
         const bool mip_requested = mip != rhi_all_mips;
         const uint32_t mip_range = mip_requested ? 1 : 0;
-
-        // if we need to blur a specific mip, ensure that the texture has per mip views
-        if (mip_requested)
-        {
-            SP_ASSERT(tex_in->HasPerMipViews());
-        }
-
-        // compute width and height
-        const uint32_t width  = mip_requested ? (tex_in->GetWidth()  >> mip) : tex_in->GetWidth();
-        const uint32_t height = mip_requested ? (tex_in->GetHeight() >> mip) : tex_in->GetHeight();
-
-        // acquire render targets
-        RHI_Texture* tex_depth  = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
-        RHI_Texture* tex_normal = GetRenderTarget(Renderer_RenderTexture::gbuffer_normal).get();
-        RHI_Texture* tex_blur   = GetRenderTarget(Renderer_RenderTexture::blur).get();
-
-        // ensure that the blur scratch texture is big enough
-        SP_ASSERT(tex_blur->GetWidth() >= width && tex_blur->GetHeight() >= height);
+        const uint32_t width     = mip_requested ? (tex_in->GetWidth()  >> mip) : tex_in->GetWidth();
+        const uint32_t height    = mip_requested ? (tex_in->GetHeight() >> mip) : tex_in->GetHeight();
 
         // compute thread group count
         const uint32_t thread_group_count_x_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(width) / thread_group_count));
         const uint32_t thread_group_count_y_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(height) / thread_group_count));
 
+        // acquire blur scratch buffer
+        RHI_Texture* tex_blur = GetRenderTarget(Renderer_RenderTexture::scratch_blur).get();
+        SP_ASSERT_MSG(width <= tex_blur->GetWidth() && height <= tex_blur->GetHeight(), "Input texture is larger than the blur scratch buffer");
+
         cmd_list->BeginMarker("blur_gaussian");
+
+        // set pipeline state
+        static RHI_PipelineState pso;
+        pso.shader_compute = shader_c;
+        cmd_list->SetPipelineState(pso);
 
         // horizontal pass
         {
-            // define pipeline state
-            static RHI_PipelineState pso;
-            pso.shader_compute = shader_c;
-
-            // set pipeline state
-            cmd_list->SetPipelineState(pso);
-
             // set pass constants
             m_pcb_pass_cpu.set_resolution_in(Vector2(static_cast<float>(width), static_cast<float>(height)));
             m_pcb_pass_cpu.set_resolution_out(tex_blur);
-            m_pcb_pass_cpu.set_f3_value(pixel_stride, 0.0f, radius);
-            m_pcb_pass_cpu.set_f3_value2(sigma);
+            m_pcb_pass_cpu.set_f3_value(radius, 0.0f);
             PushPassConstants(cmd_list);
 
             // set textures
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_blur);
+            SetGbufferTextures(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in, mip, mip_range);
-            if (depth_aware)
-            {
-                SetGbufferTextures(cmd_list);
-            }
+            cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_radius);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_blur); // write
 
             // render
             cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
@@ -1127,27 +1124,13 @@ namespace Spartan
 
         // vertical pass
         {
-            // define pipeline state
-            static RHI_PipelineState pso;
-            pso.shader_compute = shader_c;
-
-            // set pipeline state
-            cmd_list->SetPipelineState(pso);
-
             // set pass constants
-            m_pcb_pass_cpu.set_resolution_in(Vector2(static_cast<float>(width), static_cast<float>(height)));
-            m_pcb_pass_cpu.set_resolution_out(tex_blur);
-            m_pcb_pass_cpu.set_f3_value(0.0f, pixel_stride, radius);
-            m_pcb_pass_cpu.set_f3_value2(sigma);
+            m_pcb_pass_cpu.set_f3_value(radius, 1.0f);
             PushPassConstants(cmd_list);
 
             // set textures
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_in, mip, mip_range);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_blur);
-            if (depth_aware)
-            {
-                SetGbufferTextures(cmd_list);
-            }
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_in, mip, mip_range); // write
 
             // render
             cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
@@ -1683,18 +1666,16 @@ namespace Spartan
 
     void Renderer::Pass_FilmGrain(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
-        // acquire shaders
+        // acquire shader
         RHI_Shader* shader_c = GetShader(Renderer_Shader::film_grain_c).get();
         if (!shader_c->IsCompiled())
             return;
 
         cmd_list->BeginTimeblock("film_grain");
 
-        // define pipeline state
+        // set pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
-
-        // set pipeline state
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
@@ -1710,6 +1691,38 @@ namespace Spartan
         cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
 
         cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_Antiflicker(RHI_CommandList* cmd_list, RHI_Texture* tex_in)
+    {
+        // acquire shader
+        RHI_Shader* shader_c = GetShader(Renderer_Shader::antiflicker_c).get();
+        if (!shader_c->IsCompiled())
+            return;
+
+        cmd_list->BeginMarker("antiflicker");
+
+        RHI_Texture* tex_scratch = GetRenderTarget(Renderer_RenderTexture::scratch_antiflicker).get();
+
+        // set pipeline state
+        static RHI_PipelineState pso;
+        pso.shader_compute = shader_c;
+        cmd_list->SetPipelineState(pso);
+
+        // set pass constants
+        m_pcb_pass_cpu.set_resolution_out(tex_in);
+        PushPassConstants(cmd_list);
+
+        // render
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
+        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_scratch);
+        cmd_list->Dispatch(thread_group_count_x(tex_in), thread_group_count_y(tex_in));
+
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_scratch);
+        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_in);
+        cmd_list->Dispatch(thread_group_count_x(tex_in), thread_group_count_y(tex_in));
+
+        cmd_list->EndMarker();
     }
 
     void Renderer::Pass_Ffx_Cas(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
@@ -1772,9 +1785,9 @@ namespace Spartan
         RHI_Shader* shader_c = nullptr;
         {
             // deduce appropriate shader
-            Renderer_Shader shader = Renderer_Shader::ffx_spd_c_average;
-            if (filter == Renderer_DownsampleFilter::Highest)     shader = Renderer_Shader::ffx_spd_c_highest;
-            if (filter == Renderer_DownsampleFilter::Antiflicker) shader = Renderer_Shader::ffx_spd_c_antiflicker;
+            Renderer_Shader shader = Renderer_Shader::ffx_spd_average_c;
+            if (filter == Renderer_DownsampleFilter::Highest)     shader = Renderer_Shader::ffx_spd_highest_c;
+            if (filter == Renderer_DownsampleFilter::Antiflicker) shader = Renderer_Shader::ffx_spd_antiflicker_c;
 
             shader_c = GetShader(shader).get();
             if (!shader_c->IsCompiled())
@@ -1982,9 +1995,11 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
+        AddLinesToBeRendered();
+
         cmd_list->BeginTimeblock("lines");
 
-        // define the pipeline state
+        // set pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
         pso.shader_pixel                    = shader_p;
@@ -2052,6 +2067,9 @@ namespace Spartan
             }
         }
 
+        m_lines_index_depth_off = numeric_limits<uint32_t>::max(); // max +1 will wrap it to 0.
+        m_lines_index_depth_on  = (static_cast<uint32_t>(m_line_vertices.size()) / 2) - 1; // -1 because +1 will make it go to size / 2.
+
         cmd_list->EndTimeblock();
     }
 
@@ -2109,10 +2127,8 @@ namespace Spartan
                         
                         // Blur the color silhouette
                         {
-                            const bool depth_aware = false;
-                            const float radius     = 30.0f;
-                            const float sigma      = 32.0f;
-                            Pass_Blur_Gaussian(cmd_list, tex_outline, depth_aware, radius, sigma);
+                            const float radius = 30.0f;
+                            Pass_Blur_Gaussian(cmd_list, tex_outline, nullptr, Renderer_Shader::blur_gaussian_c, radius);
                         }
                         
                         // Combine color silhouette with frame
@@ -2165,45 +2181,39 @@ namespace Spartan
         pso.render_target_color_textures[0] = tex_out;
         pso.clear_color[0]                  = rhi_color_load;
         pso.name                            = "Pass_Text";
+        cmd_list->SetPipelineState(pso);
 
+        // set vertex and index buffer
         font->UpdateVertexAndIndexBuffers();
+        cmd_list->SetBufferVertex(font->GetVertexBuffer());
+        cmd_list->SetBufferIndex(font->GetIndexBuffer());
 
         // outline
+        cmd_list->BeginTimeblock("outline");
         if (font->GetOutline() != Font_Outline_None && font->GetOutlineSize() != 0)
         {
-            cmd_list->BeginTimeblock("outline");
-            cmd_list->SetPipelineState(pso);
-            {
-                // set pass constants
-                m_pcb_pass_cpu.set_resolution_out(tex_out);
-                m_pcb_pass_cpu.set_f4_value(font->GetColorOutline());
-                PushPassConstants(cmd_list);
+            // set pass constants
+            m_pcb_pass_cpu.set_f4_value(font->GetColorOutline());
+            PushPassConstants(cmd_list);
 
-                cmd_list->SetBufferVertex(font->GetVertexBuffer());
-                cmd_list->SetBufferIndex(font->GetIndexBuffer());
-                cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlasOutline());
-                cmd_list->DrawIndexed(font->GetIndexCount());
-            }
-            cmd_list->EndTimeblock();
+            // draw
+            cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlasOutline());
+            cmd_list->DrawIndexed(font->GetIndexCount());
         }
+        cmd_list->EndTimeblock();
 
         // inline
+        cmd_list->BeginTimeblock("inline");
         {
-            cmd_list->BeginTimeblock("inline");
-            cmd_list->SetPipelineState(pso);
-            {
-                // set pass constants
-                m_pcb_pass_cpu.set_resolution_out(tex_out);
-                m_pcb_pass_cpu.set_f4_value(font->GetColor());
-                PushPassConstants(cmd_list);
+            // set pass constants
+            m_pcb_pass_cpu.set_f4_value(font->GetColor());
+            PushPassConstants(cmd_list);
 
-                cmd_list->SetBufferVertex(font->GetVertexBuffer());
-                cmd_list->SetBufferIndex(font->GetIndexBuffer());
-                cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlas());
-                cmd_list->DrawIndexed(font->GetIndexCount());
-            }
-            cmd_list->EndTimeblock();
+            // draw
+            cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlas());
+            cmd_list->DrawIndexed(font->GetIndexCount());
         }
+        cmd_list->EndTimeblock();
 
         cmd_list->EndMarker();
     }
@@ -2260,8 +2270,8 @@ namespace Spartan
             uint32_t mip_level = mip_count - m_environment_mips_to_filter_count;
             SP_ASSERT(mip_level != 0);
 
-            // read from the previous mip
-            cmd_list->SetTexture(Renderer_BindingsSrv::environment, tex_environment, 0, 1);
+            // read from the previous mip (not the top) - this helps accumulate filtering without doing a lot of samples
+            cmd_list->SetTexture(Renderer_BindingsSrv::environment, tex_environment, mip_level - 1, 1);
 
             // do one mip at a time, splitting the cost over a couple of frames
             Vector2 resolution = Vector2(tex_environment->GetWidth() >> mip_level, tex_environment->GetHeight() >> mip_level);
@@ -2278,17 +2288,15 @@ namespace Spartan
                 );
             }
 
-            // smooth out the sampling pattern - cheaper than increasing the sample count
-            for (uint32_t i = 0; i < 5; i++)
+            m_environment_mips_to_filter_count--;
+
+            // the first two filtered mips have obvious sample patterns, so blur them
+            if (m_environment_mips_to_filter_count == 0)
             {
-                float radius = 20.0f; // pixel count
-                float sigma  = 10.0f; // spread
-                Pass_Blur_Gaussian(cmd_list, tex_environment, false, radius, sigma, mip_level);
+                Pass_Blur_Gaussian(cmd_list, tex_environment, nullptr, Renderer_Shader::blur_gaussian_c, 32.0f, 1);
+                Pass_Blur_Gaussian(cmd_list, tex_environment, nullptr, Renderer_Shader::blur_gaussian_c, 32.0f, 2);
             }
         }
-
-        m_environment_mips_to_filter_count--;
-
         cmd_list->EndTimeblock();
     }
 

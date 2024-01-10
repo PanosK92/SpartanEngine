@@ -378,4 +378,9 @@ namespace Spartan
     {
         
     }
+
+    void RHI_CommandList::InsertMemoryBarrierBufferWaitForWrite(void* buffer)
+    {
+
+    }
 }

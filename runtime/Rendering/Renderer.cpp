@@ -22,6 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============================
 #include "pch.h"
 #include "Renderer.h"
+#include "ThreadPool.h"
+#include "../Profiling/Profiler.h"
 #include "../Profiling/RenderDoc.h"
 #include "../Core/Window.h"
 #include "../Input/Input.h"
@@ -37,8 +39,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/AudioSource.h"
-#include "ThreadPool.h"
-#include "../Profiling/Profiler.h"
 //==========================================
 
 //= NAMESPACES ===============
@@ -60,13 +60,13 @@ namespace Spartan
     uint32_t Renderer::m_lines_index_depth_on;
 
     // misc
+    RHI_CommandPool* Renderer::m_cmd_pool                         = nullptr;
+    shared_ptr<Camera> Renderer::m_camera                         = nullptr;
+    uint32_t Renderer::m_resource_index                           = 0;
+    atomic<bool> Renderer::m_resources_created                    = false;
+    bool Renderer::m_sorted                                       = false;
+    atomic<uint32_t> Renderer::m_environment_mips_to_filter_count = 0;
     unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
-    RHI_CommandPool* Renderer::m_cmd_pool                 = nullptr;
-    shared_ptr<Camera> Renderer::m_camera                 = nullptr;
-    uint32_t Renderer::m_resource_index                   = 0;
-    atomic<bool> Renderer::m_resources_created            = false;
-    bool Renderer::m_sorted                               = false;
-    uint32_t Renderer::m_environment_mips_to_filter_count = 0;
 
     namespace
     {
@@ -316,7 +316,7 @@ namespace Spartan
         SetOption(Renderer_Option::Gamma,                         2.2f);
         SetOption(Renderer_Option::Exposure,                      1.0f);
         SetOption(Renderer_Option::Sharpness,                     0.5f);                                                 // becomes the upsampler's sharpness as well
-        SetOption(Renderer_Option::Fog,                           2.5f);                                                 // controls the intensity of the volumetric fog as well
+        SetOption(Renderer_Option::Fog,                           1.0f);                                                 // controls the intensity of the volumetric fog as well
         SetOption(Renderer_Option::FogVolumetric,                 1.0f);
         SetOption(Renderer_Option::Antialiasing,                  static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 2 for taa
         SetOption(Renderer_Option::Upsampling,                    static_cast<float>(Renderer_Upsampling::FSR2));
@@ -360,7 +360,6 @@ namespace Spartan
             SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
             SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_EXPRESSION_STATIC( materials::dirty = true; ));
             SP_SUBSCRIBE_TO_EVENT(EventType::LightOnChanged,          SP_EVENT_HANDLER_EXPRESSION_STATIC( lights::dirty    = true; ));
-            SP_SUBSCRIBE_TO_EVENT(EventType::LightOnPrefilter,        SP_EVENT_HANDLER_EXPRESSION_STATIC(m_environment_mips_to_filter_count = GetRenderTarget(Renderer_RenderTexture::skysphere)->GetMipCount() - 1; ));
 
             // fire
             SP_FIRE_EVENT(EventType::RendererOnInitialized);
@@ -390,6 +389,7 @@ namespace Spartan
 
     void Renderer::Tick()
     {
+        // don't waste cpu/gpu time if nothing can be seen
         if (Window::IsMinimised() || !m_resources_created)
             return;
 
@@ -398,17 +398,16 @@ namespace Spartan
             SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
         }
 
-        OnSyncPoint();
-       
-        RHI_Device::Tick(frame_num);
-
-        // begin
+        // get a command list and begin recording
         m_cmd_pool->Tick();
         cmd_current = m_cmd_pool->GetCurrentCommandList();
         cmd_current->Begin();
 
-        OnFrameStart(cmd_current);
+        // do some logistics work
+        OnSyncPoint(cmd_current);
+        RHI_Device::Tick(frame_num);
 
+        // do all the render passes
         Pass_Frame(cmd_current);
 
         // blit to back buffer when in full screen
@@ -419,9 +418,7 @@ namespace Spartan
             cmd_current->EndMarker();
         }
 
-        OnFrameEnd(cmd_current);
-
-        // submit
+        // submit render work
         cmd_current->End();
         cmd_current->Submit();
 
@@ -677,68 +674,9 @@ namespace Spartan
         Input::SetMouseCursorVisible(!Window::IsFullScreen());
     }
 
-    void Renderer::OnSyncPoint()
+    void Renderer::OnSyncPoint(RHI_CommandList* cmd_list)
     {
-        m_resource_index++;
-        bool is_sync_point = m_resource_index == resources_frame_lifetime;
-
-        if (is_sync_point)
-        {
-            // is_sync_point: the command pool has exhausted its command lists and 
-            // is about to reset them, this is an opportune moment for us to perform
-            // certain operations, knowing that no rendering commands are currently
-            // executing and no resources are being used by any command list
-
-            m_resource_index = 0;
-
-            // delete any rhi resources that have accumulated
-            if (RHI_Device::DeletionQueueNeedsToParse())
-            {
-                RHI_Device::QueueWaitAll();
-                RHI_Device::DeletionQueueParse();
-                SP_LOG_INFO("Parsed deletion queue");
-            }
-
-            // reset buffers with dynamic offsets
-            {
-                GetConstantBufferFrame()->ResetOffset();
-
-                for (shared_ptr<RHI_StructuredBuffer> structured_buffer : GetStructuredBuffers())
-                {
-                    structured_buffer->ResetOffset();
-                }
-            }
-        }
-
-        // bindless
-        {
-            // these two map to two arrays on the gpu
-            // it should be ok to update them without syncing with the gpu
-            
-            // materials
-            if (materials::dirty)
-            {
-                materials::update(m_renderables);
-                GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->ResetOffset();
-                GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->Update(&materials::properties[0]);
-                RHI_Device::UpdateBindlessResources(nullptr, &materials::textures);
-                materials::dirty = false;
-            }
-
-            // lights
-            if (lights::dirty)
-            {
-                lights::update(m_renderables[Renderer_Entity::Light], GetCamera().get());
-                GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->ResetOffset();
-                GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->Update(&lights::properties[0]);
-                lights::dirty = false;
-            }
-        }
-    }
-
-    void Renderer::OnFrameStart(RHI_CommandList* cmd_list)
-    {
-        // acquire renderables
+        // acquire renderables - if any
         if (!m_entities_to_add.empty())
         {
             // clear previous state
@@ -790,12 +728,12 @@ namespace Spartan
             }
 
             m_entities_to_add.clear();
-            m_sorted         = false;
+            m_sorted = false;
             materials::dirty = true;
-            lights::dirty    = true;
+            lights::dirty = true;
         }
 
-        // generate mips
+        // generate mips - if any
         {
             lock_guard lock(mutex_mip_generation);
             for (RHI_Texture* texture : textures_mip_generation)
@@ -805,12 +743,87 @@ namespace Spartan
             textures_mip_generation.clear();
         }
 
-        Lines_OneFrameStart();
-    }
+        // is_sync_point: the command pool has exhausted its command lists and 
+        // is about to reset them, this is an opportune moment for us to perform
+        // certain operations, knowing that no rendering commands are currently
+        // executing and no resources are being used by any command list
+        m_resource_index++;
+        bool is_sync_point = m_resource_index == resources_frame_lifetime;
+        if (is_sync_point)
+        {
+            m_resource_index = 0;
 
-    void Renderer::OnFrameEnd(RHI_CommandList* cmd_list)
-    {
-        Lines_OnFrameEnd();
+            // delete any rhi resources that have accumulated
+            if (RHI_Device::DeletionQueueNeedsToParse())
+            {
+                RHI_Device::QueueWaitAll();
+                RHI_Device::DeletionQueueParse();
+                SP_LOG_INFO("Parsed deletion queue");
+            }
+
+            // reset buffers with dynamic offsets
+            {
+                GetConstantBufferFrame()->ResetOffset();
+
+                for (shared_ptr<RHI_StructuredBuffer> structured_buffer : GetStructuredBuffers())
+                {
+                    structured_buffer->ResetOffset();
+                }
+            }
+        }
+
+        // bindless work
+        {
+            // these two map to two arrays on the gpu
+            // it should be ok to update them without syncing with the gpu
+            
+            // materials
+            if (materials::dirty)
+            {
+                materials::update(m_renderables);
+                GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->ResetOffset();
+                GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->Update(&materials::properties[0]);
+                RHI_Device::UpdateBindlessResources(nullptr, &materials::textures);
+                materials::dirty = false;
+            }
+
+            // lights
+            if (lights::dirty)
+            {
+                lights::update(m_renderables[Renderer_Entity::Light], GetCamera().get());
+                GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->ResetOffset();
+                GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->Update(&lights::properties[0]);
+                lights::dirty = false;
+            }
+        }
+
+        // fitler environment on directioanl light change
+        {
+            static Quaternion rotation;
+            static float intensity;
+            static Color color;
+
+            for (const shared_ptr<Entity>& entity : m_renderables[Renderer_Entity::Light])
+            {
+                if (const shared_ptr<Light>& light = entity->GetComponent<Light>())
+                {
+                    if (light->GetLightType() == LightType::Directional)
+                    {
+                        if (light->GetEntity()->GetRotation() != rotation ||
+                            light->GetIntensityLumens() != intensity ||
+                            light->GetColor() != color
+                            )
+                        {
+                            rotation  = light->GetEntity()->GetRotation();
+                            intensity = light->GetIntensityLumens();
+                            color     = light->GetColor();
+
+                            m_environment_mips_to_filter_count = GetRenderTarget(Renderer_RenderTexture::skysphere)->GetMipCount() - 1;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     void Renderer::DrawString(const string& text, const Vector2& position_screen_percentage)

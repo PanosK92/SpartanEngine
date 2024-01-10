@@ -53,7 +53,7 @@ namespace Spartan
 
     void Timer::Initialize()
     {
-        fps_limit = static_cast<uint32_t>(Display::GetRefreshRate());
+        fps_limit = static_cast<float>(Display::GetRefreshRate());
     }
 
     void Timer::PostTick()

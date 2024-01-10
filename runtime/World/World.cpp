@@ -61,6 +61,7 @@ namespace Spartan
         shared_ptr<Entity> m_default_physics_body_camera = nullptr;
         shared_ptr<Entity> m_default_environment         = nullptr;
         shared_ptr<Entity> m_default_model_floor         = nullptr;
+        shared_ptr<Entity> m_default_light_directional   = nullptr;
         shared_ptr<Mesh> m_default_model_sponza          = nullptr;
         shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
         shared_ptr<Mesh> m_default_model_car             = nullptr;
@@ -70,7 +71,7 @@ namespace Spartan
         shared_ptr<Mesh> m_default_model_material_ball   = nullptr;
         shared_ptr<Mesh> m_default_model_doom            = nullptr;
 
-        static void create_default_world_common(
+        void create_default_world_common(
             const Math::Vector3& camera_position = Vector3(0.0f, 2.0f, -10.0f),
             const Math::Vector3& camera_rotation = Vector3(0.0f, 0.0f, 0.0f),
             const LightIntensity sun_intensity   = LightIntensity::sky_sunlight_morning_evening,
@@ -105,12 +106,12 @@ namespace Spartan
 
             // light - directional
             {
-                shared_ptr<Entity> entity = World::CreateEntity();
-                entity->SetObjectName("light_directional");
+                m_default_light_directional = World::CreateEntity();
+                m_default_light_directional->SetObjectName("light_directional");
 
-                entity->SetRotation(Quaternion::FromEulerAngles(35.0f, 90.0f, 0.0f));
+                m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(35.0f, 90.0f, 0.0f));
 
-                shared_ptr<Light> light = entity->AddComponent<Light>();
+                shared_ptr<Light> light = m_default_light_directional->AddComponent<Light>();
                 light->SetLightType(LightType::Directional);
                 light->SetTemperature(2300.0f);
                 light->SetIntensity(sun_intensity);
@@ -180,6 +181,7 @@ namespace Spartan
         m_default_physics_body_camera   = nullptr;
         m_default_terrain               = nullptr;
         m_default_model_doom            = nullptr;
+        m_default_light_directional     = nullptr;
     }
 
     void World::Tick()
@@ -805,6 +807,8 @@ namespace Spartan
         Vector3 camera_rotation = Vector3(0.0f, 144.0f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, nullptr, true, false);
 
+        // mood adjustment
+        m_default_light_directional->GetComponent<Light>()->SetTemperature(2300.0f);
         Renderer::SetOption(Renderer_Option::Debug_Grid, 0.0f);
 
         // create
@@ -1023,7 +1027,7 @@ namespace Spartan
                         material->SetColor(Color::standard_white);
                         material->SetTexture(MaterialTexture::Color,                 "project\\terrain\\vegetation_tree_2\\branches_color.png");
                         material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\vegetation_tree_2\\branches_normal.png");
-                        material->SetTexture(MaterialTexture::Roughness,             "project\\terrain\\vegetation_tree_2\\branches_roughness.png");
+                       // material->SetTexture(MaterialTexture::Roughness,             "project\\terrain\\vegetation_tree_2\\branches_roughness.png"); // very low roughness - not good
                         material->SetTexture(MaterialTexture::Occlusion,             "project\\terrain\\vegetation_tree_2\\branches_ao.png");
                         material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
                         material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);

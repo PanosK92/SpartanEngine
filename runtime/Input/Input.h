@@ -88,7 +88,7 @@ namespace Spartan
     public:
         static void Initialize();
         static void Tick();
-        static void PostTick();
+        static void PreTick();
 
         // polling driven input
         static void PollMouse();

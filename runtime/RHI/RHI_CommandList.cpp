@@ -29,6 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Shader.h"
 #include "RHI_Pipeline.h"
 #include "RHI_CommandPool.h"
+#include "RHI_VertexBuffer.h"
+#include "RHI_IndexBuffer.h"
 #include "../Rendering/Renderer.h"
 //==================================
 
@@ -60,7 +62,17 @@ namespace Spartan
     bool RHI_CommandList::IsExecuting()
     {
         return
-            m_state == RHI_CommandListState::Submitted && // It has been submitted
-            !m_proccessed_fence->IsSignaled();            // And the fence is not signaled yet
+            m_state == RHI_CommandListState::Submitted && // it has been submitted
+            !m_proccessed_fence->IsSignaled();            // and the fence is not signaled yet
+    }
+
+    void RHI_CommandList::InsertMemoryBarrierBufferWaitForWrite(RHI_VertexBuffer* buffer)
+    {
+        InsertMemoryBarrierBufferWaitForWrite(buffer->GetRhiResource());
+    }
+
+    void RHI_CommandList::InsertMemoryBarrierBufferWaitForWrite(RHI_IndexBuffer* buffer)
+    {
+        InsertMemoryBarrierBufferWaitForWrite(buffer->GetRhiResource());
     }
 }

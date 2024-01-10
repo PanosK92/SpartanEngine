@@ -600,7 +600,7 @@ namespace Spartan
 
     void Camera::ProcessInputLerpToEntity()
     {
-        // Set focused entity as a lerp target
+        // set focused entity as a lerp target
         if (Input::GetKeyDown(KeyCode::F))
         {
             FocusOnSelectedEntity();
@@ -609,7 +609,7 @@ namespace Spartan
         // lerp
         if (m_lerp_to_target_p || m_lerp_to_target_r)
         {
-            // Lerp duration in seconds
+            // lerp duration in seconds
             // 2.0 seconds + [0.0 - 2.0] seconds based on distance
             // Something is not right with the duration...
             const float lerp_duration = 2.0f + Helper::Clamp(m_lerp_to_target_distance * 0.01f, 0.0f, 2.0f);
@@ -631,7 +631,7 @@ namespace Spartan
                 GetEntity()->SetRotation(interpolated_rotation);
             }
 
-            // If the lerp has completed or the user has initiated fps control, stop lerping.
+            // if the lerp has completed or the user has initiated fps control, stop lerping
             if (m_lerp_to_target_alpha >= 1.0f || m_is_controlled_by_keyboard_mouse)
             {
                 m_lerp_to_target_p        = false;
@@ -651,16 +651,18 @@ namespace Spartan
             m_lerp_to_target_position = entity->GetPosition();
             const Vector3 target_direction = (m_lerp_to_target_position - GetEntity()->GetPosition()).Normalized();
 
-            // If the entity has a renderable component, we can get a more accurate target position.
+            // if the entity has a renderable component, we can get a more accurate target position
             // ...otherwise we apply a simple offset so that the rotation vector doesn't suffer
             if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
             {
-                m_lerp_to_target_position -= target_direction * renderable->GetBoundingBox(BoundingBoxType::TransformedInstances).GetExtents().Length() * 2.0f;
+                BoundingBoxType bounding_box_type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+                m_lerp_to_target_position -= target_direction * renderable->GetBoundingBox(bounding_box_type).GetExtents().Length() * 2.0f;
             }
             else
             {
                 m_lerp_to_target_position -= target_direction;
             }
+            SP_ASSERT(!isnan(m_lerp_to_target_distance));
 
             m_lerp_to_target_rotation = Quaternion::FromLookRotation(entity->GetPosition() - m_lerp_to_target_position).Normalized();
             m_lerp_to_target_distance = Vector3::Distance(m_lerp_to_target_position, GetEntity()->GetPosition());
