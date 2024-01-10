@@ -811,7 +811,7 @@ namespace Spartan
     {
         SP_ASSERT_MSG(RHI_Context::api_type == RHI_Api_Type::Vulkan, "RHI context not initialized");
 
-        // add validation related extensions
+        // enable extensions
         {
             if (Profiler::IsGpuAssistedValidationEnabled())
             {
@@ -827,9 +827,9 @@ namespace Spartan
                 RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_report");
             }
 
-            if (Profiler::IsGpuMarkingEnabled())
+            if (Profiler::IsValidationLayerEnabled() || Profiler::IsGpuMarkingEnabled())
             {
-                // among various things, this enables support for GPU markers, which we utilize in Release mode as well
+                // object naming (for the validation messages) and gpu markers
                 RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_utils");
             }
         }
