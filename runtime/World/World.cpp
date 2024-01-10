@@ -805,8 +805,10 @@ namespace Spartan
         Vector3 camera_position = Vector3(-244.5046f, 68.0f, 407.8690f);
         Vector3 camera_rotation = Vector3(0.0f, 144.0f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, nullptr, true, false);
-        m_default_light_directional->GetComponent<Light>()->SetTemperature(2300.0f);
 
+        // mood adjustment
+        m_default_light_directional->GetComponent<Light>()->SetTemperature(2300.0f);
+        Renderer::SetOption(Renderer_Option::Fog, 2.5f);
         Renderer::SetOption(Renderer_Option::Debug_Grid, 0.0f);
 
         // create
