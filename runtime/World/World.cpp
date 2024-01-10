@@ -181,6 +181,7 @@ namespace Spartan
         m_default_physics_body_camera   = nullptr;
         m_default_terrain               = nullptr;
         m_default_model_doom            = nullptr;
+        m_default_light_directional     = nullptr;
     }
 
     void World::Tick()
@@ -808,7 +809,6 @@ namespace Spartan
 
         // mood adjustment
         m_default_light_directional->GetComponent<Light>()->SetTemperature(2300.0f);
-        Renderer::SetOption(Renderer_Option::Fog, 2.5f);
         Renderer::SetOption(Renderer_Option::Debug_Grid, 0.0f);
 
         // create
