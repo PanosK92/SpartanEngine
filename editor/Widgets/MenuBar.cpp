@@ -318,7 +318,7 @@ MenuBar::MenuBar(Editor *editor) : Widget(editor)
 
 void MenuBar::OnTick()
 {
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(GetPadding(), GetPadding()));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, GetPadding());
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 
     // menu bar entries
@@ -329,7 +329,6 @@ void MenuBar::OnTick()
         EntryHelp();
 
         // toolbar
-        ImGui::Spacing();
         m_tool_bar->Tick();
 
         ImGui::EndMainMenuBar();

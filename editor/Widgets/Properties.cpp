@@ -93,7 +93,9 @@ namespace
     bool component_begin(const string& name, const IconType icon_enum, shared_ptr<Component> component_instance, bool options = true, const bool removable = true)
     {
         // Collapsible contents
+        ImGui::PushFont(Editor::font_bold);
         const bool collapsed = ImGuiSp::collapsing_header(name.c_str(), ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_DefaultOpen);
+        ImGui::PopFont();
 
         // Component Icon - Top left
         ImGui::SameLine();
@@ -203,6 +205,7 @@ void Properties::ShowTransform(shared_ptr<Entity> entity) const
         Vector3 scale    = entity->GetScaleLocal();
         //============================================================
 
+        ImGui::AlignTextToFramePadding();
         ImGuiSp::vector3("Position (m)", position);
         ImGui::SameLine();
         ImGuiSp::vector3("Rotation (degrees)", rotation);
@@ -349,7 +352,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         if (angle != light->GetAngle() * Math::Helper::RAD_TO_DEG * 0.5f) light->SetAngle(angle * Math::Helper::DEG_TO_RAD * 0.5f);
         if (range != light->GetRange())                                   light->SetRange(range);
         if (m_colorPicker_light->GetColor() != light->GetColor())         light->SetColor(m_colorPicker_light->GetColor());
-        if (temperature_kelvin != light->GetTemperature())                light->SetTemperature(temperature_kelvin);   
+        if (temperature_kelvin != light->GetTemperature())                light->SetTemperature(temperature_kelvin);
         light->SetFlag(Spartan::LightFlags::ShadowsTransparent, shadows_transparent);
         light->SetFlag(Spartan::LightFlags::ShadowsScreenSpace, shadows_screen_space);
         light->SetFlag(Spartan::LightFlags::Volumetric, volumetric);
@@ -530,13 +533,13 @@ void Properties::ShowPhysicsBody(shared_ptr<PhysicsBody> body) const
                 body->SetShapeType(static_cast<PhysicsShape>(selection_index));
             }
         }
-        
+
         // center
         ImGui::Text("Shape Center");
         ImGui::SameLine(column_pos_x); ImGui::PushID("physics_body_shape_center_x"); ImGui::InputFloat("X", &center_of_mass.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
         ImGui::SameLine();             ImGui::PushID("physics_body_shape_center_y"); ImGui::InputFloat("Y", &center_of_mass.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
         ImGui::SameLine();             ImGui::PushID("physics_body_shape_center_z"); ImGui::InputFloat("Z", &center_of_mass.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        
+
         // size
         ImGui::Text("Shape Size");
         ImGui::SameLine(column_pos_x); ImGui::PushID("physics_body_shape_size_x"); ImGui::InputFloat("X", &bounding_box.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
@@ -683,6 +686,7 @@ void Properties::ShowMaterial(Material* material) const
         //==========================================================
 
         // name
+        ImGui::NewLine();
         ImGui::Text("Name");
         ImGui::SameLine(column_pos_x); ImGui::Text(material->GetObjectName().c_str());
 
@@ -765,7 +769,7 @@ void Properties::ShowMaterial(Material* material) const
                                 ImGui::PopID();
                                 value = is_metallic ? 1.0f : 0.0f;
                             }
-                         
+
                             material->SetProperty(mat_property, value);
                         }
                     }
@@ -780,7 +784,7 @@ void Properties::ShowMaterial(Material* material) const
                 show_property("Occlusion",            "Amount of light loss, can be complementary to SSAO",                                MaterialTexture::Occlusion, MaterialProperty::Max);
                 show_property("Emission",             "Light emission from the surface, works nice with bloom",                            MaterialTexture::Emission,  MaterialProperty::Max);
                 show_property("Alpha mask",           "Discards pixels",                                                                   MaterialTexture::AlphaMask, MaterialProperty::Max);
-                // properties with only a multiplier                                                                                                                   
+                // properties with only a multiplier
                 show_property("Clearcoat",            "Extra white specular layer on top of others",                                       MaterialTexture::Max, MaterialProperty::Clearcoat);
                 show_property("Clearcoat roughness",  "Roughness of clearcoat specular",                                                   MaterialTexture::Max, MaterialProperty::Clearcoat_Roughness);
                 show_property("Anisotropic",          "Amount of anisotropy for specular reflection",                                      MaterialTexture::Max, MaterialProperty::Anisotropic);

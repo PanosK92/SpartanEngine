@@ -40,7 +40,8 @@ public:
     void ShowWorldSaveDialog();
     void ShowWorldLoadDialog();
 
-    static float GetPadding() { return 8.0f; }
+    static ImVec2 GetPadding() { return {14.0f, 8.0f}; }
+
 private:
     void DrawFileDialog() const;
     void HandleKeyShortcuts() const;

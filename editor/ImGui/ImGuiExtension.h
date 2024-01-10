@@ -426,7 +426,7 @@ namespace ImGuiSp
             const float step                = 0.01f;
 
             // Label
-            ImGui::TextUnformatted(axis.x == 1.0f ? "x" : axis.y == 1.0f ? "y" : "z");
+            ImGui::TextUnformatted(axis.x == 1.0f ? "X" : axis.y == 1.0f ? "Y" : "Z");
             ImGui::SameLine(label_float_spacing);
             Spartan::Math::Vector2 pos_post_label = ImGui::GetCursorScreenPos();
 
