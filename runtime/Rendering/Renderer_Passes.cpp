@@ -762,6 +762,9 @@ namespace Spartan
         // blur based on alpha - which contains the reflection roughness
         Pass_Blur_Gaussian(cmd_list, tex_ssr, tex_ssr_roughness, Renderer_Shader::blur_gaussian_bilaterial_radius_from_texture_c, 0.0f);
 
+        // real time blurring can only go so far, so generate mips that we can use to emulate very high roughness
+        Pass_Ffx_Spd(cmd_list, tex_ssr, Renderer_DownsampleFilter::Average);
+
         cmd_list->EndTimeblock();
     }
 
@@ -1063,7 +1066,8 @@ namespace Spartan
         m_pcb_pass_cpu.set_resolution_out(tex_out);
         m_pcb_pass_cpu.set_is_transparent(is_transparent_pass);
         uint32_t mip_count_skysphere = GetRenderTarget(Renderer_RenderTexture::skysphere)->GetMipCount();
-        m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_count_skysphere));
+        uint32_t mip_count_ssr       = GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount();
+        m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_count_skysphere), static_cast<float>(mip_count_ssr));
         PushPassConstants(cmd_list);
 
         // render

@@ -244,7 +244,8 @@ namespace Spartan
 
             // ssr
             {
-                render_target(Renderer_RenderTexture::ssr)           = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_standard | RHI_Texture_ClearBlit, "rt_ssr");
+                uint32_t mip_count_ssr = 6; // we use mips to emulate high roughness, low roughness is emulated via a gaussian blur, therefore we don't need a full mip chain, just enough to get believable results
+                render_target(Renderer_RenderTexture::ssr)           = make_shared<RHI_Texture2D>(width_render, height_render, mip_count_ssr, RHI_Format::R16G16B16A16_Float, flags_standard | RHI_Texture_PerMipViews | RHI_Texture_ClearBlit, "rt_ssr");
                 render_target(Renderer_RenderTexture::ssr_roughness) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16_Float, flags_standard, "rt_ssr_roughness");
             }
 
