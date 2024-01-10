@@ -79,7 +79,7 @@ namespace
         colors[ImGuiCol_ChildBg]               = k_palette_color_1;
         colors[ImGuiCol_PopupBg]               = k_palette_color_1;
         colors[ImGuiCol_Border]                = k_palette_color_3;
-        colors[ImGuiCol_BorderShadow]          = k_palette_color_3;
+        colors[ImGuiCol_BorderShadow]          = k_palette_color_0;
         colors[ImGuiCol_FrameBg]               = k_palette_color_2;     // Background of checkbox, radio button, plot, slider, text input
         colors[ImGuiCol_FrameBgHovered]        = k_palette_color_3;
         colors[ImGuiCol_FrameBgActive]         = k_palette_color_4;
