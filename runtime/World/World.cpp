@@ -71,7 +71,7 @@ namespace Spartan
         shared_ptr<Mesh> m_default_model_material_ball   = nullptr;
         shared_ptr<Mesh> m_default_model_doom            = nullptr;
 
-        static void create_default_world_common(
+        void create_default_world_common(
             const Math::Vector3& camera_position = Vector3(0.0f, 2.0f, -10.0f),
             const Math::Vector3& camera_rotation = Vector3(0.0f, 0.0f, 0.0f),
             const LightIntensity sun_intensity   = LightIntensity::sky_sunlight_morning_evening,
