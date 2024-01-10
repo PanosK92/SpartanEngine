@@ -102,7 +102,7 @@ namespace Spartan
         // Misc
         static void SetResourceName(void* resource, const RHI_Resource_Type resource_type, const std::string name);
         static bool IsValidResolution(const uint32_t width, const uint32_t height);
-        static uint32_t GetEnabledGraphicsStages() { return m_enabled_graphics_shader_stages; }
+        static uint32_t GetEnabledGraphicsStages();
         static uint32_t GetDescriptorType(const RHI_Descriptor& descriptor);
         static PhysicalDevice* GetPrimaryPhysicalDevice();
  
@@ -125,9 +125,8 @@ namespace Spartan
         static uint32_t m_max_texture_array_layers;
         static uint32_t m_max_push_constant_size;
 
-        // Misc
+        // ,isc
         static bool m_wide_lines;
         static uint32_t m_physical_device_index;
-        static uint32_t m_enabled_graphics_shader_stages;
     };
 }
