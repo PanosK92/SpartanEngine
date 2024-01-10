@@ -213,10 +213,12 @@ namespace Spartan
         taa_c,
         blur_gaussian_c,
         blur_gaussian_bilaterial_c,
+        blur_gaussian_bilaterial_radius_from_texture_c,
+        antiflicker_c,
         ffx_cas_c,
-        ffx_spd_c_average,
-        ffx_spd_c_highest,
-        ffx_spd_c_antiflicker,
+        ffx_spd_average_c,
+        ffx_spd_highest_c,
+        ffx_spd_antiflicker_c,
         max
     };
     
@@ -244,10 +246,12 @@ namespace Spartan
         dof_half_2,
         ssgi,
         ssr,
+        ssr_roughness,
         sss,
         skysphere,
         bloom,
-        blur,
+        scratch_blur,
+        scratch_antiflicker,
         outline,
         max
     };
