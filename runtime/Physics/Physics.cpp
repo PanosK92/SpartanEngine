@@ -294,6 +294,11 @@ namespace Spartan
         return static_cast<void*>(world);
     }
 
+    float Physics::GetTimeStepInternalSec()
+    {
+        return 1.0f / internal_hz;
+    }
+
     void Physics::PickBody()
     {
         if (shared_ptr<Camera> camera = Renderer::GetCamera())
