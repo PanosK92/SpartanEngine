@@ -1276,10 +1276,10 @@ namespace Spartan
                 transition_required = !rest_mips_have_same_layout ? true : transition_required;
             }
 
-            // Transition
+            // transition
             if (transition_required)
             {
-                SP_ASSERT(!m_render_pass_active && "Can't transition to a different layout while rendering");
+                EndRenderPass(); // transitioning to a different layout must happen outside of a render pass
                 texture->SetLayout(target_layout, this, mip_index, mip_range);
             }
         }
