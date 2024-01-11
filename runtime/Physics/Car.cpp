@@ -87,7 +87,7 @@ namespace Spartan
         constexpr float suspension_force_max                    = 5000.0f;                                   // maximum force suspension can exert in newtons
         constexpr float suspension_length                       = 0.4f;                                      // spring length
         constexpr float suspension_rest_length                  = suspension_length * 0.8f;                  // spring length at equilibrium
-        constexpr float suspension_travel_max                   = suspension_length * 0.5f;                  // maximum travel of the suspension                                                                       
+        constexpr float suspension_travel_max                   = suspension_length * 0.5f;                  // maximum travel of the suspension
         constexpr float suspension_antiroll_bar_stiffness_front = 500.0f;                                    // higher front stiffness reduces oversteer, lower increases it
         constexpr float suspension_antiroll_bar_stiffness_rear  = 300.0f;                                    // higher rear stiffness reduces understeer, lower increases it
                                                                                                        
@@ -167,13 +167,13 @@ namespace Spartan
             oss.clear();
             oss << fixed << setprecision(2);
 
-            oss << "Speed: " << Math::Helper::Abs<float>(speed) << " Km/h\n"; // meters per second
-            oss << "Torque: " << parameters.engine_torque << " N·m\n";  // Newton meters
-            oss << "RPM: " << parameters.engine_rpm << " rpm\n";  // revolutions per minute, not an SI unit, but commonly used
-            oss << "Gear: " << parameters.gear << "\n";      // gear has no unit
+            oss << "Speed: "     << Math::Helper::Abs<float>(speed) << " Km/h\n"; // meters per second
+            oss << "Torque: "    << parameters.engine_torque << " N·m\n";  // Newton meters
+            oss << "RPM: "       << parameters.engine_rpm << " rpm\n";  // revolutions per minute, not an SI unit, but commonly used
+            oss << "Gear: "      << parameters.gear << "\n";      // gear has no unit
             oss << "Downforce: " << parameters.aerodynamics_downforce << " N\n";    // newtons
-            oss << "Drag: " << parameters.aerodynamics_drag << " N\n";    // newtons
-            oss << "Break: " << parameters.break_force << " N\n";    // newtons
+            oss << "Drag: "      << parameters.aerodynamics_drag << " N\n";    // newtons
+            oss << "Break: "     << parameters.break_force << " N\n";    // newtons
 
             Renderer::DrawString(oss.str(), Vector2(0.35f, 0.005f));
         }
@@ -213,11 +213,11 @@ namespace Spartan
             // slip ratio as defined by Springer Handbook of Robotics
             float velocity_wheel   = wheel_info->m_deltaRotation / static_cast<float>(Timer::GetDeltaTimeSec());
             float velocity_vehicle = vehicle_velocity.dot(wheel_forward);
-            float denominator      = Math::Helper::Max(Math::Helper::Abs(velocity_vehicle), Math::Helper::SMALL_FLOAT);
-            float numerator        = velocity_wheel - velocity_vehicle;
-            float slip_ratio       = numerator  / denominator;
+            float numerator        = Math::Helper::Abs(velocity_vehicle) - Math::Helper::Abs(velocity_wheel);
+            float denominator      = Math::Helper::Max(Math::Helper::Abs(velocity_wheel), Math::Helper::SMALL_FLOAT);
+            float slip_ratio       = numerator / denominator;
 
-            return Math::Helper::Clamp<float>(slip_ratio, -1.0f, 1.0f);
+           return Math::Helper::Clamp<float>(slip_ratio, -1.0f, 1.0f);
         }
 
         float compute_slip_angle(const btVector3& wheel_forward, const btVector3& wheel_side, const btVector3& vehicle_velocity)
