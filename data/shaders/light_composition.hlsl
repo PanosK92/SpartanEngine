@@ -107,14 +107,8 @@ struct translucency
 
             // compute color and alpha at that depth
             float3 color = float3(exp(-light_absorption.x * water_depth), exp(-light_absorption.y * water_depth), exp(-light_absorption.z * water_depth));
-            float alpha  = 1.0f - exp(-water_depth * 0.05f);
+            float alpha  = 1.0f - exp(-water_depth * 0.2f);
 
-            // adjust alpha based on view angle (Fresnel effect)
-            float view_angle_factor  = dot(normalize(surface.camera_to_pixel), normalize(surface.normal));
-            view_angle_factor        = saturate(view_angle_factor);
-            float fresnel_effect     = pow(1.0f - view_angle_factor, 3.0f);
-            //alpha                   *= fresnel_effect;
-            
             return float4(color, alpha);
         }
     };
@@ -161,7 +155,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
             // water - todo: actually do this only for water
             float4 light_water    = translucency::water::get_color(surface);
-            light_transparent.rgb = lerp(light_water.rgb, light_transparent.rgb, light_water.a);
+            light_transparent.rgb = lerp(light_transparent.rgb, light_water.rgb, light_water.a);
             color.a               = light_water.a;
         }
         
@@ -175,3 +169,4 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = saturate_16(color);
 }
+
