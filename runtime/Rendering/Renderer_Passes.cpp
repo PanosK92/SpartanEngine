@@ -469,7 +469,7 @@ namespace Spartan
                     for (const Occluder& occluder : occluders)
                     {
                         // ignore self
-                        if (occluder.entity->GenerateObjectId() == entity->GenerateObjectId())
+                        if (occluder.entity->GetObjectId() == entity->GetObjectId())
                             continue;
 
                         if (box.IsBehind(occluder.box))
