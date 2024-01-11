@@ -68,6 +68,7 @@ namespace Spartan
         static btSoftBodyWorldInfo& GetSoftWorldInfo();
         static void* GetPhysicsDebugDraw();
         static void* GetWorld();
+        static float GetTimeStepInternalSec();
 
     private:
         // picking

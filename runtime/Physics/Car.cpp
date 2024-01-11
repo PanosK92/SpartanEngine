@@ -107,7 +107,7 @@ namespace Spartan
 
         // misc                                                                                              
         constexpr float wheel_radius                            = 0.5f;                                      // wheel radius of a typical mid-sized car - this affects the angular velocity
-        constexpr float tire_friction                           = 1.6f;                                      // bullet has a hard time simulating friction that's reliable enough for cars, so this is pretty arbitrary
+        constexpr float tire_friction                           = 2.6f;                                      // bullet has a hard time simulating friction that's reliable enough for cars, so this is pretty arbitrary
 
         // wheel indices (used for bullet physics)
         constexpr uint8_t wheel_fl = 0;
@@ -142,7 +142,7 @@ namespace Spartan
 
             oss << "Wheel: " << wheel_name << "\n";
             oss << "Steering: " << static_cast<float>(wheel_info.m_steering) * Math::Helper::RAD_TO_DEG << " deg\n";
-            oss << "Angular velocity: " << static_cast<float>(wheel_info.m_deltaRotation) / static_cast<float>(Timer::GetDeltaTimeSec()) << " rad/s\n";
+            oss << "Angular velocity: " << static_cast<float>(wheel_info.m_deltaRotation * 0.5f) / static_cast<float>(Physics::GetTimeStepInternalSec()) << " rad/s\n";
             oss << "Torque: " << wheel_info.m_engineForce << " N\n";
             oss << "Suspension length: " << wheel_info.m_raycastInfo.m_suspensionLength << " m\n";
             oss << "Slip ratio: " << parameters.pacejka_slip_ratio[wheel_index] << " ( Fz: " << parameters.pacejka_fz[wheel_index] << " N ) \n";
@@ -168,12 +168,12 @@ namespace Spartan
             oss << fixed << setprecision(2);
 
             oss << "Speed: "     << Math::Helper::Abs<float>(speed) << " Km/h\n"; // meters per second
-            oss << "Torque: "    << parameters.engine_torque << " N·m\n";  // Newton meters
-            oss << "RPM: "       << parameters.engine_rpm << " rpm\n";  // revolutions per minute, not an SI unit, but commonly used
-            oss << "Gear: "      << parameters.gear << "\n";      // gear has no unit
-            oss << "Downforce: " << parameters.aerodynamics_downforce << " N\n";    // newtons
-            oss << "Drag: "      << parameters.aerodynamics_drag << " N\n";    // newtons
-            oss << "Break: "     << parameters.break_force << " N\n";    // newtons
+            oss << "Torque: "    << parameters.engine_torque << " N·m\  n";       // Newton meters
+            oss << "RPM: "       << parameters.engine_rpm << " rpm\n";            // revolutions per minute, not an SI unit, but commonly used
+            oss << "Gear: "      << parameters.gear << "\n";                      // gear has no unit
+            oss << "Downforce: " << parameters.aerodynamics_downforce << " N\n";  // newtons
+            oss << "Drag: "      << parameters.aerodynamics_drag << " N\n";       // newtons
+            oss << "Break: "     << parameters.break_force << " N\n";             // newtons
 
             Renderer::DrawString(oss.str(), Vector2(0.35f, 0.005f));
         }
@@ -204,20 +204,31 @@ namespace Spartan
             // value meaning:
             // a measure of tire deformation or how much slower/faster it's rotating compared to the vehicle speed
             //  0:       the tire is rolling perfectly without any slip
-            //  0 to 1:  the tire is rotating slower than the speed of the vehicle, so there is traction/braking
-            //  0 to -1: the tire is rotating faster than the speed of the vehicle, so the car is sliding
+            //  0 to 1:  the tire is rotating slower than the speed of the vehicle, so there is braking or gaining traction
+            //  0 to -1: the tire is rotating faster than the speed of the vehicle, so the car is sliding or losing traction
 
             if (vehicle_velocity.length() < 0.05f)
                 return 0.0f;
 
             // slip ratio as defined by Springer Handbook of Robotics
-            float velocity_wheel   = wheel_info->m_deltaRotation / static_cast<float>(Timer::GetDeltaTimeSec());
-            float velocity_vehicle = vehicle_velocity.dot(wheel_forward);
-            float numerator        = Math::Helper::Abs(velocity_vehicle) - Math::Helper::Abs(velocity_wheel);
+            float velocity_wheel    = wheel_info->m_deltaRotation / static_cast<float>(Physics::GetTimeStepInternalSec());
+            velocity_wheel         *= 0.5f; // the fact that this is needed indicates an error with bullet physics or my code
+            float velocity_vehicle  = vehicle_velocity.dot(wheel_forward);
+            float numerator         = 0.0f;
+            if (velocity_vehicle >= 0) // forward
+            {
+                numerator = velocity_vehicle - velocity_wheel;
+            }
+            else // reverse
+            {
+                // in reverse, both velocities are negative, so we take their absolute values
+                numerator = Math::Helper::Abs(velocity_vehicle) - Math::Helper::Abs(velocity_wheel);
+            }
+
             float denominator      = Math::Helper::Max(Math::Helper::Abs(velocity_wheel), Math::Helper::SMALL_FLOAT);
             float slip_ratio       = numerator / denominator;
 
-           return Math::Helper::Clamp<float>(slip_ratio, -1.0f, 1.0f);
+            return Math::Helper::Clamp<float>(slip_ratio, -1.0f, 1.0f);
         }
 
         float compute_slip_angle(const btVector3& wheel_forward, const btVector3& wheel_side, const btVector3& vehicle_velocity)
