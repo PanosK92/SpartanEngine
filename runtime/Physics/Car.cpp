@@ -297,14 +297,9 @@ namespace Spartan
             // pacejka ’94 longitudinal formula (output is in newtons)
             float force = D * sin(C * atan(Bx1 - E * (Bx1 - atan(Bx1)))) + V;
 
-            // account for tire friction
-            force *= tuning::tire_friction;
-
-            force *= 5.0f;
-
             SP_ASSERT(!isnan(force));
 
-            return force;
+            return force * 10.0f;
         }
 
         void compute_tire_force(CarParameters& parameters, const uint32_t wheel_index, const btVector3& vehicle_velocity, btVector3* force, btVector3* force_position)

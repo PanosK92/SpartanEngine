@@ -197,7 +197,7 @@ namespace Spartan
         }
 
         // notes:
-        // - gbuffer_normal: Any format with or below 8 bits per channel, will produce banding
+        // - gbuffer_normal: any format with or below 8 bits per channel, will produce banding
         #define render_target(x) render_targets[static_cast<uint8_t>(x)]
 
         // typical usage flags
@@ -214,20 +214,19 @@ namespace Spartan
 
                 render_target(Renderer_RenderTexture::frame_render)        = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, frame_render_format, frame_render_flags | RHI_Texture_PerMipViews, "rt_frame_render");
                 render_target(Renderer_RenderTexture::frame_render_2)      = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, frame_render_format, frame_render_flags | RHI_Texture_PerMipViews, "rt_frame_render_2");
-                //render_target(Renderer_RenderTexture::frame_render_history) = make_unique<RHI_Texture2D>(width_render, height_render, 1,         frame_render_format, frame_render_flags,                           "rt_frame_render_history");
-                render_target(Renderer_RenderTexture::frame_render_opaque) = make_unique<RHI_Texture2D>(width_render, height_render, 1, frame_render_format, frame_render_flags, "rt_frame_render_opaque");
+                render_target(Renderer_RenderTexture::frame_render_opaque) = make_unique<RHI_Texture2D>(width_render, height_render, 1,         frame_render_format, frame_render_flags,                           "rt_frame_render_opaque");
+                //render_target(Renderer_RenderTexture::frame_render_history) = make_unique<RHI_Texture2D>(width_render, height_render, 1, frame_render_format, frame_render_flags, "rt_frame_render_history");
             }
 
             // g-buffer
             {
                 uint32_t flags_depth_buffer = RHI_Texture_Rtv | RHI_Texture_Srv; // depth buffer can't have RHI_Texture_Uav
 
-                render_target(Renderer_RenderTexture::gbuffer_color)             = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     flags_render_target,                         "rt_gbuffer_color");
-                render_target(Renderer_RenderTexture::gbuffer_normal)            = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_render_target,                         "rt_gbuffer_normal");
-                render_target(Renderer_RenderTexture::gbuffer_material)          = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     flags_render_target,                         "rt_gbuffer_material");
-                render_target(Renderer_RenderTexture::gbuffer_velocity)          = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16_Float,       flags_render_target | RHI_Texture_ClearBlit, "rt_gbuffer_velocity");
-                render_target(Renderer_RenderTexture::gbuffer_depth)             = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          flags_depth_buffer  | RHI_Texture_ClearBlit, "rt_gbuffer_depth");
-                render_target(Renderer_RenderTexture::gbuffer_velocity_previous) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16_Float,       flags_render_target | RHI_Texture_ClearBlit, "rt_gbuffer_velocity_previous");
+                render_target(Renderer_RenderTexture::gbuffer_color)    = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     flags_render_target,                         "rt_gbuffer_color");
+                render_target(Renderer_RenderTexture::gbuffer_normal)   = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_render_target,                         "rt_gbuffer_normal");
+                render_target(Renderer_RenderTexture::gbuffer_material) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     flags_render_target,                         "rt_gbuffer_material");
+                render_target(Renderer_RenderTexture::gbuffer_velocity) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16_Float,       flags_render_target | RHI_Texture_ClearBlit, "rt_gbuffer_velocity");
+                render_target(Renderer_RenderTexture::gbuffer_depth)    = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          flags_depth_buffer  | RHI_Texture_ClearBlit, "rt_gbuffer_depth");
             }
 
             // light
@@ -487,8 +486,8 @@ namespace Spartan
         // anti-aliasing
         {
             // temporal
-            shader(Renderer_Shader::taa_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::taa_c)->Compile(RHI_Shader_Compute, shader_dir + "temporal_antialiasing.hlsl", async);
+            //shader(Renderer_Shader::taa_c) = make_shared<RHI_Shader>();
+            //shader(Renderer_Shader::taa_c)->Compile(RHI_Shader_Compute, shader_dir + "temporal_antialiasing.hlsl", async);
 
             // fxaa
             shader(Renderer_Shader::fxaa_c) = make_shared<RHI_Shader>();

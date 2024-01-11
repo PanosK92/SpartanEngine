@@ -594,9 +594,6 @@ namespace Spartan
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
 
-        // blit, don't alternate between velocity and velocity previous, this is because FSR needs to rely on velocity that's the latest
-        cmd_list->Blit(tex_velocity, GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity_previous).get(), false);
-
         // deduce rasterizer state
         bool wireframe                        = GetOption<bool>(Renderer_Option::Debug_Wireframe);
         RHI_RasterizerState* rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
