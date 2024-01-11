@@ -503,14 +503,6 @@ namespace Spartan
 
         cmd_list->BeginTimeblock(!is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent");
 
-        if (is_transparent_pass)
-        {
-            cmd_list->Blit(
-                GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get(),
-                GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_opaque).get(),
-                false);
-        }
-
         uint32_t start_index = !is_transparent_pass ? 0 : 2;
         uint32_t end_index   = !is_transparent_pass ? 2 : 4;
         bool is_first_pass   = true;
@@ -579,6 +571,14 @@ namespace Spartan
 
                 draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
             }
+        }
+
+        if (!is_transparent_pass)
+        {
+            cmd_list->Blit(
+                GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get(),
+                GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_opaque).get(),
+                false);
         }
 
         cmd_list->EndTimeblock();

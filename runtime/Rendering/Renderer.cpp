@@ -1019,11 +1019,12 @@ namespace Spartan
 
     void Renderer::SetGbufferTextures(RHI_CommandList* cmd_list)
     {
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,   GetRenderTarget(Renderer_RenderTexture::gbuffer_color));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,   GetRenderTarget(Renderer_RenderTexture::gbuffer_normal));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTexture::gbuffer_material));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity, GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,       GetRenderTarget(Renderer_RenderTexture::gbuffer_color));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,       GetRenderTarget(Renderer_RenderTexture::gbuffer_normal));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material,     GetRenderTarget(Renderer_RenderTexture::gbuffer_material));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity,     GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,        GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth_opaque, GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_opaque));
     }
 
     void Renderer::Screenshot(const string& file_path)

@@ -24,69 +24,100 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fog.hlsl"
 //====================
 
-struct refraction
+struct translucency
 {
-    static float compute_fade_factor(float2 uv)
+    struct refraction
     {
-        float edge_threshold = 0.05f; // how close to the edge to start fading
-        float2 edge_distance = min(uv, 1.0f - uv);
-        return saturate(min(edge_distance.x, edge_distance.y) / edge_threshold);
-    }
-    
-    static float3 refract_vector(float3 i, float3 n, float eta)
-    {
-        float cosi  = dot(-i, n);
-        float cost2 = 1.0f - eta * eta * (1.0f - cosi * cosi);
-        return eta * i + (eta * cosi - sqrt(abs(cost2))) * n;
-    }
-    
-    static float3 get_color(Surface surface, float scale)
-    {
-        // comute view space data
-        float3 view_pos    = world_to_view(surface.position);
-        float3 view_normal = world_to_view(surface.normal, false);
-        float3 view_dir    = normalize(view_pos);
-        
-        // compute refracted uv
-        float3 refracted_dir        = refract_vector(view_dir, view_normal, 1.0f / surface.ior);
-        float2 refraction_uv_offset = refracted_dir.xy * scale;
-        float2 refracted_uv         = surface.uv + refraction_uv_offset;
-
-        // get base color (no refraction)
-        float frame_mip_count = pass_get_f3_value().x;
-        float mip_level       = lerp(0, frame_mip_count, surface.roughness_alpha);
-        float3 color          = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level).rgb;
-        
-        // dont refract surfaces which are behind this surface
-        const bool is_behind   = get_linear_depth(surface.depth) < get_linear_depth(refracted_uv);
-        if (is_behind)
+        static float compute_fade_factor(float2 uv)
         {
-            // simulate light breaking off into individual color bands via chromatic aberration
-            float3 color_refracted = 0.0f;
-            {
-                float chromatic_aberration_strength = surface.ior * 0.0005f;
-                chromatic_aberration_strength       *= (1.0f + surface.roughness_alpha);
-                
-                float2 ca_offsets[3];
-                ca_offsets[0] = float2(chromatic_aberration_strength, 0.0f);
-                ca_offsets[1] = float2(0.0f, 0.0f);
-                ca_offsets[2] = float2(-chromatic_aberration_strength, 0.0f); 
+            float edge_threshold = 0.05f; // how close to the edge to start fading
+            float2 edge_distance = min(uv, 1.0f - uv);
+            return saturate(min(edge_distance.x, edge_distance.y) / edge_threshold);
+        }
+        
+        static float3 refract_vector(float3 i, float3 n, float eta)
+        {
+            float cosi  = dot(-i, n);
+            float cost2 = 1.0f - eta * eta * (1.0f - cosi * cosi);
+            return eta * i + (eta * cosi - sqrt(abs(cost2))) * n;
+        }
+        
+        static float3 get_color(Surface surface)
+        {
+            const float scale = 0.05f;
+            
+            // comute view space data
+            float3 view_pos    = world_to_view(surface.position);
+            float3 view_normal = world_to_view(surface.normal, false);
+            float3 view_dir    = normalize(view_pos);
+            
+            // compute refracted uv
+            float3 refracted_dir        = refract_vector(view_dir, view_normal, 1.0f / surface.ior);
+            float2 refraction_uv_offset = refracted_dir.xy * scale;
+            float2 refracted_uv         = surface.uv + refraction_uv_offset;
     
-                [unroll]
-                for (int i = 0; i < 3; ++i)
+            // get base color (no refraction)
+            float frame_mip_count = pass_get_f3_value().x;
+            float mip_level       = lerp(0, frame_mip_count, surface.roughness_alpha);
+            float3 color          = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level).rgb;
+            
+            // dont refract surfaces which are behind this surface
+            const bool is_behind = get_linear_depth(surface.depth) < get_linear_depth(refracted_uv);
+            if (is_behind)
+            {
+                // simulate light breaking off into individual color bands via chromatic aberration
+                float3 color_refracted = 0.0f;
                 {
-                    float4 sampled_color = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], refracted_uv + ca_offsets[i], mip_level);
-                    color_refracted[i] = sampled_color[i];
+                    float chromatic_aberration_strength = surface.ior * 0.0005f;
+                    chromatic_aberration_strength       *= (1.0f + surface.roughness_alpha);
+                    
+                    float2 ca_offsets[3];
+                    ca_offsets[0] = float2(chromatic_aberration_strength, 0.0f);
+                    ca_offsets[1] = float2(0.0f, 0.0f);
+                    ca_offsets[2] = float2(-chromatic_aberration_strength, 0.0f); 
+        
+                    [unroll]
+                    for (int i = 0; i < 3; ++i)
+                    {
+                        float4 sampled_color = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], refracted_uv + ca_offsets[i], mip_level);
+                        color_refracted[i] = sampled_color[i];
+                    }
                 }
+        
+                // screen fade
+                float fade_factor = compute_fade_factor(refracted_uv);
+                color             = lerp(color, color_refracted, fade_factor);
             }
     
-            // screen fade
-            float fade_factor = compute_fade_factor(refracted_uv);
-            color             = lerp(color, color_refracted, fade_factor);
+            return color;
         }
+    };
+    
+    struct water
+    {
+        static float4 get_color(Surface surface)
+        {
+            // color spectrum light absorption
+            const float3 light_absorption = float3(0.3f, 0.2f, 0.1f);
 
-        return color;
-    }
+            // compute depth
+            float water_level       = get_position(surface.uv).y;
+            float water_floor_level = get_position(get_depth_opaque(surface.uv), surface.uv).y;
+            float water_depth       = max(water_level - water_floor_level, 0.0f);
+
+            // compute color and alpha at that depth
+            float3 color = float3(exp(-light_absorption.x * water_depth), exp(-light_absorption.y * water_depth), exp(-light_absorption.z * water_depth));
+            float alpha  = 1.0f - exp(-water_depth * 0.05f);
+
+            // adjust alpha based on view angle (Fresnel effect)
+            float view_angle_factor  = dot(normalize(surface.camera_to_pixel), normalize(surface.normal));
+            view_angle_factor        = saturate(view_angle_factor);
+            float fresnel_effect     = pow(1.0f - view_angle_factor, 3.0f);
+            //alpha                   *= fresnel_effect;
+            
+            return float4(color, alpha);
+        }
+    };
 };
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -122,16 +153,21 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         float3 light_specular = tex_light_specular[thread_id.xy].rgb;
 
         // refraction
-        float3 light_refraction = 0.0f;
-        if (surface.is_transparent() && surface.ior >= 1.0f)
+        float3 light_transparent = 0.0f;
+        if (surface.is_transparent())
         {
-            float scale      = 0.05f;
-            light_refraction = refraction::get_color(surface, scale); 
+            // refraction
+            light_transparent = translucency::refraction::get_color(surface);
+
+            // water - todo: actually do this only for water
+            float4 light_water    = translucency::water::get_color(surface);
+            light_transparent.rgb = lerp(light_water.rgb, light_transparent.rgb, light_water.a);
+            color.a               = light_water.a;
         }
         
         // compose
         float3 light  = (light_diffuse + surface.gi) * surface.albedo + light_specular;
-        color.rgb    += lerp(light, light_refraction, 1.0f - surface.alpha);
+        color.rgb    += lerp(light, light_transparent, 1.0f - color.a);
 
         // fog
         color.rgb += got_fog_radial(surface.position, buffer_frame.camera_position.xyz);
