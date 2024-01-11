@@ -361,7 +361,7 @@ namespace Spartan
 
         struct Occluder
         {
-            Entity* entity;
+            shared_ptr<Entity> entity;
             BoundingBox box;
         };
 
@@ -435,7 +435,7 @@ namespace Spartan
                 // larger than one cubic meter
                 if (box.Volume() >= 1.0f)
                 {
-                    occluders[index_entity] = Occluder(entity.get(), box);
+                    occluders[index_entity] = Occluder(entity, box);
                     entity->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluded,  false);
                     entity->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluding, false);
                 }
@@ -468,6 +468,9 @@ namespace Spartan
                     bool occluded = false;
                     for (const Occluder& occluder : occluders)
                     {
+                        if (!occluder.entity)
+                            continue;
+
                         // ignore self
                         if (occluder.entity->GetObjectId() == entity->GetObjectId())
                             continue;
