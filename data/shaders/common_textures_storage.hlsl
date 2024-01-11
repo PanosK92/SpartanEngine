@@ -27,40 +27,41 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //============================
 
 // g-buffer
-Texture2D tex_albedo   : register(t0);
-Texture2D tex_normal   : register(t1);
-Texture2D tex_material : register(t2);
-Texture2D tex_velocity : register(t3);
-Texture2D tex_depth    : register(t4);
+Texture2D tex_albedo       : register(t0);
+Texture2D tex_normal       : register(t1);
+Texture2D tex_material     : register(t2);
+Texture2D tex_velocity     : register(t3);
+Texture2D tex_depth        : register(t4);
+Texture2D tex_depth_opaque : register(t5);
 
 // lighting
-Texture2D tex_light_diffuse              : register(t5);
-Texture2D tex_light_diffuse_transparent  : register(t6);
-Texture2D tex_light_specular             : register(t7);
-Texture2D tex_light_specular_transparent : register(t8);
-Texture2D tex_light_volumetric           : register(t9);
+Texture2D tex_light_diffuse              : register(t6);
+Texture2D tex_light_diffuse_transparent  : register(t7);
+Texture2D tex_light_specular             : register(t8);
+Texture2D tex_light_specular_transparent : register(t9);
+Texture2D tex_light_volumetric           : register(t10);
 
 // shadow maps (depth and color)
-Texture2DArray tex_light_directional_depth : register(t10);
-Texture2DArray tex_light_directional_color : register(t11);
-TextureCube tex_light_point_depth          : register(t12);
-TextureCube tex_light_point_color          : register(t13);
-Texture2D tex_light_spot_depth             : register(t14);
-Texture2D tex_light_spot_color             : register(t15);
+Texture2DArray tex_light_directional_depth : register(t11);
+Texture2DArray tex_light_directional_color : register(t12);
+TextureCube tex_light_point_depth          : register(t13);
+TextureCube tex_light_point_color          : register(t14);
+Texture2D tex_light_spot_depth             : register(t15);
+Texture2D tex_light_spot_color             : register(t16);
 
 // misc
-Texture2D tex_noise_normal       : register(t16);
-Texture2DArray tex_noise_blue    : register(t17);
-Texture2D tex_lut_ibl            : register(t18);
-Texture2D tex_environment        : register(t19);
-Texture2D tex_ssgi               : register(t20);
-Texture2D tex_ssr                : register(t21);
-Texture2D tex_frame              : register(t22);
-Texture2D tex                    : register(t23);
-Texture2D tex2                   : register(t24);
-Texture2D tex_font_atlas         : register(t25);
-TextureCube tex_reflection_probe : register(t26);
-Texture2DArray tex_sss           : register(t27);
+Texture2D tex_noise_normal       : register(t17);
+Texture2DArray tex_noise_blue    : register(t18);
+Texture2D tex_lut_ibl            : register(t19);
+Texture2D tex_environment        : register(t20);
+Texture2D tex_ssgi               : register(t21);
+Texture2D tex_ssr                : register(t22);
+Texture2D tex_frame              : register(t23);
+Texture2D tex                    : register(t24);
+Texture2D tex2                   : register(t25);
+Texture2D tex_font_atlas         : register(t26);
+TextureCube tex_reflection_probe : register(t27);
+Texture2DArray tex_sss           : register(t28);
 
 //= MATERIALS ===============================================================================
 // texture array containing all material present int the world
@@ -73,7 +74,7 @@ static const uint material_emission  = 20;
 static const uint material_height    = 24;
 static const uint material_mask      = 28;
 
-Texture2D tex_materials[] : register(t28, space1);
+Texture2D tex_materials[] : register(t29, space1);
 #define GET_TEXTURE(index_texture) tex_materials[buffer_frame.material_index + index_texture]
 
 // property buffer containg all materials present in the world

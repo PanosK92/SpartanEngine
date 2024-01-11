@@ -284,20 +284,23 @@ float3x3 make_world_to_tangent_matrix(float3 n, float3 t)
 /*------------------------------------------------------------------------------
     DEPTH - REVERSE-Z
 ------------------------------------------------------------------------------*/
-float get_depth(uint2 position)
+float get_depth(const uint2 position)
 {
-    // out of bounds check
-    position = clamp(position, uint2(0, 0), uint2(buffer_frame.resolution_render) - uint2(1, 1));
     return tex_depth[position].r;
 }
 
-float get_depth(float2 uv)
+float get_depth(const float2 uv)
 {
-    // effects like screen space shadows, can get artefacts if a point sampler is used
     return tex_depth.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).r;
 }
 
-float get_linear_depth(float z)
+float get_depth_opaque(const float2 uv)
+{
+    return tex_depth_opaque.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).r;
+}
+
+
+float linearize_depth(const float z)
 {
     float near = buffer_frame.camera_near;
     float far  = buffer_frame.camera_far;
@@ -306,14 +309,19 @@ float get_linear_depth(float z)
     return 2.0f * far * near / (near + far - z_n * (near - far));
 }
 
-float get_linear_depth(uint2 pos)
+float get_linear_depth(const uint2 pos)
 {
-    return get_linear_depth(get_depth(pos));
+    return linearize_depth(get_depth(pos));
 }
 
-float get_linear_depth(float2 uv)
+float get_linear_depth(const float2 uv)
 {
-    return get_linear_depth(get_depth(uv));
+    return linearize_depth(get_depth(uv));
+}
+
+float get_linear_depth_opaque(const float2 uv)
+{
+    return linearize_depth(get_depth_opaque(uv));
 }
 
 /*------------------------------------------------------------------------------
@@ -321,10 +329,10 @@ float get_linear_depth(float2 uv)
 ------------------------------------------------------------------------------*/
 float3 get_position(float z, float2 uv)
 {
-    float x             = uv.x * 2.0f - 1.0f;
-    float y             = (1.0f - uv.y) * 2.0f - 1.0f;
-    float4 pos_clip     = float4(x, y, z, 1.0f);
-    float4 pos_world    = mul(pos_clip, buffer_frame.view_projection_inverted);
+    float x          = uv.x * 2.0f - 1.0f;
+    float y          = (1.0f - uv.y) * 2.0f - 1.0f;
+    float4 pos_clip  = float4(x, y, z, 1.0f);
+    float4 pos_world = mul(pos_clip, buffer_frame.view_projection_inverted);
     return pos_world.xyz / pos_world.w;
 }
 
@@ -335,7 +343,7 @@ float3 get_position(float2 uv)
 
 float3 get_position(uint2 pos)
 {
-    const float2 uv = (pos + 0.5f) / pass_get_resolution_out();
+    const float2 uv = (pos + 0.5f) / buffer_frame.resolution_render;
     return get_position(get_depth(pos), uv);
 }
 
@@ -347,15 +355,6 @@ float3 get_position_view_space(uint2 pos)
 float3 get_position_view_space(float2 uv)
 {
     return mul(float4(get_position(uv), 1.0f), buffer_frame.view).xyz;
-}
-
-float3 get_position_ws_from_depth(const float2 uv, const float depth)
-{
-    float x          = uv.x * 2.0f - 1.0f;
-    float y          = (1.0f - uv.y) * 2.0f - 1.0f;
-    float4 pos_clip  = float4(x, y, depth, 1.0f);
-    float4 pos_world = mul(pos_clip, buffer_frame.view_projection_inverted);
-    return pos_world.xyz / pos_world.w;
 }
 
 /*------------------------------------------------------------------------------
