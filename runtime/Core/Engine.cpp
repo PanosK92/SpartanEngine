@@ -101,6 +101,7 @@ namespace Spartan
     {
         // pre-tick
         Profiler::PreTick();
+        Input::PreTick();
 
         // tick
         Window::Tick();
@@ -111,7 +112,6 @@ namespace Spartan
         Renderer::Tick();
 
         // post-tick
-        Input::PostTick();
         Timer::PostTick();
         Profiler::PostTick();
         Renderer::PostTick();

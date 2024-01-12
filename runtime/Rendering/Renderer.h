@@ -101,7 +101,7 @@ namespace Spartan
         static const Math::Vector2& GetResolutionOutput();
         static void SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources = true);
         //===============================================================================================
-        // 
+  
         //= RHI RESOURCES====================
         static RHI_CommandList* GetCmdList();
         //===================================
@@ -162,7 +162,7 @@ namespace Spartan
         static void Pass_Skysphere(RHI_CommandList* cmd_list);
         static void Pass_Light_Integration_BrdfSpecularLut(RHI_CommandList* cmd_list);
         static void Pass_Light_Integration_EnvironmentPrefilter(RHI_CommandList* cmd_list);
-        static void Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float radius, const float sigma, const uint32_t mip = rhi_all_mips);
+        static void Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_radius, const Renderer_Shader shader_type, const float radius, const uint32_t mip = rhi_all_mips);
         // passes - debug/editor
         static void Pass_Grid(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
@@ -180,6 +180,7 @@ namespace Spartan
         static void Pass_DepthOfField(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Debanding(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
+        static void Pass_Antiflicker(RHI_CommandList* cmd_list, RHI_Texture* tex_in);
         // passes - lighting
         static void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
         static void Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass = false);
@@ -193,17 +194,10 @@ namespace Spartan
         static void OnWorldResolved(sp_variant data);
         static void OnClear();
         static void OnFullScreenToggled();
-        static void OnSyncPoint();
-
-        // lines
-        static void Lines_OneFrameStart();
-        static void Lines_OnFrameEnd();
-
-        // frame
-        static void OnFrameStart(RHI_CommandList* cmd_list);
-        static void OnFrameEnd(RHI_CommandList* cmd_list);
+        static void OnSyncPoint(RHI_CommandList* cmd_list);
 
         // misc
+        static void AddLinesToBeRendered();
         static void SetGbufferTextures(RHI_CommandList* cmd_list);
         static void DestroyResources();
 
@@ -221,6 +215,6 @@ namespace Spartan
         static uint32_t m_resource_index;
         static std::atomic<bool> m_resources_created;
         static bool m_sorted;
-        static uint32_t m_environment_mips_to_filter_count;
+        static std::atomic<uint32_t> m_environment_mips_to_filter_count;
     };
 }

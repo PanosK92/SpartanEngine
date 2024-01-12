@@ -58,12 +58,11 @@ struct refraction
         float3 color          = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level).rgb;
         
         // dont refract surfaces which are behind this surface
-        const float depth_bias = 0.02f;
-        const bool is_behind   = step(get_linear_depth(surface.depth) - depth_bias, get_linear_depth(refracted_uv)) == 1.0f;
-        if (is_behind && surface.ior > 1.0f)
+        const bool is_behind   = get_linear_depth(surface.depth) < get_linear_depth(refracted_uv);
+        if (is_behind)
         {
             // simulate light breaking off into individual color bands via chromatic aberration
-            float3 color_refracted = float3(0, 0, 0);
+            float3 color_refracted = 0.0f;
             {
                 float chromatic_aberration_strength = surface.ior * 0.0005f;
                 chromatic_aberration_strength       *= (1.0f + surface.roughness_alpha);
@@ -119,12 +118,12 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     else // anything else
     {
         // get light samples
-        float3 light_diffuse    = tex_light_diffuse[thread_id.xy].rgb;
-        float3 light_specular   = tex_light_specular[thread_id.xy].rgb;
+        float3 light_diffuse  = tex_light_diffuse[thread_id.xy].rgb;
+        float3 light_specular = tex_light_specular[thread_id.xy].rgb;
 
         // refraction
         float3 light_refraction = 0.0f;
-        if (surface.is_transparent() && surface.ior > 1.0f)
+        if (surface.is_transparent() && surface.ior >= 1.0f)
         {
             float scale      = 0.05f;
             light_refraction = refraction::get_color(surface, scale); 
@@ -140,4 +139,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = saturate_16(color);
 }
-

@@ -35,32 +35,32 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    // Mouse
-    static Math::Vector2 m_mouse_position         = Math::Vector2::Zero;
-    static Math::Vector2 m_mouse_delta            = Math::Vector2::Zero;
-    static Math::Vector2 m_mouse_wheel_delta      = Math::Vector2::Zero;
-    static Math::Vector2 m_editor_viewport_offset = Math::Vector2::Zero;
-    static bool m_mouse_is_in_viewport            = true;
+    // mouse
+    Vector2 m_mouse_position         = Vector2::Zero;
+    Vector2 m_mouse_delta            = Vector2::Zero;
+    Vector2 m_mouse_wheel_delta      = Vector2::Zero;
+    Vector2 m_editor_viewport_offset = Vector2::Zero;
+    bool m_mouse_is_in_viewport      = true;
 
-    void Input::PostTick()
+    void Input::PreTick()
     {
         m_mouse_wheel_delta = Vector2::Zero;
     }
 
     void Input::PollMouse()
     {
-        // Get state
+        // get state
         int x, y;
         Uint32 keys_states = SDL_GetGlobalMouseState(&x, &y);
         Vector2 position   = Vector2(static_cast<float>(x), static_cast<float>(y));
 
-        // Get delta
+        // get delta
         m_mouse_delta = position - m_mouse_position;
 
-        // Get position
+        // get position
         m_mouse_position = position;
 
-        // Get keys
+        // get keys
         GetKeys()[m_start_index_mouse]     = (keys_states & SDL_BUTTON(SDL_BUTTON_LEFT))   != 0; // Left button pressed
         GetKeys()[m_start_index_mouse + 1] = (keys_states & SDL_BUTTON(SDL_BUTTON_MIDDLE)) != 0; // Middle button pressed
         GetKeys()[m_start_index_mouse + 2] = (keys_states & SDL_BUTTON(SDL_BUTTON_RIGHT))  != 0; // Right button pressed
@@ -68,12 +68,12 @@ namespace Spartan
 
     void Input::OnEventMouse(void* event_mouse)
     {
-        // Validate event
+        // validate event
         SP_ASSERT(event_mouse != nullptr);
         SDL_Event* sdl_event = static_cast<SDL_Event*>(event_mouse);
         Uint32 event_type = sdl_event->type;
 
-        // Wheel
+        // wheel
         if (event_type == SDL_MOUSEWHEEL)
         {
             if (sdl_event->wheel.x > 0) m_mouse_wheel_delta.x += 1;

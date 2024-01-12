@@ -141,6 +141,9 @@ namespace Spartan
         void InsertMemoryBarrierImage(void* image, const uint32_t aspect_mask, const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new);
         void InsertMemoryBarrierImage(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new);
         void InsertMemoryBarrierImageWaitForWrite(RHI_Texture* texture);
+        void InsertMemoryBarrierBufferWaitForWrite(void* buffer);
+        void InsertMemoryBarrierBufferWaitForWrite(RHI_VertexBuffer* buffer);
+        void InsertMemoryBarrierBufferWaitForWrite(RHI_IndexBuffer* buffer);
 
         // misc
         RHI_Semaphore* GetSemaphoreProccessed() { return m_proccessed_semaphore.get(); }
