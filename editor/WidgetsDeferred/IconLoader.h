@@ -53,6 +53,7 @@ enum class IconType
     Button_Profiler,
     Button_ResourceCache,
     Button_RenderDoc,
+    Button_Shader,
     Directory_Folder,
     Directory_File_Audio,
     Directory_File_World,
