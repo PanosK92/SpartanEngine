@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "pch.h"
+#include "../Profiling/Profiler.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
 #include "../RHI_Shader.h"
@@ -133,11 +134,12 @@ namespace Spartan
             }
 
             // debug: disable optimizations and embed HLSL source in the shaders
-            #ifdef DEBUG
-            arguments.emplace_back("-Od");           // disable optimizations
-            arguments.emplace_back("-Zi");           // enable debug information
-            arguments.emplace_back("-Qembed_debug"); // embed PDB in shader container (must be used with -Zi)
-            #endif
+            if (!Profiler::IsShaderOptimizationEnabled())
+            {
+                arguments.emplace_back("-Od");           // disable optimizations
+                arguments.emplace_back("-Zi");           // enable debug information
+                arguments.emplace_back("-Qembed_debug"); // embed PDB in shader container (must be used with -Zi)
+            }
 
             // misc
             arguments.emplace_back("-Zpc"); // pack matrices in column-major order

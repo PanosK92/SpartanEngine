@@ -23,12 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const float g_ssr_depth_threshold = 10.0f;
+static const float g_ssr_depth_threshold = 8.0f;
 
 uint compute_step_count(float roughness)
 {
     float steps_min = 8.0;    // for very rough surfaces
-    float steps_max = 128.0f; // for very reflective surfaces
+    float steps_max = 512.0f; // for very reflective surfaces
 
     return (uint)lerp(steps_max, steps_min, roughness);
 }
@@ -41,7 +41,7 @@ float compute_alpha(uint2 screen_pos, float2 hit_uv, float v_dot_r)
     alpha *= is_valid_uv(hit_uv);                                // fade if the uv is invalid
     alpha  = lerp(alpha, 0.0f, smoothstep(0.9f, 1.0f, v_dot_r)); // fade when facing the camera
 
-    return alpha;
+    return saturate(alpha);
 }
 
 float get_depth_from_ray(float2 ray_pos, float2 ray_start, float ray_length, float z_start, float z_end)
@@ -79,7 +79,7 @@ float3 comute_ray_end(float3 ray_start_vs, float3 ray_dir_vs)
     return ray_start_vs + ray_dir_vs * t;
 }
 
-float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs, float roughness)
+float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs, float roughness, out float reflection_distance)
 {
     float3 ray_end_vs       = comute_ray_end(ray_start_vs, ray_dir_vs);
     float2 ray_start        = view_to_uv(ray_start_vs);
@@ -87,12 +87,13 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs, float
     uint step_count         = compute_step_count(roughness);
     float2 ray_start_to_end = ray_end - ray_start;
     float ray_length        = length(ray_start_to_end);
-    float2 ray_step         = (ray_start_to_end + FLT_MIN) / (float)(step_count);
+    float2 ray_step_uv      = (ray_start_to_end + FLT_MIN) / (float)(step_count);
+    float3 ray_step_vs      = (ray_end_vs - ray_start_vs) / (float)(step_count);
     float2 ray_pos          = ray_start;
 
     // adjust position with some noise
-    float offset = get_noise_interleaved_gradient(screen_pos, false, false) * 0.5f;
-    ray_pos      += ray_step * offset;
+    float offset = get_noise_interleaved_gradient(screen_pos, false, false);
+    ray_pos      += ray_step_uv * offset;
     
     // adaptive ray-marching variables
     const float min_step_size = 0.1f;          // minimum step size
@@ -104,6 +105,7 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs, float
     float step_size   = 1.0;
 
     // ray-march
+    reflection_distance = 0.0f;
     for (uint i = 0; i < step_count; i++)
     {
         // early exit if the ray is out of screen
@@ -120,16 +122,18 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs, float
             // test if we are within the threshold
             if (depth_difference <= g_ssr_depth_threshold)
                 return ray_pos;
-
+            
             // adjust ray position
-            ray_pos += sign(depth_delta) * ray_step * current_step_size;
+            ray_pos += sign(depth_delta) * ray_step_uv * current_step_size;
         }
         else
         {
             // reset step size to max if not intersecting
             current_step_size  = max_step_size;
-            ray_pos           += ray_step * current_step_size;
+            ray_pos           += ray_step_uv * current_step_size;
         }
+
+         reflection_distance += length(ray_step_vs * current_step_size);
     }
 
     return -1.0f;
@@ -162,12 +166,17 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float v_dot_r          = dot(-camera_to_pixel, reflection);
 
     // trace
-    float2 hit_uv = trace_ray(thread_id.xy, position, reflection, surface.roughness);
+    float reflection_distance = 0.0f;
+    float2 hit_uv             = trace_ray(thread_id.xy, position, reflection, surface.roughness, reflection_distance);
+    float alpha               = compute_alpha(thread_id.xy, hit_uv, v_dot_r);
+    float3 reflection_color   = tex.SampleLevel(samplers[sampler_bilinear_clamp], hit_uv, 0).rgb * alpha; // modulate with alpha because invalid UVs will get clamped colors
 
-    // sample scene color
-    float alpha             = compute_alpha(thread_id.xy, hit_uv, v_dot_r);
-    float4 reflection_color = lerp(0.0f, tex.SampleLevel(samplers[sampler_bilinear_clamp], hit_uv, 0), alpha);
+    // determine reflection roughness
+    float max_reflection_distance = 1.0f;
+    float distance_attenuation    = smoothstep(0.0f, max_reflection_distance, reflection_distance);
+    float reflection_roughness    = lerp(surface.roughness, clamp(surface.roughness * 1.5f, 0.0f, 1.0f), distance_attenuation);
+    reflection_roughness          = surface.roughness;
 
-    tex_uav[thread_id.xy] = reflection_color;
+    tex_uav[thread_id.xy]  = float4(reflection_color, alpha);
+    tex_uav2[thread_id.xy] = (reflection_roughness * reflection_roughness) * 10.0f;
 }
-

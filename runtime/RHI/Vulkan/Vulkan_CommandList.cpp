@@ -1545,4 +1545,39 @@ namespace Spartan
 
         Profiler::m_rhi_pipeline_barriers++;
     }
+
+
+    void RHI_CommandList::InsertMemoryBarrierBufferWaitForWrite(void* buffer)
+    {
+        SP_ASSERT(buffer != nullptr);
+
+        VkBufferMemoryBarrier buffer_barrier = {};
+        buffer_barrier.sType                 = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+        buffer_barrier.pNext                 = nullptr;
+        buffer_barrier.srcAccessMask         = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT; // adjust as needed
+        buffer_barrier.dstAccessMask         = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT; // adjust as needed
+        buffer_barrier.srcQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
+        buffer_barrier.dstQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
+        buffer_barrier.buffer                = static_cast<VkBuffer>(buffer);
+        buffer_barrier.offset                = 0;
+        buffer_barrier.size                  = VK_WHOLE_SIZE; // or specify the actual buffer size
+
+        VkPipelineStageFlags source_stage_mask      = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+        VkPipelineStageFlags destination_stage_mask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+
+        vkCmdPipelineBarrier(
+            static_cast<VkCommandBuffer>(m_rhi_resource),
+            source_stage_mask,
+            destination_stage_mask,
+            0,
+            0,
+            nullptr,
+            1,
+            &buffer_barrier,
+            0,
+            nullptr
+        );
+
+        Profiler::m_rhi_pipeline_barriers++;
+    }
 }

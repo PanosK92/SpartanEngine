@@ -151,7 +151,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     }
     
     // volumetric
-    if (light.is_volumetric() && pass_is_opaque())
+    if (light.is_volumetric())
     {
         volumetric_fog = compute_volumetric_fog(surface, light, thread_id.xy);
     }
