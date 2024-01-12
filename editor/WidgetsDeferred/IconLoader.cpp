@@ -100,7 +100,6 @@ void IconLoader::Initialize()
     {
         const string data_dir = ResourceCache::GetDataDirectory() + "\\";
 
-        IconLoader::LoadFromFile(data_dir + "Icons\\component_componentOptions.png", IconType::Component_Options);
         IconLoader::LoadFromFile(data_dir + "Icons\\component_audioListener.png", IconType::Component_AudioListener);
         IconLoader::LoadFromFile(data_dir + "Icons\\component_audioSource.png", IconType::Component_AudioSource);
         IconLoader::LoadFromFile(data_dir + "Icons\\component_reflectionProbe.png", IconType::Component_ReflectionProbe);
@@ -118,10 +117,6 @@ void IconLoader::Initialize()
         IconLoader::LoadFromFile(data_dir + "Icons\\console_info.png", IconType::Console_Info);
         IconLoader::LoadFromFile(data_dir + "Icons\\console_warning.png", IconType::Console_Warning);
         IconLoader::LoadFromFile(data_dir + "Icons\\console_error.png", IconType::Console_Error);
-        IconLoader::LoadFromFile(data_dir + "Icons\\button_play.png", IconType::Button_Play);
-        IconLoader::LoadFromFile(data_dir + "Icons\\profiler.png", IconType::Button_Profiler);
-        IconLoader::LoadFromFile(data_dir + "Icons\\resource_cache.png", IconType::Button_ResourceCache);
-        IconLoader::LoadFromFile(data_dir + "Icons\\renderdoc.png", IconType::Button_RenderDoc);
         IconLoader::LoadFromFile(data_dir + "Icons\\file.png", IconType::Directory_File_Default);
         IconLoader::LoadFromFile(data_dir + "Icons\\folder.png", IconType::Directory_Folder);
         IconLoader::LoadFromFile(data_dir + "Icons\\audio.png", IconType::Directory_File_Audio);
@@ -135,8 +130,15 @@ void IconLoader::Initialize()
         IconLoader::LoadFromFile(data_dir + "Icons\\ini.png", IconType::Directory_File_Ini);
         IconLoader::LoadFromFile(data_dir + "Icons\\exe.png", IconType::Directory_File_Exe);
         IconLoader::LoadFromFile(data_dir + "Icons\\font.png", IconType::Directory_File_Font);
-        IconLoader::LoadFromFile(data_dir + "Icons\\texture.png", IconType::Directory_File_Texture);
         IconLoader::LoadFromFile(data_dir + "Icons\\screenshot.png", IconType::Screenshot);
+
+        IconLoader::LoadFromFile(data_dir + "Icons\\settings.png", IconType::Component_Options);
+        IconLoader::LoadFromFile(data_dir + "Icons\\play.png", IconType::Button_Play);
+        IconLoader::LoadFromFile(data_dir + "Icons\\timer.png", IconType::Button_Profiler);
+        IconLoader::LoadFromFile(data_dir + "Icons\\resource_viewer.png", IconType::Button_ResourceCache);
+        IconLoader::LoadFromFile(data_dir + "Icons\\capture.png", IconType::Button_RenderDoc);
+        IconLoader::LoadFromFile(data_dir + "Icons\\code.png", IconType::Button_Shader);
+        IconLoader::LoadFromFile(data_dir + "Icons\\texture.png", IconType::Directory_File_Texture);
     });
 }
 

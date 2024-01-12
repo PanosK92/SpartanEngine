@@ -112,11 +112,14 @@ namespace
             ImGuiSp::image(icon_enum, 15);
             ImGui::SameLine(ImGuiSp::GetWindowContentRegionWidth() - icon_width + 1.0f); ImGui::SetCursorPosY(original_pen_y);
             uint32_t id = static_cast<uint32_t>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY());
+
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 1.0f, 1.0f, 0.0f));
             if (ImGuiSp::image_button(id, nullptr, IconType::Component_Options, icon_width, false))
             {
                 context_menu_id = name;
                 ImGui::OpenPopup(context_menu_id.c_str());
             }
+            ImGui::PopStyleColor(1);
 
             if (component_instance)
             {
