@@ -46,17 +46,17 @@ using namespace std;
 namespace
 {
     // font
-    static constexpr float k_font_size  = 18.0f;
-    static constexpr float k_font_scale = 1.0f;
+    constexpr float k_font_size  = 18.0f;
+    constexpr float k_font_scale = 1.0f;
 
     // color
-    static constexpr ImVec4 k_palette_color_0 = ImVec4(10.0f / 255.0f, 12.0f / 255.0f, 17.0f / 255.0f, 1.0f);
-    static constexpr ImVec4 k_palette_color_1 = ImVec4(18.0f / 255.0f, 20.0f / 255.0f, 25.0f / 255.0f, 1.0f);
-    static constexpr ImVec4 k_palette_color_2 = ImVec4(22.0f / 255.0f, 30.0f / 255.0f, 45.0f / 255.0f, 1.0f);
-    static constexpr ImVec4 k_palette_color_3 = ImVec4(35.0f / 255.0f, 48.0f / 255.0f, 76.0f / 255.0f, 1.0f);
-    static constexpr ImVec4 k_palette_color_4 = ImVec4(65.0f / 255.0f, 90.0f / 255.0f, 119.0f / 255.0f, 1.0f);
-    static constexpr ImVec4 k_palette_color_5 = ImVec4(119.0f / 255.0f, 141.0f / 255.0f, 169.0f / 255.0f, 1.0f);
-    static constexpr ImVec4 k_palette_color_6 = ImVec4(224.0f / 255.0f, 225.0f / 255.0f, 221.0f / 255.0f, 1.0f);
+    constexpr ImVec4 k_palette_color_0 = {10.0f / 255.0f, 12.0f / 255.0f, 17.0f / 255.0f, 1.0f};
+    constexpr ImVec4 k_palette_color_1 = {18.0f / 255.0f, 20.0f / 255.0f, 25.0f / 255.0f, 1.0f};
+    constexpr ImVec4 k_palette_color_2 = {22.0f / 255.0f, 30.0f / 255.0f, 45.0f / 255.0f, 1.0f};
+    constexpr ImVec4 k_palette_color_3 = {35.0f / 255.0f, 48.0f / 255.0f, 76.0f / 255.0f, 1.0f};
+    constexpr ImVec4 k_palette_color_4 = {65.0f / 255.0f, 90.0f / 255.0f, 119.0f / 255.0f, 1.0f};
+    constexpr ImVec4 k_palette_color_5 = {119.0f / 255.0f, 141.0f / 255.0f, 169.0f / 255.0f, 1.0f};
+    constexpr ImVec4 k_palette_color_6 = {224.0f / 255.0f, 225.0f / 255.0f, 221.0f / 255.0f, 1.0f};
 
     MenuBar* widget_menu_bar = nullptr;
     Widget* widget_world     = nullptr;
