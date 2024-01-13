@@ -52,7 +52,7 @@ namespace Spartan
         m_char_max_width  = 0;
         m_char_max_height = 0;
         m_color           = color;
-        
+
         SetSize(font_size);
         LoadFromFile(file_path);
     }
@@ -79,7 +79,7 @@ namespace Spartan
             m_char_max_width    = Helper::Max<int>(char_info.second.width, m_char_max_width);
             m_char_max_height   = Helper::Max<int>(char_info.second.height, m_char_max_height);
         }
-        
+
         SP_LOG_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
         return true;
     }
@@ -123,7 +123,7 @@ namespace Spartan
                 const uint32_t space_count        = 4; // spaces in a typical editor
                 const uint32_t tab_spacing        = space_offset * space_count;
                 const uint32_t offset_from_start  = static_cast<uint32_t>(Math::Helper::Abs(cursor.x - starting_pos_x));
-                const uint32_t next_column_index  = (offset_from_start / tab_spacing) + 1;
+                const uint32_t next_column_index  = tab_spacing == 0 ? 4 : (offset_from_start / tab_spacing) + 1;
                 const uint32_t offset_to_column   = (next_column_index * tab_spacing) - offset_from_start;
                 cursor.x                         += offset_to_column;
             }
@@ -138,7 +138,7 @@ namespace Spartan
             }
             else
             {
-                // first triangle in quad.    
+                // first triangle in quad.
                 vertices.emplace_back(cursor.x + glyph.offset_x,                cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_left,  glyph.uv_y_top);    // top left
                 vertices.emplace_back(cursor.x + glyph.offset_x + glyph.width,  cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_right, glyph.uv_y_bottom); // bottom right
                 vertices.emplace_back(cursor.x + glyph.offset_x,                cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_left,  glyph.uv_y_bottom); // bottom left

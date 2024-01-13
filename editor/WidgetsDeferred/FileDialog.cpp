@@ -78,7 +78,7 @@ bool FileDialog::Show(bool* is_visible, Editor* editor, string* directory /*= nu
     m_selection_made     = false;
     m_is_hovering_item   = false;
     m_is_hovering_window = false;
-    
+
     ShowTop(is_visible, editor); // top menu
     ShowMiddle();                // contents of the current directory
     ShowBottom(is_visible);      // bottom menu
@@ -129,7 +129,7 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
         ImGui::Begin(m_title.c_str(), is_visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking);
         ImGui::SetWindowFocus();
     }
-    
+
     // Directory navigation buttons
     {
         // Go backwards
@@ -245,18 +245,20 @@ void FileDialog::ShowMiddle()
                 if (m_drop_shadow)
                 {
                     static const float shadow_thickness = 2.0f;
-                    ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_BorderShadow];
+                    ImVec4 color = {1.0f, 1.0f, 4.0f, 0.1f};
                     ImGui::GetWindowDrawList()->AddRectFilled(
                         rect_button.Min,
                         ImVec2(rect_label.Max.x + shadow_thickness, rect_label.Max.y + shadow_thickness),
-                        IM_COL32(color.x * 255, color.y * 255, color.z * 255, color.w * 255));
+                        IM_COL32(color.x * 255, color.y * 255, color.z * 255, color.w * 255),
+                        5.0f);
                 }
 
                 // THUMBNAIL
                 {
                     ImGui::PushID(i);
                     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 1.0f, 1.0f, 0.25f));
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 1.0f, 1.0f, 0.0f));
+                    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
 
                     if (ImGuiSp::button("##dummy", m_item_size))
                     {
@@ -347,6 +349,7 @@ void FileDialog::ShowMiddle()
                     }
 
                     ImGui::PopStyleColor(2);
+                    ImGui::PopStyleVar(1);
                     ImGui::PopID();
                 }
 
@@ -354,7 +357,7 @@ void FileDialog::ShowMiddle()
                 {
                     const char* label_text  = item.GetLabel().c_str();
                     const ImVec2 label_size = ImGui::CalcTextSize(label_text, nullptr, true);
-                    
+
                     // Draw text background
                     ImGui::GetWindowDrawList()->AddRectFilled(rect_label.Min, rect_label.Max, IM_COL32(51, 51, 51, 190));
                     //ImGui::GetWindowDrawList()->AddRect(rect_label.Min, rect_label.Max, IM_COL32(255, 0, 0, 255)); // debug
