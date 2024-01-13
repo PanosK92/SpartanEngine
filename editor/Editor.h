@@ -50,6 +50,9 @@ public:
         return nullptr;
     }
 
+    inline static ImFont* font_normal   = nullptr;
+    inline static ImFont* font_bold = nullptr;
+
 private:
     void BeginWindow();
 
