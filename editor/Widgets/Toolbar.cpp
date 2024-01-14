@@ -43,21 +43,24 @@ namespace
 {
     constexpr float button_size = 19.0f;
 
-    constexpr ImVec4 button_color_play           = {0.2f, 0.7f, 0.35f, 1.0f};
-    constexpr ImVec4 button_color_play_hover     = {0.22f, 0.8f, 0.4f, 1.0f};
-    constexpr ImVec4 button_color_play_active    = {0.15f, 0.6f, 0.3f, 1.0f};
+    constexpr ImVec4 button_color_play        = {0.2f, 0.7f, 0.35f, 1.0f};
+    constexpr ImVec4 button_color_play_hover  = {0.22f, 0.8f, 0.4f, 1.0f};
+    constexpr ImVec4 button_color_play_active = {0.1f, 0.4f, 0.2f, 1.0f};
 
-    constexpr ImVec4 button_color_doc            = {0.25f, 0.7f, 0.75f, 0.9f};
-    constexpr ImVec4 button_color_doc_hover      = {0.3f, 0.75f, 0.8f, 0.9f};
-    constexpr ImVec4 button_color_doc_active     = {0.2f, 0.65f, 0.7f, 0.9f};
+    constexpr ImVec4 button_color_doc         = {0.25f, 0.7f, 0.75f, 0.9f};
+    constexpr ImVec4 button_color_doc_hover   = {0.3f, 0.75f, 0.8f, 0.9f};
+    constexpr ImVec4 button_color_doc_active  = {0.2f, 0.65f, 0.7f, 0.9f};
 
-    // A button that when pressed will call "on press" and derives it's color (active/inactive) based on "get_visibility".
+    // a button that when pressed will call "on press" and derives it's color (active/inactive) based on "get_visibility".
     void toolbar_button(IconType icon_type, const string tooltip_text, const function<bool()>& get_visibility, const function<void()>& on_press, float offset_x = -1.0f)
     {
         ImGui::SameLine();
-        ImGui::PushStyleColor(ImGuiCol_Button, get_visibility() ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
+        ImVec4 button_color = get_visibility() ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button];
+        ImGui::PushStyleColor(ImGuiCol_Button, button_color);
         if (offset_x > 0.0f)
+        {
             ImGui::SetCursorPosX(offset_x);
+        }
 
         const ImGuiStyle& style   = ImGui::GetStyle();
         const float size_avail_y  = 2.0f * style.FramePadding.y + button_size;
@@ -66,7 +69,7 @@ namespace
 
         ImGui::SetCursorPosY(offset_y);
 
-        if (ImGuiSp::image_button(0, nullptr, icon_type, button_size * Spartan::Window::GetDpiScale(), false))
+        if (ImGuiSp::image_button(static_cast<uint64_t>(icon_type), nullptr, icon_type, button_size * Spartan::Window::GetDpiScale(), false))
         {
             on_press();
         }
@@ -103,7 +106,7 @@ void Toolbar::OnTick()
 {
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     const float size_avail_x      = viewport->Size.x;
-    const float button_size_final = button_size + 2.0f * MenuBar::GetPadding().x;//(button_size > ImGui::GetContentRegionAvail().y ? button_size : ImGui::GetContentRegionAvail().y);
+    const float button_size_final = button_size + 2.0f * MenuBar::GetPadding().x;
 
     float num_buttons  = 1.0f;
     float size_toolbar = num_buttons * button_size_final;
@@ -112,27 +115,29 @@ void Toolbar::OnTick()
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {18.0f, MenuBar::GetPadding().y - 2.0f});
 
-    ImGui::PushStyleColor(ImGuiCol_Button, button_color_play);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, button_color_play_hover);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, button_color_play_active);
+    // play button
+    {
+        ImGui::PushStyleColor(ImGuiCol_Button, button_color_play);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, button_color_play_hover);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, button_color_play_active);
 
-    // play
-    toolbar_button(
-        IconType::Button_Play, "Play",
-        []() { return Spartan::Engine::IsFlagSet(Spartan::EngineMode::Game); },
-        []() { return Spartan::Engine::ToggleFlag(Spartan::EngineMode::Game); },
-        offset_x
-    );
+        toolbar_button(
+            IconType::Button_Play, "Play",
+            []() { return Spartan::Engine::IsFlagSet(Spartan::EngineMode::Game); },
+            []() { return Spartan::Engine::ToggleFlag(Spartan::EngineMode::Game); },
+            offset_x
+        );
 
-    ImGui::PopStyleColor(3);
-    ImGui::PopStyleVar(1);
+        ImGui::PopStyleColor(3);
+        ImGui::PopStyleVar(1);
+    }
 
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {MenuBar::GetPadding().x, MenuBar::GetPadding().y - 2.0f});
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {2.0f, 0.0f});
 
-    num_buttons       = 6.0f;
-    size_toolbar      = num_buttons * button_size_final + (num_buttons - 1.0f) * ImGui::GetStyle().ItemSpacing.x;
-    offset_x          = size_avail_x - size_toolbar - 2.0f;
+    num_buttons  = 6.0f;
+    size_toolbar = num_buttons * button_size_final + (num_buttons - 1.0f) * ImGui::GetStyle().ItemSpacing.x;
+    offset_x     = size_avail_x - size_toolbar - 2.0f;
 
     ImGui::PushStyleColor(ImGuiCol_Button, button_color_doc);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, button_color_doc_hover);
