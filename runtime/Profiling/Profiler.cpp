@@ -275,7 +275,7 @@ namespace Spartan
                         pass_index_gpu += 2;
                     }
                 }
-                else if (time_block.GetType() != TimeBlockType::Undefined) // if undefined, then it wasn't used this frame, nothing wrong with that.
+                else if (time_block.GetType() != TimeBlockType::Undefined) // if undefined, then it wasn't used this frame, nothing wrong with that
                 {
                     SP_LOG_WARNING("TimeBlockEnd() was not called for time block \"%s\"", time_block.GetName());
                 }
