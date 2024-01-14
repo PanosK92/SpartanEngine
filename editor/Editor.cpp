@@ -80,7 +80,7 @@ namespace
         colors[ImGuiCol_PopupBg]               = k_palette_color_1;
         colors[ImGuiCol_Border]                = k_palette_color_3;
         colors[ImGuiCol_BorderShadow]          = k_palette_color_0;
-        colors[ImGuiCol_FrameBg]               = k_palette_color_2;     // Background of checkbox, radio button, plot, slider, text input
+        colors[ImGuiCol_FrameBg]               = k_palette_color_2; // Background of checkbox, radio button, plot, slider, text input
         colors[ImGuiCol_FrameBgHovered]        = k_palette_color_3;
         colors[ImGuiCol_FrameBgActive]         = k_palette_color_4;
         colors[ImGuiCol_TitleBg]               = k_palette_color_1;
@@ -97,7 +97,7 @@ namespace
         colors[ImGuiCol_Button]                = k_palette_color_3;
         colors[ImGuiCol_ButtonHovered]         = k_palette_color_4;
         colors[ImGuiCol_ButtonActive]          = k_palette_color_2;
-        colors[ImGuiCol_Header]                = k_palette_color_0;     // Header colors are used for CollapsingHeader, TreeNode, Selectable, MenuItem
+        colors[ImGuiCol_Header]                = k_palette_color_0; // Header colors are used for CollapsingHeader, TreeNode, Selectable, MenuItem
         colors[ImGuiCol_HeaderHovered]         = k_palette_color_3;
         colors[ImGuiCol_HeaderActive]          = k_palette_color_0;
         colors[ImGuiCol_Separator]             = k_palette_color_5;
@@ -110,18 +110,18 @@ namespace
         colors[ImGuiCol_TabHovered]            = k_palette_color_3;
         colors[ImGuiCol_TabActive]             = k_palette_color_1;
         colors[ImGuiCol_TabUnfocused]          = k_palette_color_2;
-        colors[ImGuiCol_TabUnfocusedActive]    = k_palette_color_2;     // Might be called active, but it's active only because it's it's the only tab available, the user didn't really activate it
-        colors[ImGuiCol_DockingPreview]        = k_palette_color_4;     // Preview overlay color when about to docking something
-        colors[ImGuiCol_DockingEmptyBg]        = k_palette_color_6;     // Background color for empty node (e.g. CentralNode with no window docked into it)
+        colors[ImGuiCol_TabUnfocusedActive]    = k_palette_color_2; // Might be called active, but it's active only because it's it's the only tab available, the user didn't really activate it
+        colors[ImGuiCol_DockingPreview]        = k_palette_color_4; // Preview overlay color when about to docking something
+        colors[ImGuiCol_DockingEmptyBg]        = k_palette_color_6; // Background color for empty node (e.g. CentralNode with no window docked into it)
         colors[ImGuiCol_PlotLines]             = k_palette_color_5;
         colors[ImGuiCol_PlotLinesHovered]      = k_palette_color_6;
         colors[ImGuiCol_PlotHistogram]         = k_palette_color_5;
         colors[ImGuiCol_PlotHistogramHovered]  = k_palette_color_6;
         colors[ImGuiCol_TextSelectedBg]        = k_palette_color_4;
-        colors[ImGuiCol_DragDropTarget]        = k_palette_color_4;     // Color when hovering over target
-        colors[ImGuiCol_NavHighlight]          = k_palette_color_3;     // Gamepad/keyboard: current highlighted item
-        colors[ImGuiCol_NavWindowingHighlight] = k_palette_color_2;     // Highlight window when using CTRL+TAB
-        colors[ImGuiCol_NavWindowingDimBg]     = k_palette_color_2;     // Darken/colorize entire screen behind the CTRL+TAB window list, when active
+        colors[ImGuiCol_DragDropTarget]        = k_palette_color_4; // Color when hovering over target
+        colors[ImGuiCol_NavHighlight]          = k_palette_color_3; // Gamepad/keyboard: current highlighted item
+        colors[ImGuiCol_NavWindowingHighlight] = k_palette_color_2; // Highlight window when using CTRL+TAB
+        colors[ImGuiCol_NavWindowingDimBg]     = k_palette_color_2; // Darken/colorize entire screen behind the CTRL+TAB window list, when active
         colors[ImGuiCol_ModalWindowDimBg]      = k_palette_color_2;
     }
 
