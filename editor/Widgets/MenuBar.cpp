@@ -146,8 +146,8 @@ namespace
 
                     // button (URL)
                     ImGui::TableSetColumnIndex(2);
-                    string button_text = comma_seperated_contributors[index++];
-                    string button_url  = comma_seperated_contributors[index++];
+                    string& button_text = comma_seperated_contributors[index++];
+                    string& button_url  = comma_seperated_contributors[index++];
                     ImGui::PushID(static_cast<uint32_t>(ImGui::GetCursorScreenPos().y));
                     if (ImGui::Button(button_text.c_str()))
                     {
@@ -298,7 +298,7 @@ namespace
     {
         T* widget = editor->GetWidget<T>();
 
-        // Menu item with checkmark based on widget->GetVisible()
+        // menu item with checkmark based on widget->GetVisible()
         if (ImGui::MenuItem(widget->GetTitle().c_str(), nullptr, widget->GetVisible()))
         {
             // Toggle visibility

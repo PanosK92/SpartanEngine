@@ -39,7 +39,7 @@ namespace
         const float duration    = time_block.GetDuration();
         const float fraction    = duration / 10.0f;
         const float width       = fraction * ImGuiSp::GetWindowContentRegionWidth();
-        const auto& color       = ImGui::GetStyle().Colors[ImGuiCol_CheckMark];
+        const auto& color       = ImGui::GetStyle().Colors[ImGuiCol_PlotHistogram];
         const ImVec2 pos_screen = ImGui::GetCursorScreenPos();
         const ImVec2 pos        = ImGui::GetCursorPos();
         const float text_height = ImGui::CalcTextSize(name, nullptr, true).y;
@@ -90,13 +90,12 @@ void Profiler::OnTickVisible()
     uint32_t time_block_count              = static_cast<uint32_t>(time_blocks.size());
     float time_last                        = type == Spartan::TimeBlockType::Cpu ? Spartan::Profiler::GetTimeCpuLast() : Spartan::Profiler::GetTimeGpuLast();
 
-    // sort time_blocks by duration, descending
-    if (sort_time_blocks)
+    if (sort_time_blocks) // by duration, descending
     {
         sort(time_blocks.begin(), time_blocks.end(), [](const Spartan::TimeBlock& a, const Spartan::TimeBlock& b)
-            {
-                return b.GetDuration() < a.GetDuration();
-            });
+        {
+            return b.GetDuration() < a.GetDuration();
+        });
     }
 
     // time blocks
