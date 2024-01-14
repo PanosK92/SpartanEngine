@@ -51,14 +51,14 @@ namespace
 
     vector<string> contributors =
     {
-        // format: name,country,button text,button url,contribution, steam cd key
-        "Apostolos Bouzalas,  Greece,         LinkedIn, https://www.linkedin.com/in/apostolos-bouzalas,           Bug Fixes,                      N/A",
-        "Iker Galardi,        Basque Country, LinkedIn, https://www.linkedin.com/in/iker-galardi/,                Linux Port,                     N/A",
-        "Jesse Guerrero,      US,             LinkedIn, https://www.linkedin.com/in/jguer,                        UX Improvements,                N/A",
-        "Konstantinos Benos,  Greece,         Twitter,  https://twitter.com/deg3x,                                Bug Fixes,                      N/A",
-        "Nick Polyderopoulos, Greece,         LinkedIn, https://www.linkedin.com/in/nick-polyderopoulos-21742397, UX Improvements,                N/A",
+        // format: name, country, button text, button url, contribution, steam key
+        "Apostolos Bouzalas,  Greece,         LinkedIn, https://www.linkedin.com/in/apostolos-bouzalas,           Bug fixes,                      N/A",
+        "Iker Galardi,        Basque Country, LinkedIn, https://www.linkedin.com/in/iker-galardi/,                Linux port,                     N/A",
+        "Jesse Guerrero,      US,             LinkedIn, https://www.linkedin.com/in/jguer,                        UX improvements,                N/A",
+        "Konstantinos Benos,  Greece,         Twitter,  https://twitter.com/deg3x,                                Editor theme & bug fixes,       N/A",
+        "Nick Polyderopoulos, Greece,         LinkedIn, https://www.linkedin.com/in/nick-polyderopoulos-21742397, UX improvements,                N/A",
         "Panos Kolyvakis,     Greece,         LinkedIn, https://www.linkedin.com/in/panos-kolyvakis-66863421a/,   Improved water buoyancy,        N/A",
-        "Tri Tran,            Belgium,        LinkedIn, https://www.linkedin.com/in/mtrantr/,                     Days Gone Screen Space Shadows, Starfield"
+        "Tri Tran,            Belgium,        LinkedIn, https://www.linkedin.com/in/mtrantr/,                     Days Gone screen space Shadows, Starfield"
     };
 
     vector<string> comma_seperate_contributors(const vector<string>& contributors)
@@ -122,7 +122,7 @@ namespace
                 ImGui::TableSetupColumn("Country");
                 ImGui::TableSetupColumn("URL");
                 ImGui::TableSetupColumn("Contribution");
-                ImGui::TableSetupColumn("Steam Key Award");
+                ImGui::TableSetupColumn("Steam Key");
                 ImGui::TableHeadersRow();
 
                 uint32_t index = 0;
@@ -488,20 +488,18 @@ void MenuBar::DrawFileDialog() const
 
     if (m_file_dialog->Show(&show_file_dialog, m_editor, nullptr, &file_dialog_selection_path))
     {
-        // LOAD
+        // load world
         if (m_file_dialog->GetOperation() == FileDialog_Op_Open || m_file_dialog->GetOperation() == FileDialog_Op_Load)
         {
-            // Scene
             if (Spartan::FileSystem::IsEngineSceneFile(file_dialog_selection_path))
             {
                 EditorHelper::LoadWorld(file_dialog_selection_path);
                 show_file_dialog = false;
             }
         }
-        // SAVE
+        // save world
         else if (m_file_dialog->GetOperation() == FileDialog_Op_Save)
         {
-            // Scene
             if (m_file_dialog->GetFilter() == FileDialog_Filter_World)
             {
                 EditorHelper::SaveWorld(file_dialog_selection_path);
