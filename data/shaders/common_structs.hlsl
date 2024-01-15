@@ -76,7 +76,7 @@ struct Surface
     bool is_opaque()                              { return alpha == 1.0f; }
     bool is_transparent()                         { return alpha > 0.0f && alpha < 1.0f; }
     
-    void Build(uint2 position_screen, bool use_albedo, bool use_ssgi, bool replace_color_with_one)
+    void Build(uint2 position_screen, bool use_albedo, bool replace_color_with_one)
     {
         // access resources
         float4 sample_albedo   = use_albedo ? tex_albedo[position_screen] : 0.0f;
@@ -116,7 +116,7 @@ struct Surface
             occlusion = 1.0f;
             gi        = 0.0f;
 
-            if (is_ssgi_enabled() && use_ssgi && !pass_is_transparent())
+            if (is_ssgi_enabled() && pass_is_opaque())
             {
                 // Sample ssgi texture
                 float4 ssgi = tex_ssgi[position_screen];

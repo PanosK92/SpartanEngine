@@ -36,20 +36,21 @@ float3 sample_environment(float2 uv, float mip_level)
     return tex_environment.SampleLevel(samplers[sampler_trilinear_clamp], uv, mip_level).rgb;
 }
 
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    const uint2 pos = input.uv * pass_get_resolution_out();
+    if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
+        return;
     
     // construct surface
     Surface surface;
-    bool use_ssgi = pass_is_opaque(); // we don't do ssgi for transparents.
-    surface.Build(pos, true, use_ssgi, false);
+    surface.Build(thread_id.xy, true, false);
 
     bool early_exit_1 = pass_is_opaque() && surface.is_transparent(); // if this is an opaque pass, ignore all transparent pixels
     bool early_exit_2 = pass_is_transparent() && surface.is_opaque(); // if this is an transparent pass, ignore all opaque pixels
     bool early_exit_3 = surface.is_sky();                             // we don't want to do ibl on the sky itself
     if (early_exit_1 || early_exit_2 || early_exit_3)
-        discard;
+        return;
 
     // compute specular energy
     const float n_dot_v          = saturate(dot(-surface.camera_to_pixel, surface.normal));
@@ -74,20 +75,10 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     const float4 ssr_sample = is_ssr_enabled() ? tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level) : 0.0f;
     float3 ibl_specular     = lerp(ibl_specular_environment, ssr_sample.rgb, ssr_sample.a);
 
-    // modulate outcoming energy
-    ibl_specular *= specular_energy;
-
-    float3 ibl = ibl_diffuse + ibl_specular;
-
-    // ssgi
-    if (is_ssgi_enabled() && use_ssgi)
-    {
-        ibl *= surface.occlusion;
-    }
-
-    // make transparent for transparents
-    ibl *= surface.alpha;
+    float3 ibl  = ibl_diffuse + (ibl_specular * specular_energy);
+    ibl        *= surface.occlusion;
+    ibl        *= surface.alpha;
 
     // perfection achieved
-    return float4(ibl, 0.0f);
+    tex_uav[thread_id.xy]  += float4(saturate_16(ibl), 0.0f);
 }

@@ -68,7 +68,7 @@ struct PassBufferData
 [[vk::push_constant]]
 PassBufferData buffer_pass;
 cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame;  };
-                          
+
 // easy access to certain frame constant buffer properties
 bool is_taa_enabled()  { return any(buffer_frame.taa_jitter_current); }
 bool is_ssr_enabled()  { return buffer_frame.options & uint(1U << 0); }
