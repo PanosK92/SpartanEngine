@@ -99,7 +99,7 @@ namespace Spartan
         SetProperty(MaterialProperty::TextureTilingX,   1.0f);
         SetProperty(MaterialProperty::TextureTilingY,   1.0f);
         SetProperty(MaterialProperty::WorldSpaceHeight, 1.0f);
-        SetProperty(MaterialProperty::Ior,              1.33f); // water
+        SetProperty(MaterialProperty::Ior,              1.333f); // water
     }
 
     bool Material::LoadFromFile(const std::string& file_path)

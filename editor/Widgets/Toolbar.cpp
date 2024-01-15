@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======================
 #include "Toolbar.h"
-
 #include "MenuBar.h"
 #include "Window.h"
 #include "Profiler.h"

@@ -147,7 +147,7 @@ struct sampling
     
             if (position_world.y <= sea_level + sand_offset)
             {
-                float sand_blend_factor = saturate(position_world.y / sand_offset);          
+                float sand_blend_factor = saturate(position_world.y / sand_offset);
                 float4 tex_sand         = reduce_tiling(texture_index_sand, uv, variation);
                 terrain                 = lerp(tex_sand, terrain, sand_blend_factor);   
             }
@@ -234,8 +234,8 @@ PixelOutputType mainPS(PixelInputType input)
     }
 
     Material material = GetMaterial();
-    Surface surface; // a surface can interpret the material flags
-    surface.flags = material.flags;
+    Surface surface; 
+    surface.flags = material.flags; // a surface can interpret the material flags
     
     // uv
     float2 uv = input.uv;
