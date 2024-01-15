@@ -126,7 +126,7 @@ namespace Spartan
         bool increase_capacity    = false;
         bool allow_time_block_end = true;
 
-        static string format_float(float value)
+        string format_float(float value)
         {
             stringstream ss;
 
