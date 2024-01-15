@@ -68,7 +68,7 @@ struct translucency
                 // simulate light breaking off into individual color bands via chromatic aberration
                 float3 color_refracted = 0.0f;
                 {
-                    float chromatic_aberration_strength = surface.ior * 0.0005f;
+                    float chromatic_aberration_strength  = surface.ior * 0.0005f;
                     chromatic_aberration_strength       *= (1.0f + surface.roughness_alpha);
                     
                     float2 ca_offsets[3];
@@ -153,10 +153,13 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
             // refraction
             light_transparent = translucency::refraction::get_color(surface);
 
-            // water - todo: actually do this only for water
-            float4 light_water    = translucency::water::get_color(surface);
-            light_transparent.rgb = lerp(light_transparent.rgb, light_water.rgb, light_water.a);
-            color.a               = light_water.a;
+            // water light penetration
+            if (surface.is_water())
+            {
+                float4 light_water    = translucency::water::get_color(surface);
+                light_transparent.rgb = lerp(light_transparent.rgb, light_water.rgb, light_water.a);
+                color.a               = light_water.a;
+            }
         }
         
         // compose
@@ -169,4 +172,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = saturate_16(color);
 }
-
