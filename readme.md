@@ -27,7 +27,7 @@
 
 # Worlds
 <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_forest.png"/>
-<img align="left" width="450" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_selection.png"/>
+<img align="left" width="450" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_selection_2.png"/>
 
 Upon launching the engine, you'll be greeted with a selection of default worlds to load. Each world is physics-enabled, allowing you to walk around, pick objects using your mouse, and even drive a car. These worlds are designed to offer a diverse and enjoyable experience.  
 <br clear="left"/>
