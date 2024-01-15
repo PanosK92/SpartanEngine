@@ -58,7 +58,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // create surface
     Surface surface;
-    surface.Build(thread_id.xy, true, true, true);
+    surface.Build(thread_id.xy, true, true);
 
     // early exit cases
     bool early_exit_1 = pass_is_opaque()      && surface.is_transparent() && !surface.is_sky(); // do shade sky pixels during the opaque pass (volumetric lighting)

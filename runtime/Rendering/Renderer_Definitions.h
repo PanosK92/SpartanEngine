@@ -197,7 +197,7 @@ namespace Spartan
         light_integration_environment_filter_c,
         light_c,
         light_composition_c,
-        light_image_based_p,
+        light_image_based_c,
         line_v,
         line_p,
         grid_p,

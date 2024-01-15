@@ -149,7 +149,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     tex_uav[thread_id.xy] = float4(0.0f, 0.0f, 0.0f, 0.0f);
  
     Surface surface;
-    surface.Build(thread_id.xy, true, false, false);
+    surface.Build(thread_id.xy, true, false);
     
     // compute early exit cases
     bool early_exit_1 = pass_is_opaque() && surface.is_transparent(); // if this is an opaque pass, ignore all transparent pixels

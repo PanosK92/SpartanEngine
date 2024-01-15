@@ -372,12 +372,12 @@ namespace Spartan
 
         // light
         {
-            // brdf specular lut - compiled synchronously as it's needed immediately
+            // brdf specular lut - compile synchronously as it's needed immediately
             shader(Renderer_Shader::light_integration_brdf_specular_lut_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::light_integration_brdf_specular_lut_c)->AddDefine("BRDF_SPECULAR_LUT");
             shader(Renderer_Shader::light_integration_brdf_specular_lut_c)->Compile(RHI_Shader_Compute, shader_dir + "light_integration.hlsl", false);
 
-            // environment prefilter - compiled synchronously as it's needed immediately
+            // environment prefilter - compile synchronously as it's needed immediately
             shader(Renderer_Shader::light_integration_environment_filter_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::light_integration_environment_filter_c)->AddDefine("ENVIRONMENT_FILTER");
             shader(Renderer_Shader::light_integration_environment_filter_c)->Compile(RHI_Shader_Compute, shader_dir + "light_integration.hlsl", async);
@@ -391,8 +391,8 @@ namespace Spartan
             shader(Renderer_Shader::light_composition_c)->Compile(RHI_Shader_Compute, shader_dir + "light_composition.hlsl", async);
 
             // image based
-            shader(Renderer_Shader::light_image_based_p) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::light_image_based_p)->Compile(RHI_Shader_Pixel, shader_dir + "light_image_based.hlsl", async);
+            shader(Renderer_Shader::light_image_based_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::light_image_based_c)->Compile(RHI_Shader_Compute, shader_dir + "light_image_based.hlsl", async);
         }
 
         // triangle & quad

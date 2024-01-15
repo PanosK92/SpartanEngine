@@ -1040,26 +1040,16 @@ namespace Spartan
 
     void Renderer::Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass)
     {
-        // acquire shaders
-        RHI_Shader* shader_v = GetShader(Renderer_Shader::fullscreen_triangle_v).get();
-        RHI_Shader* shader_p = GetShader(Renderer_Shader::light_image_based_p).get();
-        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
+        // acquire shader
+        RHI_Shader* shader = GetShader(Renderer_Shader::light_image_based_c).get();
+        if (!shader->IsCompiled())
             return;
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_image_based_transparent" : "light_image_based");
 
-        // define pipeline state
-        static RHI_PipelineState pso;
-        pso.shader_vertex                   = shader_v;
-        pso.shader_pixel                    = shader_p;
-        pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
-        pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
-        pso.blend_state                     = GetBlendState(Renderer_BlendState::Additive).get();
-        pso.render_target_color_textures[0] = tex_out;
-        pso.clear_color[0]                  = rhi_color_load;
-        pso.is_fullscreen_triangle          = true;
-
         // set pipeline state
+        static RHI_PipelineState pso;
+        pso.shader_compute = shader;
         cmd_list->SetPipelineState(pso);
 
         // set textures
@@ -1069,6 +1059,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::sss,         GetRenderTarget(Renderer_RenderTexture::sss));
         cmd_list->SetTexture(Renderer_BindingsSrv::lutIbl,      GetRenderTarget(Renderer_RenderTexture::brdf_specular_lut));
         cmd_list->SetTexture(Renderer_BindingsSrv::environment, GetRenderTarget(Renderer_RenderTexture::skysphere));
+        cmd_list->SetTexture(Renderer_BindingsUav::tex,         tex_out);
 
         // set pass constants
         m_pcb_pass_cpu.set_resolution_out(tex_out);
@@ -1079,8 +1070,7 @@ namespace Spartan
         PushPassConstants(cmd_list);
 
         // render
-        cmd_list->Draw(3);
-
+        cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
         cmd_list->EndTimeblock();
     }
 
