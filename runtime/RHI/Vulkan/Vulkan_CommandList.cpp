@@ -361,6 +361,9 @@ namespace Spartan
 
     RHI_CommandList::~RHI_CommandList()
     {
+        m_proccessed_fence     = nullptr;
+        m_proccessed_semaphore = nullptr;
+
         if (m_rhi_query_pool)
         {
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::QueryPool, m_rhi_query_pool);
