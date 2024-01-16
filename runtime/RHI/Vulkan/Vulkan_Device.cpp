@@ -676,6 +676,19 @@ namespace Spartan
                 }
             }
         }
+
+        void release()
+        {
+            sets.clear();
+            layouts.clear();
+            pipelines.clear();
+            descriptor_cache.clear();
+
+            for (uint32_t i = 0; i < static_cast<uint32_t>(bindless::layouts.size()); i++)
+            {
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::DescriptorSetLayout, bindless::layouts[i]);
+            }
+        }
     }
 
     namespace device_features
@@ -1053,8 +1066,6 @@ namespace Spartan
 
     void RHI_Device::Destroy()
     {
-        RHI_Device::DeletionQueueParse();
-
         SP_ASSERT(queues::graphics != nullptr);
 
         QueueWaitAll();
@@ -1067,14 +1078,21 @@ namespace Spartan
         vkDestroyDescriptorPool(RHI_Context::device, descriptors::descriptor_pool, nullptr);
         descriptors::descriptor_pool = nullptr;
 
-        // allocator
-        vulkan_memory_allocator::destroy();
-
         // debug messenger
         if (Profiler::IsValidationLayerEnabled())
         {
             validation_layer_logging::shutdown(RHI_Context::instance);
         }
+
+        // descriptors
+        descriptors::release();
+
+        // the destructor of all the resources enqueues it's vk buffer memory for de-allocation
+        // this is where we actually go through them and de-allocate them
+        RHI_Device::DeletionQueueParse();
+
+        // destroy the allocator itself and assert if any allocations are left
+        vulkan_memory_allocator::destroy();
 
         // device and instance
         vkDestroyDevice(RHI_Context::device, nullptr);
