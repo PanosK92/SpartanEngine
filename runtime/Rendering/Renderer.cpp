@@ -797,7 +797,7 @@ namespace Spartan
             }
         }
 
-        // fitler environment on directioanl light change
+        // filter environment on directional light change
         {
             static Quaternion rotation;
             static float intensity;
