@@ -56,6 +56,7 @@ namespace Spartan
                 case Renderer_Option::Debug_Aabb:                    return "Debug_Aabb";
                 case Renderer_Option::Debug_PickingRay:              return "Debug_PickingRay";
                 case Renderer_Option::Debug_Grid:                    return "Debug_Grid";
+                case Renderer_Option::Debug_ReflectionProbes:        return "Debug_ReflectionProbes";
                 case Renderer_Option::Debug_TransformHandle:         return "Debug_TransformHandle";
                 case Renderer_Option::Debug_SelectionOutline:        return "Debug_SelectionOutline";
                 case Renderer_Option::Debug_Lights:                  return "Debug_Lights";

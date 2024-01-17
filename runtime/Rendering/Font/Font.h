@@ -121,8 +121,6 @@ namespace Spartan
         uint32_t m_char_max_height;
         std::unordered_map<uint32_t, Glyph> m_glyphs;
         std::vector<TextData> m_text_data;
-        std::vector<RHI_Vertex_PosTex> m_vertices;
-        std::vector<uint32_t> m_indices;
         std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer;
         std::shared_ptr<RHI_IndexBuffer> m_index_buffer;
         std::shared_ptr<RHI_Texture> m_atlas;

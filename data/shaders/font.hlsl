@@ -45,7 +45,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     color.a = color.r;
 
     // color it
-    color.rgb *= pass_get_f4_value().rgb;
+    color *= float4(pass_get_f4_value().rgb, 1.0f);
 
     return color;
 }
