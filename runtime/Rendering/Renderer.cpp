@@ -466,7 +466,8 @@ namespace Spartan
 
         if (width > m_resolution_output.x || height > m_resolution_output.y)
         {
-            SP_LOG_WARNING("Can't set %dx%d as it's larger then the output resolution %dx%d", width, height, m_resolution_output.x, m_resolution_output.y);
+            SP_LOG_WARNING("Can't set %dx%d as it's larger then the output resolution %dx%d",
+                width, height, static_cast<uint32_t>(m_resolution_output.x), static_cast<uint32_t>(m_resolution_output.y));
             return;
         }
 
