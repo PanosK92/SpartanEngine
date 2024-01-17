@@ -32,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_FidelityFX.h"
-#include "../RHI/RHI_StructuredBuffer.h"
 //======================================
 
 //= NAMESPACES ===============
