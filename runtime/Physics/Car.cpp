@@ -168,7 +168,7 @@ namespace Spartan
             oss << fixed << setprecision(2);
 
             oss << "Speed: "     << Math::Helper::Abs<float>(speed) << " Km/h\n"; // meters per second
-            oss << "Torque: "    << parameters.engine_torque << " N·m\  n";       // Newton meters
+            oss << "Torque: "    << parameters.engine_torque << " Nm \n";         // Newton meters
             oss << "RPM: "       << parameters.engine_rpm << " rpm\n";            // revolutions per minute, not an SI unit, but commonly used
             oss << "Gear: "      << parameters.gear << "\n";                      // gear has no unit
             oss << "Downforce: " << parameters.aerodynamics_downforce << " N\n";  // newtons
