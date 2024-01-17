@@ -181,6 +181,7 @@ namespace Spartan
         if (m_text_data.empty())
             return;
 
+        // combine all vertices/indices into one
         vector<RHI_Vertex_PosTex> vertices;
         vector<uint32_t> indices;
         uint32_t vertex_offset = 0;
@@ -190,7 +191,7 @@ namespace Spartan
 
             for (uint32_t index : text_data.indices)
             {
-                indices.push_back(index + vertex_offset);
+                indices.push_back(index); // index + vertex_offset causes issues for some weird compiler related reason
             }
 
             vertex_offset += static_cast<uint32_t>(text_data.vertices.size());

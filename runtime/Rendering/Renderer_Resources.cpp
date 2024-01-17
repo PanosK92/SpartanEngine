@@ -64,10 +64,10 @@ namespace Spartan
         array<shared_ptr<RHI_StructuredBuffer>, 3>                                         structured_buffers;
 
         // asset resources
-        array<shared_ptr<RHI_Texture>, 10>                standard_textures;
-        array<shared_ptr<Mesh>, 7>                        standard_meshes;
-        array<shared_ptr<Font>, resources_frame_lifetime> standard_font;
-        shared_ptr<Material>                              standard_material;
+        array<shared_ptr<RHI_Texture>, 10> standard_textures;
+        array<shared_ptr<Mesh>, 7>         standard_meshes;
+        shared_ptr<Font>                   standard_font;
+        shared_ptr<Material>               standard_material;
     }
 
     void Renderer::CreateConstantBuffers()
@@ -548,11 +548,7 @@ namespace Spartan
         const string dir_font = ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts) + "\\";
 
         // load a font
-        for (uint32_t i = 0; i < 5; i++) // as many as m_resources_frame_lifetime
-        {
-            // ResourceCache will ensure that the font resource is only loaded once
-            standard_font[i] = make_shared<Font>(dir_font + "OpenSans/OpenSans-Medium.ttf", static_cast<uint32_t>(11 * Window::GetDpiScale()), Vector4(0.9f, 0.9f, 0.9f, 1.0f));
-        }
+        standard_font = make_shared<Font>(dir_font + "OpenSans/OpenSans-Medium.ttf", static_cast<uint32_t>(11 * Window::GetDpiScale()), Vector4(0.9f, 0.9f, 0.9f, 1.0f));
     }
 
     void Renderer::CreateStandardMeshes()
@@ -686,7 +682,7 @@ namespace Spartan
         standard_textures.fill(nullptr);
         standard_meshes.fill(nullptr);
         structured_buffers.fill(nullptr);
-        standard_font.fill(nullptr);
+        standard_font = nullptr;
         standard_material = nullptr;
         constant_buffer_frame = nullptr;
     }
@@ -758,7 +754,7 @@ namespace Spartan
 
     shared_ptr<Font>& Renderer::GetFont()
     {
-        return standard_font[m_resource_index];
+        return standard_font;
     }
 
     shared_ptr<Material> Renderer::GetStandardMaterial()
