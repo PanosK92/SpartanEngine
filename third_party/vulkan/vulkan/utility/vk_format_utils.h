@@ -8,6 +8,8 @@
 
 #pragma once
 
+// clang-format off
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -348,7 +350,6 @@ struct VKU_FORMAT_INFO {
     uint32_t component_count;
     struct VKU_FORMAT_COMPONENT_INFO components[VKU_FORMAT_MAX_COMPONENTS];
 };
-// clang-format off
 inline const struct VKU_FORMAT_INFO vkuGetFormatInfo(VkFormat format) {
     switch (format) {
         case VK_FORMAT_R4G4_UNORM_PACK8: {
@@ -1106,7 +1107,6 @@ inline const struct VKU_FORMAT_INFO vkuGetFormatInfo(VkFormat format) {
         }
     };
 }
-// clang-format on
 
 struct VKU_FORMAT_PER_PLANE_COMPATIBILITY {
     uint32_t width_divisor;
@@ -1120,7 +1120,6 @@ struct VKU_FORMAT_MULTIPLANE_COMPATIBILITY {
 };
 
 // Source: Vulkan spec Table 47. Plane Format Compatibility Table
-// clang-format off
 inline const struct VKU_FORMAT_MULTIPLANE_COMPATIBILITY vkuGetFormatCompatibility(VkFormat format) {
     switch (format) {
         case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM: {
@@ -1200,7 +1199,6 @@ inline const struct VKU_FORMAT_MULTIPLANE_COMPATIBILITY vkuGetFormatCompatibilit
             return out; }
     };
 }
-// clang-format on
 
 // Return true if all components in a format are an SFLOAT
 bool vkuFormatIsSFLOAT(VkFormat format) {
@@ -1666,8 +1664,6 @@ bool vkuFormatIsCompressed_PVRTC(VkFormat format) {
             return false;
     }
 }
-
-// clang-format off
 // Return true if a format is any compressed image format
 bool vkuFormatIsCompressed(VkFormat format) {
     return
@@ -1678,7 +1674,6 @@ bool vkuFormatIsCompressed(VkFormat format) {
         vkuFormatIsCompressed_ETC2(format) ||
         vkuFormatIsCompressed_PVRTC(format);
 }
-// clang-format on
 
 // Return true if format is a depth OR stencil format
 bool vkuFormatIsDepthOrStencil(VkFormat format) {
@@ -2262,3 +2257,5 @@ inline uint32_t vkuGetPlaneIndex(VkImageAspectFlagBits aspect) {
 #ifdef __cplusplus
 }
 #endif
+
+// clang-format off
