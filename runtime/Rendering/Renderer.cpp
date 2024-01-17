@@ -325,6 +325,7 @@ namespace Spartan
         SetOption(Renderer_Option::Debug_TransformHandle,         1.0f);
         SetOption(Renderer_Option::Debug_SelectionOutline,        1.0f);
         SetOption(Renderer_Option::Debug_Grid,                    1.0f);
+        SetOption(Renderer_Option::Debug_ReflectionProbes,        1.0f);
         SetOption(Renderer_Option::Debug_Lights,                  1.0f);
         SetOption(Renderer_Option::Debug_Physics,                 0.0f);
         SetOption(Renderer_Option::Debug_PerformanceMetrics,      1.0f);

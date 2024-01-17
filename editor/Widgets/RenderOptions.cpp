@@ -228,6 +228,7 @@ void RenderOptions::OnTickVisible()
     bool debug_selection_outline = Renderer::GetOption<bool>(Renderer_Option::Debug_SelectionOutline);
     bool debug_picking_ray       = Renderer::GetOption<bool>(Renderer_Option::Debug_PickingRay);
     bool debug_grid              = Renderer::GetOption<bool>(Renderer_Option::Debug_Grid);
+    bool debug_reflection_probes = Renderer::GetOption<bool>(Renderer_Option::Debug_ReflectionProbes);
     bool performance_metrics     = Renderer::GetOption<bool>(Renderer_Option::Debug_PerformanceMetrics);
     bool debug_wireframe         = Renderer::GetOption<bool>(Renderer_Option::Debug_Wireframe);
     int resolution_shadow        = Renderer::GetOption<int>(Renderer_Option::ShadowResolution);
@@ -410,6 +411,7 @@ void RenderOptions::OnTickVisible()
             option_check_box("Transform",         debug_transform);
             option_check_box("Selection outline", debug_selection_outline);
             option_check_box("Lights",            debug_light);
+            option_check_box("Reflection probes", debug_reflection_probes);
             option_check_box("Grid",              debug_grid);
             option_check_box("Picking ray",       debug_picking_ray);
             option_check_box("Physics",           debug_physics);
@@ -440,6 +442,7 @@ void RenderOptions::OnTickVisible()
     Renderer::SetOption(Renderer_Option::Debug_Lights,                  debug_light);
     Renderer::SetOption(Renderer_Option::Debug_PickingRay,              debug_picking_ray);
     Renderer::SetOption(Renderer_Option::Debug_Grid,                    debug_grid);
+    Renderer::SetOption(Renderer_Option::Debug_ReflectionProbes,        debug_reflection_probes);
     Renderer::SetOption(Renderer_Option::Debug_PerformanceMetrics,      performance_metrics);
     Renderer::SetOption(Renderer_Option::Debug_Wireframe,               debug_wireframe);
 }

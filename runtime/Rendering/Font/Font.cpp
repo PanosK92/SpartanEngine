@@ -23,7 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Font.h"
 #include "../Renderer.h"
+#include "../../Core/Stopwatch.h"
+#include "../../Resource/ResourceCache.h"
 #include "../../Resource/Import/FontImporter.h"
+#include "../../RHI/RHI_Vertex.h"
 #include "../../RHI/RHI_VertexBuffer.h"
 #include "../../RHI/RHI_IndexBuffer.h"
 //=============================================
@@ -73,8 +76,8 @@ namespace Spartan
         // find max character height (todo, actually get spacing from FreeType)
         for (const auto& char_info : m_glyphs)
         {
-            m_char_max_width  = Helper::Max<int>(char_info.second.width, m_char_max_width);
-            m_char_max_height = Helper::Max<int>(char_info.second.height, m_char_max_height);
+            m_char_max_width    = Helper::Max<int>(char_info.second.width, m_char_max_width);
+            m_char_max_height   = Helper::Max<int>(char_info.second.height, m_char_max_height);
         }
 
         SP_LOG_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
@@ -101,11 +104,11 @@ namespace Spartan
         position.x -= 0.5f * viewport_width;
         position.y += 0.5f * viewport_height;
 
-        // i don't yet understand why this is needed, but it corrects a small y offset
+        // i don't yet understand why this is needed, but it corrects a slightly y offset
         position.y -= m_char_max_height * 1.5f;
 
         // set the cursor to the starting position
-        Vector2 cursor       = position;
+        Vector2 cursor      = position;
         float starting_pos_x = cursor.x;
 
         // generate vertices - draw each latter onto a quad
@@ -135,7 +138,7 @@ namespace Spartan
             }
             else
             {
-                // first triangle in quad
+                // first triangle in quad.
                 vertices.emplace_back(cursor.x + glyph.offset_x,                cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_left,  glyph.uv_y_top);    // top left
                 vertices.emplace_back(cursor.x + glyph.offset_x + glyph.width,  cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_right, glyph.uv_y_bottom); // bottom right
                 vertices.emplace_back(cursor.x + glyph.offset_x,                cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_left,  glyph.uv_y_bottom); // bottom left
@@ -178,53 +181,42 @@ namespace Spartan
         if (m_text_data.empty())
             return;
 
-        // combine all the text vertices/indices
+        vector<RHI_Vertex_PosTex> vertices;
+        vector<uint32_t> indices;
         uint32_t vertex_offset = 0;
         for (const TextData& text_data : m_text_data)
         {
-            m_vertices.insert(m_vertices.end(), text_data.vertices.begin(), text_data.vertices.end());
+            vertices.insert(vertices.end(), text_data.vertices.begin(), text_data.vertices.end());
 
-            for (const uint32_t& index : text_data.indices)
+            for (uint32_t index : text_data.indices)
             {
-                if (m_text_data.size() > 1)
-                {
-                    m_indices.push_back(index + vertex_offset);
-                }
-                else
-                {
-                    m_indices.insert(m_indices.end(), text_data.indices.begin(), text_data.indices.end());
-                }
-
-                // note to self: believe or not doing m_indices.push_back(index + vertex_offset) with only 1 m_text_data element
-                // will cause the compiler to do something wrong and the indices we get are wrong, even though vertex_offset would be zero
+                indices.push_back(index + vertex_offset);
             }
 
             vertex_offset += static_cast<uint32_t>(text_data.vertices.size());
         }
 
         // create/grow buffers
-        if (m_vertices.size() > m_vertex_buffer->GetVertexCount())
+        if (vertices.size() > m_vertex_buffer->GetVertexCount())
         {
-            m_vertex_buffer->CreateDynamic<RHI_Vertex_PosTex>(static_cast<uint32_t>(m_vertices.size()));
-            m_index_buffer->CreateDynamic<uint32_t>(static_cast<uint32_t>(m_indices.size()));
+            m_vertex_buffer->CreateDynamic<RHI_Vertex_PosTex>(static_cast<uint32_t>(vertices.size()));
+            m_index_buffer->CreateDynamic<uint32_t>(static_cast<uint32_t>(indices.size()));
         }
 
         // copy the data over to the gpu
         {
             if (RHI_Vertex_PosTex* vertex_buffer = static_cast<RHI_Vertex_PosTex*>(m_vertex_buffer->GetMappedData()))
             {
-                copy(m_vertices.begin(), m_vertices.end(), vertex_buffer);
+                copy(vertices.begin(), vertices.end(), vertex_buffer);
             }
 
             if (uint32_t* index_buffer = static_cast<uint32_t*>(m_index_buffer->GetMappedData()))
             {
-                copy(m_indices.begin(), m_indices.end(), index_buffer);
+                copy(indices.begin(), indices.end(), index_buffer);
             }
         }
 
         m_text_data.clear();
-        m_vertices.clear();
-        m_indices.clear();
     }
 
     uint32_t Font::GetIndexCount()
