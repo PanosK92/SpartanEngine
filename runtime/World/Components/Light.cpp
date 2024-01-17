@@ -42,8 +42,8 @@ namespace Spartan
     namespace
     {
         float orthographic_depth       = 4096; // depth of all cascades
-        float orthographic_extent_near = 20.0f;
-        float orthographic_extent_far  = 80.0f;
+        float orthographic_extent_near = 12.0f;
+        float orthographic_extent_far  = 64.0f;
 
         float get_sensible_range(const float range, const LightType type)
         {
