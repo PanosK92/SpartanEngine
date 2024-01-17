@@ -82,8 +82,6 @@ namespace Spartan
         m_view_projection = m_view * m_projection;
         m_frustum         = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_near_plane); // reverse-z
         m_is_dirty        = false;
-
-        SP_FIRE_EVENT(EventType::CameraOnChanged);
     }
 
     void Camera::Serialize(FileStream* stream)

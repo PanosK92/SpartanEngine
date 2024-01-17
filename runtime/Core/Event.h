@@ -80,7 +80,6 @@ namespace Spartan
         // Resources
         MaterialOnChanged,
         LightOnChanged,
-        CameraOnChanged,
         // Max
         Max
     };

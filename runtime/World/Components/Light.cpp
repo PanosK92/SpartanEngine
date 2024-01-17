@@ -123,16 +123,24 @@ namespace Spartan
         {
             SetFlag(Volumetric);
         }
-
-        SP_SUBSCRIBE_TO_EVENT(EventType::CameraOnChanged, SP_EVENT_HANDLER(OnTransformChanged));
     }
 
     void Light::OnTick()
     {
-        if (m_matrix_view[0] == Matrix::Identity)
+        bool update_matrices = m_matrix_view[0] == Matrix::Identity;
+
+        if (Camera* camera = Renderer::GetCamera().get())
+        {
+            if (camera->GetEntity()->GetPosition() != m_camera_position_last)
+            {
+                m_camera_position_last = camera->GetEntity()->GetPosition();
+                update_matrices        = true;
+            }
+        }
+
+        if (update_matrices)
         {
             UpdateMatrices();
-
             SP_FIRE_EVENT(EventType::LightOnChanged);
         }
     }
@@ -385,16 +393,13 @@ namespace Spartan
 
         if (m_light_type == LightType::Directional)
         {
-            if (Camera* camera = Renderer::GetCamera().get())
-            {
-                Vector3 target = camera->GetEntity()->GetPosition();
+            Vector3 target = m_camera_position_last;
 
-                // near cascade
-                Vector3 position = target - forward * orthographic_depth * 0.8f;
-                m_matrix_view[0] = Matrix::CreateLookAtLH(position, target, Vector3::Up);
-                // far cascade
-                m_matrix_view[1] = Matrix::CreateLookAtLH(position, target, Vector3::Up);
-            }
+            // near cascade
+            Vector3 position = target - forward * orthographic_depth * 0.8f;
+            m_matrix_view[0] = Matrix::CreateLookAtLH(position, target, Vector3::Up);
+            // far cascade
+            m_matrix_view[1] = Matrix::CreateLookAtLH(position, target, Vector3::Up);
         }
         else if (m_light_type == LightType::Spot)
         {
