@@ -196,7 +196,7 @@ namespace Spartan
         // binding and vertex attribute descriptions
         vector<VkVertexInputBindingDescription> vertex_input_binding_descs;
         vector<VkVertexInputAttributeDescription> vertex_attribute_descs;
-        if (m_state.shader_vertex && !m_state.is_fullscreen_triangle)
+        if (m_state.shader_vertex)
         {
             vertex_input_binding_descs.push_back
             ({

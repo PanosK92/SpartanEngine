@@ -54,7 +54,6 @@ namespace Spartan
         m_hash = 0;
 
         m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(instancing)); 
-        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(is_fullscreen_triangle));
         m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(primitive_toplogy));
 
         if (render_target_swapchain)
