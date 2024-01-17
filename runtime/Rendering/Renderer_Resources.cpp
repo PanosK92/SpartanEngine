@@ -255,10 +255,6 @@ namespace Spartan
             // ssgi
             render_target(Renderer_RenderTexture::ssgi) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_standard, "rt_ssgi");
 
-            // dof
-            render_target(Renderer_RenderTexture::dof_half)   = make_unique<RHI_Texture2D>(width_render / 2, height_render / 2, 1, RHI_Format::R16G16B16A16_Float, flags_standard, "rt_dof_half");
-            render_target(Renderer_RenderTexture::dof_half_2) = make_unique<RHI_Texture2D>(width_render / 2, height_render / 2, 1, RHI_Format::R16G16B16A16_Float, flags_standard, "rt_dof_half_2");
-
             // selection outline
             render_target(Renderer_RenderTexture::outline) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm, flags_render_target, "rt_outline");
         }
@@ -303,12 +299,6 @@ namespace Spartan
 
         // debug
         {
-            // reflection probe
-            shader(Renderer_Shader::debug_reflection_probe_v) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::debug_reflection_probe_v)->Compile(RHI_Shader_Vertex, shader_dir + "debug_reflection_probe.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-            shader(Renderer_Shader::debug_reflection_probe_p) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::debug_reflection_probe_p)->Compile(RHI_Shader_Pixel, shader_dir + "debug_reflection_probe.hlsl", async);
-
             // line
             shader(Renderer_Shader::line_v) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::line_v)->Compile(RHI_Shader_Vertex, shader_dir + "line.hlsl", async, RHI_Vertex_Type::PosCol);
@@ -440,25 +430,6 @@ namespace Spartan
             shader(Renderer_Shader::bloom_blend_frame_c)->Compile(RHI_Shader_Compute, shader_dir + "bloom.hlsl", async);
         }
 
-        // depth of field
-        {
-            shader(Renderer_Shader::dof_downsample_coc_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::dof_downsample_coc_c)->AddDefine("DOWNSAMPLE_CIRCLE_OF_CONFUSION");
-            shader(Renderer_Shader::dof_downsample_coc_c)->Compile(RHI_Shader_Compute, shader_dir + "depth_of_field.hlsl", async);
-
-            shader(Renderer_Shader::dof_bokeh_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::dof_bokeh_c)->AddDefine("BOKEH");
-            shader(Renderer_Shader::dof_bokeh_c)->Compile(RHI_Shader_Compute, shader_dir + "depth_of_field.hlsl", async);
-
-            shader(Renderer_Shader::dof_tent_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::dof_tent_c)->AddDefine("TENT");
-            shader(Renderer_Shader::dof_tent_c)->Compile(RHI_Shader_Compute, shader_dir + "depth_of_field.hlsl", async);
-
-            shader(Renderer_Shader::dof_upscale_blend_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::dof_upscale_blend_c)->AddDefine("UPSCALE_BLEND");
-            shader(Renderer_Shader::dof_upscale_blend_c)->Compile(RHI_Shader_Compute, shader_dir + "depth_of_field.hlsl", async);
-        }
-
         // amd fidelityfx
         {
             // cas - contrast adaptive sharpening
@@ -537,6 +508,10 @@ namespace Spartan
         // antiflicker
         shader(Renderer_Shader::antiflicker_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::antiflicker_c)->Compile(RHI_Shader_Compute, shader_dir + "antiflicker.hlsl", async);
+
+        // depth of field
+        shader(Renderer_Shader::depth_of_field_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::depth_of_field_c)->Compile(RHI_Shader_Compute, shader_dir + "depth_of_field.hlsl", async);
     }
 
     void Renderer::CreateFonts()
