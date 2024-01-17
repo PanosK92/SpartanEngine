@@ -1516,118 +1516,31 @@ namespace Spartan
 
     void Renderer::Pass_DepthOfField(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
-        // acquire shaders
-        RHI_Shader* shader_downsampleCoc = GetShader(Renderer_Shader::dof_downsample_coc_c).get();
-        RHI_Shader* shader_bokeh         = GetShader(Renderer_Shader::dof_bokeh_c).get();
-        RHI_Shader* shader_tent          = GetShader(Renderer_Shader::dof_tent_c).get();
-        RHI_Shader* shader_upsampleBlend = GetShader(Renderer_Shader::dof_upscale_blend_c).get();
-        if (!shader_downsampleCoc->IsCompiled() || !shader_bokeh->IsCompiled() || !shader_tent->IsCompiled() || !shader_upsampleBlend->IsCompiled())
+        // acquire shader
+        RHI_Shader* shader_c = GetShader(Renderer_Shader::depth_of_field_c).get();
+        if (!shader_c->IsCompiled())
             return;
 
         cmd_list->BeginTimeblock("depth_of_field");
 
-        // acquire render targets
-        RHI_Texture* tex_bokeh_half   = GetRenderTarget(Renderer_RenderTexture::dof_half).get();
-        RHI_Texture* tex_bokeh_half_2 = GetRenderTarget(Renderer_RenderTexture::dof_half_2).get();
+        // set pipeline state
+        static RHI_PipelineState pso;
+        pso.shader_compute = shader_c;
+        cmd_list->SetPipelineState(pso);
 
-        // downsample and compute circle of confusion
-        cmd_list->BeginMarker("circle_of_confusion");
-        {
-            // define pipeline state
-            static RHI_PipelineState pso;
-            pso.shader_compute = shader_downsampleCoc;
+        // set pass constants
+        m_pcb_pass_cpu.set_resolution_out(tex_out);
+        m_pcb_pass_cpu.set_f3_value(m_camera->GetAperture(), 0.0f, 0.0f);
+        PushPassConstants(cmd_list);
 
-            // set pipeline state
-            cmd_list->SetPipelineState(pso);
+        // set textures
+        SetGbufferTextures(cmd_list);
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
+        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+        
 
-            // set pass constants
-            m_pcb_pass_cpu.set_resolution_out(tex_bokeh_half);
-            m_pcb_pass_cpu.set_f3_value(m_camera->GetAperture(), 0.0f, 0.0f);
-            PushPassConstants(cmd_list);
-
-            // set textures
-            SetGbufferTextures(cmd_list);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_bokeh_half);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
-
-            // Render
-            cmd_list->Dispatch(thread_group_count_x(tex_bokeh_half), thread_group_count_y(tex_bokeh_half));
-        }
-        cmd_list->EndMarker();
-
-        // bokeh
-        cmd_list->BeginMarker("bokeh");
-        {
-            // define pipeline state
-            static RHI_PipelineState pso;
-            pso.shader_compute = shader_bokeh;
-
-            // set pipeline state
-            cmd_list->SetPipelineState(pso);
-
-            // set pass constants
-            m_pcb_pass_cpu.set_resolution_out(tex_bokeh_half_2);
-            m_pcb_pass_cpu.set_f3_value(m_camera->GetAperture(), 0.0f, 0.0f);
-            PushPassConstants(cmd_list);
-
-            // set textures
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_bokeh_half_2);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_bokeh_half);
-
-            // render
-            cmd_list->Dispatch(thread_group_count_x(tex_bokeh_half_2), thread_group_count_y(tex_bokeh_half_2));
-        }
-        cmd_list->EndMarker();
-
-        // blur the bokeh using a tent filter
-        cmd_list->BeginMarker("tent");
-        {
-            // define pipeline state
-            static RHI_PipelineState pso;
-            pso.shader_compute = shader_tent;
-
-            // set pipeline state
-            cmd_list->SetPipelineState(pso);
-
-            // set pass constants
-            m_pcb_pass_cpu.set_resolution_out(tex_bokeh_half);
-            m_pcb_pass_cpu.set_f3_value(m_camera->GetAperture(), 0.0f, 0.0f);
-            PushPassConstants(cmd_list);
-
-            // set textures
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_bokeh_half);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_bokeh_half_2);
-
-            // render
-            cmd_list->Dispatch(thread_group_count_x(tex_bokeh_half), thread_group_count_y(tex_bokeh_half));
-        }
-        cmd_list->EndMarker();
-
-        // upscale & Blend
-        cmd_list->BeginMarker("upsample_and_blend_with_frame");
-        {
-            // define pipeline state
-            static RHI_PipelineState pso;
-            pso.shader_compute = shader_upsampleBlend;
-
-            // set pipeline state
-            cmd_list->SetPipelineState(pso);
-
-            // set pass constants
-            m_pcb_pass_cpu.set_resolution_out(tex_out);
-            m_pcb_pass_cpu.set_f3_value(m_camera->GetAperture(), 0.0f, 0.0f);
-            PushPassConstants(cmd_list);
-
-            // set textures
-            SetGbufferTextures(cmd_list);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_out);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_in);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_bokeh_half);
-
-            // render
-            cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
-        }
-        cmd_list->EndMarker();
+        // render
+        cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
 
         cmd_list->EndTimeblock();
     }
