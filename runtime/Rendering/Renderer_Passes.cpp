@@ -760,8 +760,8 @@ namespace Spartan
         // render
         cmd_list->Dispatch(thread_group_count_x(tex_ssr), thread_group_count_y(tex_ssr));
 
-        cmd_list->InsertMemoryBarrierImageWaitForWrite(tex_ssr);
-        cmd_list->InsertMemoryBarrierImageWaitForWrite(tex_ssr_roughness);
+        cmd_list->InsertBarrierWaitForWrite(tex_ssr);
+        cmd_list->InsertBarrierWaitForWrite(tex_ssr_roughness);
 
         // antiflicker pass to stabilize
         Pass_Antiflicker(cmd_list, tex_ssr);

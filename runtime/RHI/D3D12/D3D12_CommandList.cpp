@@ -361,7 +361,7 @@ namespace Spartan
         SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
-    void RHI_CommandList::InsertMemoryBarrierImage(void* image, const uint32_t aspect_mask,
+    void RHI_CommandList::InsertBarrier(void* image, const uint32_t aspect_mask,
         const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length,
         const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new
     )
@@ -369,17 +369,12 @@ namespace Spartan
 
     }
 
-    void RHI_CommandList::InsertMemoryBarrierImage(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
+    void RHI_CommandList::InsertBarrier(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
     {
-       
+
     }
 
-    void RHI_CommandList::InsertMemoryBarrierImageWaitForWrite(RHI_Texture* texture)
-    {
-        
-    }
-
-    void RHI_CommandList::InsertMemoryBarrierBufferWaitForWrite(void* buffer)
+    void RHI_CommandList::InsertBarrierWaitForWrite(RHI_Texture* texture)
     {
 
     }
