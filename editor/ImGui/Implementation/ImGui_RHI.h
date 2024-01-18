@@ -54,53 +54,57 @@ namespace ImGui::RHI
     using namespace std;
     //======================
 
-     const uint32_t buffer_count = 6;
-
-    struct ViewportRhiResources
+    namespace
     {
-        RHI_CommandPool* cmd_pool = nullptr;
-        array<unique_ptr<RHI_IndexBuffer>,  buffer_count> index_buffers;
-        array<unique_ptr<RHI_VertexBuffer>, buffer_count> vertex_buffers;
-        Pcb_Pass push_constant_buffer_pass;
-        uint32_t buffer_index = 0;
-        
-        ViewportRhiResources() = default;
-        ViewportRhiResources(const char* name, RHI_SwapChain* swapchain)
+        const uint32_t buffer_count = 6;
+
+        struct ViewportRhiResources
         {
-            // allocate command pool
-            cmd_pool = RHI_Device::CommandPoolAllocate(name, swapchain->GetObjectId(), RHI_Queue_Type::Graphics);
+            RHI_CommandPool* cmd_pool = nullptr;
+            array<unique_ptr<RHI_IndexBuffer>, buffer_count> index_buffers;
+            array<unique_ptr<RHI_VertexBuffer>, buffer_count> vertex_buffers;
+            Pcb_Pass push_constant_buffer_pass;
+            uint32_t buffer_index = 0;
 
-            // allocate buffers
-            for (uint32_t i = 0; i < buffer_count; i++)
+            ViewportRhiResources() = default;
+            ViewportRhiResources(const char* name, RHI_SwapChain* swapchain)
             {
-                index_buffers[i]  = make_unique<RHI_IndexBuffer>(true, name);
-                index_buffers[i]->CreateDynamic<ImDrawIdx>(100000);
+                // allocate command pool
+                cmd_pool = RHI_Device::CommandPoolAllocate(name, swapchain->GetObjectId(), RHI_Queue_Type::Graphics);
 
-                vertex_buffers[i] = make_unique<RHI_VertexBuffer>(true, name);
-                vertex_buffers[i]->CreateDynamic<ImDrawVert>(50000);
+                // allocate buffers
+                for (uint32_t i = 0; i < buffer_count; i++)
+                {
+                    index_buffers[i] = make_unique<RHI_IndexBuffer>(true, name);
+                    index_buffers[i]->CreateDynamic<ImDrawIdx>(100000);
+
+                    vertex_buffers[i] = make_unique<RHI_VertexBuffer>(true, name);
+                    vertex_buffers[i]->CreateDynamic<ImDrawVert>(50000);
+                }
             }
-        }
-    };
+        };
 
-    struct WindowData
-    {
-        shared_ptr<ViewportRhiResources> viewport_rhi_resources;
-        shared_ptr<RHI_SwapChain>        swapchain;
-    };
+        struct WindowData
+        {
+            shared_ptr<ViewportRhiResources> viewport_rhi_resources;
+            shared_ptr<RHI_SwapChain>        swapchain;
+        };
+
+     
+        // main window rhi resources
+        ViewportRhiResources g_viewport_data;
+
+        // shared rhi resources (between all windows)
+        shared_ptr<RHI_Texture>           g_font_atlas;
+        shared_ptr<RHI_DepthStencilState> g_depth_stencil_state;
+        shared_ptr<RHI_RasterizerState>   g_rasterizer_state;
+        shared_ptr<RHI_BlendState>        g_blend_state;
+        shared_ptr<RHI_Shader>            g_shader_vertex;
+        shared_ptr<RHI_Shader>            g_shader_pixel;
+    }
 
     // forward declarations
     void initialize_platform_interface();
-
-    // main window rhi resources
-    ViewportRhiResources g_viewport_data;
-
-    // shared rhi resources (between all windows)
-    shared_ptr<RHI_Texture>           g_font_atlas;
-    shared_ptr<RHI_DepthStencilState> g_depth_stencil_state;
-    shared_ptr<RHI_RasterizerState>   g_rasterizer_state;
-    shared_ptr<RHI_BlendState>        g_blend_state;
-    shared_ptr<RHI_Shader>            g_shader_vertex;
-    shared_ptr<RHI_Shader>            g_shader_pixel;
 
     void destroy_rhi_resources()
     {
@@ -207,12 +211,6 @@ namespace ImGui::RHI
 
     void render(ImDrawData* draw_data, WindowData* window_data = nullptr, const bool clear = true)
     {
-        // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
-        int fb_width  = static_cast<int>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
-        int fb_height = static_cast<int>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
-        if (fb_width <= 0 || fb_height <= 0)
-            return;
-
         // get the viewport resources
         bool is_child_window                = window_data != nullptr;
         ViewportRhiResources* rhi_resources = is_child_window ? window_data->viewport_rhi_resources.get() : &g_viewport_data;
@@ -288,28 +286,8 @@ namespace ImGui::RHI
         // begin
         const char* name = is_child_window ? "imgui_window_child" : "imgui_window_main";
         bool gpu_timing  = !is_child_window; // profiler requires more work when windows enter the main window and their command pool is destroyed
+
         cmd_list->Begin();
-
-        // do layout transitions
-        {
-            // transitions have to happen outside of the render pass
-            for (uint32_t i = 0; i < static_cast<uint32_t>(draw_data->CmdListsCount); i++)
-            {
-                ImDrawList* cmd_list_imgui = draw_data->CmdLists[i];
-
-                for (uint32_t cmd_i = 0; cmd_i < static_cast<uint32_t>(cmd_list_imgui->CmdBuffer.Size); cmd_i++)
-                {
-                    const ImDrawCmd* pcmd = &cmd_list_imgui->CmdBuffer[cmd_i];
-
-                    if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
-                    {
-                        // transition will happen only if needed
-                        texture->SetLayout(Spartan::RHI_Image_Layout::Shader_Read, cmd_list);
-                    }
-                }
-            }
-        }
-
         cmd_list->BeginTimeblock(name, true, Spartan::Profiler::IsGpuTimingEnabled() && gpu_timing);
         cmd_list->SetBufferVertex(vertex_buffer);
         cmd_list->SetBufferIndex(index_buffer);
