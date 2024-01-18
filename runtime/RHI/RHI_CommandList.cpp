@@ -65,14 +65,4 @@ namespace Spartan
             m_state == RHI_CommandListState::Submitted && // it has been submitted
             !m_proccessed_fence->IsSignaled();            // and the fence is not signaled yet
     }
-
-    void RHI_CommandList::InsertMemoryBarrierBufferWaitForWrite(RHI_VertexBuffer* buffer)
-    {
-        InsertMemoryBarrierBufferWaitForWrite(buffer->GetRhiResource());
-    }
-
-    void RHI_CommandList::InsertMemoryBarrierBufferWaitForWrite(RHI_IndexBuffer* buffer)
-    {
-        InsertMemoryBarrierBufferWaitForWrite(buffer->GetRhiResource());
-    }
 }

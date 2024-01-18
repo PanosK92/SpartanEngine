@@ -137,13 +137,10 @@ namespace Spartan
         const RHI_CommandListState GetState() const { return m_state; }
         bool IsExecuting();
 
-        // memory Barriers
-        void InsertMemoryBarrierImage(void* image, const uint32_t aspect_mask, const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new);
-        void InsertMemoryBarrierImage(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new);
-        void InsertMemoryBarrierImageWaitForWrite(RHI_Texture* texture);
-        void InsertMemoryBarrierBufferWaitForWrite(void* buffer);
-        void InsertMemoryBarrierBufferWaitForWrite(RHI_VertexBuffer* buffer);
-        void InsertMemoryBarrierBufferWaitForWrite(RHI_IndexBuffer* buffer);
+        // memory barriers
+        void InsertBarrier(void* image, const uint32_t aspect_mask, const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new);
+        void InsertBarrier(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new);
+        void InsertBarrierWaitForWrite(RHI_Texture* texture);
 
         // misc
         RHI_Semaphore* GetSemaphoreProccessed() { return m_proccessed_semaphore.get(); }
