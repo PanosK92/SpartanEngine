@@ -479,7 +479,7 @@ namespace Spartan
 
         // gpu
         oss_metrics << endl << "GPU" << endl
-            << "Name:\t\t\t"   << gpu_name << endl
+            << "Name:\t\t"     << gpu_name << endl
             << "Memory:\t"     << gpu_memory_used << "/" << gpu_memory_available << " MB" << endl
             << "API:\t\t\t\t"  << RHI_Context::api_type_str << "\t" << gpu_api << endl
             << "Driver:\t\t"   << RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName() << "\t\t" << gpu_driver << endl;

@@ -362,7 +362,7 @@ namespace Spartan
         bool gpu = false; // only measure cpu time
         cmd_list->BeginTimeblock("visibility", gpu, gpu);
 
-        // 1. cpu: sort entities by depth - helps with the depth prep-pass
+        // 1. cpu: sort entities by depth - helps with the depth prepass
         if (!m_sorted)
         {
             auto sort_renderables = [](Renderer_Entity entity_type, const bool are_transparent)
@@ -404,7 +404,7 @@ namespace Spartan
             m_sorted = true;
         }
 
-        // 2. cpu: identify potential occluders - only deal with objects which are reasonably large
+        // 2. cpu: frustum culling and occluder identification
         array<shared_ptr<Entity>, 1024> occluders;
         bool is_transparent_pass = false;
         uint32_t start_index     = !is_transparent_pass ? 0 : 2;
@@ -417,21 +417,26 @@ namespace Spartan
 
             for (uint32_t index_entity = 0; index_entity < entities.size(); index_entity++)
             {
-                shared_ptr<Entity>& entity = entities[index_entity];
+                shared_ptr<Entity>& entity        = entities[index_entity];
                 shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
                 if (!renderable || !renderable->ReadyToRender())
                     continue;
 
-                // get appropriate bounding box
-                BoundingBoxType type   = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                const BoundingBox& box = renderable->GetBoundingBox(type);
+                // frustum check
+                renderable->SetFlag(RenderableFlags::IsInViewFrustum, GetCamera()->IsInViewFrustum(renderable));
+                if (!renderable->IsFlagSet(RenderableFlags::IsInViewFrustum))
+                    continue;
 
-                // larger than one cubic meter
-                if (box.Volume() >= 1.0f)
+                // size check - anything larger than x cubic meters is an occluder
                 {
-                    occluders[index_entity] = entity;
-                    entity->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluded,  false);
-                    entity->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluding, false);
+                    BoundingBoxType box_type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+                    const BoundingBox& box   = renderable->GetBoundingBox(box_type);
+                    
+                    if (box.Volume() >= 1.0f)
+                    {
+                        occluders[index_entity] = entity;
+                        entity->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluder, false);
+                    }
                 }
             }
         }
@@ -450,10 +455,9 @@ namespace Spartan
                 if (!renderable_occludee || !renderable_occludee->ReadyToRender())
                     continue;
 
-                // frustum check
-                renderable_occludee->SetFlag(RenderableFlags::IsInViewFrustum, GetCamera()->IsInViewFrustum(renderable_occludee));
-                
                 // fast approximate occlusion check
+                // this cuts down on the number of entities that have to be evaluated later (hardware occlusion queries)
+                renderable_occludee->SetFlag(RenderableFlags::IsOccludee, false);
                 if (renderable_occludee->IsFlagSet(RenderableFlags::IsInViewFrustum))
                 {
                     BoundingBoxType box_type        = renderable_occludee->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
@@ -464,7 +468,12 @@ namespace Spartan
                         if (!occluder || occluder->GetObjectId() == occludee->GetObjectId())
                             continue;
 
-                        const BoundingBox& box_occluder = occluder->GetComponent<Renderable>()->GetBoundingBox(box_type);
+                        // skip occluders who are occludees or outside of the view frustum
+                        shared_ptr<Renderable> renderable_occluder = occluder->GetComponent<Renderable>();
+                        if (renderable_occluder->IsFlagSet(RenderableFlags::IsOccludee) || !renderable_occluder->IsFlagSet(RenderableFlags::IsInViewFrustum))
+                            continue;
+
+                        const BoundingBox& box_occluder = renderable_occluder->GetBoundingBox(box_type);
 
                         // screen space test
                         Rectangle rectangle_occludee = m_camera->WorldToScreenCoordinates(box_occludee);
@@ -475,22 +484,18 @@ namespace Spartan
                         // for example, a table can't be invisible/occluded because it's inside a building
                         is_occluded = box_occludee.Intersects(box_occluder) != Intersection::Outside ? false : is_occluded;
 
-                        //renderable_occludee->SetFlag(RenderableFlags::IsOccluded, is_occluded);
                         if (is_occluded)
                         {
-                            //occluder->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluding);
+                            //renderable_occludee->SetFlag(RenderableFlags::IsOccludee);
+                            //occluder->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluder);
                             break;
                         }
                     }
                 }
-
-                if (renderable_occludee->IsFlagSet(RenderableFlags::IsOccluded))
-                    break;
             }
         }
 
         // 4. gpu: hardware occlusion queries on the entities marked with IsOccluded or IsOccluding
-        // this cuts down on the number of entities that have to be evaluated and will yield pixel perfect results
 
         cmd_list->EndTimeblock();
     }
