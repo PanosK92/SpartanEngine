@@ -47,8 +47,8 @@ namespace Spartan
     enum RenderableFlags : uint32_t
     {
         IsInViewFrustum = 1U << 0,
-        IsOccluded      = 1U << 1,
-        IsOccluding     = 1U << 2,
+        IsOccludee      = 1U << 1,
+        IsOccluder      = 1U << 2,
         CastsShadows    = 1U << 3
     };
 
@@ -107,7 +107,7 @@ namespace Spartan
         uint32_t GetVertexOffset() const { return m_geometry_vertex_offset; }
         uint32_t GetVertexCount() const  { return m_geometry_vertex_count; }
         bool ReadyToRender() const;
-        bool IsVisible() { return IsFlagSet(RenderableFlags::IsInViewFrustum) && !IsFlagSet(RenderableFlags::IsOccluded); }
+        bool IsVisible() { return IsFlagSet(RenderableFlags::IsInViewFrustum) && !IsFlagSet(RenderableFlags::IsOccludee); }
 
         // flags
         bool IsFlagSet(const RenderableFlags flag) { return m_flags & flag; }
