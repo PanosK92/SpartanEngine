@@ -98,8 +98,8 @@ namespace Spartan
         std::vector<RHI_Semaphore*> m_wait_semaphores;
 
         // RHI
-        void* m_rhi_swapchain                          = nullptr;
-        void* m_rhi_surface                            = nullptr;
+        void* m_rhi_swapchain                         = nullptr;
+        void* m_rhi_surface                           = nullptr;
         std::array<void*, max_buffer_count> m_rhi_rt  = { nullptr, nullptr, nullptr};
         std::array<void*, max_buffer_count> m_rhi_rtv = { nullptr, nullptr, nullptr};
     };

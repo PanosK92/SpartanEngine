@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Texture.h"
 #include "RHI_SwapChain.h"
 #include "RHI_BlendState.h"
-#include "RHI_InputLayout.h"
 #include "RHI_RasterizerState.h"
 #include "RHI_DepthStencilState.h"
 //================================
@@ -76,7 +75,7 @@ namespace Spartan
             m_hash = rhi_hash_combine(m_hash, depth_stencil_state->GetHash());
         }
 
-        // Shaders
+        // shaders
         {
             if (shader_compute)
             {
@@ -94,9 +93,9 @@ namespace Spartan
             }
         }
 
-        // RTs
+        // rt
         {
-            // Color
+            // color
             for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
             {
                 if (RHI_Texture* texture = render_target_color_textures[i])
@@ -105,7 +104,7 @@ namespace Spartan
                 }
             }
 
-            // Depth
+            // depth
             if (render_target_depth_texture)
             {
                 m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(render_target_depth_texture->GetFormat()));
