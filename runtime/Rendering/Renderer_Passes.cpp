@@ -273,7 +273,7 @@ namespace Spartan
                 pso.shader_pixel                    = shader_p;
                 pso.blend_state                     = is_transparent_pass ? GetBlendState(Renderer_BlendState::Alpha).get() : GetBlendState(Renderer_BlendState::Disabled).get();
                 pso.depth_stencil_state             = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
-                pso.render_target_color_textures[0] = light->GetColorTexture(); // always bind so we can clear to white (in case there are no transparent objects)
+                pso.render_target_color_textures[0] = light->GetColorTexture();
                 pso.render_target_depth_texture     = light->GetDepthTexture();
                 pso.name                            = "shadow_maps";
 
@@ -327,9 +327,11 @@ namespace Spartan
 
                         // set pass constants
                         {
+                            // for the vertex shader
                             m_pcb_pass_cpu.set_f3_value2(static_cast<float>(array_index), static_cast<float>(light->GetIndex()), 0.0f);
                             m_pcb_pass_cpu.transform = entity->GetMatrix();
 
+                            // for the pixel shader
                             if (Material* material = renderable->GetMaterial())
                             {
                                 m_pcb_pass_cpu.set_f3_value(
@@ -356,12 +358,6 @@ namespace Spartan
     void Renderer::Pass_Visibility(RHI_CommandList* cmd_list)
     {
         // forest cpu time: 0.3 ms
-
-        struct Occluder
-        {
-            shared_ptr<Entity> entity;
-            BoundingBox box;
-        };
 
         bool gpu = false; // only measure cpu time
         cmd_list->BeginTimeblock("visibility", gpu, gpu);
@@ -409,7 +405,7 @@ namespace Spartan
         }
 
         // 2. cpu: identify potential occluders - only deal with objects which are reasonably large
-        array<Occluder, 1024> occluders;
+        array<shared_ptr<Entity>, 1024> occluders;
         bool is_transparent_pass = false;
         uint32_t start_index     = !is_transparent_pass ? 0 : 2;
         uint32_t end_index       = !is_transparent_pass ? 2 : 4;
@@ -427,13 +423,13 @@ namespace Spartan
                     continue;
 
                 // get appropriate bounding box
-                BoundingBoxType type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                BoundingBox box      = renderable->GetBoundingBox(type).Transform(m_cb_frame_cpu.view);
+                BoundingBoxType type   = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+                const BoundingBox& box = renderable->GetBoundingBox(type);
 
                 // larger than one cubic meter
                 if (box.Volume() >= 1.0f)
                 {
-                    occluders[index_entity] = Occluder(entity, box);
+                    occluders[index_entity] = entity;
                     entity->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluded,  false);
                     entity->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluding, false);
                 }
@@ -460,32 +456,30 @@ namespace Spartan
                 // fast approximate occlusion check
                 if (renderable->IsFlagSet(RenderableFlags::IsInViewFrustum))
                 {
-                    BoundingBoxType type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                    BoundingBox box      = renderable->GetBoundingBox(type).Transform(m_cb_frame_cpu.view);
+                    BoundingBoxType box_type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+                    const BoundingBox& box   = renderable->GetBoundingBox(box_type);
     
-                    bool occluded = false;
-                    for (const Occluder& occluder : occluders)
+                    for (const shared_ptr<Entity>& occluder : occluders)
                     {
-                        if (!occluder.entity)
+                        if (!occluder || occluder->GetObjectId() == entity->GetObjectId())
                             continue;
 
-                        // ignore self
-                        if (occluder.entity->GetObjectId() == entity->GetObjectId())
-                            continue;
+                        Rectangle rectangle_this  = m_camera->WorldToScreenCoordinates(box);
+                        Rectangle rectangle_other = m_camera->WorldToScreenCoordinates(occluder->GetComponent<Renderable>()->GetBoundingBox(box_type));
+                        bool is_occluded          = rectangle_other.Contains(rectangle_this);
 
-                        if (box.IsBehind(occluder.box))
+                        //renderable->SetFlag(RenderableFlags::IsOccluded, is_occluded);
+                        if (is_occluded)
                         {
-                            //renderable->SetFlag(RenderableFlags::IsOccluded);
-                            //occluder.entity->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluding, true);
-                            break;
+                            //entity->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluding);
                         }
                     }
                 }
             }
         }
 
-        // 4. gpu: hardware occlusion queries on what's left
-        // this will yield pixel perfect results
+        // 4. gpu: hardware occlusion queries on the entities marked with IsOccluded or IsOccluding
+        // this cuts down on the numebr of entities that have to be evaluated and will yield pixel perfect results
 
         cmd_list->EndTimeblock();
     }
