@@ -443,43 +443,54 @@ namespace Spartan
             if (entities.empty())
                 continue;
 
-            for (shared_ptr<Entity>& entity : entities)
+            for (shared_ptr<Entity>& occludee : entities)
             {
                 // when async loading certain things can be null
-                shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                if (!renderable || !renderable->ReadyToRender())
+                shared_ptr<Renderable> renderable_occludee = occludee->GetComponent<Renderable>();
+                if (!renderable_occludee || !renderable_occludee->ReadyToRender())
                     continue;
 
                 // frustum check
-                renderable->SetFlag(RenderableFlags::IsInViewFrustum, GetCamera()->IsInViewFrustum(renderable));
+                renderable_occludee->SetFlag(RenderableFlags::IsInViewFrustum, GetCamera()->IsInViewFrustum(renderable_occludee));
                 
                 // fast approximate occlusion check
-                if (renderable->IsFlagSet(RenderableFlags::IsInViewFrustum))
+                if (renderable_occludee->IsFlagSet(RenderableFlags::IsInViewFrustum))
                 {
-                    BoundingBoxType box_type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                    const BoundingBox& box   = renderable->GetBoundingBox(box_type);
+                    BoundingBoxType box_type        = renderable_occludee->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+                    const BoundingBox& box_occludee = renderable_occludee->GetBoundingBox(box_type);
     
                     for (const shared_ptr<Entity>& occluder : occluders)
                     {
-                        if (!occluder || occluder->GetObjectId() == entity->GetObjectId())
+                        if (!occluder || occluder->GetObjectId() == occludee->GetObjectId())
                             continue;
 
-                        Rectangle rectangle_this  = m_camera->WorldToScreenCoordinates(box);
-                        Rectangle rectangle_other = m_camera->WorldToScreenCoordinates(occluder->GetComponent<Renderable>()->GetBoundingBox(box_type));
-                        bool is_occluded          = rectangle_other.Contains(rectangle_this);
+                        const BoundingBox& box_occluder = occluder->GetComponent<Renderable>()->GetBoundingBox(box_type);
 
-                        //renderable->SetFlag(RenderableFlags::IsOccluded, is_occluded);
+                        // screen space test
+                        Rectangle rectangle_occludee = m_camera->WorldToScreenCoordinates(box_occludee);
+                        Rectangle rectangle_occluder = m_camera->WorldToScreenCoordinates(box_occluder);
+                        bool is_occluded             = rectangle_occluder.Contains(rectangle_occludee);
+
+                        // screen space edge case: the occluder contains or intersects the occludee
+                        // for example, a table can't be invisible/occluded because it's inside a building
+                        is_occluded = box_occludee.Intersects(box_occluder) != Intersection::Outside ? false : is_occluded;
+
+                        //renderable_occludee->SetFlag(RenderableFlags::IsOccluded, is_occluded);
                         if (is_occluded)
                         {
-                            //entity->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluding);
+                            //occluder->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluding);
+                            break;
                         }
                     }
                 }
+
+                if (renderable_occludee->IsFlagSet(RenderableFlags::IsOccluded))
+                    break;
             }
         }
 
         // 4. gpu: hardware occlusion queries on the entities marked with IsOccluded or IsOccluding
-        // this cuts down on the numebr of entities that have to be evaluated and will yield pixel perfect results
+        // this cuts down on the number of entities that have to be evaluated and will yield pixel perfect results
 
         cmd_list->EndTimeblock();
     }
