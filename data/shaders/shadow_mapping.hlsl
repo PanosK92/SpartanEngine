@@ -263,7 +263,7 @@ float4 Shadow_Map(Surface surface, Light light)
             float  compare_value = pos_ndc.z;
             
             shadow.a = SampleShadowMap(light, surface, sample_coords, compare_value);
-            if (shadow.a > 0.0f && light.has_shadows_transparent() && !surface.is_opaque())
+            if (shadow.a > 0.0f && light.has_shadows_transparent())
             {
                 // sample color map (this is for transparent objects - which tint the light/shadow)
                 shadow.rgb = Technique_Vogel_Color(light, surface, sample_coords);
@@ -287,3 +287,4 @@ float4 Shadow_Map(Surface surface, Light light)
 
     return shadow;
 }
+

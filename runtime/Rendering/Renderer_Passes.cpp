@@ -233,7 +233,7 @@ namespace Spartan
         // acquire shaders
         RHI_Shader* shader_v           = GetShader(Renderer_Shader::depth_light_v).get();
         RHI_Shader* shader_instanced_v = GetShader(Renderer_Shader::depth_light_instanced_v).get();
-        RHI_Shader* shader_p           = is_transparent_pass ? GetShader(Renderer_Shader::depth_light_p).get() : GetShader(Renderer_Shader::depth_light_alpha_test_p).get();
+        RHI_Shader* shader_p           = GetShader(Renderer_Shader::depth_light_p).get();
         if (!shader_v->IsCompiled() || !shader_instanced_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
@@ -334,8 +334,7 @@ namespace Spartan
                             {
                                 m_pcb_pass_cpu.set_f3_value(
                                     material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
-                                    material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
-                                    material->GetProperty(MaterialProperty::ColorA)
+                                    material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f
                                 );
 
                                 m_cb_frame_cpu.material_index = material->GetIndex();

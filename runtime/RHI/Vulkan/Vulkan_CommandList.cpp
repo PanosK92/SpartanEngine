@@ -546,10 +546,7 @@ namespace Spartan
             if (swapchain)
             {
                 // transition to the appropriate layout
-                if (swapchain->GetLayout() != RHI_Image_Layout::Color_Attachment)
-                {
-                    swapchain->SetLayout(RHI_Image_Layout::Color_Attachment, this);
-                }
+                swapchain->SetLayout(RHI_Image_Layout::Color_Attachment, this);
 
                 VkRenderingAttachmentInfo color_attachment = {};
                 color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
@@ -573,11 +570,8 @@ namespace Spartan
 
                     SP_ASSERT_MSG(rt->IsRenderTargetColor(), "The texture wasn't created with the RHI_Texture_RenderTarget flag and/or isn't a color format");
 
-                    // Transition to the appropriate layout
-                    if (rt->GetLayout(0) != RHI_Image_Layout::Color_Attachment)
-                    {
-                        rt->SetLayout(RHI_Image_Layout::Color_Attachment, this);
-                    }
+                    // transition to the appropriate layout
+                    rt->SetLayout(RHI_Image_Layout::Color_Attachment, this);
 
                     VkRenderingAttachmentInfo color_attachment = {};
                     color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
@@ -826,7 +820,7 @@ namespace Spartan
                 "If the mips are blitted, then the mip count between the source and the destination textures must match");
         }
 
-        // Compute a blit region for each mip
+        // compute a blit region for each mip
         array<VkOffset3D,  rhi_max_mip_count> blit_offsets_source     = {};
         array<VkOffset3D, rhi_max_mip_count> blit_offsets_destination = {};
         array<VkImageBlit, rhi_max_mip_count> blit_regions            = {};
@@ -861,11 +855,11 @@ namespace Spartan
             blit_region.dstOffsets[1]                 = destination_blit_size;
         }
 
-        // Save the initial layouts
+        // save the initial layouts
         array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_source      = source->GetLayouts();
         array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_destination = destination->GetLayouts();
 
-        // Transition to blit appropriate layouts
+        // transition to blit appropriate layouts
         source->SetLayout(RHI_Image_Layout::Transfer_Source, this);
         destination->SetLayout(RHI_Image_Layout::Transfer_Destination, this);
 
@@ -878,7 +872,7 @@ namespace Spartan
             vulkan_filter[static_cast<uint32_t>(destination->IsDepthFormat() ? RHI_Filter::Nearest : RHI_Filter::Linear)]
         );
 
-        // Transition to the initial layouts
+        // transition to the initial layouts
         if (blit_mips)
         {
             for (uint32_t i = 0; i < source->GetMipCount(); i++)

@@ -90,7 +90,6 @@ namespace ImGui::RHI
             shared_ptr<RHI_SwapChain>        swapchain;
         };
 
-     
         // main window rhi resources
         ViewportRhiResources g_viewport_data;
 

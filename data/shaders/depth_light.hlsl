@@ -37,12 +37,17 @@ Pixel_PosUv mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
     return output;
 }
 
-// transparent/colored shadows
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-    Material material = GetMaterial();
-    float2 uv         = float2(input.uv.x * material.tiling.x + material.offset.x, input.uv.y * material.offset.y + material.tiling.y);
-    float4 color      = tex.SampleLevel(samplers[sampler_anisotropic_wrap], uv, 0);
-    
-    return float4(degamma(color.rgb), color.a) * material.color;
+    // alpha test
+    const float3 f3_value     = pass_get_f3_value();
+    const bool has_alpha_mask = f3_value.x == 1.0f;
+    const bool has_albedo     = f3_value.y == 1.0f;
+    float alpha_mask          = has_alpha_mask ? GET_TEXTURE(material_mask).Sample(samplers[sampler_anisotropic_wrap], input.uv).r : 1.0f;
+    bool alpha_albedo         = has_albedo     ? GET_TEXTURE(material_albedo).Sample(samplers[sampler_anisotropic_wrap], input.uv).a : 1.0f;
+    if (min(alpha_mask, alpha_albedo) <= ALPHA_THRESHOLD_DEFAULT)
+        discard;
+
+    // colored transparent shadows
+    return GetMaterial().color;
 }

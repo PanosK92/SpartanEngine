@@ -482,15 +482,15 @@ namespace Spartan
         mip_index                = mip_specified ? mip_index : 0;
         mip_range                = ranged ? (mip_specified ? m_mip_count - mip_index : m_mip_count) : m_mip_count - mip_index;
 
-        // Asserts
+        // asserts
         if (mip_specified)
         {
             SP_ASSERT_MSG(HasPerMipViews(), "A mip is specified but the texture has no per mip views");
             SP_ASSERT_MSG(mip_range != 0, "When a mip is specified, the mip_range can't be zero");
         }
 
-        // Check if the layouts are indeed different from the new layout.
-        // If they are different, then find at which mip the difference starts.
+        // Check if the layouts are indeed different from the new layout
+        // If they are different, then find at which mip the difference starts
         bool transition_required = false;
         for (uint32_t i = mip_index; i < mip_index + mip_range; i++)
         {
@@ -506,21 +506,21 @@ namespace Spartan
         if (!transition_required)
             return;
 
-        // Insert memory barrier
+        // insert memory barrier
         if (cmd_list != nullptr)
         {
-            // Wait in case this texture loading in another thread.
+            // wait in case this texture loading in another thread
             while (!IsReadyForUse())
             {
                 SP_LOG_INFO("Waiting for texture \"%s\" to finish loading...", m_object_name.c_str());
                 this_thread::sleep_for(chrono::milliseconds(16));
             }
 
-            // Transition
+            // transition
             RHI_SetLayout(new_layout, cmd_list, mip_index, mip_range);
         }
 
-        // Update layout
+        // update layout
         for (uint32_t i = mip_index; i < mip_index + mip_range; i++)
         {
             m_layout[i] = new_layout;

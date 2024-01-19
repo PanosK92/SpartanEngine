@@ -28,9 +28,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Fxaa3_11.h"
 //=============================
 
-static const float g_fxaa_subPix           = 1.0f;    // The amount of sub-pixel aliasing removal. This can effect sharpness.
-static const float g_fxaa_edgeThreshold    = 0.125f;  // The minimum amount of local contrast required to apply algorithm.
-static const float g_fxaa_edgeThresholdMin = 0.0312f; // Trims the algorithm from processing darks
+static const float g_fxaa_subPix           = 0.75f;   // The amount of sub-pixel aliasing removal. This can effect sharpness.
+static const float g_fxaa_edgeThreshold    = 0.12f;   // The minimum amount of local contrast required to apply algorithm.
+static const float g_fxaa_edgeThresholdMin = 0.0625f; // Trims the algorithm from processing darks
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)

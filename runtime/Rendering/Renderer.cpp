@@ -331,6 +331,8 @@ namespace Spartan
 
         // load/create resources
         {
+            // do expensive operations in another thread
+            // in order to reduce engine startup time
             ThreadPool::AddTask([]()
             {
                 m_resources_created = false;
@@ -474,23 +476,18 @@ namespace Spartan
         if (m_resolution_render.x == width && m_resolution_render.y == height)
             return;
 
-        // set resolution
         m_resolution_render.x = static_cast<float>(width);
         m_resolution_render.y = static_cast<float>(height);
 
         if (recreate_resources)
         {
-            // re-create render textures
             CreateRenderTargets(true, false, true);
-
-            // re-create samplers
             CreateSamplers(true);
         }
 
         // register this resolution as a display mode so it shows up in the editor's render options (it won't happen if already registered)
         Display::RegisterDisplayMode(static_cast<uint32_t>(width), static_cast<uint32_t>(height), static_cast<uint32_t>(Timer::GetFpsLimit()), Display::GetIndex());
 
-        // log
         SP_LOG_INFO("Render resolution has been set to %dx%d", width, height);
     }
 
@@ -501,31 +498,24 @@ namespace Spartan
 
     void Renderer::SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources /*= true*/)
     {
-        // return if resolution is invalid
         if (!RHI_Device::IsValidResolution(width, height))
         {
             SP_LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
         }
 
-        // silently return if resolution is already set
         if (m_resolution_output.x == width && m_resolution_output.y == height)
             return;
 
-        // set resolution
         m_resolution_output.x = static_cast<float>(width);
         m_resolution_output.y = static_cast<float>(height);
 
         if (recreate_resources)
         {
-            // re-create render textures
             CreateRenderTargets(false, true, true);
-
-            // re-create samplers
             CreateSamplers(true);
         }
 
-        // log
         SP_LOG_INFO("Output resolution output has been set to %dx%d", width, height);
     }
 

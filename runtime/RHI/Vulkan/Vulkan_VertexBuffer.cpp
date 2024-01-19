@@ -44,7 +44,7 @@ namespace Spartan
 
     void RHI_VertexBuffer::_create(const void* vertices)
     {
-        // Destroy previous buffer
+        // destroy previous buffer
         if (m_rhi_resource)
         {
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_rhi_resource);
@@ -94,7 +94,7 @@ namespace Spartan
             }
         }
 
-        // Set debug name
+        // set debug name
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::Buffer, m_object_name);
     }
 }
