@@ -19,12 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES =================
 #include "pch.h"
 #include "../RHI/RHI_Vertex.h"
-#include "../World/Entity.h"
-#include "../World/Components/Camera.h"
-//=====================================
+//============================
 
 namespace Spartan::Math
 {
@@ -134,48 +132,5 @@ namespace Spartan::Math
         m_max.x = Helper::Max(m_max.x, box.m_max.x);
         m_max.y = Helper::Max(m_max.y, box.m_max.y);
         m_max.z = Helper::Max(m_max.z, box.m_max.z);
-    }
-
-    bool BoundingBox::IsBehind(const BoundingBox& other) const
-    {
-        auto get_corners = [](const BoundingBox& box, Vector3* corners)
-        {
-            corners[0] = Vector3(box.m_min.x, box.m_min.y, box.m_min.z); // front bottom left
-            corners[1] = Vector3(box.m_max.x, box.m_min.y, box.m_min.z); // front bottom right
-            corners[2] = Vector3(box.m_max.x, box.m_max.y, box.m_min.z); // front top right
-            corners[3] = Vector3(box.m_min.x, box.m_max.y, box.m_min.z); // front top left
-            corners[4] = Vector3(box.m_min.x, box.m_min.y, box.m_max.z); // back bottom left
-            corners[5] = Vector3(box.m_max.x, box.m_min.y, box.m_max.z); // back bottom right
-            corners[6] = Vector3(box.m_max.x, box.m_max.y, box.m_max.z); // back top right
-            corners[7] = Vector3(box.m_min.x, box.m_max.y, box.m_max.z); // back top left
-        };
-
-        // get corners of this box
-        Vector3 corners_this[8];
-        get_corners(*this, corners_this);
-
-        // get corners of the other box
-        Vector3 corners_other[8];
-        get_corners(other, corners_other);
-
-        // check if all corners of this box are behind all corners of the other box
-        for (const Vector3& corner_this : corners_this)
-        {
-            bool is_corner_behind = true;
-            for (const Vector3& corner_other : corners_other)
-            {
-                if (corner_this.z < corner_other.z)
-                {
-                    is_corner_behind = false;
-                    break; // this corner of 'this' box is not behind the current corner of 'other' box
-                }
-            }
-            if (!is_corner_behind)
-            {
-                return false; // at least one corner of 'this' box is not behind 'other' box
-            }
-        }
-
-        return true; // all corners of this box are behind all corners of the other box
     }
 }

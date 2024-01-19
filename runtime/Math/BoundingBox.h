@@ -75,15 +75,11 @@ namespace Spartan
             // merge with another bounding box
             void Merge(const BoundingBox& box);
 
-            float Volume()
+            float Volume() const
             {
                 Vector3 size = GetSize();
                 return size.x * size.y * size.z;
             }
-
-            // checks if this bounding box is behind the other
-            // bounding boxes need to be in view-space
-            bool IsBehind(const BoundingBox& other) const;
 
             bool operator==(const BoundingBox& other) const
             {
