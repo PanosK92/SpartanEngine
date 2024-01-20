@@ -422,6 +422,10 @@ namespace Spartan
                 if (!renderable || !renderable->ReadyToRender())
                     continue;
 
+                // reset flags
+                renderable->SetFlag(RenderableFlags::IsOccluder, false);
+                renderable->SetFlag(RenderableFlags::IsOccludee, false);
+
                 // frustum check
                 renderable->SetFlag(RenderableFlags::IsInViewFrustum, GetCamera()->IsInViewFrustum(renderable));
                 if (!renderable->IsFlagSet(RenderableFlags::IsInViewFrustum))
@@ -435,7 +439,7 @@ namespace Spartan
                     if (box.Volume() >= 1.0f)
                     {
                         occluders[index_entity] = entity;
-                        entity->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluder, false);
+                        renderable->SetFlag(RenderableFlags::IsOccluder, true);
                     }
                 }
             }
@@ -457,7 +461,6 @@ namespace Spartan
 
                 // fast approximate occlusion check
                 // this cuts down on the number of entities that have to be evaluated later (hardware occlusion queries)
-                renderable_occludee->SetFlag(RenderableFlags::IsOccludee, false);
                 if (renderable_occludee->IsFlagSet(RenderableFlags::IsInViewFrustum))
                 {
                     BoundingBoxType box_type        = renderable_occludee->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
@@ -475,16 +478,26 @@ namespace Spartan
 
                         const BoundingBox& box_occluder = renderable_occluder->GetBoundingBox(box_type);
 
+                        // edge case 1: the occluder contains or intersects the occludee
+                        if (box_occludee.Intersects(box_occluder) != Intersection::Outside)
+                            continue;
+
+                        // edge case 2: the camera is inside the occluder
+                        if (box_occluder.Contains(m_camera->GetEntity()->GetPosition()))
+                            continue;
+
                         // screen space test
                         Rectangle rectangle_occludee = m_camera->WorldToScreenCoordinates(box_occludee);
                         Rectangle rectangle_occluder = m_camera->WorldToScreenCoordinates(box_occluder);
-                        bool is_occluded             = rectangle_occluder.Contains(rectangle_occludee);
 
-                        // screen space edge case: the occluder contains or intersects the occludee
-                        // for example, a table can't be invisible/occluded because it's inside a building
-                        is_occluded = box_occludee.Intersects(box_occluder) != Intersection::Outside ? false : is_occluded;
+                        // edge case 3: occluders that appear disproportionately large on screen due to proximity (perspective distortion)
+                        float viewport_height = Renderer::GetViewport().height;
+                        float occluder_height = rectangle_occluder.bottom - rectangle_occluder.top;
+                        if (occluder_height > viewport_height * 0.5f)
+                            continue;
 
-                        if (is_occluded)
+                        bool is_occluded = rectangle_occluder.Contains(rectangle_occludee);
+                        if (rectangle_occluder.Contains(rectangle_occludee))
                         {
                             //renderable_occludee->SetFlag(RenderableFlags::IsOccludee);
                             //occluder->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluder);

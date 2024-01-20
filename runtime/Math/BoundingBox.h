@@ -69,6 +69,8 @@ namespace Spartan
             // test if a bounding box is inside
             Intersection Intersects(const BoundingBox& box) const;
 
+            bool Contains(const Vector3& point) const;
+
             // Returns a transformed bounding box
             BoundingBox Transform(const Matrix& transform) const;
 

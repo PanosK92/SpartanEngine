@@ -133,4 +133,11 @@ namespace Spartan::Math
         m_max.y = Helper::Max(m_max.y, box.m_max.y);
         m_max.z = Helper::Max(m_max.z, box.m_max.z);
     }
+
+    bool BoundingBox::Contains(const Vector3& point) const
+    {
+        return (point.x >= m_min.x && point.x <= m_max.x) &&
+               (point.y >= m_min.y && point.y <= m_max.y) &&
+               (point.z >= m_min.z && point.z <= m_max.z);
+    }
 }
