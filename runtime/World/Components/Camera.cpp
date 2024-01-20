@@ -48,10 +48,7 @@ namespace Spartan
     void Camera::OnInitialize()
     {
         Component::OnInitialize();
-
-        m_view            = ComputeViewMatrix();
-        m_projection      = ComputeProjection(m_far_plane, m_near_plane); // reverse-z
-        m_view_projection = m_view * m_projection;
+        ComputeMatrices();
     }
 
     void Camera::OnTick()
@@ -72,15 +69,7 @@ namespace Spartan
         }
 
         ProcessInput();
-
-        if (!m_is_dirty)
-            return;
-
-        m_view            = ComputeViewMatrix();
-        m_projection      = ComputeProjection(m_far_plane, m_near_plane); // reverse-z
-        m_view_projection = m_view * m_projection;
-        m_frustum         = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_near_plane); // reverse-z
-        m_is_dirty        = false;
+        ComputeMatrices();
     }
 
     void Camera::Serialize(FileStream* stream)
@@ -104,9 +93,7 @@ namespace Spartan
         stream->Read(&m_near_plane);
         stream->Read(&m_far_plane);
 
-        m_view            = ComputeViewMatrix();
-        m_projection      = ComputeProjection(m_far_plane, m_near_plane); // reverse-z
-        m_view_projection = m_view * m_projection;
+        ComputeMatrices();
     }
 
     void Camera::SetNearPlane(const float near_plane)
@@ -270,22 +257,16 @@ namespace Spartan
         }
     }
 
-    Vector2 Camera::WorldToScreenCoordinates(const Vector3& position_world) const
+    void Camera::WorldToScreenCoordinates(const Vector3& position_world, Vector2& position_screen) const
     {
-        const RHI_Viewport& viewport = Renderer::GetViewport();
-
-        // a non reverse-z projection matrix is need, we create it
-        const Matrix projection = Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), viewport.GetAspectRatio(), m_near_plane, m_far_plane);
-
-        // convert world space position to clip space position
-        const Vector3 position_clip = position_world * m_view * projection;
+        const Vector3 position_clip = position_world * m_view_projection_non_reverse_z;
 
         // convert clip space position to screen space position
-        Vector2 position_screen;
-        position_screen.x = (position_clip.x / position_clip.z) * (0.5f * viewport.width) + (0.5f * viewport.width);
-        position_screen.y = (position_clip.y / position_clip.z) * -(0.5f * viewport.height) + (0.5f * viewport.height);
-
-        return position_screen;
+        const RHI_Viewport& viewport = Renderer::GetViewport();
+        float viewport_half_width    = viewport.width  * 0.5f;
+        float viewport_half_height   = viewport.height * 0.5f;
+        position_screen.x            = (position_clip.x / position_clip.z) *  viewport_half_width  + viewport_half_width;
+        position_screen.y            = (position_clip.y / position_clip.z) * -viewport_half_height + viewport_half_height;
     }
 
     Rectangle Camera::WorldToScreenCoordinates(const BoundingBox& bounding_box) const
@@ -303,33 +284,44 @@ namespace Spartan
         corners[6] = Vector3(min.x, max.y, max.z);
         corners[7] = max;
 
-        Math::Rectangle rectangle;
+        Math::Rectangle rectangle_screen_Space;
+        Vector2 position_screen_space;
         for (Vector3& corner : corners)
         {
-            rectangle.Merge(WorldToScreenCoordinates(corner));
+            WorldToScreenCoordinates(corner, position_screen_space);
+            rectangle_screen_Space.Merge(position_screen_space);
         }
 
-        return rectangle;
+        return rectangle_screen_Space;
     }
 
     Vector3 Camera::ScreenToWorldCoordinates(const Vector2& position_screen, const float z) const
     {
-        const RHI_Viewport& viewport = Renderer::GetViewport();
-
-        // A non reverse-z projection matrix is need, we create it
-        const Matrix projection = Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), viewport.GetAspectRatio(), m_near_plane, m_far_plane); // reverse-z
-
-        // Convert screen space position to clip space position
         Vector3 position_clip;
-        position_clip.x = (position_screen.x / viewport.width) * 2.0f - 1.0f;
-        position_clip.y = (position_screen.y / viewport.height) * -2.0f + 1.0f;
-        position_clip.z = clamp(z, 0.0f, 1.0f);
+        const RHI_Viewport& viewport = Renderer::GetViewport();
+        position_clip.x              = (position_screen.x / viewport.width) * 2.0f - 1.0f;
+        position_clip.y              = (position_screen.y / viewport.height) * -2.0f + 1.0f;
+        position_clip.z              = clamp(z, 0.0f, 1.0f);
 
-        // Compute world space position
-        Matrix view_projection_inverted = (m_view * projection).Inverted();
+        // compute world space position
+        Matrix view_projection_inverted = m_view_projection_non_reverse_z.Inverted();
         Vector4 position_world          = Vector4(position_clip, 1.0f) * view_projection_inverted;
 
         return Vector3(position_world) / position_world.w;
+    }
+
+    void Camera::ComputeMatrices()
+    {
+        if (!m_is_dirty)
+            return;
+
+        m_view                          = ComputeViewMatrix();
+        m_projection                    = ComputeProjection(m_far_plane, m_near_plane);
+        m_projection_non_reverse_z      = ComputeProjection(m_near_plane, m_far_plane);
+        m_view_projection               = m_view * m_projection;
+        m_view_projection_non_reverse_z = m_view * m_projection_non_reverse_z;
+        m_frustum                       = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_near_plane);
+        m_is_dirty                      = false;
     }
 
     void Camera::ProcessInput()
@@ -686,9 +678,9 @@ namespace Spartan
 
     Matrix Camera::ComputeViewMatrix() const
     {
-        const auto position = GetEntity()->GetPosition();
-        auto look_at        = GetEntity()->GetRotation() * Vector3::Forward;
-        const auto up       = GetEntity()->GetRotation() * Vector3::Up;
+        Vector3 position = GetEntity()->GetPosition();
+        Vector3 look_at  = GetEntity()->GetRotation() * Vector3::Forward;
+        Vector3 up       = GetEntity()->GetRotation() * Vector3::Up;
 
         // offset look_at by current position
         look_at += position;
