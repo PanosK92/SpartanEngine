@@ -366,6 +366,10 @@ namespace Spartan
         bool gpu = false; // only measure cpu time
         cmd_list->BeginTimeblock("visibility", gpu, gpu);
 
+        // clear previous data
+        visibility_occluders.fill(nullptr);
+        visibility_rectangles.clear();
+
         // 1. cpu: sort entities by depth - makes occlusion queries easier and helps with the depth-prepass
         if (!m_sorted)
         {
