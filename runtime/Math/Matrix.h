@@ -391,14 +391,20 @@ namespace Spartan::Math
 
         Vector3 operator*(const Vector3& rhs) const
         {
-            Vector4 vWorking;
+            float x = (rhs.x * m00) + (rhs.y * m10) + (rhs.z * m20) + m30;
+            float y = (rhs.x * m01) + (rhs.y * m11) + (rhs.z * m21) + m31;
+            float z = (rhs.x * m02) + (rhs.y * m12) + (rhs.z * m22) + m32;
+            float w = (rhs.x * m03) + (rhs.y * m13) + (rhs.z * m23) + m33;
 
-            vWorking.x = (rhs.x * m00) + (rhs.y * m10) + (rhs.z * m20) + m30;
-            vWorking.y = (rhs.x * m01) + (rhs.y * m11) + (rhs.z * m21) + m31;
-            vWorking.z = (rhs.x * m02) + (rhs.y * m12) + (rhs.z * m22) + m32;
-            vWorking.w = 1 / ((rhs.x * m03) + (rhs.y * m13) + (rhs.z * m23) + m33);
+            // to ensure the perspective divide, divide each component by w
+            if (w != 1.0f)
+            {
+                x /= w;
+                y /= w;
+                z /= w;
+            }
 
-            return Vector3(vWorking.x * vWorking.w, vWorking.y * vWorking.w, vWorking.z * vWorking.w);
+            return Vector3(x, y, z);
         }
 
         Vector4 operator*(const Vector4& rhs) const

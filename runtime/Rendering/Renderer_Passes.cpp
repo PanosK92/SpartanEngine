@@ -500,8 +500,8 @@ namespace Spartan
                         bool is_occluded = rectangle_occluder.Contains(rectangle_occludee);
                         if (rectangle_occluder.Contains(rectangle_occludee))
                         {
-                            renderable_occludee->SetFlag(RenderableFlags::IsOccludee);
-                            occluder->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluder);
+                            //renderable_occludee->SetFlag(RenderableFlags::IsOccludee);
+                            //occluder->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluder);
                             break;
                         }
                     }
