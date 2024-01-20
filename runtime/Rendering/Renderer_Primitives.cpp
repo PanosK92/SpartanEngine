@@ -232,14 +232,12 @@ namespace Spartan
 
     void Renderer::AddLinesToBeRendered()
     {
-        // picking ray
         if (GetOption<bool>(Renderer_Option::Debug_PickingRay))
         {
             const auto& ray = GetCamera()->GetPickingRay();
             DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * GetCamera()->GetFarPlane(), Vector4(0, 1, 0, 1));
         }
         
-        // lights
         if (GetOption<bool>(Renderer_Option::Debug_Lights))
         {
             auto& lights = GetEntities()[Renderer_Entity::Light];
@@ -291,7 +289,6 @@ namespace Spartan
             }
         }
         
-        // bounding boxes
         if (GetOption<bool>(Renderer_Option::Debug_Aabb))
         {
             static const Vector4 color_visible  = Vector4(0.41f, 0.86f, 1.0f, 1.0f);

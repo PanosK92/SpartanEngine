@@ -49,6 +49,10 @@ namespace Spartan
         #define thread_group_count_x(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetWidth())  / thread_group_count))
         #define thread_group_count_y(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetHeight()) / thread_group_count))
 
+        // visibility
+        array<shared_ptr<Entity>, 1024> visibility_occluders;
+        unordered_map<uint64_t, Rectangle> visibility_rectangles;
+
         // called by: Pass_ShadowMaps(), Pass_Depth_Prepass(), Pass_GBuffer()
         void draw_renderable(RHI_CommandList* cmd_list, RHI_PipelineState& pso, Camera* camera, Renderable* renderable, Light* light = nullptr, uint32_t array_index = 0)
         {
@@ -357,12 +361,12 @@ namespace Spartan
 
     void Renderer::Pass_Visibility(RHI_CommandList* cmd_list)
     {
-        // forest cpu time: 0.3 ms
+        // forest cpu time: 0.05 ms
 
         bool gpu = false; // only measure cpu time
         cmd_list->BeginTimeblock("visibility", gpu, gpu);
 
-        // 1. cpu: sort entities by depth - helps with the depth prepass
+        // 1. cpu: sort entities by depth - makes occlusion queries easier and helps with the depth-prepass
         if (!m_sorted)
         {
             auto sort_renderables = [](Renderer_Entity entity_type, const bool are_transparent)
@@ -378,7 +382,7 @@ namespace Spartan
                 {
                     shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
                     BoundingBoxType type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                    Vector3 position = renderable->GetBoundingBox(type).GetCenter();
+                    Vector3 position     = renderable->GetBoundingBox(type).GetCenter();
 
                     // calculate squared distance
                     return (position - camera_position).LengthSquared();
@@ -404,9 +408,8 @@ namespace Spartan
             m_sorted = true;
         }
 
-        // 2. cpu: frustum culling and occluder identification
-        array<shared_ptr<Entity>, 1024> occluders;
-        bool is_transparent_pass = false; // ignore transparent entities
+        // 2. cpu: frustum culling and screen space rectangle computation and occluder identification
+        bool is_transparent_pass = false;
         uint32_t start_index     = !is_transparent_pass ? 0 : 2;
         uint32_t end_index       = !is_transparent_pass ? 2 : 4;
         for (uint32_t i = start_index; i < end_index; i++)
@@ -431,16 +434,17 @@ namespace Spartan
                 if (!renderable->IsFlagSet(RenderableFlags::IsInViewFrustum))
                     continue;
 
-                // size check - anything larger than x cubic meters is an occluder
+                BoundingBoxType box_type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+                const BoundingBox& box   = renderable->GetBoundingBox(box_type);
+
+                // compute screen space rectangle for later
+                visibility_rectangles[entity->GetObjectId()] = m_camera->WorldToScreenCoordinates(box);
+
+                // anything larger than x cubic meters is an occluder
+                if (box.Volume() >= 1.0f)
                 {
-                    BoundingBoxType box_type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                    const BoundingBox& box   = renderable->GetBoundingBox(box_type);
-                    
-                    if (box.Volume() >= 1.0f)
-                    {
-                        occluders[index_entity] = entity;
-                        renderable->SetFlag(RenderableFlags::IsOccluder, true);
-                    }
+                    visibility_occluders[index_entity] = entity;
+                    renderable->SetFlag(RenderableFlags::IsOccluder, true);
                 }
             }
         }
@@ -466,7 +470,7 @@ namespace Spartan
                     BoundingBoxType box_type        = renderable_occludee->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
                     const BoundingBox& box_occludee = renderable_occludee->GetBoundingBox(box_type);
     
-                    for (const shared_ptr<Entity>& occluder : occluders)
+                    for (const shared_ptr<Entity>& occluder : visibility_occluders)
                     {
                         if (!occluder || occluder->GetObjectId() == occludee->GetObjectId())
                             continue;
@@ -487,8 +491,8 @@ namespace Spartan
                             continue;
 
                         // project world space axis-aligned bounding boxes into screen space
-                        Rectangle rectangle_occludee = m_camera->WorldToScreenCoordinates(box_occludee);
-                        Rectangle rectangle_occluder = m_camera->WorldToScreenCoordinates(box_occluder);
+                        Rectangle& rectangle_occludee = visibility_rectangles[occludee->GenerateObjectId()];
+                        Rectangle& rectangle_occluder = visibility_rectangles[occluder->GenerateObjectId()];
 
                         // edge case 3: occluders that appear disproportionately large on screen due to proximity (perspective distortion)
                         float viewport_height = Renderer::GetViewport().height;
@@ -1989,7 +1993,7 @@ namespace Spartan
                     // set pipeline state
                     pso.blend_state         = GetBlendState(Renderer_BlendState::Alpha).get();
                     pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
-                    pso.primitive_toplogy = RHI_PrimitiveTopology::LineList;
+                    pso.primitive_toplogy   = RHI_PrimitiveTopology::LineList;
                     cmd_list->SetPipelineState(pso);
 
                     cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
@@ -2000,8 +2004,8 @@ namespace Spartan
             }
         }
 
-        m_lines_index_depth_off = numeric_limits<uint32_t>::max(); // max +1 will wrap it to 0.
-        m_lines_index_depth_on  = (static_cast<uint32_t>(m_line_vertices.size()) / 2) - 1; // -1 because +1 will make it go to size / 2.
+        m_lines_index_depth_off = numeric_limits<uint32_t>::max();                         // max +1 will wrap it to 0
+        m_lines_index_depth_on  = (static_cast<uint32_t>(m_line_vertices.size()) / 2) - 1; // -1 because +1 will make it go to size / 2
 
         cmd_list->EndTimeblock();
     }
