@@ -406,7 +406,7 @@ namespace Spartan
 
         // 2. cpu: frustum culling and occluder identification
         array<shared_ptr<Entity>, 1024> occluders;
-        bool is_transparent_pass = false;
+        bool is_transparent_pass = false; // ignore transparent entities
         uint32_t start_index     = !is_transparent_pass ? 0 : 2;
         uint32_t end_index       = !is_transparent_pass ? 2 : 4;
         for (uint32_t i = start_index; i < end_index; i++)
@@ -486,7 +486,7 @@ namespace Spartan
                         if (box_occluder.Contains(m_camera->GetEntity()->GetPosition()))
                             continue;
 
-                        // screen space test
+                        // project world space axis-aligned bounding boxes into screen space
                         Rectangle rectangle_occludee = m_camera->WorldToScreenCoordinates(box_occludee);
                         Rectangle rectangle_occluder = m_camera->WorldToScreenCoordinates(box_occluder);
 
@@ -496,11 +496,12 @@ namespace Spartan
                         if (occluder_height > viewport_height * 0.5f)
                             continue;
 
+                        // screen space test
                         bool is_occluded = rectangle_occluder.Contains(rectangle_occludee);
                         if (rectangle_occluder.Contains(rectangle_occludee))
                         {
-                            //renderable_occludee->SetFlag(RenderableFlags::IsOccludee);
-                            //occluder->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluder);
+                            renderable_occludee->SetFlag(RenderableFlags::IsOccludee);
+                            occluder->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluder);
                             break;
                         }
                     }
