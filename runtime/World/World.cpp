@@ -1242,18 +1242,18 @@ namespace Spartan
             // underwater
             {
                 // sound
+                if (Entity* entity = m_default_terrain->GetDescendantByName("underwater"))
                 {
-                    AudioSource* audio_source = m_default_terrain->GetDescendantByName("underwater")->GetComponent<AudioSource>().get();
-                    if (!audio_source)
-                        return;
-
-                    if (is_below_water_level && !audio_source->IsPlaying())
+                    if (AudioSource* audio_source = entity->GetComponent<AudioSource>().get())
                     {
-                        audio_source->Play();
-                    }
-                    else if (!is_below_water_level && audio_source->IsPlaying())
-                    {
-                        audio_source->Stop();
+                        if (is_below_water_level && !audio_source->IsPlaying())
+                        {
+                            audio_source->Play();
+                        }
+                        else if (!is_below_water_level && audio_source->IsPlaying())
+                        {
+                            audio_source->Stop();
+                        }
                     }
                 }
             }
@@ -1261,17 +1261,19 @@ namespace Spartan
             // footsteps
             if (!is_below_water_level)
             {
-                AudioSource* audio_source = m_default_terrain->GetDescendantByName("footsteps")->GetComponent<AudioSource>().get();
-                if (!audio_source)
-                    return;
-
-                if (camera->IsWalking() && !audio_source->IsPlaying())
+                if (Entity* entity = m_default_terrain->GetDescendantByName("footsteps"))
                 {
-                    audio_source->Play();
-                }
-                else if (!camera->IsWalking() && audio_source->IsPlaying())
-                {
-                    audio_source->Stop();
+                    if (AudioSource* audio_source = entity->GetComponent<AudioSource>().get())
+                    {
+                        if (camera->IsWalking() && !audio_source->IsPlaying())
+                        {
+                            audio_source->Play();
+                        }
+                        else if (!camera->IsWalking() && audio_source->IsPlaying())
+                        {
+                            audio_source->Stop();
+                        }
+                    }
                 }
             }
         }

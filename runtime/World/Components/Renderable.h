@@ -74,7 +74,7 @@ namespace Spartan
 
         // bounding box
         const std::vector<uint32_t>& GetBoundingBoxGroupEndIndices() const { return m_instance_group_end_indices; }
-        uint32_t GetInstancePartitionCount() const              {           return static_cast<uint32_t>(m_instance_group_end_indices.size()); }
+        uint32_t GetInstancePartitionCount() const                         { return static_cast<uint32_t>(m_instance_group_end_indices.size()); }
         const Math::BoundingBox& GetBoundingBox(const BoundingBoxType type, const uint32_t instance_group_index = 0);
 
         //= MATERIAL ====================================================================
