@@ -50,7 +50,7 @@ namespace Spartan
         #define thread_group_count_y(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetHeight()) / thread_group_count))
 
         // visibility
-        array<shared_ptr<Entity>, 1024> visibility_occluders;
+        array<Entity*, 1024> visibility_occluders;
         unordered_map<uint64_t, Rectangle> visibility_rectangles;
 
         // called by: Pass_ShadowMaps(), Pass_Depth_Prepass(), Pass_GBuffer()
@@ -366,6 +366,9 @@ namespace Spartan
         bool gpu = false; // only measure cpu time
         cmd_list->BeginTimeblock("visibility", gpu, gpu);
 
+        visibility_occluders.fill(nullptr);
+        visibility_rectangles.clear();
+
         // 1. cpu: sort entities by depth - makes occlusion queries easier and helps with the depth-prepass
         if (!m_sorted)
         {
@@ -434,16 +437,16 @@ namespace Spartan
                 if (!renderable->IsFlagSet(RenderableFlags::IsInViewFrustum))
                     continue;
 
-                BoundingBoxType box_type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                const BoundingBox& box   = renderable->GetBoundingBox(box_type);
+                // compute screen space rectangle
+                BoundingBoxType box_type                     = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+                const BoundingBox& box                       = renderable->GetBoundingBox(box_type);
+                Rectangle rectangle                          = m_camera->WorldToScreenCoordinates(box);
+                visibility_rectangles[entity->GetObjectId()] = rectangle; // save it for later
 
-                // compute screen space rectangle for later
-                visibility_rectangles[entity->GetObjectId()] = m_camera->WorldToScreenCoordinates(box);
-
-                // anything larger than x cubic meters is an occluder
-                if (box.Volume() >= 1.0f)
+                // anything entity which projects onto quad bigger than 100x100 is an occluder
+                if (rectangle.Width() >= 100.0f && rectangle.Height() > 100.0f)
                 {
-                    visibility_occluders[index_entity] = entity;
+                    visibility_occluders[index_entity] = entity.get();
                     renderable->SetFlag(RenderableFlags::IsOccluder, true);
                 }
             }
@@ -460,54 +463,48 @@ namespace Spartan
             {
                 // when async loading certain things can be null
                 shared_ptr<Renderable> renderable_occludee = occludee->GetComponent<Renderable>();
-                if (!renderable_occludee || !renderable_occludee->ReadyToRender())
+                if (!renderable_occludee || !renderable_occludee->ReadyToRender() || !renderable_occludee->IsFlagSet(RenderableFlags::IsInViewFrustum))
                     continue;
 
-                // fast approximate occlusion check
-                // this cuts down on the number of entities that have to be evaluated later (hardware occlusion queries)
-                if (renderable_occludee->IsFlagSet(RenderableFlags::IsInViewFrustum))
-                {
-                    BoundingBoxType box_type        = renderable_occludee->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                    const BoundingBox& box_occludee = renderable_occludee->GetBoundingBox(box_type);
+                BoundingBoxType box_type        = renderable_occludee->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+                const BoundingBox& box_occludee = renderable_occludee->GetBoundingBox(box_type);
     
-                    for (const shared_ptr<Entity>& occluder : visibility_occluders)
+                for (Entity* occluder : visibility_occluders)
+                {
+                    if (!occluder || occluder->GetObjectId() == occludee->GetObjectId())
+                        continue;
+
+                    // skip occluders who are occludees or outside of the view frustum
+                    shared_ptr<Renderable> renderable_occluder = occluder->GetComponent<Renderable>();
+                    if (renderable_occluder->IsFlagSet(RenderableFlags::IsOccludee) || !renderable_occluder->IsFlagSet(RenderableFlags::IsInViewFrustum))
+                        continue;
+
+                    const BoundingBox& box_occluder = renderable_occluder->GetBoundingBox(box_type);
+
+                    // edge case 1: the occluder contains or intersects the occludee
+                    if (box_occludee.Intersects(box_occluder) != Intersection::Outside)
+                        continue;
+
+                    // edge case 2: the camera is inside the occluder
+                    if (box_occluder.Contains(m_camera->GetEntity()->GetPosition()))
+                        continue;
+
+                    // project world space axis-aligned bounding boxes into screen space
+                    Rectangle& rectangle_occludee = visibility_rectangles[occludee->GetObjectId()];
+                    Rectangle& rectangle_occluder = visibility_rectangles[occluder->GetObjectId()];
+
+                    // edge case 3: occluders that appear disproportionately large on screen due to proximity (perspective distortion)
+                    float viewport_height = Renderer::GetViewport().height;
+                    float occluder_height = rectangle_occluder.bottom - rectangle_occluder.top;
+                    if (occluder_height > viewport_height * 0.5f)
+                        continue;
+
+                    // screen space test
+                    if (rectangle_occluder.Contains(rectangle_occludee))
                     {
-                        if (!occluder || occluder->GetObjectId() == occludee->GetObjectId())
-                            continue;
-
-                        // skip occluders who are occludees or outside of the view frustum
-                        shared_ptr<Renderable> renderable_occluder = occluder->GetComponent<Renderable>();
-                        if (renderable_occluder->IsFlagSet(RenderableFlags::IsOccludee) || !renderable_occluder->IsFlagSet(RenderableFlags::IsInViewFrustum))
-                            continue;
-
-                        const BoundingBox& box_occluder = renderable_occluder->GetBoundingBox(box_type);
-
-                        // edge case 1: the occluder contains or intersects the occludee
-                        if (box_occludee.Intersects(box_occluder) != Intersection::Outside)
-                            continue;
-
-                        // edge case 2: the camera is inside the occluder
-                        if (box_occluder.Contains(m_camera->GetEntity()->GetPosition()))
-                            continue;
-
-                        // project world space axis-aligned bounding boxes into screen space
-                        Rectangle& rectangle_occludee = visibility_rectangles[occludee->GenerateObjectId()];
-                        Rectangle& rectangle_occluder = visibility_rectangles[occluder->GenerateObjectId()];
-
-                        // edge case 3: occluders that appear disproportionately large on screen due to proximity (perspective distortion)
-                        float viewport_height = Renderer::GetViewport().height;
-                        float occluder_height = rectangle_occluder.bottom - rectangle_occluder.top;
-                        if (occluder_height > viewport_height * 0.5f)
-                            continue;
-
-                        // screen space test
-                        bool is_occluded = rectangle_occluder.Contains(rectangle_occludee);
-                        if (rectangle_occluder.Contains(rectangle_occludee))
-                        {
-                            //renderable_occludee->SetFlag(RenderableFlags::IsOccludee);
-                            //occluder->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluder);
-                            break;
-                        }
+                        //renderable_occludee->SetFlag(RenderableFlags::IsOccludee);
+                        //occluder->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluder);
+                        break;
                     }
                 }
             }

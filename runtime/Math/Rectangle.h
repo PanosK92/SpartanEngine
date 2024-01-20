@@ -81,6 +81,7 @@ namespace Spartan
 
             float Width()  const { return right - left; }
             float Height() const { return bottom - top; }
+            float Area() const   { return Width() * Height(); }
 
             void Merge(const Vector2& point)
             {
