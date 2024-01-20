@@ -361,13 +361,10 @@ namespace Spartan
 
     void Renderer::Pass_Visibility(RHI_CommandList* cmd_list)
     {
-        // forest cpu time: 0.05 ms
+        // forest cpu time: 0.09 ms
 
         bool gpu = false; // only measure cpu time
         cmd_list->BeginTimeblock("visibility", gpu, gpu);
-
-        visibility_occluders.fill(nullptr);
-        visibility_rectangles.clear();
 
         // 1. cpu: sort entities by depth - makes occlusion queries easier and helps with the depth-prepass
         if (!m_sorted)
@@ -443,7 +440,7 @@ namespace Spartan
                 Rectangle rectangle                          = m_camera->WorldToScreenCoordinates(box);
                 visibility_rectangles[entity->GetObjectId()] = rectangle; // save it for later
 
-                // anything entity which projects onto quad bigger than 100x100 is an occluder
+                // any entity which projects to a quad larger than 100x100, is an occluder
                 if (rectangle.Width() >= 100.0f && rectangle.Height() > 100.0f)
                 {
                     visibility_occluders[index_entity] = entity.get();
@@ -461,7 +458,6 @@ namespace Spartan
 
             for (shared_ptr<Entity>& occludee : entities)
             {
-                // when async loading certain things can be null
                 shared_ptr<Renderable> renderable_occludee = occludee->GetComponent<Renderable>();
                 if (!renderable_occludee || !renderable_occludee->ReadyToRender() || !renderable_occludee->IsFlagSet(RenderableFlags::IsInViewFrustum))
                     continue;
@@ -476,7 +472,7 @@ namespace Spartan
 
                     // skip occluders who are occludees or outside of the view frustum
                     shared_ptr<Renderable> renderable_occluder = occluder->GetComponent<Renderable>();
-                    if (renderable_occluder->IsFlagSet(RenderableFlags::IsOccludee) || !renderable_occluder->IsFlagSet(RenderableFlags::IsInViewFrustum))
+                    if (!renderable_occluder || renderable_occluder->IsFlagSet(RenderableFlags::IsOccludee) || !renderable_occluder->IsFlagSet(RenderableFlags::IsInViewFrustum))
                         continue;
 
                     const BoundingBox& box_occluder = renderable_occluder->GetBoundingBox(box_type);
