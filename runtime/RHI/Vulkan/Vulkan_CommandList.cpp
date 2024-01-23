@@ -438,10 +438,13 @@ namespace Spartan
 
         // reset query pool - has to be done after vkBeginCommandBuffer or a VK_DEVICE_LOST will occur
         {
-            if (m_queries_index_timestamp != 0)
+            if (m_queries_index_timestamp != 0 || m_first_run)
             {
                 vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkQueryPool>(m_rhi_query_pool_timestamps), 0, rhi_max_queries_timestmaps);
                 m_queries_index_timestamp = 0;
+
+                // per Vulkan, queries need to be reset if this the first time they are about to be used
+                m_first_run = false;
             }
 
             if (m_queries_index_occlusion != 0)
@@ -1356,7 +1359,7 @@ namespace Spartan
 
         vkCmdWriteTimestamp(
             static_cast<VkCommandBuffer>(m_rhi_resource),
-            VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
             static_cast<VkQueryPool>(m_rhi_query_pool_timestamps),
             m_queries_index_timestamp++
         );
@@ -1370,7 +1373,7 @@ namespace Spartan
 
         vkCmdWriteTimestamp(
             static_cast<VkCommandBuffer>(m_rhi_resource),
-            VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
             static_cast<VkQueryPool>(m_rhi_query_pool_timestamps),
             m_queries_index_timestamp++
         );

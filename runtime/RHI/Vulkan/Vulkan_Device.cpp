@@ -305,7 +305,7 @@ namespace Spartan
                 return VK_FALSE;
 
             // temporary, latest SDK is catching some new hazard sync issues, prevent spaming utill fixed
-            if (strstr(p_callback_data->pMessage, "hazard") != nullptr)
+            if (strstr(p_callback_data->pMessage, "HAZARD") != nullptr)
                 return VK_FALSE;
 
             string msg = "Vulkan: " + string(p_callback_data->pMessage);
