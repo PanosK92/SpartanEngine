@@ -311,7 +311,7 @@ namespace Spartan
                     {
                         // acquire renderable component
                         shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                        if (!renderable || !renderable->ReadyToRender() || !renderable->IsFlagSet(RenderableFlags::CastsShadows))
+                        if (!renderable || !renderable->ReadyToRender() || !renderable->HasFlag(RenderableFlags::CastsShadows))
                             continue;
 
                         // skip objects outside of the view frustum
@@ -430,12 +430,12 @@ namespace Spartan
                     continue;
 
                 // reset flags
-                renderable->SetFlag(RenderableFlags::IsOccluder, false);
-                renderable->SetFlag(RenderableFlags::IsOccludee, false);
+                renderable->SetFlag(RenderableFlags::Occluded,                    false);
+                renderable->SetFlag(RenderableFlags::NeedsHardwareOcclusionQuery, false);
 
                 // frustum check
-                renderable->SetFlag(RenderableFlags::IsInViewFrustum, GetCamera()->IsInViewFrustum(renderable));
-                if (!renderable->IsFlagSet(RenderableFlags::IsInViewFrustum))
+                renderable->SetFlag(RenderableFlags::InViewFrustum, GetCamera()->IsInViewFrustum(renderable));
+                if (!renderable->HasFlag(RenderableFlags::InViewFrustum))
                     continue;
 
                 // compute screen space rectangle
@@ -448,7 +448,6 @@ namespace Spartan
                 if (rectangle.Width() >= 100.0f && rectangle.Height() > 100.0f)
                 {
                     visibility_occluders[index_entity] = entity.get();
-                    renderable->SetFlag(RenderableFlags::IsOccluder, true);
                 }
             }
         }
@@ -463,7 +462,7 @@ namespace Spartan
             for (shared_ptr<Entity>& occludee : entities)
             {
                 shared_ptr<Renderable> renderable_occludee = occludee->GetComponent<Renderable>();
-                if (!renderable_occludee || !renderable_occludee->ReadyToRender() || !renderable_occludee->IsFlagSet(RenderableFlags::IsInViewFrustum))
+                if (!renderable_occludee || !renderable_occludee->ReadyToRender() || !renderable_occludee->HasFlag(RenderableFlags::InViewFrustum))
                     continue;
 
                 BoundingBoxType box_type        = renderable_occludee->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
@@ -471,15 +470,11 @@ namespace Spartan
     
                 for (Entity* occluder : visibility_occluders)
                 {
-                    if (!occluder || occluder->GetObjectId() == occludee->GetObjectId())
+                    if (!occluder || !occluder->GetComponent<Renderable>() || occluder->GetObjectId() == occludee->GetObjectId())
                         continue;
 
-                    // skip occluders who are occludees or outside of the view frustum
                     shared_ptr<Renderable> renderable_occluder = occluder->GetComponent<Renderable>();
-                    if (!renderable_occluder || renderable_occluder->IsFlagSet(RenderableFlags::IsOccludee) || !renderable_occluder->IsFlagSet(RenderableFlags::IsInViewFrustum))
-                        continue;
-
-                    const BoundingBox& box_occluder = renderable_occluder->GetBoundingBox(box_type);
+                    const BoundingBox& box_occluder            = renderable_occluder->GetBoundingBox(box_type);
 
                     // edge case 1: the occluder contains or intersects the occludee
                     if (box_occludee.Intersects(box_occluder) != Intersection::Outside)
@@ -502,8 +497,14 @@ namespace Spartan
                     // screen space test
                     if (rectangle_occluder.Contains(rectangle_occludee))
                     {
-                        renderable_occludee->SetFlag(RenderableFlags::IsOccludee);
-                        occluder->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluder);
+                        // get previous results - typically a frame behind, the latency is hidden though since we do all this real-time cpu work
+                        renderable_occludee->SetFlag(Occluded, cmd_list->GetOcclusionQueryResult(renderable_occludee->GetOcclusionQueryId()));
+                        renderable_occluder->SetFlag(Occluded, cmd_list->GetOcclusionQueryResult(renderable_occluder->GetOcclusionQueryId()));
+
+                        // request new occlusion query
+                        renderable_occludee->SetFlag(RenderableFlags::NeedsHardwareOcclusionQuery);
+                        renderable_occluder->SetFlag(RenderableFlags::NeedsHardwareOcclusionQuery);
+
                         break;
                     }
                 }
@@ -512,8 +513,8 @@ namespace Spartan
 
         cmd_list->EndTimeblock();
 
-        // 4. gpu: hardware occlusion queries on the entities marked with IsOccluded or IsOccluding
-        // this is done during Pass_Depth_Prepass()
+        // 4. gpu: Pass_Depth_Prepass() will do hardware occlusion queries for anything marked with NeedsOcclusionQuery
+        
     }
 
     void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass)
@@ -557,11 +558,9 @@ namespace Spartan
                 if (!renderable || !renderable->ReadyToRender())
                     continue;
 
-                bool is_visible = renderable->IsFlagSet(RenderableFlags::IsInViewFrustum);
+                bool is_visible = renderable->HasFlag(RenderableFlags::InViewFrustum);
                 if (!is_visible)
                     continue;
-
-                renderable->SetFlag(IsOccludee, cmd_list->GetOcclusionQueryResult(renderable->GetOcclusionQueryId()));
 
                 // set cull mode
                 cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
@@ -599,9 +598,17 @@ namespace Spartan
                     PushPassConstants(cmd_list);
                 }
 
-                renderable->SetOcclusionQueryId(cmd_list->BeginOcclusionQuery());
+                if (renderable->HasFlag(NeedsHardwareOcclusionQuery))
+                {
+                    renderable->SetOcclusionQueryId(cmd_list->BeginOcclusionQuery());
+                }
+
                 draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
-                cmd_list->EndOcclusionQuery();
+
+                if (renderable->HasFlag(NeedsHardwareOcclusionQuery))
+                {
+                    cmd_list->EndOcclusionQuery();
+                }
             }
         }
 
@@ -681,7 +688,7 @@ namespace Spartan
                 if (!renderable || !renderable->ReadyToRender())
                     continue;
 
-                bool is_visible = renderable->IsFlagSet(RenderableFlags::IsInViewFrustum) && !renderable->IsFlagSet(RenderableFlags::IsOccludee);
+                bool is_visible = renderable->HasFlag(RenderableFlags::InViewFrustum) && !renderable->HasFlag(RenderableFlags::Occluded);
                 if (!is_visible)
                     continue;
 

@@ -46,10 +46,10 @@ namespace Spartan
 
     enum RenderableFlags : uint32_t
     {
-        IsInViewFrustum = 1U << 0,
-        IsOccludee      = 1U << 1,
-        IsOccluder      = 1U << 2,
-        CastsShadows    = 1U << 3
+        InViewFrustum               = 1U << 0,
+        Occluded                    = 1U << 1,
+        NeedsHardwareOcclusionQuery = 1U << 2,
+        CastsShadows                = 1U << 3
     };
 
     class SP_CLASS Renderable : public Component
@@ -111,7 +111,7 @@ namespace Spartan
         uint32_t GetOcclusionQueryId() const        { return m_occlusion_query_id; }
 
         // flags
-        bool IsFlagSet(const RenderableFlags flag) { return m_flags & flag; }
+        bool HasFlag(const RenderableFlags flag) { return m_flags & flag; }
         void SetFlag(const RenderableFlags flag, const bool enable = true);
 
     private:
@@ -138,7 +138,7 @@ namespace Spartan
 
         // misc
         Math::Matrix m_transform_previous = Math::Matrix::Identity;
-        uint32_t m_flags                  = RenderableFlags::IsInViewFrustum | RenderableFlags::CastsShadows;
+        uint32_t m_flags                  = RenderableFlags::InViewFrustum | RenderableFlags::CastsShadows;
         uint32_t m_occlusion_query_id     = 0;
     };
 }
