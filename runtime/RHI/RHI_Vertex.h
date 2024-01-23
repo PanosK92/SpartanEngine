@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
+//= INCLUDES ==================
 #include "../Math/Vector2.h"
 #include "../Math/Vector3.h"
-#include "../Math/Vector4.h"
-//==========================
+#include "../Rendering/Color.h"
+//=============================
 
 namespace Spartan
 {
@@ -71,16 +71,16 @@ namespace Spartan
     {
         RHI_Vertex_PosCol() = default;
 
-        RHI_Vertex_PosCol(const Math::Vector3& pos, const Math::Vector4& col)
+        RHI_Vertex_PosCol(const Math::Vector3& pos, const Color& col)
         {
             this->pos[0] = pos.x;
             this->pos[1] = pos.y;
             this->pos[2] = pos.z;
 
-            this->col[0] = col.x;
-            this->col[1] = col.y;
-            this->col[2] = col.z;
-            this->col[3] = col.w;
+            this->col[0] = col.r;
+            this->col[1] = col.g;
+            this->col[2] = col.b;
+            this->col[3] = col.a;
         }
 
         float pos[3] = { 0, 0, 0 };

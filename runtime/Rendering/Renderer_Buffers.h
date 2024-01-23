@@ -164,12 +164,12 @@ namespace Spartan
             m_value.m31 = z;
         };
 
-        void set_f4_value(const Math::Vector4& color)
+        void set_f4_value(const Color& color)
         {
-            m_value.m10 = color.x;
-            m_value.m11 = color.y;
-            m_value.m12 = color.z;
-            m_value.m13 = color.w;
+            m_value.m10 = color.r;
+            m_value.m11 = color.g;
+            m_value.m12 = color.b;
+            m_value.m13 = color.a;
         };
 
         void set_f4_value(const float x, const float y, const float z, const float w)

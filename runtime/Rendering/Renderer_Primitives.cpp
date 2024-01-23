@@ -42,7 +42,7 @@ namespace Spartan
         uint32_t m_lines_index_depth_on  = 0;
     }
 
-    void Renderer::DrawLine(const Vector3& from, const Vector3& to, const Vector4& color_from, const Vector4& color_to, const float duration /*= 0.0f*/, const bool depth /*= true*/)
+    void Renderer::DrawLine(const Vector3& from, const Vector3& to, const Color& color_from, const Color& color_to, const float duration /*= 0.0f*/, const bool depth /*= true*/)
     {
         // get vertex index
         uint32_t& index = depth ? m_lines_index_depth_on : m_lines_index_depth_off;
@@ -81,14 +81,14 @@ namespace Spartan
         }
     }
 
-    void Renderer::DrawTriangle(const Vector3& v0, const Vector3& v1, const Vector3& v2, const Vector4& color /*= DEBUG_COLOR*/, const float duration /*= 0.0f*/, bool depth /*= true*/)
+    void Renderer::DrawTriangle(const Vector3& v0, const Vector3& v1, const Vector3& v2, const Color& color /*= DEBUG_COLOR*/, const float duration /*= 0.0f*/, bool depth /*= true*/)
     {
         DrawLine(v0, v1, color, color, duration, depth);
         DrawLine(v1, v2, color, color, duration, depth);
         DrawLine(v2, v0, color, color, duration, depth);
     }
 
-    void Renderer::DrawBox(const BoundingBox& box, const Vector4& color, const float duration /*= 0.0f*/, const bool depth /*= true*/)
+    void Renderer::DrawBox(const BoundingBox& box, const Color& color, const float duration /*= 0.0f*/, const bool depth /*= true*/)
     {
         const Vector3& min = box.GetMin();
         const Vector3& max = box.GetMax();
@@ -107,7 +107,7 @@ namespace Spartan
         DrawLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, color, duration, depth);
     }
 
-    void Renderer::DrawCircle(const Vector3& center, const Vector3& axis, const float radius, uint32_t segment_count, const Vector4& color /*= DEBUG_COLOR*/, const float duration /*= 0.0f*/, const bool depth /*= true*/)
+    void Renderer::DrawCircle(const Vector3& center, const Vector3& axis, const float radius, uint32_t segment_count, const Color& color /*= DEBUG_COLOR*/, const float duration /*= 0.0f*/, const bool depth /*= true*/)
     {
         if (radius <= 0.0f)
             return;
@@ -145,7 +145,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::DrawSphere(const Vector3& center, float radius, uint32_t segment_count, const Vector4& color /*= DEBUG_COLOR*/, const float duration /*= 0.0f*/, const bool depth /*= true*/)
+    void Renderer::DrawSphere(const Vector3& center, float radius, uint32_t segment_count, const Color& color /*= DEBUG_COLOR*/, const float duration /*= 0.0f*/, const bool depth /*= true*/)
     {
         // Need at least 4 segments
         segment_count = Helper::Max<uint32_t>(segment_count, 4);
@@ -190,7 +190,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::DrawDirectionalArrow(const Vector3& start, const Vector3& end, float arrow_size, const Vector4& color /*= DEBUG_COLOR*/, const float duration /*= 0.0f*/, const bool depth /*= true*/)
+    void Renderer::DrawDirectionalArrow(const Vector3& start, const Vector3& end, float arrow_size, const Color& color /*= DEBUG_COLOR*/, const float duration /*= 0.0f*/, const bool depth /*= true*/)
     {
         arrow_size = Helper::Max<float>(0.1f, arrow_size);
 
@@ -217,7 +217,7 @@ namespace Spartan
         DrawLine(end, end + TM * Vector3(-arrow_sqrt, -arrow_sqrt, 0), color, color, duration, depth);
     }
 
-    void Renderer::DrawPlane(const Math::Plane& plane, const Math::Vector4& color /*= DEBUG_COLOR*/, const float duration /*= 0.0f*/, const bool depth /*= true*/)
+    void Renderer::DrawPlane(const Math::Plane& plane, const Color& color /*= DEBUG_COLOR*/, const float duration /*= 0.0f*/, const bool depth /*= true*/)
     {
         // Arrow indicating normal
         Vector3 plane_origin = plane.normal * plane.d;
@@ -235,7 +235,7 @@ namespace Spartan
         if (GetOption<bool>(Renderer_Option::Debug_PickingRay))
         {
             const auto& ray = GetCamera()->GetPickingRay();
-            DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * GetCamera()->GetFarPlane(), Vector4(0, 1, 0, 1));
+            DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * GetCamera()->GetFarPlane(), Color(0, 1, 0, 1));
         }
         
         if (GetOption<bool>(Renderer_Option::Debug_Lights))
@@ -291,8 +291,8 @@ namespace Spartan
         
         if (GetOption<bool>(Renderer_Option::Debug_Aabb))
         {
-            static const Vector4 color_visible  = Vector4(0.41f, 0.86f, 1.0f, 1.0f);
-            static const Vector4 color_occluded = Vector4(01.0f, 0.0f, 0.0f, 1.0f);
+            static const Color color_visible  = Color::standard_renderer_lines;
+            static const Color color_occluded = Color(01.0f, 0.0f, 0.0f, 1.0f);
 
             auto draw_bounding_boxes = [](const Renderer_Entity entity_type)
             {

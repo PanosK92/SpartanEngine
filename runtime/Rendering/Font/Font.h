@@ -25,9 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include <unordered_map>
 #include "Glyph.h"
+#include "../Color.h"
 #include "../../RHI/RHI_Definitions.h"
 #include "../../Resource/IResource.h"
-#include "../../Math/Vector4.h"
 #include "../../Core/Definitions.h"
 //====================================
 
@@ -63,7 +63,7 @@ namespace Spartan
     class SP_CLASS Font : public IResource
     {
     public:
-        Font(const std::string& file_path, const uint32_t font_size, const Math::Vector4& color);
+        Font(const std::string& file_path, const uint32_t font_size, const Color& color);
         ~Font() = default;
 
         // iresource
@@ -75,12 +75,12 @@ namespace Spartan
         bool HasText() const;
 
         // color
-        const Math::Vector4& GetColor() const     { return m_color; }
-        void SetColor(const Math::Vector4& color) { m_color = color; }
+        const Color& GetColor() const     { return m_color; }
+        void SetColor(const Color& color) { m_color = color; }
 
         // color outline
-        const Math::Vector4& GetColorOutline() const     { return m_color_outline; }
-        void SetColorOutline(const Math::Vector4& color) { m_color_outline = color; }
+        const Color& GetColorOutline() const     { return m_color_outline; }
+        void SetColorOutline(const Color& color) { m_color_outline = color; }
 
         // outline
         void SetOutline(const Font_Outline_Type outline) { m_outline = outline; }
@@ -115,8 +115,8 @@ namespace Spartan
         bool m_force_autohint         = false;
         Font_Hinting_Type m_hinting   = Font_Hinting_Normal;
         Font_Outline_Type m_outline   = Font_Outline_Positive;
-        Math::Vector4 m_color         = Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-        Math::Vector4 m_color_outline = Math::Vector4(0.0f, 0.0f, 0.0f, 1.0f);
+        Color m_color                 = Color(1.0f, 1.0f, 1.0f, 1.0f);
+        Color m_color_outline         = Color(0.0f, 0.0f, 0.0f, 1.0f);
         uint32_t m_char_max_width;
         uint32_t m_char_max_height;
         std::unordered_map<uint32_t, Glyph> m_glyphs;

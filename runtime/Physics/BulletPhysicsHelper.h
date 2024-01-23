@@ -35,11 +35,6 @@ inline Spartan::Math::Vector3 ToVector3(const btVector3& vector)
     return Spartan::Math::Vector3(vector.getX(), vector.getY(), vector.getZ());
 }
 
-inline Spartan::Math::Vector4 ToVector4(const btVector3& vector)
-{
-    return Spartan::Math::Vector4(vector.getX(), vector.getY(), vector.getZ(), 1.0f);
-}
-
 inline btVector3 ToBtVector3(const Spartan::Math::Vector3& vector)
 {
     return btVector3(vector.x, vector.y, vector.z);

@@ -50,7 +50,7 @@ namespace Spartan
         #define thread_group_count_y(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetHeight()) / thread_group_count))
 
         // visibility
-        array<Entity*, 1024> visibility_occluders;
+        array<Entity*, occlussion_max_entities> visibility_occluders;
         unordered_map<uint64_t, Rectangle> visibility_rectangles;
 
         // called by: Pass_ShadowMaps(), Pass_Depth_Prepass(), Pass_GBuffer()
@@ -502,17 +502,18 @@ namespace Spartan
                     // screen space test
                     if (rectangle_occluder.Contains(rectangle_occludee))
                     {
-                        //renderable_occludee->SetFlag(RenderableFlags::IsOccludee);
-                        //occluder->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluder);
+                        renderable_occludee->SetFlag(RenderableFlags::IsOccludee);
+                        occluder->GetComponent<Renderable>()->SetFlag(RenderableFlags::IsOccluder);
                         break;
                     }
                 }
             }
         }
 
-        // 4. gpu: hardware occlusion queries on the entities marked with IsOccluded or IsOccluding
-
         cmd_list->EndTimeblock();
+
+        // 4. gpu: hardware occlusion queries on the entities marked with IsOccluded or IsOccluding
+        // this is done during Pass_Depth_Prepass()
     }
 
     void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass)
@@ -2048,7 +2049,7 @@ namespace Spartan
                             // render
                             {
                                 // push draw data
-                                m_pcb_pass_cpu.set_f4_value(debug_color);
+                                m_pcb_pass_cpu.set_f4_value(Color::standard_renderer_lines);
                                 m_pcb_pass_cpu.transform = entity_selected->GetMatrix();
                                 PushPassConstants(cmd_list);
                         
