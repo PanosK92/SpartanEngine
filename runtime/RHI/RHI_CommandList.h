@@ -124,18 +124,19 @@ namespace Spartan
         void BeginMarker(const char* name);
         void EndMarker();
 
-        // timestamps
+        // timestamp queries
         uint32_t BeginTimestamp();
         void EndTimestamp();
-        float GetTimestampDuration(const uint32_t timestamp_index);
+        float GetTimestampResult(const uint32_t index_timestamp);
+
+        // occlusion queries
+        uint32_t BeginOcclusionQuery();
+        void EndOcclusionQuery();
+        bool GetOcclusionQueryResult(const uint32_t index_occlusion);
 
         // timeblocks (markers + timestamps)
         void BeginTimeblock(const char* name, const bool gpu_marker = true, const bool gpu_timing = true);
         void EndTimeblock();
-
-        // occlusion queries
-        void BeginOcclusionQuery(const uint32_t index);
-        void EndOcclusionQuery(const uint32_t index);
 
         // state
         const RHI_CommandListState GetState() const { return m_state; }
@@ -159,11 +160,11 @@ namespace Spartan
         std::shared_ptr<RHI_Fence> m_proccessed_fence;
         std::shared_ptr<RHI_Semaphore> m_proccessed_semaphore;
 
-        // profiling
-        const char* m_timeblock_active         = nullptr;
-        uint32_t m_timestamp_index             = 0;
-        static const uint32_t m_max_timestamps = 512;
-        std::array<uint64_t, m_max_timestamps> m_timestamps;
+        // queries
+        std::array<uint64_t, rhi_max_queries_timestmaps> m_queries_timestamps;
+        uint32_t m_queries_index_timestamp = 0;
+        std::array<uint64_t, rhi_max_queries_occlusion> m_queries_occlusion;
+        uint32_t m_queries_index_occlusion = 0;
 
         // variables to minimise state changes
         uint64_t m_vertex_buffer_id = 0;
@@ -173,11 +174,11 @@ namespace Spartan
         RHI_Pipeline* m_pipeline                             = nullptr;
         bool m_render_pass_active                            = false;
         bool m_pipeline_dirty                                = false;
-        static const uint8_t m_resource_array_length_max     = 16;
         RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
         std::atomic<RHI_CommandListState> m_state            = RHI_CommandListState::Idle;
         RHI_Queue_Type m_queue_type                          = RHI_Queue_Type::Max;
         RHI_CullMode m_cull_mode                             = RHI_CullMode::Max;
+        const char* m_timeblock_active                       = nullptr;
         static bool m_memory_query_support;
         std::mutex m_mutex_reset;
         RHI_PipelineState m_pso;

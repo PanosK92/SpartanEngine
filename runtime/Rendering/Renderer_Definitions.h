@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
     constexpr uint8_t resources_frame_lifetime = 5;
-    constexpr uint32_t occlussion_max_entities = 1024;
 
     enum class Renderer_Option : uint32_t
     {

@@ -101,13 +101,14 @@ namespace Spartan
         uint32_t GetInstanceCount()  const          { return static_cast<uint32_t>(m_instances.size()); }
         void SetInstances(const std::vector<Math::Matrix>& instances);
 
-        // properties
+        // misc
         uint32_t GetIndexOffset() const  { return m_geometry_index_offset; }
         uint32_t GetIndexCount() const   { return m_geometry_index_count; }
         uint32_t GetVertexOffset() const { return m_geometry_vertex_offset; }
         uint32_t GetVertexCount() const  { return m_geometry_vertex_count; }
         bool ReadyToRender() const;
-        bool IsVisible() { return IsFlagSet(RenderableFlags::IsInViewFrustum) && !IsFlagSet(RenderableFlags::IsOccludee); }
+        void SetOcclusionQueryId(const uint32_t id) { m_occlusion_query_id = id; }
+        uint32_t GetOcclusionQueryId() const        { return m_occlusion_query_id; }
 
         // flags
         bool IsFlagSet(const RenderableFlags flag) { return m_flags & flag; }
@@ -138,5 +139,6 @@ namespace Spartan
         // misc
         Math::Matrix m_transform_previous = Math::Matrix::Identity;
         uint32_t m_flags                  = RenderableFlags::IsInViewFrustum | RenderableFlags::CastsShadows;
+        uint32_t m_occlusion_query_id     = 0;
     };
 }

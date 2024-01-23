@@ -85,7 +85,7 @@ namespace Spartan
             }
             else if (m_type == TimeBlockType::Gpu)
             {
-                m_duration = m_cmd_list->GetTimestampDuration(m_timestamp_index);
+                m_duration = m_cmd_list->GetTimestampResult(m_timestamp_index);
             }
         }
 

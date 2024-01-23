@@ -313,7 +313,8 @@ namespace Spartan
 
     RHI_CommandList::RHI_CommandList(const RHI_Queue_Type queue_type, const uint64_t swapchain_id, void* cmd_pool, const char* name) : SpObject()
     {
-        m_timestamps.fill(0);
+        m_queries_timestamps.fill(0);
+        m_queries_occlusion.fill(0);
         m_queue_type  = queue_type;
         m_object_name = name;
 
@@ -339,16 +340,14 @@ namespace Spartan
             // timestamps
             if (Profiler::IsGpuTimingEnabled())
             {
-                VkQueryPoolCreateInfo query_pool_create_info = {};
-                query_pool_create_info.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
-                query_pool_create_info.queryType = VK_QUERY_TYPE_TIMESTAMP;
-                query_pool_create_info.queryCount = m_max_timestamps;
+                VkQueryPoolCreateInfo query_pool_info = {};
+                query_pool_info.sType                 = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+                query_pool_info.queryType             = VK_QUERY_TYPE_TIMESTAMP;
+                query_pool_info.queryCount            = rhi_max_queries_timestmaps;
 
                 auto query_pool = reinterpret_cast<VkQueryPool*>(&m_rhi_query_pool_timestamps);
-                SP_VK_ASSERT_MSG(vkCreateQueryPool(RHI_Context::device, &query_pool_create_info, nullptr, query_pool),
+                SP_VK_ASSERT_MSG(vkCreateQueryPool(RHI_Context::device, &query_pool_info, nullptr, query_pool),
                     "Failed to created timestamp query pool");
-
-                m_timestamps.fill(0);
             }
 
             // occlusion
@@ -356,10 +355,10 @@ namespace Spartan
                 VkQueryPoolCreateInfo query_pool_info = {};
                 query_pool_info.sType                 = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
                 query_pool_info.queryType             = VK_QUERY_TYPE_OCCLUSION;
-                query_pool_info.queryCount            = occlussion_max_entities;
+                query_pool_info.queryCount            = rhi_max_queries_occlusion;
 
-                VkQueryPool query_pool;
-                SP_VK_ASSERT_MSG(vkCreateQueryPool(RHI_Context::device, &query_pool_info, nullptr, &query_pool),
+                auto query_pool = reinterpret_cast<VkQueryPool*>(&m_rhi_query_pool_occlusion);
+                SP_VK_ASSERT_MSG(vkCreateQueryPool(RHI_Context::device, &query_pool_info, nullptr, query_pool),
                     "Failed to created occlusion query pool");
             }
         }
@@ -392,27 +391,44 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
         // get queries
-        if (Profiler::IsGpuTimingEnabled() && m_queue_type != RHI_Queue_Type::Copy)
+        if (m_queue_type != RHI_Queue_Type::Copy)
         {
-            if (m_timestamp_index != 0)
+            // timestamps
+            if (Profiler::IsGpuTimingEnabled() && m_queries_index_timestamp != 0)
             {
-                const uint32_t query_count     = m_timestamp_index;
-                const size_t stride            = sizeof(uint64_t);
-                const VkQueryResultFlags flags = VK_QUERY_RESULT_64_BIT;
-
+                const uint32_t query_count = m_queries_index_timestamp;
+            
                 vkGetQueryPoolResults(
-                    RHI_Context::device,                        // device
+                    RHI_Context::device,                                   // device
                     static_cast<VkQueryPool>(m_rhi_query_pool_timestamps), // queryPool
-                    0,                                          // firstQuery
-                    query_count,                                // queryCount
-                    query_count * stride,                       // dataSize
-                    m_timestamps.data(),                        // pData
-                    stride,                                     // stride
-                    flags                                       // flags
+                    0,                                                     // firstQuery
+                    query_count,                                           // queryCount
+                    query_count * sizeof(uint64_t),                        // dataSize
+                    m_queries_timestamps.data(),                           // pData
+                    sizeof(uint64_t),                                      // stride
+                    VK_QUERY_RESULT_64_BIT                                 // flags
                 );
+
             }
 
-            m_timestamp_index = 0;
+            // occlusion
+            if (m_queries_index_occlusion != 0)
+            {
+                const uint32_t query_count = m_queries_index_occlusion;
+
+                vkGetQueryPoolResults(
+                    RHI_Context::device,                                  // device
+                    static_cast<VkQueryPool>(m_rhi_query_pool_occlusion), // queryPool
+                    0,                                                    // firstQuery
+                    query_count,                                          // queryCount
+                    query_count * sizeof(uint64_t),                       // dataSize
+                    m_queries_occlusion.data(),                           // pData
+                    sizeof(uint64_t),                                     // stride
+                    VK_QUERY_RESULT_64_BIT                                // flags
+                );
+
+                m_queries_index_occlusion = 0;
+            }
         }
 
         // begin command buffer
@@ -422,9 +438,18 @@ namespace Spartan
         SP_ASSERT_MSG(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource), &begin_info) == VK_SUCCESS, "Failed to begin command buffer");
 
         // reset query pool - has to be done after vkBeginCommandBuffer or a VK_DEVICE_LOST will occur
-        if (Profiler::IsGpuTimingEnabled() && m_queue_type != RHI_Queue_Type::Copy)
         {
-            vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkQueryPool>(m_rhi_query_pool_timestamps), 0, m_max_timestamps);
+            if (m_queries_index_timestamp != 0)
+            {
+                vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkQueryPool>(m_rhi_query_pool_timestamps), 0, rhi_max_queries_timestmaps);
+                m_queries_index_timestamp = 0;
+            }
+
+            if (m_queries_index_occlusion != 0)
+            {
+                vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkQueryPool>(m_rhi_query_pool_occlusion), 0, rhi_max_queries_occlusion);
+                m_queries_index_occlusion = 0;
+            }
         }
 
         // update states
@@ -1328,8 +1353,14 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        uint32_t timestamp_index = m_timestamp_index;
-        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_rhi_query_pool_timestamps), m_timestamp_index++);
+        uint32_t timestamp_index = m_queries_index_timestamp;
+
+        vkCmdWriteTimestamp(
+            static_cast<VkCommandBuffer>(m_rhi_resource),
+            VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+            static_cast<VkQueryPool>(m_rhi_query_pool_timestamps),
+            m_queries_index_timestamp++
+        );
 
         return timestamp_index;
     }
@@ -1338,28 +1369,56 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_rhi_query_pool_timestamps), m_timestamp_index++);
+        vkCmdWriteTimestamp(
+            static_cast<VkCommandBuffer>(m_rhi_resource),
+            VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+            static_cast<VkQueryPool>(m_rhi_query_pool_timestamps),
+            m_queries_index_timestamp++
+        );
     }
 
-    float RHI_CommandList::GetTimestampDuration(const uint32_t timestamp_index)
+    float RHI_CommandList::GetTimestampResult(const uint32_t index_timestamp)
     {
-        if (timestamp_index + 1 >= m_timestamps.size())
-        {
-            SP_LOG_ERROR("Pass index out of timestamp array range");
-            return 0.0f;
-        }
+        SP_ASSERT_MSG(index_timestamp + 1 < m_queries_timestamps.size(), "index out of range");
 
-        uint64_t start = m_timestamps[timestamp_index];
-        uint64_t end   = m_timestamps[timestamp_index + 1];
-
-        // If end has not been acquired yet (zero), early exit
-        if (end < start)
-            return 0.0f;
-
+        uint64_t start    = m_queries_timestamps[index_timestamp];
+        uint64_t end      = m_queries_timestamps[index_timestamp + 1];
         uint64_t duration = Math::Helper::Clamp<uint64_t>(end - start, 0, numeric_limits<uint64_t>::max());
         float duration_ms = static_cast<float>(duration * RHI_Device::PropertyGetTimestampPeriod() * 1e-6f);
 
-        return duration_ms;
+        return Math::Helper::Clamp<float>(duration_ms, 0.0f, numeric_limits<float>::max());
+    }
+
+    uint32_t RHI_CommandList::BeginOcclusionQuery()
+    {
+        vkCmdBeginQuery(
+            static_cast<VkCommandBuffer>(m_rhi_resource),
+            static_cast<VkQueryPool>(m_rhi_query_pool_occlusion),
+            m_queries_index_occlusion, // query
+            0                          // flags - is VK_QUERY_CONTROL_PRECISE_BIT really needed? If so, what's the cost?
+        );
+
+        return m_queries_index_occlusion;
+    }
+
+    void RHI_CommandList::EndOcclusionQuery()
+    {
+        vkCmdEndQuery(
+            static_cast<VkCommandBuffer>(m_rhi_resource),
+            static_cast<VkQueryPool>(m_rhi_query_pool_occlusion),
+            m_queries_index_occlusion
+        );
+
+        m_queries_index_occlusion++;
+    }
+
+    bool RHI_CommandList::GetOcclusionQueryResult(const uint32_t index_occlusion)
+    {
+        SP_ASSERT_MSG(index_occlusion + 1 < m_queries_occlusion.size(), "index out of range");
+
+        uint64_t result = m_queries_occlusion[index_occlusion];
+
+        return result == 0;
     }
 
     void RHI_CommandList::BeginTimeblock(const char* name, const bool gpu_marker, const bool gpu_timing)
@@ -1411,25 +1470,6 @@ namespace Spartan
         }
 
         m_timeblock_active = nullptr;
-    }
-
-    void RHI_CommandList::BeginOcclusionQuery(const uint32_t index)
-    {
-        vkCmdBeginQuery(
-            static_cast<VkCommandBuffer>(m_rhi_resource),
-            static_cast<VkQueryPool>(m_rhi_query_pool_occlusion),
-            index,
-            0
-        );
-    }
-
-    void RHI_CommandList::EndOcclusionQuery(const uint32_t index)
-    {
-        vkCmdEndQuery(
-            static_cast<VkCommandBuffer>(m_rhi_resource),
-            static_cast<VkQueryPool>(m_rhi_query_pool_occlusion),
-            index
-        );
     }
 
     void RHI_CommandList::OnPreDrawDispatch()
