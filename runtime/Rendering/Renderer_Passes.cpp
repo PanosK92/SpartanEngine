@@ -50,7 +50,7 @@ namespace Spartan
         #define thread_group_count_y(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetHeight()) / thread_group_count))
 
         // visibility
-        array<Entity*, occlussion_max_entities> visibility_occluders;
+        array<Entity*, rhi_max_queries_occlusion> visibility_occluders;
         unordered_map<uint64_t, Rectangle> visibility_rectangles;
 
         // called by: Pass_ShadowMaps(), Pass_Depth_Prepass(), Pass_GBuffer()
@@ -537,7 +537,7 @@ namespace Spartan
             if (entities.empty())
                 continue;
 
-            // define pipeline state
+            // set pipeline state
             static RHI_PipelineState pso;
             pso.name                        = !is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent";
             pso.instancing                  = i == 1 || i == 3;
@@ -552,10 +552,16 @@ namespace Spartan
 
             for (shared_ptr<Entity>& entity : entities)
             {
-                // when async loading certain things can be null
+                // when async renderable can be null
                 shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                if (!renderable || !renderable->ReadyToRender() || !renderable->IsVisible())
+                if (!renderable || !renderable->ReadyToRender())
                     continue;
+
+                bool is_visible = renderable->IsFlagSet(RenderableFlags::IsInViewFrustum);
+                if (!is_visible)
+                    continue;
+
+                renderable->SetFlag(IsOccludee, cmd_list->GetOcclusionQueryResult(renderable->GetOcclusionQueryId()));
 
                 // set cull mode
                 cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
@@ -593,7 +599,9 @@ namespace Spartan
                     PushPassConstants(cmd_list);
                 }
 
+                renderable->SetOcclusionQueryId(cmd_list->BeginOcclusionQuery());
                 draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
+                cmd_list->EndOcclusionQuery();
             }
         }
 
@@ -602,7 +610,8 @@ namespace Spartan
             cmd_list->Blit(
                 GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get(),
                 GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_opaque).get(),
-                false);
+                false
+            );
         }
 
         cmd_list->EndTimeblock();
@@ -667,9 +676,13 @@ namespace Spartan
 
             for (shared_ptr<Entity>& entity : entities)
             {
-                // when async loading certain things can be null (also frustum cull)
+                // when async loading certain renderable  can be null
                 shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                if (!renderable || !renderable->ReadyToRender() || !renderable->IsVisible())
+                if (!renderable || !renderable->ReadyToRender())
+                    continue;
+
+                bool is_visible = renderable->IsFlagSet(RenderableFlags::IsInViewFrustum) && !renderable->IsFlagSet(RenderableFlags::IsOccludee);
+                if (!is_visible)
                     continue;
 
                 // set cull mode
