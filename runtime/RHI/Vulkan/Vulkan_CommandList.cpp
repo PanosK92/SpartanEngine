@@ -437,6 +437,7 @@ namespace Spartan
         SP_ASSERT_MSG(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource), &begin_info) == VK_SUCCESS, "Failed to begin command buffer");
 
         // reset query pool - has to be done after vkBeginCommandBuffer or a VK_DEVICE_LOST will occur
+        if (m_queue_type != RHI_Queue_Type::Copy)
         {
             if (m_queries_index_timestamp != 0 || m_first_run)
             {
