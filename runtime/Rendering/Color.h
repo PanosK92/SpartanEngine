@@ -54,7 +54,7 @@ namespace Spartan
 
         const float* Data() const { return &r; }
 
-        // Standard
+        // standard
         static const Color standard_black;
         static const Color standard_white;
         static const Color standard_transparent;
@@ -62,8 +62,9 @@ namespace Spartan
         static const Color standard_green;
         static const Color standard_blue;
         static const Color standard_cornflower_blue;
+        static const Color standard_renderer_lines;
 
-        // Materials
+        // materials
         static const Color material_aluminum;
         static const Color material_blood;
         static const Color material_bone;
@@ -117,7 +118,7 @@ namespace Spartan
         static const Color material_water;
         static const Color material_zinc;
 
-        // Lights
+        // lights
         static const Color light_sky_clear;
         static const Color light_sky_daylight_overcast;
         static const Color light_sky_moonlight;

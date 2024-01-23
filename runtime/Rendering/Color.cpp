@@ -95,7 +95,7 @@ namespace Spartan
         temperature_to_color(temperature_kelvin, r, g, b);
     }
 
-    // Standard
+    // standard
     const Color Color::standard_black           = Color(0.0f, 0.0f, 0.0f, 1.0f);
     const Color Color::standard_white           = Color(1.0f, 1.0f, 1.0f, 1.0f);
     const Color Color::standard_transparent     = Color(0.0f, 0.0f, 0.0f, 0.0f);
@@ -103,8 +103,9 @@ namespace Spartan
     const Color Color::standard_green           = Color(0.0f, 1.0f, 0.0f, 1.0f);
     const Color Color::standard_blue            = Color(0.0f, 0.0f, 1.0f, 1.0f);
     const Color Color::standard_cornflower_blue = Color(0.396f, 0.611f, 0.937f, 1.0f);
+    const Color Color::standard_renderer_lines  = Color(0.41f, 0.86f, 1.0f, 1.0f);
 
-    // Materials
+    // materials
     const Color Color::material_aluminum        = Color(0.912f, 0.914f, 0.920f); // Metallic: 1.0
     const Color Color::material_blood           = Color(0.644f, 0.003f, 0.005f);
     const Color Color::material_bone            = Color(0.793f, 0.793f, 0.664f);
@@ -158,7 +159,7 @@ namespace Spartan
     const Color Color::material_water           = Color(1.000f, 1.000f, 1.000f);
     const Color Color::material_zinc            = Color(0.875f, 0.867f, 0.855f);
 
-    // Lights
+    //lights
     const Color Color::light_sky_clear              = Color(15000); // Intensity: 20000  lx
     const Color Color::light_sky_daylight_overcast  = Color(6500);  // Intensity: 2000   lx
     const Color Color::light_sky_moonlight          = Color(4000);  // Intensity: 0.1    lx

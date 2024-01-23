@@ -497,10 +497,7 @@ namespace Spartan
 
         // api calls
         oss_metrics << "\nAPI calls" << endl;
-            if (granularity == ProfilerGranularity::Full)
-            {
-                oss_metrics << "Draw:\t\t\t\t\t\t\t\t\t" << m_rhi_draw << endl;
-            }
+        oss_metrics << "Draw:\t\t\t\t\t\t\t\t\t" << m_rhi_draw << endl;
         oss_metrics
             << "Index buffer bindings:\t\t"  << m_rhi_bindings_buffer_index   << endl
             << "Vertex buffer bindings:\t"   << m_rhi_bindings_buffer_vertex  << endl

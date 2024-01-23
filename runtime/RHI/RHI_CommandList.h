@@ -129,9 +129,13 @@ namespace Spartan
         void EndTimestamp();
         float GetTimestampDuration(const uint32_t timestamp_index);
 
-        // timeblocks (Markers + Timestamps)
+        // timeblocks (markers + timestamps)
         void BeginTimeblock(const char* name, const bool gpu_marker = true, const bool gpu_timing = true);
         void EndTimeblock();
+
+        // occlusion queries
+        void BeginOcclusionQuery(const uint32_t index);
+        void EndOcclusionQuery(const uint32_t index);
 
         // state
         const RHI_CommandListState GetState() const { return m_state; }
@@ -179,8 +183,9 @@ namespace Spartan
         RHI_PipelineState m_pso;
 
         // rhi resources
-        void* m_rhi_resource          = nullptr;
-        void* m_rhi_cmd_pool_resource = nullptr;
-        void* m_rhi_query_pool        = nullptr;
+        void* m_rhi_resource              = nullptr;
+        void* m_rhi_cmd_pool_resource     = nullptr;
+        void* m_rhi_query_pool_timestamps = nullptr;
+        void* m_rhi_query_pool_occlusion  = nullptr;
     };
 }

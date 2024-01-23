@@ -319,33 +319,49 @@ namespace Spartan
 
         // command buffer
         {
+            // define
             VkCommandBufferAllocateInfo allocate_info = {};
             allocate_info.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
             allocate_info.commandPool                 = static_cast<VkCommandPool>(cmd_pool);
             allocate_info.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
             allocate_info.commandBufferCount          = 1;
 
-            // Allocate
+            // allocate
             SP_VK_ASSERT_MSG(vkAllocateCommandBuffers(RHI_Context::device, &allocate_info, reinterpret_cast<VkCommandBuffer*>(&m_rhi_resource)),
                 "Failed to allocate command buffer");
 
-            // Name
+            // name
             RHI_Device::SetResourceName(static_cast<void*>(m_rhi_resource), RHI_Resource_Type::CommandList, name);
         }
 
-        // query pool
-        if (Profiler::IsGpuTimingEnabled())
+        // query pools
         {
-            VkQueryPoolCreateInfo query_pool_create_info = {};
-            query_pool_create_info.sType                 = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
-            query_pool_create_info.queryType             = VK_QUERY_TYPE_TIMESTAMP;
-            query_pool_create_info.queryCount            = m_max_timestamps;
+            // timestamps
+            if (Profiler::IsGpuTimingEnabled())
+            {
+                VkQueryPoolCreateInfo query_pool_create_info = {};
+                query_pool_create_info.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+                query_pool_create_info.queryType = VK_QUERY_TYPE_TIMESTAMP;
+                query_pool_create_info.queryCount = m_max_timestamps;
 
-            auto query_pool = reinterpret_cast<VkQueryPool*>(&m_rhi_query_pool);
-            SP_VK_ASSERT_MSG(vkCreateQueryPool(RHI_Context::device, &query_pool_create_info, nullptr, query_pool),
-                "Failed to created query pool");
+                auto query_pool = reinterpret_cast<VkQueryPool*>(&m_rhi_query_pool_timestamps);
+                SP_VK_ASSERT_MSG(vkCreateQueryPool(RHI_Context::device, &query_pool_create_info, nullptr, query_pool),
+                    "Failed to created timestamp query pool");
 
-            m_timestamps.fill(0);
+                m_timestamps.fill(0);
+            }
+
+            // occlusion
+            {
+                VkQueryPoolCreateInfo query_pool_info = {};
+                query_pool_info.sType                 = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+                query_pool_info.queryType             = VK_QUERY_TYPE_OCCLUSION;
+                query_pool_info.queryCount            = occlussion_max_entities;
+
+                VkQueryPool query_pool;
+                SP_VK_ASSERT_MSG(vkCreateQueryPool(RHI_Context::device, &query_pool_info, nullptr, &query_pool),
+                    "Failed to created occlusion query pool");
+            }
         }
 
         // sync objects
@@ -364,10 +380,10 @@ namespace Spartan
         m_proccessed_fence     = nullptr;
         m_proccessed_semaphore = nullptr;
 
-        if (m_rhi_query_pool)
+        if (m_rhi_query_pool_timestamps)
         {
-            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::QueryPool, m_rhi_query_pool);
-            m_rhi_query_pool = nullptr;
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::QueryPool, m_rhi_query_pool_timestamps);
+            m_rhi_query_pool_timestamps = nullptr;
         }
     }
 
@@ -386,7 +402,7 @@ namespace Spartan
 
                 vkGetQueryPoolResults(
                     RHI_Context::device,                        // device
-                    static_cast<VkQueryPool>(m_rhi_query_pool), // queryPool
+                    static_cast<VkQueryPool>(m_rhi_query_pool_timestamps), // queryPool
                     0,                                          // firstQuery
                     query_count,                                // queryCount
                     query_count * stride,                       // dataSize
@@ -408,7 +424,7 @@ namespace Spartan
         // reset query pool - has to be done after vkBeginCommandBuffer or a VK_DEVICE_LOST will occur
         if (Profiler::IsGpuTimingEnabled() && m_queue_type != RHI_Queue_Type::Copy)
         {
-            vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkQueryPool>(m_rhi_query_pool), 0, m_max_timestamps);
+            vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkQueryPool>(m_rhi_query_pool_timestamps), 0, m_max_timestamps);
         }
 
         // update states
@@ -776,10 +792,7 @@ namespace Spartan
             0                                             // firstInstance
         );
 
-        if (Profiler::GetGranularity() == ProfilerGranularity::Full)
-        {
-            Profiler::m_rhi_draw++;
-        }
+        Profiler::m_rhi_draw++;
     }
 
     void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset, const uint32_t instance_start_index, const uint32_t instance_count)
@@ -796,10 +809,7 @@ namespace Spartan
             instance_start_index                          // firstInstance
         );
 
-        if (Profiler::GetGranularity() == ProfilerGranularity::Full)
-        {
-            Profiler::m_rhi_draw++;
-        }
+        Profiler::m_rhi_draw++;
     }
 
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/, bool async /*= false*/)
@@ -1319,7 +1329,7 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         uint32_t timestamp_index = m_timestamp_index;
-        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_rhi_query_pool), m_timestamp_index++);
+        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_rhi_query_pool_timestamps), m_timestamp_index++);
 
         return timestamp_index;
     }
@@ -1328,7 +1338,7 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_rhi_query_pool), m_timestamp_index++);
+        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_rhi_query_pool_timestamps), m_timestamp_index++);
     }
 
     float RHI_CommandList::GetTimestampDuration(const uint32_t timestamp_index)
@@ -1401,6 +1411,25 @@ namespace Spartan
         }
 
         m_timeblock_active = nullptr;
+    }
+
+    void RHI_CommandList::BeginOcclusionQuery(const uint32_t index)
+    {
+        vkCmdBeginQuery(
+            static_cast<VkCommandBuffer>(m_rhi_resource),
+            static_cast<VkQueryPool>(m_rhi_query_pool_occlusion),
+            index,
+            0
+        );
+    }
+
+    void RHI_CommandList::EndOcclusionQuery(const uint32_t index)
+    {
+        vkCmdEndQuery(
+            static_cast<VkCommandBuffer>(m_rhi_resource),
+            static_cast<VkQueryPool>(m_rhi_query_pool_occlusion),
+            index
+        );
     }
 
     void RHI_CommandList::OnPreDrawDispatch()
