@@ -408,7 +408,6 @@ namespace Spartan
                     sizeof(uint64_t),                                      // stride
                     VK_QUERY_RESULT_64_BIT                                 // flags
                 );
-
             }
 
             // occlusion

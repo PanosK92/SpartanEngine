@@ -19,20 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
+//= INCLUDES ===============
 #include "pch.h"
 #include "RHI_CommandList.h"
-#include "RHI_Device.h"
 #include "RHI_Fence.h"
-#include "RHI_Semaphore.h"
-#include "RHI_DescriptorSetLayout.h"
-#include "RHI_Shader.h"
-#include "RHI_Pipeline.h"
-#include "RHI_CommandPool.h"
-#include "RHI_VertexBuffer.h"
-#include "RHI_IndexBuffer.h"
-#include "../Rendering/Renderer.h"
-//==================================
+//==========================
 
 //= NAMESPACES =====
 using namespace std;
@@ -44,13 +35,13 @@ namespace Spartan
     {
         SP_ASSERT_MSG(m_state == RHI_CommandListState::Submitted, "The command list hasn't been submitted, can't wait for it.");
 
-        // Wait for execution to finish
+        // wait for execution to finish
         if (IsExecuting())
         {
             SP_ASSERT_MSG(m_proccessed_fence->Wait(), "Timed out while waiting for the fence");
         }
 
-        // Reset fence
+        // reset fence
         if (m_proccessed_fence->GetStateCpu() == RHI_Sync_State::Submitted)
         {
             m_proccessed_fence->Reset();

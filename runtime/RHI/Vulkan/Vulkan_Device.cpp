@@ -300,8 +300,12 @@ namespace Spartan
             void* p_user_data
         )
         {
-            // temporary, FidelityFX SDK has issues, don't want to be spamed until they are fixed
+            // temporary, FidelityFX SDK has issues, prevent spaming utill they fix their SDK
             if (strstr(p_callback_data->pMessage, "fsr2") != nullptr)
+                return VK_FALSE;
+
+            // temporary, latest SDK is catching some new hazard sync issues, prevent spaming utill fixed
+            if (strstr(p_callback_data->pMessage, "hazard") != nullptr)
                 return VK_FALSE;
 
             string msg = "Vulkan: " + string(p_callback_data->pMessage);
