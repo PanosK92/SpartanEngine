@@ -47,8 +47,8 @@ namespace Spartan
     enum RenderableFlags : uint32_t
     {
         InViewFrustum               = 1U << 0,
-        Occluded                    = 1U << 1,
-        NeedsHardwareOcclusionQuery = 1U << 2,
+        Occludee                    = 1U << 1,
+        Occluder                    = 1U << 2,
         CastsShadows                = 1U << 3
     };
 

@@ -164,8 +164,10 @@ namespace Spartan
         std::array<uint64_t, rhi_max_queries_timestmaps> m_queries_timestamps;
         uint32_t m_queries_index_timestamp = 0;
         bool m_first_run                   = true;
+        bool m_queries_timestamps_ready    = false;
         std::array<uint64_t, rhi_max_queries_occlusion> m_queries_occlusion;
         uint32_t m_queries_index_occlusion = 0;
+        bool m_queries_occlusion_ready     = false;
 
         // variables to minimise state changes
         uint64_t m_vertex_buffer_id = 0;
