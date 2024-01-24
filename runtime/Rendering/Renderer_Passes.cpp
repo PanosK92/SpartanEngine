@@ -537,7 +537,7 @@ namespace Spartan
 
             // deduce depth-stencil state
             Renderer_DepthStencilState depth_stencil_state = Renderer_DepthStencilState::Depth_read_write_stencil_read;
-            //depth_stencil_state                            = is_occludee_pass ? Renderer_DepthStencilState::Depth_read : depth_stencil_state;
+            depth_stencil_state                            = is_occludee_pass ? Renderer_DepthStencilState::Depth_read : depth_stencil_state;
 
             // deduce clear depth value
             float clear_depth = depth_load ? rhi_depth_load : 0.0f;
@@ -583,7 +583,7 @@ namespace Spartan
                 if (!render)
                     continue;
 
-                if (renderable->HasFlag(RenderableFlags::Occludee))
+                if (is_occludee_pass)
                 {
                     // get last known results - typically a frame behind, but due to the real time cpu screen
                     // testing of Pass_Visibility() limit this latency to certain pixels instead of everything

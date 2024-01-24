@@ -309,12 +309,18 @@ namespace Spartan
                 Profiler::m_rhi_bindings_descriptor_set++;
             }
         }
+
+        namespace queries
+        {
+            array<uint64_t, rhi_max_queries_timestmaps> timestamps;
+            array<uint64_t, rhi_max_queries_occlusion> occlusion;
+        }
     }
 
     RHI_CommandList::RHI_CommandList(const RHI_Queue_Type queue_type, const uint64_t swapchain_id, void* cmd_pool, const char* name) : SpObject()
     {
-        m_queries_timestamps.fill(0);
-        m_queries_occlusion.fill(0);
+        queries::timestamps.fill(0);
+        queries::occlusion.fill(0);
         m_queue_type  = queue_type;
         m_object_name = name;
 
@@ -394,9 +400,9 @@ namespace Spartan
         if (m_queue_type != RHI_Queue_Type::Copy)
         {
             // timestamps
-            if (Profiler::IsGpuTimingEnabled() && m_queries_index_timestamp != 0)
+            if (Profiler::IsGpuTimingEnabled() && m_timestamp_index != 0)
             {
-                const uint32_t query_count = m_queries_index_timestamp;
+                const uint32_t query_count = m_timestamp_index;
             
                 vkGetQueryPoolResults(
                     RHI_Context::device,                                   // device
@@ -404,14 +410,14 @@ namespace Spartan
                     0,                                                     // firstQuery
                     query_count,                                           // queryCount
                     query_count * sizeof(uint64_t),                        // dataSize
-                    m_queries_timestamps.data(),                           // pData
+                    queries::timestamps.data(),                            // pData
                     sizeof(uint64_t),                                      // stride
                     VK_QUERY_RESULT_64_BIT                                 // flags
                 );
             }
 
             // occlusion
-            if (m_queries_occlusion_dirty)
+            if (m_occlusion_dirty)
             {
                 const uint32_t query_count = rhi_max_queries_occlusion;
 
@@ -421,7 +427,7 @@ namespace Spartan
                     0,                                                    // firstQuery
                     query_count,                                          // queryCount
                     query_count * sizeof(uint64_t),                       // dataSize
-                    m_queries_occlusion.data(),                           // pData
+                    queries::occlusion.data(),                            // pData
                     sizeof(uint64_t),                                     // stride
                     VK_QUERY_RESULT_64_BIT                                // flags
                 );
@@ -437,19 +443,19 @@ namespace Spartan
         // reset query pool - has to be done after vkBeginCommandBuffer or a VK_DEVICE_LOST will occur
         if (m_queue_type != RHI_Queue_Type::Copy)
         {
-            if (m_queries_index_timestamp != 0 || m_first_run)
+            if (m_timestamp_index != 0 || m_timestamp_first_run)
             {
                 vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkQueryPool>(m_rhi_query_pool_timestamps), 0, rhi_max_queries_timestmaps);
-                m_queries_index_timestamp = 0;
+                m_timestamp_index = 0;
 
                 // per Vulkan, queries need to be reset if this the first time they are about to be used
-                m_first_run = false;
+                m_timestamp_first_run = false;
             }
 
-            if (m_queries_occlusion_dirty)
+            if (m_occlusion_dirty)
             {
                 vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkQueryPool>(m_rhi_query_pool_occlusion), 0, rhi_max_queries_occlusion);
-                m_queries_occlusion_dirty = false;
+                m_occlusion_dirty = false;
             }
         }
 
@@ -1354,13 +1360,13 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        uint32_t timestamp_index = m_queries_index_timestamp;
+        uint32_t timestamp_index = m_timestamp_index;
 
         vkCmdWriteTimestamp(
             static_cast<VkCommandBuffer>(m_rhi_resource),
             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
             static_cast<VkQueryPool>(m_rhi_query_pool_timestamps),
-            m_queries_index_timestamp++
+            m_timestamp_index++
         );
 
         return timestamp_index;
@@ -1374,16 +1380,16 @@ namespace Spartan
             static_cast<VkCommandBuffer>(m_rhi_resource),
             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
             static_cast<VkQueryPool>(m_rhi_query_pool_timestamps),
-            m_queries_index_timestamp++
+            m_timestamp_index++
         );
     }
 
     float RHI_CommandList::GetTimestampResult(const uint32_t index_timestamp)
     {
-        SP_ASSERT_MSG(index_timestamp + 1 < m_queries_timestamps.size(), "index out of range");
+        SP_ASSERT_MSG(index_timestamp + 1 < queries::timestamps.size(), "index out of range");
 
-        uint64_t start    = m_queries_timestamps[index_timestamp];
-        uint64_t end      = m_queries_timestamps[index_timestamp + 1];
+        uint64_t start    = queries::timestamps[index_timestamp];
+        uint64_t end      = queries::timestamps[index_timestamp + 1];
         uint64_t duration = Math::Helper::Clamp<uint64_t>(end - start, 0, numeric_limits<uint64_t>::max());
         float duration_ms = static_cast<float>(duration * RHI_Device::PropertyGetTimestampPeriod() * 1e-6f);
 
@@ -1412,13 +1418,13 @@ namespace Spartan
             index
         );
 
-        m_queries_occlusion_dirty = true;
+        m_occlusion_dirty = true;
     }
 
     bool RHI_CommandList::GetOcclusionQueryResult(const uint64_t id)
     {
         uint32_t index  = id % rhi_max_queries_occlusion; // todo: create a reliable index
-        uint64_t result = m_queries_occlusion[index];
+        uint64_t result = queries::occlusion[index];
 
         return result == 0;
     }
