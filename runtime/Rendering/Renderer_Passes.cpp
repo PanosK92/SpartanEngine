@@ -501,14 +501,14 @@ namespace Spartan
             }
         }
 
-        // 4. gpu: hardware occlusion queries only for what is an occludee/occluder
-        bool is_occlusion = true;
-        Pass_Depth_Prepass(cmd_list, false, is_occlusion);
+        // 4. gpu: hardware occlusion queries only for what participates in occlusion
+        Pass_Depth_Prepass(cmd_list, false, RenderableFlags::Occluder); // draw occluders
+        Pass_Depth_Prepass(cmd_list, false, RenderableFlags::Occludee); // draw and test occludees
 
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass, const bool is_occlusion_pass)
+    void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass, const uint32_t flags)
     {
         // acquire shaders
         RHI_Shader* shader_v           = GetShader(Renderer_Shader::depth_prepass_v).get();
@@ -517,6 +517,9 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_instanced_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
+        bool is_occlusion_pass = flags != 0;
+        bool is_occluder_pass  = flags & RenderableFlags::Occluder;
+        bool is_occludee_pass  = flags & RenderableFlags::Occludee;
         if (!is_occlusion_pass)
         {
             cmd_list->BeginTimeblock(!is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent");
@@ -532,6 +535,14 @@ namespace Spartan
             if (entities.empty())
                 continue;
 
+            // deduce depth-stencil state
+            Renderer_DepthStencilState depth_stencil_state = Renderer_DepthStencilState::Depth_read_write_stencil_read;
+            //depth_stencil_state                            = is_occludee_pass ? Renderer_DepthStencilState::Depth_read : depth_stencil_state;
+
+            // deduce clear depth value
+            float clear_depth = depth_load ? rhi_depth_load : 0.0f;
+            clear_depth       = is_occluder_pass ? 0.0f : clear_depth;
+
             // set pipeline state
             static RHI_PipelineState pso;
             pso.name                        = !is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent";
@@ -540,9 +551,9 @@ namespace Spartan
             pso.shader_pixel                = shader_p; // alpha testing
             pso.rasterizer_state            = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
             pso.blend_state                 = GetBlendState(Renderer_BlendState::Disabled).get();
-            pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
+            pso.depth_stencil_state         = GetDepthStencilState(depth_stencil_state).get();
             pso.render_target_depth_texture = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
-            pso.clear_depth                 = is_occlusion_pass ? 0.0f : (depth_load ? rhi_depth_load : 0.0f); // reverse-z
+            pso.clear_depth                 = clear_depth;
             cmd_list->SetPipelineState(pso);
 
             for (shared_ptr<Entity>& entity : entities)
@@ -559,18 +570,25 @@ namespace Spartan
                 }
                 else // if it participates in occlusion
                 {
-                    render = renderable->HasFlag(RenderableFlags::Occludee) || renderable->HasFlag(RenderableFlags::Occluder);
-
-                    if (renderable->HasFlag(RenderableFlags::Occludee))
+                    if (is_occluder_pass)
                     {
-                        // get last known results - typically a frame behind, but due to the real time cpu screen
-                        // testing of Pass_Visibility() limit this latency to certain pixels instead of everything
-                        renderable->SetFlag(RenderableFlags::Occludee, cmd_list->GetOcclusionQueryResult(renderable->GetObjectId()));
+                        render = renderable->HasFlag(RenderableFlags::Occluder);
+                    }
+                    else if (is_occludee_pass)
+                    {
+                        render = renderable->HasFlag(RenderableFlags::Occludee);
                     }
                 }
 
                 if (!render)
                     continue;
+
+                if (renderable->HasFlag(RenderableFlags::Occludee))
+                {
+                    // get last known results - typically a frame behind, but due to the real time cpu screen
+                    // testing of Pass_Visibility() limit this latency to certain pixels instead of everything
+                    renderable->SetFlag(RenderableFlags::Occludee, cmd_list->GetOcclusionQueryResult(renderable->GetObjectId()));
+                }
 
                 // set cull mode
                 cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
@@ -596,7 +614,6 @@ namespace Spartan
                             material->GetProperty(MaterialProperty::ColorA)
                         );
 
-
                         m_cb_frame_cpu.material_index = material->GetIndex();
                         UpdateConstantBufferFrame(cmd_list);
 
@@ -608,14 +625,14 @@ namespace Spartan
                     PushPassConstants(cmd_list);
                 }
 
-                if (is_occlusion_pass)
+                if (is_occludee_pass)
                 {
                     cmd_list->BeginOcclusionQuery(renderable->GetObjectId());
                 }
 
                 draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
 
-                if (is_occlusion_pass)
+                if (is_occludee_pass)
                 {
                     cmd_list->EndOcclusionQuery(renderable->GetObjectId());
                 }
