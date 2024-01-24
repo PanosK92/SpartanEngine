@@ -52,6 +52,7 @@ namespace Spartan
         // visibility
         array<Entity*, rhi_max_queries_occlusion> visibility_occluders;
         unordered_map<uint64_t, Rectangle> visibility_rectangles;
+        bool depth_load = false;
 
         // called by: Pass_ShadowMaps(), Pass_Depth_Prepass(), Pass_GBuffer()
         void draw_renderable(RHI_CommandList* cmd_list, RHI_PipelineState& pso, Camera* camera, Renderable* renderable, Light* light = nullptr, uint32_t array_index = 0)
@@ -363,8 +364,7 @@ namespace Spartan
     {
         // forest cpu time: 0.09 ms
 
-        bool gpu = false; // only measure cpu time
-        cmd_list->BeginTimeblock("visibility", gpu, gpu);
+        cmd_list->BeginTimeblock("visibility");
 
         // clear previous data
         visibility_occluders.fill(nullptr);
@@ -430,8 +430,8 @@ namespace Spartan
                     continue;
 
                 // reset flags
-                renderable->SetFlag(RenderableFlags::Occluded,                    false);
-                renderable->SetFlag(RenderableFlags::NeedsHardwareOcclusionQuery, false);
+                renderable->SetFlag(RenderableFlags::Occludee, false);
+                renderable->SetFlag(RenderableFlags::Occluder, false);
 
                 // frustum check
                 renderable->SetFlag(RenderableFlags::InViewFrustum, GetCamera()->IsInViewFrustum(renderable));
@@ -452,7 +452,8 @@ namespace Spartan
             }
         }
 
-        // 3. cpu: do fast approximate visibility tests
+        // 3. cpu: do fast cpu visibility
+        depth_load = false;
         for (uint32_t i = start_index; i < end_index; i++)
         {
             auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
@@ -494,16 +495,11 @@ namespace Spartan
                     if (occluder_height > viewport_height * 0.5f)
                         continue;
 
-                    // screen space test
                     if (rectangle_occluder.Contains(rectangle_occludee))
                     {
-                        // get previous results - typically a frame behind, the latency is hidden though since we do all this real-time cpu work
-                        renderable_occludee->SetFlag(Occluded, cmd_list->GetOcclusionQueryResult(renderable_occludee->GetOcclusionQueryId()));
-                        renderable_occluder->SetFlag(Occluded, cmd_list->GetOcclusionQueryResult(renderable_occluder->GetOcclusionQueryId()));
-
-                        // request new occlusion query
-                        renderable_occludee->SetFlag(RenderableFlags::NeedsHardwareOcclusionQuery);
-                        renderable_occluder->SetFlag(RenderableFlags::NeedsHardwareOcclusionQuery);
+                        renderable_occludee->SetFlag(RenderableFlags::Occludee, true);
+                        renderable_occluder->SetFlag(RenderableFlags::Occluder, true);
+                        depth_load = true;
 
                         break;
                     }
@@ -511,13 +507,14 @@ namespace Spartan
             }
         }
 
-        cmd_list->EndTimeblock();
+        // 4. gpu: hardware occlusion queries only for what is an occludee/occluder
+        bool is_occlusion = true;
+        Pass_Depth_Prepass(cmd_list, false, is_occlusion);
 
-        // 4. gpu: Pass_Depth_Prepass() will do hardware occlusion queries for anything marked with NeedsOcclusionQuery
-        
+        cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass)
+    void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass, const bool is_occlusion_pass)
     {
         // acquire shaders
         RHI_Shader* shader_v           = GetShader(Renderer_Shader::depth_prepass_v).get();
@@ -526,7 +523,10 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_instanced_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock(!is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent");
+        if (!is_occlusion_pass)
+        {
+            cmd_list->BeginTimeblock(!is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent");
+        }
 
         uint32_t start_index = !is_transparent_pass ? 0 : 2;
         uint32_t end_index   = !is_transparent_pass ? 2 : 4;
@@ -548,7 +548,7 @@ namespace Spartan
             pso.blend_state                 = GetBlendState(Renderer_BlendState::Disabled).get();
             pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
             pso.render_target_depth_texture = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
-            pso.clear_depth                 = (is_transparent_pass || pso.instancing) ? rhi_depth_load : 0.0f; // reverse-z
+            pso.clear_depth                 = is_occlusion_pass ? 0.0f : (depth_load ? rhi_depth_load : 0.0f); // reverse-z
             cmd_list->SetPipelineState(pso);
 
             for (shared_ptr<Entity>& entity : entities)
@@ -558,8 +558,24 @@ namespace Spartan
                 if (!renderable || !renderable->ReadyToRender())
                     continue;
 
-                bool is_visible = renderable->HasFlag(RenderableFlags::InViewFrustum);
-                if (!is_visible)
+                bool render = false;
+                if (!is_occlusion_pass) // if it's visible
+                {
+                   render = renderable->HasFlag(RenderableFlags::InViewFrustum) && !renderable->HasFlag(RenderableFlags::Occludee);
+                }
+                else // if it participates in occlusion
+                {
+                    render = renderable->HasFlag(RenderableFlags::Occludee) || renderable->HasFlag(RenderableFlags::Occluder);
+
+                    if (renderable->HasFlag(RenderableFlags::Occludee))
+                    {
+                        // get last known results - typically a frame behind, but due to the real time cpu screen
+                        // testing of Pass_Visibility() limit this latency to certain pixels instead of everything
+                        renderable->SetFlag(RenderableFlags::Occludee, cmd_list->GetOcclusionQueryResult(renderable->GetOcclusionQueryId()));
+                    }
+                }
+
+                if (!render)
                     continue;
 
                 // set cull mode
@@ -598,30 +614,33 @@ namespace Spartan
                     PushPassConstants(cmd_list);
                 }
 
-                if (renderable->HasFlag(NeedsHardwareOcclusionQuery))
+                if (is_occlusion_pass)
                 {
                     renderable->SetOcclusionQueryId(cmd_list->BeginOcclusionQuery());
                 }
 
                 draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
 
-                if (renderable->HasFlag(NeedsHardwareOcclusionQuery))
+                if (is_occlusion_pass)
                 {
                     cmd_list->EndOcclusionQuery();
                 }
             }
         }
 
-        if (!is_transparent_pass)
+        if (!is_occlusion_pass)
         {
-            cmd_list->Blit(
-                GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get(),
-                GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_opaque).get(),
-                false
-            );
-        }
+            if (!is_transparent_pass)
+            {
+                cmd_list->Blit(
+                    GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get(),
+                    GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_opaque).get(),
+                    false
+                );
+            }
 
-        cmd_list->EndTimeblock();
+            cmd_list->EndTimeblock();
+        }
     }
 
     void Renderer::Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass)
@@ -688,7 +707,7 @@ namespace Spartan
                 if (!renderable || !renderable->ReadyToRender())
                     continue;
 
-                bool is_visible = renderable->HasFlag(RenderableFlags::InViewFrustum) && !renderable->HasFlag(RenderableFlags::Occluded);
+                bool is_visible = renderable->HasFlag(RenderableFlags::InViewFrustum) && !renderable->HasFlag(RenderableFlags::Occludee);
                 if (!is_visible)
                     continue;
 

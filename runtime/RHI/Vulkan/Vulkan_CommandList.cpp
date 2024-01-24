@@ -398,7 +398,7 @@ namespace Spartan
             {
                 const uint32_t query_count = m_queries_index_timestamp;
             
-                vkGetQueryPoolResults(
+                m_queries_timestamps_ready = vkGetQueryPoolResults(
                     RHI_Context::device,                                   // device
                     static_cast<VkQueryPool>(m_rhi_query_pool_timestamps), // queryPool
                     0,                                                     // firstQuery
@@ -407,7 +407,7 @@ namespace Spartan
                     m_queries_timestamps.data(),                           // pData
                     sizeof(uint64_t),                                      // stride
                     VK_QUERY_RESULT_64_BIT                                 // flags
-                );
+                ) == VkResult::VK_NOT_READY;
             }
 
             // occlusion
@@ -415,7 +415,7 @@ namespace Spartan
             {
                 const uint32_t query_count = m_queries_index_occlusion;
 
-                vkGetQueryPoolResults(
+                m_queries_occlusion_ready = vkGetQueryPoolResults(
                     RHI_Context::device,                                  // device
                     static_cast<VkQueryPool>(m_rhi_query_pool_occlusion), // queryPool
                     0,                                                    // firstQuery
@@ -424,7 +424,7 @@ namespace Spartan
                     m_queries_occlusion.data(),                           // pData
                     sizeof(uint64_t),                                     // stride
                     VK_QUERY_RESULT_64_BIT                                // flags
-                );
+                ) == VkResult::VK_NOT_READY;
 
                 m_queries_index_occlusion = 0;
             }
