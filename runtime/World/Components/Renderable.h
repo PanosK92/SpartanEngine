@@ -107,8 +107,6 @@ namespace Spartan
         uint32_t GetVertexOffset() const { return m_geometry_vertex_offset; }
         uint32_t GetVertexCount() const  { return m_geometry_vertex_count; }
         bool ReadyToRender() const;
-        void SetOcclusionQueryId(const uint32_t id) { m_occlusion_query_id = id; }
-        uint32_t GetOcclusionQueryId() const        { return m_occlusion_query_id; }
 
         // flags
         bool HasFlag(const RenderableFlags flag) { return m_flags & flag; }
@@ -139,6 +137,5 @@ namespace Spartan
         // misc
         Math::Matrix m_transform_previous = Math::Matrix::Identity;
         uint32_t m_flags                  = RenderableFlags::InViewFrustum | RenderableFlags::CastsShadows;
-        uint32_t m_occlusion_query_id     = 0;
     };
 }

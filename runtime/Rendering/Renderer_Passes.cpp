@@ -489,12 +489,6 @@ namespace Spartan
                     Rectangle& rectangle_occludee = visibility_rectangles[occludee->GetObjectId()];
                     Rectangle& rectangle_occluder = visibility_rectangles[occluder->GetObjectId()];
 
-                    // edge case 3: occluders that appear disproportionately large on screen due to proximity (perspective distortion)
-                    float viewport_height = Renderer::GetViewport().height;
-                    float occluder_height = rectangle_occluder.bottom - rectangle_occluder.top;
-                    if (occluder_height > viewport_height * 0.5f)
-                        continue;
-
                     if (rectangle_occluder.Contains(rectangle_occludee))
                     {
                         renderable_occludee->SetFlag(RenderableFlags::Occludee, true);
@@ -571,7 +565,7 @@ namespace Spartan
                     {
                         // get last known results - typically a frame behind, but due to the real time cpu screen
                         // testing of Pass_Visibility() limit this latency to certain pixels instead of everything
-                        renderable->SetFlag(RenderableFlags::Occludee, cmd_list->GetOcclusionQueryResult(renderable->GetOcclusionQueryId()));
+                        renderable->SetFlag(RenderableFlags::Occludee, cmd_list->GetOcclusionQueryResult(renderable->GetObjectId()));
                     }
                 }
 
@@ -616,14 +610,14 @@ namespace Spartan
 
                 if (is_occlusion_pass)
                 {
-                    renderable->SetOcclusionQueryId(cmd_list->BeginOcclusionQuery());
+                    cmd_list->BeginOcclusionQuery(renderable->GetObjectId());
                 }
 
                 draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
 
                 if (is_occlusion_pass)
                 {
-                    cmd_list->EndOcclusionQuery();
+                    cmd_list->EndOcclusionQuery(renderable->GetObjectId());
                 }
             }
         }
