@@ -398,7 +398,7 @@ namespace Spartan
             {
                 const uint32_t query_count = m_queries_index_timestamp;
             
-                m_queries_timestamps_ready = vkGetQueryPoolResults(
+                vkGetQueryPoolResults(
                     RHI_Context::device,                                   // device
                     static_cast<VkQueryPool>(m_rhi_query_pool_timestamps), // queryPool
                     0,                                                     // firstQuery
@@ -407,15 +407,15 @@ namespace Spartan
                     m_queries_timestamps.data(),                           // pData
                     sizeof(uint64_t),                                      // stride
                     VK_QUERY_RESULT_64_BIT                                 // flags
-                ) == VkResult::VK_NOT_READY;
+                );
             }
 
             // occlusion
-            if (m_queries_index_occlusion != 0)
+            if (m_queries_occlusion_dirty)
             {
-                const uint32_t query_count = m_queries_index_occlusion;
+                const uint32_t query_count = rhi_max_queries_occlusion;
 
-                m_queries_occlusion_ready = vkGetQueryPoolResults(
+                vkGetQueryPoolResults(
                     RHI_Context::device,                                  // device
                     static_cast<VkQueryPool>(m_rhi_query_pool_occlusion), // queryPool
                     0,                                                    // firstQuery
@@ -424,9 +424,7 @@ namespace Spartan
                     m_queries_occlusion.data(),                           // pData
                     sizeof(uint64_t),                                     // stride
                     VK_QUERY_RESULT_64_BIT                                // flags
-                ) == VkResult::VK_NOT_READY;
-
-                m_queries_index_occlusion = 0;
+                );
             }
         }
 
@@ -448,10 +446,10 @@ namespace Spartan
                 m_first_run = false;
             }
 
-            if (m_queries_index_occlusion != 0)
+            if (m_queries_occlusion_dirty)
             {
                 vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkQueryPool>(m_rhi_query_pool_occlusion), 0, rhi_max_queries_occlusion);
-                m_queries_index_occlusion = 0;
+                m_queries_occlusion_dirty = false;
             }
         }
 
@@ -1392,34 +1390,35 @@ namespace Spartan
         return Math::Helper::Clamp<float>(duration_ms, 0.0f, numeric_limits<float>::max());
     }
 
-    uint32_t RHI_CommandList::BeginOcclusionQuery()
+    void RHI_CommandList::BeginOcclusionQuery(const uint64_t id)
     {
+        uint32_t index = id % rhi_max_queries_occlusion; // todo: create a reliable index
+
         vkCmdBeginQuery(
             static_cast<VkCommandBuffer>(m_rhi_resource),
             static_cast<VkQueryPool>(m_rhi_query_pool_occlusion),
-            m_queries_index_occlusion, // query
-            0                          // flags - is VK_QUERY_CONTROL_PRECISE_BIT really needed? If so, what's the cost?
+            index,
+            VK_QUERY_CONTROL_PRECISE_BIT
         );
-
-        return m_queries_index_occlusion;
     }
 
-    void RHI_CommandList::EndOcclusionQuery()
+    void RHI_CommandList::EndOcclusionQuery(const uint64_t id)
     {
+        uint32_t index = id % rhi_max_queries_occlusion; // todo: create a reliable index
+
         vkCmdEndQuery(
             static_cast<VkCommandBuffer>(m_rhi_resource),
             static_cast<VkQueryPool>(m_rhi_query_pool_occlusion),
-            m_queries_index_occlusion
+            index
         );
 
-        m_queries_index_occlusion++;
+        m_queries_occlusion_dirty = true;
     }
 
-    bool RHI_CommandList::GetOcclusionQueryResult(const uint32_t index_occlusion)
+    bool RHI_CommandList::GetOcclusionQueryResult(const uint64_t id)
     {
-        SP_ASSERT_MSG(index_occlusion + 1 < m_queries_occlusion.size(), "index out of range");
-
-        uint64_t result = m_queries_occlusion[index_occlusion];
+        uint32_t index  = id % rhi_max_queries_occlusion; // todo: create a reliable index
+        uint64_t result = m_queries_occlusion[index];
 
         return result == 0;
     }

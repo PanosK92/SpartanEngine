@@ -51,7 +51,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - Advanced shadow features with penumbra and colored translucency.
 - Physical light units (intensity from lumens and color from kelvin).
 - Comprehensive debug rendering options.
-- Occlusion (software and hardware hybrid) & frustum culling.
+- Frustum & occlusion culling (software and hardware hybrid).
 - Physically based camera.
 - Volumetric fog.
 - Temporal anti-aliasing for smooth visuals.
