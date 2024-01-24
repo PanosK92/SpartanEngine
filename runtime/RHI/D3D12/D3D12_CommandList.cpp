@@ -55,9 +55,8 @@ namespace Spartan
         m_queue_type            = queue_type;
         m_object_name           = name;
         m_rhi_cmd_pool_resource = cmd_pool;
-        m_timestamps.fill(0);
 
-        // Created command list
+        // create command list
         SP_ASSERT_MSG(
             d3d12_utility::error::check(
                 RHI_Context::device->CreateCommandList(
@@ -331,9 +330,24 @@ namespace Spartan
         SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
-    float RHI_CommandList::GetTimestampDuration(const uint32_t timestamp_index)
+    float RHI_CommandList::GetTimestampResult(const uint32_t timestamp_index)
     {
         return 0.0f;
+    }
+
+    uint32_t RHI_CommandList::BeginOcclusionQuery()
+    {
+        return 0;
+    }
+
+    void RHI_CommandList::EndOcclusionQuery()
+    {
+
+    }
+
+    bool RHI_CommandList::GetOcclusionQueryResult(const uint32_t index_occlusion)
+    {
+        return false;
     }
 
     void RHI_CommandList::BeginTimeblock(const char* name, const bool gpu_marker, const bool gpu_timing)
