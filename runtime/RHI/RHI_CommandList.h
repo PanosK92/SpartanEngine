@@ -160,16 +160,14 @@ namespace Spartan
         std::shared_ptr<RHI_Fence> m_proccessed_fence;
         std::shared_ptr<RHI_Semaphore> m_proccessed_semaphore;
 
-        // queries
-        std::array<uint64_t, rhi_max_queries_timestmaps> m_queries_timestamps;
-        uint32_t m_queries_index_timestamp = 0;
-        bool m_first_run                   = true;
-        std::array<uint64_t, rhi_max_queries_occlusion> m_queries_occlusion;
-        bool m_queries_occlusion_dirty     = false;
-
         // variables to minimise state changes
         uint64_t m_vertex_buffer_id = 0;
         uint64_t m_index_buffer_id  = 0;
+
+        // queries
+        bool m_timestamp_first_run = true;
+        uint32_t m_timestamp_index = 0;
+        bool m_occlusion_dirty     = false;
 
         // misc
         RHI_Pipeline* m_pipeline                             = nullptr;
