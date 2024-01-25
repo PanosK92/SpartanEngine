@@ -175,7 +175,7 @@ namespace Spartan
             // opaque
             {
                 Pass_Visibility(cmd_list);
-                Pass_Depth_Prepass(cmd_list);
+                Pass_Depth_Prepass(cmd_list, false);
                 Pass_GBuffer(cmd_list);
                 Pass_Ssgi(cmd_list);
                 Pass_Ssr(cmd_list, rt_render);
@@ -219,7 +219,7 @@ namespace Spartan
         }
         else
         {
-            GetCmdList()->ClearRenderTarget(rt_output, 0, 0, false, Color::standard_black);
+            GetCmdList()->ClearRenderTarget(rt_output, Color::standard_black);
         }
 
         Pass_Text(cmd_list, rt_output);
@@ -448,67 +448,58 @@ namespace Spartan
                 if (rectangle.Width() >= 100.0f && rectangle.Height() > 100.0f)
                 {
                     visibility_occluders[index_entity] = entity.get();
+                    entity->GetComponent<Renderable>()->SetFlag(RenderableFlags::Occluder);
                 }
-            }
-        }
-
-        // 3. cpu: do fast cpu visibility
-        depth_load = false;
-        for (uint32_t i = start_index; i < end_index; i++)
-        {
-            auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
-            if (entities.empty())
-                continue;
-
-            for (shared_ptr<Entity>& occludee : entities)
-            {
-                shared_ptr<Renderable> renderable_occludee = occludee->GetComponent<Renderable>();
-                if (!renderable_occludee || !renderable_occludee->ReadyToRender() || !renderable_occludee->HasFlag(RenderableFlags::InViewFrustum))
-                    continue;
-
-                BoundingBoxType box_type        = renderable_occludee->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                const BoundingBox& box_occludee = renderable_occludee->GetBoundingBox(box_type);
-    
-                for (Entity* occluder : visibility_occluders)
+                else
                 {
-                    if (!occluder || !occluder->GetComponent<Renderable>() || occluder->GetObjectId() == occludee->GetObjectId())
-                        continue;
-
-                    shared_ptr<Renderable> renderable_occluder = occluder->GetComponent<Renderable>();
-                    const BoundingBox& box_occluder            = renderable_occluder->GetBoundingBox(box_type);
-
-                    // edge case 1: the occluder contains or intersects the occludee
-                    if (box_occludee.Intersects(box_occluder) != Intersection::Outside)
-                        continue;
-
-                    // edge case 2: the camera is inside the occluder
-                    if (box_occluder.Contains(m_camera->GetEntity()->GetPosition()))
-                        continue;
-
-                    // project world space axis-aligned bounding boxes into screen space
-                    Rectangle& rectangle_occludee = visibility_rectangles[occludee->GetObjectId()];
-                    Rectangle& rectangle_occluder = visibility_rectangles[occluder->GetObjectId()];
-
-                    if (rectangle_occluder.Contains(rectangle_occludee))
-                    {
-                        renderable_occludee->SetFlag(RenderableFlags::Occludee, true);
-                        renderable_occluder->SetFlag(RenderableFlags::Occluder, true);
-                        depth_load = true;
-
-                        break;
-                    }
+                    entity->GetComponent<Renderable>()->SetFlag(RenderableFlags::Occludee);
                 }
             }
         }
 
-        // 4. gpu: hardware occlusion queries only for what participates in occlusion
-        Pass_Depth_Prepass(cmd_list, false, RenderableFlags::Occluder); // draw occluders
-        Pass_Depth_Prepass(cmd_list, false, RenderableFlags::Occludee); // draw and test occludees
+        // 3. cpu: do fast cpu visibility (needs more work)
+        //for (uint32_t i = start_index; i < end_index; i++)
+        //{
+        //    auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
+        //    if (entities.empty())
+        //        continue;
+
+        //    for (shared_ptr<Entity>& occludee : entities)
+        //    {
+        //        shared_ptr<Renderable> renderable_occludee = occludee->GetComponent<Renderable>();
+        //        if (!renderable_occludee || !renderable_occludee->ReadyToRender() || !renderable_occludee->HasFlag(RenderableFlags::InViewFrustum))
+        //            continue;
+
+        //        BoundingBoxType box_type        = renderable_occludee->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+        //        const BoundingBox& box_occludee = renderable_occludee->GetBoundingBox(box_type);
+    
+        //        for (Entity* occluder : visibility_occluders)
+        //        {
+        //            if (!occluder || !occluder->GetComponent<Renderable>() || occluder->GetObjectId() == occludee->GetObjectId())
+        //                continue;
+
+        //            shared_ptr<Renderable> renderable_occluder = occluder->GetComponent<Renderable>();
+        //            const BoundingBox& box_occluder            = renderable_occluder->GetBoundingBox(box_type);
+
+        //            // project world space axis-aligned bounding boxes into screen space
+        //            Rectangle& rectangle_occludee = visibility_rectangles[occludee->GetObjectId()];
+        //            Rectangle& rectangle_occluder = visibility_rectangles[occluder->GetObjectId()];
+
+        //            if (rectangle_occluder.Contains(rectangle_occludee))
+        //            {
+        //                renderable_occludee->SetFlag(RenderableFlags::Occludee, true);
+        //                renderable_occluder->SetFlag(RenderableFlags::Occluder, true);
+
+        //                break;
+        //            }
+        //        }
+        //    }
+        //}
 
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass, const uint32_t flags)
+    void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // acquire shaders
         RHI_Shader* shader_v           = GetShader(Renderer_Shader::depth_prepass_v).get();
@@ -517,141 +508,139 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_instanced_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        bool is_occlusion_pass = flags != 0;
-        bool is_occluder_pass  = flags & RenderableFlags::Occluder;
-        bool is_occludee_pass  = flags & RenderableFlags::Occludee;
-        if (!is_occlusion_pass)
+        cmd_list->BeginTimeblock(!is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent");
+
+        if (!is_transparent_pass)
         {
-            cmd_list->BeginTimeblock(!is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent");
+            // clear the first time
+            cmd_list->ClearRenderTarget(GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get(), rhi_color_dont_care, 0.0f);
         }
-
-        uint32_t start_index = !is_transparent_pass ? 0 : 2;
-        uint32_t end_index   = !is_transparent_pass ? 2 : 4;
-        bool is_first_pass   = true;
-        for (uint32_t i = start_index; i < end_index; i++)
+        auto pass = [cmd_list, shader_v, shader_instanced_v, shader_p](bool is_transparent_pass, bool is_occluder_pass, bool is_occludee_pass)
         {
-            // acquire entities
-            auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
-            if (entities.empty())
-                continue;
-
-            // deduce depth-stencil state
-            Renderer_DepthStencilState depth_stencil_state = Renderer_DepthStencilState::Depth_read_write_stencil_read;
-            depth_stencil_state                            = is_occludee_pass ? Renderer_DepthStencilState::Depth_read : depth_stencil_state;
-
-            // deduce clear depth value
-            float clear_depth = depth_load ? rhi_depth_load : 0.0f;
-            clear_depth       = is_occluder_pass ? 0.0f : clear_depth;
-
-            // set pipeline state
-            static RHI_PipelineState pso;
-            pso.name                        = !is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent";
-            pso.instancing                  = i == 1 || i == 3;
-            pso.shader_vertex               = !pso.instancing ? shader_v : shader_instanced_v;
-            pso.shader_pixel                = shader_p; // alpha testing
-            pso.rasterizer_state            = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
-            pso.blend_state                 = GetBlendState(Renderer_BlendState::Disabled).get();
-            pso.depth_stencil_state         = GetDepthStencilState(depth_stencil_state).get();
-            pso.render_target_depth_texture = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
-            pso.clear_depth                 = clear_depth;
-            cmd_list->SetPipelineState(pso);
-
-            for (shared_ptr<Entity>& entity : entities)
+            uint32_t start_index = !is_transparent_pass ? 0 : 2;
+            uint32_t end_index   = !is_transparent_pass ? 2 : 4;
+            bool is_first_pass   = true;
+            for (uint32_t i = start_index; i < end_index; i++)
             {
-                // when async renderable can be null
-                shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                if (!renderable || !renderable->ReadyToRender())
+                // acquire entities
+                auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
+                if (entities.empty())
                     continue;
 
-                bool render = false;
-                if (!is_occlusion_pass) // if it's visible
+                // set pipeline state
+                static RHI_PipelineState pso;
+                pso.name                        = !is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent";
+                pso.instancing                  = i == 1 || i == 3;
+                pso.shader_vertex               = !pso.instancing ? shader_v : shader_instanced_v;
+                pso.shader_pixel                = shader_p; // alpha testing
+                pso.rasterizer_state            = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
+                pso.blend_state                 = GetBlendState(Renderer_BlendState::Disabled).get();
+                pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
+                pso.render_target_depth_texture = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
+                pso.clear_depth                 = rhi_depth_load;
+                cmd_list->SetPipelineState(pso);
+
+                for (shared_ptr<Entity>& entity : entities)
                 {
-                   render = renderable->HasFlag(RenderableFlags::InViewFrustum) && !renderable->HasFlag(RenderableFlags::Occludee);
-                }
-                else // if it participates in occlusion
-                {
-                    if (is_occluder_pass)
+                    // when async renderable can be null
+                    shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                    if (!renderable || !renderable->ReadyToRender())
+                        continue;
+
+                    bool render = false;
+                    if (!is_transparent_pass)
                     {
-                        render = renderable->HasFlag(RenderableFlags::Occluder);
+                        if (is_occluder_pass)
+                        {
+                            render = renderable->HasFlag(RenderableFlags::Occluder);
+                        }
+                        else if (is_occludee_pass)
+                        {
+                            render = renderable->HasFlag(RenderableFlags::Occludee);
+                        }
                     }
-                    else if (is_occludee_pass)
+                    else
                     {
-                        render = renderable->HasFlag(RenderableFlags::Occludee);
-                    }
-                }
-
-                if (!render)
-                    continue;
-
-                if (is_occludee_pass)
-                {
-                    // get last known results - typically a frame behind, but due to the real time cpu screen
-                    // testing of Pass_Visibility() limit this latency to certain pixels instead of everything
-                    renderable->SetFlag(RenderableFlags::Occludee, cmd_list->GetOcclusionQueryResult(renderable->GetObjectId()));
-                }
-
-                // set cull mode
-                cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
-
-                // set vertex, index and instance buffers
-                {
-                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
-                    if (pso.instancing)
-                    {
-                        cmd_list->SetBufferVertex(renderable->GetInstanceBuffer(), 1);
-                    }
-
-                    cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
-                }
-
-                // set pass constants
-                {
-                    if (Material* material = renderable->GetMaterial())
-                    {
-                        m_pcb_pass_cpu.set_f3_value(
-                            material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
-                            material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
-                            material->GetProperty(MaterialProperty::ColorA)
-                        );
-
-                        m_cb_frame_cpu.material_index = material->GetIndex();
-                        UpdateConstantBufferFrame(cmd_list);
-
-                        // the material is used for alpha testing and it's
-                        // okay for a renderable to not have a material
+                        render = renderable->HasFlag(RenderableFlags::InViewFrustum);
                     }
 
-                    m_pcb_pass_cpu.transform = entity->GetMatrix();
-                    PushPassConstants(cmd_list);
-                }
+                    if (!render)
+                        continue;
 
-                if (is_occludee_pass)
-                {
-                    cmd_list->BeginOcclusionQuery(renderable->GetObjectId());
-                }
+                    if (is_occludee_pass)
+                    {
+                        // get last known results - typically a frame behind, but due to the real time cpu screen
+                        // testing of Pass_Visibility() limit this latency to certain pixels instead of everything
+                        renderable->SetFlag(RenderableFlags::Occludee, cmd_list->GetOcclusionQueryResult(renderable->GetObjectId()));
+                    }
 
-                draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
+                    // set cull mode
+                    cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
 
-                if (is_occludee_pass)
-                {
-                    cmd_list->EndOcclusionQuery(renderable->GetObjectId());
+                    // set vertex, index and instance buffers
+                    {
+                        cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
+                        if (pso.instancing)
+                        {
+                            cmd_list->SetBufferVertex(renderable->GetInstanceBuffer(), 1);
+                        }
+
+                        cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+                    }
+
+                    // set pass constants
+                    {
+                        if (Material* material = renderable->GetMaterial())
+                        {
+                            m_pcb_pass_cpu.set_f3_value(
+                                material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
+                                material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
+                                material->GetProperty(MaterialProperty::ColorA)
+                            );
+
+                            m_cb_frame_cpu.material_index = material->GetIndex();
+                            UpdateConstantBufferFrame(cmd_list);
+
+                            // the material is used for alpha testing and it's
+                            // okay for a renderable to not have a material
+                        }
+
+                        m_pcb_pass_cpu.transform = entity->GetMatrix();
+                        PushPassConstants(cmd_list);
+                    }
+
+                    if (is_occludee_pass)
+                    {
+                        cmd_list->BeginOcclusionQuery(renderable->GetObjectId());
+                    }
+
+                    draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
+
+                    if (is_occludee_pass)
+                    {
+                        cmd_list->EndOcclusionQuery(renderable->GetObjectId());
+                    }
                 }
             }
-        }
+        };
 
-        if (!is_occlusion_pass)
+        if (!is_transparent_pass)
         {
-            if (!is_transparent_pass)
-            {
-                cmd_list->Blit(
-                    GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get(),
-                    GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_opaque).get(),
-                    false
-                );
-            }
+            pass(false, true, false); // occluders
+            pass(false, false, true); // occludees (and hardware occlusion query)
 
-            cmd_list->EndTimeblock();
+            cmd_list->Blit(
+                GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get(),
+                GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_opaque).get(),
+                false
+            );
         }
+        else
+        {
+            pass(true, false, false); // just a depth test
+        }
+
+        cmd_list->EndTimeblock();
     }
 
     void Renderer::Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass)
@@ -1010,9 +999,9 @@ namespace Spartan
         RHI_Texture* tex_volumetric = GetRenderTarget(Renderer_RenderTexture::light_volumetric).get();
 
         // clear render targets
-        cmd_list->ClearRenderTarget(tex_diffuse,    0, 0, true, Color::standard_black);
-        cmd_list->ClearRenderTarget(tex_specular,   0, 0, true, Color::standard_black);
-        cmd_list->ClearRenderTarget(tex_volumetric, 0, 0, true, Color::standard_black);
+        cmd_list->ClearRenderTarget(tex_diffuse,    Color::standard_black);
+        cmd_list->ClearRenderTarget(tex_specular,   Color::standard_black);
+        cmd_list->ClearRenderTarget(tex_volumetric, Color::standard_black);
 
         // define pipeline state
         static RHI_PipelineState pso;
