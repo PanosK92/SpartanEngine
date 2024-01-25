@@ -758,25 +758,18 @@ namespace Spartan
         vkCmdClearAttachments(static_cast<VkCommandBuffer>(m_rhi_resource), attachment_count, attachments.data(), 1, &clear_rect);
     }
 
-    void RHI_CommandList::ClearRenderTarget(RHI_Texture* texture,
-        const uint32_t color_index          /*= 0*/,
-        const uint32_t depth_stencil_index  /*= 0*/,
-        const bool storage                  /*= false*/,
-        const Color& clear_color            /*= rhi_color_load*/,
-        const float clear_depth             /*= rhi_depth_load*/,
-        const uint32_t clear_stencil        /*= rhi_stencil_load*/
+    void RHI_CommandList::ClearRenderTarget(
+        RHI_Texture* texture,
+        const Color& clear_color     /*= rhi_color_load*/,
+        const float clear_depth      /*= rhi_depth_load*/,
+        const uint32_t clear_stencil /*= rhi_stencil_load*/
     )
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT_MSG((texture->GetFlags() & RHI_Texture_ClearBlit) != 0, "The texture needs the RHI_Texture_ClearBlit flag");
+        SP_ASSERT(texture && texture->GetRhiSrv());
 
-        if (!texture || !texture->GetRhiSrv())
-        {
-            SP_LOG_ERROR("Texture is null.");
-            return;
-        }
-
-        // One of the required layouts for clear functions
+        // one of the required layouts for clear functions
         texture->SetLayout(RHI_Image_Layout::Transfer_Destination, this);
 
         VkImageSubresourceRange image_subresource_range = {};

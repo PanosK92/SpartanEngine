@@ -154,7 +154,7 @@ namespace Spartan
         static void Pass_Frame(RHI_CommandList* cmd_list);
         static void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
         static void Pass_Visibility(RHI_CommandList* cmd_list);
-        static void Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass = false, const uint32_t flags = 0);
+        static void Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
         static void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
         static void Pass_Ssgi(RHI_CommandList* cmd_list);
         static void Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool is_transparent_pass = false);
