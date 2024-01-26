@@ -46,9 +46,10 @@ namespace Spartan
 
     enum RenderableFlags : uint32_t
     {
-        IsVisible     = 1U << 0,
-        Occluder      = 1U << 1,
-        CastsShadows  = 1U << 2
+        IsVisible          = 1U << 0,
+        Occluder           = 1U << 1,
+        IgnoreGpuOcclusion = 1U << 2,
+        CastsShadows       = 1U << 3
     };
 
     class SP_CLASS Renderable : public Component
