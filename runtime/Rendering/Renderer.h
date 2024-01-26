@@ -214,7 +214,6 @@ namespace Spartan
         static std::shared_ptr<Camera> m_camera;
         static uint32_t m_resource_index;
         static std::atomic<bool> m_resources_created;
-        static bool m_sorted;
         static std::atomic<uint32_t> m_environment_mips_to_filter_count;
     };
 }

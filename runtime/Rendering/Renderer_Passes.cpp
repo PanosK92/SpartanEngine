@@ -44,7 +44,7 @@ namespace Spartan
     namespace
     {
         unordered_map<uint64_t, Rectangle> visibility_rectangles;
-        array<Entity*, rhi_max_queries_occlusion> visibility_possible_occluders;
+        array<shared_ptr<Entity>, rhi_max_queries_occlusion> visibility_occluder_candidates;
         bool light_integration_brdf_speculat_lut_completed = false;
         mutex mutex_generate_mips;
         const float thread_group_count = 8.0f;
@@ -367,48 +367,61 @@ namespace Spartan
         // clear previous data
         visibility_rectangles.clear();
 
-        // 1. cpu: sort entities by depth - makes occlusion queries easier and helps with the depth-prepass
-        if (!m_sorted)
+        // 1. cpu: frustum culling and depth sorting
         {
             auto sort_renderables = [](Renderer_Entity entity_type, const bool are_transparent)
             {
                 vector<shared_ptr<Entity>>& renderables = m_renderables[entity_type];
 
-                if (renderables.size() <= 2)
-                    return;
-
-                Vector3 camera_position = GetCamera()->GetEntity()->GetPosition();
-
-                auto squared_distance = [&camera_position](const shared_ptr<Entity>& entity)
+                // frustum culling
+                for (shared_ptr<Entity>& entity : renderables)
                 {
                     shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                    BoundingBoxType type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                    Vector3 position     = renderable->GetBoundingBox(type).GetCenter();
+                    renderable->SetFlag(RenderableFlags::Occluder, false);
+                    renderable->SetFlag(RenderableFlags::IsVisible, GetCamera()->IsInViewFrustum(renderable));
+                }
 
-                    // calculate squared distance
-                    return (position - camera_position).LengthSquared();
-                };
-
-                sort(renderables.begin(), renderables.end(), [&squared_distance, &are_transparent](const shared_ptr<Entity>& a, const shared_ptr<Entity>& b)
+                // depth sorting
                 {
-                    if (are_transparent)
+                    if (renderables.size() <= 2)
+                        return;
+
+                    Vector3 camera_position = GetCamera()->GetEntity()->GetPosition();
+
+                    auto squared_distance = [&camera_position](const shared_ptr<Entity>& entity)
                     {
-                        // back-to-front for transparent
-                        return squared_distance(a) > squared_distance(b);
-                    }
-                    else
+                        shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                        BoundingBoxType type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+                        Vector3 position     = renderable->GetBoundingBox(type).GetCenter();
+
+                        // calculate squared distance
+                        return (position - camera_position).LengthSquared();
+                    };
+
+                    sort(renderables.begin(), renderables.end(), [&squared_distance, &are_transparent](const shared_ptr<Entity>& a, const shared_ptr<Entity>& b)
                     {
-                        // front-to-back for opaque
-                        return squared_distance(a) < squared_distance(b);
-                    }
-                });
+                        // skip non-visible entities
+                        if (!a->GetComponent<Renderable>()->HasFlag(RenderableFlags::IsVisible) || !b->GetComponent<Renderable>()->HasFlag(RenderableFlags::IsVisible))
+                            return false;
+
+                        if (are_transparent)
+                        {
+                            // back-to-front for transparent
+                            return squared_distance(a) > squared_distance(b);
+                        }
+                        else
+                        {
+                            // front-to-back for opaque
+                            return squared_distance(a) < squared_distance(b);
+                        }
+                    });
+                }
             };
 
             sort_renderables(Renderer_Entity::Geometry, false);
             sort_renderables(Renderer_Entity::GeometryInstanced, false);
             sort_renderables(Renderer_Entity::GeometryTransparent, true);
             sort_renderables(Renderer_Entity::GeometryTransparentInstanced, true);
-            m_sorted = true;
         }
 
         // 2. cpu: frustum culling and possible occluder determination
@@ -425,15 +438,7 @@ namespace Spartan
             {
                 shared_ptr<Entity>& entity        = entities[index_entity];
                 shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                if (!renderable || !renderable->ReadyToRender())
-                    continue;
-
-                // set initial flags
-                renderable->SetFlag(RenderableFlags::Occluder, false);
-                renderable->SetFlag(RenderableFlags::IsVisible, GetCamera()->IsInViewFrustum(renderable));
-
-                // frustum check
-                if (!renderable->HasFlag(RenderableFlags::IsVisible))
+                if (!renderable || !renderable->ReadyToRender() || !renderable->HasFlag(RenderableFlags::IsVisible))
                     continue;
 
                 // compute screen space rectangle
@@ -444,7 +449,7 @@ namespace Spartan
 
                 if (rectangle.Width() >= 100.0f && rectangle.Height() >= 100.0f)
                 {
-                    visibility_possible_occluders[i] = entities[index_entity].get();
+                    visibility_occluder_candidates[i] = entities[index_entity];
                 }
             }
         }
@@ -465,7 +470,7 @@ namespace Spartan
                 BoundingBoxType box_type        = renderable_occludee->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
                 const BoundingBox& box_occludee = renderable_occludee->GetBoundingBox(box_type);
     
-                for (Entity* occluder : visibility_possible_occluders)
+                for (shared_ptr<Entity>& occluder : visibility_occluder_candidates)
                 {
                     if (!occluder || occluder->GetObjectId() == occludee->GetObjectId())
                         continue;
@@ -487,6 +492,8 @@ namespace Spartan
         }
 
         cmd_list->EndTimeblock();
+
+        // 4: gpu: Pass_Depth_Prepass() will do occlusion queries based on RenderableFlags::Occluder
     }
 
     void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass)
