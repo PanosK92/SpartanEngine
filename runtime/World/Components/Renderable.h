@@ -46,10 +46,9 @@ namespace Spartan
 
     enum RenderableFlags : uint32_t
     {
-        InViewFrustum               = 1U << 0,
-        Occludee                    = 1U << 1,
-        Occluder                    = 1U << 2,
-        CastsShadows                = 1U << 3
+        IsVisible     = 1U << 0,
+        Occluder      = 1U << 1,
+        CastsShadows  = 1U << 2
     };
 
     class SP_CLASS Renderable : public Component
@@ -136,6 +135,6 @@ namespace Spartan
 
         // misc
         Math::Matrix m_transform_previous = Math::Matrix::Identity;
-        uint32_t m_flags                  = RenderableFlags::InViewFrustum | RenderableFlags::CastsShadows;
+        uint32_t m_flags                  = RenderableFlags::IsVisible | RenderableFlags::CastsShadows;
     };
 }

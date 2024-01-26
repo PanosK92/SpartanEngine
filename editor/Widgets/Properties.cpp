@@ -372,15 +372,15 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
 
     if (component_begin("Renderable", IconType::Component_Renderable, renderable))
     {
-        //= REFLECT ==========================================================================================================================
+        //= REFLECT ======================================================================
         string name_mesh             = renderable->GetMeshName();
         Material* material           = renderable->GetMaterial();
         uint32_t instance_count      = renderable->GetInstanceCount();
         uint32_t instance_partitions = renderable->GetInstancePartitionCount();
         string name_material         = material ? material->GetObjectName() : "N/A";
         bool cast_shadows            = renderable->HasFlag(RenderableFlags::CastsShadows);
-        bool is_visible              = renderable->HasFlag(RenderableFlags::InViewFrustum) && !renderable->HasFlag(RenderableFlags::Occludee);
-        //====================================================================================================================================
+        bool is_visible              = renderable->HasFlag(RenderableFlags::IsVisible);
+        //================================================================================
 
         // mesh
         ImGui::Text("Mesh");
