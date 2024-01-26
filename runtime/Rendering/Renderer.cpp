@@ -64,7 +64,6 @@ namespace Spartan
     shared_ptr<Camera> Renderer::m_camera                         = nullptr;
     uint32_t Renderer::m_resource_index                           = 0;
     atomic<bool> Renderer::m_resources_created                    = false;
-    bool Renderer::m_sorted                                       = false;
     atomic<uint32_t> Renderer::m_environment_mips_to_filter_count = 0;
     unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
 
@@ -718,7 +717,6 @@ namespace Spartan
             }
 
             m_entities_to_add.clear();
-            m_sorted = false;
             materials::dirty = true;
             lights::dirty = true;
         }
