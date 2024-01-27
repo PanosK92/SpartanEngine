@@ -375,7 +375,6 @@ namespace Spartan
                 {
                     shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
                     renderable->SetFlag(RenderableFlags::Occluder, false);
-                    renderable->SetFlag(RenderableFlags::IgnoreGpuOcclusion, false);
                     renderable->SetFlag(RenderableFlags::IsVisible, GetCamera()->IsInViewFrustum(renderable));
                 }
 
@@ -468,8 +467,6 @@ namespace Spartan
                 BoundingBoxType box_type        = renderable_occludee->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
                 const BoundingBox& box_occludee = renderable_occludee->GetBoundingBox(box_type);
 
-                bool contained    = false;
-                bool interesected = false;
                 for (uint32_t j = 0; j < static_cast<uint32_t>(visibility_occluder_candidates.size()); j++)
                 {
                     shared_ptr<Entity>& occluder = visibility_occluder_candidates[j];
@@ -485,22 +482,9 @@ namespace Spartan
 
                     if (rectangle_occluder.Contains(rectangle_occludee))
                     {
-                        contained = true;
                         renderable_occluder->SetFlag(RenderableFlags::Occluder, true);
                         break;
                     }
-                    else if (rectangle_occluder.Intersects(rectangle_occludee))
-                    {
-                        interesected = true;
-                    }
-                }
-
-                // emerging visibility handling
-                bool is_emerging_visible = interesected && !contained;
-                if (is_emerging_visible)
-                {
-                    // flag set to render entities emerging from occlusion, countering gpu query delays
-                    renderable_occludee->SetFlag(RenderableFlags::IgnoreGpuOcclusion, true);
                 }
             }
         }
@@ -566,13 +550,13 @@ namespace Spartan
                     bool render = renderable->HasFlag(RenderableFlags::IsVisible);
                     if (!is_transparent_pass && is_occluder_pass)
                     {
-                        render = renderable->HasFlag(RenderableFlags::Occluder);
+                        render &= renderable->HasFlag(RenderableFlags::Occluder);
                     }
   
                     if (!render)
                         continue;
 
-                    if (!is_transparent_pass && !is_occluder_pass && !renderable->HasFlag(RenderableFlags::IgnoreGpuOcclusion))
+                    if (!is_transparent_pass && !is_occluder_pass)
                     {
                         renderable->SetFlag(RenderableFlags::IsVisible, !cmd_list->GetOcclusionQueryResult(renderable->GetObjectId()));
                     }
