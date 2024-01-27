@@ -44,7 +44,6 @@ namespace Spartan
     namespace
     {
         unordered_map<uint64_t, Rectangle> visibility_rectangles;
-        array<shared_ptr<Entity>, rhi_max_queries_occlusion> visibility_occluder_candidates;
         bool light_integration_brdf_speculat_lut_completed = false;
         mutex mutex_generate_mips;
         const float thread_group_count = 8.0f;
@@ -364,6 +363,9 @@ namespace Spartan
 
         cmd_list->BeginTimeblock("visibility", false, false);
 
+        // clear data
+        visibility_rectangles.clear();
+
         // 1. cpu: frustum culling and depth sorting
         {
             auto sort_renderables = [](Renderer_Entity entity_type, const bool are_transparent)
@@ -421,10 +423,11 @@ namespace Spartan
             sort_renderables(Renderer_Entity::GeometryTransparentInstanced, true);
         }
 
-        // 2. cpu: frustum culling and possible occluder determination
+        // 2. cpu: occluder determination
         bool is_transparent_pass = false;
         uint32_t start_index     = !is_transparent_pass ? 0 : 2;
         uint32_t end_index       = !is_transparent_pass ? 2 : 4;
+        uint32_t occluder_count  = 0;
         for (uint32_t i = start_index; i < end_index; i++)
         {
             auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
@@ -444,14 +447,18 @@ namespace Spartan
                 Rectangle rectangle                          = m_camera->WorldToScreenCoordinates(box);
                 visibility_rectangles[entity->GetObjectId()] = rectangle; // save it for later
 
-                if (rectangle.Area() >= 12000.0f)
+                bool factor_screen_size = rectangle.Area() >= 65536.0f;
+                bool factor_proximity   = box.Contains(m_camera->GetEntity()->GetPosition()); // say we are in a building
+                bool factor_count       = occluder_count < 32; // after a certain number occluders will be occluded by others (so they are really occludees)
+                if (factor_count && (factor_screen_size || factor_proximity))
                 {
-                    visibility_occluder_candidates[i] = entities[index_entity];
+                    renderable->SetFlag(RenderableFlags::Occluder, true);
+                    occluder_count++;
                 }
             }
         }
 
-        // 3. cpu: occluder determination
+        // 3. cpu: counter gpu occlusion query delay
         for (uint32_t i = start_index; i < end_index; i++)
         {
             auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
@@ -467,9 +474,8 @@ namespace Spartan
                 BoundingBoxType box_type        = renderable_occludee->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
                 const BoundingBox& box_occludee = renderable_occludee->GetBoundingBox(box_type);
 
-                for (uint32_t j = 0; j < static_cast<uint32_t>(visibility_occluder_candidates.size()); j++)
+                for (shared_ptr<Entity>& occluder : entities)
                 {
-                    shared_ptr<Entity>& occluder = visibility_occluder_candidates[j];
                     if (!occluder || occluder->GetObjectId() == occludee->GetObjectId())
                         continue;
 
@@ -480,22 +486,17 @@ namespace Spartan
                     Rectangle& rectangle_occludee = visibility_rectangles[occludee->GetObjectId()];
                     Rectangle& rectangle_occluder = visibility_rectangles[occluder->GetObjectId()];
 
-                    if (rectangle_occluder.Contains(rectangle_occludee))
-                    {
-                        renderable_occluder->SetFlag(RenderableFlags::Occluder, true);
-                        break;
-                    }
+                    //if (rectangle_occluder.Contains(rectangle_occludee))
+                    //{
+                    //    break;
+                    //}
                 }
             }
         }
 
         cmd_list->EndTimeblock();
 
-        // 4: gpu: Pass_Depth_Prepass() will do occlusion queries based on RenderableFlags::Occluder
-
-        // clear data
-        visibility_occluder_candidates.fill(nullptr);
-        visibility_rectangles.clear();
+        // 4: gpu: Pass_Depth_Prepass() will do gpu occlusion queries based on RenderableFlags::Occluder
     }
 
     void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass)
@@ -548,9 +549,16 @@ namespace Spartan
                         continue;
 
                     bool render = renderable->HasFlag(RenderableFlags::IsVisible);
-                    if (!is_transparent_pass && is_occluder_pass)
+                    if (!is_transparent_pass)
                     {
-                        render &= renderable->HasFlag(RenderableFlags::Occluder);
+                        if (is_occluder_pass)
+                        {
+                            render &= renderable->HasFlag(RenderableFlags::Occluder);
+                        }
+                        else // occludee
+                        {
+                            render &= !renderable->HasFlag(RenderableFlags::Occluder);
+                        }
                     }
   
                     if (!render)
