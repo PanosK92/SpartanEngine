@@ -431,6 +431,7 @@ namespace Spartan
 
     namespace descriptors
     {
+        mutex descriptor_pipeline_mutex;
         uint32_t allocated_descriptor_sets = 0;
         VkDescriptorPool descriptor_pool = nullptr;
 
@@ -1637,6 +1638,8 @@ namespace Spartan
         SP_ASSERT(pso.IsValid());
 
         pso.ComputeHash();
+
+        lock_guard<mutex> lock(descriptors::descriptor_pipeline_mutex);
 
         descriptor_set_layout = descriptors::get_or_create_descriptor_set_layout(pso).get();
 

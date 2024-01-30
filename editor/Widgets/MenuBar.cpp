@@ -53,7 +53,7 @@ namespace
     {
         // format: name, country, button text, button url, contribution, steam key
         "Apostolos Bouzalas,  Greece,         LinkedIn, https://www.linkedin.com/in/apostolos-bouzalas,           Bug fixes,                      N/A",
-        "Iker Galardi,        Basque Country, LinkedIn, https://www.linkedin.com/in/iker-galardi/,                Linux port,                     N/A",
+        "Iker Galardi,        Basque Country, LinkedIn, https://www.linkedin.com/in/iker-galardi/,                Linux port (WIP),               N/A",
         "Jesse Guerrero,      US,             LinkedIn, https://www.linkedin.com/in/jguer,                        UX improvements,                N/A",
         "Konstantinos Benos,  Greece,         Twitter,  https://twitter.com/deg3x,                                Editor theme & bug fixes,       N/A",
         "Nick Polyderopoulos, Greece,         LinkedIn, https://www.linkedin.com/in/nick-polyderopoulos-21742397, UX improvements,                N/A",

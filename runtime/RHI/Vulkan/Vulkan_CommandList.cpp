@@ -314,6 +314,7 @@ namespace Spartan
         {
             array<uint64_t, rhi_max_queries_timestmaps> timestamps;
             array<uint64_t, rhi_max_queries_occlusion> occlusion;
+            unordered_map<uint64_t, uint32_t> occlusion_entity_ids;
         }
     }
 
@@ -417,7 +418,7 @@ namespace Spartan
             }
 
             // occlusion
-            if (m_occlusion_dirty)
+            if (m_occlusion_index != 0)
             {
                 const uint32_t query_count = rhi_max_queries_occlusion;
 
@@ -452,10 +453,10 @@ namespace Spartan
                 m_timestamp_first_run = false;
             }
 
-            if (m_occlusion_dirty)
+            if (m_occlusion_index != 0)
             {
                 vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkQueryPool>(m_rhi_query_pool_occlusion), 0, rhi_max_queries_occlusion);
-                m_occlusion_dirty = false;
+                m_occlusion_index = 0;
             }
         }
 
@@ -1389,35 +1390,31 @@ namespace Spartan
         return Math::Helper::Clamp<float>(duration_ms, 0.0f, numeric_limits<float>::max());
     }
 
-    void RHI_CommandList::BeginOcclusionQuery(const uint64_t id)
+    void RHI_CommandList::BeginOcclusionQuery(const uint64_t entity_id)
     {
-        uint32_t index = id % rhi_max_queries_occlusion; // todo: create a reliable index
-
         vkCmdBeginQuery(
             static_cast<VkCommandBuffer>(m_rhi_resource),
             static_cast<VkQueryPool>(m_rhi_query_pool_occlusion),
-            index,
+            m_occlusion_index,
             VK_QUERY_CONTROL_PRECISE_BIT
         );
+
+        queries::occlusion_entity_ids[entity_id] = m_occlusion_index;
     }
 
-    void RHI_CommandList::EndOcclusionQuery(const uint64_t id)
+    void RHI_CommandList::EndOcclusionQuery()
     {
-        uint32_t index = id % rhi_max_queries_occlusion; // todo: create a reliable index
-
         vkCmdEndQuery(
             static_cast<VkCommandBuffer>(m_rhi_resource),
             static_cast<VkQueryPool>(m_rhi_query_pool_occlusion),
-            index
+            m_occlusion_index++
         );
-
-        m_occlusion_dirty = true;
     }
 
-    bool RHI_CommandList::GetOcclusionQueryResult(const uint64_t id)
+    bool RHI_CommandList::GetOcclusionQueryResult(const uint64_t entity_id)
     {
-        uint32_t index  = id % rhi_max_queries_occlusion; // todo: create a reliable index
-        uint64_t result = queries::occlusion[index];
+        uint32_t index  = queries::occlusion_entity_ids[entity_id];
+        uint64_t result = queries::occlusion[index]; // how many pixels are visible
 
         return result == 0;
     }
