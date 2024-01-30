@@ -127,9 +127,9 @@ namespace Spartan
         float GetTimestampResult(const uint32_t index_timestamp);
 
         // occlusion queries
-        void BeginOcclusionQuery(const uint64_t id);
-        void EndOcclusionQuery(const uint64_t id);
-        bool GetOcclusionQueryResult(const uint64_t id);
+        void BeginOcclusionQuery(const uint64_t entity_id);
+        void EndOcclusionQuery();
+        bool GetOcclusionQueryResult(const uint64_t entity_id);
 
         // timeblocks (markers + timestamps)
         void BeginTimeblock(const char* name, const bool gpu_marker = true, const bool gpu_timing = true);
@@ -164,7 +164,7 @@ namespace Spartan
         // queries
         bool m_timestamp_first_run = true;
         uint32_t m_timestamp_index = 0;
-        bool m_occlusion_dirty     = false;
+        uint32_t m_occlusion_index = 0;
 
         // misc
         RHI_Pipeline* m_pipeline                             = nullptr;

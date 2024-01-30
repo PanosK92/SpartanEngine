@@ -610,7 +610,7 @@ namespace Spartan
 
                     if (!is_transparent_pass && !is_occluder_pass)
                     {
-                        cmd_list->EndOcclusionQuery(renderable->GetObjectId());
+                        cmd_list->EndOcclusionQuery();
                     }
                 }
             }
