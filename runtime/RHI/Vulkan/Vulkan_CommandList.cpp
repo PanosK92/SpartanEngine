@@ -460,11 +460,10 @@ namespace Spartan
         if (m_queue_type != RHI_Queue_Type::Copy)
         {
             // per Vulkan, queries need to be reset if this the first time they are about to be used
-            if (m_timestamp_index != 0 || m_occlusion_index != 0 || m_query_first_run)
+            if (m_timestamp_index != 0 || m_query_first_run)
             {
                 queries::reset(m_rhi_resource, m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion);
                 m_timestamp_index = 0;
-                m_occlusion_index = 0;
                 m_query_first_run = false;
             }
         }
@@ -1401,14 +1400,20 @@ namespace Spartan
 
     void RHI_CommandList::BeginOcclusionQuery(const uint64_t entity_id)
     {
+        uint32_t index = queries::occlusion::id_to_index[entity_id];
+        if (index == 0)
+        {
+            m_occlusion_index++;
+            queries::occlusion::id_to_index[entity_id] = m_occlusion_index;
+            index                                      = m_occlusion_index;
+        }
+
         vkCmdBeginQuery(
             static_cast<VkCommandBuffer>(m_rhi_resource),
             static_cast<VkQueryPool>(m_rhi_query_pool_occlusion),
-            m_occlusion_index,
+            index,
             0
         );
-
-        queries::occlusion::id_to_index[entity_id] = m_occlusion_index;
     }
 
     void RHI_CommandList::EndOcclusionQuery()
@@ -1416,7 +1421,7 @@ namespace Spartan
         vkCmdEndQuery(
             static_cast<VkCommandBuffer>(m_rhi_resource),
             static_cast<VkQueryPool>(m_rhi_query_pool_occlusion),
-            m_occlusion_index++
+            m_occlusion_index
         );
     }
 
