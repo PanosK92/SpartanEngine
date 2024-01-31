@@ -162,7 +162,7 @@ namespace Spartan
         uint64_t m_index_buffer_id  = 0;
 
         // queries
-        bool m_timestamp_first_run = true;
+        bool m_query_first_run     = true;
         uint32_t m_timestamp_index = 0;
         uint32_t m_occlusion_index = 0;
 
