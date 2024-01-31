@@ -458,7 +458,7 @@ namespace Spartan
             }
         }
 
-        // 3. cpu: counter gpu occlusion query delay
+        // 3. cpu and gpu hybrid
         for (uint32_t i = start_index; i < end_index; i++)
         {
             auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
@@ -490,6 +490,12 @@ namespace Spartan
                     //{
                     //    break;
                     //}
+                }
+
+                if (!renderable_occludee->HasFlag(Occluder))
+                {
+                    bool occluded = cmd_list->GetOcclusionQueryResult(occludee->GetObjectId());
+                    renderable_occludee->SetFlag(RenderableFlags::IsVisible, !occluded);
                 }
             }
         }
@@ -543,7 +549,6 @@ namespace Spartan
 
                 for (shared_ptr<Entity>& entity : entities)
                 {
-                    // when async renderable can be null
                     shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
                     if (!renderable || !renderable->ReadyToRender())
                         continue;
@@ -560,14 +565,9 @@ namespace Spartan
                             render &= !renderable->HasFlag(RenderableFlags::Occluder);
                         }
                     }
-  
+
                     if (!render)
                         continue;
-
-                    if (!is_transparent_pass && !is_occluder_pass)
-                    {
-                        renderable->SetFlag(RenderableFlags::IsVisible, !cmd_list->GetOcclusionQueryResult(renderable->GetObjectId()));
-                    }
 
                     // set cull mode
                     cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
@@ -603,7 +603,7 @@ namespace Spartan
 
                     if (!is_transparent_pass && !is_occluder_pass)
                     {
-                        cmd_list->BeginOcclusionQuery(renderable->GetObjectId());
+                        cmd_list->BeginOcclusionQuery(entity->GetObjectId());
                     }
 
                     draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
