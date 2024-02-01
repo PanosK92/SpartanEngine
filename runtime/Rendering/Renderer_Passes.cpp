@@ -449,7 +449,7 @@ namespace Spartan
 
                 bool factor_screen_size = rectangle.Area() >= 65536.0f;
                 bool factor_proximity   = box.Contains(m_camera->GetEntity()->GetPosition()); // say we are in a building
-                bool factor_count       = occluder_count < 32; // after a certain number occluders will be occluded by others (so they are really occludees)
+                bool factor_count       = occluder_count < 64; // after a certain number occluders will be occluded by others (so they are really occludees)
                 if (factor_count && (factor_screen_size || factor_proximity))
                 {
                     renderable->SetFlag(RenderableFlags::Occluder, true);
@@ -458,7 +458,7 @@ namespace Spartan
             }
         }
 
-        // 3. cpu: coarse occlusion deteciton
+        // 3. cpu: coarse occlusion detection
         for (uint32_t i = start_index; i < end_index; i++)
         {
             auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
@@ -544,10 +544,10 @@ namespace Spartan
                 for (shared_ptr<Entity>& entity : entities)
                 {
                     shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                    if (!renderable || !renderable->ReadyToRender())
+                    if (!renderable || !renderable->ReadyToRender() || !renderable->HasFlag(RenderableFlags::IsVisible))
                         continue;
 
-                    bool render = renderable->HasFlag(RenderableFlags::IsVisible);
+                    bool render = true;
                     if (!is_transparent_pass)
                     {
                         if (is_occluder_pass)
@@ -557,15 +557,18 @@ namespace Spartan
                         else // occludee
                         {
                             render &= !renderable->HasFlag(RenderableFlags::Occluder);
-
-                            bool occluded = cmd_list->GetOcclusionQueryResult(entity->GetObjectId());
-                            renderable->SetFlag(RenderableFlags::IsVisible, !occluded);
                         }
 
                     }
 
                     if (!render)
                         continue;
+
+                    if (!is_transparent_pass && !renderable->HasFlag(RenderableFlags::Occluder))
+                    {
+                        bool occluded = cmd_list->GetOcclusionQueryResult(entity->GetObjectId());
+                        renderable->SetFlag(RenderableFlags::IsVisible, !occluded);
+                    }
 
                     // set cull mode
                     cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
