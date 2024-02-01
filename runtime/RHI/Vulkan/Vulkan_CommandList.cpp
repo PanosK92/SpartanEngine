@@ -322,6 +322,7 @@ namespace Spartan
                 array<uint64_t, rhi_max_queries_occlusion> data;
                 unordered_map<uint64_t, uint32_t> id_to_index;
                 uint32_t index = 0;
+                uint32_t index_active = 0;
             }
 
             void initialize(void*& pool_timestamp, void*& pool_occlusion)
@@ -1401,19 +1402,17 @@ namespace Spartan
 
     void RHI_CommandList::BeginOcclusionQuery(const uint64_t entity_id)
     {
-        uint32_t index = queries::occlusion::id_to_index[entity_id];
-        if (index == 0)
+        queries::occlusion::index_active = queries::occlusion::id_to_index[entity_id];
+        if (queries::occlusion::index_active == 0)
         {
-            queries::occlusion::index++;
-
+            queries::occlusion::index_active           = ++queries::occlusion::index;
             queries::occlusion::id_to_index[entity_id] = queries::occlusion::index;
-            index                                      = queries::occlusion::index;
         }
 
         vkCmdBeginQuery(
             static_cast<VkCommandBuffer>(m_rhi_resource),
             static_cast<VkQueryPool>(m_rhi_query_pool_occlusion),
-            index,
+            queries::occlusion::index_active,
             0
         );
     }
@@ -1423,14 +1422,17 @@ namespace Spartan
         vkCmdEndQuery(
             static_cast<VkCommandBuffer>(m_rhi_resource),
             static_cast<VkQueryPool>(m_rhi_query_pool_occlusion),
-            queries::occlusion::index
+            queries::occlusion::index_active
         );
     }
 
     bool RHI_CommandList::GetOcclusionQueryResult(const uint64_t entity_id)
     {
+        if (queries::occlusion::id_to_index.find(entity_id) == queries::occlusion::id_to_index.end())
+            return false;
+
         uint32_t index  = queries::occlusion::id_to_index[entity_id];
-        uint64_t result = queries::occlusion::data[index]; // how many pixels are visible
+        uint64_t result = queries::occlusion::data[index]; // visible pixel count
 
         return result == 0;
     }
