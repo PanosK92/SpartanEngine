@@ -458,7 +458,7 @@ namespace Spartan
             }
         }
 
-        // 3. cpu and gpu hybrid
+        // 3. cpu: coarse occlusion deteciton
         for (uint32_t i = start_index; i < end_index; i++)
         {
             auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
@@ -490,12 +490,6 @@ namespace Spartan
                     //{
                     //    break;
                     //}
-                }
-
-                if (!renderable_occludee->HasFlag(Occluder))
-                {
-                    bool occluded = cmd_list->GetOcclusionQueryResult(occludee->GetObjectId());
-                    renderable_occludee->SetFlag(RenderableFlags::IsVisible, !occluded);
                 }
             }
         }
@@ -563,7 +557,11 @@ namespace Spartan
                         else // occludee
                         {
                             render &= !renderable->HasFlag(RenderableFlags::Occluder);
+
+                            bool occluded = cmd_list->GetOcclusionQueryResult(entity->GetObjectId());
+                            renderable->SetFlag(RenderableFlags::IsVisible, !occluded);
                         }
+
                     }
 
                     if (!render)

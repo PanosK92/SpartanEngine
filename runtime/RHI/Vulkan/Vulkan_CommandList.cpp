@@ -321,6 +321,7 @@ namespace Spartan
             {
                 array<uint64_t, rhi_max_queries_occlusion> data;
                 unordered_map<uint64_t, uint32_t> id_to_index;
+                uint32_t index = 0;
             }
 
             void initialize(void*& pool_timestamp, void*& pool_occlusion)
@@ -1403,9 +1404,10 @@ namespace Spartan
         uint32_t index = queries::occlusion::id_to_index[entity_id];
         if (index == 0)
         {
-            m_occlusion_index++;
-            queries::occlusion::id_to_index[entity_id] = m_occlusion_index;
-            index                                      = m_occlusion_index;
+            queries::occlusion::index++;
+
+            queries::occlusion::id_to_index[entity_id] = queries::occlusion::index;
+            index                                      = queries::occlusion::index;
         }
 
         vkCmdBeginQuery(
@@ -1421,7 +1423,7 @@ namespace Spartan
         vkCmdEndQuery(
             static_cast<VkCommandBuffer>(m_rhi_resource),
             static_cast<VkQueryPool>(m_rhi_query_pool_occlusion),
-            m_occlusion_index
+            queries::occlusion::index
         );
     }
 
