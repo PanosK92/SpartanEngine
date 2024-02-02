@@ -461,36 +461,36 @@ namespace Spartan
             }
         }
 
-        // 3. cpu: coarse occlusion detection
-        for (uint32_t i = start_index; i < end_index; i++)
-        {
-            auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
-            if (entities.empty())
-                continue;
+        // 3. cpu: coarse occlusion detection - todo
+        //for (uint32_t i = start_index; i < end_index; i++)
+        //{
+        //    auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
+        //    if (entities.empty())
+        //        continue;
 
-            for (shared_ptr<Entity>& occludee : entities)
-            {
-                shared_ptr<Renderable> renderable_occludee = occludee->GetComponent<Renderable>();
-                if (!renderable_occludee || !renderable_occludee->ReadyToRender() || !renderable_occludee->HasFlag(RenderableFlags::IsVisible))
-                    continue;
+        //    for (shared_ptr<Entity>& occludee : entities)
+        //    {
+        //        shared_ptr<Renderable> renderable_occludee = occludee->GetComponent<Renderable>();
+        //        if (!renderable_occludee || !renderable_occludee->ReadyToRender() || !renderable_occludee->HasFlag(RenderableFlags::IsVisible))
+        //            continue;
 
-                for (shared_ptr<Entity>& occluder : entities)
-                {
-                    shared_ptr<Renderable> renderable_occluder = occludee->GetComponent<Renderable>();
-                    if (!occluder || occluder->GetObjectId() == occludee->GetObjectId() || !renderable_occluder->HasFlag(RenderableFlags::Occluder))
-                        continue;
+        //        for (shared_ptr<Entity>& occluder : entities)
+        //        {
+        //            shared_ptr<Renderable> renderable_occluder = occludee->GetComponent<Renderable>();
+        //            if (!occluder || occluder->GetObjectId() == occludee->GetObjectId() || !renderable_occluder->HasFlag(RenderableFlags::Occluder))
+        //                continue;
 
-                    // project world space axis-aligned bounding boxes into screen space
-                    Rectangle& rectangle_occludee = visibility_rectangles[occludee->GetObjectId()];
-                    Rectangle& rectangle_occluder = visibility_rectangles[occluder->GetObjectId()];
+        //            // project world space axis-aligned bounding boxes into screen space
+        //            Rectangle& rectangle_occludee = visibility_rectangles[occludee->GetObjectId()];
+        //            Rectangle& rectangle_occluder = visibility_rectangles[occluder->GetObjectId()];
 
-                    //if (rectangle_occluder.Contains(rectangle_occludee))
-                    //{
-                    //    break;
-                    //}
-                }
-            }
-        }
+        //            if (rectangle_occluder.Contains(rectangle_occludee))
+        //            {
+        //                break;
+        //            }
+        //        }
+        //    }
+        //}
 
         cmd_list->EndTimeblock();
 
@@ -545,9 +545,9 @@ namespace Spartan
                     if (!renderable || !renderable->ReadyToRender() || !renderable->HasFlag(RenderableFlags::IsVisible))
                         continue;
 
-                    bool render = true;
                     if (!is_transparent_pass)
                     {
+                        bool render = true;
                         if (is_occluder_pass)
                         {
                             render &= renderable->HasFlag(RenderableFlags::Occluder);
@@ -556,15 +556,9 @@ namespace Spartan
                         {
                             render &= !renderable->HasFlag(RenderableFlags::Occluder);
                         }
-                    }
 
-                    if (!render)
-                        continue;
-
-                    if (!is_transparent_pass && !renderable->HasFlag(RenderableFlags::Occluder))
-                    {
-                        bool occluded = cmd_list->GetOcclusionQueryResult(entity->GetObjectId());
-                        renderable->SetFlag(RenderableFlags::IsVisible, !occluded);
+                        if (!render)
+                            continue;
                     }
 
                     // set cull mode
@@ -614,11 +608,35 @@ namespace Spartan
             }
         };
 
-        if (!is_transparent_pass)
+        if (!is_transparent_pass) // opaque
         {
             pass(false, true);  // occluders
-            cmd_list->UpdateOcclusionQueries();
-            pass(false, false); // occludees (and hardware occlusion query)
+            pass(false, false); // occludees (and occlusion queries)
+
+            // get gpu occlusion query results
+            {
+                cmd_list->UpdateOcclusionQueries();
+
+                bool is_transparent_pass = false;
+                uint32_t start_index     = !is_transparent_pass ? 0 : 2;
+                uint32_t end_index       = !is_transparent_pass ? 2 : 4;
+                for (uint32_t i = start_index; i < end_index; i++)
+                {
+                    auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
+                    if (entities.empty())
+                        continue;
+
+                    for (shared_ptr<Entity>& entity : entities)
+                    {
+                        shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                        if (!renderable || !renderable->HasFlag(RenderableFlags::IsVisible) || renderable->HasFlag(RenderableFlags::Occluder))
+                            continue;
+
+                        bool occluded = cmd_list->GetOcclusionQueryResult(entity->GetObjectId());
+                        renderable->SetFlag(RenderableFlags::IsVisible, !occluded);
+                    }
+                }
+            }
 
             cmd_list->Blit(
                 GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get(),
@@ -626,9 +644,9 @@ namespace Spartan
                 false
             );
         }
-        else
+        else // transparent
         {
-            pass(true, false); // just a depth test
+            pass(true, false);
         }
 
         cmd_list->EndTimeblock();

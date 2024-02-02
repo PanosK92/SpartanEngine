@@ -343,7 +343,7 @@ namespace Spartan
             {
                 array<uint64_t, rhi_max_queries_occlusion> data;
                 unordered_map<uint64_t, uint32_t> id_to_index;
-                uint32_t index = 0;
+                uint32_t index        = 0;
                 uint32_t index_active = 0;
 
                 void update(void* query_pool)
@@ -358,11 +358,6 @@ namespace Spartan
                         sizeof(uint64_t),                             // stride
                         VK_QUERY_RESULT_64_BIT                        // flags
                     );
-                }
-
-                void reset(void* cmd_list, void*& query_pool)
-                {
-                    vkCmdResetQueryPool(static_cast<VkCommandBuffer>(cmd_list), static_cast<VkQueryPool>(query_pool), 0, rhi_max_queries_occlusion);
                 }
             }
 
@@ -1445,7 +1440,6 @@ namespace Spartan
     void RHI_CommandList::UpdateOcclusionQueries()
     {
         queries::occlusion::update(m_rhi_query_pool_occlusion);
-        queries::occlusion::reset(m_rhi_resource, m_rhi_query_pool_occlusion);
     }
 
     void RHI_CommandList::BeginTimeblock(const char* name, const bool gpu_marker, const bool gpu_timing)
