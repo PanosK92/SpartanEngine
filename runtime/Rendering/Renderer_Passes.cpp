@@ -44,6 +44,7 @@ namespace Spartan
     namespace
     {
         unordered_map<uint64_t, Rectangle> visibility_rectangles;
+        unordered_map<uint64_t, BoundingBox> visibility_boxes;
         bool light_integration_brdf_speculat_lut_completed = false;
         mutex mutex_generate_mips;
         const float thread_group_count = 8.0f;
@@ -359,12 +360,13 @@ namespace Spartan
 
     void Renderer::Pass_Visibility(RHI_CommandList* cmd_list)
     {
-        // forest cpu time: 0.09 ms
+        // forest cpu time: 0.05 ms
 
         cmd_list->BeginTimeblock("visibility", false, false);
 
         // clear data
         visibility_rectangles.clear();
+        visibility_boxes.clear();
 
         // 1. cpu: frustum culling and depth sorting
         {
@@ -443,9 +445,10 @@ namespace Spartan
 
                 // compute screen space rectangle
                 BoundingBoxType box_type                     = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                const BoundingBox& box                       = renderable->GetBoundingBox(box_type);
+                BoundingBox box                              = renderable->GetBoundingBox(box_type);
                 Rectangle rectangle                          = m_camera->WorldToScreenCoordinates(box);
-                visibility_rectangles[entity->GetObjectId()] = rectangle; // save it for later
+                visibility_boxes[entity->GetObjectId()]      = box;
+                visibility_rectangles[entity->GetObjectId()] = rectangle;               
 
                 bool factor_screen_size = rectangle.Area() >= 65536.0f;
                 bool factor_proximity   = box.Contains(m_camera->GetEntity()->GetPosition()); // say we are in a building
@@ -471,16 +474,11 @@ namespace Spartan
                 if (!renderable_occludee || !renderable_occludee->ReadyToRender() || !renderable_occludee->HasFlag(RenderableFlags::IsVisible))
                     continue;
 
-                BoundingBoxType box_type        = renderable_occludee->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                const BoundingBox& box_occludee = renderable_occludee->GetBoundingBox(box_type);
-
                 for (shared_ptr<Entity>& occluder : entities)
                 {
-                    if (!occluder || occluder->GetObjectId() == occludee->GetObjectId())
+                    shared_ptr<Renderable> renderable_occluder = occludee->GetComponent<Renderable>();
+                    if (!occluder || occluder->GetObjectId() == occludee->GetObjectId() || !renderable_occluder->HasFlag(RenderableFlags::Occluder))
                         continue;
-
-                    shared_ptr<Renderable> renderable_occluder = occluder->GetComponent<Renderable>();
-                    const BoundingBox& box_occluder = renderable_occluder->GetBoundingBox(box_type);
 
                     // project world space axis-aligned bounding boxes into screen space
                     Rectangle& rectangle_occludee = visibility_rectangles[occludee->GetObjectId()];
