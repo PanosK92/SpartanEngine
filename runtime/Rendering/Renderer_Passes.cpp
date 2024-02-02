@@ -556,7 +556,6 @@ namespace Spartan
                         {
                             render &= !renderable->HasFlag(RenderableFlags::Occluder);
                         }
-
                     }
 
                     if (!render)
@@ -618,6 +617,7 @@ namespace Spartan
         if (!is_transparent_pass)
         {
             pass(false, true);  // occluders
+            cmd_list->UpdateOcclusionQueries();
             pass(false, false); // occludees (and hardware occlusion query)
 
             cmd_list->Blit(
