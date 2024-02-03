@@ -316,19 +316,19 @@ namespace Spartan
             {
                 array<uint64_t, rhi_max_queries_timestamps> data;
 
-                void update(void* query_pool)
+                void update(void* query_pool, const uint32_t query_count)
                 {
                     if (Profiler::IsGpuTimingEnabled())
                     {
                         vkGetQueryPoolResults(
-                            RHI_Context::device,                           // device
-                            static_cast<VkQueryPool>(query_pool),          // queryPool
-                            0,                                             // firstQuery
-                            rhi_max_queries_timestamps,                    // queryCount
-                            rhi_max_queries_timestamps * sizeof(uint64_t), // dataSize
-                            queries::timestamp::data.data(),               // pData
-                            sizeof(uint64_t),                              // stride
-                            VK_QUERY_RESULT_64_BIT                         // flags
+                            RHI_Context::device,                  // device
+                            static_cast<VkQueryPool>(query_pool), // queryPool
+                            0,                                    // firstQuery
+                            query_count,                          // queryCount
+                            query_count * sizeof(uint64_t),       // dataSize
+                            queries::timestamp::data.data(),      // pData
+                            sizeof(uint64_t),                     // stride
+                            VK_QUERY_RESULT_64_BIT                // flags
                         );
                     }
                 }
@@ -346,18 +346,23 @@ namespace Spartan
                 uint32_t index        = 0;
                 uint32_t index_active = 0;
 
-                void update(void* query_pool)
+                void update(void* query_pool, const uint32_t query_count)
                 {
                     vkGetQueryPoolResults(
-                        RHI_Context::device,                          // device
-                        static_cast<VkQueryPool>(query_pool),         // queryPool
-                        0,                                            // firstQuery
-                        rhi_max_queries_occlusion,                    // queryCount
-                        rhi_max_queries_occlusion * sizeof(uint64_t), // dataSize
-                        queries::occlusion::data.data(),              // pData
-                        sizeof(uint64_t),                             // stride
-                        VK_QUERY_RESULT_64_BIT                        // flags
+                        RHI_Context::device,                  // device
+                        static_cast<VkQueryPool>(query_pool), // queryPool
+                        0,                                    // firstQuery
+                        query_count,                          // queryCount
+                        query_count * sizeof(uint64_t),       // dataSize
+                        queries::occlusion::data.data(),      // pData
+                        sizeof(uint64_t),                     // stride
+                        VK_QUERY_RESULT_64_BIT                // flags
                     );
+                }
+
+                void reset(void* cmd_list, void*& query_pool)
+                {
+                    vkCmdResetQueryPool(static_cast<VkCommandBuffer>(cmd_list), static_cast<VkQueryPool>(query_pool), 0, rhi_max_queries_occlusion);
                 }
             }
 
@@ -447,9 +452,9 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
-        if (m_queue_type != RHI_Queue_Type::Copy)
+        if (m_queue_type != RHI_Queue_Type::Copy && m_timestamp_index != 0)
         {
-            queries::timestamp::update(m_rhi_query_pool_timestamps);
+            queries::timestamp::update(m_rhi_query_pool_timestamps, m_timestamp_index);
         }
 
         // begin command buffer
@@ -458,21 +463,28 @@ namespace Spartan
         begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         SP_ASSERT_MSG(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource), &begin_info) == VK_SUCCESS, "Failed to begin command buffer");
 
-        // reset query pools
-        if (m_queue_type != RHI_Queue_Type::Copy)
-        {
-            // per Vulkan, queries need to be reset if this the first time they are about to be used
-            if (m_timestamp_index != 0 || m_query_first_run)
-            {
-                queries::timestamp::reset(m_rhi_resource, m_rhi_query_pool_timestamps);
-                m_timestamp_index = 0;
-                m_query_first_run = false;
-            }
-        }
-
         // update states
         m_state          = RHI_CommandListState::Recording;
         m_pipeline_dirty = true;
+
+        // queries
+        if (m_queue_type != RHI_Queue_Type::Copy)
+        {
+            // query pools need to be reset before the first use
+            if (m_reset_query_pools)
+            {
+                queries::timestamp::reset(m_rhi_resource, m_rhi_query_pool_timestamps);
+                queries::occlusion::reset(m_rhi_resource, m_rhi_query_pool_occlusion);
+                m_reset_query_pools = false;
+                return;
+            }
+
+            if (m_timestamp_index != 0)
+            {
+                queries::timestamp::reset(m_rhi_resource, m_rhi_query_pool_timestamps);
+                m_timestamp_index = 0;
+            }
+        }
     }
 
     void RHI_CommandList::End()
@@ -1424,6 +1436,8 @@ namespace Spartan
             static_cast<VkQueryPool>(m_rhi_query_pool_occlusion),
             queries::occlusion::index_active
         );
+
+        m_occlusion_query_count++;
     }
 
     bool RHI_CommandList::GetOcclusionQueryResult(const uint64_t entity_id)
@@ -1439,7 +1453,8 @@ namespace Spartan
 
     void RHI_CommandList::UpdateOcclusionQueries()
     {
-        queries::occlusion::update(m_rhi_query_pool_occlusion);
+        queries::occlusion::update(m_rhi_query_pool_occlusion, m_occlusion_query_count);
+        m_occlusion_query_count = 0;
     }
 
     void RHI_CommandList::BeginTimeblock(const char* name, const bool gpu_marker, const bool gpu_timing)
