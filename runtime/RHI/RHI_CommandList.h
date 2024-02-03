@@ -162,12 +162,8 @@ namespace Spartan
         uint64_t m_vertex_buffer_id = 0;
         uint64_t m_index_buffer_id  = 0;
 
-        // queries
-        bool m_reset_query_pools         = true;
-        uint32_t m_timestamp_index       = 0;
-        uint32_t m_occlusion_query_count = 0;
-
         // misc
+        uint32_t m_timestamp_index                           = 0;
         RHI_Pipeline* m_pipeline                             = nullptr;
         bool m_render_pass_active                            = false;
         bool m_pipeline_dirty                                = false;
