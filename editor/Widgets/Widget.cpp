@@ -43,7 +43,7 @@ void Widget::Tick()
 
     // Begin
     {
-        SP_PROFILE_SECTION_START(m_title.c_str());
+        SP_PROFILE_CPU_START(m_title.c_str());
 
         // Size initial
         if (m_size_initial != k_widget_default_property)
@@ -104,7 +104,7 @@ void Widget::Tick()
         m_var_push_count = 0;
 
         // End profiling
-        SP_PROFILE_SECTION_END();
+        SP_PROFILE_CPU_END();
     }
 }
 

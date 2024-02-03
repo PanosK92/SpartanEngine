@@ -141,7 +141,7 @@ namespace Spartan
 
     void Physics::Tick()
     {
-        SP_PROFILE_FUNCTION();
+        SP_PROFILE_CPU();
 
         bool is_in_editor_mode = !Engine::IsFlagSet(EngineMode::Game);
         bool physics_enabled   = Engine::IsFlagSet(EngineMode::Physics);

@@ -28,9 +28,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Definitions.h"
 //==============================
 
-#define SP_PROFILE_SECTION_START(name) Spartan::Profiler::TimeBlockStart(name, Spartan::TimeBlockType::Cpu, nullptr);
-#define SP_PROFILE_SECTION_END()       Spartan::Profiler::TimeBlockEnd();
-#define SP_PROFILE_FUNCTION()          ScopedTimeBlock time_block = ScopedTimeBlock(__FUNCTION__);
+#define SP_PROFILE_CPU_START(name) Spartan::Profiler::TimeBlockStart(name, Spartan::TimeBlockType::Cpu, nullptr);
+#define SP_PROFILE_CPU_END()       Spartan::Profiler::TimeBlockEnd();
+#define SP_PROFILE_CPU()           ScopedTimeBlock time_block = ScopedTimeBlock(__FUNCTION__);
 
 namespace Spartan
 {

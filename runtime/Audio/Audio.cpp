@@ -112,7 +112,7 @@ namespace Spartan
         if (!Engine::IsFlagSet(EngineMode::Game))
             return;
 
-        SP_PROFILE_FUNCTION();
+        SP_PROFILE_CPU();
 
         // Update FMOD
         if (!HandleErrorFmod((fmod_system->update())))
