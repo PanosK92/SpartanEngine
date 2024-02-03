@@ -138,13 +138,11 @@ namespace Spartan
         SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
-    void RHI_CommandList::ClearRenderTarget(RHI_Texture* texture,
-        const uint32_t color_index         /*= 0*/,
-        const uint32_t depth_stencil_index /*= 0*/,
-        const bool storage                 /*= false*/,
-        const Color& clear_color           /*= rhi_color_load*/,
-        const float clear_depth            /*= rhi_depth_load*/,
-        const uint32_t clear_stencil       /*= rhi_stencil_load*/
+    void RHI_CommandList::ClearRenderTarget(
+        RHI_Texture* texture,
+        const Color& clear_color     /*= rhi_color_load*/,
+        const float clear_depth      /*= rhi_depth_load*/,
+        const uint32_t clear_stencil /*= rhi_stencil_load*/
     )
     {
         SP_ASSERT_MSG(false, "Function is not implemented");
@@ -335,9 +333,9 @@ namespace Spartan
         return 0.0f;
     }
 
-    uint32_t RHI_CommandList::BeginOcclusionQuery()
+    void RHI_CommandList::BeginOcclusionQuery(const uint64_t entity_id)
     {
-        return 0;
+        return;
     }
 
     void RHI_CommandList::EndOcclusionQuery()
@@ -345,9 +343,14 @@ namespace Spartan
 
     }
 
-    bool RHI_CommandList::GetOcclusionQueryResult(const uint32_t index_occlusion)
+    bool RHI_CommandList::GetOcclusionQueryResult(const uint64_t entity_id)
     {
         return false;
+    }
+
+    void RHI_CommandList::UpdateOcclusionQueries()
+    {
+
     }
 
     void RHI_CommandList::BeginTimeblock(const char* name, const bool gpu_marker, const bool gpu_timing)
