@@ -186,7 +186,7 @@ namespace Spartan
 
     void World::Tick()
     {
-        SP_PROFILE_FUNCTION();
+        SP_PROFILE_CPU();
 
         lock_guard<mutex> lock(m_entity_access_mutex);
 

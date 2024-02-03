@@ -132,7 +132,7 @@ namespace Spartan
 
     void Renderer::Pass_Frame(RHI_CommandList* cmd_list)
     {
-        SP_PROFILE_FUNCTION();
+        SP_PROFILE_CPU();
 
         // acquire render targets
         RHI_Texture* rt_render   = GetRenderTarget(Renderer_RenderTexture::frame_render).get();
@@ -448,7 +448,7 @@ namespace Spartan
                 BoundingBox box                              = renderable->GetBoundingBox(box_type);
                 Rectangle rectangle                          = m_camera->WorldToScreenCoordinates(box);
                 visibility_boxes[entity->GetObjectId()]      = box;
-                visibility_rectangles[entity->GetObjectId()] = rectangle;               
+                visibility_rectangles[entity->GetObjectId()] = rectangle;
 
                 bool factor_screen_size = rectangle.Area() >= 65536.0f;
                 bool factor_proximity   = box.Contains(m_camera->GetEntity()->GetPosition()); // say we are in a building
