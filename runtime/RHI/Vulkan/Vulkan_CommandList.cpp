@@ -379,6 +379,8 @@ namespace Spartan
                     auto query_pool = reinterpret_cast<VkQueryPool*>(&pool_timestamp);
                     SP_VK_ASSERT_MSG(vkCreateQueryPool(RHI_Context::device, &query_pool_info, nullptr, query_pool),
                         "Failed to created timestamp query pool");
+
+                    RHI_Device::SetResourceName(pool_timestamp, RHI_Resource_Type::QueryPool, "query_pool_timestamp");
                 }
 
                 // occlusion
@@ -391,6 +393,8 @@ namespace Spartan
                     auto query_pool = reinterpret_cast<VkQueryPool*>(&pool_occlusion);
                     SP_VK_ASSERT_MSG(vkCreateQueryPool(RHI_Context::device, &query_pool_info, nullptr, query_pool),
                         "Failed to created occlusion query pool");
+
+                    RHI_Device::SetResourceName(pool_occlusion, RHI_Resource_Type::QueryPool, "query_pool_occlusion");
                 }
 
                 timestamp::data.fill(0);
@@ -470,20 +474,11 @@ namespace Spartan
         // queries
         if (m_queue_type != RHI_Queue_Type::Copy)
         {
-            // query pools need to be reset before the first use
-            if (m_reset_query_pools)
-            {
-                queries::timestamp::reset(m_rhi_resource, m_rhi_query_pool_timestamps);
-                queries::occlusion::reset(m_rhi_resource, m_rhi_query_pool_occlusion);
-                m_reset_query_pools = false;
-                return;
-            }
-
-            if (m_timestamp_index != 0)
-            {
-                queries::timestamp::reset(m_rhi_resource, m_rhi_query_pool_timestamps);
-                m_timestamp_index = 0;
-            }
+            // queries need to be reset before they are first used and they
+            // also need to be reset after every use, so we just reset them always
+            m_timestamp_index = 0;
+            queries::timestamp::reset(m_rhi_resource, m_rhi_query_pool_timestamps);
+            queries::occlusion::reset(m_rhi_resource, m_rhi_query_pool_occlusion);
         }
     }
 
@@ -1436,8 +1431,6 @@ namespace Spartan
             static_cast<VkQueryPool>(m_rhi_query_pool_occlusion),
             queries::occlusion::index_active
         );
-
-        m_occlusion_query_count++;
     }
 
     bool RHI_CommandList::GetOcclusionQueryResult(const uint64_t entity_id)
@@ -1453,8 +1446,7 @@ namespace Spartan
 
     void RHI_CommandList::UpdateOcclusionQueries()
     {
-        queries::occlusion::update(m_rhi_query_pool_occlusion, m_occlusion_query_count);
-        m_occlusion_query_count = 0;
+        queries::occlusion::update(m_rhi_query_pool_occlusion, rhi_max_queries_occlusion);
     }
 
     void RHI_CommandList::BeginTimeblock(const char* name, const bool gpu_marker, const bool gpu_timing)
