@@ -1409,11 +1409,18 @@ namespace Spartan
 
     void RHI_CommandList::BeginOcclusionQuery(const uint64_t entity_id)
     {
+        SP_ASSERT_MSG(m_pso.IsGraphics(), "Occlusion queries are only supported in graphics pipelines");
+
         queries::occlusion::index_active = queries::occlusion::id_to_index[entity_id];
         if (queries::occlusion::index_active == 0)
         {
             queries::occlusion::index_active           = ++queries::occlusion::index;
             queries::occlusion::id_to_index[entity_id] = queries::occlusion::index;
+        }
+
+        if (!m_render_pass_active)
+        {
+            BeginRenderPass();
         }
 
         vkCmdBeginQuery(
