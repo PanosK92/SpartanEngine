@@ -301,7 +301,7 @@ namespace Spartan
                     if (auto renderable = entity->GetComponent<Renderable>())
                     {
                         BoundingBoxType bounding_box_type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                        DrawBox(renderable->GetBoundingBox(bounding_box_type), renderable->HasFlag(RenderableFlags::IsVisible) ? color_visible : color_occluded);
+                        DrawBox(renderable->GetBoundingBox(bounding_box_type), renderable->IsVisible() ? color_visible : color_occluded);
                     }
                 }
             };
@@ -316,7 +316,7 @@ namespace Spartan
                         for (uint32_t group_index = 0; group_index < group_count; group_index++)
                         {
                             const BoundingBox& bounding_box_group = renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
-                            DrawBox(bounding_box_group, renderable->HasFlag(RenderableFlags::IsVisible) ? color_visible : color_occluded);
+                            DrawBox(bounding_box_group, renderable->IsVisible() ? color_visible : color_occluded);
                         }
                     }
                 }

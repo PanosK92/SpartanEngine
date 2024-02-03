@@ -379,7 +379,7 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
         uint32_t instance_partitions = renderable->GetInstancePartitionCount();
         string name_material         = material ? material->GetObjectName() : "N/A";
         bool cast_shadows            = renderable->HasFlag(RenderableFlags::CastsShadows);
-        bool is_visible              = renderable->HasFlag(RenderableFlags::IsVisible);
+        bool is_visible              = renderable->IsVisible();
         //================================================================================
 
         // mesh

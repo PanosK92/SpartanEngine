@@ -46,9 +46,11 @@ namespace Spartan
 
     enum RenderableFlags : uint32_t
     {
-        IsVisible          = 1U << 0,
-        Occluder           = 1U << 1,
-        CastsShadows       = 1U << 2
+        OccludedCpu      = 1U << 0,
+        OccludedGpu      = 1U << 1,
+        Occluder         = 1U << 2,
+        IgnoreGpuCulling = 1U << 3,
+        CastsShadows     = 1U << 4
     };
 
     class SP_CLASS Renderable : public Component
@@ -106,6 +108,7 @@ namespace Spartan
         uint32_t GetVertexOffset() const { return m_geometry_vertex_offset; }
         uint32_t GetVertexCount() const  { return m_geometry_vertex_count; }
         bool ReadyToRender() const;
+        bool IsVisible() const { return !(m_flags & RenderableFlags::OccludedCpu) && !(m_flags & RenderableFlags::OccludedGpu); }
 
         // flags
         bool HasFlag(const RenderableFlags flag) { return m_flags & flag; }
@@ -135,6 +138,6 @@ namespace Spartan
 
         // misc
         Math::Matrix m_transform_previous = Math::Matrix::Identity;
-        uint32_t m_flags                  = RenderableFlags::IsVisible | RenderableFlags::CastsShadows;
+        uint32_t m_flags                  = RenderableFlags::CastsShadows;
     };
 }
