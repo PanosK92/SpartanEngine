@@ -163,8 +163,9 @@ namespace Spartan
         uint64_t m_index_buffer_id  = 0;
 
         // queries
-        bool m_query_first_run     = true;
-        uint32_t m_timestamp_index = 0;
+        bool m_reset_query_pools         = true;
+        uint32_t m_timestamp_index       = 0;
+        uint32_t m_occlusion_query_count = 0;
 
         // misc
         RHI_Pipeline* m_pipeline                             = nullptr;
