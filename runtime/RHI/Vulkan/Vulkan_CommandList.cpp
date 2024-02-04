@@ -349,14 +349,14 @@ namespace Spartan
                 void update(void* query_pool, const uint32_t query_count)
                 {
                     vkGetQueryPoolResults(
-                        RHI_Context::device,                  // device
-                        static_cast<VkQueryPool>(query_pool), // queryPool
-                        0,                                    // firstQuery
-                        query_count,                          // queryCount
-                        query_count * sizeof(uint64_t),       // dataSize
-                        queries::occlusion::data.data(),      // pData
-                        sizeof(uint64_t),                     // stride
-                        VK_QUERY_RESULT_64_BIT                // flags
+                        RHI_Context::device,                                 // device
+                        static_cast<VkQueryPool>(query_pool),                // queryPool
+                        0,                                                   // firstQuery
+                        query_count,                                         // queryCount
+                        query_count * sizeof(uint64_t),                      // dataSize
+                        queries::occlusion::data.data(),                     // pData
+                        sizeof(uint64_t),                                    // stride
+                        VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_PARTIAL_BIT // flags
                     );
                 }
 

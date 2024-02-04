@@ -43,8 +43,185 @@ namespace Spartan
 {
     namespace
     {
-        unordered_map<uint64_t, Rectangle> visibility_rectangles;
-        unordered_map<uint64_t, BoundingBox> visibility_boxes;
+        namespace visibility
+        {
+            unordered_map<uint64_t, Rectangle> rectangles;
+            unordered_map<uint64_t, BoundingBox> boxes;
+
+            void clear()
+            {
+                rectangles.clear();
+                boxes.clear();
+            }
+
+            void frustum_culling_and_depth_sorting(Camera* camera, unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& renderables_)
+            {
+                auto sort_renderables = [&camera, &renderables_](Renderer_Entity entity_type, const bool are_transparent)
+                {
+                    vector<shared_ptr<Entity>>& renderables = renderables_[entity_type];
+
+                    // frustum culling
+                    for (shared_ptr<Entity>& entity : renderables)
+                    {
+                        shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+
+                        renderable->SetFlag(RenderableFlags::OccludedCpu, !camera->IsInViewFrustum(renderable));
+                        renderable->SetFlag(RenderableFlags::Occluder,    false);
+                    }
+
+                    // depth sorting
+                    {
+                        Vector3 camera_position = camera->GetEntity()->GetPosition();
+
+                        auto squared_distance = [&camera_position](const shared_ptr<Entity>& entity)
+                        {
+                            shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                            BoundingBoxType type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+                            Vector3 position = renderable->GetBoundingBox(type).GetCenter();
+                            float distance_squared = (position - camera_position).LengthSquared();
+
+                            return distance_squared;
+                        };
+
+                        sort(renderables.begin(), renderables.end(), [&squared_distance, &are_transparent](const shared_ptr<Entity>& a, const shared_ptr<Entity>& b)
+                        {
+                            // skip entities which are outside of the view frustum
+                            if (a->GetComponent<Renderable>()->HasFlag(OccludedCpu) || b->GetComponent<Renderable>()->HasFlag(OccludedCpu))
+                                return false;
+
+                            if (are_transparent)
+                            {
+                                // back-to-front for transparent
+                                return squared_distance(a) > squared_distance(b);
+                            }
+                            else
+                            {
+                                // front-to-back for opaque
+                                return squared_distance(a) < squared_distance(b);
+                            }
+                        });
+                    }
+                };
+
+                sort_renderables(Renderer_Entity::Geometry, false);
+                sort_renderables(Renderer_Entity::GeometryInstanced, false);
+                sort_renderables(Renderer_Entity::GeometryTransparent, true);
+                sort_renderables(Renderer_Entity::GeometryTransparentInstanced, true);
+            }
+
+            void determine_occluders(Camera* camera, unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& renderables)
+            {
+                bool is_transparent_pass = false;
+                uint32_t start_index     = !is_transparent_pass ? 0 : 2;
+                uint32_t end_index       = !is_transparent_pass ? 2 : 4;
+                uint32_t occluder_count  = 0;
+                for (uint32_t i = start_index; i < end_index; i++)
+                {
+                    auto& entities = renderables[static_cast<Renderer_Entity>(i)];
+                    if (entities.empty())
+                        continue;
+
+                    for (uint32_t index_entity = 0; index_entity < entities.size(); index_entity++)
+                    {
+                        shared_ptr<Entity>& entity        = entities[index_entity];
+                        shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                        if (!renderable || !renderable->ReadyToRender() || renderable->HasFlag(RenderableFlags::OccludedCpu))
+                            continue;
+
+                        // compute screen space rectangle
+                        BoundingBoxType box_type          = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+                        BoundingBox box                   = renderable->GetBoundingBox(box_type);
+                        Rectangle rectangle               = camera->WorldToScreenCoordinates(box);
+                        boxes[entity->GetObjectId()]      = box;
+                        rectangles[entity->GetObjectId()] = rectangle;
+
+                        bool factor_screen_size = rectangle.Area() >= 65536.0f;
+                        bool factor_inside      = box.Contains(camera->GetEntity()->GetPosition()); // say we are in a building
+                        bool factor_count       = occluder_count < 32;
+                        if (factor_count && factor_screen_size && !factor_inside)
+                        {
+                            renderable->SetFlag(RenderableFlags::Occluder, true);
+                            occluder_count++;
+                        }
+                    }
+                }
+            }
+
+            void remove_false_gpu_occlusion(shared_ptr<Entity>& entity_occludee, vector<shared_ptr<Entity>>& entities)
+            {
+                // if this entity is outside of the view frustum, don't bother
+                shared_ptr<Renderable> renderable_occludee = entity_occludee->GetComponent<Renderable>();
+                if (!renderable_occludee || renderable_occludee->HasFlag(OccludedCpu))
+                    return;
+
+                bool is_visible         = true;
+                uint32_t occluder_count = 0;
+                for (shared_ptr<Entity>& entity_occluder : entities)
+                {
+                    shared_ptr<Renderable> renderable_occluder = entity_occluder->GetComponent<Renderable>();
+                    if (!renderable_occluder || entity_occludee->GetObjectId() == entity_occluder->GetObjectId())
+                        continue;
+
+                    if (renderable_occluder->HasFlag(Occluder))
+                    {
+                        // project world space axis-aligned bounding boxes into screen space
+                        Rectangle& rectangle_occludee = rectangles[entity_occludee->GetObjectId()];
+                        Rectangle& rectangle_occluder = rectangles[entity_occluder->GetObjectId()];
+
+                        // if it's contained by at least one occluder, it's not visible
+                        if (rectangle_occluder.Contains(rectangle_occludee))
+                        {
+                            is_visible = false;
+                            break;
+                        }
+
+                        occluder_count++;
+                    }
+
+                    // use the 4 first (and front most) occluders
+                    if (occluder_count > 4)
+                        break;
+                }
+
+                if (is_visible)
+                {
+                    renderable_occludee->SetFlag(RenderableFlags::OccludedGpu, false);
+                    SP_LOG_INFO("False occlusion detected and removed");
+                }
+            }
+
+            void get_gpu_occlusion_query_results(RHI_CommandList* cmd_list, unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& renderables)
+            {
+                cmd_list->UpdateOcclusionQueries();
+
+                bool is_transparent_pass = false;
+                uint32_t start_index     = !is_transparent_pass ? 0 : 2;
+                uint32_t end_index       = !is_transparent_pass ? 2 : 4;
+                for (uint32_t i = start_index; i < end_index; i++)
+                {
+                    auto& entities = renderables[static_cast<Renderer_Entity>(i)];
+                    if (entities.empty())
+                        continue;
+
+                    for (shared_ptr<Entity>& entity : entities)
+                    {
+                        shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                        if (!renderable)
+                            continue;
+
+                        bool occluded = cmd_list->GetOcclusionQueryResult(entity->GetObjectId());
+                        renderable->SetFlag(RenderableFlags::OccludedGpu, occluded);
+
+                        // counter occlusion query latency by removing false gpu occlusions
+                        if (occluded)
+                        {
+                            remove_false_gpu_occlusion(entity, entities);
+                        }
+                    }
+                }
+            }
+        }
+
         bool light_integration_brdf_speculat_lut_completed = false;
         mutex mutex_generate_mips;
         const float thread_group_count = 8.0f;
@@ -360,159 +537,16 @@ namespace Spartan
 
     void Renderer::Pass_Visibility(RHI_CommandList* cmd_list)
     {
-        // forest cpu time: 0.05 ms
+        // cpu pass
+        // forest time: 0.05 ms
 
         cmd_list->BeginTimeblock("visibility", false, false);
 
-        // clear data
-        visibility_rectangles.clear();
-        visibility_boxes.clear();
-
-        // 1. cpu: frustum culling and depth sorting
-        {
-            auto sort_renderables = [](Renderer_Entity entity_type, const bool are_transparent)
-            {
-                vector<shared_ptr<Entity>>& renderables = m_renderables[entity_type];
-
-                // frustum culling
-                for (shared_ptr<Entity>& entity : renderables)
-                {
-                    shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                    
-                    renderable->SetFlag(RenderableFlags::OccludedCpu,      !GetCamera()->IsInViewFrustum(renderable));
-                    renderable->SetFlag(RenderableFlags::OccludedGpu,      false);
-                    renderable->SetFlag(RenderableFlags::Occluder,         false);
-                    renderable->SetFlag(RenderableFlags::IgnoreGpuCulling, false);
-                }
-
-                // depth sorting
-                {
-                    if (renderables.size() <= 2)
-                        return;
-
-                    Vector3 camera_position = GetCamera()->GetEntity()->GetPosition();
-
-                    auto squared_distance = [&camera_position](const shared_ptr<Entity>& entity)
-                    {
-                        shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                        BoundingBoxType type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                        Vector3 position     = renderable->GetBoundingBox(type).GetCenter();
-
-                        // calculate squared distance
-                        return (position - camera_position).LengthSquared();
-                    };
-
-                    sort(renderables.begin(), renderables.end(), [&squared_distance, &are_transparent](const shared_ptr<Entity>& a, const shared_ptr<Entity>& b)
-                    {
-                        // skip non-visible entities
-                        if (!a->GetComponent<Renderable>()->IsVisible() || !b->GetComponent<Renderable>()->IsVisible())
-                            return false;
-
-                        if (are_transparent)
-                        {
-                            // back-to-front for transparent
-                            return squared_distance(a) > squared_distance(b);
-                        }
-                        else
-                        {
-                            // front-to-back for opaque
-                            return squared_distance(a) < squared_distance(b);
-                        }
-                    });
-                }
-            };
-
-            sort_renderables(Renderer_Entity::Geometry, false);
-            sort_renderables(Renderer_Entity::GeometryInstanced, false);
-            sort_renderables(Renderer_Entity::GeometryTransparent, true);
-            sort_renderables(Renderer_Entity::GeometryTransparentInstanced, true);
-        }
-
-        // 2. cpu: occluder determination
-        bool is_transparent_pass = false;
-        uint32_t start_index     = !is_transparent_pass ? 0 : 2;
-        uint32_t end_index       = !is_transparent_pass ? 2 : 4;
-        uint32_t occluder_count  = 0;
-        for (uint32_t i = start_index; i < end_index; i++)
-        {
-            auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
-            if (entities.empty())
-                continue;
-
-            for (uint32_t index_entity = 0; index_entity < entities.size(); index_entity++)
-            {
-                shared_ptr<Entity>& entity        = entities[index_entity];
-                shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                if (!renderable || !renderable->ReadyToRender() || !renderable->IsVisible())
-                    continue;
-
-                // compute screen space rectangle
-                BoundingBoxType box_type                     = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                BoundingBox box                              = renderable->GetBoundingBox(box_type);
-                Rectangle rectangle                          = m_camera->WorldToScreenCoordinates(box);
-                visibility_boxes[entity->GetObjectId()]      = box;
-                visibility_rectangles[entity->GetObjectId()] = rectangle;
-
-                bool factor_screen_size = rectangle.Area() >= 65536.0f;
-                bool factor_proximity   = box.Contains(m_camera->GetEntity()->GetPosition()); // say we are in a building
-                bool factor_count       = occluder_count < 32; // after a certain number, occluders will be occluded by others (so they are really occludees)
-                if (factor_count && (factor_screen_size || factor_proximity))
-                {
-                    renderable->SetFlag(RenderableFlags::Occluder, true);
-                    occluder_count++;
-                }
-            }
-        }
-
-        // 3. cpu: gpu occlusion removal (to counter query latency)
-        for (uint32_t i = start_index; i < end_index; i++)
-        {
-            auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
-            if (entities.empty())
-                continue;
-
-            for (shared_ptr<Entity>& occludee : entities)
-            {
-                shared_ptr<Renderable> renderable_occludee = occludee->GetComponent<Renderable>();
-                if (!renderable_occludee)
-                    continue;
-
-                if (!renderable_occludee->HasFlag(RenderableFlags::OccludedCpu))
-                {
-                    bool is_visible = true;
-                    for (shared_ptr<Entity>& occluder : entities)
-                    {
-                        shared_ptr<Renderable> renderable_occluder = occluder->GetComponent<Renderable>();
-                        if (!renderable_occluder || !renderable_occluder->HasFlag(RenderableFlags::Occluder))
-                            continue;
-
-                        // project world space axis-aligned bounding boxes into screen space
-                        Rectangle& rectangle_occludee = visibility_rectangles[occludee->GetObjectId()];
-                        Rectangle& rectangle_occluder = visibility_rectangles[occluder->GetObjectId()];
-
-                        // if it's contained by at least one occluder, it's not visible
-                        if (rectangle_occluder.Contains(rectangle_occludee))
-                        {
-                            is_visible = false;
-                            break;
-                        }
-                    }
-
-                    // if this was previously occluded by the gpu but it's visible now, then it just came into view
-                    // this means that the gpu query latency will manifest as the entity won't render for a frame or two
-                    // however, we detect this in real time here, and ignore the gpu occlusion query the moment this happens
-                    if (is_visible)
-                    {
-                        renderable_occludee->SetFlag(RenderableFlags::IgnoreGpuCulling, true);
-                        //SP_LOG_INFO("%s came into view", occludee->GetObjectName().c_str());
-                    }
-                }
-            }
-        }
+        visibility::clear();
+        visibility::frustum_culling_and_depth_sorting(m_camera.get(), m_renderables);
+        visibility::determine_occluders(m_camera.get(), m_renderables);
 
         cmd_list->EndTimeblock();
-
-        // 4: gpu: Pass_Depth_Prepass() will do gpu occlusion queries based on RenderableFlags::Occluder
     }
 
     void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass)
@@ -631,37 +665,7 @@ namespace Spartan
             pass(false, true);  // occluders
             pass(false, false); // occludees (and occlusion queries)
 
-            // get gpu occlusion query results
-            {
-                cmd_list->UpdateOcclusionQueries();
-
-                bool is_transparent_pass = false;
-                uint32_t start_index     = !is_transparent_pass ? 0 : 2;
-                uint32_t end_index       = !is_transparent_pass ? 2 : 4;
-                for (uint32_t i = start_index; i < end_index; i++)
-                {
-                    auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
-                    if (entities.empty())
-                        continue;
-
-                    for (shared_ptr<Entity>& entity : entities)
-                    {
-                        shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                        if (!renderable)
-                            continue;
-
-                        if (renderable->HasFlag(RenderableFlags::IgnoreGpuCulling))
-                        {
-                            renderable->SetFlag(RenderableFlags::OccludedGpu, false);
-                        }
-                        else
-                        {
-                            bool occluded = cmd_list->GetOcclusionQueryResult(entity->GetObjectId());
-                            renderable->SetFlag(RenderableFlags::OccludedGpu, occluded);
-                        }
-                    }
-                }
-            }
+            visibility::get_gpu_occlusion_query_results(cmd_list, m_renderables);
 
             cmd_list->Blit(
                 GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get(),

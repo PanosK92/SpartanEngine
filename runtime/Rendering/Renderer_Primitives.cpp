@@ -291,22 +291,31 @@ namespace Spartan
         
         if (GetOption<bool>(Renderer_Option::Debug_Aabb))
         {
-            static const Color color_visible  = Color::standard_renderer_lines;
-            static const Color color_occluded = Color(01.0f, 0.0f, 0.0f, 1.0f);
+            auto get_color = [](shared_ptr<Renderable>& renderable)
+            {
+                static const Color color_visible        = Color::standard_renderer_lines;
+                static const Color color_occluded       = Color(1.0f, 0.0f, 0.0f, 1.0f);
+                static const Color color_ignore_culling = Color(1.0f, 1.0f, 0.0f, 1.0f);
 
-            auto draw_bounding_boxes = [](const Renderer_Entity entity_type)
+                Color color = color_visible;
+                color       = !renderable->IsVisible() ? color_occluded : color;
+
+                return color;
+            };
+
+            auto draw_bounding_boxes = [&get_color](const Renderer_Entity entity_type)
             {
                 for (const auto& entity : GetEntities()[entity_type])
                 {
                     if (auto renderable = entity->GetComponent<Renderable>())
                     {
                         BoundingBoxType bounding_box_type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                        DrawBox(renderable->GetBoundingBox(bounding_box_type), renderable->IsVisible() ? color_visible : color_occluded);
+                        DrawBox(renderable->GetBoundingBox(bounding_box_type), get_color(renderable));
                     }
                 }
             };
             
-            auto draw_instance_group_bounding_boxes = [&](const Renderer_Entity entity_type)
+            auto draw_instance_group_bounding_boxes = [&get_color](const Renderer_Entity entity_type)
             {
                 for (const auto& entity : GetEntities()[entity_type])
                 {
@@ -316,7 +325,7 @@ namespace Spartan
                         for (uint32_t group_index = 0; group_index < group_count; group_index++)
                         {
                             const BoundingBox& bounding_box_group = renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
-                            DrawBox(bounding_box_group, renderable->IsVisible() ? color_visible : color_occluded);
+                            DrawBox(bounding_box_group, get_color(renderable));
                         }
                     }
                 }
