@@ -46,11 +46,10 @@ namespace Spartan
 
     enum RenderableFlags : uint32_t
     {
-        OccludedCpu      = 1U << 0, // frustum culling
-        OccludedGpu      = 1U << 1, // occlusion query culling
-        Occluder         = 1U << 2,
-        IgnoreGpuCulling = 1U << 3,
-        CastsShadows     = 1U << 4
+        OccludedCpu  = 1U << 0, // frustum culling
+        OccludedGpu  = 1U << 1, // occlusion query culling
+        Occluder     = 1U << 2,
+        CastsShadows = 1U << 3
     };
 
     class SP_CLASS Renderable : public Component
