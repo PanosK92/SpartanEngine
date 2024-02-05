@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_SwapChain.h"
 #include "../RHI_Implementation.h"
+#include "../RHI_Fence.h"
 #include "../RHI_Semaphore.h"
 #include "../RHI_CommandPool.h"
 #include "../Display/Display.h"
@@ -41,7 +42,7 @@ using namespace Spartan::Math;
 namespace Spartan
 {
     namespace
-    { 
+    {
         VkColorSpaceKHR get_color_space(const RHI_Format format)
         {
             // VK_COLOR_SPACE_HDR10_ST2084_EXT represents the HDR10 color space with the ST.2084 (PQ)electro - optical transfer function.
@@ -53,8 +54,8 @@ namespace Spartan
             // When displaying an image in sRGB, the values must be converted to linear space before they are displayed.
 
             VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;                                                                // SDR
-            color_space                 = format == RHI_Format::R16G16B16A16_Float ? VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT : color_space; // HDR
-            color_space                 = format == RHI_Format::R10G10B10A2_Unorm  ? VK_COLOR_SPACE_HDR10_ST2084_EXT         : color_space; // HDR
+            color_space = format == RHI_Format::R16G16B16A16_Float ? VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT : color_space; // HDR
+            color_space = format == RHI_Format::R10G10B10A2_Unorm ? VK_COLOR_SPACE_HDR10_ST2084_EXT : color_space; // HDR
 
             return color_space;
         }
@@ -130,7 +131,7 @@ namespace Spartan
 
             for (const VkSurfaceFormatKHR& supported_format : supported_formats)
             {
-                bool support_format      = supported_format.format == vulkan_format[rhi_format_to_index(*format)];
+                bool support_format = supported_format.format == vulkan_format[rhi_format_to_index(*format)];
                 bool support_color_space = supported_format.colorSpace == color_space;
 
                 if (support_format && support_color_space)
@@ -179,14 +180,14 @@ namespace Spartan
     )
     {
         SP_ASSERT_MSG(RHI_Device::IsValidResolution(width, height), "Invalid resolution");
-        SP_ASSERT_MSG(buffer_count >= 2,                            "Buffer can't be less than 2");
+        SP_ASSERT_MSG(buffer_count >= 2, "Buffer can't be less than 2");
 
-        m_format       = format_sdr; // for now, we use SDR by default as HDR doesn't look rigth - Display::GetHdr() ? format_hdr : format_sdr;
+        m_format = format_sdr; // for now, we use SDR by default as HDR doesn't look rigth - Display::GetHdr() ? format_hdr : format_sdr;
         m_buffer_count = buffer_count;
-        m_width        = width;
-        m_height       = height;
-        m_sdl_window   = sdl_window;
-        m_object_name  = name;
+        m_width = width;
+        m_height = height;
+        m_sdl_window = sdl_window;
+        m_object_name = name;
         m_present_mode = present_mode;
 
         Create();
@@ -230,42 +231,42 @@ namespace Spartan
         SP_ASSERT_MSG(is_format_and_color_space_supported(surface, &m_format, color_space), "The surface doesn't support the requested format");
 
         // clamp size between the supported min and max
-        m_width  = Math::Helper::Clamp(m_width,  capabilities.minImageExtent.width,  capabilities.maxImageExtent.width);
+        m_width = Math::Helper::Clamp(m_width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
         m_height = Math::Helper::Clamp(m_height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
 
         // swap chain
         VkSwapchainKHR swap_chain;
         {
-            VkSwapchainCreateInfoKHR create_info  = {};
-            create_info.sType                     = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-            create_info.surface                   = surface;
-            create_info.minImageCount             = m_buffer_count;
-            create_info.imageFormat               = vulkan_format[rhi_format_to_index(m_format)];
-            create_info.imageColorSpace           = color_space;
-            create_info.imageExtent               = { m_width, m_height };
-            create_info.imageArrayLayers          = 1;
-            create_info.imageUsage                = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // fer rendering on it
-            create_info.imageUsage               |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;     // for blitting to it
+            VkSwapchainCreateInfoKHR create_info = {};
+            create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+            create_info.surface = surface;
+            create_info.minImageCount = m_buffer_count;
+            create_info.imageFormat = vulkan_format[rhi_format_to_index(m_format)];
+            create_info.imageColorSpace = color_space;
+            create_info.imageExtent = { m_width, m_height };
+            create_info.imageArrayLayers = 1;
+            create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // fer rendering on it
+            create_info.imageUsage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;     // for blitting to it
 
             uint32_t queueFamilyIndices[] = { RHI_Device::QueueGetIndex(RHI_Queue_Type::Compute), RHI_Device::QueueGetIndex(RHI_Queue_Type::Graphics) };
             if (queueFamilyIndices[0] != queueFamilyIndices[1])
             {
-                create_info.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
+                create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
                 create_info.queueFamilyIndexCount = 2;
-                create_info.pQueueFamilyIndices   = queueFamilyIndices;
+                create_info.pQueueFamilyIndices = queueFamilyIndices;
             }
             else
             {
-                create_info.imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE;
+                create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
                 create_info.queueFamilyIndexCount = 0;
-                create_info.pQueueFamilyIndices   = nullptr;
+                create_info.pQueueFamilyIndices = nullptr;
             }
 
-            create_info.preTransform   = capabilities.currentTransform;
+            create_info.preTransform = capabilities.currentTransform;
             create_info.compositeAlpha = get_supported_composite_alpha_format(surface);
-            create_info.presentMode    = get_present_mode(surface, m_present_mode);
-            create_info.clipped        = VK_TRUE;
-            create_info.oldSwapchain   = nullptr;
+            create_info.presentMode = get_present_mode(surface, m_present_mode);
+            create_info.clipped = VK_TRUE;
+            create_info.oldSwapchain = nullptr;
 
             SP_VK_ASSERT_MSG(vkCreateSwapchainKHR(RHI_Context::device, &create_info, nullptr, &swap_chain),
                 "Failed to create swapchain");
@@ -306,26 +307,26 @@ namespace Spartan
             {
                 RHI_Device::SetResourceName(m_rhi_rt[i], RHI_Resource_Type::Texture, string(string("swapchain_image_") + to_string(i)));
 
-                VkImageViewCreateInfo create_info           = {};
-                create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-                create_info.image                           = static_cast<VkImage>(m_rhi_rt[i]);
-                create_info.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-                create_info.format                          = vulkan_format[rhi_format_to_index(m_format)];
-                create_info.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-                create_info.subresourceRange.baseMipLevel   = 0;
-                create_info.subresourceRange.levelCount     = 1;
+                VkImageViewCreateInfo create_info = {};
+                create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+                create_info.image = static_cast<VkImage>(m_rhi_rt[i]);
+                create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+                create_info.format = vulkan_format[rhi_format_to_index(m_format)];
+                create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                create_info.subresourceRange.baseMipLevel = 0;
+                create_info.subresourceRange.levelCount = 1;
                 create_info.subresourceRange.baseArrayLayer = 0;
-                create_info.subresourceRange.layerCount     = 1;
-                create_info.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-                create_info.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-                create_info.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-                create_info.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+                create_info.subresourceRange.layerCount = 1;
+                create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+                create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+                create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+                create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
                 SP_ASSERT_MSG(vkCreateImageView(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkImageView*>(&m_rhi_rtv[i])) == VK_SUCCESS, "Failed to create swapchain RTV");
             }
         }
 
-        m_rhi_surface   = static_cast<void*>(surface);
+        m_rhi_surface = static_cast<void*>(surface);
         m_rhi_swapchain = static_cast<void*>(swap_chain);
 
         // semaphores
@@ -333,6 +334,35 @@ namespace Spartan
         {
             string name = (string("swapchain_image_acquired_") + to_string(i));
             m_acquire_semaphore[i] = make_shared<RHI_Semaphore>(false, name.c_str());
+        }
+
+        // present wait capability
+        {
+            // fence
+            m_present_fence = make_shared<RHI_Fence>("swapchain_present");
+
+            // cmd pool
+            VkCommandPoolCreateInfo cmd_pool_info = {};
+            cmd_pool_info.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            cmd_pool_info.queueFamilyIndex        = RHI_Device::QueueGetIndex(RHI_Queue_Type::Graphics);
+            cmd_pool_info.flags                   = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+            VkCommandPool cmd_pool = nullptr;
+            SP_VK_ASSERT_MSG(vkCreateCommandPool(RHI_Context::device, &cmd_pool_info, nullptr, &cmd_pool), "Failed to create command pool");
+            RHI_Device::SetResourceName(cmd_pool, RHI_Resource_Type::CommandPool, "swapchain_present");
+            m_present_cmd_pool = cmd_pool;
+
+            // cmd list
+            VkCommandBufferAllocateInfo cmd_list_info = {};
+            cmd_list_info.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            cmd_list_info.commandPool                 = cmd_pool;
+            cmd_list_info.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            cmd_list_info.commandBufferCount          = 1;
+ 
+            VkCommandBuffer present_cmd_buffer;
+            SP_VK_ASSERT_MSG(vkAllocateCommandBuffers(RHI_Context::device, &cmd_list_info, &present_cmd_buffer), "Failed to allocate command buffer");
+            RHI_Device::SetResourceName(present_cmd_buffer, RHI_Resource_Type::CommandList, "swapchain_present");
+            m_present_cmd_list = present_cmd_buffer;
         }
     }
 
@@ -350,6 +380,13 @@ namespace Spartan
         m_acquire_semaphore.fill(nullptr);
 
         RHI_Device::QueueWaitAll();
+
+        // present wait capability
+        {
+            m_present_fence = nullptr;
+            vkFreeCommandBuffers(RHI_Context::device, static_cast<VkCommandPool>(m_present_cmd_pool), 1, reinterpret_cast<VkCommandBuffer*>(&m_present_cmd_list));
+            vkDestroyCommandPool(RHI_Context::device, static_cast<VkCommandPool>(m_present_cmd_pool), nullptr);
+        }
 
         vkDestroySwapchainKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(m_rhi_swapchain), nullptr);
         m_rhi_swapchain = nullptr;
@@ -391,14 +428,37 @@ namespace Spartan
 
     void RHI_SwapChain::AcquireNextImage()
     {
-        // get signal semaphore
         m_sync_index = (m_sync_index + 1) % m_buffer_count;
+
+        // note:
+        // cpu tracking of semaphore states helps identify logic errors, but doesn't reflect real-time gpu execution
+        // a semaphore might be marked as 'submitted' cpu-side, yet pending gpu processing
+        // to ensure synchronization, we submit an empty command buffer with a fence, creating a reliable gpu wait mechanism
+        {
+            m_present_fence->Wait();
+            m_present_fence->Reset();
+
+            // create no actual work
+            VkCommandBufferBeginInfo begin_info = {};
+            begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+            vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_present_cmd_list), &begin_info);
+            vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_present_cmd_list));
+
+            // submit the fence
+            VkSubmitInfo submitInfo       = {};
+            submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            submitInfo.commandBufferCount = 1;
+            submitInfo.pCommandBuffers    = reinterpret_cast<VkCommandBuffer*>(&m_present_cmd_list);
+            RHI_Device::QueueSubmit(RHI_Queue_Type::Graphics, 0, m_present_cmd_list, nullptr, nullptr, m_present_fence.get());
+        }
+
+        // get signal semaphore
         RHI_Semaphore* signal_semaphore = m_acquire_semaphore[m_sync_index].get();
         SP_ASSERT_MSG(signal_semaphore->GetStateCpu() != RHI_Sync_State::Submitted, "The semaphore is already signaled");
 
-        m_image_index_previous = m_image_index;
-
         // acquire next image
+        m_image_index_previous = m_image_index;
         SP_VK_ASSERT_MSG(vkAcquireNextImageKHR(
             RHI_Context::device,                                          // device
             static_cast<VkSwapchainKHR>(m_rhi_swapchain),                 // swapchain

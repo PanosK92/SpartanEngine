@@ -49,21 +49,21 @@ namespace Spartan
         );
         ~RHI_SwapChain();
 
-        // Size
+        // size
         void Resize(uint32_t width, uint32_t height, const bool force = false);
         void ResizeToWindowSize();
 
-        // HDR
+        // hdr
         void SetHdr(const bool enabled);
         bool IsHdr() const { return m_format == format_hdr; }
 
-        // VSync
+        // vsync
         void SetVsync(const bool enabled);
         bool GetVsync();
 
         void Present();
 
-        // Properties
+        // properties
         uint32_t GetWidth()       const { return m_width; }
         uint32_t GetHeight()      const { return m_height; }
         uint32_t GetBufferCount() const { return m_buffer_count; }
@@ -71,7 +71,7 @@ namespace Spartan
         void* GetRhiRt()          const { return m_rhi_rt[m_image_index]; }
         void* GetRhiRtv()         const { return m_rhi_rtv[m_image_index]; }
 
-        // Layout
+        // layout
         RHI_Image_Layout GetLayout() const;
         void SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list);
 
@@ -80,7 +80,7 @@ namespace Spartan
         void Destroy();
         void AcquireNextImage();
 
-        // Main
+        // main
         bool m_windowed                 = false;
         uint32_t m_buffer_count         = 0;
         uint32_t m_width                = 0;
@@ -88,7 +88,7 @@ namespace Spartan
         RHI_Format m_format             = RHI_Format::Max;
         RHI_Present_Mode m_present_mode = RHI_Present_Mode::Immediate;
 
-        // Misc
+        // misc
         uint32_t m_sync_index                                    = std::numeric_limits<uint32_t>::max();
         uint32_t m_image_index                                   = std::numeric_limits<uint32_t>::max();
         uint32_t m_image_index_previous                          = m_image_index;
@@ -97,7 +97,12 @@ namespace Spartan
         std::array<std::shared_ptr<RHI_Semaphore>, max_buffer_count> m_acquire_semaphore;
         std::vector<RHI_Semaphore*> m_wait_semaphores;
 
-        // RHI
+        // wait for present capability
+        std::shared_ptr<RHI_Fence> m_present_fence;
+        void* m_present_cmd_list = nullptr;
+        void* m_present_cmd_pool = nullptr;
+
+        // rhi
         void* m_rhi_swapchain                         = nullptr;
         void* m_rhi_surface                           = nullptr;
         std::array<void*, max_buffer_count> m_rhi_rt  = { nullptr, nullptr, nullptr};
