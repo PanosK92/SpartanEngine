@@ -186,7 +186,6 @@ namespace Spartan
                 if (is_visible)
                 {
                     renderable_occludee->SetFlag(RenderableFlags::OccludedGpu, false);
-                    SP_LOG_INFO("False occlusion detected and removed");
                 }
             }
 
