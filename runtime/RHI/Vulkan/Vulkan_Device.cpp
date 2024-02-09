@@ -300,13 +300,26 @@ namespace Spartan
             void* p_user_data
         )
         {
-            // temporary, FidelityFX SDK has issues, prevent spaming utill they fix their SDK
-            if (strstr(p_callback_data->pMessage, "fsr2") != nullptr)
-                return VK_FALSE;
+            // filter out certain things
+            {
+                // FidelityFX SDK
+                if (p_callback_data->messageIdNumber == 0xdc18ad6b)
+                {
+                    // [ UNASSIGNED-BestPractices-vkAllocateMemory-small-allocation ] | MessageID = 0xdc18ad6b | vkAllocateMemory():
+                    // Allocating a VkDeviceMemory of size 256. This is a very small allocation (current threshold is 262144 bytes).
+                    // You should make large allocations and sub-allocate from one large VkDeviceMemory.
+                    return VK_FALSE;
+                }
 
-            // temporary, latest SDK is catching some new hazard sync issues, prevent spaming utill fixed
-            if (strstr(p_callback_data->pMessage, "HAZARD") != nullptr)
-                return VK_FALSE;
+                // Occlusion queries
+                if (p_callback_data->messageIdNumber == 0x98f7c0cd)
+                {
+                    // [ UNASSIGNED-BestPractices-QueryPool-Unavailable ] Object 0:
+                    // handle = 0xb12fb2000000002c, name = query_pool_occlusion, type = VK_OBJECT_TYPE_QUERY_POOL; | MessageID = 0x98f7c0cd | vkGetQueryPoolResults():
+                    // QueryPool VkQueryPool 0xb12fb2000000002c[query_pool_occlusion] and query 0: vkCmdBeginQuery() was never called.
+                    return VK_FALSE;
+                }
+            }
 
             string msg = "Vulkan: " + string(p_callback_data->pMessage);
 

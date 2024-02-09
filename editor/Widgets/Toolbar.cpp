@@ -107,67 +107,73 @@ void Toolbar::OnTick()
     const float size_avail_x      = viewport->Size.x;
     const float button_size_final = button_size + 2.0f * MenuBar::GetPadding().x;
 
-    float num_buttons  = 1.0f;
-    float size_toolbar = num_buttons * button_size_final;
-    float offset_x     = (size_avail_x - size_toolbar) * 0.5f;
-
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {18.0f, MenuBar::GetPadding().y - 2.0f});
+    float num_buttons             = 1.0f;
+    float size_toolbar            = num_buttons * button_size_final;
+    float offset_x                = (size_avail_x - size_toolbar) * 0.5f;
 
     // play button
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,  { 18.0f, MenuBar::GetPadding().y - 2.0f });
     {
-        ImGui::PushStyleColor(ImGuiCol_Button, button_color_play);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, button_color_play_hover);
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, button_color_play_active);
+        {
+            ImGui::PushStyleColor(ImGuiCol_Button, button_color_play);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, button_color_play_hover);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, button_color_play_active);
 
+            toolbar_button(
+                IconType::Button_Play, "Play",
+                []() { return Spartan::Engine::IsFlagSet(Spartan::EngineMode::Game);  },
+                []() { return Spartan::Engine::ToggleFlag(Spartan::EngineMode::Game); },
+                offset_x
+            );
+
+            ImGui::PopStyleColor(3);
+            ImGui::PopStyleVar(1);
+        }
+    }
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { MenuBar::GetPadding().x, MenuBar::GetPadding().y - 2.0f });
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,  { 2.0f , 0.0f });
+
+    float dpi_scale = Spartan::Window::GetDpiScale();
+    num_buttons  = 6.0f;
+    size_toolbar = num_buttons * button_size_final + (num_buttons - 1.0f) * ImGui::GetStyle().ItemSpacing.x;
+    offset_x     = size_avail_x - (size_toolbar - 2.0f) * dpi_scale;
+
+    // all the other buttons
+    ImGui::PushStyleColor(ImGuiCol_Button,        button_color_doc);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, button_color_doc_hover);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive,  button_color_doc_active);
+    {
+        // render doc button
         toolbar_button(
-            IconType::Button_Play, "Play",
-            []() { return Spartan::Engine::IsFlagSet(Spartan::EngineMode::Game); },
-            []() { return Spartan::Engine::ToggleFlag(Spartan::EngineMode::Game); },
+            IconType::Button_RenderDoc, "Captures the next frame and then launches RenderDoc",
+            []() { return false; },
+            []()
+            {
+                if (Spartan::Profiler::IsRenderdocEnabled())
+                {
+                    Spartan::RenderDoc::FrameCapture();
+                }
+                else
+                {
+                    SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"Profiler.cpp\", and set \"is_renderdoc_enabled\" to \"true\"");
+                }
+            },
             offset_x
         );
 
-        ImGui::PopStyleColor(3);
-        ImGui::PopStyleVar(1);
+        // all the other buttons
+        for (auto& widget_it : m_widgets)
+        {
+            Widget* widget = widget_it.second;
+            const IconType widget_icon = widget_it.first;
+
+            toolbar_button(widget_icon, widget->GetTitle(),
+                [this, &widget]() { return widget->GetVisible(); },
+                [this, &widget]() { widget->SetVisible(true); }
+            );
+        }
     }
-
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {MenuBar::GetPadding().x, MenuBar::GetPadding().y - 2.0f});
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {2.0f, 0.0f});
-
-    num_buttons  = 6.0f;
-    size_toolbar = num_buttons * button_size_final + (num_buttons - 1.0f) * ImGui::GetStyle().ItemSpacing.x;
-    offset_x     = size_avail_x - size_toolbar - 2.0f;
-
-    ImGui::PushStyleColor(ImGuiCol_Button, button_color_doc);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, button_color_doc_hover);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, button_color_doc_active);
-
-    // RenderDoc
-    toolbar_button(
-        IconType::Button_RenderDoc, "Captures the next frame and then launches RenderDoc",
-        []() { return false; },
-        []() {
-            if (Spartan::Profiler::IsRenderdocEnabled())
-            {
-                Spartan::RenderDoc::FrameCapture();
-            }
-            else
-            {
-                SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"Profiler.cpp\", and set \"is_renderdoc_enabled\" to \"true\"");
-            }
-        },
-        offset_x
-    );
-
-    //  widgets as buttons
-    for (auto& widget_it : m_widgets)
-    {
-        Widget* widget             = widget_it.second;
-        const IconType widget_icon = widget_it.first;
-
-        toolbar_button(widget_icon, widget->GetTitle(), [this, &widget](){ return widget->GetVisible(); }, [this, &widget]() { widget->SetVisible(true); });
-    }
-
     ImGui::PopStyleColor(3);
     ImGui::PopStyleVar(3);
 
