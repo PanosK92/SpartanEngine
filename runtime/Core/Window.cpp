@@ -49,19 +49,19 @@ namespace Spartan
 {
     namespace
     { 
-        static std::string m_title;
-        static Math::Vector2 m_position = Math::Vector2::Zero;
-        static uint32_t width           = 640;
-        static uint32_t height          = 480;
-        static float dpi_scale          = 1.0f;
-        static bool close               = false;
-        static SDL_Window* window       = nullptr;
+        std::string m_title;
+        Math::Vector2 m_position = Math::Vector2::Zero;
+        uint32_t width           = 640;
+        uint32_t height          = 480;
+        float dpi_scale          = 1.0f;
+        bool close               = false;
+        SDL_Window* window       = nullptr;
 
         // splash-screen
-        static bool m_show_splash_screen              = true;
-        static SDL_Window* m_splash_sceen_window      = nullptr;
-        static SDL_Renderer* m_splash_screen_renderer = nullptr;
-        static SDL_Texture* m_splash_screen_texture   = nullptr;
+        bool m_show_splash_screen              = true;
+        SDL_Window* m_splash_sceen_window      = nullptr;
+        SDL_Renderer* m_splash_screen_renderer = nullptr;
+        SDL_Texture* m_splash_screen_texture   = nullptr;
     }
 
     void Window::Initialize()
@@ -137,8 +137,7 @@ namespace Spartan
             // Show the window and destroy the splash screen, after the first frame has been rendered successfully
             SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnFirstFrameCompleted, SP_EVENT_HANDLER_STATIC(OnFirstFrameCompleted));
         }
-
-
+ 
         // Get the DPI scale - has to be done after window creation
         #ifdef _MSC_VER
         dpi_scale = static_cast<float>(GetDpiForWindow(static_cast<HWND>(GetHandleRaw()))) / 96.0f;

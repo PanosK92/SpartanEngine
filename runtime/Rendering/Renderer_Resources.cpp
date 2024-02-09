@@ -184,14 +184,14 @@ namespace Spartan
         uint32_t width_output  = static_cast<uint32_t>(GetResolutionOutput().x);
         uint32_t height_output = static_cast<uint32_t>(GetResolutionOutput().y);
 
-        // Deduce how many mips are required to scale down any dimension close to 16px (or exactly)
+        // deduce how many mips are required to scale down any dimension close to 16px (or exactly)
         uint32_t mip_count          = 1;
         uint32_t width              = width_render;
         uint32_t height             = height_render;
         uint32_t smallest_dimension = 1;
         while (width > smallest_dimension && height > smallest_dimension)
         {
-            width /= 2;
+            width  /= 2;
             height /= 2;
             mip_count++;
         }
@@ -200,9 +200,10 @@ namespace Spartan
         // - gbuffer_normal: any format with or below 8 bits per channel, will produce banding
         #define render_target(x) render_targets[static_cast<uint8_t>(x)]
 
-        // typical usage flags
+        // typical flags
         uint32_t flags_standard      = RHI_Texture_Uav | RHI_Texture_Srv;
         uint32_t flags_render_target = flags_standard | RHI_Texture_Rtv;
+        uint32_t flags_depth_buffer  = RHI_Texture_Rtv | RHI_Texture_Srv;
 
         // render resolution
         if (create_render)
@@ -220,8 +221,6 @@ namespace Spartan
 
             // g-buffer
             {
-                uint32_t flags_depth_buffer = RHI_Texture_Rtv | RHI_Texture_Srv; // depth buffer can't have RHI_Texture_Uav
-
                 render_target(Renderer_RenderTexture::gbuffer_color)        = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     flags_render_target,                         "rt_gbuffer_color");
                 render_target(Renderer_RenderTexture::gbuffer_normal)       = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_render_target,                         "rt_gbuffer_normal");
                 render_target(Renderer_RenderTexture::gbuffer_material)     = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     flags_render_target,                         "rt_gbuffer_material");
@@ -263,12 +262,14 @@ namespace Spartan
         if (create_output)
         {
             // frame
-            uint32_t frame_flags = flags_render_target | RHI_Texture_ClearBlit;
-            render_target(Renderer_RenderTexture::frame_output)   = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, frame_flags, "rt_frame_output");
-            render_target(Renderer_RenderTexture::frame_output_2) = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, frame_flags, "rt_frame_output_2");
+            render_target(Renderer_RenderTexture::frame_output)   = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, flags_render_target | RHI_Texture_ClearBlit, "rt_frame_output");
+            render_target(Renderer_RenderTexture::frame_output_2) = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, flags_render_target | RHI_Texture_ClearBlit, "rt_frame_output_2");
 
             // bloom
             render_target(Renderer_RenderTexture::bloom) = make_shared<RHI_Texture2D>(width_output, height_output, mip_count, RHI_Format::R11G11B10_Float, flags_standard | RHI_Texture_PerMipViews, "rt_bloom");
+
+            // depth
+            render_target(Renderer_RenderTexture::gbuffer_depth_output) = make_shared<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::D32_Float, flags_depth_buffer | RHI_Texture_ClearBlit, "rt_gbuffer_depth_output");
         }
 
         // fixed resolution - these are only done once
@@ -586,7 +587,7 @@ namespace Spartan
         const string dir_texture = ResourceCache::GetResourceDirectory(ResourceDirectory::Textures) + "\\";
         #define standard_texture(x) standard_textures[static_cast<uint8_t>(x)]
 
-        // Noise textures
+        // noise textures
         {
             standard_texture(Renderer_StandardTexture::Noise_normal) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_noise_normal");
             standard_texture(Renderer_StandardTexture::Noise_normal)->LoadFromFile(dir_texture + "noise_normal.png");
@@ -595,7 +596,7 @@ namespace Spartan
             standard_texture(Renderer_StandardTexture::Noise_blue)->LoadFromFile(dir_texture + "noise_blue_0.png");
         }
 
-        // Color textures
+        // color textures
         {
             standard_texture(Renderer_StandardTexture::White) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_white");
             standard_texture(Renderer_StandardTexture::White)->LoadFromFile(dir_texture + "white.png");
@@ -610,7 +611,7 @@ namespace Spartan
             standard_texture(Renderer_StandardTexture::Checkerboard)->LoadFromFile(dir_texture + "no_texture.png");
         }
 
-        // Gizmo icons
+        // gizmo icons
         {
             standard_texture(Renderer_StandardTexture::Gizmo_light_directional) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_icon_light_directional");
             standard_texture(Renderer_StandardTexture::Gizmo_light_directional)->LoadFromFile(dir_texture + "sun.png");

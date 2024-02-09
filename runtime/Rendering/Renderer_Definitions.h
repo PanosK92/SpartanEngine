@@ -220,6 +220,7 @@ namespace Spartan
         gbuffer_velocity,
         gbuffer_depth,
         gbuffer_depth_opaque,
+        gbuffer_depth_output,
         brdf_specular_lut,
         light_diffuse,
         light_diffuse_transparent,
