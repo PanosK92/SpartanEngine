@@ -677,6 +677,12 @@ namespace Spartan
             pass(true, false);
         }
 
+        cmd_list->Blit(
+            GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get(),
+            GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_output).get(),
+            false
+        );
+
         cmd_list->EndTimeblock();
     }
 
@@ -1960,7 +1966,7 @@ namespace Spartan
         pso.blend_state                     = GetBlendState(Renderer_BlendState::Alpha).get();
         pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
         pso.render_target_color_textures[0] = tex_out;
-        pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
+        pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_output).get();
 
         // draw
         cmd_list->BeginTimeblock("grid");
@@ -2013,7 +2019,7 @@ namespace Spartan
         pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Wireframe_cull_none).get();
         pso.render_target_color_textures[0] = tex_out;
         pso.clear_color[0]                  = rhi_color_load;
-        pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
+        pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_output).get();
 
         // world space rendering
         m_pcb_pass_cpu.transform = Matrix::Identity;
