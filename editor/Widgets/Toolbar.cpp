@@ -19,10 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
+//= INCLUDES ===================
 #include "Toolbar.h"
 #include "MenuBar.h"
-#include "Window.h"
 #include "Profiler.h"
 #include "ResourceViewer.h"
 #include "ShaderEditor.h"
@@ -30,8 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TextureViewer.h"
 #include "Core/Engine.h"
 #include "Profiling/RenderDoc.h"
-#include "../ImGui/ImGuiExtension.h"
-//==================================
+//==============================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -40,25 +38,25 @@ using namespace Spartan::Math;
 
 namespace
 {
-    constexpr float button_size = 19.0f;
+    float button_size = 19.0f;
 
-    constexpr ImVec4 button_color_play        = {0.2f, 0.7f, 0.35f, 1.0f};
-    constexpr ImVec4 button_color_play_hover  = {0.22f, 0.8f, 0.4f, 1.0f};
-    constexpr ImVec4 button_color_play_active = {0.1f, 0.4f, 0.2f, 1.0f};
+    ImVec4 button_color_play        = {0.2f, 0.7f, 0.35f, 1.0f};
+    ImVec4 button_color_play_hover  = {0.22f, 0.8f, 0.4f, 1.0f};
+    ImVec4 button_color_play_active = {0.1f, 0.4f, 0.2f, 1.0f};
 
-    constexpr ImVec4 button_color_doc         = {0.25f, 0.7f, 0.75f, 0.9f};
-    constexpr ImVec4 button_color_doc_hover   = {0.3f, 0.75f, 0.8f, 0.9f};
-    constexpr ImVec4 button_color_doc_active  = {0.2f, 0.65f, 0.7f, 0.9f};
+    ImVec4 button_color_doc         = {0.25f, 0.7f, 0.75f, 0.9f};
+    ImVec4 button_color_doc_hover   = {0.3f, 0.75f, 0.8f, 0.9f};
+    ImVec4 button_color_doc_active  = {0.2f, 0.65f, 0.7f, 0.9f};
 
     // a button that when pressed will call "on press" and derives it's color (active/inactive) based on "get_visibility".
-    void toolbar_button(IconType icon_type, const string tooltip_text, const function<bool()>& get_visibility, const function<void()>& on_press, float offset_x = -1.0f)
+    void toolbar_button(IconType icon_type, const string tooltip_text, const function<bool()>& get_visibility, const function<void()>& on_press, float cursor_pos_x = -1.0f)
     {
         ImGui::SameLine();
         ImVec4 button_color = get_visibility() ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button];
         ImGui::PushStyleColor(ImGuiCol_Button, button_color);
-        if (offset_x > 0.0f)
+        if (cursor_pos_x > 0.0f)
         {
-            ImGui::SetCursorPosX(offset_x);
+            ImGui::SetCursorPosX(cursor_pos_x);
         }
 
         const ImGuiStyle& style   = ImGui::GetStyle();
@@ -105,45 +103,44 @@ void Toolbar::OnTick()
 {
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     const float size_avail_x      = viewport->Size.x;
-    const float button_size_final = button_size + 2.0f * MenuBar::GetPadding().x;
+    const float button_size_final = button_size * Spartan::Window::GetDpiScale() + MenuBar::GetPadding().x * 2.0f;
 
     float num_buttons             = 1.0f;
     float size_toolbar            = num_buttons * button_size_final;
-    float offset_x                = (size_avail_x - size_toolbar) * 0.5f;
+    float cursor_pos_x            = (size_avail_x - size_toolbar) * 0.5f;
 
     // play button
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,  { 18.0f, MenuBar::GetPadding().y - 2.0f });
     {
-        {
-            ImGui::PushStyleColor(ImGuiCol_Button, button_color_play);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, button_color_play_hover);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, button_color_play_active);
-
-            toolbar_button(
-                IconType::Button_Play, "Play",
-                []() { return Spartan::Engine::IsFlagSet(Spartan::EngineMode::Game);  },
-                []() { return Spartan::Engine::ToggleFlag(Spartan::EngineMode::Game); },
-                offset_x
-            );
-
-            ImGui::PopStyleColor(3);
-            ImGui::PopStyleVar(1);
-        }
+        ImGui::PushStyleColor(ImGuiCol_Button, button_color_play);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, button_color_play_hover);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, button_color_play_active);
+        
+        toolbar_button(
+            IconType::Button_Play, "Play",
+            []() { return Spartan::Engine::IsFlagSet(Spartan::EngineMode::Game);  },
+            []() { return Spartan::Engine::ToggleFlag(Spartan::EngineMode::Game); },
+            cursor_pos_x
+        );
+        
+        ImGui::PopStyleColor(3);
+        ImGui::PopStyleVar(1);
     }
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { MenuBar::GetPadding().x, MenuBar::GetPadding().y - 2.0f });
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,  { 2.0f , 0.0f });
 
-    float dpi_scale = Spartan::Window::GetDpiScale();
-    num_buttons  = 6.0f;
-    size_toolbar = num_buttons * button_size_final + (num_buttons - 1.0f) * ImGui::GetStyle().ItemSpacing.x;
-    offset_x     = size_avail_x - (size_toolbar - 2.0f) * dpi_scale;
 
     // all the other buttons
     ImGui::PushStyleColor(ImGuiCol_Button,        button_color_doc);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, button_color_doc_hover);
     ImGui::PushStyleColor(ImGuiCol_ButtonActive,  button_color_doc_active);
     {
+
+        num_buttons     = 6.0f;
+        size_toolbar    = num_buttons * button_size_final + (num_buttons - 1.0f) * ImGui::GetStyle().ItemSpacing.x;
+        cursor_pos_x    = size_avail_x - (size_toolbar - 2.0f);
+
         // render doc button
         toolbar_button(
             IconType::Button_RenderDoc, "Captures the next frame and then launches RenderDoc",
@@ -159,7 +156,7 @@ void Toolbar::OnTick()
                     SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"Profiler.cpp\", and set \"is_renderdoc_enabled\" to \"true\"");
                 }
             },
-            offset_x
+            cursor_pos_x
         );
 
         // all the other buttons

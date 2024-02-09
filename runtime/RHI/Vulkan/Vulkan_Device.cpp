@@ -165,11 +165,11 @@ namespace Spartan
 
     namespace command_pools
     {
-        static vector<shared_ptr<RHI_CommandPool>> regular;
-        static array<shared_ptr<RHI_CommandPool>, 3> immediate;
-        static mutex mutex_immediate_execution;
-        static condition_variable condition_variable_immediate_execution;
-        static bool is_immediate_executing = false;
+        vector<shared_ptr<RHI_CommandPool>> regular;
+        array<shared_ptr<RHI_CommandPool>, 3> immediate;
+        mutex mutex_immediate_execution;
+        condition_variable condition_variable_immediate_execution;
+        bool is_immediate_executing = false;
     }
 
     namespace queues
