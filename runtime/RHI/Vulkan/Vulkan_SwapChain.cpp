@@ -329,41 +329,13 @@ namespace Spartan
         m_rhi_surface = static_cast<void*>(surface);
         m_rhi_swapchain = static_cast<void*>(swap_chain);
 
-        // semaphores
         for (uint32_t i = 0; i < m_buffer_count; i++)
         {
             string name = (string("swapchain_image_acquired_") + to_string(i));
             m_acquire_semaphore[i] = make_shared<RHI_Semaphore>(false, name.c_str());
         }
 
-        // present wait capability
-        {
-            // fence
-            m_present_fence = make_shared<RHI_Fence>("swapchain_present");
-
-            // cmd pool
-            VkCommandPoolCreateInfo cmd_pool_info = {};
-            cmd_pool_info.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-            cmd_pool_info.queueFamilyIndex        = RHI_Device::QueueGetIndex(RHI_Queue_Type::Graphics);
-            cmd_pool_info.flags                   = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-
-            VkCommandPool cmd_pool = nullptr;
-            SP_VK_ASSERT_MSG(vkCreateCommandPool(RHI_Context::device, &cmd_pool_info, nullptr, &cmd_pool), "Failed to create command pool");
-            RHI_Device::SetResourceName(cmd_pool, RHI_Resource_Type::CommandPool, "swapchain_present");
-            m_present_cmd_pool = cmd_pool;
-
-            // cmd list
-            VkCommandBufferAllocateInfo cmd_list_info = {};
-            cmd_list_info.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            cmd_list_info.commandPool                 = cmd_pool;
-            cmd_list_info.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-            cmd_list_info.commandBufferCount          = 1;
- 
-            VkCommandBuffer present_cmd_buffer;
-            SP_VK_ASSERT_MSG(vkAllocateCommandBuffers(RHI_Context::device, &cmd_list_info, &present_cmd_buffer), "Failed to allocate command buffer");
-            RHI_Device::SetResourceName(present_cmd_buffer, RHI_Resource_Type::CommandList, "swapchain_present");
-            m_present_cmd_list = present_cmd_buffer;
-        }
+        m_acquire_fence = make_shared<RHI_Fence>("swapchain_acquire");
     }
 
     void RHI_SwapChain::Destroy()
@@ -380,13 +352,6 @@ namespace Spartan
         m_acquire_semaphore.fill(nullptr);
 
         RHI_Device::QueueWaitAll();
-
-        // present wait capability
-        {
-            m_present_fence = nullptr;
-            vkFreeCommandBuffers(RHI_Context::device, static_cast<VkCommandPool>(m_present_cmd_pool), 1, reinterpret_cast<VkCommandBuffer*>(&m_present_cmd_list));
-            vkDestroyCommandPool(RHI_Context::device, static_cast<VkCommandPool>(m_present_cmd_pool), nullptr);
-        }
 
         vkDestroySwapchainKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(m_rhi_swapchain), nullptr);
         m_rhi_swapchain = nullptr;
@@ -428,6 +393,11 @@ namespace Spartan
 
     void RHI_SwapChain::AcquireNextImage()
     {
+        // the semaphore ensures gpu to gpu wait
+        // the fence ensures cpu to gpu wait, meaning that no writing can happen on an image that is being presented
+        m_acquire_fence->Wait();
+        m_acquire_fence->Reset();
+
         m_sync_index = (m_sync_index + 1) % m_buffer_count;
 
         // get signal semaphore
@@ -441,37 +411,12 @@ namespace Spartan
             static_cast<VkSwapchainKHR>(m_rhi_swapchain),                 // swapchain
             numeric_limits<uint64_t>::max(),                              // timeout - wait/block
             static_cast<VkSemaphore>(signal_semaphore->GetRhiResource()), // signal semaphore
-            nullptr,                                                      // signal fence
+            static_cast<VkFence>(m_acquire_fence->GetRhiResource()),      // signal fence
             &m_image_index                                                // pImageIndex
         ), "Failed to acquire next image");
 
-        // update semaphore state
+        // update sync state
         signal_semaphore->SetStateCpu(RHI_Sync_State::Submitted);
-    }
-
-    void RHI_SwapChain::WaitForPreviousPresent()
-    {
-        // note:
-        // cpu tracking of semaphore states helps identify logic errors, but doesn't reflect real-time gpu execution
-        // a semaphore might be marked as 'submitted' cpu-side, yet pending gpu processing
-        // to ensure synchronization, we submit an empty command buffer with a fence, creating a reliable gpu wait mechanism
-
-        m_present_fence->Wait();
-        m_present_fence->Reset();
-
-        // create no actual work
-        VkCommandBufferBeginInfo begin_info = {};
-        begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_present_cmd_list), &begin_info);
-        vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_present_cmd_list));
-
-        // submit the fence
-        VkSubmitInfo submitInfo       = {};
-        submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers    = reinterpret_cast<VkCommandBuffer*>(&m_present_cmd_list);
-        RHI_Device::QueueSubmit(RHI_Queue_Type::Graphics, 0, m_present_cmd_list, nullptr, nullptr, m_present_fence.get());
     }
 
     void RHI_SwapChain::Present()
@@ -506,7 +451,6 @@ namespace Spartan
         }
 
         RHI_Device::QueuePresent(m_rhi_swapchain, &m_image_index, m_wait_semaphores);
-        WaitForPreviousPresent();
         AcquireNextImage();
     }
 
