@@ -38,11 +38,6 @@ namespace Spartan
         string log_file_name = "log.txt";
         ILogger* logger      = nullptr;
         bool log_to_file     = true;
-        #ifdef DEBUG
-        bool unique_logs     = true;
-        #else
-        bool unique_logs     = false;
-        #endif
 
         void write_to_file(string text, const LogType type)
         {
@@ -109,20 +104,6 @@ namespace Spartan
         // lock mutex
         static mutex log_mutex;
         lock_guard<mutex> guard(log_mutex);
-
-        // only output unique text, if requested.
-        static vector<string> logs_error_strings;
-        if (unique_logs && type == LogType::Error)
-        {
-            if (find(logs_error_strings.begin(), logs_error_strings.end(), text) == logs_error_strings.end())
-            {
-                logs_error_strings.emplace_back(text);
-            }
-            else
-            {
-                return;
-            }
-        }
 
         // add time to the text
         auto t  = time(nullptr);
