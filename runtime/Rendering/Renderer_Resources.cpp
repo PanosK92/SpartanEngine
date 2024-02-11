@@ -248,10 +248,8 @@ namespace Spartan
                 render_target(Renderer_RenderTexture::ssr_roughness) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16_Float, flags_standard, "rt_ssr_roughness");
             }
 
-            // sss
-            render_target(Renderer_RenderTexture::sss) = make_shared<RHI_Texture2DArray>(width_render, height_render, RHI_Format::R16_Float, 4, flags_standard | RHI_Texture_ClearBlit, "rt_sss");
-
-            // ssgi
+            // misc
+            render_target(Renderer_RenderTexture::sss)  = make_shared<RHI_Texture2DArray>(width_render, height_render, RHI_Format::R16_Float, 4, flags_standard | RHI_Texture_ClearBlit, "rt_sss");
             render_target(Renderer_RenderTexture::ssgi) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_standard, "rt_ssgi");
         }
 
@@ -262,24 +260,17 @@ namespace Spartan
             render_target(Renderer_RenderTexture::frame_output)   = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, flags_render_target | RHI_Texture_ClearBlit, "rt_frame_output");
             render_target(Renderer_RenderTexture::frame_output_2) = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, flags_render_target | RHI_Texture_ClearBlit, "rt_frame_output_2");
 
-            // bloom
-            render_target(Renderer_RenderTexture::bloom) = make_shared<RHI_Texture2D>(width_output, height_output, mip_count, RHI_Format::R11G11B10_Float, flags_standard | RHI_Texture_PerMipViews, "rt_bloom");
-
-            // selection outline
-            render_target(Renderer_RenderTexture::outline) = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R8G8B8A8_Unorm, flags_render_target, "rt_outline");
-
-            // depth
+            // misc
+            render_target(Renderer_RenderTexture::bloom)                = make_shared<RHI_Texture2D>(width_output, height_output, mip_count, RHI_Format::R11G11B10_Float, flags_standard | RHI_Texture_PerMipViews, "rt_bloom");
+            render_target(Renderer_RenderTexture::outline)              = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R8G8B8A8_Unorm, flags_render_target, "rt_outline");
             render_target(Renderer_RenderTexture::gbuffer_depth_output) = make_shared<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::D32_Float, flags_depth_buffer | RHI_Texture_ClearBlit, "rt_gbuffer_depth_output");
         }
 
         // fixed resolution - these are only done once
         if (!render_target(Renderer_RenderTexture::brdf_specular_lut))
         {
-            // brdf
             render_target(Renderer_RenderTexture::brdf_specular_lut) = make_unique<RHI_Texture2D>(512, 512, 1, RHI_Format::R8G8_Unorm, flags_standard, "rt_brdf_specular_lut");
-
-            // atmospheric scattering
-            render_target(Renderer_RenderTexture::skysphere) = make_unique<RHI_Texture2D>(4096, 2048, mip_count, RHI_Format::R11G11B10_Float, flags_standard | RHI_Texture_PerMipViews, "rt_skysphere");
+            render_target(Renderer_RenderTexture::skysphere)         = make_unique<RHI_Texture2D>(4096, 2048, mip_count, RHI_Format::R11G11B10_Float, flags_standard | RHI_Texture_PerMipViews, "rt_skysphere");
         }
         
         // scratch textures

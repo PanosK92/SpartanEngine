@@ -1546,14 +1546,17 @@ namespace Spartan
         image_barrier.subresourceRange.levelCount     = mip_range;
         image_barrier.subresourceRange.baseArrayLayer = 0;
         image_barrier.subresourceRange.layerCount     = array_length;
-        image_barrier.srcAccessMask                   = layout_to_access_mask(image_barrier.oldLayout, false);
-        image_barrier.dstAccessMask                   = layout_to_access_mask(image_barrier.newLayout, true);
+        image_barrier.srcAccessMask                   = layout_to_access_mask(image_barrier.oldLayout, false); // operations that must complete before the barrier is crossed - example: write
+        image_barrier.dstAccessMask                   = layout_to_access_mask(image_barrier.newLayout, true);  // operations that must wait for the barrier to be crossed     - example: read
 
-        VkPipelineStageFlags source_stage_mask = 0;
+        VkPipelineStageFlags source_stage_mask      = 0; // pipeline stage(s) that must be completed before the barrier is crossed
+        VkPipelineStageFlags destination_stage_mask = 0; // pipeline stage(s) that must wait for the barrier to be crossed before beginning
+
+        // source mask
         {
             if (image_barrier.oldLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
             {
-                source_stage_mask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+                source_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
             }
             else if (image_barrier.oldLayout == VK_IMAGE_LAYOUT_UNDEFINED)
             {
@@ -1565,11 +1568,11 @@ namespace Spartan
             }
         }
 
-        VkPipelineStageFlags destination_stage_mask = 0;
+        // destination mask
         {
             if (image_barrier.newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
             {
-                destination_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+                destination_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
             }
             else
             {

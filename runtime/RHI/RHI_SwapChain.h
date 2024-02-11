@@ -79,7 +79,6 @@ namespace Spartan
         void Create();
         void Destroy();
         void AcquireNextImage();
-        void WaitForPreviousPresent();
 
         // main
         bool m_windowed                 = false;
@@ -96,12 +95,8 @@ namespace Spartan
         void* m_sdl_window                                       = nullptr;
         std::array<RHI_Image_Layout, max_buffer_count> m_layouts = { RHI_Image_Layout::Max, RHI_Image_Layout::Max, RHI_Image_Layout::Max };
         std::array<std::shared_ptr<RHI_Semaphore>, max_buffer_count> m_acquire_semaphore;
+        std::shared_ptr<RHI_Fence> m_acquire_fence;
         std::vector<RHI_Semaphore*> m_wait_semaphores;
-
-        // wait for present capability
-        std::shared_ptr<RHI_Fence> m_present_fence;
-        void* m_present_cmd_list = nullptr;
-        void* m_present_cmd_pool = nullptr;
 
         // rhi
         void* m_rhi_swapchain                         = nullptr;

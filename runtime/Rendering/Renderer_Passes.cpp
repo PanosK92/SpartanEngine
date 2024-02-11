@@ -2109,7 +2109,6 @@ namespace Spartan
                 cmd_list->BeginTimeblock("outline");
                 {
                     RHI_Texture* tex_outline = GetRenderTarget(Renderer_RenderTexture::outline).get();
-                    static const Color clear_color = Color(0.0f, 0.0f, 0.0f, 0.0f);
 
                     if (shared_ptr<Renderable> renderable = entity_selected->GetComponent<Renderable>())
                     {
@@ -2123,7 +2122,7 @@ namespace Spartan
                             pso.blend_state                     = GetBlendState(Renderer_BlendState::Disabled).get();
                             pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
                             pso.render_target_color_textures[0] = tex_outline;
-                            pso.clear_color[0]                  = clear_color;
+                            pso.clear_color[0]                  = Color::standard_transparent;
                             cmd_list->SetPipelineState(pso);
                         
                             // render
