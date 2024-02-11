@@ -79,6 +79,7 @@ namespace Spartan
         void Create();
         void Destroy();
         void AcquireNextImage();
+        void WaitForPreviousPresent();
 
         // main
         bool m_windowed                 = false;

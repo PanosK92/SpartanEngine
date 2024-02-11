@@ -430,29 +430,6 @@ namespace Spartan
     {
         m_sync_index = (m_sync_index + 1) % m_buffer_count;
 
-        // note:
-        // cpu tracking of semaphore states helps identify logic errors, but doesn't reflect real-time gpu execution
-        // a semaphore might be marked as 'submitted' cpu-side, yet pending gpu processing
-        // to ensure synchronization, we submit an empty command buffer with a fence, creating a reliable gpu wait mechanism
-        {
-            m_present_fence->Wait();
-            m_present_fence->Reset();
-
-            // create no actual work
-            VkCommandBufferBeginInfo begin_info = {};
-            begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-            begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-            vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_present_cmd_list), &begin_info);
-            vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_present_cmd_list));
-
-            // submit the fence
-            VkSubmitInfo submitInfo       = {};
-            submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-            submitInfo.commandBufferCount = 1;
-            submitInfo.pCommandBuffers    = reinterpret_cast<VkCommandBuffer*>(&m_present_cmd_list);
-            RHI_Device::QueueSubmit(RHI_Queue_Type::Graphics, 0, m_present_cmd_list, nullptr, nullptr, m_present_fence.get());
-        }
-
         // get signal semaphore
         RHI_Semaphore* signal_semaphore = m_acquire_semaphore[m_sync_index].get();
         SP_ASSERT_MSG(signal_semaphore->GetStateCpu() != RHI_Sync_State::Submitted, "The semaphore is already signaled");
@@ -470,6 +447,31 @@ namespace Spartan
 
         // update semaphore state
         signal_semaphore->SetStateCpu(RHI_Sync_State::Submitted);
+    }
+
+    void RHI_SwapChain::WaitForPreviousPresent()
+    {
+        // note:
+        // cpu tracking of semaphore states helps identify logic errors, but doesn't reflect real-time gpu execution
+        // a semaphore might be marked as 'submitted' cpu-side, yet pending gpu processing
+        // to ensure synchronization, we submit an empty command buffer with a fence, creating a reliable gpu wait mechanism
+
+        m_present_fence->Wait();
+        m_present_fence->Reset();
+
+        // create no actual work
+        VkCommandBufferBeginInfo begin_info = {};
+        begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_present_cmd_list), &begin_info);
+        vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_present_cmd_list));
+
+        // submit the fence
+        VkSubmitInfo submitInfo       = {};
+        submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers    = reinterpret_cast<VkCommandBuffer*>(&m_present_cmd_list);
+        RHI_Device::QueueSubmit(RHI_Queue_Type::Graphics, 0, m_present_cmd_list, nullptr, nullptr, m_present_fence.get());
     }
 
     void RHI_SwapChain::Present()
@@ -504,6 +506,7 @@ namespace Spartan
         }
 
         RHI_Device::QueuePresent(m_rhi_swapchain, &m_image_index, m_wait_semaphores);
+        WaitForPreviousPresent();
         AcquireNextImage();
     }
 

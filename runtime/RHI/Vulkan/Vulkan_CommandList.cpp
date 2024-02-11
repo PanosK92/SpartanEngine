@@ -896,13 +896,13 @@ namespace Spartan
             blit_region.srcSubresource.mipLevel       = mip_index;
             blit_region.srcSubresource.baseArrayLayer = 0;
             blit_region.srcSubresource.layerCount     = 1;
-            blit_region.srcSubresource.aspectMask     = source->IsDepthFormat() ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+            blit_region.srcSubresource.aspectMask     = get_aspect_mask(source);
             blit_region.srcOffsets[0]                 = { 0, 0, 0 };
             blit_region.srcOffsets[1]                 = source_blit_size;
             blit_region.dstSubresource.mipLevel       = mip_index;
             blit_region.dstSubresource.baseArrayLayer = 0;
             blit_region.dstSubresource.layerCount     = 1;
-            blit_region.dstSubresource.aspectMask     = destination->IsDepthFormat() ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+            blit_region.dstSubresource.aspectMask     = get_aspect_mask(destination);
             blit_region.dstOffsets[0]                 = { 0, 0, 0 };
             blit_region.dstOffsets[1]                 = destination_blit_size;
         }
@@ -960,7 +960,7 @@ namespace Spartan
         blit_region.srcSubresource.mipLevel       = 0;
         blit_region.srcSubresource.baseArrayLayer = 0;
         blit_region.srcSubresource.layerCount     = 1;
-        blit_region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        blit_region.srcSubresource.aspectMask     = get_aspect_mask(source);
         blit_region.srcOffsets[0]                 = { 0, 0, 0 };
         blit_region.srcOffsets[1]                 = source_blit_size;
         blit_region.dstSubresource.mipLevel       = 0;
@@ -974,7 +974,7 @@ namespace Spartan
         RHI_Image_Layout source_layout_initial = source->GetLayout(0);
 
         // transition to blit appropriate layouts
-        source->SetLayout(RHI_Image_Layout::Transfer_Source,      this);
+        source->SetLayout(RHI_Image_Layout::Transfer_Source,           this);
         destination->SetLayout(RHI_Image_Layout::Transfer_Destination, this);
 
         // deduce filter
@@ -991,7 +991,7 @@ namespace Spartan
             vulkan_filter[static_cast<uint32_t>(filter)]
         );
 
-        // Transition to the initial layouts
+        // transition to the initial layouts
         source->SetLayout(source_layout_initial, this);
         destination->SetLayout(RHI_Image_Layout::Present_Source, this);
     }
@@ -1606,43 +1606,9 @@ namespace Spartan
         InsertBarrier(texture->GetRhiResource(), get_aspect_mask(texture), mip_start, mip_range, array_length, layout_old, layout_new);
     }
 
-    void RHI_CommandList::InsertBarrierWaitForWrite(RHI_Texture* texture)
+    void RHI_CommandList::InsertBarrierWaitForReadWrite(RHI_Texture* texture)
     {
         SP_ASSERT(texture != nullptr);
-
-        VkImageMemoryBarrier image_barrier            = {};
-        image_barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        image_barrier.pNext                           = nullptr;
-        image_barrier.oldLayout                       = vulkan_image_layout[static_cast<VkImageLayout>(texture->GetLayout(0))];
-        image_barrier.newLayout                       = vulkan_image_layout[static_cast<VkImageLayout>(texture->GetLayout(0))];
-        image_barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-        image_barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-        image_barrier.image                           = static_cast<VkImage>(texture->GetRhiResource());
-        image_barrier.subresourceRange.aspectMask     = get_aspect_mask(texture);
-        image_barrier.subresourceRange.baseMipLevel   = 0;
-        image_barrier.subresourceRange.levelCount     = texture->GetMipCount();
-        image_barrier.subresourceRange.baseArrayLayer = 0;
-        image_barrier.subresourceRange.layerCount     = texture->GetArrayLength();
-        image_barrier.srcAccessMask                   = VK_ACCESS_SHADER_WRITE_BIT;
-        image_barrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
-
-        VkPipelineStageFlags source_stage_mask      = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-        VkPipelineStageFlags destination_stage_mask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-
-        vkCmdPipelineBarrier
-        (
-            static_cast<VkCommandBuffer>(m_rhi_resource),
-            source_stage_mask,
-            destination_stage_mask,
-            0,
-            0,
-            nullptr,
-            0,
-            nullptr,
-            1,
-            &image_barrier
-        );
-
-        Profiler::m_rhi_pipeline_barriers++;
+        InsertBarrier(texture->GetRhiResource(), get_aspect_mask(texture), 0, 1, 1, texture->GetLayout(0), texture->GetLayout(0));
     }
 }

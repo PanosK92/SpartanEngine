@@ -391,7 +391,7 @@ namespace Spartan
 
     }
 
-    void RHI_CommandList::InsertBarrierWaitForWrite(RHI_Texture* texture)
+    void RHI_CommandList::InsertBarrierWaitForReadWrite(RHI_Texture* texture)
     {
 
     }
