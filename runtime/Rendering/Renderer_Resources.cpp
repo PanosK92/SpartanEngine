@@ -253,9 +253,6 @@ namespace Spartan
 
             // ssgi
             render_target(Renderer_RenderTexture::ssgi) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_standard, "rt_ssgi");
-
-            // selection outline
-            render_target(Renderer_RenderTexture::outline) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm, flags_render_target, "rt_outline");
         }
 
         // output resolution
@@ -267,6 +264,9 @@ namespace Spartan
 
             // bloom
             render_target(Renderer_RenderTexture::bloom) = make_shared<RHI_Texture2D>(width_output, height_output, mip_count, RHI_Format::R11G11B10_Float, flags_standard | RHI_Texture_PerMipViews, "rt_bloom");
+
+            // selection outline
+            render_target(Renderer_RenderTexture::outline) = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R8G8B8A8_Unorm, flags_render_target, "rt_outline");
 
             // depth
             render_target(Renderer_RenderTexture::gbuffer_depth_output) = make_shared<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::D32_Float, flags_depth_buffer | RHI_Texture_ClearBlit, "rt_gbuffer_depth_output");
