@@ -557,6 +557,8 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_instanced_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
+        RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
+
         cmd_list->BeginTimeblock(!is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent");
 
         if (!is_transparent_pass)
@@ -667,7 +669,7 @@ namespace Spartan
             visibility::get_gpu_occlusion_query_results(cmd_list, m_renderables);
 
             cmd_list->Blit(
-                GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get(),
+                tex_depth,
                 GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_opaque).get(),
                 false
             );
@@ -678,7 +680,7 @@ namespace Spartan
         }
 
         cmd_list->Blit(
-            GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get(),
+            tex_depth,
             GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_output).get(),
             false
         );
@@ -863,8 +865,7 @@ namespace Spartan
         // render
         cmd_list->Dispatch(thread_group_count_x(tex_ssr), thread_group_count_y(tex_ssr));
 
-        cmd_list->InsertBarrierWaitForWrite(tex_ssr);
-        cmd_list->InsertBarrierWaitForWrite(tex_ssr_roughness);
+        cmd_list->InsertBarrierWaitForReadWrite(tex_ssr_roughness);
 
         // antiflicker pass to stabilize
         Pass_Antiflicker(cmd_list, tex_ssr);
@@ -1956,7 +1957,9 @@ namespace Spartan
         RHI_Shader* shader_v = GetShader(Renderer_Shader::quad_v).get();
         RHI_Shader* shader_p = GetShader(Renderer_Shader::grid_p).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
-            return;      
+            return;
+
+        RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_output).get();
 
         // define the pipeline state
         static RHI_PipelineState pso;
@@ -1966,11 +1969,12 @@ namespace Spartan
         pso.blend_state                     = GetBlendState(Renderer_BlendState::Alpha).get();
         pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
         pso.render_target_color_textures[0] = tex_out;
-        pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_output).get();
+        pso.render_target_depth_texture     = tex_depth;
 
         // draw
         cmd_list->BeginTimeblock("grid");
         cmd_list->SetPipelineState(pso);
+        cmd_list->InsertBarrierWaitForReadWrite(tex_depth);
 
         // set transform
         {

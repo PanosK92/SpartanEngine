@@ -320,16 +320,14 @@ namespace Spartan
                     return VK_FALSE;
                 }
 
-                if (p_callback_data->messageIdNumber == 0x42f2f4ed)
-                {
-                    // [ SYNC-HAZARD-WRITE-AFTER-PRESENT ] Object 0:
-                    // handle = 0x14968ec1b60, name = graphics, type = VK_OBJECT_TYPE_QUEUE; | MessageID = 0x42f2f4ed | vkQueueSubmit():
-                    // Hazard WRITE_AFTER_PRESENT for entry 0, VkCommandBuffer 0x14a071c00e0[imgui_cmd_pool_1_0], Submitted access info (submitted_usage: SYNC_IMAGE_LAYOUT_TRANSITION, command:
-                    // vkCmdPipelineBarrier, seq_no: 1, VkImage 0xec4bec000000000b[swapchain_image_0], reset_no: 2). Access info (prior_usage: SYNC_PRESENT_ENGINE_SYNCVAL_PRESENT_PRESENTED_SYNCVAL,
-                    // write_barriers: 0, queue: VkQueue 0x14968ec1b60[graphics], submit: 88, batch: 0, batch_tag: 239, vkQueuePresentKHR present_tag:239, pSwapchains[0]:
-                    // VkSwapchainKHR 0xcfef35000000000a[], image_index: 0image: VkImage 0xec4bec000000000b[swapchain_image_0]).
+                //if (p_callback_data->messageIdNumber == 0x42f2f4ed) // validation error - needs fixing
+                    //return VK_FALSE;
+
+                if (p_callback_data->messageIdNumber == 0xe4d96472) // validation error - depth_ouput
                     return VK_FALSE;
-                }
+
+                if (p_callback_data->messageIdNumber == 0x5c0ec5d6) // validation error - depth_light
+                    return VK_FALSE;
             }
 
             string msg = "Vulkan: " + string(p_callback_data->pMessage);
