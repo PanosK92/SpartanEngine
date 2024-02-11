@@ -2115,7 +2115,7 @@ namespace Spartan
                     {
                         cmd_list->BeginMarker("color_silhouette");
                         {
-                            // Define render state
+                            // set pipeline state
                             static RHI_PipelineState pso;
                             pso.shader_vertex                   = shader_v;
                             pso.shader_pixel                    = shader_p;
@@ -2124,8 +2124,6 @@ namespace Spartan
                             pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
                             pso.render_target_color_textures[0] = tex_outline;
                             pso.clear_color[0]                  = clear_color;
-                        
-                            // set pipeline state
                             cmd_list->SetPipelineState(pso);
                         
                             // render
@@ -2142,30 +2140,29 @@ namespace Spartan
                         }
                         cmd_list->EndMarker();
                         
-                        // Blur the color silhouette
+                        // blur the color silhouette
                         {
                             const float radius = 30.0f;
                             Pass_Blur_Gaussian(cmd_list, tex_outline, nullptr, Renderer_Shader::blur_gaussian_c, radius);
                         }
                         
-                        // Combine color silhouette with frame
+                        // combine color silhouette with frame
                         cmd_list->BeginMarker("composition");
                         {
+                            // set pipeline state
                             static RHI_PipelineState pso;
                             pso.shader_compute = shader_c;
-                        
-                            // Set pipeline state
                             cmd_list->SetPipelineState(pso);
                         
-                            // Set pass constants
+                            // set pass constants
                             m_pcb_pass_cpu.set_resolution_out(tex_out);
                             PushPassConstants(cmd_list);
                         
-                            // Set textures
+                            // set textures
                             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
                             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_outline);
                         
-                            // Render
+                            // render
                             cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
                         }
                         cmd_list->EndMarker();
