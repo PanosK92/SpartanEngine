@@ -114,7 +114,6 @@ namespace Spartan
         // post-tick
         Timer::PostTick();
         Profiler::PostTick();
-        Renderer::PostTick();
     }
 
     void Engine::AddFlag(const EngineMode flag)

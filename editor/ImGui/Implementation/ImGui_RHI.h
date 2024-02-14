@@ -403,10 +403,7 @@ namespace ImGui::RHI
 
         if (!is_child_window)
         {
-            if (!Spartan::Window::IsMinimised())
-            {
-                Spartan::Renderer::Present();
-            }
+            Spartan::Renderer::GetSwapChain()->Present();
         }
     }
 

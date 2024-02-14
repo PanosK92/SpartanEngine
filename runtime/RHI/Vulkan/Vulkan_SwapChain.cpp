@@ -416,6 +416,9 @@ namespace Spartan
 
     void RHI_SwapChain::Present()
     {
+        if (Window::IsMinimised())
+            return;
+
         SP_ASSERT_MSG(!(SDL_GetWindowFlags(static_cast<SDL_Window*>(m_sdl_window)) & SDL_WINDOW_MINIMIZED), "Present should not be called for a minimized window");
         SP_ASSERT_MSG(m_rhi_swapchain != nullptr,                                                           "Invalid swapchain");
         SP_ASSERT_MSG(m_image_index != m_image_index_previous,                                              "No image was acquired");
