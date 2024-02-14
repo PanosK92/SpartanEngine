@@ -298,16 +298,25 @@ namespace Spartan
             shader(Renderer_Shader::line_p)->Compile(RHI_Shader_Pixel, shader_dir + "line.hlsl", async);
 
             // grid
-            shader(Renderer_Shader::grid_p) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::grid_p)->Compile(RHI_Shader_Pixel, shader_dir + "grid.hlsl", async);
+            {
+                shader(Renderer_Shader::grid_v) = make_shared<RHI_Shader>();
+                shader(Renderer_Shader::grid_v)->Compile(RHI_Shader_Vertex, shader_dir + "grid.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+
+                shader(Renderer_Shader::grid_p) = make_shared<RHI_Shader>();
+                shader(Renderer_Shader::grid_p)->Compile(RHI_Shader_Pixel, shader_dir + "grid.hlsl", async);
+            }
 
             // outline
-            shader(Renderer_Shader::outline_v) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::outline_v)->Compile(RHI_Shader_Vertex, shader_dir + "outline.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-            shader(Renderer_Shader::outline_p) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::outline_p)->Compile(RHI_Shader_Pixel, shader_dir + "outline.hlsl", async);
-            shader(Renderer_Shader::outline_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::outline_c)->Compile(RHI_Shader_Compute, shader_dir + "outline.hlsl", async);
+            {
+                shader(Renderer_Shader::outline_v) = make_shared<RHI_Shader>();
+                shader(Renderer_Shader::outline_v)->Compile(RHI_Shader_Vertex, shader_dir + "outline.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+
+                shader(Renderer_Shader::outline_p) = make_shared<RHI_Shader>();
+                shader(Renderer_Shader::outline_p)->Compile(RHI_Shader_Pixel, shader_dir + "outline.hlsl", async);
+
+                shader(Renderer_Shader::outline_c) = make_shared<RHI_Shader>();
+                shader(Renderer_Shader::outline_c)->Compile(RHI_Shader_Compute, shader_dir + "outline.hlsl", async);
+            }
         }
 
         // depth pre-pass
