@@ -62,7 +62,6 @@ namespace Spartan
         // Renderer                    
         RendererOnInitialized,         // The renderer has been initialized
         RendererOnFirstFrameCompleted, // The renderer has completed the first frame
-        RendererPostPresent,           // The renderer has finished presenting a frame
         RendererOnShutdown,            // The renderer is about to shutdown
         // World                       
         WorldSaveStart,                // The world is about to be saved to a file

@@ -410,8 +410,9 @@ namespace Spartan
         // do all the render passes
         Pass_Frame(cmd_current);
 
-        // blit to back buffer when in full screen
-        if (!Engine::IsFlagSet(EngineMode::Editor))
+        // blit to back buffer when not in editor mode
+        bool is_standalone = !Engine::IsFlagSet(EngineMode::Editor);
+        if (is_standalone)
         {
             cmd_current->BeginMarker("copy_to_back_buffer");
             cmd_current->Blit(GetRenderTarget(Renderer_RenderTexture::frame_output).get(), swap_chain.get());
@@ -422,16 +423,12 @@ namespace Spartan
         cmd_current->End();
         cmd_current->Submit();
 
-        // track frame
-        frame_num++;
-    }
-
-    void Renderer::PostTick()
-    {
-        if (!Engine::IsFlagSet(EngineMode::Editor))
+        // present
+        if (is_standalone)
         {
-            Present();
+            swap_chain->Present();
         }
+        frame_num++;
     }
 
     const RHI_Viewport& Renderer::GetViewport()
@@ -954,21 +951,6 @@ namespace Spartan
         return swap_chain.get();
     }
     
-    void Renderer::Present()
-    {
-        SP_ASSERT(swap_chain->GetLayout() == RHI_Image_Layout::Present_Source);
-
-        if (Window::IsMinimised())
-        {
-            SP_LOG_WARNING("Ignoring call, don't call present if the window is minimized");
-            return;
-        }
-
-        swap_chain->Present();
-
-        SP_FIRE_EVENT(EventType::RendererPostPresent);
-    }
-
     void Renderer::AddTextureForMipGeneration(RHI_Texture* texture)
     {
         lock_guard<mutex> guard(mutex_mip_generation);

@@ -55,7 +55,6 @@ namespace Spartan
         static void Initialize();
         static void Shutdown();
         static void Tick();
-        static void PostTick();
 
         // primitive rendering (useful for debugging)
         static void DrawLine(const Math::Vector3& from, const Math::Vector3& to, const Color& color_from = Color::standard_renderer_lines, const Color& color_to = Color::standard_renderer_lines, const float duration = 0.0f, const bool depth = true);
@@ -76,7 +75,6 @@ namespace Spartan
 
         // swapchain
         static RHI_SwapChain* GetSwapChain();
-        static void Present();
 
         // mip generation
         static void AddTextureForMipGeneration(RHI_Texture* texture);
