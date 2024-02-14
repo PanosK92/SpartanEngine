@@ -73,7 +73,6 @@ struct Pixel_PosColor
     float4 color    : COLOR0;
 };
 
-
 struct Pixel_PosNor
 {
     float4 position : SV_POSITION;

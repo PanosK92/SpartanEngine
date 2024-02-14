@@ -23,53 +23,83 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-// properties
-static const float4 grid_color          = float4(0.5f, 0.5f, 0.5f, 0.5f);
-static const float  fade_start          = 0.1f;
-static const float  fade_end            = 0.5f;
-static const float  anti_moire_start    = 0.0f;
-static const float  anti_moire_strength = 100.0f;
+// based on the grid shader found in: https://github.com/deg3x/GraphicsPlayground
 
-// increase line thickness the further away we get, this counteracts the moire pattern
-float compute_anti_moire_factor(float2 uv, float moire_start)
+// parameters
+static const float thickness_norm  = 2.0f; // grid line size (in pixels)
+static const float thickness_bold  = 2.0f * thickness_norm;
+static const float frequency_bold  = 10.0f;
+static const float max_camera_dist = 200.0f;
+static const float3 color_default  = float3(0.70, 0.70, 0.70);
+static const float3 color_bold     = float3(0.85, 0.85, 0.85);
+static const float3 color_axis_x   = float3(0.85, 0.40, 0.30);
+static const float3 color_axis_z   = float3(0.40, 0.50, 0.85);
+
+struct PixelInput
 {
-    float2 centered_uv         = uv - 0.5f;
-    float distance_from_center = length(centered_uv);
-    float moire_end            = 1.0f;
-    return lerp(1.0f, anti_moire_strength, saturate((distance_from_center - moire_start) / (moire_end - moire_start)));
+    float4 position       : SV_POSITION;
+    float2 uv             : TEXCOORD;
+    float4 position_world : POSITION_WORLD;
+};
+
+PixelInput mainVS(Vertex_PosUvNorTan input)
+{
+    PixelInput output;
+
+    input.position.w      = 1.0f;
+    output.position_world = mul(input.position, buffer_pass.transform);
+    output.position       = mul(output.position_world, buffer_frame.view_projection_unjittered);
+    output.uv             = input.uv;
+
+    return output;
 }
 
-// fade out the further away we get from the center, this prevents us from seeing the edge of the grid
-float compute_fade_factor(float2 uv, float fade_start, float fade_end)
+float4 mainPS(PixelInput input) : SV_TARGET
 {
-    float2 centered_uv         = uv - 0.5f;
-    float distance_from_center = length(centered_uv);
-    return saturate((fade_end - distance_from_center) / (fade_end - fade_start));
-}
+    float3 world_pos = input.position_world.xyz;
 
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
-{
-    const float2 properties   = pass_get_f3_value().xy;
-    const float line_interval = properties.x;
-    float line_thickness      = properties.y;
+    // grid test normal
+    float2 derivative  = fwidth(world_pos.xz);
+    float2 grid_aa     = derivative * 1.5;
+    float2 grid_uv     = 1.0 - abs(frac(world_pos.xz) * 2.0 - 1.0);
+    float2 line_width  = thickness_norm * derivative;
+    float2 draw_width  = clamp(line_width, derivative, 0.5);
+    float2 grid_test   = 1.0 - smoothstep(draw_width - grid_aa, draw_width + grid_aa, grid_uv);
+    grid_test         *= clamp(line_width / draw_width, 0.0, 1.0);
 
-    float fade_factor       = compute_fade_factor(input.uv, fade_start, fade_end);
-    float anti_moire_factor = compute_anti_moire_factor(input.uv, anti_moire_start);
-    
-    // anti-moire
-    line_thickness *= anti_moire_factor;
-    
-    // calculate the modulated distance for both x and y coordinates
-    float mod_x = fmod(input.uv.x, line_interval);
-    float mod_y = fmod(input.uv.y, line_interval);
-    
-    // use step function to determine if the pixel is near a line
-    float line_x = step(line_thickness, mod_x) - step(line_interval - line_thickness, mod_x);
-    float line_y = step(line_thickness, mod_y) - step(line_interval - line_thickness, mod_y);
-    
-    // combine line_x and line_y to decide if either is true, then color it as a line
-    float is_line = max(1.0f - line_x, 1.0f - line_y);
+    float grid_norm       = lerp(grid_test.x, 1.0, grid_test.y);
+    float alpha_grid_norm = clamp(grid_norm, 0.0, 0.8);
 
-    // write both on the color render target and the reactive mask
-    return fade_factor * (is_line * grid_color + (1.0f - is_line) * 0.0f);
+    // grid test bold
+    derivative = fwidth(world_pos.xz / frequency_bold);
+    grid_aa    = derivative * 1.5;
+    grid_uv    = 1.0 - abs(frac(world_pos.xz / frequency_bold) * 2.0 - 1.0);
+    line_width = thickness_bold * derivative;
+    draw_width = clamp(line_width, derivative, 0.5);
+    grid_test  = 1.0 - smoothstep(draw_width - grid_aa, draw_width + grid_aa, grid_uv);
+    grid_test *= clamp(line_width / draw_width, 0.0, 1.0);
+
+    float grid_bold       = lerp(grid_test.x, 1.0, grid_test.y);
+    float alpha_grid_bold = clamp(grid_bold, 0.0, 0.9);
+
+    // final grid alpha
+    float alpha_grid = max(alpha_grid_norm, alpha_grid_bold);
+
+    // color test
+    float3 color_output = lerp(color_default, color_bold, grid_bold);
+
+    float align_axis_x = step(abs(world_pos.z), grid_test.y);
+    float align_axis_z = step(abs(world_pos.x), grid_test.x);
+    float sum          = clamp(align_axis_x + align_axis_z, 0.0, 1.0);
+
+    color_output = lerp(color_output, color_axis_z, align_axis_z);
+    color_output = lerp(color_output, color_axis_x, align_axis_x);
+
+    // camera distance test
+    float camera_dist = length(buffer_frame.camera_position.xz - world_pos.xz);
+    float alpha_dist  = 1.0 - smoothstep(0.0, max_camera_dist, camera_dist);
+
+    float alpha = min(alpha_dist, alpha_grid);
+
+    return float4(color_output, alpha);
 }

@@ -196,7 +196,7 @@ PixelInputType mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID
     output.tangent_world       = normalize(tangent_transformed);
     
     #else
-    output.normal_world = normalize(mul(input.normal, (float3x3)buffer_pass.transform));
+    output.normal_world  = normalize(mul(input.normal, (float3x3)buffer_pass.transform));
     output.tangent_world = normalize(mul(input.tangent, (float3x3)buffer_pass.transform));
     #endif
 

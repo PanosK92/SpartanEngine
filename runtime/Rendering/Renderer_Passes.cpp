@@ -1954,14 +1954,16 @@ namespace Spartan
             return;
 
         // acquire shader
-        RHI_Shader* shader_v = GetShader(Renderer_Shader::quad_v).get();
+        RHI_Shader* shader_v = GetShader(Renderer_Shader::grid_v).get();
         RHI_Shader* shader_p = GetShader(Renderer_Shader::grid_p).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
         RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_output).get();
 
-        // define the pipeline state
+        cmd_list->BeginTimeblock("grid");
+
+        // set pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
         pso.shader_pixel                    = shader_p;
@@ -1970,10 +1972,8 @@ namespace Spartan
         pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
         pso.render_target_color_textures[0] = tex_out;
         pso.render_target_depth_texture     = tex_depth;
-
-        // draw
-        cmd_list->BeginTimeblock("grid");
         cmd_list->SetPipelineState(pso);
+
         cmd_list->InsertBarrierWaitForReadWrite(tex_depth);
 
         // set transform
@@ -1986,13 +1986,8 @@ namespace Spartan
                 0.0f,
                 floor(camera_position.z / grid_spacing) * grid_spacing
             );
-            Matrix quad_transform   = Matrix::CreateScale(Vector3(1000.0f, 1.0f, 1000.0f)) * Matrix::CreateTranslation(translation);
-            m_pcb_pass_cpu.transform = quad_transform * m_cb_frame_cpu.view_projection_unjittered;
 
-            // style
-            const float line_internval  = 0.001f;
-            const float line_thickeness = 0.00001f;
-            m_pcb_pass_cpu.set_f3_value(line_internval, line_thickeness, 0.0f);
+            m_pcb_pass_cpu.transform = Matrix::CreateScale(Vector3(1000.0f, 1.0f, 1000.0f)) * Matrix::CreateTranslation(translation);
 
             PushPassConstants(cmd_list);
         }

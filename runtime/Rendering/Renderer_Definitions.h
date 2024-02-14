@@ -190,6 +190,7 @@ namespace Spartan
         light_image_based_c,
         line_v,
         line_p,
+        grid_v,
         grid_p,
         outline_v,
         outline_p,
