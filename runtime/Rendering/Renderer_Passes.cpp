@@ -2179,7 +2179,7 @@ namespace Spartan
 
         cmd_list->BeginMarker("text");
 
-        // define pipeline state
+        // set pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v.get();
         pso.shader_pixel                    = shader_p.get();
@@ -2197,7 +2197,7 @@ namespace Spartan
         cmd_list->SetBufferIndex(font->GetIndexBuffer());
 
         // outline
-        cmd_list->BeginTimeblock("outline");
+        cmd_list->BeginTimeblock("text_outline");
         if (font->GetOutline() != Font_Outline_None && font->GetOutlineSize() != 0)
         {
             // set pass constants
@@ -2211,7 +2211,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
 
         // inline
-        cmd_list->BeginTimeblock("inline");
+        cmd_list->BeginTimeblock("text_inline");
         {
             // set pass constants
             m_pcb_pass_cpu.set_f4_value(font->GetColor());

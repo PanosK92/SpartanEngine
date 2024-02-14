@@ -52,7 +52,8 @@ namespace
         ImGui::Text("%s - %.2f ms", name, duration);
     }
 
-    bool sort_time_blocks = false;
+    int mode_duration = 0; // 0: gpu, 1: cpu
+    int mode_sort     = 0; // 0: alphabetically, 1: by duration
 }
 
 Profiler::Profiler(Editor* editor) : Widget(editor)
@@ -61,40 +62,75 @@ Profiler::Profiler(Editor* editor) : Widget(editor)
     m_title        = "Profiler";
     m_visible      = false;
     m_size_initial = Vector2(1000, 715);
+    m_plot.fill(16.0f);
 }
 
 void Profiler::OnTickVisible()
 {
-    int previous_item_type = m_item_type;
+    int previous_item_type = mode_duration;
 
     // controls
     {
-        ImGui::RadioButton("CPU", &m_item_type, 0);
+        ImGui::Text("Duration: ");
         ImGui::SameLine();
+        if (ImGui::BeginCombo("##mode_duration", mode_duration == 0 ? "GPU" : "CPU"))
+        {
+            if (ImGui::Selectable("GPU", mode_duration == 0))
+            {
+                mode_duration = 0;
+            }
 
-        ImGui::RadioButton("GPU", &m_item_type, 1);
+            if (ImGui::Selectable("CPU", mode_duration == 1))
+            {
+                mode_duration = 1;
+            }
+
+            ImGui::EndCombo();
+        }
+
         ImGui::SameLine();
+        ImGui::Text("Sort: ");
+        ImGui::SameLine();
+        if (ImGui::BeginCombo("##mode_sort", mode_sort == 0 ? "Alphabetically" : "By Duration"))
+        {
+            if (ImGui::Selectable("Alphabetically", mode_sort == 0))
+            {
+                mode_sort = 0;
+            }
+
+            if (ImGui::Selectable("By Duration", mode_sort == 1))
+            {
+                mode_sort = 1;
+            }
+
+            ImGui::EndCombo();
+        }
 
         float interval = Spartan::Profiler::GetUpdateInterval();
-        ImGui::DragFloat("Update interval", &interval, 0.001f, 0.0f, 0.5f);
+        ImGui::SetNextItemWidth(-1); // use all available horizontal space
+        ImGui::SliderFloat("##update_interval", &interval, 0.0f, 0.5f, "Update Interval = %.2f");
         Spartan::Profiler::SetUpdateInterval(interval);
-        ImGui::SameLine();
-
-        ImGui::Checkbox("Sort", &sort_time_blocks);
 
         ImGui::Separator();
     }
 
-    Spartan::TimeBlockType type            = m_item_type == 0 ? Spartan::TimeBlockType::Cpu : Spartan::TimeBlockType::Gpu;
+    Spartan::TimeBlockType type            = mode_duration == 0 ? Spartan::TimeBlockType::Gpu : Spartan::TimeBlockType::Cpu;
     vector<Spartan::TimeBlock> time_blocks = Spartan::Profiler::GetTimeBlocks();
     uint32_t time_block_count              = static_cast<uint32_t>(time_blocks.size());
     float time_last                        = type == Spartan::TimeBlockType::Cpu ? Spartan::Profiler::GetTimeCpuLast() : Spartan::Profiler::GetTimeGpuLast();
 
-    if (sort_time_blocks) // by duration, descending
+    if (mode_sort == 1) // sort by Duration, descending
+    {
+        sort(time_blocks.begin(), time_blocks.end(), [](const Spartan::TimeBlock& a, const Spartan::TimeBlock& b)
+            {
+                return a.GetDuration() > b.GetDuration(); // Note: Changed from < to > for descending order
+            });
+    }
+    else if (mode_sort == 0) // sort Alphabetically
     {
         sort(time_blocks.begin(), time_blocks.end(), [](const Spartan::TimeBlock& a, const Spartan::TimeBlock& b)
         {
-            return b.GetDuration() < a.GetDuration();
+            return a.GetName() < b.GetName();
         });
     }
 
@@ -114,7 +150,7 @@ void Profiler::OnTickVisible()
     ImGui::Separator();
     {
         // clear plot on change from cpu to gpu and vice versa
-        if (previous_item_type != m_item_type)
+        if (previous_item_type != mode_duration)
         {
             m_plot.fill(0.0f);
             m_timings.Clear();
