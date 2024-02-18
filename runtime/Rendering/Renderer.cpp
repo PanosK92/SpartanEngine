@@ -348,7 +348,7 @@ namespace Spartan
             CreateRasterizerStates();
             CreateBlendStates();
             CreateRenderTargets(true, true, true);
-            CreateSamplers(false);
+            CreateSamplers();
             CreateStructuredBuffers();
         }
 
@@ -478,7 +478,7 @@ namespace Spartan
         if (recreate_resources)
         {
             CreateRenderTargets(true, false, true);
-            CreateSamplers(true);
+            CreateSamplers();
         }
 
         // register this resolution as a display mode so it shows up in the editor's render options (it won't happen if already registered)
@@ -509,7 +509,7 @@ namespace Spartan
         if (recreate_resources)
         {
             CreateRenderTargets(false, true, true);
-            CreateSamplers(true);
+            CreateSamplers();
         }
 
         SP_LOG_INFO("Output resolution output has been set to %dx%d", width, height);

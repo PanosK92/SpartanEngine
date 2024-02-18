@@ -141,7 +141,7 @@ namespace Spartan
         static void CreateRasterizerStates();
         static void CreateBlendStates();
         static void CreateShaders();
-        static void CreateSamplers(const bool create_only_anisotropic = false);
+        static void CreateSamplers();
         static void CreateRenderTargets(const bool create_render, const bool create_output, const bool create_dynamic);
         static void CreateFonts();
         static void CreateStandardMeshes();
