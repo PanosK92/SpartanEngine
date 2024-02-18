@@ -445,7 +445,7 @@ namespace Spartan
                 if (is_transparent_pass && !light->IsFlagSet(LightFlags::ShadowsTransparent))
                     continue;
 
-                // define pipeline state
+                // set pipeline state
                 static RHI_PipelineState pso;
                 pso.instancing                      = i == 1 || i == 3;
                 pso.shader_vertex                   = !pso.instancing ? shader_v : shader_instanced_v;

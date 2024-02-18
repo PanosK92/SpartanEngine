@@ -43,8 +43,8 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     const float3 f3_value     = pass_get_f3_value();
     const bool has_alpha_mask = f3_value.x == 1.0f;
     const bool has_albedo     = f3_value.y == 1.0f;
-    float alpha_mask          = has_alpha_mask ? GET_TEXTURE(material_mask).Sample(samplers[sampler_anisotropic_wrap], input.uv).r : 1.0f;
-    bool alpha_albedo         = has_albedo     ? GET_TEXTURE(material_albedo).Sample(samplers[sampler_anisotropic_wrap], input.uv).a : 1.0f;
+    float alpha_mask          = has_alpha_mask ? GET_TEXTURE(material_mask).Sample(samplers[sampler_point_wrap], input.uv).r : 1.0f;
+    bool alpha_albedo         = has_albedo     ? GET_TEXTURE(material_albedo).Sample(samplers[sampler_point_wrap], input.uv).a : 1.0f;
     if (min(alpha_mask, alpha_albedo) <= ALPHA_THRESHOLD_DEFAULT)
         discard;
 
