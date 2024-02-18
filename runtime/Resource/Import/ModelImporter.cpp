@@ -48,274 +48,274 @@ namespace Spartan
 {
     namespace
     {
-        std::string model_file_path;
-        std::string model_name;
+        string model_file_path;
+        string model_name;
         Mesh* mesh               = nullptr;
         bool model_has_animation = false;
         bool model_is_gltf       = false;
         const aiScene* scene     = nullptr;
-    }
 
-    static Matrix convert_matrix(const aiMatrix4x4& transform)
-    {
-        return Matrix
-        (
-            transform.a1, transform.b1, transform.c1, transform.d1,
-            transform.a2, transform.b2, transform.c2, transform.d2,
-            transform.a3, transform.b3, transform.c3, transform.d3,
-            transform.a4, transform.b4, transform.c4, transform.d4
-        );
-    }
-
-    static Color convert_color(const aiColor4D& ai_color)
-    {
-        return Color(ai_color.r, ai_color.g, ai_color.b, ai_color.a);
-    }
-
-    static Color convert_color(const aiColor3D& ai_color)
-    {
-        return Color(ai_color.r, ai_color.g, ai_color.b, 1.0f);
-    }
-
-    static Vector3 convert_vector3(const aiVector3D& ai_vector)
-    {
-        return Vector3(ai_vector.x, ai_vector.y, ai_vector.z);
-    }
-
-    static Vector2 convert_vector2(const aiVector2D& ai_vector)
-    {
-        return Vector2(ai_vector.x, ai_vector.y);
-    }
-
-    static Quaternion convert_quaternion(const aiQuaternion& ai_quaternion)
-    {
-        return Quaternion(ai_quaternion.x, ai_quaternion.y, ai_quaternion.z, ai_quaternion.w);
-    }
-
-    static void set_entity_transform(const aiNode* node, shared_ptr<Entity> entity)
-    {
-        // convert to engine matrix
-        const Matrix matrix_engine = convert_matrix(node->mTransformation);
-
-        // apply position, rotation and scale
-        entity->SetPositionLocal(matrix_engine.GetTranslation());
-        entity->SetRotationLocal(matrix_engine.GetRotation());
-        entity->SetScaleLocal(matrix_engine.GetScale());
-    }
-
-    constexpr void compute_node_count(const aiNode* node, uint32_t* count)
-    {
-        if (!node)
-            return;
-
-        (*count)++;
-
-        // Process children
-        for (uint32_t i = 0; i < node->mNumChildren; i++)
+        Matrix convert_matrix(const aiMatrix4x4& transform)
         {
-            compute_node_count(node->mChildren[i], count);
-        }
-    }
-
-    // Implement Assimp's progress reporting interface
-    class AssimpProgress : public ProgressHandler
-    {
-    public:
-        AssimpProgress(const string& file_path)
-        {
-            m_file_path = file_path;
-            m_file_name = FileSystem::GetFileNameFromFilePath(file_path);
-        }
-        ~AssimpProgress() = default;
-
-        bool Update(float percentage) override { return true; }
-
-        void UpdateFileRead(int current_step, int number_of_steps) override
-        {
-            // Reading from drive file progress is ignored because it's not called in a consistent manner.
-            // At least two calls are needed (start, end), but this can be called only once.
+            return Matrix
+            (
+                transform.a1, transform.b1, transform.c1, transform.d1,
+                transform.a2, transform.b2, transform.c2, transform.d2,
+                transform.a3, transform.b3, transform.c3, transform.d3,
+                transform.a4, transform.b4, transform.c4, transform.d4
+            );
         }
 
-        void UpdatePostProcess(int current_step, int number_of_steps) override
+        Color convert_color(const aiColor4D& ai_color)
         {
-            if (current_step == 0)
+            return Color(ai_color.r, ai_color.g, ai_color.b, ai_color.a);
+        }
+
+        Color convert_color(const aiColor3D& ai_color)
+        {
+            return Color(ai_color.r, ai_color.g, ai_color.b, 1.0f);
+        }
+
+        Vector3 convert_vector3(const aiVector3D& ai_vector)
+        {
+            return Vector3(ai_vector.x, ai_vector.y, ai_vector.z);
+        }
+
+        Vector2 convert_vector2(const aiVector2D& ai_vector)
+        {
+            return Vector2(ai_vector.x, ai_vector.y);
+        }
+
+        Quaternion convert_quaternion(const aiQuaternion& ai_quaternion)
+        {
+            return Quaternion(ai_quaternion.x, ai_quaternion.y, ai_quaternion.z, ai_quaternion.w);
+        }
+
+        void set_entity_transform(const aiNode* node, shared_ptr<Entity> entity)
+        {
+            // convert to engine matrix
+            const Matrix matrix_engine = convert_matrix(node->mTransformation);
+
+            // apply position, rotation and scale
+            entity->SetPositionLocal(matrix_engine.GetTranslation());
+            entity->SetRotationLocal(matrix_engine.GetRotation());
+            entity->SetScaleLocal(matrix_engine.GetScale());
+        }
+
+        constexpr void compute_node_count(const aiNode* node, uint32_t* count)
+        {
+            if (!node)
+                return;
+
+            (*count)++;
+
+            // Process children
+            for (uint32_t i = 0; i < node->mNumChildren; i++)
             {
-                ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone(); // "Loading model from drive..."
-                ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(number_of_steps, "Post-processing model...");
-            }
-            else
-            {
-                ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone();
+                compute_node_count(node->mChildren[i], count);
             }
         }
 
-    private:
-        string m_file_path;
-        string m_file_name;
-    };
-
-    static string texture_try_multiple_extensions(const string& file_path)
-    {
-        // Remove extension
-        const string file_path_no_ext = FileSystem::GetFilePathWithoutExtension(file_path);
-
-        // Check if the file exists using all engine supported extensions
-        for (const auto& supported_format : supported_formats_image)
+        // progress reporting interface
+        class AssimpProgress : public ProgressHandler
         {
-            string new_file_path = file_path_no_ext + supported_format;
-            string new_file_path_upper = file_path_no_ext + FileSystem::ConvertToUppercase(supported_format);
-
-            if (FileSystem::Exists(new_file_path))
+        public:
+            AssimpProgress(const string& file_path)
             {
-                return new_file_path;
+                m_file_path = file_path;
+                m_file_name = FileSystem::GetFileNameFromFilePath(file_path);
+            }
+            ~AssimpProgress() = default;
+
+            bool Update(float percentage) override { return true; }
+
+            void UpdateFileRead(int current_step, int number_of_steps) override
+            {
+                // Reading from drive file progress is ignored because it's not called in a consistent manner.
+                // At least two calls are needed (start, end), but this can be called only once.
             }
 
-            if (FileSystem::Exists(new_file_path_upper))
+            void UpdatePostProcess(int current_step, int number_of_steps) override
             {
-                return new_file_path_upper;
-            }
-        }
-
-        return file_path;
-    }
-
-    static string texture_validate_path(string original_texture_path, const string& file_path)
-    {
-        // Models usually return a texture path which is relative to the model's directory.
-        // However, to load anything, we'll need an absolute path, so we construct it here.
-        const string model_dir = FileSystem::GetDirectoryFromFilePath(file_path);
-        string full_texture_path = model_dir + original_texture_path;
-
-        // 1. Check if the texture path is valid
-        if (FileSystem::Exists(full_texture_path))
-            return full_texture_path;
-
-        // 2. Check the same texture path as previously but 
-        // this time with different file extensions (jpg, png and so on).
-        full_texture_path = texture_try_multiple_extensions(full_texture_path);
-        if (FileSystem::Exists(full_texture_path))
-            return full_texture_path;
-
-        // At this point we know the provided path is wrong, we will make a few guesses.
-        // The most common mistake is that the artist provided a path which is absolute to his computer.
-
-        // 3. Check if the texture is in the same folder as the model
-        full_texture_path = model_dir + FileSystem::GetFileNameFromFilePath(full_texture_path);
-        if (FileSystem::Exists(full_texture_path))
-            return full_texture_path;
-
-        // 4. Check the same texture path as previously but 
-        // this time with different file extensions (jpg, png and so on).
-        full_texture_path = texture_try_multiple_extensions(full_texture_path);
-        if (FileSystem::Exists(full_texture_path))
-            return full_texture_path;
-
-        // Give up, no valid texture path was found
-        return "";
-    }
-
-    static bool load_material_texture(
-        Mesh* mesh,
-        const string& file_path,
-        const bool is_gltf,
-        shared_ptr<Material> material,
-        const aiMaterial* material_assimp,
-        const MaterialTexture texture_type,
-        const aiTextureType texture_type_assimp_pbr,
-        const aiTextureType texture_type_assimp_legacy
-    )
-    {
-        // Determine if this is a pbr material or not
-        aiTextureType type_assimp = aiTextureType_NONE;
-        type_assimp = material_assimp->GetTextureCount(texture_type_assimp_pbr) > 0 ? texture_type_assimp_pbr : type_assimp;
-        type_assimp = (type_assimp == aiTextureType_NONE) ? (material_assimp->GetTextureCount(texture_type_assimp_legacy) > 0 ? texture_type_assimp_legacy : type_assimp) : type_assimp;
-
-        // Check if the material has any textures
-        if (material_assimp->GetTextureCount(type_assimp) == 0)
-            return true;
-
-        // Try to get the texture path
-        aiString texture_path;
-        if (material_assimp->GetTexture(type_assimp, 0, &texture_path) != AI_SUCCESS)
-            return false;
-
-        // See if the texture type is supported by the engine
-        const string deduced_path = texture_validate_path(texture_path.data, file_path);
-        if (!FileSystem::IsSupportedImageFile(deduced_path))
-            return false;
-
-        // Add the texture to the model
-        mesh->AddTexture(material, texture_type, texture_validate_path(texture_path.data, file_path), is_gltf);
-
-        // FIX: materials that have a diffuse texture should not be tinted black/gray
-        if (type_assimp == aiTextureType_BASE_COLOR || type_assimp == aiTextureType_DIFFUSE)
-        {
-            material->SetProperty(MaterialProperty::ColorR, 1.0f);
-            material->SetProperty(MaterialProperty::ColorG, 1.0f);
-            material->SetProperty(MaterialProperty::ColorB, 1.0f);
-            material->SetProperty(MaterialProperty::ColorA, 1.0f);
-        }
-
-        // FIX: Some models pass a normal map as a height map and vice versa, we correct that.
-        if (texture_type == MaterialTexture::Normal || texture_type == MaterialTexture::Height)
-        {
-            if (shared_ptr<RHI_Texture> texture = material->GetTexture_PtrShared(texture_type))
-            {
-                MaterialTexture proper_type = texture_type;
-                proper_type = (proper_type == MaterialTexture::Normal && texture->IsGrayscale()) ? MaterialTexture::Height : proper_type;
-                proper_type = (proper_type == MaterialTexture::Height && !texture->IsGrayscale()) ? MaterialTexture::Normal : proper_type;
-
-                if (proper_type != texture_type)
+                if (current_step == 0)
                 {
-                    material->SetTexture(texture_type, shared_ptr<RHI_Texture>(nullptr));
-                    material->SetTexture(proper_type, texture);
+                    ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone(); // "Loading model from drive..."
+                    ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(number_of_steps, "Post-processing model...");
+                }
+                else
+                {
+                    ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone();
                 }
             }
+
+        private:
+            string m_file_path;
+            string m_file_name;
+        };
+
+        string texture_try_multiple_extensions(const string& file_path)
+        {
+            // Remove extension
+            const string file_path_no_ext = FileSystem::GetFilePathWithoutExtension(file_path);
+
+            // Check if the file exists using all engine supported extensions
+            for (const auto& supported_format : supported_formats_image)
+            {
+                string new_file_path = file_path_no_ext + supported_format;
+                string new_file_path_upper = file_path_no_ext + FileSystem::ConvertToUppercase(supported_format);
+
+                if (FileSystem::Exists(new_file_path))
+                {
+                    return new_file_path;
+                }
+
+                if (FileSystem::Exists(new_file_path_upper))
+                {
+                    return new_file_path_upper;
+                }
+            }
+
+            return file_path;
         }
 
-        return true;
-    }
+        string texture_validate_path(string original_texture_path, const string& file_path)
+        {
+            // Models usually return a texture path which is relative to the model's directory.
+            // However, to load anything, we'll need an absolute path, so we construct it here.
+            const string model_dir = FileSystem::GetDirectoryFromFilePath(file_path);
+            string full_texture_path = model_dir + original_texture_path;
 
-    static shared_ptr<Material> load_material(Mesh* mesh, const string& file_path, const bool is_gltf, const aiMaterial* material_assimp)
-    {
-        SP_ASSERT(material_assimp != nullptr);
+            // 1. Check if the texture path is valid
+            if (FileSystem::Exists(full_texture_path))
+                return full_texture_path;
 
-        shared_ptr<Material> material = make_shared<Material>();
+            // 2. Check the same texture path as previously but 
+            // this time with different file extensions (jpg, png and so on).
+            full_texture_path = texture_try_multiple_extensions(full_texture_path);
+            if (FileSystem::Exists(full_texture_path))
+                return full_texture_path;
 
-        // NAME
-        aiString name;
-        aiGetMaterialString(material_assimp, AI_MATKEY_NAME, &name);
+            // At this point we know the provided path is wrong, we will make a few guesses.
+            // The most common mistake is that the artist provided a path which is absolute to his computer.
 
-        // Set a resource file path so it can be used by the resource cache
-        material->SetResourceFilePath(FileSystem::RemoveIllegalCharacters(FileSystem::GetDirectoryFromFilePath(file_path) + string(name.C_Str()) + EXTENSION_MATERIAL));
+            // 3. Check if the texture is in the same folder as the model
+            full_texture_path = model_dir + FileSystem::GetFileNameFromFilePath(full_texture_path);
+            if (FileSystem::Exists(full_texture_path))
+                return full_texture_path;
 
-        // COLOR
-        aiColor4D color_diffuse(1.0f, 1.0f, 1.0f, 1.0f);
-        aiGetMaterialColor(material_assimp, AI_MATKEY_COLOR_DIFFUSE, &color_diffuse);
+            // 4. Check the same texture path as previously but 
+            // this time with different file extensions (jpg, png and so on).
+            full_texture_path = texture_try_multiple_extensions(full_texture_path);
+            if (FileSystem::Exists(full_texture_path))
+                return full_texture_path;
 
-        // OPACITY
-        aiColor4D opacity(1.0f, 1.0f, 1.0f, 1.0f);
-        aiGetMaterialColor(material_assimp, AI_MATKEY_OPACITY, &opacity);
+            // Give up, no valid texture path was found
+            return "";
+        }
 
-        // Set color and opacity
-        material->SetProperty(MaterialProperty::ColorR, color_diffuse.r);
-        material->SetProperty(MaterialProperty::ColorG, color_diffuse.g);
-        material->SetProperty(MaterialProperty::ColorB, color_diffuse.b);
-        material->SetProperty(MaterialProperty::ColorA, opacity.r);
+        bool load_material_texture(
+            Mesh* mesh,
+            const string& file_path,
+            const bool is_gltf,
+            shared_ptr<Material> material,
+            const aiMaterial* material_assimp,
+            const MaterialTexture texture_type,
+            const aiTextureType texture_type_assimp_pbr,
+            const aiTextureType texture_type_assimp_legacy
+        )
+        {
+            // Determine if this is a pbr material or not
+            aiTextureType type_assimp = aiTextureType_NONE;
+            type_assimp = material_assimp->GetTextureCount(texture_type_assimp_pbr) > 0 ? texture_type_assimp_pbr : type_assimp;
+            type_assimp = (type_assimp == aiTextureType_NONE) ? (material_assimp->GetTextureCount(texture_type_assimp_legacy) > 0 ? texture_type_assimp_legacy : type_assimp) : type_assimp;
 
-        //                                                                         Texture type,                Texture type Assimp (PBR),       Texture type Assimp (Legacy/fallback)
-        load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Color,      aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
-        load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Roughness,  aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS); // Use specular as fallback
-        load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Metalness,  aiTextureType_METALNESS,         aiTextureType_AMBIENT);   // Use ambient as fallback
-        load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Normal,     aiTextureType_NORMAL_CAMERA,     aiTextureType_NORMALS);
-        load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Occlusion,  aiTextureType_AMBIENT_OCCLUSION, aiTextureType_LIGHTMAP);
-        load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Emission,   aiTextureType_EMISSION_COLOR,    aiTextureType_EMISSIVE);
-        load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Height,     aiTextureType_HEIGHT,            aiTextureType_NONE);
-        load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::AlphaMask,  aiTextureType_OPACITY,           aiTextureType_NONE);
+            // Check if the material has any textures
+            if (material_assimp->GetTextureCount(type_assimp) == 0)
+                return true;
 
-        material->SetProperty(MaterialProperty::SingleTextureRoughnessMetalness, static_cast<float>(is_gltf));
+            // Try to get the texture path
+            aiString texture_path;
+            if (material_assimp->GetTexture(type_assimp, 0, &texture_path) != AI_SUCCESS)
+                return false;
 
-        return material;
+            // See if the texture type is supported by the engine
+            const string deduced_path = texture_validate_path(texture_path.data, file_path);
+            if (!FileSystem::IsSupportedImageFile(deduced_path))
+                return false;
+
+            // Add the texture to the model
+            mesh->AddTexture(material, texture_type, texture_validate_path(texture_path.data, file_path), is_gltf);
+
+            // FIX: materials that have a diffuse texture should not be tinted black/gray
+            if (type_assimp == aiTextureType_BASE_COLOR || type_assimp == aiTextureType_DIFFUSE)
+            {
+                material->SetProperty(MaterialProperty::ColorR, 1.0f);
+                material->SetProperty(MaterialProperty::ColorG, 1.0f);
+                material->SetProperty(MaterialProperty::ColorB, 1.0f);
+                material->SetProperty(MaterialProperty::ColorA, 1.0f);
+            }
+
+            // FIX: Some models pass a normal map as a height map and vice versa, we correct that.
+            if (texture_type == MaterialTexture::Normal || texture_type == MaterialTexture::Height)
+            {
+                if (shared_ptr<RHI_Texture> texture = material->GetTexture_PtrShared(texture_type))
+                {
+                    MaterialTexture proper_type = texture_type;
+                    proper_type = (proper_type == MaterialTexture::Normal && texture->IsGrayscale()) ? MaterialTexture::Height : proper_type;
+                    proper_type = (proper_type == MaterialTexture::Height && !texture->IsGrayscale()) ? MaterialTexture::Normal : proper_type;
+
+                    if (proper_type != texture_type)
+                    {
+                        material->SetTexture(texture_type, shared_ptr<RHI_Texture>(nullptr));
+                        material->SetTexture(proper_type, texture);
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        shared_ptr<Material> load_material(Mesh* mesh, const string& file_path, const bool is_gltf, const aiMaterial* material_assimp)
+        {
+            SP_ASSERT(material_assimp != nullptr);
+
+            shared_ptr<Material> material = make_shared<Material>();
+
+            // NAME
+            aiString name;
+            aiGetMaterialString(material_assimp, AI_MATKEY_NAME, &name);
+
+            // Set a resource file path so it can be used by the resource cache
+            material->SetResourceFilePath(FileSystem::RemoveIllegalCharacters(FileSystem::GetDirectoryFromFilePath(file_path) + string(name.C_Str()) + EXTENSION_MATERIAL));
+
+            // COLOR
+            aiColor4D color_diffuse(1.0f, 1.0f, 1.0f, 1.0f);
+            aiGetMaterialColor(material_assimp, AI_MATKEY_COLOR_DIFFUSE, &color_diffuse);
+
+            // OPACITY
+            aiColor4D opacity(1.0f, 1.0f, 1.0f, 1.0f);
+            aiGetMaterialColor(material_assimp, AI_MATKEY_OPACITY, &opacity);
+
+            // Set color and opacity
+            material->SetProperty(MaterialProperty::ColorR, color_diffuse.r);
+            material->SetProperty(MaterialProperty::ColorG, color_diffuse.g);
+            material->SetProperty(MaterialProperty::ColorB, color_diffuse.b);
+            material->SetProperty(MaterialProperty::ColorA, opacity.r);
+
+            //                                                                         Texture type,                Texture type Assimp (PBR),       Texture type Assimp (Legacy/fallback)
+            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Color,      aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
+            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Roughness,  aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS); // Use specular as fallback
+            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Metalness,  aiTextureType_METALNESS,         aiTextureType_AMBIENT);   // Use ambient as fallback
+            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Normal,     aiTextureType_NORMAL_CAMERA,     aiTextureType_NORMALS);
+            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Occlusion,  aiTextureType_AMBIENT_OCCLUSION, aiTextureType_LIGHTMAP);
+            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Emission,   aiTextureType_EMISSION_COLOR,    aiTextureType_EMISSIVE);
+            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Height,     aiTextureType_HEIGHT,            aiTextureType_NONE);
+            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::AlphaMask,  aiTextureType_OPACITY,           aiTextureType_NONE);
+
+            material->SetProperty(MaterialProperty::SingleTextureRoughnessMetalness, static_cast<float>(is_gltf));
+
+            return material;
+        }
     }
 
     void ModelImporter::Initialize()
