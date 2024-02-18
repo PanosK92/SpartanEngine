@@ -671,6 +671,9 @@ namespace Spartan
 
             for (shared_ptr<Entity> entity : m_entities_to_add)
             {
+                if (!entity->IsActive())
+                    continue;
+
                 if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
                 {
                     bool is_transparent = false;
