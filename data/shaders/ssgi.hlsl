@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // constants
-static const uint g_ao_directions = 3;
-static const uint g_ao_steps      = 3;
+static const uint g_ao_directions = 2;
+static const uint g_ao_steps      = 2;
 static const float g_ao_radius    = 3.0f;
 static const float g_ao_intensity = 4.0f;
 
@@ -118,4 +118,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // out
     tex_uav[thread_id.xy] = float4(diffuse_bounce, visibility);
 }
-
