@@ -1,7 +1,7 @@
 
 <img align="center" padding="2" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/data/textures/banner.bmp"/>
 
-<p> Spartan Engine is more than an engine; it's a vibrant hub for learning and connection, a community. While centered around a research-focused game engine for real-time solutions, our core mission is to foster a unique, collaborative environment. Join us for exclusive perks like contributor recognition, networking opportunities with tech professionals, and valuable learning resources, including our active Discord community and insightful YouTube tutorials. Spartan Engine isn't just about code; it's about building a community like no other.</p>
+<p> Spartan Engine is a research-focused game engine designed for real-time solutions, crafted with the understanding that it's not intended for game development. Initially created to enrich my portfolio, I've achieved what I wanted from it and now aim to give back to the community. This engine is a dynamic hub for learning, embodying a singular mission to foster collaboration and connection. It offers exclusive perks like contributor recognition, networking opportunities with tech professionals, and valuable learning resources, including an active Discord community and insightful YouTube tutorials. Beyond just coding, Spartan Engine is about building a uniquely supportive community.</p>
 
 - <img align="left" width="32" src="https://clipart.info/images/ccovers/1534043159circle-twitter-logo-png.png"/>For occasional updates regarding the project's development, you can follow me on <a href="https://twitter.com/panoskarabelas1?ref_src=twsrc%5Etfw">twitter</a>.
   
@@ -11,7 +11,7 @@
   
 - <img align="left" width="32" height="32" src="https://cdn3d.iconscout.com/3d/premium/thumb/ai-5143193-4312366.png?f=webp">My AI replica is equipped with engine knowledge and my personality traits, click [here](https://chat.openai.com/g/g-etpaCChzi-spartan) here to get it to help you.
 
-- <img align="left" width="32" height="32" src="https://i0.wp.com/opensource.org/wp-content/uploads/2023/01/cropped-cropped-OSI_Horizontal_Logo_0-e1674081292667.png">Please adhere to the <a href="https://en.wikipedia.org/wiki/MIT_License">MIT license</a> You're free to copy the code, provided you include the original license.
+- <img align="left" width="32" height="32" src="https://i0.wp.com/opensource.org/wp-content/uploads/2023/01/cropped-cropped-OSI_Horizontal_Logo_0-e1674081292667.png">Please adhere to the <a href="https://en.wikipedia.org/wiki/MIT_License">MIT license</a>. You're free to copy the code, provided you include the original license.
   
 #### Status
 ![build_status](https://github.com/PanosK92/SpartanEngine/actions/workflows/workflow.yml/badge.svg)
