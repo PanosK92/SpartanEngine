@@ -63,7 +63,7 @@ namespace Spartan
         Math::Vector2 padding;
 
         Math::Vector3 camera_position_previous;
-        uint32_t material_index;
+        uint32_t padding_2;
 
         void set_bit(const bool set, const uint32_t bit)
         {
@@ -94,7 +94,6 @@ namespace Spartan
                 resolution_render          == rhs.resolution_render          &&
                 taa_jitter_current         == rhs.taa_jitter_current         &&
                 taa_jitter_previous        == rhs.taa_jitter_previous        &&
-                material_index             == rhs.material_index             &&
                 options                    == rhs.options;
         }
 
@@ -169,7 +168,7 @@ namespace Spartan
             m_value.m10 = color.r;
             m_value.m11 = color.g;
             m_value.m12 = color.b;
-            m_value.m13 = color.a;
+            m_value.m33 = color.a;
         };
 
         void set_f4_value(const float x, const float y, const float z, const float w)
@@ -177,17 +176,23 @@ namespace Spartan
             m_value.m10 = x;
             m_value.m11 = y;
             m_value.m12 = z;
-            m_value.m13 = w;
+            m_value.m33 = w;
         };
 
-        void set_material_index(const uint32_t index)
+        void set_is_transparent_and_material_index(const bool is_transparent, const uint32_t material_index = 0)
         {
-            m_value.m32 = static_cast<float>(index);
-        }
+            // ensure the index fits within 24 bits (adjust this mask if you have different constraints)
+            uint32_t masked_index = material_index & 0x00FFFFFF;
 
-        void set_is_transparent(const bool is_transparent)
-        {
-            m_value.m33 = is_transparent ? 1.0f : 0.0f;
+            // shift the transparency flag to the 25th bit
+            uint32_t transparency_flag = is_transparent ? 1 : 0;
+            transparency_flag <<= 24;
+
+            // combine the masked index and the transparency flag
+            uint32_t combined_value = masked_index | transparency_flag;
+
+            // store as float
+            m_value.m13 = static_cast<float>(combined_value);
         }
 
         bool operator==(const Pcb_Pass& rhs) const

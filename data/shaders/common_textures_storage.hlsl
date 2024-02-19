@@ -75,7 +75,7 @@ static const uint material_height    = 24;
 static const uint material_mask      = 28;
 
 Texture2D tex_materials[] : register(t29, space1);
-#define GET_TEXTURE(index_texture) tex_materials[buffer_frame.material_index + index_texture]
+#define GET_TEXTURE(index_texture) tex_materials[pass_get_material_index() + index_texture]
 
 // property buffer containg all materials present in the world
 struct Material
@@ -105,7 +105,7 @@ struct Material
 };
 
 RWStructuredBuffer<Material> buffer_materials : register(u0);
-Material GetMaterial() { return buffer_materials[buffer_frame.material_index]; }
+Material GetMaterial() { return buffer_materials[pass_get_material_index()]; }
 //===========================================================================================
 
 //= LIGHTS =============================================

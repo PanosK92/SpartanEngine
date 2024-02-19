@@ -72,9 +72,7 @@ namespace Spartan
 
     void Renderer::CreateConstantBuffers()
     {
-        // todo: the material index has to be removed from the frame buffer so that it only needs one update per frame
-
-        uint32_t times_used_in_frame = 4096;
+        uint32_t times_used_in_frame = 1;
         uint32_t element_count       = times_used_in_frame * resources_frame_lifetime;
 
         constant_buffer_frame = make_shared<RHI_ConstantBuffer>(string("frame"));
