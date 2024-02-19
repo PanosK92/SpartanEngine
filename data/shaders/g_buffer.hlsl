@@ -349,6 +349,3 @@ PixelOutputType mainPS(PixelInputType input)
 
     return g_buffer;
 }
-
-
-
