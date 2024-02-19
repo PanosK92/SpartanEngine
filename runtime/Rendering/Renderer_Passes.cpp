@@ -531,8 +531,7 @@ namespace Spartan
                                     material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f
                                 );
 
-                                m_cb_frame_cpu.material_index = material->GetIndex();
-                                UpdateConstantBufferFrame(cmd_list);
+                                m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
                             }
 
                             PushPassConstants(cmd_list);
@@ -651,8 +650,8 @@ namespace Spartan
                                 material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
                                 material->GetProperty(MaterialProperty::ColorA)
                             );
-                            m_cb_frame_cpu.material_index = material->GetIndex();
-                            UpdateConstantBufferFrame(cmd_list);
+
+                            m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
                         }
 
                         m_pcb_pass_cpu.transform = entity->GetMatrix();
@@ -783,12 +782,11 @@ namespace Spartan
                 {
                     m_pcb_pass_cpu.transform = entity->GetMatrix();
                     m_pcb_pass_cpu.set_transform_previous(entity->GetMatrixPrevious());
-                    m_pcb_pass_cpu.set_is_transparent(is_transparent_pass);
+                    m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, renderable->GetMaterial()->GetIndex());
                     PushPassConstants(cmd_list);
-                    entity->SetMatrixPrevious(m_pcb_pass_cpu.transform);
 
-                    m_cb_frame_cpu.material_index = renderable->GetMaterial()->GetIndex();
-                    UpdateConstantBufferFrame(cmd_list);
+                    entity->SetMatrixPrevious(m_pcb_pass_cpu.transform);
+                   
                 }
 
                 draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
@@ -866,7 +864,7 @@ namespace Spartan
 
         // set pass constants
         m_pcb_pass_cpu.set_resolution_out(tex_ssr);
-        m_pcb_pass_cpu.set_is_transparent(is_transparent_pass);
+        m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
         PushPassConstants(cmd_list);
 
         // set textures
@@ -1106,7 +1104,7 @@ namespace Spartan
 
                 // push pass constants
                 m_pcb_pass_cpu.set_resolution_out(tex_diffuse);
-                m_pcb_pass_cpu.set_is_transparent(is_transparent_pass);
+                m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
                 m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Fog), GetOption<float>(Renderer_Option::ShadowResolution), 0.0f);
                 PushPassConstants(cmd_list);
                 
@@ -1135,7 +1133,7 @@ namespace Spartan
 
         // push pass constants
         m_pcb_pass_cpu.set_resolution_out(tex_out);
-        m_pcb_pass_cpu.set_is_transparent(is_transparent_pass);
+        m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
         m_pcb_pass_cpu.set_f3_value(static_cast<float>(GetRenderTarget(Renderer_RenderTexture::frame_render)->GetMipCount()), GetOption<float>(Renderer_Option::Fog), 0.0f);
         PushPassConstants(cmd_list);
 
@@ -1179,7 +1177,7 @@ namespace Spartan
 
         // set pass constants
         m_pcb_pass_cpu.set_resolution_out(tex_out);
-        m_pcb_pass_cpu.set_is_transparent(is_transparent_pass);
+        m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
         uint32_t mip_count_skysphere = GetRenderTarget(Renderer_RenderTexture::skysphere)->GetMipCount();
         uint32_t mip_count_ssr       = GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount();
         m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_count_skysphere), static_cast<float>(mip_count_ssr));

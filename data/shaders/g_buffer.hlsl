@@ -343,7 +343,7 @@ PixelOutputType mainPS(PixelInputType input)
     // write to g-buffer
     PixelOutputType g_buffer;
     g_buffer.albedo   = albedo;
-    g_buffer.normal   = float4(normal, buffer_frame.material_index);
+    g_buffer.normal   = float4(normal, pass_get_material_index());
     g_buffer.material = float4(roughness, metalness, emission, occlusion);
     g_buffer.velocity = velocity;
 

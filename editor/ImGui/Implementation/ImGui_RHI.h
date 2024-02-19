@@ -365,7 +365,7 @@ namespace ImGui::RHI
                                 rhi_resources->push_constant_buffer_pass.set_f4_value(m_channel_r, m_channel_g, m_channel_b, m_channel_a);
                                 rhi_resources->push_constant_buffer_pass.set_f3_value(m_gamma_correct, m_pack, m_boost);
                                 rhi_resources->push_constant_buffer_pass.set_f3_value2(m_abs, m_point_sampling, mip_level);
-                                rhi_resources->push_constant_buffer_pass.set_is_transparent(is_texture_visualised);
+                                rhi_resources->push_constant_buffer_pass.set_is_transparent_and_material_index(is_texture_visualised);
                             }
 
                             // compute transform matrix
