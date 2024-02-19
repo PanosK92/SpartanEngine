@@ -49,7 +49,7 @@ void mainPS(PixelIn input)
     const float alpha         = f3_value.z;
 
     float alpha_threshold = get_alpha_threshold(input.world_position);
-    bool mask_alpha       = has_alpha_mask && GET_TEXTURE(material_mask).Sample(samplers[sampler_anisotropic_wrap], input.uv).r <= alpha_threshold;
+    bool mask_alpha       = has_alpha_mask && GET_TEXTURE(material_mask).Sample(samplers[sampler_point_wrap], input.uv).r <= alpha_threshold;
     bool mask_albedo      = alpha == 1.0f && has_albedo && GET_TEXTURE(material_albedo).Sample(samplers[sampler_anisotropic_wrap], input.uv).a <= alpha_threshold;
     
     if (mask_alpha || mask_albedo)
