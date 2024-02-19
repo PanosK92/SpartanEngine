@@ -245,7 +245,7 @@ PixelOutputType mainPS(PixelInputType input)
     float alpha_mask = 1.0f;
     if (surface.has_texture_alpha_mask())
     {
-        alpha_mask = GET_TEXTURE(material_mask).Sample(samplers[sampler_anisotropic_wrap], uv).r;
+        alpha_mask = GET_TEXTURE(material_mask).Sample(samplers[sampler_point_wrap], uv).r;
     }
     
     // albedo
