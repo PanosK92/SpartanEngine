@@ -597,7 +597,7 @@ namespace Spartan
                 pso.name                        = !is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent";
                 pso.instancing                  = i == 1 || i == 3;
                 pso.shader_vertex               = !pso.instancing ? shader_v : shader_instanced_v;
-                pso.shader_pixel                = shader_p; // alpha testing
+                pso.shader_pixel                = pso.instancing ? shader_p : nullptr; // alpha testing - instanced geometry is vegetation which needs alpha testing (not an ideal way to detect this)
                 pso.rasterizer_state            = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
                 pso.blend_state                 = GetBlendState(Renderer_BlendState::Disabled).get();
                 pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
