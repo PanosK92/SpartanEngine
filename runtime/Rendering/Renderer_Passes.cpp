@@ -45,11 +45,13 @@ namespace Spartan
     {
         namespace visibility
         {
+            unordered_map<uint64_t, float> distances_squared;
             unordered_map<uint64_t, Rectangle> rectangles;
             unordered_map<uint64_t, BoundingBox> boxes;
 
             void clear()
             {
+                distances_squared.clear();
                 rectangles.clear();
                 boxes.clear();
             }
@@ -75,12 +77,23 @@ namespace Spartan
 
                         auto squared_distance = [&camera_position](const shared_ptr<Entity>& entity)
                         {
-                            shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                            BoundingBoxType type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                            Vector3 position = renderable->GetBoundingBox(type).GetCenter();
-                            float distance_squared = (position - camera_position).LengthSquared();
+                            uint64_t entity_id = entity->GetObjectId();
 
-                            return distance_squared;
+                            auto it = distances_squared.find(entity_id);
+                            if (it != distances_squared.end())
+                            {
+                                return it->second;
+                            }
+                            else
+                            {
+                                shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                                BoundingBoxType type              = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+                                Vector3 position                  = renderable->GetBoundingBox(type).GetCenter();
+                                float distance_squared            = (position - camera_position).LengthSquared();
+                                distances_squared[entity_id]      = distance_squared;
+
+                                return distance_squared;
+                            }
                         };
 
                         sort(renderables.begin(), renderables.end(), [&squared_distance, &are_transparent](const shared_ptr<Entity>& a, const shared_ptr<Entity>& b)
