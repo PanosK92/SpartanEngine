@@ -106,7 +106,7 @@ namespace Spartan
 
         //= RESOURCES ==========================================================================================================
         static RHI_Texture* GetFrameTexture();
-        static std::shared_ptr<Camera> GetCamera();
+        static std::shared_ptr<Camera>& GetCamera();
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
 
         // get all

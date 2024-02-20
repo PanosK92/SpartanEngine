@@ -127,27 +127,22 @@ namespace Spartan
 
     void Light::OnTick()
     {
-        bool update_matrices = m_matrix_view[0] == Matrix::Identity;
-
-        if (Camera* camera = Renderer::GetCamera().get())
+        // if the light or the camera moves...
+        bool update = GetEntity()->HasTransformChanged();
+        if (shared_ptr<Camera>& camera = Renderer::GetCamera())
         {
-            if (camera->GetEntity()->GetPosition() != m_camera_position_last)
+            if (camera->GetEntity()->HasTransformChanged())
             {
-                m_camera_position_last = camera->GetEntity()->GetPosition();
-                update_matrices        = true;
+                update = true;
             }
         }
 
-        if (update_matrices)
+        // ... update the matrices
+        if (update)
         {
             UpdateMatrices();
             SP_FIRE_EVENT(EventType::LightOnChanged);
         }
-    }
-
-    void Light::OnTransformChanged()
-    {
-        UpdateMatrices();
     }
 
     void Light::Serialize(FileStream* stream)
@@ -379,21 +374,25 @@ namespace Spartan
         UpdateMatrices();
     }
 
-	void Light::UpdateMatrices()
-	{
+    void Light::UpdateMatrices()
+    {
         ComputeViewMatrix();
         ComputeProjectionMatrix();
         SP_FIRE_EVENT(EventType::LightOnChanged);
-	}
-
-	void Light::ComputeViewMatrix()
+    }
+    
+    void Light::ComputeViewMatrix()
     {
         const Vector3 position = GetEntity()->GetPosition();
         const Vector3 forward  = GetEntity()->GetForward();
 
         if (m_light_type == LightType::Directional)
         {
-            Vector3 target = m_camera_position_last;
+            Vector3 target = Vector3::Zero;
+            if (shared_ptr<Camera>& camera = Renderer::GetCamera())
+            {
+                target = camera->GetEntity()->GetPosition();
+            }
 
             // near cascade
             Vector3 position = target - forward * orthographic_depth * 0.8f;
