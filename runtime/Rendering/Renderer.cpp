@@ -83,11 +83,8 @@ namespace Spartan
         mutex mutex_mip_generation;
         vector<RHI_Texture*> textures_mip_generation;
 
-        // renderable/entity management
-        mutex mutex_entity_addition;
-        vector<shared_ptr<Entity>> m_entities_to_add;
-
         // misc
+        mutex mutex_renderables;
         unordered_map<Renderer_Option, float> m_options;
         uint64_t frame_num                   = 0;
         Math::Vector2 jitter_offset          = Math::Vector2::Zero;
@@ -195,6 +192,8 @@ namespace Spartan
 
                 void update(unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& renderables)
                 {
+                    lock_guard lock(mutex_renderables);
+
                     // cpu
                     {
                         clear();
@@ -218,6 +217,8 @@ namespace Spartan
 
                 void update(vector<shared_ptr<Entity>>& entities)
                 {
+                    lock_guard lock(mutex_renderables);
+
                     // cpu
                     {
                         // clear
@@ -227,37 +228,38 @@ namespace Spartan
                         uint32_t index = 0;
                         for (shared_ptr<Entity>& entity : entities)
                         {
-                            Light* light = entity->GetComponent<Light>().get();
+                            if (Light* light = entity->GetComponent<Light>().get())
+                            { 
+                                light->SetIndex(index);
 
-                            light->SetIndex(index);
-
-                            // set light properties
-                            if (RHI_Texture* texture = light->GetDepthTexture())
-                            {
-                                for (uint32_t i = 0; i < texture->GetArrayLength(); i++)
+                                // set light properties
+                                if (RHI_Texture* texture = light->GetDepthTexture())
                                 {
-                                    properties[index].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
+                                    for (uint32_t i = 0; i < texture->GetArrayLength(); i++)
+                                    {
+                                        properties[index].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
+                                    }
                                 }
-                            }
-                            properties[index].intensity    = light->GetIntensityWatt(Renderer::GetCamera().get());
-                            properties[index].range        = light->GetRange();
-                            properties[index].angle        = light->GetAngle();
-                            properties[index].bias         = light->GetBias();
-                            properties[index].color        = light->GetColor();
-                            properties[index].normal_bias  = light->GetNormalBias();
-                            properties[index].position     = light->GetEntity()->GetPosition();
-                            properties[index].direction    = light->GetEntity()->GetForward();
-                            properties[index].flags        = 0;
-                            properties[index].flags       |= light->GetLightType() == LightType::Directional                                                                      ? (1 << 0) : 0;
-                            properties[index].flags       |= light->GetLightType() == LightType::Point                                                                            ? (1 << 1) : 0;
-                            properties[index].flags       |= light->GetLightType() == LightType::Spot                                                                             ? (1 << 2) : 0;
-                            properties[index].flags       |= light->IsFlagSet(LightFlags::Shadows)                                                                                ? (1 << 3) : 0;
-                            properties[index].flags       |= light->IsFlagSet(LightFlags::ShadowsTransparent)                                                                     ? (1 << 4) : 0;
-                            properties[index].flags       |= (light->IsFlagSet(LightFlags::ShadowsScreenSpace) && Renderer::GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
-                            properties[index].flags       |= (light->IsFlagSet(LightFlags::Volumetric)         && Renderer::GetOption<bool>(Renderer_Option::FogVolumetric))      ? (1 << 6) : 0;
-                            // when changing the bit flags, ensure that you also update the Light struct in common_structs.hlsl, so that it reads those flags as expected
+                                properties[index].intensity    = light->GetIntensityWatt(Renderer::GetCamera().get());
+                                properties[index].range        = light->GetRange();
+                                properties[index].angle        = light->GetAngle();
+                                properties[index].bias         = light->GetBias();
+                                properties[index].color        = light->GetColor();
+                                properties[index].normal_bias  = light->GetNormalBias();
+                                properties[index].position     = light->GetEntity()->GetPosition();
+                                properties[index].direction    = light->GetEntity()->GetForward();
+                                properties[index].flags        = 0;
+                                properties[index].flags       |= light->GetLightType() == LightType::Directional                                                                      ? (1 << 0) : 0;
+                                properties[index].flags       |= light->GetLightType() == LightType::Point                                                                            ? (1 << 1) : 0;
+                                properties[index].flags       |= light->GetLightType() == LightType::Spot                                                                             ? (1 << 2) : 0;
+                                properties[index].flags       |= light->IsFlagSet(LightFlags::Shadows)                                                                                ? (1 << 3) : 0;
+                                properties[index].flags       |= light->IsFlagSet(LightFlags::ShadowsTransparent)                                                                     ? (1 << 4) : 0;
+                                properties[index].flags       |= (light->IsFlagSet(LightFlags::ShadowsScreenSpace) && Renderer::GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
+                                properties[index].flags       |= (light->IsFlagSet(LightFlags::Volumetric)         && Renderer::GetOption<bool>(Renderer_Option::FogVolumetric))      ? (1 << 6) : 0;
+                                // when changing the bit flags, ensure that you also update the Light struct in common_structs.hlsl, so that it reads those flags as expected
 
-                            index++;
+                                index++;
+                            }
                         }
                     }
 
@@ -393,7 +395,6 @@ namespace Spartan
             DestroyResources();
             bindless::materials::clear();
 
-            m_entities_to_add.clear();
             m_renderables.clear();
             swap_chain            = nullptr;
             m_vertex_buffer_lines = nullptr;
@@ -624,24 +625,67 @@ namespace Spartan
 
     void Renderer::OnWorldResolved(sp_variant data)
     {
-        // note: m_renderables is a vector of shared pointers.
-        // this ensures that if any entities are deallocated by the world.
-        // we'll still have some valid pointers until the are overridden by m_renderables_world.
+        mutex_renderables.lock();
+
+        // clear previous state
+        m_renderables.clear();
+        m_camera = nullptr;
 
         vector<shared_ptr<Entity>> entities = get<vector<shared_ptr<Entity>>>(data);
-
-        lock_guard lock(mutex_entity_addition);
-        m_entities_to_add.clear();
-
-        for (shared_ptr<Entity> entity : entities)
+        for (shared_ptr<Entity>& entity : entities)
         {
             SP_ASSERT_MSG(entity != nullptr, "Entity is null");
 
-            if (entity->IsActiveRecursively())
+            if (!entity->IsActive())
+                continue;
+
+            if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
             {
-                m_entities_to_add.emplace_back(entity);
+                bool is_transparent = false;
+                bool is_visible = true;
+
+                if (const Material* material = renderable->GetMaterial())
+                {
+                    is_transparent = material->GetProperty(MaterialProperty::ColorA) < 1.0f;
+                    is_visible = material->GetProperty(MaterialProperty::ColorA) != 0.0f;
+                }
+
+                if (is_visible)
+                {
+                    if (is_transparent)
+                    {
+                        m_renderables[renderable->HasInstancing() ? Renderer_Entity::GeometryTransparentInstanced : Renderer_Entity::GeometryTransparent].emplace_back(entity);
+                    }
+                    else
+                    {
+                        m_renderables[renderable->HasInstancing() ? Renderer_Entity::GeometryInstanced : Renderer_Entity::Geometry].emplace_back(entity);
+                    }
+
+                }
+            }
+
+            if (shared_ptr<Light> light = entity->GetComponent<Light>())
+            {
+                m_renderables[Renderer_Entity::Light].emplace_back(entity);
+            }
+
+            if (shared_ptr<Camera> camera = entity->GetComponent<Camera>())
+            {
+                m_renderables[Renderer_Entity::Camera].emplace_back(entity);
+                m_camera = camera;
+            }
+
+            if (shared_ptr<AudioSource> audio_source = entity->GetComponent<AudioSource>())
+            {
+                m_renderables[Renderer_Entity::AudioSource].emplace_back(entity);
             }
         }
+
+        mutex_renderables.unlock();
+
+        // update bindless resources
+        bindless::materials::update(m_renderables);
+        bindless::lights::update(m_renderables[Renderer_Entity::Light]);
     }
     
     void Renderer::OnClear()
@@ -680,65 +724,6 @@ namespace Spartan
 
     void Renderer::OnSyncPoint(RHI_CommandList* cmd_list)
     {
-        // acquire renderables - if any
-        if (!m_entities_to_add.empty())
-        {
-            // clear previous state
-            m_renderables.clear();
-            m_camera = nullptr;
-
-            for (shared_ptr<Entity> entity : m_entities_to_add)
-            {
-                if (!entity->IsActive())
-                    continue;
-
-                if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
-                {
-                    bool is_transparent = false;
-                    bool is_visible     = true;
-
-                    if (const Material* material = renderable->GetMaterial())
-                    {
-                        is_transparent = material->GetProperty(MaterialProperty::ColorA) < 1.0f;
-                        is_visible     = material->GetProperty(MaterialProperty::ColorA) != 0.0f;
-                    }
-
-                    if (is_visible)
-                    {
-                        if (is_transparent)
-                        {
-                            m_renderables[renderable->HasInstancing() ? Renderer_Entity::GeometryTransparentInstanced : Renderer_Entity::GeometryTransparent].emplace_back(entity);
-                        }
-                        else
-                        {
-                            m_renderables[renderable->HasInstancing() ? Renderer_Entity::GeometryInstanced : Renderer_Entity::Geometry].emplace_back(entity);
-                        }
-
-                    }
-                }
-
-                if (shared_ptr<Light> light = entity->GetComponent<Light>())
-                {
-                    m_renderables[Renderer_Entity::Light].emplace_back(entity);
-                }
-
-                if (shared_ptr<Camera> camera = entity->GetComponent<Camera>())
-                {
-                    m_renderables[Renderer_Entity::Camera].emplace_back(entity);
-                    m_camera = camera;
-                }
-
-                if (shared_ptr<AudioSource> audio_source = entity->GetComponent<AudioSource>())
-                {
-                    m_renderables[Renderer_Entity::AudioSource].emplace_back(entity);
-                }
-            }
-
-            m_entities_to_add.clear();
-            bindless::materials::update(m_renderables);
-            bindless::lights::update(m_renderables[Renderer_Entity::Light]);
-        }
-
         // generate mips - if any
         {
             lock_guard lock(mutex_mip_generation);

@@ -298,11 +298,11 @@ namespace Spartan
         SP_FIRE_EVENT(EventType::WorldResolve);
     }
 
-    bool Entity::IsActiveRecursively()
+    bool Entity::IsActive() const
     {
         if (shared_ptr<Entity> parent = GetParent())
         {
-            return m_is_active && parent->IsActiveRecursively();
+            return m_is_active && parent->IsActive();
         }
 
         return m_is_active;
