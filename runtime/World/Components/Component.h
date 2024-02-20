@@ -61,25 +61,25 @@ namespace Spartan
         Component(std::weak_ptr<Entity> entity);
         virtual ~Component() = default;
 
-        // Runs when the component gets added
+        // runs when the component gets added
         virtual void OnInitialize() {}
 
-        // Runs every time the simulation starts
+        // runs every time the simulation starts
         virtual void OnStart() {}
 
-        // Runs every time the simulation stops
+        // runs every time the simulation stops
         virtual void OnStop() {}
 
-        // Runs when the component is removed
+        // runs when the component is removed
         virtual void OnRemove() {}
 
-        // Runs every frame
+        // runs every frame
         virtual void OnTick() {}
 
-        // Runs when the entity is being saved
+        // runs when the entity is being saved
         virtual void Serialize(FileStream* stream) {}
 
-        // Runs when the entity is being loaded
+        // runs when the entity is being loaded
         virtual void Deserialize(FileStream* stream) {}
 
         //= TYPE ===================================

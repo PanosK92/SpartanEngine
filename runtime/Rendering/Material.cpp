@@ -337,7 +337,12 @@ namespace Spartan
 
         m_properties[static_cast<uint32_t>(property_type)] = value;
 
-        SP_FIRE_EVENT(EventType::MaterialOnChanged);
+        // if the world is loading, don't fire an event as we will spam the event system
+        // also the renderer will check all the materials after loading anyway
+        if (!ProgressTracker::GetProgress(ProgressType::World).IsProgressing())
+        {
+            SP_FIRE_EVENT(EventType::MaterialOnChanged);
+        }
     }
 
     void Material::SetColor(const Color& color)

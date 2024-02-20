@@ -116,12 +116,12 @@ namespace Spartan
         SetColor(get_sensible_color(m_light_type));
         SetIntensity(get_sensible_intensity(m_light_type));
         SetRange(get_sensible_range(m_range, m_light_type));
-        SetFlag(Shadows);
-        SetFlag(ShadowsTransparent);
-        SetFlag(ShadowsScreenSpace);
+        SetFlag(LightFlags::Shadows);
+        SetFlag(LightFlags::ShadowsTransparent);
+        SetFlag(LightFlags::ShadowsScreenSpace);
         if (m_light_type != LightType::Point)
         {
-            SetFlag(Volumetric);
+            SetFlag(LightFlags::Volumetric);
         }
     }
 
@@ -141,7 +141,6 @@ namespace Spartan
         if (update)
         {
             UpdateMatrices();
-            SP_FIRE_EVENT(EventType::LightOnChanged);
         }
     }
 
@@ -398,7 +397,7 @@ namespace Spartan
             Vector3 position = target - forward * orthographic_depth * 0.8f;
             m_matrix_view[0] = Matrix::CreateLookAtLH(position, target, Vector3::Up);
             // far cascade
-            m_matrix_view[1] = Matrix::CreateLookAtLH(position, target, Vector3::Up);
+            m_matrix_view[1] = m_matrix_view[0];
         }
         else if (m_light_type == LightType::Spot)
         {
