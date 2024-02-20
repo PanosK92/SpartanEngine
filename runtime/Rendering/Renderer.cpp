@@ -100,11 +100,10 @@ namespace Spartan
         { 
             namespace materials
             {
-                array<RHI_Texture*, rhi_max_array_size> textures;  // mapped to the GPU as a bindless texture array
-                array<Sb_Material, rhi_max_array_size> properties; // mapped to the GPU as a structured properties buffer
+                array<RHI_Texture*, rhi_max_array_size> textures;  // mapped to the gpu as a bindless texture array
+                array<Sb_Material, rhi_max_array_size> properties; // mapped to the gpu as a structured properties buffer
                 unordered_set<uint64_t> unique_material_ids;
                 uint32_t index = 0;
-                bool dirty     = true;
 
                 void clear()
             {
@@ -178,78 +177,94 @@ namespace Spartan
             }
 
                 void update(vector<shared_ptr<Entity>>& entities)
-            {
-                for (shared_ptr<Entity> entity : entities)
                 {
-                    if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
+                    for (shared_ptr<Entity> entity : entities)
                     {
-                        if (Material* material = renderable->GetMaterial())
+                        if (entity)
                         {
-                            update(material);
+                            if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
+                            {
+                                if (Material* material = renderable->GetMaterial())
+                                {
+                                    update(material);
+                                }
+                            }
                         }
                     }
                 }
-            }
 
                 void update(unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& renderables)
-            {
-                clear();
+                {
+                    // cpu
+                    {
+                        clear();
 
-                update(renderables[Renderer_Entity::Geometry]);
-                update(renderables[Renderer_Entity::GeometryInstanced]);
-                update(renderables[Renderer_Entity::GeometryTransparent]);
-                update(renderables[Renderer_Entity::GeometryTransparentInstanced]);
-            }
+                        update(renderables[Renderer_Entity::Geometry]);
+                        update(renderables[Renderer_Entity::GeometryInstanced]);
+                        update(renderables[Renderer_Entity::GeometryTransparent]);
+                        update(renderables[Renderer_Entity::GeometryTransparentInstanced]);
+                    }
+
+                    // gpu
+                    Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->ResetOffset();
+                    Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->Update(&properties[0]);
+                    RHI_Device::UpdateBindlessResources(nullptr, &textures);
+                }
             }
 
             namespace lights
             {
                 array<Sb_Light, rhi_max_array_size> properties;
-                bool dirty = true;
 
-                void update(vector<shared_ptr<Entity>>& entities, Camera* camera)
-            {
-                // clear
-                properties.fill(Sb_Light{});
-
-                // go through each light
-                uint32_t index = 0;
-                for (shared_ptr<Entity>& entity : entities)
+                void update(vector<shared_ptr<Entity>>& entities)
                 {
-                    Light* light = entity->GetComponent<Light>().get();
-
-                    // set light index
-                    light->SetIndex(index);
-
-                    // set light properties
-                    if (RHI_Texture* texture = light->GetDepthTexture())
+                    // cpu
                     {
-                        for (uint32_t i = 0; i < texture->GetArrayLength(); i++)
+                        // clear
+                        properties.fill(Sb_Light{});
+
+                        // go through each light
+                        uint32_t index = 0;
+                        for (shared_ptr<Entity>& entity : entities)
                         {
-                            properties[index].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
+                            Light* light = entity->GetComponent<Light>().get();
+
+                            light->SetIndex(index);
+
+                            // set light properties
+                            if (RHI_Texture* texture = light->GetDepthTexture())
+                            {
+                                for (uint32_t i = 0; i < texture->GetArrayLength(); i++)
+                                {
+                                    properties[index].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
+                                }
+                            }
+                            properties[index].intensity    = light->GetIntensityWatt(Renderer::GetCamera().get());
+                            properties[index].range        = light->GetRange();
+                            properties[index].angle        = light->GetAngle();
+                            properties[index].bias         = light->GetBias();
+                            properties[index].color        = light->GetColor();
+                            properties[index].normal_bias  = light->GetNormalBias();
+                            properties[index].position     = light->GetEntity()->GetPosition();
+                            properties[index].direction    = light->GetEntity()->GetForward();
+                            properties[index].flags        = 0;
+                            properties[index].flags       |= light->GetLightType() == LightType::Directional                                                                      ? (1 << 0) : 0;
+                            properties[index].flags       |= light->GetLightType() == LightType::Point                                                                            ? (1 << 1) : 0;
+                            properties[index].flags       |= light->GetLightType() == LightType::Spot                                                                             ? (1 << 2) : 0;
+                            properties[index].flags       |= light->IsFlagSet(LightFlags::Shadows)                                                                                ? (1 << 3) : 0;
+                            properties[index].flags       |= light->IsFlagSet(LightFlags::ShadowsTransparent)                                                                     ? (1 << 4) : 0;
+                            properties[index].flags       |= (light->IsFlagSet(LightFlags::ShadowsScreenSpace) && Renderer::GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
+                            properties[index].flags       |= (light->IsFlagSet(LightFlags::Volumetric)         && Renderer::GetOption<bool>(Renderer_Option::FogVolumetric))      ? (1 << 6) : 0;
+                            // when changing the bit flags, ensure that you also update the Light struct in common_structs.hlsl, so that it reads those flags as expected
+
+                            index++;
                         }
                     }
-                    properties[index].intensity    = light->GetIntensityWatt(camera);
-                    properties[index].range        = light->GetRange();
-                    properties[index].angle        = light->GetAngle();
-                    properties[index].bias         = light->GetBias();
-                    properties[index].color        = light->GetColor();
-                    properties[index].normal_bias  = light->GetNormalBias();
-                    properties[index].position     = light->GetEntity()->GetPosition();
-                    properties[index].direction    = light->GetEntity()->GetForward();
-                    properties[index].flags        = 0;
-                    properties[index].flags       |= light->GetLightType() == LightType::Directional                                                                      ? (1 << 0) : 0;
-                    properties[index].flags       |= light->GetLightType() == LightType::Point                                                                            ? (1 << 1) : 0;
-                    properties[index].flags       |= light->GetLightType() == LightType::Spot                                                                             ? (1 << 2) : 0;
-                    properties[index].flags       |= light->IsFlagSet(LightFlags::Shadows)                                                                                ? (1 << 3) : 0;
-                    properties[index].flags       |= light->IsFlagSet(LightFlags::ShadowsTransparent)                                                                     ? (1 << 4) : 0;
-                    properties[index].flags       |= (light->IsFlagSet(LightFlags::ShadowsScreenSpace) && Renderer::GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
-                    properties[index].flags       |= (light->IsFlagSet(LightFlags::Volumetric)         && Renderer::GetOption<bool>(Renderer_Option::FogVolumetric))      ? (1 << 6) : 0;
-                    // when changing the bit flags, ensure that you also update the Light struct in common_structs.hlsl, so that it reads those flags as expected
 
-                    index++;
+                    // gpu
+                    Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->ResetOffset();
+                    Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->Update(&properties[0]);
                 }
-            }
             }
         }
     }
@@ -360,8 +375,8 @@ namespace Spartan
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,           SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,              SP_EVENT_HANDLER_STATIC(OnClear));
             SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
-            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_EXPRESSION_STATIC( bindless::materials::dirty = true; ));
-            SP_SUBSCRIBE_TO_EVENT(EventType::LightOnChanged,          SP_EVENT_HANDLER_EXPRESSION_STATIC( bindless::lights::dirty    = true; ));
+            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_EXPRESSION_STATIC( bindless::materials::update(m_renderables); ));
+            SP_SUBSCRIBE_TO_EVENT(EventType::LightOnChanged,          SP_EVENT_HANDLER_EXPRESSION_STATIC( bindless::lights::update(m_renderables[Renderer_Entity::Light]); ));
 
             // fire
             SP_FIRE_EVENT(EventType::RendererOnInitialized);
@@ -720,8 +735,8 @@ namespace Spartan
             }
 
             m_entities_to_add.clear();
-            bindless::materials::dirty = true;
-            bindless::lights::dirty    = true;
+            bindless::materials::update(m_renderables);
+            bindless::lights::update(m_renderables[Renderer_Entity::Light]);
         }
 
         // generate mips - if any
@@ -760,31 +775,6 @@ namespace Spartan
                 {
                     structured_buffer->ResetOffset();
                 }
-            }
-        }
-
-        // bindless work
-        {
-            // these two map to two arrays on the gpu
-            // it should be ok to update them without syncing with the gpu
-            
-            // materials
-            if (bindless::materials::dirty)
-            {
-                bindless::materials::update(m_renderables);
-                GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->ResetOffset();
-                GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->Update(&bindless::materials::properties[0]);
-                RHI_Device::UpdateBindlessResources(nullptr, &bindless::materials::textures);
-                bindless::materials::dirty = false;
-            }
-
-            // lights
-            if (bindless::lights::dirty)
-            {
-                bindless::lights::update(m_renderables[Renderer_Entity::Light], GetCamera().get());
-                GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->ResetOffset();
-                GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->Update(&bindless::lights::properties[0]);
-                bindless::lights::dirty = false;
             }
         }
 

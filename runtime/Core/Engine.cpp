@@ -53,7 +53,6 @@ namespace Spartan
         AddFlag(EngineMode::Physics);
         AddFlag(EngineMode::Game);
 
-        // initialize systems
         Stopwatch timer_initialize;
         {
             Log::Initialize();
