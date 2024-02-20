@@ -96,15 +96,17 @@ namespace Spartan
         float far_plane                      = 1.0f;
         bool dirty_orthographic_projection   = true;
 
-        namespace materials
-        {
-            array<RHI_Texture*, rhi_max_array_size> textures;  // mapped to the GPU as a bindless texture array
-            array<Sb_Material, rhi_max_array_size> properties; // mapped to the GPU as a structured properties buffer
-            unordered_set<uint64_t> unique_material_ids;
-            uint32_t index = 0;
-            bool dirty     = true;
+        namespace bindless
+        { 
+            namespace materials
+            {
+                array<RHI_Texture*, rhi_max_array_size> textures;  // mapped to the GPU as a bindless texture array
+                array<Sb_Material, rhi_max_array_size> properties; // mapped to the GPU as a structured properties buffer
+                unordered_set<uint64_t> unique_material_ids;
+                uint32_t index = 0;
+                bool dirty     = true;
 
-            void clear()
+                void clear()
             {
                 properties.fill(Sb_Material{});
                 textures.fill(nullptr);
@@ -112,7 +114,7 @@ namespace Spartan
                 index = 0;
             }
 
-            void update(Material* material)
+                void update(Material* material)
             {
                 // check if the material's ID is already processed
                 if (unique_material_ids.find(material->GetObjectId()) != unique_material_ids.end())
@@ -175,7 +177,7 @@ namespace Spartan
                 index += material_texture_count_support;
             }
 
-            void update(vector<shared_ptr<Entity>>& entities)
+                void update(vector<shared_ptr<Entity>>& entities)
             {
                 for (shared_ptr<Entity> entity : entities)
                 {
@@ -189,7 +191,7 @@ namespace Spartan
                 }
             }
 
-            void update(unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& renderables)
+                void update(unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& renderables)
             {
                 clear();
 
@@ -198,14 +200,14 @@ namespace Spartan
                 update(renderables[Renderer_Entity::GeometryTransparent]);
                 update(renderables[Renderer_Entity::GeometryTransparentInstanced]);
             }
-        }
+            }
 
-        namespace lights
-        {
-            array<Sb_Light, rhi_max_array_size> properties;
-            bool dirty = true;
+            namespace lights
+            {
+                array<Sb_Light, rhi_max_array_size> properties;
+                bool dirty = true;
 
-            void update(vector<shared_ptr<Entity>>& entities, Camera* camera)
+                void update(vector<shared_ptr<Entity>>& entities, Camera* camera)
             {
                 // clear
                 properties.fill(Sb_Light{});
@@ -247,6 +249,7 @@ namespace Spartan
 
                     index++;
                 }
+            }
             }
         }
     }
@@ -330,8 +333,7 @@ namespace Spartan
 
         // load/create resources
         {
-            // do expensive operations in another thread
-            // in order to reduce engine startup time
+            // reduce startup time by doing expensive operations in another thread
             ThreadPool::AddTask([]()
             {
                 m_resources_created = false;
@@ -358,8 +360,8 @@ namespace Spartan
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,           SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,              SP_EVENT_HANDLER_STATIC(OnClear));
             SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
-            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_EXPRESSION_STATIC( materials::dirty = true; ));
-            SP_SUBSCRIBE_TO_EVENT(EventType::LightOnChanged,          SP_EVENT_HANDLER_EXPRESSION_STATIC( lights::dirty    = true; ));
+            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_EXPRESSION_STATIC( bindless::materials::dirty = true; ));
+            SP_SUBSCRIBE_TO_EVENT(EventType::LightOnChanged,          SP_EVENT_HANDLER_EXPRESSION_STATIC( bindless::lights::dirty    = true; ));
 
             // fire
             SP_FIRE_EVENT(EventType::RendererOnInitialized);
@@ -374,7 +376,7 @@ namespace Spartan
         // releases their rhi resources before device destruction
         {
             DestroyResources();
-            materials::clear();
+            bindless::materials::clear();
 
             m_entities_to_add.clear();
             m_renderables.clear();
@@ -428,6 +430,7 @@ namespace Spartan
         {
             swap_chain->Present();
         }
+
         frame_num++;
     }
 
@@ -717,8 +720,8 @@ namespace Spartan
             }
 
             m_entities_to_add.clear();
-            materials::dirty = true;
-            lights::dirty = true;
+            bindless::materials::dirty = true;
+            bindless::lights::dirty    = true;
         }
 
         // generate mips - if any
@@ -766,22 +769,22 @@ namespace Spartan
             // it should be ok to update them without syncing with the gpu
             
             // materials
-            if (materials::dirty)
+            if (bindless::materials::dirty)
             {
-                materials::update(m_renderables);
+                bindless::materials::update(m_renderables);
                 GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->ResetOffset();
-                GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->Update(&materials::properties[0]);
-                RHI_Device::UpdateBindlessResources(nullptr, &materials::textures);
-                materials::dirty = false;
+                GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->Update(&bindless::materials::properties[0]);
+                RHI_Device::UpdateBindlessResources(nullptr, &bindless::materials::textures);
+                bindless::materials::dirty = false;
             }
 
             // lights
-            if (lights::dirty)
+            if (bindless::lights::dirty)
             {
-                lights::update(m_renderables[Renderer_Entity::Light], GetCamera().get());
+                bindless::lights::update(m_renderables[Renderer_Entity::Light], GetCamera().get());
                 GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->ResetOffset();
-                GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->Update(&lights::properties[0]);
-                lights::dirty = false;
+                GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->Update(&bindless::lights::properties[0]);
+                bindless::lights::dirty = false;
             }
         }
 
@@ -980,7 +983,7 @@ namespace Spartan
         return frame_num;
     }
 
-    shared_ptr<Camera> Renderer::GetCamera()
+    shared_ptr<Camera>& Renderer::GetCamera()
     {
         return m_camera;
     }

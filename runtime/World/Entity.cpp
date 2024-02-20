@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/AudioListener.h"
 #include "Components/Terrain.h"
 #include "../IO/FileStream.h"
+#include "../Rendering/Renderer.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -368,13 +369,7 @@ namespace Spartan
             child->UpdateTransform();
         }
 
-        for (shared_ptr<Component>& component : m_components)
-        {
-            if (component)
-            {
-                component->OnTransformChanged();
-            }
-        }
+        m_transform_changed_frame = Renderer::GetFrameNum();
     }
 
     void Entity::SetPosition(const Vector3& position)
@@ -665,6 +660,11 @@ namespace Spartan
         }
 
         return nullptr;
+    }
+
+    bool Entity::HasTransformChanged() const
+    {
+        return m_transform_changed_frame == Renderer::GetFrameNum();
     }
 
     Matrix Entity::GetParentTransformMatrix() const

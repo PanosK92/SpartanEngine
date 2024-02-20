@@ -234,9 +234,9 @@ namespace Spartan
             }
         }
 
-        bool light_integration_brdf_speculat_lut_completed = false;
         mutex mutex_generate_mips;
-        const float thread_group_count = 8.0f;
+        bool light_integration_brdf_speculat_lut_completed = false;
+        const float thread_group_count                     = 8.0f;
 
         #define thread_group_count_x(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetWidth())  / thread_group_count))
         #define thread_group_count_y(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetHeight()) / thread_group_count))

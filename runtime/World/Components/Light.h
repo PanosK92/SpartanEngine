@@ -80,7 +80,6 @@ namespace Spartan
 
         //= COMPONENT ================================
         void OnTick() override;
-        void OnTransformChanged() override;
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
         //============================================
@@ -155,13 +154,12 @@ namespace Spartan
         std::array<Math::Matrix, 6> m_matrix_projection;
 
         // misc
-        uint32_t m_flags                     = 0;
-        LightType m_light_type               = LightType::Directional;
-        Color m_color_rgb                    = Color::standard_black;;
-        float m_temperature_kelvin           = 0.0f;
-        float m_range                        = 0.0f;
-        float m_angle_rad                    = Math::Helper::DEG_TO_RAD * 30.0f;
-        uint32_t m_index                     = 0;
-        Math::Vector3 m_camera_position_last = Math::Vector3::Infinity;
+        uint32_t m_flags           = 0;
+        LightType m_light_type     = LightType::Directional;
+        Color m_color_rgb          = Color::standard_black;;
+        float m_temperature_kelvin = 0.0f;
+        float m_range              = 0.0f;
+        float m_angle_rad          = Math::Helper::DEG_TO_RAD * 30.0f;
+        uint32_t m_index           = 0;
     };
 }

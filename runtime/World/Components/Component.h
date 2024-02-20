@@ -82,8 +82,6 @@ namespace Spartan
         // Runs when the entity is being loaded
         virtual void Deserialize(FileStream* stream) {}
 
-        virtual void OnTransformChanged() {}
-
         //= TYPE ===================================
         template <typename T>
         static constexpr ComponentType TypeToEnum();
@@ -118,7 +116,7 @@ namespace Spartan
         [this]()                        { return value; },                              \
         [this](const std::any& valueIn) { value = std::any_cast<type>(valueIn); });     \
 
-        // Registers an attribute
+        // registers an attribute
         void RegisterAttribute(std::function<std::any()>&& getter, std::function<void(std::any)>&& setter)
         { 
             Attribute attribute;
@@ -127,15 +125,15 @@ namespace Spartan
             m_attributes.emplace_back(attribute);
         }
 
-        // The type of the component
+        // the type of the component
         ComponentType m_type = ComponentType::Undefined;
-        // The state of the component
+        // the state of the component
         bool m_enabled       = false;
-        // The owner of the component
+        // the owner of the component
         Entity* m_entity_ptr = nullptr;
 
     private:
-        // The attributes of the component
+        // the attributes of the component
         std::vector<Attribute> m_attributes;
     };
 }
