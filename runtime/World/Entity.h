@@ -49,9 +49,8 @@ namespace Spartan
         void Deserialize(FileStream* stream, std::shared_ptr<Entity> parent);
 
         // active
-        bool IsActive() const             { return m_is_active; }
+        bool IsActive() const;
         void SetActive(const bool active) { m_is_active = active; }
-        bool IsActiveRecursively();
 
         // visible
         bool IsVisibleInHierarchy() const                            { return m_hierarchy_visibility; }
