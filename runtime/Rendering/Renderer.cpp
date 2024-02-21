@@ -905,7 +905,8 @@ namespace Spartan
 
         // gpu
         Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->ResetOffset();
-        Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->Update(&properties[0]);
+        uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Material)) * index;
+        Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->Update(&properties[0], update_size);
         RHI_Device::UpdateBindlessResources(nullptr, &textures);
     }
 
@@ -915,13 +916,14 @@ namespace Spartan
 
         lock_guard lock(m_mutex_renderables);
 
+        uint32_t index = 0;
+
         // cpu
         {
             // clear
             properties.fill(Sb_Light{});
 
             // go through each light
-            uint32_t index = 0;
             for (shared_ptr<Entity>& entity : m_renderables[Renderer_Entity::Light])
             {
                 if (Light* light = entity->GetComponent<Light>().get())
@@ -945,10 +947,10 @@ namespace Spartan
                     properties[index].position     = light->GetEntity()->GetPosition();
                     properties[index].direction    = light->GetEntity()->GetForward();
                     properties[index].flags        = 0;
-                    properties[index].flags       |= light->GetLightType() == LightType::Directional ? (1 << 0) : 0;
-                    properties[index].flags       |= light->GetLightType() == LightType::Point ? (1 << 1) : 0;
-                    properties[index].flags       |= light->GetLightType() == LightType::Spot ? (1 << 2) : 0;
-                    properties[index].flags       |= light->IsFlagSet(LightFlags::Shadows) ? (1 << 3) : 0;
+                    properties[index].flags       |= light->GetLightType() == LightType::Directional  ? (1 << 0) : 0;
+                    properties[index].flags       |= light->GetLightType() == LightType::Point        ? (1 << 1) : 0;
+                    properties[index].flags       |= light->GetLightType() == LightType::Spot         ? (1 << 2) : 0;
+                    properties[index].flags       |= light->IsFlagSet(LightFlags::Shadows)            ? (1 << 3) : 0;
                     properties[index].flags       |= light->IsFlagSet(LightFlags::ShadowsTransparent) ? (1 << 4) : 0;
                     properties[index].flags       |= (light->IsFlagSet(LightFlags::ShadowsScreenSpace) && Renderer::GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
                     properties[index].flags       |= (light->IsFlagSet(LightFlags::Volumetric) && Renderer::GetOption<bool>(Renderer_Option::FogVolumetric)) ? (1 << 6) : 0;
@@ -961,7 +963,8 @@ namespace Spartan
 
         // gpu
         Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->ResetOffset();
-        Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->Update(&properties[0]);
+        uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Light)) * index;
+        Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->Update(&properties[0], update_size); // todo: this updates when the GPU is still using the buffer, not ideal
     }
 
     void Renderer::Screenshot(const string& file_path)

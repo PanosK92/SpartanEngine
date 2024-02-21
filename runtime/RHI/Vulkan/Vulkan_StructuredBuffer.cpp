@@ -62,7 +62,7 @@ namespace Spartan
         m_rhi_resource = nullptr;
     }
 
-    void RHI_StructuredBuffer::Update(void* data_cpu)
+    void RHI_StructuredBuffer::Update(void* data_cpu, const uint32_t update_size)
     {
         SP_ASSERT_MSG(data_cpu != nullptr,                      "Invalid update data");
         SP_ASSERT_MSG(m_mapped_data != nullptr,                 "Invalid mapped data");
@@ -78,7 +78,9 @@ namespace Spartan
             m_offset += m_stride;
         }
 
+        uint32_t size = update_size != 0 ? update_size : m_stride;
+
         // we are using persistent mapping, so we only copy (no need for map/unmap)
-        memcpy(reinterpret_cast<std::byte*>(m_mapped_data) + m_offset, reinterpret_cast<std::byte*>(data_cpu), m_stride);
+        memcpy(reinterpret_cast<std::byte*>(m_mapped_data) + m_offset, reinterpret_cast<std::byte*>(data_cpu), size);
     }
 }
