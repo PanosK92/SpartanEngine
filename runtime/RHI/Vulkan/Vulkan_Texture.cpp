@@ -272,7 +272,7 @@ namespace Spartan
                 RHI_Image_Layout layout = RHI_Image_Layout::Transfer_Destination;
 
                 // insert memory barrier
-                cmd_list->InsertBarrier(texture, 0, texture->GetMipCount(), texture->GetArrayLength(), texture->GetLayout(0), layout);
+                cmd_list->InsertBarrierTexture(texture, 0, texture->GetMipCount(), texture->GetArrayLength(), texture->GetLayout(0), layout);
 
                 // copy the staging buffer to the image
                 vkCmdCopyBufferToImage(
@@ -322,7 +322,7 @@ namespace Spartan
 
     void RHI_Texture::RHI_SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const uint32_t mip_start, const uint32_t mip_range)
     {
-        cmd_list->InsertBarrier(this, mip_start, mip_range, m_array_length, m_layout[mip_start], new_layout);
+        cmd_list->InsertBarrierTexture(this, mip_start, mip_range, m_array_length, m_layout[mip_start], new_layout);
     }
 
     bool RHI_Texture::RHI_CreateResource()
@@ -344,7 +344,7 @@ namespace Spartan
             RHI_Image_Layout target_layout = GetAppropriateLayout(this);
 
             // transition to the final layout
-            cmd_list->InsertBarrier(this, 0, m_mip_count, m_array_length, m_layout[0], target_layout);
+            cmd_list->InsertBarrierTexture(this, 0, m_mip_count, m_array_length, m_layout[0], target_layout);
         
             // flush
             RHI_Device::CmdImmediateSubmit(cmd_list);

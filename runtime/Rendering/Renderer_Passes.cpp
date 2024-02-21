@@ -879,7 +879,7 @@ namespace Spartan
         // render
         cmd_list->Dispatch(thread_group_count_x(tex_ssr), thread_group_count_y(tex_ssr));
 
-        cmd_list->InsertBarrierWaitForReadWrite(tex_ssr_roughness);
+        cmd_list->InsertBarrierTextureReadWrite(tex_ssr_roughness);
 
         // antiflicker pass to stabilize
         Pass_Antiflicker(cmd_list, tex_ssr);
@@ -1988,7 +1988,7 @@ namespace Spartan
         pso.render_target_depth_texture     = tex_depth;
         cmd_list->SetPipelineState(pso);
 
-        cmd_list->InsertBarrierWaitForReadWrite(tex_depth);
+        cmd_list->InsertBarrierTextureReadWrite(tex_depth);
 
         // set transform
         {
