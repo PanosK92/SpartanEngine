@@ -672,7 +672,7 @@ namespace Spartan
 
         // handle cascading changes
         {
-            // aAntialiasing
+            // antialiasing
             if (option == Renderer_Option::Antialiasing)
             {
                 bool taa_enabled = value == static_cast<float>(Renderer_Antialiasing::Taa) || value == static_cast<float>(Renderer_Antialiasing::TaaFxaa);
@@ -685,20 +685,18 @@ namespace Spartan
                     {
                         m_options[Renderer_Option::Upsampling] = static_cast<float>(Renderer_Upsampling::FSR2);
                         RHI_FidelityFX::FSR2_ResetHistory();
-                        SP_LOG_INFO("Enabled FSR 2.0 since it's used for TAA.");
                     }
                 }
                 else
                 {
-                    // Implicitly disable FSR since it's doing TAA
+                    // implicitly disable FSR since it's doing TAA
                     if (fsr_enabled)
                     {
                         m_options[Renderer_Option::Upsampling] = static_cast<float>(Renderer_Upsampling::Linear);
-                        SP_LOG_INFO("Disabed FSR 2.0 since it's used for TAA.");
                     }
                 }
             }
-            // Upsampling
+            // upsampling
             else if (option == Renderer_Option::Upsampling)
             {
                 bool taa_enabled = GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa;
