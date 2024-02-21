@@ -283,7 +283,7 @@ namespace Spartan
             {
                 for (uint32_t i = 0; i < m_buffer_count; i++)
                 {
-                    cmd_list->InsertBarrier(
+                    cmd_list->InsertBarrierTexture(
                         m_rhi_rt[i],
                         VK_IMAGE_ASPECT_COLOR_BIT,
                         0,
@@ -463,7 +463,7 @@ namespace Spartan
         if (m_layouts[m_image_index] == layout)
             return;
 
-        cmd_list->InsertBarrier(
+        cmd_list->InsertBarrierTexture(
             m_rhi_rt[m_image_index],
             VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 1,
             m_layouts[m_image_index],

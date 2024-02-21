@@ -1526,11 +1526,12 @@ namespace Spartan
         }
     }
 
-    void RHI_CommandList::InsertBarrier(void* image, const uint32_t aspect_mask,
+    void RHI_CommandList::InsertBarrierTexture(void* image, const uint32_t aspect_mask,
         const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length,
         const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new
     )
     {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(image != nullptr);
 
         VkImageMemoryBarrier image_barrier            = {};
@@ -1603,15 +1604,67 @@ namespace Spartan
         Profiler::m_rhi_pipeline_barriers++;
     }
 
-    void RHI_CommandList::InsertBarrier(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
+    void RHI_CommandList::InsertBarrierTexture(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
     {
         SP_ASSERT(texture != nullptr);
-        InsertBarrier(texture->GetRhiResource(), get_aspect_mask(texture), mip_start, mip_range, array_length, layout_old, layout_new);
+        InsertBarrierTexture(texture->GetRhiResource(), get_aspect_mask(texture), mip_start, mip_range, array_length, layout_old, layout_new);
     }
 
-    void RHI_CommandList::InsertBarrierWaitForReadWrite(RHI_Texture* texture)
+    void RHI_CommandList::InsertBarrierTextureReadWrite(RHI_Texture* texture)
     {
         SP_ASSERT(texture != nullptr);
-        InsertBarrier(texture->GetRhiResource(), get_aspect_mask(texture), 0, 1, 1, texture->GetLayout(0), texture->GetLayout(0));
+        InsertBarrierTexture(texture->GetRhiResource(), get_aspect_mask(texture), 0, 1, 1, texture->GetLayout(0), texture->GetLayout(0));
+    }
+
+    void RHI_CommandList::InsertBarrierBufferReadWrite(void* rhi_buffer, bool is_constant_buffer)
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        // as per vulkan, you can't transition within a render pass
+        if (m_render_pass_active)
+        {
+            EndRenderPass();
+        }
+
+        // stage before shader reads/writes
+        VkPipelineStageFlags stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+
+        if (is_constant_buffer)
+        {
+            VkMemoryBarrier barrier = {};
+            barrier.sType           = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+            barrier.srcAccessMask   = VK_ACCESS_HOST_WRITE_BIT;   // after host writes
+            barrier.dstAccessMask   = VK_ACCESS_UNIFORM_READ_BIT; // before shader reads
+
+            vkCmdPipelineBarrier(
+                static_cast<VkCommandBuffer>(m_rhi_resource),
+                VK_PIPELINE_STAGE_HOST_BIT, // stage after host writes
+                stages,                     // stage before shader reads
+                0,                          // dependency flags
+                1, &barrier,                // memory barriers
+                0, nullptr,                 // buffer barriers
+                0, nullptr                  // image barriers
+            );
+        }
+        else
+        { 
+            VkBufferMemoryBarrier barrier = {};
+            barrier.sType                 = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+            barrier.buffer                = static_cast<VkBuffer>(rhi_buffer);
+            barrier.size                  = VK_WHOLE_SIZE;
+            barrier.offset                = 0;
+            barrier.srcAccessMask         = VK_ACCESS_HOST_WRITE_BIT; // after host writes
+            barrier.dstAccessMask         = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT; // before shader reads/writes
+
+            vkCmdPipelineBarrier(
+                static_cast<VkCommandBuffer>(m_rhi_resource),
+                VK_PIPELINE_STAGE_HOST_BIT, // stage after host writes
+                stages,                     // stage before shader reads/writes
+                0,                          // dependency flags
+                0, nullptr,                 // memory barriers
+                1, &barrier,                // buffer barriers
+                0, nullptr                  // image barriers
+            );
+        }
     }
 }

@@ -84,14 +84,19 @@ namespace Spartan
         mutex mutex_mip_generation;
         vector<RHI_Texture*> textures_mip_generation;
 
+        // bindless
+        void* buffer_structured_to_add_barrier = nullptr;
+        static array<RHI_Texture*, rhi_max_array_size> bindless_textures;
+        bool bindless_textures_dirty = true;
+
         // misc
         unordered_map<Renderer_Option, float> m_options;
-        uint64_t frame_num                   = 0;
-        Math::Vector2 jitter_offset          = Math::Vector2::Zero;
-        const uint32_t resolution_shadow_min = 128;
-        float near_plane                     = 0.0f;
-        float far_plane                      = 1.0f;
-        bool dirty_orthographic_projection   = true;
+        uint64_t frame_num                     = 0;
+        Math::Vector2 jitter_offset            = Math::Vector2::Zero;
+        const uint32_t resolution_shadow_min   = 128;
+        float near_plane                       = 0.0f;
+        float far_plane                        = 1.0f;
+        bool dirty_orthographic_projection     = true;
     }
 
     void Renderer::Initialize()
@@ -433,11 +438,15 @@ namespace Spartan
         }
 
         // set
-        GetConstantBufferFrame()->Update(&m_cb_frame_cpu);
+        shared_ptr<RHI_ConstantBuffer>& buffer = GetConstantBufferFrame();
+        buffer->ResetOffset();
+        buffer->Update(&m_cb_frame_cpu);
         if (set)
         {
-            cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetConstantBufferFrame());
+            cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, buffer);
         }
+
+        cmd_list->InsertBarrierBufferReadWrite(buffer->GetRhiResource(), true);
     }
 
     void Renderer::PushPassConstants(RHI_CommandList* cmd_list)
@@ -564,15 +573,19 @@ namespace Spartan
                 SP_LOG_INFO("Parsed deletion queue");
             }
 
-            // reset buffers with dynamic offsets
-            {
-                GetConstantBufferFrame()->ResetOffset();
+            GetStructuredBuffer(Renderer_StructuredBuffer::Spd)->ResetOffset();
 
-                for (shared_ptr<RHI_StructuredBuffer> structured_buffer : GetStructuredBuffers())
-                {
-                    structured_buffer->ResetOffset();
-                }
+            if (bindless_textures_dirty)
+            {
+                RHI_Device::UpdateBindlessResources(nullptr, &bindless_textures);
+                bindless_textures_dirty = false;
             }
+        }
+
+        if (buffer_structured_to_add_barrier)
+        {
+            cmd_list->InsertBarrierBufferReadWrite(buffer_structured_to_add_barrier, false);
+            buffer_structured_to_add_barrier = nullptr;
         }
 
         // generate mips - if any
@@ -802,7 +815,6 @@ namespace Spartan
 
     void Renderer::BindlessUpdateMaterials()
     {
-        static array<RHI_Texture*, rhi_max_array_size> textures;  // mapped to the gpu as a bindless texture array
         static array<Sb_Material, rhi_max_array_size> properties; // mapped to the gpu as a structured properties buffer
         static unordered_set<uint64_t> unique_material_ids;
         static uint32_t index = 0;
@@ -858,9 +870,9 @@ namespace Spartan
                 {
                     for (uint32_t variation = 0; variation < material_texture_count_per_type; variation++)
                     {
-                        uint32_t texture_index          = type * material_texture_count_per_type + variation;
-                        MaterialTexture textureType     = static_cast<MaterialTexture>(texture_index);
-                        textures[index + texture_index] = material->GetTexture(static_cast<MaterialTexture>(texture_index));
+                        uint32_t texture_index                   = type * material_texture_count_per_type + variation;
+                        MaterialTexture textureType              = static_cast<MaterialTexture>(texture_index);
+                        bindless_textures[index + texture_index] = material->GetTexture(static_cast<MaterialTexture>(texture_index));
                     }
                 }
 
@@ -893,7 +905,7 @@ namespace Spartan
         {
             // clear
             properties.fill(Sb_Material{});
-            textures.fill(nullptr);
+            bindless_textures.fill(nullptr);
             unique_material_ids.clear();
             index = 0;
 
@@ -904,10 +916,15 @@ namespace Spartan
         }
 
         // gpu
-        Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->ResetOffset();
-        uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Material)) * index;
-        Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->Update(&properties[0], update_size);
-        RHI_Device::UpdateBindlessResources(nullptr, &textures);
+        {
+            // material properties
+            Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->ResetOffset();
+            uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Material)) * index;
+            Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->Update(&properties[0], update_size);
+
+            // material textures
+            bindless_textures_dirty = true;
+        }
     }
 
     void Renderer::BindlessUpdateLights()
@@ -965,6 +982,8 @@ namespace Spartan
         Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->ResetOffset();
         uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Light)) * index;
         Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->Update(&properties[0], update_size); // todo: this updates when the GPU is still using the buffer, not ideal
+
+        buffer_structured_to_add_barrier = Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->GetRhiResource();
     }
 
     void Renderer::Screenshot(const string& file_path)
