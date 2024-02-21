@@ -911,7 +911,7 @@ namespace Spartan
 
     void Renderer::BindlessUpdateLights()
     {
-        static array<Sb_Light, rhi_max_array_size> properties;
+        static array<Sb_Light, rhi_max_array_size_lights> properties;
 
         lock_guard lock(m_mutex_renderables);
 
