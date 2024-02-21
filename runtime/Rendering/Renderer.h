@@ -199,6 +199,10 @@ namespace Spartan
         static void SetGbufferTextures(RHI_CommandList* cmd_list);
         static void DestroyResources();
 
+        // bindless
+        static void BindlessUpdateMaterials();
+        static void BindlessUpdateLights();
+
         // misc
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>> m_renderables;
         static Cb_Frame m_cb_frame_cpu;
@@ -213,5 +217,6 @@ namespace Spartan
         static uint32_t m_resource_index;
         static std::atomic<bool> m_resources_created;
         static std::atomic<uint32_t> m_environment_mips_to_filter_count;
+        static std::mutex m_mutex_renderables;
     };
 }

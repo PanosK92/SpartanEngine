@@ -429,6 +429,7 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_instanced_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
+        lock_guard lock(m_mutex_renderables);
         cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_color" : "shadow_maps_depth");
 
         uint32_t start_index = !is_transparent_pass ? 0 : 2;
@@ -571,6 +572,7 @@ namespace Spartan
 
         RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
 
+        lock_guard lock(m_mutex_renderables);
         cmd_list->BeginTimeblock(!is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent");
 
         if (!is_transparent_pass)
@@ -716,6 +718,7 @@ namespace Spartan
         RHI_Texture* tex_velocity = GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity).get();
         RHI_Texture* tex_depth    = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
 
+        lock_guard lock(m_mutex_renderables);
         cmd_list->BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
 
         // deduce rasterizer state

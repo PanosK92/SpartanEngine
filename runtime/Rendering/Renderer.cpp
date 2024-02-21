@@ -66,6 +66,7 @@ namespace Spartan
     atomic<bool> Renderer::m_resources_created                    = false;
     atomic<uint32_t> Renderer::m_environment_mips_to_filter_count = 0;
     unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
+    mutex Renderer::m_mutex_renderables;
 
     namespace
     {
@@ -84,7 +85,6 @@ namespace Spartan
         vector<RHI_Texture*> textures_mip_generation;
 
         // misc
-        mutex mutex_renderables;
         unordered_map<Renderer_Option, float> m_options;
         uint64_t frame_num                   = 0;
         Math::Vector2 jitter_offset          = Math::Vector2::Zero;
@@ -92,183 +92,6 @@ namespace Spartan
         float near_plane                     = 0.0f;
         float far_plane                      = 1.0f;
         bool dirty_orthographic_projection   = true;
-
-        namespace bindless
-        { 
-            namespace materials
-            {
-                array<RHI_Texture*, rhi_max_array_size> textures;  // mapped to the gpu as a bindless texture array
-                array<Sb_Material, rhi_max_array_size> properties; // mapped to the gpu as a structured properties buffer
-                unordered_set<uint64_t> unique_material_ids;
-                uint32_t index = 0;
-
-                void clear()
-            {
-                properties.fill(Sb_Material{});
-                textures.fill(nullptr);
-                unique_material_ids.clear();
-                index = 0;
-            }
-
-                void update(Material* material)
-            {
-                // check if the material's ID is already processed
-                if (unique_material_ids.find(material->GetObjectId()) != unique_material_ids.end())
-                    return;
-
-                // properties
-                {
-                    properties[index].world_space_height     = material->GetProperty(MaterialProperty::WorldSpaceHeight);
-                    properties[index].color.x                = material->GetProperty(MaterialProperty::ColorR);
-                    properties[index].color.y                = material->GetProperty(MaterialProperty::ColorG);
-                    properties[index].color.z                = material->GetProperty(MaterialProperty::ColorB);
-                    properties[index].color.w                = material->GetProperty(MaterialProperty::ColorA);
-                    properties[index].tiling_uv.x            = material->GetProperty(MaterialProperty::TextureTilingX);
-                    properties[index].tiling_uv.y            = material->GetProperty(MaterialProperty::TextureTilingY);
-                    properties[index].offset_uv.x            = material->GetProperty(MaterialProperty::TextureOffsetX);
-                    properties[index].offset_uv.y            = material->GetProperty(MaterialProperty::TextureOffsetY);
-                    properties[index].roughness_mul          = material->GetProperty(MaterialProperty::Roughness);
-                    properties[index].metallic_mul           = material->GetProperty(MaterialProperty::Metalness);
-                    properties[index].normal_mul             = material->GetProperty(MaterialProperty::Normal);
-                    properties[index].height_mul             = material->GetProperty(MaterialProperty::Height);
-                    properties[index].anisotropic            = material->GetProperty(MaterialProperty::Anisotropic);
-                    properties[index].anisotropic_rotation   = material->GetProperty(MaterialProperty::AnisotropicRotation);
-                    properties[index].clearcoat              = material->GetProperty(MaterialProperty::Clearcoat);
-                    properties[index].clearcoat_roughness    = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
-                    properties[index].sheen                  = material->GetProperty(MaterialProperty::Sheen);
-                    properties[index].sheen_tint             = material->GetProperty(MaterialProperty::SheenTint);
-                    properties[index].subsurface_scattering  = material->GetProperty(MaterialProperty::SubsurfaceScattering);
-                    properties[index].ior                    = material->GetProperty(MaterialProperty::Ior);
-                    properties[index].flags                 |= material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness) ? (1U << 0)  : 0;
-                    properties[index].flags                 |= material->HasTexture(MaterialTexture::Height)                            ? (1U << 1)  : 0;
-                    properties[index].flags                 |= material->HasTexture(MaterialTexture::Normal)                            ? (1U << 2)  : 0;
-                    properties[index].flags                 |= material->HasTexture(MaterialTexture::Color)                             ? (1U << 3)  : 0;
-                    properties[index].flags                 |= material->HasTexture(MaterialTexture::Roughness)                         ? (1U << 4)  : 0;
-                    properties[index].flags                 |= material->HasTexture(MaterialTexture::Metalness)                         ? (1U << 5)  : 0;
-                    properties[index].flags                 |= material->HasTexture(MaterialTexture::AlphaMask)                         ? (1U << 6)  : 0;
-                    properties[index].flags                 |= material->HasTexture(MaterialTexture::Emission)                          ? (1U << 7)  : 0;
-                    properties[index].flags                 |= material->HasTexture(MaterialTexture::Occlusion)                         ? (1U << 8)  : 0;
-                    properties[index].flags                 |= material->GetProperty(MaterialProperty::TextureSlopeBased)               ? (1U << 9)  : 0;
-                    properties[index].flags                 |= material->GetProperty(MaterialProperty::VertexAnimateWind)               ? (1U << 10) : 0;
-                    properties[index].flags                 |= material->GetProperty(MaterialProperty::VertexAnimateWater)              ? (1U << 11) : 0;
-                    // when changing the bit flags, ensure that you also update the Surface struct in common_structs.hlsl, so that it reads those flags as expected
-                }
-                
-                // textures
-                {
- 
-                    for (uint32_t type = 0; type < material_texture_type_count; type++)
-                    {
-                        for (uint32_t variation = 0; variation < material_texture_count_per_type; variation++)
-                        {
-                            uint32_t texture_index          = type * material_texture_count_per_type + variation;
-                            MaterialTexture textureType     = static_cast<MaterialTexture>(texture_index);
-                            textures[index + texture_index] = material->GetTexture(static_cast<MaterialTexture>(texture_index));
-                        }
-                    }
-
-                }
-
-                material->SetIndex(index);
-                index += material_texture_count_support;
-            }
-
-                void update(vector<shared_ptr<Entity>>& entities)
-                {
-                    for (shared_ptr<Entity> entity : entities)
-                    {
-                        if (entity)
-                        {
-                            if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
-                            {
-                                if (Material* material = renderable->GetMaterial())
-                                {
-                                    update(material);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                void update(unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& renderables)
-                {
-                    lock_guard lock(mutex_renderables);
-
-                    // cpu
-                    {
-                        clear();
-
-                        update(renderables[Renderer_Entity::Geometry]);
-                        update(renderables[Renderer_Entity::GeometryInstanced]);
-                        update(renderables[Renderer_Entity::GeometryTransparent]);
-                        update(renderables[Renderer_Entity::GeometryTransparentInstanced]);
-                    }
-
-                    // gpu
-                    Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->ResetOffset();
-                    Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->Update(&properties[0]);
-                    RHI_Device::UpdateBindlessResources(nullptr, &textures);
-                }
-            }
-
-            namespace lights
-            {
-                array<Sb_Light, rhi_max_array_size> properties;
-
-                void update(vector<shared_ptr<Entity>>& entities)
-                {
-                    lock_guard lock(mutex_renderables);
-
-                    // cpu
-                    {
-                        // clear
-                        properties.fill(Sb_Light{});
-
-                        // go through each light
-                        uint32_t index = 0;
-                        for (shared_ptr<Entity>& entity : entities)
-                        {
-                            if (Light* light = entity->GetComponent<Light>().get())
-                            { 
-                                light->SetIndex(index);
-
-                                // set light properties
-                                if (RHI_Texture* texture = light->GetDepthTexture())
-                                {
-                                    for (uint32_t i = 0; i < texture->GetArrayLength(); i++)
-                                    {
-                                        properties[index].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
-                                    }
-                                }
-                                properties[index].intensity    = light->GetIntensityWatt(Renderer::GetCamera().get());
-                                properties[index].range        = light->GetRange();
-                                properties[index].angle        = light->GetAngle();
-                                properties[index].bias         = light->GetBias();
-                                properties[index].color        = light->GetColor();
-                                properties[index].normal_bias  = light->GetNormalBias();
-                                properties[index].position     = light->GetEntity()->GetPosition();
-                                properties[index].direction    = light->GetEntity()->GetForward();
-                                properties[index].flags        = 0;
-                                properties[index].flags       |= light->GetLightType() == LightType::Directional                                                                      ? (1 << 0) : 0;
-                                properties[index].flags       |= light->GetLightType() == LightType::Point                                                                            ? (1 << 1) : 0;
-                                properties[index].flags       |= light->GetLightType() == LightType::Spot                                                                             ? (1 << 2) : 0;
-                                properties[index].flags       |= light->IsFlagSet(LightFlags::Shadows)                                                                                ? (1 << 3) : 0;
-                                properties[index].flags       |= light->IsFlagSet(LightFlags::ShadowsTransparent)                                                                     ? (1 << 4) : 0;
-                                properties[index].flags       |= (light->IsFlagSet(LightFlags::ShadowsScreenSpace) && Renderer::GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
-                                properties[index].flags       |= (light->IsFlagSet(LightFlags::Volumetric)         && Renderer::GetOption<bool>(Renderer_Option::FogVolumetric))      ? (1 << 6) : 0;
-                                // when changing the bit flags, ensure that you also update the Light struct in common_structs.hlsl, so that it reads those flags as expected
-
-                                index++;
-                            }
-                        }
-                    }
-
-                    // gpu
-                    Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->ResetOffset();
-                    Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->Update(&properties[0]);
-                }
-            }
-        }
     }
 
     void Renderer::Initialize()
@@ -377,8 +200,8 @@ namespace Spartan
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,           SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,              SP_EVENT_HANDLER_STATIC(OnClear));
             SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
-            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_EXPRESSION_STATIC( bindless::materials::update(m_renderables); ));
-            SP_SUBSCRIBE_TO_EVENT(EventType::LightOnChanged,          SP_EVENT_HANDLER_EXPRESSION_STATIC( bindless::lights::update(m_renderables[Renderer_Entity::Light]); ));
+            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_STATIC(BindlessUpdateMaterials));
+            SP_SUBSCRIBE_TO_EVENT(EventType::LightOnChanged,          SP_EVENT_HANDLER_STATIC(BindlessUpdateLights));
 
             // fire
             SP_FIRE_EVENT(EventType::RendererOnInitialized);
@@ -393,7 +216,6 @@ namespace Spartan
         // releases their rhi resources before device destruction
         {
             DestroyResources();
-            bindless::materials::clear();
 
             m_renderables.clear();
             swap_chain            = nullptr;
@@ -625,7 +447,7 @@ namespace Spartan
 
     void Renderer::OnWorldResolved(sp_variant data)
     {
-        mutex_renderables.lock();
+        m_mutex_renderables.lock();
 
         // clear previous state
         m_renderables.clear();
@@ -681,13 +503,13 @@ namespace Spartan
             }
         }
 
-        mutex_renderables.unlock();
+        m_mutex_renderables.unlock();
 
         // update bindless resources
-        bindless::materials::update(m_renderables);
-        bindless::lights::update(m_renderables[Renderer_Entity::Light]);
+        BindlessUpdateMaterials();
+        BindlessUpdateLights();
     }
-    
+ 
     void Renderer::OnClear()
     {
         m_renderables.clear();
@@ -724,16 +546,6 @@ namespace Spartan
 
     void Renderer::OnSyncPoint(RHI_CommandList* cmd_list)
     {
-        // generate mips - if any
-        {
-            lock_guard lock(mutex_mip_generation);
-            for (RHI_Texture* texture : textures_mip_generation)
-            {
-                Pass_GenerateMips(cmd_list, texture);
-            }
-            textures_mip_generation.clear();
-        }
-
         // is_sync_point: the command pool has exhausted its command lists and 
         // is about to reset them, this is an opportune moment for us to perform
         // certain operations, knowing that no rendering commands are currently
@@ -761,6 +573,16 @@ namespace Spartan
                     structured_buffer->ResetOffset();
                 }
             }
+        }
+
+        // generate mips - if any
+        {
+            lock_guard lock(mutex_mip_generation);
+            for (RHI_Texture* texture : textures_mip_generation)
+            {
+                Pass_GenerateMips(cmd_list, texture);
+            }
+            textures_mip_generation.clear();
         }
 
         // filter environment on directional light change
@@ -976,6 +798,170 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity,     GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,        GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth_opaque, GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_opaque));
+    }
+
+    void Renderer::BindlessUpdateMaterials()
+    {
+        static array<RHI_Texture*, rhi_max_array_size> textures;  // mapped to the gpu as a bindless texture array
+        static array<Sb_Material, rhi_max_array_size> properties; // mapped to the gpu as a structured properties buffer
+        static unordered_set<uint64_t> unique_material_ids;
+        static uint32_t index = 0;
+
+        auto update_material = [](Material* material)
+        {
+            // check if the material's ID is already processed
+            if (unique_material_ids.find(material->GetObjectId()) != unique_material_ids.end())
+                return;
+
+            // properties
+            {
+                properties[index].world_space_height     = material->GetProperty(MaterialProperty::WorldSpaceHeight);
+                properties[index].color.x                = material->GetProperty(MaterialProperty::ColorR);
+                properties[index].color.y                = material->GetProperty(MaterialProperty::ColorG);
+                properties[index].color.z                = material->GetProperty(MaterialProperty::ColorB);
+                properties[index].color.w                = material->GetProperty(MaterialProperty::ColorA);
+                properties[index].tiling_uv.x            = material->GetProperty(MaterialProperty::TextureTilingX);
+                properties[index].tiling_uv.y            = material->GetProperty(MaterialProperty::TextureTilingY);
+                properties[index].offset_uv.x            = material->GetProperty(MaterialProperty::TextureOffsetX);
+                properties[index].offset_uv.y            = material->GetProperty(MaterialProperty::TextureOffsetY);
+                properties[index].roughness_mul          = material->GetProperty(MaterialProperty::Roughness);
+                properties[index].metallic_mul           = material->GetProperty(MaterialProperty::Metalness);
+                properties[index].normal_mul             = material->GetProperty(MaterialProperty::Normal);
+                properties[index].height_mul             = material->GetProperty(MaterialProperty::Height);
+                properties[index].anisotropic            = material->GetProperty(MaterialProperty::Anisotropic);
+                properties[index].anisotropic_rotation   = material->GetProperty(MaterialProperty::AnisotropicRotation);
+                properties[index].clearcoat              = material->GetProperty(MaterialProperty::Clearcoat);
+                properties[index].clearcoat_roughness    = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
+                properties[index].sheen                  = material->GetProperty(MaterialProperty::Sheen);
+                properties[index].sheen_tint             = material->GetProperty(MaterialProperty::SheenTint);
+                properties[index].subsurface_scattering  = material->GetProperty(MaterialProperty::SubsurfaceScattering);
+                properties[index].ior                    = material->GetProperty(MaterialProperty::Ior);
+                properties[index].flags                 |= material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness) ? (1U << 0) : 0;
+                properties[index].flags                 |= material->HasTexture(MaterialTexture::Height) ? (1U << 1) : 0;
+                properties[index].flags                 |= material->HasTexture(MaterialTexture::Normal) ? (1U << 2) : 0;
+                properties[index].flags                 |= material->HasTexture(MaterialTexture::Color) ? (1U << 3) : 0;
+                properties[index].flags                 |= material->HasTexture(MaterialTexture::Roughness) ? (1U << 4) : 0;
+                properties[index].flags                 |= material->HasTexture(MaterialTexture::Metalness) ? (1U << 5) : 0;
+                properties[index].flags                 |= material->HasTexture(MaterialTexture::AlphaMask) ? (1U << 6) : 0;
+                properties[index].flags                 |= material->HasTexture(MaterialTexture::Emission) ? (1U << 7) : 0;
+                properties[index].flags                 |= material->HasTexture(MaterialTexture::Occlusion) ? (1U << 8) : 0;
+                properties[index].flags                 |= material->GetProperty(MaterialProperty::TextureSlopeBased) ? (1U << 9) : 0;
+                properties[index].flags                 |= material->GetProperty(MaterialProperty::VertexAnimateWind) ? (1U << 10) : 0;
+                properties[index].flags                 |= material->GetProperty(MaterialProperty::VertexAnimateWater) ? (1U << 11) : 0;
+                // when changing the bit flags, ensure that you also update the Surface struct in common_structs.hlsl, so that it reads those flags as expected
+            }
+
+            // textures
+            {
+
+                for (uint32_t type = 0; type < material_texture_type_count; type++)
+                {
+                    for (uint32_t variation = 0; variation < material_texture_count_per_type; variation++)
+                    {
+                        uint32_t texture_index          = type * material_texture_count_per_type + variation;
+                        MaterialTexture textureType     = static_cast<MaterialTexture>(texture_index);
+                        textures[index + texture_index] = material->GetTexture(static_cast<MaterialTexture>(texture_index));
+                    }
+                }
+
+            }
+
+            material->SetIndex(index);
+            index += material_texture_count_support;
+        };
+
+        auto update_entities = [update_material](vector<shared_ptr<Entity>>& entities)
+        {
+            for (shared_ptr<Entity> entity : entities)
+            {
+                if (entity)
+                {
+                    if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
+                    {
+                        if (Material* material = renderable->GetMaterial())
+                        {
+                            update_material(material);
+                        }
+                    }
+                }
+            }
+        };
+
+        lock_guard lock(m_mutex_renderables);
+
+        // cpu
+        {
+            // clear
+            properties.fill(Sb_Material{});
+            textures.fill(nullptr);
+            unique_material_ids.clear();
+            index = 0;
+
+            update_entities(m_renderables[Renderer_Entity::Geometry]);
+            update_entities(m_renderables[Renderer_Entity::GeometryInstanced]);
+            update_entities(m_renderables[Renderer_Entity::GeometryTransparent]);
+            update_entities(m_renderables[Renderer_Entity::GeometryTransparentInstanced]);
+        }
+
+        // gpu
+        Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->ResetOffset();
+        Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->Update(&properties[0]);
+        RHI_Device::UpdateBindlessResources(nullptr, &textures);
+    }
+
+    void Renderer::BindlessUpdateLights()
+    {
+        static array<Sb_Light, rhi_max_array_size> properties;
+
+        lock_guard lock(m_mutex_renderables);
+
+        // cpu
+        {
+            // clear
+            properties.fill(Sb_Light{});
+
+            // go through each light
+            uint32_t index = 0;
+            for (shared_ptr<Entity>& entity : m_renderables[Renderer_Entity::Light])
+            {
+                if (Light* light = entity->GetComponent<Light>().get())
+                {
+                    light->SetIndex(index);
+
+                    // set light properties
+                    if (RHI_Texture* texture = light->GetDepthTexture())
+                    {
+                        for (uint32_t i = 0; i < texture->GetArrayLength(); i++)
+                        {
+                            properties[index].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
+                        }
+                    }
+                    properties[index].intensity    = light->GetIntensityWatt(Renderer::GetCamera().get());
+                    properties[index].range        = light->GetRange();
+                    properties[index].angle        = light->GetAngle();
+                    properties[index].bias         = light->GetBias();
+                    properties[index].color        = light->GetColor();
+                    properties[index].normal_bias  = light->GetNormalBias();
+                    properties[index].position     = light->GetEntity()->GetPosition();
+                    properties[index].direction    = light->GetEntity()->GetForward();
+                    properties[index].flags        = 0;
+                    properties[index].flags       |= light->GetLightType() == LightType::Directional ? (1 << 0) : 0;
+                    properties[index].flags       |= light->GetLightType() == LightType::Point ? (1 << 1) : 0;
+                    properties[index].flags       |= light->GetLightType() == LightType::Spot ? (1 << 2) : 0;
+                    properties[index].flags       |= light->IsFlagSet(LightFlags::Shadows) ? (1 << 3) : 0;
+                    properties[index].flags       |= light->IsFlagSet(LightFlags::ShadowsTransparent) ? (1 << 4) : 0;
+                    properties[index].flags       |= (light->IsFlagSet(LightFlags::ShadowsScreenSpace) && Renderer::GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
+                    properties[index].flags       |= (light->IsFlagSet(LightFlags::Volumetric) && Renderer::GetOption<bool>(Renderer_Option::FogVolumetric)) ? (1 << 6) : 0;
+                    // when changing the bit flags, ensure that you also update the Light struct in common_structs.hlsl, so that it reads those flags as expected
+
+                    index++;
+                }
+            }
+        }
+
+        // gpu
+        Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->ResetOffset();
+        Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->Update(&properties[0]);
     }
 
     void Renderer::Screenshot(const string& file_path)
