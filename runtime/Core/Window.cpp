@@ -66,7 +66,7 @@ namespace Spartan
 
     void Window::Initialize()
     {
-        // Set the process to be per monitor DPI aware
+        // set the process to be per monitor DPI aware
         #ifdef _MSC_VER
         // User32.lib + dll, Windows 10 v1607+ (Creators Update)
         if (HMODULE user32 = LoadLibrary(TEXT("user32.dll")))
@@ -80,7 +80,7 @@ namespace Spartan
         }
         #endif
 
-        // Initialise video subsystem (if needed)
+        // initialise video subsystem (if needed)
         if (SDL_WasInit(SDL_INIT_VIDEO) != 1)
         {
             if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0)
@@ -90,7 +90,7 @@ namespace Spartan
             }
         }
 
-        // Initialise events subsystem (if needed)
+        // initialise events subsystem (if needed)
         if (SDL_WasInit(SDL_INIT_EVENTS) != 1)
         {
             if (SDL_InitSubSystem(SDL_INIT_EVENTS) != 0)
@@ -100,19 +100,19 @@ namespace Spartan
             }
         }
 
-        // Show a splash screen
+        // show a splash screen
         if (m_show_splash_screen)
         {
             CreateAndShowSplashScreen();
         }
 
-        // Set window flags
+        // set window flags
         uint32_t flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED;
 
-        // If the swapchain surface is created using SDL_Vulkan_CreateSurface(), then the window needs this flag.
+        // if the swapchain surface is created using SDL_Vulkan_CreateSurface(), then the window needs this flag.
         flags |= SDL_WINDOW_VULKAN;
 
-        // Create window
+        // create window
         m_title  = "Spartan " + to_string(sp_info::version_major) + "." + to_string(sp_info::version_minor) + "." + to_string(sp_info::version_revision);
         window = SDL_CreateWindow(
             m_title.c_str(),         // window title
@@ -131,19 +131,19 @@ namespace Spartan
 
         if (m_show_splash_screen)
         {
-            // Hide the window until the engine is able to present
+            // hide the window until the engine is able to present
             Hide();
 
-            // Show the window and destroy the splash screen, after the first frame has been rendered successfully
+            // show the window and destroy the splash screen, after the first frame has been rendered successfully
             SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnFirstFrameCompleted, SP_EVENT_HANDLER_STATIC(OnFirstFrameCompleted));
         }
  
-        // Get the DPI scale - has to be done after window creation
+        // get the DPI scale - has to be done after window creation
         #ifdef _MSC_VER
         dpi_scale = static_cast<float>(GetDpiForWindow(static_cast<HWND>(GetHandleRaw()))) / 96.0f;
         #endif
 
-        // Register library
+        // register library
         string version = to_string(SDL_MAJOR_VERSION) + "." + to_string(SDL_MINOR_VERSION) + "." + to_string(SDL_PATCHLEVEL);
         Settings::RegisterThirdPartyLib("SDL", version, "https://www.libsdl.org/");
     }

@@ -507,6 +507,8 @@ namespace Spartan
                         if (!light->IsInViewFrustum(renderable.get(), array_index))
                             continue;
 
+                        cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
+
                         // set vertex, index and instance buffers
                         {
                             cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
@@ -628,7 +630,6 @@ namespace Spartan
                             continue;
                     }
 
-                    // set cull mode
                     cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
 
                     // set vertex, index and instance buffers
@@ -767,7 +768,6 @@ namespace Spartan
                 if (!renderable || !renderable->ReadyToRender() || !renderable->IsVisible())
                     continue;
 
-                // set cull mode
                 cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
 
                 // set vertex, index and instance buffers

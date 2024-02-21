@@ -1131,10 +1131,10 @@ namespace Spartan
     bool RHI_Device::PhysicalDeviceDetect()
     {
         uint32_t device_count = 0;
-        SP_ASSERT_MSG(
-            vkEnumeratePhysicalDevices(RHI_Context::instance, &device_count, nullptr) == VK_SUCCESS,
-            "Failed to get physical device count"
-        );
+        if (vkEnumeratePhysicalDevices(RHI_Context::instance, &device_count, nullptr) != VK_SUCCESS)
+        {
+            SP_ERROR_WINDOW("Ensure you're not using incorrect or experimental drivers. Update your graphics drivers and uninstall Vulkan 'Compatibility Packs'.");
+        }
 
         SP_ASSERT_MSG(device_count != 0, "There are no available physical devices");
         
