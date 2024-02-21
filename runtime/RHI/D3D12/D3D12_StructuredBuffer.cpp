@@ -41,7 +41,7 @@ namespace Spartan
 
     }
 
-    void RHI_StructuredBuffer::Update(void* data_cpu)
+    void RHI_StructuredBuffer::Update(void* data_cpu, const uint32_t update_size)
     {
         SP_ASSERT_MSG(false, "Not implemented");
     }
