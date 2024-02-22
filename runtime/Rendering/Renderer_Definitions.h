@@ -207,6 +207,7 @@ namespace Spartan
         blur_gaussian_bilaterial_c,
         blur_gaussian_bilaterial_radius_from_texture_c,
         antiflicker_c,
+        shading_rate_c,
         ffx_cas_c,
         ffx_spd_average_c,
         ffx_spd_highest_c,
@@ -244,6 +245,7 @@ namespace Spartan
         scratch_blur,
         scratch_antiflicker,
         outline,
+        shading_rate,
         max
     };
 

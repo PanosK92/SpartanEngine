@@ -103,9 +103,6 @@ namespace Spartan
         // validate layout
         SP_ASSERT(layout == RHI_Image_Layout::General || layout == RHI_Image_Layout::Shader_Read || layout == RHI_Image_Layout::Depth_Stencil_Read);
 
-        // validate type
-        SP_ASSERT(texture->IsSrv());
-
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
             bool is_storage = layout == RHI_Image_Layout::General;
