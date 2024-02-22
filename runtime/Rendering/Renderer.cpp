@@ -743,10 +743,19 @@ namespace Spartan
             {
                 swap_chain->SetVsync(value == 1.0f);
             }
-
-            if (option == Renderer_Option::FogVolumetric || option == Renderer_Option::ScreenSpaceShadows)
+            else if (option == Renderer_Option::FogVolumetric || option == Renderer_Option::ScreenSpaceShadows)
             {
                 SP_FIRE_EVENT(EventType::LightOnChanged);
+            }
+            else if (option == Renderer_Option::Debug_PerformanceMetrics)
+            {
+                static bool enabled = false;
+                if (!enabled && value == 1.0f)
+                {
+                    Profiler::ClearMetrics();
+                }
+
+                enabled = value != 0.0f;
             }
         }
     }
@@ -756,7 +765,7 @@ namespace Spartan
         return m_options;
     }
 
-    void Renderer::SetOptions(const std::unordered_map<Renderer_Option, float>& options)
+    void Renderer::SetOptions(const unordered_map<Renderer_Option, float>& options)
     {
         m_options = options;
     }
