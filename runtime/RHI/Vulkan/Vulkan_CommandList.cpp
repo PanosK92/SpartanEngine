@@ -1667,4 +1667,16 @@ namespace Spartan
             );
         }
     }
+
+    void RHI_CommandList::SetVariableRateShadingRate(const bool enabled)
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        if (!m_render_pass_active && m_pso.IsGraphics())
+        {
+            BeginRenderPass();
+        }
+
+        RHI_Device::SetVariableRateShading(this, enabled);
+    }
 }

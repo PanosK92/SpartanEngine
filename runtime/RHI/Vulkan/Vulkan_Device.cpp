@@ -245,12 +245,13 @@ namespace Spartan
 
     namespace functions
     {
-        PFN_vkCreateDebugUtilsMessengerEXT  create_messenger;
-        PFN_vkDestroyDebugUtilsMessengerEXT destroy_messenger;
-        PFN_vkSetDebugUtilsObjectTagEXT     set_object_tag;
-        PFN_vkSetDebugUtilsObjectNameEXT    set_object_name;
-        PFN_vkCmdBeginDebugUtilsLabelEXT    marker_begin;
-        PFN_vkCmdEndDebugUtilsLabelEXT      marker_end;
+        PFN_vkCreateDebugUtilsMessengerEXT  create_messenger          = nullptr;
+        PFN_vkDestroyDebugUtilsMessengerEXT destroy_messenger         = nullptr;
+        PFN_vkSetDebugUtilsObjectTagEXT     set_object_tag            = nullptr;
+        PFN_vkSetDebugUtilsObjectNameEXT    set_object_name           = nullptr;
+        PFN_vkCmdBeginDebugUtilsLabelEXT    marker_begin              = nullptr;
+        PFN_vkCmdEndDebugUtilsLabelEXT      marker_end                = nullptr;
+        PFN_vkCmdSetFragmentShadingRateKHR  set_fragment_shading_rate = nullptr;
 
         void initialize(bool validation_enabled, bool gpu_markers_enabled)
         {
@@ -285,6 +286,9 @@ namespace Spartan
 
                 SP_ASSERT(set_object_tag && set_object_name);
             }
+
+            get_func(set_fragment_shading_rate, vkCmdSetFragmentShadingRateKHR);
+            SP_ASSERT(set_fragment_shading_rate);
         }
     }
 
@@ -722,37 +726,48 @@ namespace Spartan
     {
         VkPhysicalDeviceFeatures2 pNext                              = {};
         VkPhysicalDeviceRobustness2FeaturesEXT robustness_features_2 = {};
-        VkPhysicalDeviceVulkan13Features device_features_1_3         = {};
-        VkPhysicalDeviceVulkan12Features device_features_1_2         = {};
+        VkPhysicalDeviceVulkan13Features features_1_3                = {};
+        VkPhysicalDeviceVulkan12Features features_1_2                = {};
+        VkPhysicalDeviceFragmentShadingRateFeaturesKHR shading_rate  = {};
+
         uint32_t enabled_graphics_shader_stages;
 
         void detect(VkPhysicalDevice device_physical)
         {
             // structs which hold which features are enabled
             robustness_features_2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
-            device_features_1_3.sType   = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-            device_features_1_3.pNext   = &robustness_features_2;
-            device_features_1_2.sType   = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-            device_features_1_2.pNext   = &device_features_1_3;
+            shading_rate.sType          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
+            robustness_features_2.pNext = &shading_rate;
+            features_1_3.sType          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+            features_1_3.pNext          = &robustness_features_2;
+            features_1_2.sType          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+            features_1_2.pNext          = &features_1_3;
             pNext.sType                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-            pNext.pNext                 = &device_features_1_2;
+            pNext.pNext                 = &features_1_2;
 
             // structs which hold which features are supported
-            VkPhysicalDeviceRobustness2FeaturesEXT robustness_2_support = {};
-            robustness_2_support.sType                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
-            VkPhysicalDeviceVulkan13Features features_1_3_support       = {};
-            features_1_3_support.sType                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-            features_1_3_support.pNext                                  = &robustness_2_support;
-            VkPhysicalDeviceVulkan12Features features_1_2_support       = {};
-            features_1_2_support.sType                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-            features_1_2_support.pNext                                  = &features_1_3_support;
-            VkPhysicalDeviceFeatures2 features_support                  = {};
-            features_support.sType                                      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-            features_support.pNext                                      = &features_1_2_support;
+            VkPhysicalDeviceFragmentShadingRateFeaturesKHR shading_rate_support = {};
+            shading_rate_support.sType                                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
+            VkPhysicalDeviceRobustness2FeaturesEXT robustness_2_support         = {};
+            robustness_2_support.sType                                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
+            robustness_2_support.pNext                                          = &shading_rate_support;
+            VkPhysicalDeviceVulkan13Features features_1_3_support               = {};
+            features_1_3_support.sType                                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+            features_1_3_support.pNext                                          = &robustness_2_support;
+            VkPhysicalDeviceVulkan12Features features_1_2_support               = {};
+            features_1_2_support.sType                                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+            features_1_2_support.pNext                                          = &features_1_3_support;
+            VkPhysicalDeviceFeatures2 features_support                          = {};
+            features_support.sType                                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+            features_support.pNext                                              = &features_1_2_support;
             vkGetPhysicalDeviceFeatures2(device_physical, &features_support);
 
             // check if certain features are supported and enable them
             {
+                // anisotropic filtering
+                SP_ASSERT(shading_rate_support.pipelineFragmentShadingRate == VK_TRUE);
+                shading_rate.pipelineFragmentShadingRate = VK_TRUE;
+
                 // anisotropic filtering
                 SP_ASSERT(features_support.features.samplerAnisotropy == VK_TRUE);
                 pNext.features.samplerAnisotropy = VK_TRUE;
@@ -771,24 +786,24 @@ namespace Spartan
 
                 // timeline semaphores
                 SP_ASSERT(features_1_2_support.timelineSemaphore == VK_TRUE);
-                device_features_1_2.timelineSemaphore = VK_TRUE;
+                features_1_2.timelineSemaphore = VK_TRUE;
 
                 // descriptors
                 {
                     SP_ASSERT(features_1_2_support.descriptorBindingVariableDescriptorCount == VK_TRUE);
-                    device_features_1_2.descriptorBindingVariableDescriptorCount = VK_TRUE;
+                    features_1_2.descriptorBindingVariableDescriptorCount = VK_TRUE;
 
                     SP_ASSERT(features_1_2_support.descriptorBindingVariableDescriptorCount == VK_TRUE);
-                    device_features_1_2.descriptorBindingVariableDescriptorCount = VK_TRUE;
+                    features_1_2.descriptorBindingVariableDescriptorCount = VK_TRUE;
 
                     SP_ASSERT(features_1_2_support.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE);
-                    device_features_1_2.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+                    features_1_2.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
 
                     SP_ASSERT(features_1_2_support.descriptorBindingPartiallyBound == VK_TRUE);
-                    device_features_1_2.descriptorBindingPartiallyBound = VK_TRUE;
+                    features_1_2.descriptorBindingPartiallyBound = VK_TRUE;
 
                     SP_ASSERT(features_1_2_support.runtimeDescriptorArray == VK_TRUE);
-                    device_features_1_2.runtimeDescriptorArray = VK_TRUE;
+                    features_1_2.runtimeDescriptorArray = VK_TRUE;
 
                     SP_ASSERT(robustness_2_support.nullDescriptor == VK_TRUE);
                     robustness_features_2.nullDescriptor = VK_TRUE;
@@ -798,19 +813,19 @@ namespace Spartan
                 {
                     // rendering without render passes and frame buffer objects
                     SP_ASSERT(features_1_3_support.dynamicRendering == VK_TRUE);
-                    device_features_1_3.dynamicRendering = VK_TRUE;
+                    features_1_3.dynamicRendering = VK_TRUE;
                 }
 
                 // FSR 2
                 {
                     // extended types (int8, int16, int64, etc) - SPD
                     SP_ASSERT(features_1_2_support.shaderSubgroupExtendedTypes == VK_TRUE);
-                    device_features_1_2.shaderSubgroupExtendedTypes = VK_TRUE;
+                    features_1_2.shaderSubgroupExtendedTypes = VK_TRUE;
 
                     // float16 - If supported, FSR 2 will opt for it, so don't assert.
                     if (features_1_2_support.shaderFloat16 == VK_TRUE)
                     {
-                        device_features_1_2.shaderFloat16 = VK_TRUE;
+                        features_1_2.shaderFloat16 = VK_TRUE;
                     }
 
                     // int16 - If supported, FSR 2 will opt for it, so don't assert.
@@ -821,12 +836,12 @@ namespace Spartan
 
                     // wave64
                     SP_ASSERT(features_1_3_support.shaderDemoteToHelperInvocation == VK_TRUE);
-                    device_features_1_3.shaderDemoteToHelperInvocation = VK_TRUE;
+                    features_1_3.shaderDemoteToHelperInvocation = VK_TRUE;
 
                     // wave64 - If supported, FSR 2 will opt for it, so don't assert.
                     if (features_1_3_support.subgroupSizeControl == VK_TRUE)
                     {
-                        device_features_1_3.subgroupSizeControl = VK_TRUE;
+                        features_1_3.subgroupSizeControl = VK_TRUE;
                     }
                 }
 
@@ -1993,6 +2008,23 @@ namespace Spartan
     void RHI_Device::MarkerEnd(RHI_CommandList* cmd_list)
     {
         functions::marker_end(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
+    }
+
+    void RHI_Device::SetVariableRateShading(RHI_CommandList* cmd_list, const bool enabled)
+    {
+        VkExtent2D shading_rate = { 1, 1 };
+        if (enabled)
+        {
+            shading_rate = { 2, 2 };
+        }
+
+        VkFragmentShadingRateCombinerOpKHR combiner_operations[2] =
+        {
+            VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR,
+            VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR
+        };
+
+        functions::set_fragment_shading_rate(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &shading_rate, combiner_operations);
     }
 
     // misc

@@ -231,6 +231,7 @@ void RenderOptions::OnTickVisible()
     bool performance_metrics     = Renderer::GetOption<bool>(Renderer_Option::Debug_PerformanceMetrics);
     bool debug_wireframe         = Renderer::GetOption<bool>(Renderer_Option::Debug_Wireframe);
     int resolution_shadow        = Renderer::GetOption<int>(Renderer_Option::ShadowResolution);
+    bool variable_rate_shading   = Renderer::GetOption<bool>(Renderer_Option::VariableRateShading);
 
     // present options (with a table)
     if (ImGui::BeginTable("##render_options", column_count, flags, ImVec2(0.0f)))
@@ -280,6 +281,9 @@ void RenderOptions::OnTickVisible()
                 string tooltip = is_upsampling ? "AMD FidelityFX Robust Contrast Adaptive Sharpening (RCAS)" : "AMD FidelityFX Contrast Adaptive Sharpening (CAS)";
                 option_value(label.c_str(), Renderer_Option::Sharpness, tooltip.c_str(), 0.1f, 0.0f, 1.0f);
             }
+
+            // variable rate shading
+            option_check_box("Variable rate shading", variable_rate_shading, "Improves performance by varying pixel shading detail.");
         }
 
         if (option("Screen space lighting"))
@@ -442,4 +446,5 @@ void RenderOptions::OnTickVisible()
     Renderer::SetOption(Renderer_Option::Debug_Grid,                    debug_grid);
     Renderer::SetOption(Renderer_Option::Debug_PerformanceMetrics,      performance_metrics);
     Renderer::SetOption(Renderer_Option::Debug_Wireframe,               debug_wireframe);
+    Renderer::SetOption(Renderer_Option::VariableRateShading,           variable_rate_shading);
 }

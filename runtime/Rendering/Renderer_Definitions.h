@@ -62,6 +62,7 @@ namespace Spartan
         Sharpness,
         Hdr,
         Vsync,
+        VariableRateShading,
         Max
     };
 
