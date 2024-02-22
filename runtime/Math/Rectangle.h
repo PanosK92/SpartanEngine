@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======
 #include <memory>
+#include <cfloat>
 #include "Vector2.h"
 //==================
 
