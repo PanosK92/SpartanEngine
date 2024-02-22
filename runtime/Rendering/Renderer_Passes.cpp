@@ -419,11 +419,15 @@ namespace Spartan
 
     void Renderer::Pass_ShadingRate(RHI_CommandList* cmd_list)
     {
+        if (!GetOption<bool>(Renderer_Option::VariableRateShading))
+            return;
+
         // acquire shader
         RHI_Shader* shader_c = GetShader(Renderer_Shader::shading_rate_c).get();
         if (!shader_c->IsCompiled())
             return;
 
+        // acquire textures
         RHI_Texture* tex_in  = GetFrameTexture();
         RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTexture::shading_rate).get();
 
@@ -439,8 +443,8 @@ namespace Spartan
         PushPassConstants(cmd_list);
 
         // set textures
-        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_in);
-        cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_out);
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
+        cmd_list->SetTexture(Renderer_BindingsUav::tex_uint, tex_out);
 
         // render
         cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
@@ -605,6 +609,7 @@ namespace Spartan
             return;
 
         RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
+        bool vrs               = GetOption<bool>(Renderer_Option::VariableRateShading);
 
         lock_guard lock(m_mutex_renderables);
         cmd_list->BeginTimeblock(!is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent");
@@ -615,7 +620,7 @@ namespace Spartan
             cmd_list->ClearRenderTarget(GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get(), rhi_color_dont_care, 0.0f);
         }
 
-        auto pass = [cmd_list, shader_v, shader_instanced_v, shader_p](bool is_transparent_pass, bool is_occluder_pass)
+        auto pass = [cmd_list, shader_v, shader_instanced_v, shader_p, vrs](bool is_transparent_pass, bool is_occluder_pass)
         {
             uint32_t start_index = !is_transparent_pass ? 0 : 2;
             uint32_t end_index   = !is_transparent_pass ? 2 : 4;
@@ -638,10 +643,8 @@ namespace Spartan
                 pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
                 pso.render_target_depth_texture = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
                 pso.clear_depth                 = rhi_depth_load;
-                pso.texture_shading_rate        = GetRenderTarget(Renderer_RenderTexture::shading_rate).get();
+                pso.texture_shading_rate        = vrs ? GetRenderTarget(Renderer_RenderTexture::shading_rate).get() : nullptr;
                 cmd_list->SetPipelineState(pso);
-
-                cmd_list->SetVariableRateShadingRate(GetOption<bool>(Renderer_Option::VariableRateShading));
 
                 for (shared_ptr<Entity>& entity : entities)
                 {
@@ -757,10 +760,11 @@ namespace Spartan
         lock_guard lock(m_mutex_renderables);
         cmd_list->BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
 
-        // deduce rasterizer state
+        // deduce some things
         bool wireframe                        = GetOption<bool>(Renderer_Option::Debug_Wireframe);
         RHI_RasterizerState* rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
         rasterizer_state                      = wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe_cull_none).get() : rasterizer_state;
+        bool vrs                              = GetOption<bool>(Renderer_Option::VariableRateShading);
 
         uint32_t start_index = !is_transparent_pass ? 0 : 2;
         uint32_t end_index   = !is_transparent_pass ? 2 : 4;
@@ -794,10 +798,8 @@ namespace Spartan
             pso.clear_color[3]                  = pso.clear_color[0];
             pso.render_target_depth_texture     = tex_depth;
             pso.clear_depth                     = rhi_depth_load;
-            pso.texture_shading_rate            = GetRenderTarget(Renderer_RenderTexture::shading_rate).get();
+            pso.texture_shading_rate            = vrs ? GetRenderTarget(Renderer_RenderTexture::shading_rate).get() : nullptr;
             cmd_list->SetPipelineState(pso);
-
-            cmd_list->SetVariableRateShadingRate(GetOption<bool>(Renderer_Option::VariableRateShading));
 
             for (shared_ptr<Entity>& entity : entities)
             {
@@ -827,7 +829,6 @@ namespace Spartan
                     PushPassConstants(cmd_list);
 
                     entity->SetMatrixPrevious(m_pcb_pass_cpu.transform);
-                   
                 }
 
                 draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());

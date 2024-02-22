@@ -134,8 +134,9 @@ RWStructuredBuffer<Light_> buffer_lights : register(u1);
 RWTexture2D<float4> tex_uav                                : register(u2);
 RWTexture2D<float4> tex_uav2                               : register(u3);
 RWTexture2D<float4> tex_uav3                               : register(u4);
-RWTexture2DArray<float4> tex_uav_sss                       : register(u5);
-globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u6); // used by FidelityFX SPD
-globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u7); // used by FidelityFX SPD
+RWTexture2D<uint>   tex_uav_uint                           : register(u5);
+RWTexture2DArray<float4> tex_uav_sss                       : register(u6);
+globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u7); // used by FidelityFX SPD
+globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u8); // used by FidelityFX SPD
 
 #endif // SPARTAN_COMMON_TEXTURES

@@ -147,7 +147,6 @@ namespace Spartan
         void InsertBarrierBufferReadWrite(void* rhi_buffer, bool is_constant_buffer);
 
         // misc
-        void SetVariableRateShadingRate(const bool enabled);
         RHI_Semaphore* GetSemaphoreProccessed() { return m_proccessed_semaphore.get(); }
         void* GetRhiResource() const { return m_rhi_resource; }
 

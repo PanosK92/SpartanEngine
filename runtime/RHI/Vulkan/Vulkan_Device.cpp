@@ -245,13 +245,12 @@ namespace Spartan
 
     namespace functions
     {
-        PFN_vkCreateDebugUtilsMessengerEXT  create_messenger          = nullptr;
-        PFN_vkDestroyDebugUtilsMessengerEXT destroy_messenger         = nullptr;
-        PFN_vkSetDebugUtilsObjectTagEXT     set_object_tag            = nullptr;
-        PFN_vkSetDebugUtilsObjectNameEXT    set_object_name           = nullptr;
-        PFN_vkCmdBeginDebugUtilsLabelEXT    marker_begin              = nullptr;
-        PFN_vkCmdEndDebugUtilsLabelEXT      marker_end                = nullptr;
-        PFN_vkCmdSetFragmentShadingRateKHR  set_fragment_shading_rate = nullptr;
+        PFN_vkCreateDebugUtilsMessengerEXT  create_messenger  = nullptr;
+        PFN_vkDestroyDebugUtilsMessengerEXT destroy_messenger = nullptr;
+        PFN_vkSetDebugUtilsObjectTagEXT     set_object_tag    = nullptr;
+        PFN_vkSetDebugUtilsObjectNameEXT    set_object_name   = nullptr;
+        PFN_vkCmdBeginDebugUtilsLabelEXT    marker_begin      = nullptr;
+        PFN_vkCmdEndDebugUtilsLabelEXT      marker_end        = nullptr;
 
         void initialize(bool validation_enabled, bool gpu_markers_enabled)
         {
@@ -286,9 +285,6 @@ namespace Spartan
 
                 SP_ASSERT(set_object_tag && set_object_name);
             }
-
-            get_func(set_fragment_shading_rate, vkCmdSetFragmentShadingRateKHR);
-            SP_ASSERT(set_fragment_shading_rate);
         }
     }
 
@@ -764,10 +760,6 @@ namespace Spartan
 
             // check if certain features are supported and enable them
             {
-                // anisotropic filtering
-                SP_ASSERT(shading_rate_support.pipelineFragmentShadingRate == VK_TRUE);
-                shading_rate.pipelineFragmentShadingRate = VK_TRUE;
-
                 // anisotropic filtering
                 SP_ASSERT(features_support.features.samplerAnisotropy == VK_TRUE);
                 pNext.features.samplerAnisotropy = VK_TRUE;
@@ -2008,23 +2000,6 @@ namespace Spartan
     void RHI_Device::MarkerEnd(RHI_CommandList* cmd_list)
     {
         functions::marker_end(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
-    }
-
-    void RHI_Device::SetVariableRateShading(RHI_CommandList* cmd_list, const bool enabled)
-    {
-        VkExtent2D shading_rate = { 1, 1 };
-        if (enabled)
-        {
-            shading_rate = { 2, 2 };
-        }
-
-        VkFragmentShadingRateCombinerOpKHR combiner_operations[2] =
-        {
-            VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR,
-            VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR
-        };
-
-        functions::set_fragment_shading_rate(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &shading_rate, combiner_operations);
     }
 
     // misc

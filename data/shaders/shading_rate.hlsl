@@ -30,19 +30,20 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         return;
 
     // get luminance
-    float3 color     = tex_uav[thread_id.xy].rgb;
+    float2 uv        = (thread_id.xy + 0.5f) / pass_get_resolution_out();
+    float3 color     = tex.Sample(GET_SAMPLER(sampler_point_wrap), uv).rgb;
     float luminance_ = luminance(color);
 
     // decide on shading rate based on luminance
-    uint shading_rate;
+    float shading_rate = 0.0f;
     if (luminance_ > 0.75f)
     {
         shading_rate = 1;
     }
     else
     {
-        shading_rate = 2;
+        shading_rate = 4;
     }
 
-    tex_uav2[thread_id.xy] = shading_rate;
+    tex_uav_uint[thread_id.xy] = 4;
 }

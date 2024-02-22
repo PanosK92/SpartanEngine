@@ -39,7 +39,7 @@ namespace Spartan
     {
         VkImageTiling get_format_tiling(const RHI_Format format, VkFormatFeatureFlags feature_flags)
         {
-            // Get format properties
+            // get format properties
             VkFormatProperties format_properties;
             vkGetPhysicalDeviceFormatProperties(RHI_Context::device_physical, vulkan_format[rhi_format_to_index(format)], &format_properties);
 
@@ -82,7 +82,8 @@ namespace Spartan
         {
             // deduce format flags
             bool is_render_target_depth_stencil = texture->IsRenderTargetDepthStencil();
-            VkFormatFeatureFlags format_flags  = is_render_target_depth_stencil ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+            VkFormatFeatureFlags format_flags   = is_render_target_depth_stencil ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+            format_flags                        = (texture->GetFlags() & RHI_Texture_Vrs) ? VK_FORMAT_FEATURE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR : format_flags;
 
             // deduce image tiling
             RHI_Format format           = texture->GetFormat();
@@ -91,7 +92,7 @@ namespace Spartan
             SP_ASSERT_MSG(image_tiling != VK_IMAGE_TILING_MAX_ENUM, "The GPU doesn't support this format");
             SP_ASSERT_MSG(image_tiling == VK_IMAGE_TILING_OPTIMAL,  "This format doesn't support optimal tiling, switch to a more efficient format");
 
-            // set layout to pre-initialised (required by Vulkan)
+            // set layout to preinitialised - required by vulkan
             texture->SetLayout(RHI_Image_Layout::Preinitialized, nullptr);
 
             RHI_Device::MemoryTextureCreate(texture);

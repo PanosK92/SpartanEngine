@@ -155,9 +155,10 @@ namespace Spartan
         tex               = 2,
         tex2              = 3,
         tex3              = 4,
-        tex_sss           = 5,
-        sb_spd            = 6,
-        tex_spd           = 7,
+        tex_uint          = 5,
+        tex_sss           = 6,
+        sb_spd            = 7,
+        tex_spd           = 8,
     };
 
     enum class Renderer_Shader : uint8_t
