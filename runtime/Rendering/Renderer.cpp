@@ -167,6 +167,7 @@ namespace Spartan
         SetOption(Renderer_Option::FogVolumetric,                 1.0f);
         SetOption(Renderer_Option::Antialiasing,                  static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 2 for taa
         SetOption(Renderer_Option::Upsampling,                    static_cast<float>(Renderer_Upsampling::FSR2));
+        SetOption(Renderer_Option::VariableRateShading,           0.0f);
         SetOption(Renderer_Option::Vsync,                         0.0f);
         SetOption(Renderer_Option::Debanding,                     0.0f);
         SetOption(Renderer_Option::Debug_TransformHandle,         1.0f);
@@ -847,16 +848,16 @@ namespace Spartan
                 properties[index].subsurface_scattering  = material->GetProperty(MaterialProperty::SubsurfaceScattering);
                 properties[index].ior                    = material->GetProperty(MaterialProperty::Ior);
                 properties[index].flags                 |= material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness) ? (1U << 0) : 0;
-                properties[index].flags                 |= material->HasTexture(MaterialTexture::Height) ? (1U << 1) : 0;
-                properties[index].flags                 |= material->HasTexture(MaterialTexture::Normal) ? (1U << 2) : 0;
-                properties[index].flags                 |= material->HasTexture(MaterialTexture::Color) ? (1U << 3) : 0;
-                properties[index].flags                 |= material->HasTexture(MaterialTexture::Roughness) ? (1U << 4) : 0;
-                properties[index].flags                 |= material->HasTexture(MaterialTexture::Metalness) ? (1U << 5) : 0;
-                properties[index].flags                 |= material->HasTexture(MaterialTexture::AlphaMask) ? (1U << 6) : 0;
-                properties[index].flags                 |= material->HasTexture(MaterialTexture::Emission) ? (1U << 7) : 0;
-                properties[index].flags                 |= material->HasTexture(MaterialTexture::Occlusion) ? (1U << 8) : 0;
-                properties[index].flags                 |= material->GetProperty(MaterialProperty::TextureSlopeBased) ? (1U << 9) : 0;
-                properties[index].flags                 |= material->GetProperty(MaterialProperty::VertexAnimateWind) ? (1U << 10) : 0;
+                properties[index].flags                 |= material->HasTexture(MaterialTexture::Height)               ? (1U << 1)  : 0;
+                properties[index].flags                 |= material->HasTexture(MaterialTexture::Normal)               ? (1U << 2)  : 0;
+                properties[index].flags                 |= material->HasTexture(MaterialTexture::Color)                ? (1U << 3)  : 0;
+                properties[index].flags                 |= material->HasTexture(MaterialTexture::Roughness)            ? (1U << 4)  : 0;
+                properties[index].flags                 |= material->HasTexture(MaterialTexture::Metalness)            ? (1U << 5)  : 0;
+                properties[index].flags                 |= material->HasTexture(MaterialTexture::AlphaMask)            ? (1U << 6)  : 0;
+                properties[index].flags                 |= material->HasTexture(MaterialTexture::Emission)             ? (1U << 7)  : 0;
+                properties[index].flags                 |= material->HasTexture(MaterialTexture::Occlusion)            ? (1U << 8)  : 0;
+                properties[index].flags                 |= material->GetProperty(MaterialProperty::TextureSlopeBased)  ? (1U << 9)  : 0;
+                properties[index].flags                 |= material->GetProperty(MaterialProperty::VertexAnimateWind)  ? (1U << 10) : 0;
                 properties[index].flags                 |= material->GetProperty(MaterialProperty::VertexAnimateWater) ? (1U << 11) : 0;
                 // when changing the bit flags, ensure that you also update the Surface struct in common_structs.hlsl, so that it reads those flags as expected
             }
@@ -979,7 +980,7 @@ namespace Spartan
         // gpu
         Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->ResetOffset();
         uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Light)) * index;
-        Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->Update(&properties[0], update_size); // todo: this updates when the GPU is still using the buffer, not ideal
+        Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->Update(&properties[0], update_size);
 
         buffer_structured_to_add_barrier = Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->GetRhiResource();
     }

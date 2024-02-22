@@ -400,4 +400,9 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
     }
+
+    void RHI_CommandList::SetVariableRateShadingRate(const bool enabled)
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+    }
 }

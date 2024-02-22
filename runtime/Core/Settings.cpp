@@ -84,6 +84,7 @@ namespace Spartan
                 case Renderer_Option::Sharpness:                     return "Sharpness";
                 case Renderer_Option::Hdr:                           return "Hdr";
                 case Renderer_Option::Vsync:                         return "Vsync";
+                case Renderer_Option::VariableRateShading:           return "VariableRateShading";
                 default:
                 {
                     SP_ASSERT_MSG(false, "Renderer_Option not handled");
