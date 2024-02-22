@@ -608,6 +608,8 @@ namespace Spartan
                 pso.clear_depth                 = rhi_depth_load;
                 cmd_list->SetPipelineState(pso);
 
+                cmd_list->SetVariableRateShadingRate(GetOption<bool>(Renderer_Option::VariableRateShading));
+
                 for (shared_ptr<Entity>& entity : entities)
                 {
                     shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
