@@ -67,7 +67,7 @@ namespace
         ImGui::TableSetColumnIndex(1);
     }
 
-    bool option_check_box(const char* label, const Renderer_Option render_option, const char* tooltip = nullptr)
+    void option_check_box(const char* label, const Renderer_Option render_option, const char* tooltip = nullptr)
     {
         option_first_column();
         ImGui::Text(label);
@@ -82,11 +82,9 @@ namespace
         ImGui::Checkbox("", &value);
         Renderer::SetOption(render_option, value);
         ImGui::PopID();
-
-        return option;
     }
 
-    bool option_check_box(const char* label, bool& value, const char* tooltip = nullptr)
+    void option_check_box(const char* label, bool& value, const char* tooltip = nullptr)
     {
         option_first_column();
         ImGui::Text(label);
@@ -99,8 +97,6 @@ namespace
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
         ImGui::Checkbox("", &value);
         ImGui::PopID();
-
-        return option;
     }
 
     bool option_combo_box(const char* label, const vector<string>& options, uint32_t& selection_index, const char* tooltip = nullptr)
