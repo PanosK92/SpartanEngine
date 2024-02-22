@@ -698,9 +698,10 @@ namespace Spartan
         VkRenderingFragmentShadingRateAttachmentInfoKHR attachment_shading_rate = {};
         if (m_pso.texture_shading_rate)
         {
-            attachment_shading_rate.sType       = VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR;
-            attachment_shading_rate.imageView   = static_cast<VkImageView>(m_pso.texture_shading_rate->GetRhiUav());
-            attachment_shading_rate.imageLayout = vulkan_image_layout[static_cast<uint8_t>(m_pso.texture_shading_rate->GetLayout(0))];
+            attachment_shading_rate.sType                          = VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR;
+            attachment_shading_rate.imageView                      = static_cast<VkImageView>(m_pso.texture_shading_rate->GetRhiUav());
+            attachment_shading_rate.imageLayout                    = vulkan_image_layout[static_cast<uint8_t>(m_pso.texture_shading_rate->GetLayout(0))];
+            attachment_shading_rate.shadingRateAttachmentTexelSize = { 4, 4 };
 
             rendering_info.pNext = &attachment_shading_rate;
         }
@@ -1282,7 +1283,7 @@ namespace Spartan
         if (!texture || !texture->IsReadyForUse())
             return;
 
-        // Get some texture info
+        // get some texture info
         const uint32_t mip_count        = texture->GetMipCount();
         const bool mip_specified        = mip_index != rhi_all_mips;
         const uint32_t mip_start        = mip_specified ? mip_index : 0;
@@ -1290,7 +1291,7 @@ namespace Spartan
 
         SP_ASSERT_MSG(current_layout != RHI_Image_Layout::Max && current_layout != RHI_Image_Layout::Preinitialized, "Invalid layout");
 
-        // Transition to appropriate layout (if needed)
+        // transition to appropriate layout (if needed)
         {
             RHI_Image_Layout target_layout = RHI_Image_Layout::Max;
 
@@ -1298,7 +1299,7 @@ namespace Spartan
             {
                 SP_ASSERT(texture->IsUav());
                 
-                // According to section 13.1 of the Vulkan spec, storage textures have to be in a general layout.
+                // according to section 13.1 of the Vulkan spec, storage textures have to be in a general layout.
                 // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#descriptorsets-storageimage
                 target_layout = RHI_Image_Layout::General;
             }
@@ -1306,23 +1307,23 @@ namespace Spartan
             {
                 SP_ASSERT(texture->IsSrv());
 
-                // Color
+                // color
                 if (texture->IsColorFormat())
                 {
                     target_layout = RHI_Image_Layout::Shader_Read;
                 }
 
-                // Depth
+                // depth
                 if (texture->IsDepthFormat())
                 {
                     target_layout = RHI_Image_Layout::Depth_Stencil_Read;
                 }
             }
 
-            // Verify that an appropriate layout has been deduced
+            // verify that an appropriate layout has been deduced
             SP_ASSERT(target_layout != RHI_Image_Layout::Max);
 
-            // Determine if a layout transition is needed
+            // determine if a layout transition is needed
             bool transition_required = current_layout != target_layout;
             {
                 bool rest_mips_have_same_layout = true;
@@ -1680,17 +1681,5 @@ namespace Spartan
                 0, nullptr                  // image barriers
             );
         }
-    }
-
-    void RHI_CommandList::SetVariableRateShadingRate(const bool enabled)
-    {
-        SP_ASSERT(m_state == RHI_CommandListState::Recording);
-
-        if (!m_render_pass_active && m_pso.IsGraphics())
-        {
-            BeginRenderPass();
-        }
-
-        RHI_Device::SetVariableRateShading(this, enabled);
     }
 }

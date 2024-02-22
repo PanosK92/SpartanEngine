@@ -100,7 +100,6 @@ namespace Spartan
         static void MarkerEnd(RHI_CommandList* cmd_list);
 
         // misc
-        static void SetVariableRateShading(RHI_CommandList* cmd_list, const bool enabled);
         static void SetResourceName(void* resource, const RHI_Resource_Type resource_type, const std::string name);
         static bool IsValidResolution(const uint32_t width, const uint32_t height);
         static uint32_t GetEnabledGraphicsStages();
