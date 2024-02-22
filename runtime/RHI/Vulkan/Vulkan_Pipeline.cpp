@@ -400,6 +400,7 @@ namespace Spartan
                         attachment_format_stencil = tex_depth->IsStencilFormat() ? attachment_format_depth : VK_FORMAT_UNDEFINED;
                     }
 
+                    // put everything together
                     pipeline_rendering_create_info.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
                     pipeline_rendering_create_info.colorAttachmentCount    = static_cast<uint32_t>(attachment_formats_color.size());
                     pipeline_rendering_create_info.pColorAttachmentFormats = attachment_formats_color.data();

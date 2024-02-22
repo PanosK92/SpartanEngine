@@ -99,12 +99,12 @@ namespace Spartan
                 access_mask = VK_ACCESS_TRANSFER_WRITE_BIT;
                 break;
 
-                // color attachments
+                // attachments - color
             case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
                 access_mask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
                 break;
 
-                // depth attachments
+                // attachments - depth/stencil
             case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL:
                 access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
                 break;
@@ -139,7 +139,7 @@ namespace Spartan
                 break;
 
             default:
-                SP_LOG_ERROR("Unexpected image layout");
+                SP_ASSERT_MSG(false, "Unhandled layout");
                 break;
             }
 
@@ -188,7 +188,7 @@ namespace Spartan
                     stages |= enabled_graphics_stages | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
                     break;
 
-                    // color attachments
+                    // attachments - color
                 case VK_ACCESS_COLOR_ATTACHMENT_READ_BIT:
                     stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
                     break;
@@ -197,7 +197,7 @@ namespace Spartan
                     stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
                     break;
 
-                    // depth-stencil attachments
+                    // attachments - depth/stencil
                 case VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT:
                     stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
                     break;
@@ -222,6 +222,10 @@ namespace Spartan
 
                 case VK_ACCESS_HOST_WRITE_BIT:
                     stages |= VK_PIPELINE_STAGE_HOST_BIT;
+                    break;
+
+                default:
+                    SP_ASSERT_MSG(false, "Unhandled access flag");
                     break;
                 }
             }
@@ -688,6 +692,17 @@ namespace Spartan
             {
                 rendering_info.pStencilAttachment = rendering_info.pDepthAttachment;
             }
+        }
+
+        // shading rate
+        VkRenderingFragmentShadingRateAttachmentInfoKHR attachment_shading_rate = {};
+        if (m_pso.texture_shading_rate)
+        {
+            attachment_shading_rate.sType       = VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR;
+            attachment_shading_rate.imageView   = static_cast<VkImageView>(m_pso.texture_shading_rate->GetRhiUav());
+            attachment_shading_rate.imageLayout = vulkan_image_layout[static_cast<uint8_t>(m_pso.texture_shading_rate->GetLayout(0))];
+
+            rendering_info.pNext = &attachment_shading_rate;
         }
 
         // begin dynamic render pass instance
@@ -1273,7 +1288,6 @@ namespace Spartan
         const uint32_t mip_start        = mip_specified ? mip_index : 0;
         RHI_Image_Layout current_layout = texture->GetLayout(mip_start);
 
-        SP_ASSERT_MSG(texture->GetRhiSrv() != nullptr, "The texture has no srv"); // Vulkan only has SRVs
         SP_ASSERT_MSG(current_layout != RHI_Image_Layout::Max && current_layout != RHI_Image_Layout::Preinitialized, "Invalid layout");
 
         // Transition to appropriate layout (if needed)

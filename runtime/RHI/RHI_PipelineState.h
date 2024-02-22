@@ -55,11 +55,13 @@ namespace Spartan
         bool instancing                            = false;
 
         // RTs
-        RHI_Texture* render_target_depth_texture = nullptr;
         std::array<RHI_Texture*, rhi_max_render_target_count> render_target_color_textures;
+        RHI_Texture* render_target_depth_texture = nullptr;
         //=================================================================================
 
         //= DYNAMIC - Will not cause PSO generation =================
+        RHI_Texture* texture_shading_rate = nullptr;
+
         uint32_t render_target_color_texture_array_index         = 0;
         uint32_t render_target_depth_stencil_texture_array_index = 0;
 

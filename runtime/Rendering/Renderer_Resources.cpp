@@ -261,8 +261,9 @@ namespace Spartan
             }
 
             // misc
-            render_target(Renderer_RenderTexture::sss)  = make_shared<RHI_Texture2DArray>(width_render, height_render, RHI_Format::R16_Float, 4, flags_standard | RHI_Texture_ClearBlit, "rt_sss");
-            render_target(Renderer_RenderTexture::ssgi) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_standard, "rt_ssgi");
+            render_target(Renderer_RenderTexture::sss)          = make_shared<RHI_Texture2DArray>(width_render, height_render, RHI_Format::R16_Float, 4, flags_standard | RHI_Texture_ClearBlit, "rt_sss");
+            render_target(Renderer_RenderTexture::ssgi)         = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_standard, "rt_ssgi");
+            render_target(Renderer_RenderTexture::shading_rate) = make_unique<RHI_Texture2D>(width_render / 4, height_render /4, 1, RHI_Format::R8_Uint, RHI_Texture_Srv | RHI_Texture_Uav, "rt_shading_rate");
         }
 
         // output resolution
@@ -522,6 +523,10 @@ namespace Spartan
         // depth of field
         shader(Renderer_Shader::depth_of_field_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::depth_of_field_c)->Compile(RHI_Shader_Compute, shader_dir + "depth_of_field.hlsl", async);
+
+        // shading rate
+        shader(Renderer_Shader::shading_rate_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::shading_rate_c)->Compile(RHI_Shader_Compute, shader_dir + "shading_rate.hlsl", async);
     }
 
     void Renderer::CreateFonts()

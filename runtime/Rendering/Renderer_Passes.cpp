@@ -330,6 +330,7 @@ namespace Spartan
 
         UpdateConstantBufferFrame(cmd_list, false);
 
+        Pass_ShadingRate(cmd_list);
         Pass_Skysphere(cmd_list);
 
         // light integration
@@ -414,6 +415,37 @@ namespace Spartan
         // transition the render target to a readable state so it can be rendered
         // within the viewport or copied to the swap chain back buffer
         rt_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+    }
+
+    void Renderer::Pass_ShadingRate(RHI_CommandList* cmd_list)
+    {
+        // acquire shader
+        RHI_Shader* shader_c = GetShader(Renderer_Shader::shading_rate_c).get();
+        if (!shader_c->IsCompiled())
+            return;
+
+        RHI_Texture* tex_in  = GetFrameTexture();
+        RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTexture::shading_rate).get();
+
+        cmd_list->BeginTimeblock("shading_rate");
+
+        // set pipeline state
+        static RHI_PipelineState pso;
+        pso.shader_compute = shader_c;
+        cmd_list->SetPipelineState(pso);
+
+        // set pass constants
+        m_pcb_pass_cpu.set_resolution_out(tex_out);
+        PushPassConstants(cmd_list);
+
+        // set textures
+        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_in);
+        cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_out);
+
+        // render
+        cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+
+        cmd_list->EndTimeblock();
     }
 
     void Renderer::Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass)
@@ -606,6 +638,7 @@ namespace Spartan
                 pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
                 pso.render_target_depth_texture = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
                 pso.clear_depth                 = rhi_depth_load;
+                pso.texture_shading_rate        = GetRenderTarget(Renderer_RenderTexture::shading_rate).get();
                 cmd_list->SetPipelineState(pso);
 
                 cmd_list->SetVariableRateShadingRate(GetOption<bool>(Renderer_Option::VariableRateShading));
@@ -761,6 +794,7 @@ namespace Spartan
             pso.clear_color[3]                  = pso.clear_color[0];
             pso.render_target_depth_texture     = tex_depth;
             pso.clear_depth                     = rhi_depth_load;
+            pso.texture_shading_rate            = GetRenderTarget(Renderer_RenderTexture::shading_rate).get();
             cmd_list->SetPipelineState(pso);
 
             cmd_list->SetVariableRateShadingRate(GetOption<bool>(Renderer_Option::VariableRateShading));
