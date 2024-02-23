@@ -109,6 +109,12 @@ namespace Spartan
             {
                 m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(render_target_depth_texture->GetFormat()));
             }
+
+            // variable rate shading
+            if (render_target_vrs)
+            {
+                m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(render_target_depth_texture->GetFormat()));
+            }
         }
 
         return m_hash;

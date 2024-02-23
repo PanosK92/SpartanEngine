@@ -424,8 +424,9 @@ namespace Spartan
                 pipeline_info.pDepthStencilState           = &depth_stencil_state;
                 pipeline_info.layout                       = static_cast<VkPipelineLayout>(m_resource_pipeline_layout);
                 pipeline_info.renderPass                   = nullptr;
+                pipeline_info.flags                        = m_state.render_target_vrs ? VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR : 0;
         
-                // Create
+                // create
                 SP_VK_ASSERT_MSG(vkCreateGraphicsPipelines(RHI_Context::device, nullptr, 1, &pipeline_info, nullptr, pipeline),
                     "Failed to create graphics pipeline");
 

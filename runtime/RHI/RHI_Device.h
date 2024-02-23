@@ -94,6 +94,8 @@ namespace Spartan
         static uint32_t PropertyGetMaxTextureCubeDimension()          { return m_max_texture_cube_dimension; }
         static uint32_t PropertyGetMaxTextureArrayLayers()            { return m_max_texture_array_layers; }
         static uint32_t PropertyGetMaxPushConstantSize()              { return m_max_push_constant_size; }
+        static uint32_t PropertyGetMinShadingRateTexelSizeX()         { return m_min_shading_rate_texel_size_x; }
+        static uint32_t PropertyGetMinShadingRateTexelSizeY()         { return m_min_shading_rate_texel_size_y; }
 
         // markers
         static void MarkerBegin(RHI_CommandList* cmd_list, const char* name, const Math::Vector4& color);
@@ -124,6 +126,8 @@ namespace Spartan
         static uint32_t m_max_texture_cube_dimension;
         static uint32_t m_max_texture_array_layers;
         static uint32_t m_max_push_constant_size;
+        static uint32_t m_min_shading_rate_texel_size_x;
+        static uint32_t m_min_shading_rate_texel_size_y;
 
         // misc
         static bool m_wide_lines;

@@ -1012,9 +1012,12 @@ namespace Spartan
 
             // detect device properties
             {
+                VkPhysicalDeviceFragmentShadingRatePropertiesKHR shading_rate_properties = {};
+                shading_rate_properties.sType                                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR;
+
                 VkPhysicalDeviceVulkan13Properties device_properties_1_3 = {};
                 device_properties_1_3.sType                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
-                device_properties_1_3.pNext                              = nullptr;
+                device_properties_1_3.pNext                              = &shading_rate_properties;
 
                 VkPhysicalDeviceProperties2 properties_device = {};
                 properties_device.sType                       = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
@@ -1032,6 +1035,8 @@ namespace Spartan
                 m_max_texture_cube_dimension          = properties_device.properties.limits.maxImageDimensionCube;
                 m_max_texture_array_layers            = properties_device.properties.limits.maxImageArrayLayers;
                 m_max_push_constant_size              = properties_device.properties.limits.maxPushConstantsSize;
+                m_min_shading_rate_texel_size_x       = shading_rate_properties.minFragmentShadingRateAttachmentTexelSize.width;
+                m_min_shading_rate_texel_size_y       = shading_rate_properties.minFragmentShadingRateAttachmentTexelSize.height;
 
                 // disable profiler if timestamps are not supported
                 if (Profiler::IsGpuTimingEnabled())
