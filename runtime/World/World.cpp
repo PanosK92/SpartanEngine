@@ -740,10 +740,11 @@ namespace Spartan
                         entity_light_left->SetRotationLocal(Quaternion::FromEulerAngles(80.0f, 0.0f, 0.0));
 
                         shared_ptr<Light> light = entity_light_left->AddComponent<Light>();
+                        light->SetFlag(LightFlags::Shadows, false);
+                        light->SetFlag(LightFlags::ShadowsTransparent, false);
                         light->SetLightType(LightType::Spot);
                         light->SetColor(Color::light_light_bulb);
                         light->SetIntensity(LightIntensity::bulb_500_watt);
-                        light->SetFlag(LightFlags::Shadows, false);
                         light->SetRange(20.0f);
                         light->SetAngle(30.0f * Math::Helper::DEG_TO_RAD);
 
@@ -762,10 +763,11 @@ namespace Spartan
                         entity_light_left->SetRotationLocal(Quaternion::FromEulerAngles(-70.0f, 0.0f, 0.0));
 
                         shared_ptr<Light> light = entity_light_left->AddComponent<Light>();
+                        light->SetFlag(LightFlags::Shadows, false);
+                        light->SetFlag(LightFlags::ShadowsTransparent, false);
                         light->SetLightType(LightType::Spot);
                         light->SetColor(Color(1.0f, 0.0f, 0.0f, 1.0f));
                         light->SetIntensity(LightIntensity::bulb_500_watt);
-                        light->SetFlag(LightFlags::Shadows, false);
                         light->SetRange(3.0f);
                         light->SetAngle(145.0f * Math::Helper::DEG_TO_RAD);
                     }

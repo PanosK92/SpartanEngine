@@ -31,7 +31,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // get luminance
     float2 uv        = (thread_id.xy + 0.5f) / pass_get_resolution_out();
-    float3 color     = tex.Sample(GET_SAMPLER(sampler_point_wrap), uv).rgb;
+    float3 color     = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp_border), uv, 0.0f).rgb;
     float luminance_ = luminance(color);
 
     // decide on shading rate based on luminance
