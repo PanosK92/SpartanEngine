@@ -250,6 +250,9 @@ void RenderOptions::OnTickVisible()
                 Renderer::SetResolutionOutput(display_modes[resolution_output_index].width, display_modes[resolution_output_index].height);
             }
 
+            // variable rate shading
+            option_check_box("Variable rate shading", Renderer_Option::VariableRateShading, "Improves performance by varying pixel shading detail");
+
             // upsampling
             {
                 static vector<string> upsampling_modes =
@@ -269,13 +272,11 @@ void RenderOptions::OnTickVisible()
                 }
                 ImGui::EndDisabled();
 
+                // sharpening
                 string label   = is_upsampling ? "Upsampling sharpness (RCAS)" : "Sharpness (CAS)";
                 string tooltip = is_upsampling ? "AMD FidelityFX Robust Contrast Adaptive Sharpening (RCAS)" : "AMD FidelityFX Contrast Adaptive Sharpening (CAS)";
                 option_value(label.c_str(), Renderer_Option::Sharpness, tooltip.c_str(), 0.1f, 0.0f, 1.0f);
             }
-
-            // variable rate shading
-            option_check_box("Variable rate shading", Renderer_Option::VariableRateShading, "Improves performance by varying pixel shading detail.");
         }
 
         if (option("Screen space lighting"))
