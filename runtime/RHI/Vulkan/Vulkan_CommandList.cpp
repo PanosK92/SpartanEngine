@@ -121,6 +121,11 @@ namespace Spartan
                 access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
                 break;
 
+                // attachments - shading rate
+            case VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR:
+                access_mask = VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
+                break;
+
                 // shader reads
             case VK_IMAGE_LAYOUT_GENERAL:
                 access_mask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
@@ -200,6 +205,11 @@ namespace Spartan
                     // attachments - depth/stencil
                 case VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT:
                     stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+                    break;
+
+                    // attachments - shading rate
+                case VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR:
+                    stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
                     break;
 
                 case VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT:
@@ -531,10 +541,12 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // get (or create) a pipeline which matches the requested pipeline state
+        RHI_Texture* texture_shading_rate = pso.texture_shading_rate;
         RHI_Device::GetOrCreatePipeline(pso, m_pipeline, m_descriptor_layout_current);
 
-        uint64_t hash_previous = m_pso.GetHash();
-        m_pso                  = pso;
+        uint64_t hash_previous     = m_pso.GetHash();
+        m_pso                      = pso;
+        m_pso.texture_shading_rate = texture_shading_rate;
 
         // determine if the pipeline is dirty
         if (!m_pipeline_dirty)
@@ -637,7 +649,7 @@ namespace Spartan
                     if (rt == nullptr)
                         break;
 
-                    SP_ASSERT_MSG(rt->IsRenderTargetColor(), "The texture wasn't created with the RHI_Texture_RenderTarget flag and/or isn't a color format");
+                    SP_ASSERT_MSG(rt->IsRtv(), "The texture wasn't created with the RHI_Texture_RenderTarget flag and/or isn't a color format");
 
                     // transition to the appropriate layout
                     rt->SetLayout(RHI_Image_Layout::Color_Attachment, this);
@@ -666,7 +678,7 @@ namespace Spartan
             RHI_Texture* rt = m_pso.render_target_depth_texture;
 
             SP_ASSERT_MSG(rt->GetWidth() == rendering_info.renderArea.extent.width, "The depth buffer doesn't match the output resolution");
-            SP_ASSERT(rt->IsRenderTargetDepthStencil());
+            SP_ASSERT(rt->IsDsv());
 
             // Transition to the appropriate layout
             RHI_Image_Layout layout = rt->IsStencilFormat() ? RHI_Image_Layout::Depth_Stencil_Attachment : RHI_Image_Layout::Depth_Attachment;
@@ -698,6 +710,8 @@ namespace Spartan
         VkRenderingFragmentShadingRateAttachmentInfoKHR attachment_shading_rate = {};
         if (m_pso.texture_shading_rate)
         {
+            m_pso.texture_shading_rate->SetLayout(RHI_Image_Layout::Shading_Rate_Attachment, this);
+
             attachment_shading_rate.sType                          = VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR;
             attachment_shading_rate.imageView                      = static_cast<VkImageView>(m_pso.texture_shading_rate->GetRhiUav());
             attachment_shading_rate.imageLayout                    = vulkan_image_layout[static_cast<uint8_t>(m_pso.texture_shading_rate->GetLayout(0))];

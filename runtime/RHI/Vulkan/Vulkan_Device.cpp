@@ -146,10 +146,11 @@ namespace Spartan
         {
             VkImageUsageFlags flags = 0;
 
-            flags |= texture->IsSrv() ? VK_IMAGE_USAGE_SAMPLED_BIT : 0;
-            flags |= texture->IsUav() ? VK_IMAGE_USAGE_STORAGE_BIT : 0;
-            flags |= texture->IsRenderTargetDepthStencil() ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
-            flags |= texture->IsRenderTargetColor() ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : 0;
+            flags |= texture->IsSrv() ? VK_IMAGE_USAGE_SAMPLED_BIT                  : 0;
+            flags |= texture->IsUav() ? VK_IMAGE_USAGE_STORAGE_BIT                  : 0;
+            flags |= texture->IsVrs() ? VK_IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV    : 0;
+            flags |= texture->IsDsv() ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
+            flags |= texture->IsRtv() ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT         : 0;
 
             // If the texture has data, it will be staged, so it needs transfer bits.
             // If the texture participates in clear or blit operations, it needs transfer bits.
@@ -760,6 +761,10 @@ namespace Spartan
 
             // check if certain features are supported and enable them
             {
+                // variable shading rate
+                SP_ASSERT(shading_rate_support.attachmentFragmentShadingRate == VK_TRUE);
+                shading_rate.attachmentFragmentShadingRate = VK_TRUE;
+
                 // anisotropic filtering
                 SP_ASSERT(features_support.features.samplerAnisotropy == VK_TRUE);
                 pNext.features.samplerAnisotropy = VK_TRUE;
