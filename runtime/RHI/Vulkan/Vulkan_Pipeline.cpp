@@ -371,6 +371,7 @@ namespace Spartan
                 // enable dynamic rendering - VK_KHR_dynamic_rendering
                 // this means no render passes and no frame buffer objects
                 VkPipelineRenderingCreateInfoKHR pipeline_rendering_create_info = {};
+                VkPipelineFragmentShadingRateStateCreateInfoKHR fragment_shading_rate_state = {};
                 vector<VkFormat> attachment_formats_color;
                 VkFormat attachment_format_depth   = VK_FORMAT_UNDEFINED;
                 VkFormat attachment_format_stencil = VK_FORMAT_UNDEFINED;
@@ -398,6 +399,17 @@ namespace Spartan
                         RHI_Texture* tex_depth    = m_state.render_target_depth_texture;
                         attachment_format_depth   = vulkan_format[rhi_format_to_index(tex_depth->GetFormat())];
                         attachment_format_stencil = tex_depth->IsStencilFormat() ? attachment_format_depth : VK_FORMAT_UNDEFINED;
+                    }
+
+                    // variable rate shading
+                    if (m_state.render_target_vrs)
+                    { 
+                        fragment_shading_rate_state.sType          = VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR;
+                        fragment_shading_rate_state.combinerOps[0] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MAX_KHR;
+                        fragment_shading_rate_state.combinerOps[1] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MAX_KHR;
+                        fragment_shading_rate_state.fragmentSize   = { 1, 1 };
+
+                        pipeline_rendering_create_info.pNext = &fragment_shading_rate_state;
                     }
 
                     // put everything together
