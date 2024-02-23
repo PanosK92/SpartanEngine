@@ -81,7 +81,7 @@ namespace Spartan
         void create_image(RHI_Texture* texture)
         {
             // deduce format flags
-            bool is_render_target_depth_stencil = texture->IsRenderTargetDepthStencil();
+            bool is_render_target_depth_stencil = texture->IsDsv();
             VkFormatFeatureFlags format_flags   = is_render_target_depth_stencil ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
             format_flags                        = (texture->GetFlags() & RHI_Texture_Vrs) ? VK_FORMAT_FEATURE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR : format_flags;
 
@@ -157,12 +157,12 @@ namespace Spartan
                     name += name.empty() ? "sampled" : "-sampled";
                 }
 
-                if (texture->IsRenderTargetDepthStencil())
+                if (texture->IsDsv())
                 {
                     name += name.empty() ? "render_target_depth_stencil" : "-render_target_depth_stencil";
                 }
 
-                if (texture->IsRenderTargetColor())
+                if (texture->IsRtv())
                 {
                     name += name.empty() ? "render_target_color" : "-render_target_color";
                 }
@@ -302,11 +302,11 @@ namespace Spartan
         {
             RHI_Image_Layout target_layout = RHI_Image_Layout::Preinitialized;
 
-            if (texture->IsRenderTargetColor())
+            if (texture->IsRtv())
             {
                 target_layout = RHI_Image_Layout::Color_Attachment;
             }
-            else if (texture->IsRenderTargetDepthStencil())
+            else if (texture->IsDsv())
             {
                 target_layout = RHI_Image_Layout::Depth_Stencil_Attachment;
             }
@@ -381,12 +381,12 @@ namespace Spartan
                 // both cube map slices/faces and array length is encoded into m_array_length.
                 // they are rendered on individually, hence why the resource type is ResourceType::Texture2d
 
-                if (IsRenderTargetColor())
+                if (IsRtv())
                 {
                     create_image_view(m_rhi_resource, m_rhi_rtv[i], this, ResourceType::Texture2d, i, 1, 0, 1, false, false);
                 }
 
-                if (IsRenderTargetDepthStencil())
+                if (IsDsv())
                 {
                     create_image_view(m_rhi_resource, m_rhi_dsv[i], this, ResourceType::Texture2d, i, 1, 0, 1, true, false);
                 }

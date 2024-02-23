@@ -281,6 +281,7 @@ namespace Spartan
         Color_Attachment,
         Depth_Attachment,
         Depth_Stencil_Attachment,
+        Shading_Rate_Attachment,
         Depth_Stencil_Read,
         Shader_Read,
         Transfer_Source,
