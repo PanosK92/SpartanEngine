@@ -643,7 +643,7 @@ namespace Spartan
                 pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
                 pso.render_target_depth_texture = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
                 pso.clear_depth                 = rhi_depth_load;
-                pso.texture_shading_rate        = vrs ? GetRenderTarget(Renderer_RenderTexture::shading_rate).get() : nullptr;
+                pso.render_target_vrs           = vrs ? GetRenderTarget(Renderer_RenderTexture::shading_rate).get() : nullptr;
                 cmd_list->SetPipelineState(pso);
 
                 for (shared_ptr<Entity>& entity : entities)
@@ -798,7 +798,7 @@ namespace Spartan
             pso.clear_color[3]                  = pso.clear_color[0];
             pso.render_target_depth_texture     = tex_depth;
             pso.clear_depth                     = rhi_depth_load;
-            pso.texture_shading_rate            = vrs ? GetRenderTarget(Renderer_RenderTexture::shading_rate).get() : nullptr;
+            pso.render_target_vrs               = vrs ? GetRenderTarget(Renderer_RenderTexture::shading_rate).get() : nullptr;
             cmd_list->SetPipelineState(pso);
 
             for (shared_ptr<Entity>& entity : entities)
