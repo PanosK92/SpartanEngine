@@ -251,7 +251,9 @@ void RenderOptions::OnTickVisible()
             }
 
             // variable rate shading
+            ImGui::BeginDisabled(true);
             option_check_box("Variable rate shading", Renderer_Option::VariableRateShading, "Improves performance by varying pixel shading detail");
+            ImGui::EndDisabled();
 
             // upsampling
             {
