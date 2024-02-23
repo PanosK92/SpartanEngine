@@ -541,12 +541,10 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // get (or create) a pipeline which matches the requested pipeline state
-        RHI_Texture* texture_shading_rate = pso.texture_shading_rate;
         RHI_Device::GetOrCreatePipeline(pso, m_pipeline, m_descriptor_layout_current);
 
         uint64_t hash_previous     = m_pso.GetHash();
         m_pso                      = pso;
-        m_pso.texture_shading_rate = texture_shading_rate;
 
         // determine if the pipeline is dirty
         if (!m_pipeline_dirty)

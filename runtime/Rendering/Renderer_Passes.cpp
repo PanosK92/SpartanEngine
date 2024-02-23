@@ -367,7 +367,7 @@ namespace Spartan
                 Pass_GBuffer(cmd_list);
                 Pass_Ssgi(cmd_list);
                 Pass_Ssr(cmd_list, rt_render);
-                Pass_Sss_Bend(cmd_list);
+                Pass_Sss(cmd_list);
                 Pass_Light(cmd_list);                        // compute diffuse and specular buffers
                 Pass_Light_Composition(cmd_list, rt_render); // compose diffuse, specular, ssgi, volumetric etc.
                 Pass_Light_ImageBased(cmd_list, rt_render);  // apply IBL and SSR
@@ -932,7 +932,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Sss_Bend(RHI_CommandList* cmd_list)
+    void Renderer::Pass_Sss(RHI_CommandList* cmd_list)
     {
         if (!GetOption<bool>(Renderer_Option::ScreenSpaceShadows))
             return;
@@ -950,7 +950,7 @@ namespace Spartan
         // acquire render targets
         RHI_Texture* tex_sss = GetRenderTarget(Renderer_RenderTexture::sss).get();
 
-        cmd_list->BeginTimeblock("sss_bend");
+        cmd_list->BeginTimeblock("sss");
         {
             // set pipeline state
             static RHI_PipelineState pso;
@@ -982,7 +982,7 @@ namespace Spartan
                     Vector4 p = {};
                     if (light->GetLightType() == LightType::Directional)
                     {
-                        // TODO: Why do we need to flip sign?
+                        // todo: Why do we need to flip sign?
                         p = Vector4(-light->GetEntity()->GetForward(), 0.0f) * view_projection;
                     }
                     else
