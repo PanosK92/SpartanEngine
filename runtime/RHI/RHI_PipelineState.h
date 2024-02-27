@@ -38,7 +38,7 @@ namespace Spartan
         uint64_t GetHash()    const { return m_hash; }
         uint32_t GetWidth()   const;
         uint32_t GetHeight()  const;
-        bool IsValid()        const;
+        void Validate()       const;
         bool HasClearValues() const;
         bool IsGraphics()     const { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
         bool IsCompute()      const { return shader_compute != nullptr && !IsGraphics(); }
