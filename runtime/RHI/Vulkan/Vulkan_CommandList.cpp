@@ -704,7 +704,7 @@ namespace Spartan
             }
         }
 
-        // shading rate
+        // variable rate shading
         VkRenderingFragmentShadingRateAttachmentInfoKHR attachment_shading_rate = {};
         if (m_pso.render_target_vrs)
         {
@@ -713,7 +713,7 @@ namespace Spartan
             attachment_shading_rate.sType                          = VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR;
             attachment_shading_rate.imageView                      = static_cast<VkImageView>(m_pso.render_target_vrs->GetRhiRtv());
             attachment_shading_rate.imageLayout                    = vulkan_image_layout[static_cast<uint8_t>(m_pso.render_target_vrs->GetLayout(0))];
-            attachment_shading_rate.shadingRateAttachmentTexelSize = { RHI_Device::PropertyGetMinShadingRateTexelSizeX(), RHI_Device::PropertyGetMinShadingRateTexelSizeY() };
+            attachment_shading_rate.shadingRateAttachmentTexelSize = { RHI_Device::PropertyGetMaxShadingRateTexelSizeX(), RHI_Device::PropertyGetMaxShadingRateTexelSizeY() };
 
             rendering_info.pNext = &attachment_shading_rate;
         }
@@ -721,13 +721,19 @@ namespace Spartan
         // begin dynamic render pass instance
         vkCmdBeginRendering(static_cast<VkCommandBuffer>(m_rhi_resource), &rendering_info);
 
-        // set viewport
-        RHI_Viewport viewport = RHI_Viewport(
-            0.0f, 0.0f,
-            static_cast<float>(m_pso.GetWidth()),
-            static_cast<float>(m_pso.GetHeight())
-        );
-        SetViewport(viewport);
+        // set dynamic states
+        {
+            // variable rate shading
+            RHI_Device::SetVariableRateShading(this, m_pso.render_target_vrs != nullptr);
+
+            // set viewport
+            RHI_Viewport viewport = RHI_Viewport(
+                0.0f, 0.0f,
+                static_cast<float>(m_pso.GetWidth()),
+                static_cast<float>(m_pso.GetHeight())
+            );
+            SetViewport(viewport);
+        }
 
         m_render_pass_active = true;
     }

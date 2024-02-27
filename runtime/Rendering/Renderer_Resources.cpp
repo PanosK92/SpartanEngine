@@ -524,9 +524,9 @@ namespace Spartan
         shader(Renderer_Shader::depth_of_field_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::depth_of_field_c)->Compile(RHI_Shader_Compute, shader_dir + "depth_of_field.hlsl", async);
 
-        // shading rate
-        shader(Renderer_Shader::shading_rate_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::shading_rate_c)->Compile(RHI_Shader_Compute, shader_dir + "shading_rate.hlsl", async);
+        // variable rate shading
+        shader(Renderer_Shader::variable_rate_shading_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::variable_rate_shading_c)->Compile(RHI_Shader_Compute, shader_dir + "variable_rate_shading.hlsl", async);
     }
 
     void Renderer::CreateFonts()

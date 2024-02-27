@@ -246,12 +246,13 @@ namespace Spartan
 
     namespace functions
     {
-        PFN_vkCreateDebugUtilsMessengerEXT  create_messenger  = nullptr;
-        PFN_vkDestroyDebugUtilsMessengerEXT destroy_messenger = nullptr;
-        PFN_vkSetDebugUtilsObjectTagEXT     set_object_tag    = nullptr;
-        PFN_vkSetDebugUtilsObjectNameEXT    set_object_name   = nullptr;
-        PFN_vkCmdBeginDebugUtilsLabelEXT    marker_begin      = nullptr;
-        PFN_vkCmdEndDebugUtilsLabelEXT      marker_end        = nullptr;
+        PFN_vkCreateDebugUtilsMessengerEXT  create_messenger          = nullptr;
+        PFN_vkDestroyDebugUtilsMessengerEXT destroy_messenger         = nullptr;
+        PFN_vkSetDebugUtilsObjectTagEXT     set_object_tag            = nullptr;
+        PFN_vkSetDebugUtilsObjectNameEXT    set_object_name           = nullptr;
+        PFN_vkCmdBeginDebugUtilsLabelEXT    marker_begin              = nullptr;
+        PFN_vkCmdEndDebugUtilsLabelEXT      marker_end                = nullptr;
+        PFN_vkCmdSetFragmentShadingRateKHR  set_fragment_shading_rate = nullptr;
 
         void initialize(bool validation_enabled, bool gpu_markers_enabled)
         {
@@ -286,6 +287,9 @@ namespace Spartan
 
                 SP_ASSERT(set_object_tag && set_object_name);
             }
+
+            get_func(set_fragment_shading_rate, vkCmdSetFragmentShadingRateKHR);
+            SP_ASSERT(set_fragment_shading_rate);
         }
     }
 
@@ -1035,8 +1039,8 @@ namespace Spartan
                 m_max_texture_cube_dimension          = properties_device.properties.limits.maxImageDimensionCube;
                 m_max_texture_array_layers            = properties_device.properties.limits.maxImageArrayLayers;
                 m_max_push_constant_size              = properties_device.properties.limits.maxPushConstantsSize;
-                m_min_shading_rate_texel_size_x       = shading_rate_properties.minFragmentShadingRateAttachmentTexelSize.width;
-                m_min_shading_rate_texel_size_y       = shading_rate_properties.minFragmentShadingRateAttachmentTexelSize.height;
+                m_max_shading_rate_texel_size_x       = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.width;
+                m_max_shading_rate_texel_size_y       = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.height;
 
                 // disable profiler if timestamps are not supported
                 if (Profiler::IsGpuTimingEnabled())
@@ -2035,5 +2039,30 @@ namespace Spartan
     uint32_t RHI_Device::GetEnabledGraphicsStages()
     {
         return device_features::enabled_graphics_shader_stages;
+    }
+
+    void RHI_Device::SetVariableRateShading(const RHI_CommandList* cmd_list, const bool enabled)
+    {
+        // set the fragment shading rate state for the current pipeline
+        VkExtent2D fragment_size = { 1, 1 };
+        VkFragmentShadingRateCombinerOpKHR combiner_operatins[2];
+
+        // The combiners determine how the different shading rate values for the pipeline, primitives and attachment are combined
+        if (enabled)
+        {
+            // If shading rate from attachment is enabled, we set the combiner, so that the values from the attachment are used
+            // Combiner for pipeline (A) and primitive (B) - Not used in this sample
+            combiner_operatins[0] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
+            // Combiner for pipeline (A) and attachment (B), replace the pipeline default value (fragment_size) with the fragment sizes stored in the attachment
+            combiner_operatins[1] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_REPLACE_KHR;
+        }
+        else
+        {
+            // If shading rate from attachment is disabled, we keep the value set via the dynamic state
+            combiner_operatins[0] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
+            combiner_operatins[1] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
+        }
+
+        functions::set_fragment_shading_rate(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &fragment_size, combiner_operatins);
     }
 }
