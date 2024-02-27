@@ -148,9 +148,8 @@ namespace Spartan
         return 0;
     }
 
-    bool RHI_PipelineState::IsValid() const
+    void RHI_PipelineState::Validate() const
     {
-        // Deduce states
         bool has_shader_compute  = shader_compute ? shader_compute->IsCompiled() : false;
         bool has_shader_vertex   = shader_vertex  ? shader_vertex->IsCompiled()  : false;
         bool has_shader_pixel    = shader_pixel   ? shader_pixel->IsCompiled()   : false;
@@ -160,25 +159,12 @@ namespace Spartan
         bool is_graphics         = (has_shader_vertex || has_shader_pixel) && !has_shader_compute;
         bool is_compute          = has_shader_compute && (!has_shader_vertex && !has_shader_pixel);
 
-        // There must be at least one shader
-        if (!has_shader_compute && !has_shader_vertex && !has_shader_pixel)
-            return false;
-
-        // If this is a graphics then there must he graphics states
-        if (is_graphics&& !has_graphics_states)
-            return false;
-
-        // If this is a graphics then there must be a render target
-        if (is_graphics&& !has_render_target && !has_backbuffer)
+        SP_ASSERT_MSG(has_shader_compute || has_shader_vertex || has_shader_pixel, "There must be at least one shader");
+        if (is_graphics)
         {
-            if (!has_render_target && !has_backbuffer)
-                return false;
-            
-            if (has_render_target && has_backbuffer)
-                return false;
+            SP_ASSERT_MSG(has_graphics_states, "Graphics states are missing");
+            SP_ASSERT_MSG(has_render_target || has_backbuffer, "A render target is missing");
         }
-
-        return true;
     }
 
     bool RHI_PipelineState::HasClearValues() const
