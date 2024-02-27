@@ -34,21 +34,24 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float3 color     = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp_border), uv, 0.0f).rgb;
     float luminance_ = luminance(color);
 
-    // decide shading rate
-    uint shading_rate = 4;
-    if (luminance_ > 0.75f)
+    // determine shading rate
+    uint shading_rate = 1;
+    if (luminance_ <= 0.2f)
     {
-        shading_rate = 1;
+        shading_rate = 5; // most aggressive reduction for dark areas
     }
-    else if (luminance_ > 0.5f)
+    else if (luminance_ <= 0.4f)
     {
-        shading_rate = 2;
+        shading_rate = 4; // moderate reduction for low-mid luminance
     }
-    else if (luminance_ > 0.25f)
+    else if (luminance_ <= 0.6f)
     {
-        shading_rate = 3;
+        shading_rate = 3; // less reduction for mid luminance
+    }
+    else if (luminance_ <= 0.8f)
+    {
+        shading_rate = 2; // slight reduction for high luminance
     }
 
     tex_uav_uint[thread_id.xy] = shading_rate;
 }
-
