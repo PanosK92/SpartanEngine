@@ -90,7 +90,6 @@ namespace Spartan
 
         // misc
         uint32_t m_sync_index                                    = std::numeric_limits<uint32_t>::max();
-        uint32_t m_sync_index_previous                           = m_sync_index;
         uint32_t m_image_index                                   = std::numeric_limits<uint32_t>::max();
         uint32_t m_image_index_previous                          = m_image_index;
         void* m_sdl_window                                       = nullptr;

@@ -392,8 +392,13 @@ namespace Spartan
 
     void RHI_SwapChain::AcquireNextImage()
     {
+        if (m_sync_index != numeric_limits<uint32_t>::max())
+        {
+            m_acquire_fence[m_sync_index]->Wait();
+            m_acquire_fence[m_sync_index]->Reset();
+        }
+
         // get sync objects
-        m_sync_index_previous           = m_sync_index;
         m_sync_index                    = (m_sync_index + 1) % m_buffer_count;
         RHI_Semaphore* signal_semaphore = m_acquire_semaphore[m_sync_index].get();
         RHI_Fence* signal_fence         = m_acquire_fence[m_sync_index].get();
@@ -423,12 +428,6 @@ namespace Spartan
         SP_ASSERT_MSG(m_rhi_swapchain != nullptr,                                                           "Invalid swapchain");
         SP_ASSERT_MSG(m_image_index != m_image_index_previous,                                              "No image was acquired");
         SP_ASSERT_MSG(m_layouts[m_image_index] == RHI_Image_Layout::Present_Source,                         "Invalid layout");
-
-        if (m_sync_index_previous != numeric_limits<uint32_t>::max())
-        {
-            m_acquire_fence[m_sync_index_previous]->Wait();
-            m_acquire_fence[m_sync_index_previous]->Reset();
-        }
 
         // get the semaphores that present should wait for
         m_wait_semaphores.clear();
