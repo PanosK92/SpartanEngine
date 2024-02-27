@@ -49,6 +49,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         shading_rate = 3;
     }
 
-    tex_uav_uint[thread_id.xy] = 8;
+    tex_uav_uint[thread_id.xy] = shading_rate;
 }
 

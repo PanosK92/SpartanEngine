@@ -330,7 +330,7 @@ namespace Spartan
 
         UpdateConstantBufferFrame(cmd_list, false);
 
-        Pass_ShadingRate(cmd_list);
+        Pass_VariableRateShading(cmd_list);
         Pass_Skysphere(cmd_list);
 
         // light integration
@@ -417,13 +417,13 @@ namespace Spartan
         rt_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
     }
 
-    void Renderer::Pass_ShadingRate(RHI_CommandList* cmd_list)
+    void Renderer::Pass_VariableRateShading(RHI_CommandList* cmd_list)
     {
         if (!GetOption<bool>(Renderer_Option::VariableRateShading))
             return;
 
         // acquire shader
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::shading_rate_c).get();
+        RHI_Shader* shader_c = GetShader(Renderer_Shader::variable_rate_shading_c).get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -431,7 +431,7 @@ namespace Spartan
         RHI_Texture* tex_in  = GetFrameTexture();
         RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTexture::shading_rate).get();
 
-        cmd_list->BeginTimeblock("shading_rate");
+        cmd_list->BeginTimeblock("variable_rate_shading");
 
         // set pipeline state
         static RHI_PipelineState pso;
