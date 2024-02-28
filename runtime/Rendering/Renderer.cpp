@@ -260,9 +260,7 @@ namespace Spartan
         bool is_standalone = !Engine::IsFlagSet(EngineMode::Editor);
         if (is_standalone)
         {
-            cmd_current->BeginMarker("copy_to_back_buffer");
-            cmd_current->Blit(GetRenderTarget(Renderer_RenderTexture::frame_output).get(), swap_chain.get());
-            cmd_current->EndMarker();
+            BlitToBackBuffer(cmd_current, GetRenderTarget(Renderer_RenderTexture::frame_output).get());
         }
 
         // submit render work
@@ -775,6 +773,13 @@ namespace Spartan
         return swap_chain.get();
     }
     
+    void Renderer::BlitToBackBuffer(RHI_CommandList* cmd_list, RHI_Texture* texture)
+    {
+        cmd_list->BeginMarker("blit_to_back_buffer");
+        cmd_list->Blit(texture, swap_chain.get());
+        cmd_list->EndMarker();
+    }
+
     void Renderer::AddTextureForMipGeneration(RHI_Texture* texture)
     {
         lock_guard<mutex> guard(mutex_mip_generation);
