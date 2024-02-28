@@ -324,9 +324,9 @@ namespace Spartan
         SP_PROFILE_CPU();
 
         // acquire render targets
-        RHI_Texture* rt_render   = GetRenderTarget(Renderer_RenderTexture::frame_render).get();
-        RHI_Texture* rt_render_2 = GetRenderTarget(Renderer_RenderTexture::frame_render_2).get();
-        RHI_Texture* rt_output   = GetRenderTarget(Renderer_RenderTexture::frame_output).get();
+        RHI_Texture* rt_render   = GetRenderTarget(Renderer_RenderTarget::frame_render).get();
+        RHI_Texture* rt_render_2 = GetRenderTarget(Renderer_RenderTarget::frame_render_2).get();
+        RHI_Texture* rt_output   = GetRenderTarget(Renderer_RenderTarget::frame_output).get();
 
         UpdateConstantBufferFrame(cmd_list, false);
 
@@ -372,7 +372,7 @@ namespace Spartan
                 Pass_Light_Composition(cmd_list, rt_render); // compose diffuse, specular, ssgi, volumetric etc.
                 Pass_Light_ImageBased(cmd_list, rt_render);  // apply IBL and SSR
             
-                cmd_list->Blit(rt_render, GetRenderTarget(Renderer_RenderTexture::frame_render_opaque).get(), false);
+                cmd_list->Blit(rt_render, GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get(), false);
             }
             
             // transparent
@@ -429,7 +429,7 @@ namespace Spartan
 
         // acquire textures
         RHI_Texture* tex_in  = GetFrameTexture();
-        RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTexture::shading_rate).get();
+        RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::shading_rate).get();
 
         cmd_list->BeginTimeblock("variable_rate_shading");
 
@@ -608,7 +608,7 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_instanced_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
+        RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get();
         bool vrs               = GetOption<bool>(Renderer_Option::VariableRateShading);
 
         lock_guard lock(m_mutex_renderables);
@@ -617,7 +617,7 @@ namespace Spartan
         if (!is_transparent_pass)
         {
             // clear the first time
-            cmd_list->ClearRenderTarget(GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get(), rhi_color_dont_care, 0.0f);
+            cmd_list->ClearRenderTarget(GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(), rhi_color_dont_care, 0.0f);
         }
 
         auto pass = [cmd_list, shader_v, shader_instanced_v, shader_p, vrs](bool is_transparent_pass, bool is_occluder_pass)
@@ -641,9 +641,9 @@ namespace Spartan
                 pso.rasterizer_state            = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
                 pso.blend_state                 = GetBlendState(Renderer_BlendState::Disabled).get();
                 pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
-                pso.render_target_depth_texture = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
+                pso.render_target_depth_texture = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get();
                 pso.clear_depth                 = rhi_depth_load;
-                pso.render_target_vrs           = vrs ? GetRenderTarget(Renderer_RenderTexture::shading_rate).get() : nullptr;
+                pso.render_target_vrs           = vrs ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
                 cmd_list->SetPipelineState(pso);
 
                 for (shared_ptr<Entity>& entity : entities)
@@ -723,7 +723,7 @@ namespace Spartan
 
             cmd_list->Blit(
                 tex_depth,
-                GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_opaque).get(),
+                GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque).get(),
                 false
             );
         }
@@ -734,7 +734,7 @@ namespace Spartan
 
         cmd_list->Blit(
             tex_depth,
-            GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_output).get(),
+            GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output).get(),
             false
         );
 
@@ -751,11 +751,11 @@ namespace Spartan
             return;
 
         // acquire render targets
-        RHI_Texture* tex_color    = GetRenderTarget(Renderer_RenderTexture::gbuffer_color).get();
-        RHI_Texture* tex_normal   = GetRenderTarget(Renderer_RenderTexture::gbuffer_normal).get();
-        RHI_Texture* tex_material = GetRenderTarget(Renderer_RenderTexture::gbuffer_material).get();
-        RHI_Texture* tex_velocity = GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity).get();
-        RHI_Texture* tex_depth    = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
+        RHI_Texture* tex_color    = GetRenderTarget(Renderer_RenderTarget::gbuffer_color).get();
+        RHI_Texture* tex_normal   = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get();
+        RHI_Texture* tex_material = GetRenderTarget(Renderer_RenderTarget::gbuffer_material).get();
+        RHI_Texture* tex_velocity = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get();
+        RHI_Texture* tex_depth    = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get();
 
         lock_guard lock(m_mutex_renderables);
         cmd_list->BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
@@ -798,7 +798,7 @@ namespace Spartan
             pso.clear_color[3]                  = pso.clear_color[0];
             pso.render_target_depth_texture     = tex_depth;
             pso.clear_depth                     = rhi_depth_load;
-            pso.render_target_vrs               = vrs ? GetRenderTarget(Renderer_RenderTexture::shading_rate).get() : nullptr;
+            pso.render_target_vrs               = vrs ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
             cmd_list->SetPipelineState(pso);
 
             for (shared_ptr<Entity>& entity : entities)
@@ -851,7 +851,7 @@ namespace Spartan
             return;
 
         // acquire render target
-        RHI_Texture* tex_ssgi = GetRenderTarget(Renderer_RenderTexture::ssgi).get();
+        RHI_Texture* tex_ssgi = GetRenderTarget(Renderer_RenderTarget::ssgi).get();
 
         cmd_list->BeginTimeblock("ssgi");
 
@@ -868,7 +868,7 @@ namespace Spartan
         // set textures
         SetGbufferTextures(cmd_list);
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssgi);
-        cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse, GetRenderTarget(Renderer_RenderTexture::light_diffuse));
+        cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse, GetRenderTarget(Renderer_RenderTarget::light_diffuse));
 
         // render
         cmd_list->Dispatch(thread_group_count_x(tex_ssgi), thread_group_count_y(tex_ssgi));
@@ -894,8 +894,8 @@ namespace Spartan
             return;
 
         // acquire render targets
-        RHI_Texture* tex_ssr           = GetRenderTarget(Renderer_RenderTexture::ssr).get();
-        RHI_Texture* tex_ssr_roughness = GetRenderTarget(Renderer_RenderTexture::ssr_roughness).get();
+        RHI_Texture* tex_ssr           = GetRenderTarget(Renderer_RenderTarget::ssr).get();
+        RHI_Texture* tex_ssr_roughness = GetRenderTarget(Renderer_RenderTarget::ssr_roughness).get();
 
         cmd_list->BeginTimeblock(!is_transparent_pass ? "ssr" : "ssr_transparent");
 
@@ -948,7 +948,7 @@ namespace Spartan
             return;
 
         // acquire render targets
-        RHI_Texture* tex_sss = GetRenderTarget(Renderer_RenderTexture::sss).get();
+        RHI_Texture* tex_sss = GetRenderTarget(Renderer_RenderTarget::sss).get();
 
         cmd_list->BeginTimeblock("sss");
         {
@@ -958,7 +958,7 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // set textures
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));  // read from that
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));  // read from that
             cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, tex_sss); // write to that
 
             // iterate through all the lights
@@ -1053,7 +1053,7 @@ namespace Spartan
         cmd_list->BeginTimeblock("skysphere");
         {
             // acquire render targets
-            RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTexture::skysphere).get();
+            RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::skysphere).get();
 
             // set pipeline state
             static RHI_PipelineState pso;
@@ -1087,9 +1087,9 @@ namespace Spartan
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_transparent" : "light");
 
         // acquire render targets
-        RHI_Texture* tex_diffuse    = is_transparent_pass ? GetRenderTarget(Renderer_RenderTexture::light_diffuse_transparent).get()  : GetRenderTarget(Renderer_RenderTexture::light_diffuse).get();
-        RHI_Texture* tex_specular   = is_transparent_pass ? GetRenderTarget(Renderer_RenderTexture::light_specular_transparent).get() : GetRenderTarget(Renderer_RenderTexture::light_specular).get();
-        RHI_Texture* tex_volumetric = GetRenderTarget(Renderer_RenderTexture::light_volumetric).get();
+        RHI_Texture* tex_diffuse    = is_transparent_pass ? GetRenderTarget(Renderer_RenderTarget::light_diffuse_transparent).get()  : GetRenderTarget(Renderer_RenderTarget::light_diffuse).get();
+        RHI_Texture* tex_specular   = is_transparent_pass ? GetRenderTarget(Renderer_RenderTarget::light_specular_transparent).get() : GetRenderTarget(Renderer_RenderTarget::light_specular).get();
+        RHI_Texture* tex_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric).get();
 
         // clear render targets
         cmd_list->ClearRenderTarget(tex_diffuse,    Color::standard_black);
@@ -1115,8 +1115,8 @@ namespace Spartan
                 cmd_list->SetTexture(Renderer_BindingsUav::tex,     tex_diffuse);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex2,    tex_specular);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex3,    tex_volumetric);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTexture::sss).get());
-                cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,    GetRenderTarget(Renderer_RenderTexture::ssgi));
+                cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTarget::sss).get());
+                cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,    GetRenderTarget(Renderer_RenderTarget::ssgi));
    
                 // set shadow maps
                 {
@@ -1141,7 +1141,7 @@ namespace Spartan
 
                     // light index reads from the texture array index (sss)
                     m_pcb_pass_cpu.set_f3_value2(array_slice_index++, static_cast<float>(light->GetIndex()), 0.0f);
-                    cmd_list->SetTexture(Renderer_BindingsSrv::sss, GetRenderTarget(Renderer_RenderTexture::sss));
+                    cmd_list->SetTexture(Renderer_BindingsSrv::sss, GetRenderTarget(Renderer_RenderTarget::sss));
                 }
 
                 // push pass constants
@@ -1176,18 +1176,18 @@ namespace Spartan
         // push pass constants
         m_pcb_pass_cpu.set_resolution_out(tex_out);
         m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
-        m_pcb_pass_cpu.set_f3_value(static_cast<float>(GetRenderTarget(Renderer_RenderTexture::frame_render)->GetMipCount()), GetOption<float>(Renderer_Option::Fog), 0.0f);
+        m_pcb_pass_cpu.set_f3_value(static_cast<float>(GetRenderTarget(Renderer_RenderTarget::frame_render)->GetMipCount()), GetOption<float>(Renderer_Option::Fog), 0.0f);
         PushPassConstants(cmd_list);
 
         // set textures
         SetGbufferTextures(cmd_list);
         cmd_list->SetTexture(Renderer_BindingsUav::tex,              tex_out);
-        cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,    is_transparent_pass ? GetRenderTarget(Renderer_RenderTexture::light_diffuse_transparent).get()  : GetRenderTarget(Renderer_RenderTexture::light_diffuse).get());
-        cmd_list->SetTexture(Renderer_BindingsSrv::light_specular,   is_transparent_pass ? GetRenderTarget(Renderer_RenderTexture::light_specular_transparent).get() : GetRenderTarget(Renderer_RenderTexture::light_specular).get());
-        cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric, GetRenderTarget(Renderer_RenderTexture::light_volumetric));
-        cmd_list->SetTexture(Renderer_BindingsSrv::frame,            GetRenderTarget(Renderer_RenderTexture::frame_render_2)); // refraction
-        cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,             GetRenderTarget(Renderer_RenderTexture::ssgi));
-        cmd_list->SetTexture(Renderer_BindingsSrv::environment,      GetRenderTarget(Renderer_RenderTexture::skysphere));
+        cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,    is_transparent_pass ? GetRenderTarget(Renderer_RenderTarget::light_diffuse_transparent).get()  : GetRenderTarget(Renderer_RenderTarget::light_diffuse).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::light_specular,   is_transparent_pass ? GetRenderTarget(Renderer_RenderTarget::light_specular_transparent).get() : GetRenderTarget(Renderer_RenderTarget::light_specular).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric, GetRenderTarget(Renderer_RenderTarget::light_volumetric));
+        cmd_list->SetTexture(Renderer_BindingsSrv::frame,            GetRenderTarget(Renderer_RenderTarget::frame_render_2)); // refraction
+        cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,             GetRenderTarget(Renderer_RenderTarget::ssgi));
+        cmd_list->SetTexture(Renderer_BindingsSrv::environment,      GetRenderTarget(Renderer_RenderTarget::skysphere));
 
         // render
         cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
@@ -1210,18 +1210,18 @@ namespace Spartan
 
         // set textures
         SetGbufferTextures(cmd_list);
-        cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,        GetRenderTarget(Renderer_RenderTexture::ssgi));
-        cmd_list->SetTexture(Renderer_BindingsSrv::ssr,         GetRenderTarget(Renderer_RenderTexture::ssr));
-        cmd_list->SetTexture(Renderer_BindingsSrv::sss,         GetRenderTarget(Renderer_RenderTexture::sss));
-        cmd_list->SetTexture(Renderer_BindingsSrv::lutIbl,      GetRenderTarget(Renderer_RenderTexture::brdf_specular_lut));
-        cmd_list->SetTexture(Renderer_BindingsSrv::environment, GetRenderTarget(Renderer_RenderTexture::skysphere));
+        cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,        GetRenderTarget(Renderer_RenderTarget::ssgi));
+        cmd_list->SetTexture(Renderer_BindingsSrv::ssr,         GetRenderTarget(Renderer_RenderTarget::ssr));
+        cmd_list->SetTexture(Renderer_BindingsSrv::sss,         GetRenderTarget(Renderer_RenderTarget::sss));
+        cmd_list->SetTexture(Renderer_BindingsSrv::lutIbl,      GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut));
+        cmd_list->SetTexture(Renderer_BindingsSrv::environment, GetRenderTarget(Renderer_RenderTarget::skysphere));
         cmd_list->SetTexture(Renderer_BindingsUav::tex,         tex_out);
 
         // set pass constants
         m_pcb_pass_cpu.set_resolution_out(tex_out);
         m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
-        uint32_t mip_count_skysphere = GetRenderTarget(Renderer_RenderTexture::skysphere)->GetMipCount();
-        uint32_t mip_count_ssr       = GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount();
+        uint32_t mip_count_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount();
+        uint32_t mip_count_ssr       = GetRenderTarget(Renderer_RenderTarget::ssr)->GetMipCount();
         m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_count_skysphere), static_cast<float>(mip_count_ssr));
         PushPassConstants(cmd_list);
 
@@ -1248,7 +1248,7 @@ namespace Spartan
         const uint32_t thread_group_count_y_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(height) / thread_group_count));
 
         // acquire blur scratch buffer
-        RHI_Texture* tex_blur = GetRenderTarget(Renderer_RenderTexture::blur).get();
+        RHI_Texture* tex_blur = GetRenderTarget(Renderer_RenderTarget::blur).get();
         SP_ASSERT_MSG(width <= tex_blur->GetWidth() && height <= tex_blur->GetHeight(), "Input texture is larger than the blur scratch buffer");
 
         cmd_list->BeginMarker("blur_gaussian");
@@ -1296,10 +1296,10 @@ namespace Spartan
     void Renderer::Pass_PostProcess(RHI_CommandList* cmd_list)
     {
         // acquire render targets
-        RHI_Texture* rt_frame_render         = GetRenderTarget(Renderer_RenderTexture::frame_render).get();
-        RHI_Texture* rt_frame_render_scratch = GetRenderTarget(Renderer_RenderTexture::frame_render_2).get();
-        RHI_Texture* rt_frame_output         = GetRenderTarget(Renderer_RenderTexture::frame_output).get();
-        RHI_Texture* rt_frame_output_scratch = GetRenderTarget(Renderer_RenderTexture::frame_output_2).get();
+        RHI_Texture* rt_frame_render         = GetRenderTarget(Renderer_RenderTarget::frame_render).get();
+        RHI_Texture* rt_frame_render_scratch = GetRenderTarget(Renderer_RenderTarget::frame_render_2).get();
+        RHI_Texture* rt_frame_output         = GetRenderTarget(Renderer_RenderTarget::frame_output).get();
+        RHI_Texture* rt_frame_output_scratch = GetRenderTarget(Renderer_RenderTarget::frame_output_2).get();
 
         cmd_list->BeginMarker("post_proccess");
 
@@ -1418,7 +1418,7 @@ namespace Spartan
 
         cmd_list->BeginMarker("taa");
 
-        RHI_Texture* tex_history = GetRenderTarget(Renderer_RenderTexture::frame_render_history).get();
+        RHI_Texture* tex_history = GetRenderTarget(Renderer_RenderTarget::frame_render_history).get();
 
         // set pipeline state
         static RHI_PipelineState pso;
@@ -1457,7 +1457,7 @@ namespace Spartan
         cmd_list->BeginTimeblock("bloom");
 
         // Acquire render target
-        RHI_Texture* tex_bloom = GetRenderTarget(Renderer_RenderTexture::bloom).get();
+        RHI_Texture* tex_bloom = GetRenderTarget(Renderer_RenderTarget::bloom).get();
 
         // Luminance
         cmd_list->BeginMarker("luminance");
@@ -1769,7 +1769,7 @@ namespace Spartan
 
         cmd_list->BeginMarker("antiflicker");
 
-        RHI_Texture* tex_scratch = GetRenderTarget(Renderer_RenderTexture::antiflicker).get();
+        RHI_Texture* tex_scratch = GetRenderTarget(Renderer_RenderTarget::antiflicker).get();
 
         // set pipeline state
         static RHI_PipelineState pso;
@@ -1894,9 +1894,9 @@ namespace Spartan
         RHI_FidelityFX::FSR2_Dispatch(
             cmd_list,
             tex_in,
-            GetRenderTarget(Renderer_RenderTexture::frame_render_opaque).get(),
-            GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get(),
-            GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity).get(),
+            GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get(),
+            GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(),
+            GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
             tex_out,
             GetCamera().get(),
             m_cb_frame_cpu.delta_time,
@@ -2012,7 +2012,7 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_output).get();
+        RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output).get();
 
         cmd_list->BeginTimeblock("grid");
 
@@ -2071,7 +2071,7 @@ namespace Spartan
         pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Wireframe_cull_none).get();
         pso.render_target_color_textures[0] = tex_out;
         pso.clear_color[0]                  = rhi_color_load;
-        pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_output).get();
+        pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output).get();
 
         // world space rendering
         m_pcb_pass_cpu.transform = Matrix::Identity;
@@ -2156,7 +2156,7 @@ namespace Spartan
             {
                 cmd_list->BeginTimeblock("outline");
                 {
-                    RHI_Texture* tex_outline = GetRenderTarget(Renderer_RenderTexture::outline).get();
+                    RHI_Texture* tex_outline = GetRenderTarget(Renderer_RenderTarget::outline).get();
 
                     if (shared_ptr<Renderable> renderable = entity_selected->GetComponent<Renderable>())
                     {
@@ -2289,7 +2289,7 @@ namespace Spartan
         cmd_list->BeginTimeblock("light_integration_brdf_specular_lut");
 
         // acquire render target
-        RHI_Texture* tex_brdf_specular_lut = GetRenderTarget(Renderer_RenderTexture::brdf_specular_lut).get();
+        RHI_Texture* tex_brdf_specular_lut = GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut).get();
 
         // set pipeline state
         static RHI_PipelineState pso;
@@ -2318,7 +2318,7 @@ namespace Spartan
             return;
 
         // acquire render target
-        RHI_Texture* tex_environment = GetRenderTarget(Renderer_RenderTexture::skysphere).get();
+        RHI_Texture* tex_environment = GetRenderTarget(Renderer_RenderTarget::skysphere).get();
 
         cmd_list->BeginTimeblock("light_integration_environment_filter");
         {

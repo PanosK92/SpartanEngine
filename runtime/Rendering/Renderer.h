@@ -111,7 +111,7 @@ namespace Spartan
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
 
         // get all
-        static std::array<std::shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTexture::max)>& GetRenderTargets();
+        static std::array<std::shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTarget::max)>& GetRenderTargets();
         static std::array<std::shared_ptr<RHI_Shader>, static_cast<uint32_t>(Renderer_Shader::max)>& GetShaders();
         static std::array<std::shared_ptr<RHI_StructuredBuffer>, 3>& GetStructuredBuffers();
 
@@ -119,7 +119,7 @@ namespace Spartan
         static std::shared_ptr<RHI_RasterizerState> GetRasterizerState(const Renderer_RasterizerState type);
         static std::shared_ptr<RHI_DepthStencilState> GetDepthStencilState(const Renderer_DepthStencilState type);
         static std::shared_ptr<RHI_BlendState> GetBlendState(const Renderer_BlendState type);
-        static std::shared_ptr<RHI_Texture> GetRenderTarget(const Renderer_RenderTexture type);
+        static std::shared_ptr<RHI_Texture> GetRenderTarget(const Renderer_RenderTarget type);
         static std::shared_ptr<RHI_Shader> GetShader(const Renderer_Shader type);
         static std::shared_ptr<RHI_Sampler> GetSampler(const Renderer_Sampler type);
         static std::shared_ptr<RHI_ConstantBuffer>& GetConstantBufferFrame();
