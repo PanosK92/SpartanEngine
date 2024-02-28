@@ -72,26 +72,26 @@ namespace Spartan
 
     RHI_CommandList::~RHI_CommandList()
     {
-        // Wait in case it's still in use by the GPU
+        // wait in case it's still in use by the GPU
         RHI_Device::QueueWaitAll();
 
-        // Command list
+        // command list
         d3d12_utility::release<ID3D12CommandQueue>(m_rhi_resource);
     }
 
     void RHI_CommandList::Begin()
     {
-        // If the command list is in use, wait for it
+        // if the command list is in use, wait for it
         if (m_state == RHI_CommandListState::Submitted)
         {
             WaitForExecution();
         }
 
-        // Validate a few things
+        // validate a few things
         SP_ASSERT(m_rhi_resource != nullptr);
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
-        // Unlike Vulkan, D3D12 wraps both begin and reset under Reset().
+        // unlike Vulkan, D3D12 wraps both begin and reset under Reset().
         SP_ASSERT_MSG(d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->Reset(
             static_cast<ID3D12CommandAllocator*>(m_rhi_cmd_pool_resource), nullptr)),
             "Failed to reset command list");
@@ -101,7 +101,7 @@ namespace Spartan
 
     void RHI_CommandList::End()
     {
-        // Verify a few things
+        // verify a few things
         SP_ASSERT(m_rhi_resource != nullptr);
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
@@ -117,7 +117,7 @@ namespace Spartan
 
     void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)
     {
-        SP_ASSERT(pso.IsValid() && "Pipeline state is invalid");
+        pso.Validate();
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         SP_ASSERT_MSG(false, "Function is not implemented");
