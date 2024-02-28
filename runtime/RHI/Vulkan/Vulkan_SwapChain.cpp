@@ -375,8 +375,7 @@ namespace Spartan
         m_height = height;
 
         // reset image index
-        m_image_index          = numeric_limits<uint32_t>::max();
-        m_image_index_previous = m_image_index;
+        m_image_index = numeric_limits<uint32_t>::max();
 
         Destroy();
         Create();
@@ -405,7 +404,6 @@ namespace Spartan
         SP_ASSERT_MSG(signal_semaphore->GetStateCpu() != RHI_Sync_State::Submitted, "The semaphore is already signaled");
 
         // acquire next image
-        m_image_index_previous = m_image_index;
         SP_VK_ASSERT_MSG(vkAcquireNextImageKHR(
             RHI_Context::device,                                          // device
             static_cast<VkSwapchainKHR>(m_rhi_swapchain),                 // swapchain
@@ -426,7 +424,6 @@ namespace Spartan
 
         SP_ASSERT_MSG(!(SDL_GetWindowFlags(static_cast<SDL_Window*>(m_sdl_window)) & SDL_WINDOW_MINIMIZED), "Present should not be called for a minimized window");
         SP_ASSERT_MSG(m_rhi_swapchain != nullptr,                                                           "Invalid swapchain");
-        SP_ASSERT_MSG(m_image_index != m_image_index_previous,                                              "No image was acquired");
         SP_ASSERT_MSG(m_layouts[m_image_index] == RHI_Image_Layout::Present_Source,                         "Invalid layout");
 
         // get the semaphores that present should wait for
@@ -453,7 +450,7 @@ namespace Spartan
             m_wait_semaphores.emplace_back(semaphore_image_aquired);
         }
 
-        RHI_Device::QueuePresent(m_rhi_swapchain, &m_image_index, m_wait_semaphores);
+        RHI_Device::QueuePresent(m_rhi_swapchain, m_image_index, m_wait_semaphores);
         AcquireNextImage();
     }
 

@@ -39,7 +39,7 @@ namespace Spartan
         static void Destroy();
 
         // queues
-        static void QueuePresent(void* swapchain_view, uint32_t* image_index, std::vector<RHI_Semaphore*>& wait_semaphores);
+        static void QueuePresent(void* swapchain_view, const uint32_t image_index, std::vector<RHI_Semaphore*>& wait_semaphores);
         static void QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore = nullptr, RHI_Semaphore* signal_semaphore = nullptr, RHI_Fence* signal_fence = nullptr);
         static void QueueWait(const RHI_Queue_Type type);
         static void QueueWaitAll();

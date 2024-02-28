@@ -319,7 +319,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::noise_blue,   GetStandardTexture(Renderer_StandardTexture::Noise_blue));
     }
 
-    void Renderer::Pass_Frame(RHI_CommandList* cmd_list)
+    void Renderer::ProduceFrame(RHI_CommandList* cmd_list)
     {
         SP_PROFILE_CPU();
 
@@ -328,7 +328,7 @@ namespace Spartan
         RHI_Texture* rt_render_2 = GetRenderTarget(Renderer_RenderTarget::frame_render_2).get();
         RHI_Texture* rt_output   = GetRenderTarget(Renderer_RenderTarget::frame_output).get();
 
-        UpdateConstantBufferFrame(cmd_list, false);
+        UpdateConstantBufferFrame(cmd_list);
 
         Pass_VariableRateShading(cmd_list);
         Pass_Skysphere(cmd_list);
@@ -685,7 +685,7 @@ namespace Spartan
                     {
                         if (Material* material = renderable->GetMaterial())
                         {
-                            // for alpah testing
+                            // for alpha testing
                             m_pcb_pass_cpu.set_f3_value(
                                 material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
                                 material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,

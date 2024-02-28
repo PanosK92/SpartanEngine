@@ -1304,7 +1304,7 @@ namespace Spartan
 
     // queues
 
-    void RHI_Device::QueuePresent(void* swapchain, uint32_t* image_index, vector<RHI_Semaphore*>& wait_semaphores)
+    void RHI_Device::QueuePresent(void* swapchain, const uint32_t image_index, vector<RHI_Semaphore*>& wait_semaphores)
     {
         lock_guard<mutex> lock(queues::mutex_queue);
 
@@ -1324,7 +1324,7 @@ namespace Spartan
         present_info.pWaitSemaphores    = vk_wait_semaphores.data();
         present_info.swapchainCount     = 1;
         present_info.pSwapchains        = reinterpret_cast<VkSwapchainKHR*>(&swapchain);
-        present_info.pImageIndices      = image_index;
+        present_info.pImageIndices      = &image_index;
 
         SP_VK_ASSERT_MSG(vkQueuePresentKHR(static_cast<VkQueue>(queues::graphics), &present_info), "Failed to present");
 

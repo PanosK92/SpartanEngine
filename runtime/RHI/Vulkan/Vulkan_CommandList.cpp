@@ -1646,8 +1646,8 @@ namespace Spartan
         {
             VkMemoryBarrier barrier = {};
             barrier.sType           = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-            barrier.srcAccessMask   = VK_ACCESS_HOST_WRITE_BIT;   // after host writes
-            barrier.dstAccessMask   = VK_ACCESS_UNIFORM_READ_BIT; // before shader reads
+            barrier.srcAccessMask   = VK_ACCESS_HOST_WRITE_BIT;   // wait for CPU writes to complete
+            barrier.dstAccessMask   = VK_ACCESS_UNIFORM_READ_BIT; // then the shaders can read it
 
             vkCmdPipelineBarrier(
                 static_cast<VkCommandBuffer>(m_rhi_resource),
@@ -1666,8 +1666,8 @@ namespace Spartan
             barrier.buffer                = static_cast<VkBuffer>(rhi_buffer);
             barrier.size                  = VK_WHOLE_SIZE;
             barrier.offset                = 0;
-            barrier.srcAccessMask         = VK_ACCESS_HOST_WRITE_BIT; // after host writes
-            barrier.dstAccessMask         = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT; // before shader reads/writes
+            barrier.srcAccessMask         = VK_ACCESS_HOST_WRITE_BIT;                               // wait for CPU writes to complete
+            barrier.dstAccessMask         = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT; // then the shaders can read/write it
 
             vkCmdPipelineBarrier(
                 static_cast<VkCommandBuffer>(m_rhi_resource),
