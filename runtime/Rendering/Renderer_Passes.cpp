@@ -1248,7 +1248,7 @@ namespace Spartan
         const uint32_t thread_group_count_y_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(height) / thread_group_count));
 
         // acquire blur scratch buffer
-        RHI_Texture* tex_blur = GetRenderTarget(Renderer_RenderTexture::scratch_blur).get();
+        RHI_Texture* tex_blur = GetRenderTarget(Renderer_RenderTexture::blur).get();
         SP_ASSERT_MSG(width <= tex_blur->GetWidth() && height <= tex_blur->GetHeight(), "Input texture is larger than the blur scratch buffer");
 
         cmd_list->BeginMarker("blur_gaussian");
@@ -1769,7 +1769,7 @@ namespace Spartan
 
         cmd_list->BeginMarker("antiflicker");
 
-        RHI_Texture* tex_scratch = GetRenderTarget(Renderer_RenderTexture::scratch_antiflicker).get();
+        RHI_Texture* tex_scratch = GetRenderTarget(Renderer_RenderTexture::antiflicker).get();
 
         // set pipeline state
         static RHI_PipelineState pso;

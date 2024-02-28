@@ -243,8 +243,8 @@ namespace Spartan
         sss,
         skysphere,
         bloom,
-        scratch_blur,
-        scratch_antiflicker,
+        blur,
+        antiflicker,
         outline,
         shading_rate,
         max
