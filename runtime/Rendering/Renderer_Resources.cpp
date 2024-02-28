@@ -263,6 +263,7 @@ namespace Spartan
             // misc
             render_target(Renderer_RenderTexture::sss)          = make_shared<RHI_Texture2DArray>(width_render, height_render, RHI_Format::R16_Float, 4, flags_standard | RHI_Texture_ClearBlit, "sss");
             render_target(Renderer_RenderTexture::ssgi)         = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_standard, "ssgi");
+            render_target(Renderer_RenderTexture::antiflicker)  = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_standard | RHI_Texture_ClearBlit, "antiflicker");
             render_target(Renderer_RenderTexture::shading_rate) = make_unique<RHI_Texture2D>(width_render / 4, height_render / 4, 1, RHI_Format::R8_Uint, RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_Rtv | RHI_Texture_Vrs, "shading_rate");
         }
 
@@ -279,18 +280,14 @@ namespace Spartan
             render_target(Renderer_RenderTexture::gbuffer_depth_output) = make_shared<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::D32_Float, flags_depth_buffer | RHI_Texture_ClearBlit, "gbuffer_depth_output");
         }
 
-        // fixed resolution - these are only done once
+        // fixed resolution - created only once
         if (!render_target(Renderer_RenderTexture::brdf_specular_lut))
         {
             render_target(Renderer_RenderTexture::brdf_specular_lut) = make_unique<RHI_Texture2D>(512, 512, 1, RHI_Format::R8G8_Unorm, flags_standard, "brdf_specular_lut");
             render_target(Renderer_RenderTexture::skysphere)         = make_unique<RHI_Texture2D>(4096, 2048, mip_count, RHI_Format::R11G11B10_Float, flags_standard | RHI_Texture_PerMipViews, "skysphere");
+            render_target(Renderer_RenderTexture::blur)              = make_unique<RHI_Texture2D>(4096, 4096, 1, RHI_Format::R16G16B16A16_Float, flags_standard, "blur");
         }
         
-        // scratch textures
-        {
-            render_target(Renderer_RenderTexture::scratch_blur)        = make_unique<RHI_Texture2D>(4096, 4096, 1, RHI_Format::R16G16B16A16_Float, flags_standard, "scratch_blur");
-            render_target(Renderer_RenderTexture::scratch_antiflicker) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_standard | RHI_Texture_ClearBlit, "scratch_antiflicker");
-        }
 
         RHI_Device::QueueWaitAll();
         RHI_FidelityFX::FSR2_Resize(GetResolutionRender(), GetResolutionOutput());
