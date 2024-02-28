@@ -87,7 +87,7 @@ namespace Spartan
                 break;
 
             case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
-                access_mask = !is_destination_mask ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT : VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+                access_mask = VK_ACCESS_2_NONE;
                 break;
 
                 // transfer
@@ -151,9 +151,14 @@ namespace Spartan
             return access_mask;
         }
 
-        VkPipelineStageFlags access_mask_to_pipeline_stage(VkAccessFlags access_flags)
+        VkPipelineStageFlags access_mask_to_pipeline_stage_mask(VkAccessFlags access_flags, bool is_swapchain)
         {
-            VkPipelineStageFlags stages = 0;
+            if (is_swapchain)
+            {
+                return VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            }
+
+            VkPipelineStageFlags stages      = 0;
             uint32_t enabled_graphics_stages = RHI_Device::GetEnabledGraphicsStages();
 
             while (access_flags != 0)
@@ -232,6 +237,10 @@ namespace Spartan
 
                 case VK_ACCESS_HOST_WRITE_BIT:
                     stages |= VK_PIPELINE_STAGE_HOST_BIT;
+                    break;
+
+                case VK_ACCESS_MEMORY_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
                     break;
 
                 default:
@@ -1589,18 +1598,20 @@ namespace Spartan
             EndRenderPass();
         }
 
+        bool is_swapchain = layout_old == RHI_Image_Layout::Present_Source || layout_new == RHI_Image_Layout::Present_Source;
+
         vkCmdPipelineBarrier
         (
-            static_cast<VkCommandBuffer>(m_rhi_resource),               // commandBuffer
-            access_mask_to_pipeline_stage(image_barrier.srcAccessMask), // pipeline stage(s) that must be completed before the barrier is crossed
-            access_mask_to_pipeline_stage(image_barrier.dstAccessMask), // pipeline stage(s) that must wait for the barrier to be crossed before beginning
-            0,                                                          // dependencyFlags
-            0,                                                          // memoryBarrierCount
-            nullptr,                                                    // pMemoryBarriers
-            0,                                                          // bufferMemoryBarrierCount
-            nullptr,                                                    // pBufferMemoryBarriers
-            1,                                                          // imageMemoryBarrierCount
-            &image_barrier                                              // pImageMemoryBarriers
+            static_cast<VkCommandBuffer>(m_rhi_resource),                                  // commandBuffer
+            access_mask_to_pipeline_stage_mask(image_barrier.srcAccessMask, is_swapchain), // pipeline stage(s) that must be completed before the barrier is crossed
+            access_mask_to_pipeline_stage_mask(image_barrier.dstAccessMask, is_swapchain), // pipeline stage(s) that must wait for the barrier to be crossed before beginning
+            0,                                                                             // dependencyFlags
+            0,                                                                             // memoryBarrierCount
+            nullptr,                                                                       // pMemoryBarriers
+            0,                                                                             // bufferMemoryBarrierCount
+            nullptr,                                                                       // pBufferMemoryBarriers
+            1,                                                                             // imageMemoryBarrierCount
+            &image_barrier                                                                 // pImageMemoryBarriers
         );
 
         Profiler::m_rhi_pipeline_barriers++;
