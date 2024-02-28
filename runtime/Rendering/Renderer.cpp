@@ -244,17 +244,15 @@ namespace Spartan
             SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
         }
 
-        // get a command list and begin recording
+        RHI_Device::Tick(frame_num);
+
+        // begin command list
         m_cmd_pool->Tick();
         cmd_current = m_cmd_pool->GetCurrentCommandList();
         cmd_current->Begin();
 
-        // do some logistics work
         OnSyncPoint(cmd_current);
-        RHI_Device::Tick(frame_num);
-
-        // do all the render passes
-        Pass_Frame(cmd_current);
+        ProduceFrame(cmd_current);
 
         // blit to back buffer when not in editor mode
         bool is_standalone = !Engine::IsFlagSet(EngineMode::Editor);
@@ -360,90 +358,77 @@ namespace Spartan
         SP_LOG_INFO("Output resolution output has been set to %dx%d", width, height);
     }
 
-    void Renderer::UpdateConstantBufferFrame(RHI_CommandList* cmd_list, const bool set /*= true*/)
+    void Renderer::UpdateConstantBufferFrame(RHI_CommandList* cmd_list)
     {
-        // we are temporarily using the frame buffer to update the material index
-        // multiple times per frame, so do the update in this function only every
-        // frame, but do set the constant buffer
-        bool is_new_frame = m_cb_frame_cpu.frame != frame_num;
-
-        // update
-        if (is_new_frame)
+        // matrices
         {
-            // matrices
-            {
-                if (m_camera)
-                {
-                    if (near_plane != m_camera->GetNearPlane() || far_plane != m_camera->GetFarPlane())
-                    {
-                        near_plane                    = m_camera->GetNearPlane();
-                        far_plane                     = m_camera->GetFarPlane();
-                        dirty_orthographic_projection = true;
-                    }
-
-                    m_cb_frame_cpu.view       = m_camera->GetViewMatrix();
-                    m_cb_frame_cpu.projection = m_camera->GetProjectionMatrix();
-                }
-
-                if (dirty_orthographic_projection)
-                { 
-                    // near clip does not affect depth accuracy in orthographic projection, so set it to 0 to avoid problems which can result an infinitely small [3,2] (NaN) after the multiplication below.
-                    Matrix projection_ortho              = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, far_plane);
-                    m_cb_frame_cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vector3(0, 0, -near_plane), Vector3::Forward, Vector3::Up) * projection_ortho;
-                    dirty_orthographic_projection        = false;
-                }
-            }
-
-            // generate jitter sample in case FSR (which also does TAA) is enabled
-            Renderer_Upsampling upsampling_mode = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling);
-            if (upsampling_mode == Renderer_Upsampling::FSR2 || GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa)
-            {
-                RHI_FidelityFX::FSR2_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
-                m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(jitter_offset.x, jitter_offset.y, 0.0f));
-            }
-            else
-            {
-                jitter_offset = Vector2::Zero;
-            }
-            
-            // update the remaining of the frame buffer
-            m_cb_frame_cpu.view_projection_previous = m_cb_frame_cpu.view_projection;
-            m_cb_frame_cpu.view_projection          = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
-            m_cb_frame_cpu.view_projection_inv      = Matrix::Invert(m_cb_frame_cpu.view_projection);
             if (m_camera)
             {
-                m_cb_frame_cpu.view_projection_unjittered = m_cb_frame_cpu.view * m_camera->GetProjectionMatrix();
-                m_cb_frame_cpu.camera_near                = m_camera->GetNearPlane();
-                m_cb_frame_cpu.camera_far                 = m_camera->GetFarPlane();
-                m_cb_frame_cpu.camera_position_previous   = m_cb_frame_cpu.camera_position;
-                m_cb_frame_cpu.camera_position            = m_camera->GetEntity()->GetPosition();
-                m_cb_frame_cpu.camera_direction           = m_camera->GetEntity()->GetForward();
-                m_cb_frame_cpu.camera_last_movement_time  = (m_cb_frame_cpu.camera_position - m_cb_frame_cpu.camera_position_previous).LengthSquared() != 0.0f
-                    ? static_cast<float>(Timer::GetTimeSec()) : m_cb_frame_cpu.camera_last_movement_time;
-            }
-            m_cb_frame_cpu.resolution_output   = m_resolution_output;
-            m_cb_frame_cpu.resolution_render   = m_resolution_render;
-            m_cb_frame_cpu.taa_jitter_previous = m_cb_frame_cpu.taa_jitter_current;
-            m_cb_frame_cpu.taa_jitter_current  = jitter_offset;
-            m_cb_frame_cpu.time                = static_cast<float>(Timer::GetTimeSec());
-            m_cb_frame_cpu.delta_time          = static_cast<float>(Timer::GetDeltaTimeSmoothedSec()); // removes stutters from motion related code
-            m_cb_frame_cpu.frame               = static_cast<uint32_t>(frame_num);
-            m_cb_frame_cpu.gamma               = GetOption<float>(Renderer_Option::Gamma);
+                if (near_plane != m_camera->GetNearPlane() || far_plane != m_camera->GetFarPlane())
+                {
+                    near_plane                    = m_camera->GetNearPlane();
+                    far_plane                     = m_camera->GetFarPlane();
+                    dirty_orthographic_projection = true;
+                }
 
-            // these must match what common_buffer.hlsl is reading
-            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections),        1 << 0);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceGlobalIllumination), 1 << 1);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Fog),                           1 << 2);
+                m_cb_frame_cpu.view       = m_camera->GetViewMatrix();
+                m_cb_frame_cpu.projection = m_camera->GetProjectionMatrix();
+            }
+
+            if (dirty_orthographic_projection)
+            { 
+                // near clip does not affect depth accuracy in orthographic projection, so set it to 0 to avoid problems which can result an infinitely small [3,2] (NaN) after the multiplication below.
+                Matrix projection_ortho              = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, far_plane);
+                m_cb_frame_cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vector3(0, 0, -near_plane), Vector3::Forward, Vector3::Up) * projection_ortho;
+                dirty_orthographic_projection        = false;
+            }
         }
+
+        // generate jitter sample in case FSR (which also does TAA) is enabled
+        Renderer_Upsampling upsampling_mode = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling);
+        if (upsampling_mode == Renderer_Upsampling::FSR2 || GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa)
+        {
+            RHI_FidelityFX::FSR2_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
+            m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(jitter_offset.x, jitter_offset.y, 0.0f));
+        }
+        else
+        {
+            jitter_offset = Vector2::Zero;
+        }
+        
+        // update the remaining of the frame buffer
+        m_cb_frame_cpu.view_projection_previous = m_cb_frame_cpu.view_projection;
+        m_cb_frame_cpu.view_projection          = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
+        m_cb_frame_cpu.view_projection_inv      = Matrix::Invert(m_cb_frame_cpu.view_projection);
+        if (m_camera)
+        {
+            m_cb_frame_cpu.view_projection_unjittered = m_cb_frame_cpu.view * m_camera->GetProjectionMatrix();
+            m_cb_frame_cpu.camera_near                = m_camera->GetNearPlane();
+            m_cb_frame_cpu.camera_far                 = m_camera->GetFarPlane();
+            m_cb_frame_cpu.camera_position_previous   = m_cb_frame_cpu.camera_position;
+            m_cb_frame_cpu.camera_position            = m_camera->GetEntity()->GetPosition();
+            m_cb_frame_cpu.camera_direction           = m_camera->GetEntity()->GetForward();
+            m_cb_frame_cpu.camera_last_movement_time  = (m_cb_frame_cpu.camera_position - m_cb_frame_cpu.camera_position_previous).LengthSquared() != 0.0f
+                ? static_cast<float>(Timer::GetTimeSec()) : m_cb_frame_cpu.camera_last_movement_time;
+        }
+        m_cb_frame_cpu.resolution_output   = m_resolution_output;
+        m_cb_frame_cpu.resolution_render   = m_resolution_render;
+        m_cb_frame_cpu.taa_jitter_previous = m_cb_frame_cpu.taa_jitter_current;
+        m_cb_frame_cpu.taa_jitter_current  = jitter_offset;
+        m_cb_frame_cpu.time                = static_cast<float>(Timer::GetTimeSec());
+        m_cb_frame_cpu.delta_time          = static_cast<float>(Timer::GetDeltaTimeSmoothedSec()); // removes stutters from motion related code
+        m_cb_frame_cpu.frame               = static_cast<uint32_t>(frame_num);
+        m_cb_frame_cpu.gamma               = GetOption<float>(Renderer_Option::Gamma);
+
+        // these must match what common_buffer.hlsl is reading
+        m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections),        1 << 0);
+        m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceGlobalIllumination), 1 << 1);
+        m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Fog),                           1 << 2);
 
         // set
         shared_ptr<RHI_ConstantBuffer>& buffer = GetConstantBufferFrame();
         buffer->ResetOffset();
         buffer->Update(&m_cb_frame_cpu);
-        if (set)
-        {
-            cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, buffer);
-        }
 
         cmd_list->InsertBarrierBufferReadWrite(buffer->GetRhiResource(), true);
     }

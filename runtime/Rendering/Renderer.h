@@ -132,7 +132,7 @@ namespace Spartan
 
     private:
         // constant and push constant buffers
-        static void UpdateConstantBufferFrame(RHI_CommandList* cmd_list, const bool set = true);
+        static void UpdateConstantBufferFrame(RHI_CommandList* cmd_list);
         static void PushPassConstants(RHI_CommandList* cmd_list);
 
         // resource creation
@@ -150,7 +150,7 @@ namespace Spartan
         static void CreateStandardMaterials();
 
         // passes - core
-        static void Pass_Frame(RHI_CommandList* cmd_list);
+        static void ProduceFrame(RHI_CommandList* cmd_list);
         static void Pass_VariableRateShading(RHI_CommandList* cmd_list);
         static void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
         static void Pass_Visibility(RHI_CommandList* cmd_list);
