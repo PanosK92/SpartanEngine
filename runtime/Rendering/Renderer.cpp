@@ -427,7 +427,6 @@ namespace Spartan
 
         // set
         shared_ptr<RHI_ConstantBuffer>& buffer = GetConstantBufferFrame();
-        buffer->ResetOffset();
         buffer->Update(&m_cb_frame_cpu);
 
         cmd_list->InsertBarrierBufferReadWrite(buffer->GetRhiResource(), true);
@@ -558,6 +557,7 @@ namespace Spartan
             }
 
             GetStructuredBuffer(Renderer_StructuredBuffer::Spd)->ResetOffset();
+            GetConstantBufferFrame()->ResetOffset();
 
             if (bindless_textures_dirty)
             {

@@ -72,8 +72,7 @@ namespace Spartan
 
     void Renderer::CreateConstantBuffers()
     {
-        uint32_t times_used_in_frame = 1;
-        uint32_t element_count       = times_used_in_frame * resources_frame_lifetime;
+        uint32_t element_count = resources_frame_lifetime;
 
         constant_buffer_frame = make_shared<RHI_ConstantBuffer>(string("frame"));
         constant_buffer_frame->Create<Cb_Frame>(element_count);
