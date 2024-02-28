@@ -87,7 +87,7 @@ namespace Spartan
                 break;
 
             case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
-                access_mask = VK_ACCESS_2_NONE;
+                access_mask = !is_destination_mask ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT : VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
                 break;
 
                 // transfer
@@ -1583,55 +1583,24 @@ namespace Spartan
         image_barrier.srcAccessMask                   = layout_to_access_mask(image_barrier.oldLayout, false); // operations that must complete before the barrier is crossed - example: write
         image_barrier.dstAccessMask                   = layout_to_access_mask(image_barrier.newLayout, true);  // operations that must wait for the barrier to be crossed     - example: read
 
-        VkPipelineStageFlags source_stage_mask      = 0; // pipeline stage(s) that must be completed before the barrier is crossed
-        VkPipelineStageFlags destination_stage_mask = 0; // pipeline stage(s) that must wait for the barrier to be crossed before beginning
-
-        // source mask
-        {
-            if (image_barrier.oldLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
-            {
-                source_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-            }
-            else if (image_barrier.oldLayout == VK_IMAGE_LAYOUT_UNDEFINED)
-            {
-                source_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-            }
-            else
-            {
-                source_stage_mask = access_flags_to_pipeline_stage(image_barrier.srcAccessMask);
-            }
-        }
-
-        // destination mask
-        {
-            if (image_barrier.newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
-            {
-                destination_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-            }
-            else
-            {
-                destination_stage_mask = access_flags_to_pipeline_stage(image_barrier.dstAccessMask);
-            }
-        }
-
-        // as per vulkan, you can't transition within a render pass
         if (m_render_pass_active)
         {
+            // as per vulkan, you can't transition within a render pass
             EndRenderPass();
         }
 
         vkCmdPipelineBarrier
         (
-            static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
-            source_stage_mask,                            // srcStageMask
-            destination_stage_mask,                       // dstStageMask
-            0,                                            // dependencyFlags
-            0,                                            // memoryBarrierCount
-            nullptr,                                      // pMemoryBarriers
-            0,                                            // bufferMemoryBarrierCount
-            nullptr,                                      // pBufferMemoryBarriers
-            1,                                            // imageMemoryBarrierCount
-            &image_barrier                                // pImageMemoryBarriers
+            static_cast<VkCommandBuffer>(m_rhi_resource),                // commandBuffer
+            access_flags_to_pipeline_stage(image_barrier.srcAccessMask), // pipeline stage(s) that must be completed before the barrier is crossed
+            access_flags_to_pipeline_stage(image_barrier.dstAccessMask), // pipeline stage(s) that must wait for the barrier to be crossed before beginning
+            0,                                                           // dependencyFlags
+            0,                                                           // memoryBarrierCount
+            nullptr,                                                     // pMemoryBarriers
+            0,                                                           // bufferMemoryBarrierCount
+            nullptr,                                                     // pBufferMemoryBarriers
+            1,                                                           // imageMemoryBarrierCount
+            &image_barrier                                               // pImageMemoryBarriers
         );
 
         Profiler::m_rhi_pipeline_barriers++;
