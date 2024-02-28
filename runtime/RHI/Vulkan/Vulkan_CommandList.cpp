@@ -151,7 +151,7 @@ namespace Spartan
             return access_mask;
         }
 
-        VkPipelineStageFlags access_flags_to_pipeline_stage(VkAccessFlags access_flags)
+        VkPipelineStageFlags access_mask_to_pipeline_stage(VkAccessFlags access_flags)
         {
             VkPipelineStageFlags stages = 0;
             uint32_t enabled_graphics_stages = RHI_Device::GetEnabledGraphicsStages();
@@ -1591,16 +1591,16 @@ namespace Spartan
 
         vkCmdPipelineBarrier
         (
-            static_cast<VkCommandBuffer>(m_rhi_resource),                // commandBuffer
-            access_flags_to_pipeline_stage(image_barrier.srcAccessMask), // pipeline stage(s) that must be completed before the barrier is crossed
-            access_flags_to_pipeline_stage(image_barrier.dstAccessMask), // pipeline stage(s) that must wait for the barrier to be crossed before beginning
-            0,                                                           // dependencyFlags
-            0,                                                           // memoryBarrierCount
-            nullptr,                                                     // pMemoryBarriers
-            0,                                                           // bufferMemoryBarrierCount
-            nullptr,                                                     // pBufferMemoryBarriers
-            1,                                                           // imageMemoryBarrierCount
-            &image_barrier                                               // pImageMemoryBarriers
+            static_cast<VkCommandBuffer>(m_rhi_resource),               // commandBuffer
+            access_mask_to_pipeline_stage(image_barrier.srcAccessMask), // pipeline stage(s) that must be completed before the barrier is crossed
+            access_mask_to_pipeline_stage(image_barrier.dstAccessMask), // pipeline stage(s) that must wait for the barrier to be crossed before beginning
+            0,                                                          // dependencyFlags
+            0,                                                          // memoryBarrierCount
+            nullptr,                                                    // pMemoryBarriers
+            0,                                                          // bufferMemoryBarrierCount
+            nullptr,                                                    // pBufferMemoryBarriers
+            1,                                                          // imageMemoryBarrierCount
+            &image_barrier                                              // pImageMemoryBarriers
         );
 
         Profiler::m_rhi_pipeline_barriers++;
