@@ -325,6 +325,9 @@ namespace Spartan
                     return VK_FALSE;
                 }
 
+                if (p_callback_data->messageIdNumber == 0x42f2f4ed) // validation error - depth_ouput
+                    return VK_FALSE;
+
                 if (p_callback_data->messageIdNumber == 0xe4d96472) // validation error - depth_ouput
                     return VK_FALSE;
 
