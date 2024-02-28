@@ -216,7 +216,7 @@ namespace Spartan
         max
     };
     
-    enum class Renderer_RenderTexture : uint8_t
+    enum class Renderer_RenderTarget : uint8_t
     {
         gbuffer_color,
         gbuffer_normal,

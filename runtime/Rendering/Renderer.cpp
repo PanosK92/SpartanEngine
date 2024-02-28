@@ -260,7 +260,7 @@ namespace Spartan
         bool is_standalone = !Engine::IsFlagSet(EngineMode::Editor);
         if (is_standalone)
         {
-            BlitToBackBuffer(cmd_current, GetRenderTarget(Renderer_RenderTexture::frame_output).get());
+            BlitToBackBuffer(cmd_current, GetRenderTarget(Renderer_RenderTarget::frame_output).get());
         }
 
         // submit render work
@@ -618,7 +618,7 @@ namespace Spartan
                             intensity = light->GetIntensityLumens();
                             color     = light->GetColor();
 
-                            m_environment_mips_to_filter_count = GetRenderTarget(Renderer_RenderTexture::skysphere)->GetMipCount() - 1;
+                            m_environment_mips_to_filter_count = GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount() - 1;
                         }
                     }
                 }
@@ -798,7 +798,7 @@ namespace Spartan
 
     RHI_Texture* Renderer::GetFrameTexture()
     {
-        return GetRenderTarget(Renderer_RenderTexture::frame_output).get();
+        return GetRenderTarget(Renderer_RenderTarget::frame_output).get();
     }
 
     uint64_t Renderer::GetFrameNum()
@@ -818,12 +818,12 @@ namespace Spartan
 
     void Renderer::SetGbufferTextures(RHI_CommandList* cmd_list)
     {
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,       GetRenderTarget(Renderer_RenderTexture::gbuffer_color));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,       GetRenderTarget(Renderer_RenderTexture::gbuffer_normal));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material,     GetRenderTarget(Renderer_RenderTexture::gbuffer_material));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity,     GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,        GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth_opaque, GetRenderTarget(Renderer_RenderTexture::gbuffer_depth_opaque));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,       GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,       GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material,     GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity,     GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,        GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth_opaque, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque));
     }
 
     void Renderer::BindlessUpdateMaterials()
