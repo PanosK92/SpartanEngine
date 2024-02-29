@@ -466,29 +466,29 @@ namespace Spartan
         // overview
         oss_metrics
             << "FPS:\t\t\t" << m_fps << endl
-            << "Time:\t\t"  << m_time_frame_avg << " ms" << endl
-            << "Frame:\t"   << Renderer::GetFrameNum() << endl;
+            << "Time:\t\t\t"  << m_time_frame_avg << " ms" << endl
+            << "Frame:\t\t"   << Renderer::GetFrameNum() << endl;
 
         // detailed times
         oss_metrics
-            << endl     << "\t" << "\t\tavg"                      << "\t" << "\tmin"                        << "\t" << "\tmax"                        << "\t" << "\tlast"                                 << endl
-            << "Total:" << "\t" << format_float(m_time_frame_avg) << "\t" << format_float(m_time_frame_min) << "\t" << format_float(m_time_frame_max) << "\t" << format_float(m_time_frame_last) << " ms" << endl
-            << "CPU:"   << "\t" << format_float(m_time_cpu_avg)   << "\t" << format_float(m_time_cpu_min)   << "\t" << format_float(m_time_cpu_max)   << "\t" << format_float(m_time_cpu_last)   << " ms" << endl
-            << "GPU:"   << "\t" << format_float(m_time_gpu_avg)   << "\t" << format_float(m_time_gpu_min)   << "\t" << format_float(m_time_gpu_max)   << "\t" << format_float(m_time_gpu_last)   << " ms" << endl;
+            << endl     << "\t\t" << "\t\tavg"                      << "\t\t" << "\tmin"                        << "\t\t" << "\tmax"                        << "\t\t" << "\tlast"                                 << endl
+            << "Total:" << "\t\t" << format_float(m_time_frame_avg) << "\t\t" << format_float(m_time_frame_min) << "\t\t" << format_float(m_time_frame_max) << "\t\t" << format_float(m_time_frame_last) << " ms" << endl
+            << "CPU:"   << "\t\t" << format_float(m_time_cpu_avg)   << "\t\t" << format_float(m_time_cpu_min)   << "\t\t" << format_float(m_time_cpu_max)   << "\t\t" << format_float(m_time_cpu_last)   << " ms" << endl
+            << "GPU:"   << "\t\t" << format_float(m_time_gpu_avg)   << "\t\t" << format_float(m_time_gpu_min)   << "\t\t" << format_float(m_time_gpu_max)   << "\t\t" << format_float(m_time_gpu_last)   << " ms" << endl;
 
         // gpu
         oss_metrics << endl << "GPU" << endl
-            << "Name:\t\t"     << gpu_name << endl
-            << "Memory:\t"     << gpu_memory_used << "/" << gpu_memory_available << " MB" << endl
-            << "API:\t\t\t\t"  << RHI_Context::api_type_str << "\t" << gpu_api << endl
-            << "Driver:\t\t"   << RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName() << "\t\t" << gpu_driver << endl;
+            << "Name:\t\t\t"    << gpu_name << endl
+            << "Memory:\t\t"    << gpu_memory_used << "/" << gpu_memory_available << " MB" << endl
+            << "API:\t\t\t\t\t" << RHI_Context::api_type_str << "\t" << gpu_api << endl
+            << "Driver:\t\t\t"  << RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName() << "\t\t" << gpu_driver << endl;
 
         // display
         oss_metrics << "\nDisplay\n"
-            << "Render:\t\t" << static_cast<uint32_t>(Renderer::GetResolutionRender().x) << "x" << static_cast<int>(Renderer::GetResolutionRender().y) << endl
-            << "Output:\t\t" << static_cast<uint32_t>(Renderer::GetResolutionOutput().x) << "x" << static_cast<int>(Renderer::GetResolutionOutput().y) << endl
-            << "Viewport:\t" << static_cast<uint32_t>(Renderer::GetViewport().width)     << "x" << static_cast<int>(Renderer::GetViewport().height)    << endl
-            << "HDR:\t\t\t"  << (Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled") << endl;
+            << "Render:\t\t\t" << static_cast<uint32_t>(Renderer::GetResolutionRender().x) << "x" << static_cast<int>(Renderer::GetResolutionRender().y) << endl
+            << "Output:\t\t\t" << static_cast<uint32_t>(Renderer::GetResolutionOutput().x) << "x" << static_cast<int>(Renderer::GetResolutionOutput().y) << endl
+            << "Viewport:\t\t" << static_cast<uint32_t>(Renderer::GetViewport().width)     << "x" << static_cast<int>(Renderer::GetViewport().height)    << endl
+            << "HDR:\t\t\t\t"  << (Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled") << endl;
 
         // cpu
         oss_metrics << endl << "CPU" << endl
@@ -496,19 +496,19 @@ namespace Spartan
 
         // api calls
         oss_metrics << "\nAPI calls" << endl;
-        oss_metrics << "Draw:\t\t\t\t\t\t\t\t\t" << m_rhi_draw << endl;
+        oss_metrics << "Draw:\t\t\t\t\t\t\t\t\t\t\t" << m_rhi_draw << endl;
         oss_metrics
-            << "Index buffer bindings:\t\t"  << m_rhi_bindings_buffer_index   << endl
-            << "Vertex buffer bindings:\t"   << m_rhi_bindings_buffer_vertex  << endl
-            << "Descriptor set bindings:\t"  << m_rhi_bindings_descriptor_set << endl
-            << "Pipeline bindings:\t\t\t\t"  << m_rhi_bindings_pipeline       << endl
-            << "Pipeline barriers:\t\t\t\t"  << m_rhi_pipeline_barriers       << endl;
+            << "Index buffer bindings:\t\t\t"  << m_rhi_bindings_buffer_index   << endl
+            << "Vertex buffer bindings:\t\t"   << m_rhi_bindings_buffer_vertex  << endl
+            << "Descriptor set bindings:\t\t"  << m_rhi_bindings_descriptor_set << endl
+            << "Pipeline bindings:\t\t\t\t\t"  << m_rhi_bindings_pipeline       << endl
+            << "Pipeline barriers:\t\t\t\t\t"  << m_rhi_pipeline_barriers       << endl;
 
         // resources
         oss_metrics << "\nResources\n"
-            << "Textures:\t\t\t\t\t\t\t"    << texture_count          << endl
+            << "Textures:\t\t\t\t\t\t\t\t"  << texture_count          << endl
             << "Materials:\t\t\t\t\t\t\t"   << material_count         << endl
-            << "Pipelines:\t\t\t\t\t\t\t"   << pipeline_count         << endl
+            << "Pipelines:\t\t\t\t\t\t\t\t" << pipeline_count         << endl
             << "Descriptor set capacity:\t" << m_descriptor_set_count << "/" << rhi_max_descriptor_set_count;
 
         // draw at the top-left of the screen
