@@ -87,7 +87,7 @@ namespace Spartan
         // bindless
         void* buffer_structured_to_add_barrier = nullptr;
         static array<RHI_Texture*, rhi_max_array_size> bindless_textures;
-        bool bindless_textures_dirty = true;
+        bool bindless_materials_dirty = true;
 
         // misc
         unordered_map<Renderer_Option, float> m_options;
@@ -191,13 +191,12 @@ namespace Spartan
                 m_resources_created = true;
             });
 
-            CreateConstantBuffers();
+            CreateBuffers();
             CreateDepthStencilStates();
             CreateRasterizerStates();
             CreateBlendStates();
             CreateRenderTargets(true, true, true);
             CreateSamplers();
-            CreateStructuredBuffers();
         }
 
         // events
@@ -206,7 +205,7 @@ namespace Spartan
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,           SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,              SP_EVENT_HANDLER_STATIC(OnClear));
             SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
-            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_STATIC(BindlessUpdateMaterials));
+            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_EXPRESSION_STATIC( bindless_materials_dirty = true; ));
             SP_SUBSCRIBE_TO_EVENT(EventType::LightOnChanged,          SP_EVENT_HANDLER_STATIC(BindlessUpdateLights));
 
             // fire
@@ -554,13 +553,15 @@ namespace Spartan
                 SP_LOG_INFO("Parsed deletion queue");
             }
 
+            // reset dynamic buffer offsets
             GetStructuredBuffer(Renderer_StructuredBuffer::Spd)->ResetOffset();
             GetConstantBufferFrame()->ResetOffset();
 
-            if (bindless_textures_dirty)
+            if (bindless_materials_dirty)
             {
+                BindlessUpdateMaterials();
                 RHI_Device::UpdateBindlessResources(nullptr, &bindless_textures);
-                bindless_textures_dirty = false;
+                bindless_materials_dirty = false;
             }
         }
 
@@ -919,7 +920,7 @@ namespace Spartan
             Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->Update(&properties[0], update_size);
 
             // material textures
-            bindless_textures_dirty = true;
+            bindless_materials_dirty = true;
         }
     }
 
@@ -951,7 +952,7 @@ namespace Spartan
                             properties[index].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
                         }
                     }
-                    properties[index].intensity    = light->GetIntensityWatt(Renderer::GetCamera().get());
+                    properties[index].intensity    = light->GetIntensityWatt(GetCamera().get());
                     properties[index].range        = light->GetRange();
                     properties[index].angle        = light->GetAngle();
                     properties[index].bias         = light->GetBias();
@@ -965,8 +966,8 @@ namespace Spartan
                     properties[index].flags       |= light->GetLightType() == LightType::Spot         ? (1 << 2) : 0;
                     properties[index].flags       |= light->IsFlagSet(LightFlags::Shadows)            ? (1 << 3) : 0;
                     properties[index].flags       |= light->IsFlagSet(LightFlags::ShadowsTransparent) ? (1 << 4) : 0;
-                    properties[index].flags       |= (light->IsFlagSet(LightFlags::ShadowsScreenSpace) && Renderer::GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
-                    properties[index].flags       |= (light->IsFlagSet(LightFlags::Volumetric) && Renderer::GetOption<bool>(Renderer_Option::FogVolumetric)) ? (1 << 6) : 0;
+                    properties[index].flags       |= (light->IsFlagSet(LightFlags::ShadowsScreenSpace) && GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
+                    properties[index].flags       |= (light->IsFlagSet(LightFlags::Volumetric) && GetOption<bool>(Renderer_Option::FogVolumetric)) ? (1 << 6) : 0;
                     // when changing the bit flags, ensure that you also update the Light struct in common_structs.hlsl, so that it reads those flags as expected
 
                     index++;
@@ -974,12 +975,12 @@ namespace Spartan
             }
         }
 
-        // gpu
-        Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->ResetOffset();
+        // cpu to gpu
         uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Light)) * index;
-        Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->Update(&properties[0], update_size);
+        GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->ResetOffset();
+        GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->Update(&properties[0], update_size);
 
-        buffer_structured_to_add_barrier = Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->GetRhiResource();
+        buffer_structured_to_add_barrier = GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->GetRhiResource();
     }
 
     void Renderer::Screenshot(const string& file_path)

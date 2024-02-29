@@ -136,8 +136,7 @@ namespace Spartan
         static void PushPassConstants(RHI_CommandList* cmd_list);
 
         // resource creation
-        static void CreateConstantBuffers();
-        static void CreateStructuredBuffers();
+        static void CreateBuffers();
         static void CreateDepthStencilStates();
         static void CreateRasterizerStates();
         static void CreateBlendStates();

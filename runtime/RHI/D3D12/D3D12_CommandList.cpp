@@ -396,7 +396,7 @@ namespace Spartan
 
     }
 
-    void RHI_CommandList::InsertBarrierBufferReadWrite(void* rhi_buffer, bool is_constant_buffer)
+    void RHI_CommandList::InsertBarrierBufferReadWrite(void* rhi_buffer)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
     }
