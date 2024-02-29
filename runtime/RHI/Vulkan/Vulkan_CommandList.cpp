@@ -1629,7 +1629,7 @@ namespace Spartan
         InsertBarrierTexture(texture->GetRhiResource(), get_aspect_mask(texture), 0, 1, 1, texture->GetLayout(0), texture->GetLayout(0));
     }
 
-    void RHI_CommandList::InsertBarrierBufferReadWrite(void* rhi_buffer, bool is_constant_buffer)
+    void RHI_CommandList::InsertBarrierStructuredBufferReadWrite(void* rhi_buffer)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
@@ -1642,42 +1642,22 @@ namespace Spartan
         // stage before shader reads/writes
         VkPipelineStageFlags stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 
-        if (is_constant_buffer)
-        {
-            VkMemoryBarrier barrier = {};
-            barrier.sType           = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-            barrier.srcAccessMask   = VK_ACCESS_HOST_WRITE_BIT;   // wait for CPU writes to complete
-            barrier.dstAccessMask   = VK_ACCESS_UNIFORM_READ_BIT; // then the shaders can read it
+        VkBufferMemoryBarrier barrier = {};
+        barrier.sType                 = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+        barrier.buffer                = static_cast<VkBuffer>(rhi_buffer);
+        barrier.size                  = VK_WHOLE_SIZE;
+        barrier.offset                = 0;
+        barrier.srcAccessMask         = VK_ACCESS_HOST_WRITE_BIT;                               // wait for CPU writes to complete
+        barrier.dstAccessMask         = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT; // then the shaders can read/write it
 
-            vkCmdPipelineBarrier(
-                static_cast<VkCommandBuffer>(m_rhi_resource),
-                VK_PIPELINE_STAGE_HOST_BIT, // stage after host writes
-                stages,                     // stage before shader reads
-                0,                          // dependency flags
-                1, &barrier,                // memory barriers
-                0, nullptr,                 // buffer barriers
-                0, nullptr                  // image barriers
-            );
-        }
-        else
-        { 
-            VkBufferMemoryBarrier barrier = {};
-            barrier.sType                 = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-            barrier.buffer                = static_cast<VkBuffer>(rhi_buffer);
-            barrier.size                  = VK_WHOLE_SIZE;
-            barrier.offset                = 0;
-            barrier.srcAccessMask         = VK_ACCESS_HOST_WRITE_BIT;                               // wait for CPU writes to complete
-            barrier.dstAccessMask         = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT; // then the shaders can read/write it
-
-            vkCmdPipelineBarrier(
-                static_cast<VkCommandBuffer>(m_rhi_resource),
-                VK_PIPELINE_STAGE_HOST_BIT, // stage after host writes
-                stages,                     // stage before shader reads/writes
-                0,                          // dependency flags
-                0, nullptr,                 // memory barriers
-                1, &barrier,                // buffer barriers
-                0, nullptr                  // image barriers
-            );
-        }
+        vkCmdPipelineBarrier(
+            static_cast<VkCommandBuffer>(m_rhi_resource),
+            VK_PIPELINE_STAGE_HOST_BIT, // stage after host writes
+            stages,                     // stage before shader reads/writes
+            0,                          // dependency flags
+            0, nullptr,                 // memory barriers
+            1, &barrier,                // buffer barriers
+            0, nullptr                  // image barriers
+        );
     }
 }

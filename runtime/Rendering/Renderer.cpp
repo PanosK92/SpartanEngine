@@ -428,8 +428,6 @@ namespace Spartan
         // set
         shared_ptr<RHI_ConstantBuffer>& buffer = GetConstantBufferFrame();
         buffer->Update(&m_cb_frame_cpu);
-
-        cmd_list->InsertBarrierBufferReadWrite(buffer->GetRhiResource(), true);
     }
 
     void Renderer::PushPassConstants(RHI_CommandList* cmd_list)
@@ -568,7 +566,7 @@ namespace Spartan
 
         if (buffer_structured_to_add_barrier)
         {
-            cmd_list->InsertBarrierBufferReadWrite(buffer_structured_to_add_barrier, false);
+            cmd_list->InsertBarrierStructuredBufferReadWrite(buffer_structured_to_add_barrier);
             buffer_structured_to_add_barrier = nullptr;
         }
 
