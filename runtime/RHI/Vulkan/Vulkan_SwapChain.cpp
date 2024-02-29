@@ -231,42 +231,42 @@ namespace Spartan
         SP_ASSERT_MSG(is_format_and_color_space_supported(surface, &m_format, color_space), "The surface doesn't support the requested format");
 
         // clamp size between the supported min and max
-        m_width = Math::Helper::Clamp(m_width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+        m_width  = Math::Helper::Clamp(m_width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
         m_height = Math::Helper::Clamp(m_height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
 
         // swap chain
         VkSwapchainKHR swap_chain;
         {
-            VkSwapchainCreateInfoKHR create_info = {};
-            create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-            create_info.surface = surface;
-            create_info.minImageCount = m_buffer_count;
-            create_info.imageFormat = vulkan_format[rhi_format_to_index(m_format)];
-            create_info.imageColorSpace = color_space;
-            create_info.imageExtent = { m_width, m_height };
-            create_info.imageArrayLayers = 1;
-            create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // fer rendering on it
-            create_info.imageUsage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;     // for blitting to it
+            VkSwapchainCreateInfoKHR create_info  = {};
+            create_info.sType                     = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+            create_info.surface                   = surface;
+            create_info.minImageCount             = m_buffer_count;
+            create_info.imageFormat               = vulkan_format[rhi_format_to_index(m_format)];
+            create_info.imageColorSpace           = color_space;
+            create_info.imageExtent               = { m_width, m_height };
+            create_info.imageArrayLayers          = 1;
+            create_info.imageUsage                = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // fer rendering on it
+            create_info.imageUsage               |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;     // for blitting to it
 
             uint32_t queueFamilyIndices[] = { RHI_Device::QueueGetIndex(RHI_Queue_Type::Compute), RHI_Device::QueueGetIndex(RHI_Queue_Type::Graphics) };
             if (queueFamilyIndices[0] != queueFamilyIndices[1])
             {
-                create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+                create_info.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
                 create_info.queueFamilyIndexCount = 2;
-                create_info.pQueueFamilyIndices = queueFamilyIndices;
+                create_info.pQueueFamilyIndices   = queueFamilyIndices;
             }
             else
             {
-                create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+                create_info.imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE;
                 create_info.queueFamilyIndexCount = 0;
-                create_info.pQueueFamilyIndices = nullptr;
+                create_info.pQueueFamilyIndices   = nullptr;
             }
 
-            create_info.preTransform = capabilities.currentTransform;
+            create_info.preTransform   = capabilities.currentTransform;
             create_info.compositeAlpha = get_supported_composite_alpha_format(surface);
-            create_info.presentMode = get_present_mode(surface, m_present_mode);
-            create_info.clipped = VK_TRUE;
-            create_info.oldSwapchain = nullptr;
+            create_info.presentMode    = get_present_mode(surface, m_present_mode);
+            create_info.clipped        = VK_TRUE;
+            create_info.oldSwapchain   = nullptr;
 
             SP_VK_ASSERT_MSG(vkCreateSwapchainKHR(RHI_Context::device, &create_info, nullptr, &swap_chain),
                 "Failed to create swapchain");
@@ -307,26 +307,26 @@ namespace Spartan
             {
                 RHI_Device::SetResourceName(m_rhi_rt[i], RHI_Resource_Type::Texture, string(string("swapchain_image_") + to_string(i)));
 
-                VkImageViewCreateInfo create_info = {};
-                create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-                create_info.image = static_cast<VkImage>(m_rhi_rt[i]);
-                create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-                create_info.format = vulkan_format[rhi_format_to_index(m_format)];
-                create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-                create_info.subresourceRange.baseMipLevel = 0;
-                create_info.subresourceRange.levelCount = 1;
+                VkImageViewCreateInfo create_info           = {};
+                create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+                create_info.image                           = static_cast<VkImage>(m_rhi_rt[i]);
+                create_info.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+                create_info.format                          = vulkan_format[rhi_format_to_index(m_format)];
+                create_info.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+                create_info.subresourceRange.baseMipLevel   = 0;
+                create_info.subresourceRange.levelCount     = 1;
                 create_info.subresourceRange.baseArrayLayer = 0;
-                create_info.subresourceRange.layerCount = 1;
-                create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-                create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-                create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-                create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+                create_info.subresourceRange.layerCount     = 1;
+                create_info.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+                create_info.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+                create_info.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+                create_info.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
 
                 SP_ASSERT_MSG(vkCreateImageView(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkImageView*>(&m_rhi_rtv[i])) == VK_SUCCESS, "Failed to create swapchain RTV");
             }
         }
 
-        m_rhi_surface = static_cast<void*>(surface);
+        m_rhi_surface   = static_cast<void*>(surface);
         m_rhi_swapchain = static_cast<void*>(swap_chain);
 
         for (uint32_t i = 0; i < m_buffer_count; i++)
