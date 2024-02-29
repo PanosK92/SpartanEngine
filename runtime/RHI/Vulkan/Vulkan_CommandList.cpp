@@ -78,7 +78,16 @@ namespace Spartan
             switch (layout)
             {
             case VK_IMAGE_LAYOUT_UNDEFINED:
-                SP_ASSERT(!is_destination_mask && "The new layout used in a transition must not be VK_IMAGE_LAYOUT_UNDEFINED.");
+                // a newly created swapchain will have an undefined layout and if use a 0 mask the validation layer
+                // will complain so we add a generic access mask that's harmless for VK_IMAGE_LAYOUT_UNDEFINED transitions
+                if (!is_destination_mask)
+                {
+                    access_mask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+                }
+                else
+                {
+                    SP_ASSERT(!is_destination_mask && "The new layout used in a transition must not be VK_IMAGE_LAYOUT_UNDEFINED.");
+                }
                 break;
 
             case VK_IMAGE_LAYOUT_PREINITIALIZED:
@@ -239,7 +248,12 @@ namespace Spartan
                     stages |= VK_PIPELINE_STAGE_HOST_BIT;
                     break;
 
+                    // misc
                 case VK_ACCESS_MEMORY_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+                    break;
+
+                case VK_ACCESS_MEMORY_WRITE_BIT:
                     stages |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
                     break;
 
