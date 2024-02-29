@@ -70,35 +70,32 @@ namespace Spartan
         shared_ptr<Material>               standard_material;
     }
 
-    void Renderer::CreateConstantBuffers()
+    void Renderer::CreateBuffers()
     {
         uint32_t element_count = resources_frame_lifetime;
 
+        // frame constant buffer - updates once per frame
         constant_buffer_frame = make_shared<RHI_ConstantBuffer>(string("frame"));
         constant_buffer_frame->Create<Cb_Frame>(element_count);
-    }
 
-    void Renderer::CreateStructuredBuffers()
-    {
         #define structured_buffer(x) structured_buffers[static_cast<uint8_t>(x)]
 
+        // single dispatch downsample buffer
         {
             uint32_t times_used_in_frame = 12; // safe to tweak this, if it's not enough the engine will assert
-            uint32_t element_count       = times_used_in_frame * resources_frame_lifetime;
             uint32_t stride              = static_cast<uint32_t>(sizeof(uint32_t));
-            structured_buffer(Renderer_StructuredBuffer::Spd) = make_shared<RHI_StructuredBuffer>(stride, element_count, "spd_counter");
+            structured_buffer(Renderer_StructuredBuffer::Spd) = make_shared<RHI_StructuredBuffer>(stride, element_count * times_used_in_frame, "spd_counter");
 
             // only needs to be set once, then after each use SPD resets it itself
             uint32_t counter_value = 0;
             structured_buffer(Renderer_StructuredBuffer::Spd)->Update(&counter_value);
         }
 
-        uint32_t stride        = static_cast<uint32_t>(sizeof(Sb_Material)) * rhi_max_array_size;
-        uint32_t element_count = 1; // non dynamic (multiple offsets)
-        structured_buffer(Renderer_StructuredBuffer::Materials) = make_shared<RHI_StructuredBuffer>(stride, element_count, "materials");
+        uint32_t stride = static_cast<uint32_t>(sizeof(Sb_Material)) * rhi_max_array_size;
+        structured_buffer(Renderer_StructuredBuffer::Materials) = make_shared<RHI_StructuredBuffer>(stride, 1, "materials");
 
         stride = static_cast<uint32_t>(sizeof(Sb_Light)) * rhi_max_array_size_lights;
-        structured_buffer(Renderer_StructuredBuffer::Lights) = make_shared<RHI_StructuredBuffer>(stride, element_count, "lights");
+        structured_buffer(Renderer_StructuredBuffer::Lights) = make_shared<RHI_StructuredBuffer>(stride, 1, "lights");
     }
 
     void Renderer::CreateDepthStencilStates()
