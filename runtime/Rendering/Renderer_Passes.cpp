@@ -620,7 +620,7 @@ namespace Spartan
             cmd_list->ClearRenderTarget(GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(), rhi_color_dont_care, 0.0f);
         }
 
-        auto pass = [cmd_list, shader_v, shader_instanced_v, shader_p, vrs](bool is_transparent_pass, bool is_occluder_pass)
+        auto pass = [cmd_list, shader_v, shader_instanced_v, shader_p, tex_depth, vrs](bool is_transparent_pass, bool is_occluder_pass)
         {
             uint32_t start_index = !is_transparent_pass ? 0 : 2;
             uint32_t end_index   = !is_transparent_pass ? 2 : 4;
@@ -641,7 +641,7 @@ namespace Spartan
                 pso.rasterizer_state            = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
                 pso.blend_state                 = GetBlendState(Renderer_BlendState::Disabled).get();
                 pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
-                pso.render_target_depth_texture = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get();
+                pso.render_target_depth_texture = tex_depth;
                 pso.clear_depth                 = rhi_depth_load;
                 pso.render_target_vrs           = vrs ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
                 cmd_list->SetPipelineState(pso);
@@ -737,6 +737,8 @@ namespace Spartan
             GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output).get(),
             false
         );
+
+        //cmd_list->InsertBarrierTextureReadWrite(tex_depth);
 
         cmd_list->EndTimeblock();
     }
