@@ -601,26 +601,28 @@ namespace Spartan
 
     void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
-        // acquire shaders
+        // acquire resources
         RHI_Shader* shader_v           = GetShader(Renderer_Shader::depth_prepass_v).get();
         RHI_Shader* shader_instanced_v = GetShader(Renderer_Shader::depth_prepass_instanced_v).get();
         RHI_Shader* shader_p           = GetShader(Renderer_Shader::depth_prepass_alpha_test_p).get();
+        RHI_Texture* tex_depth         = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get();
+        RHI_Texture* tex_depth_opaque  = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque).get();
+        RHI_Texture* tex_depth_output  = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output).get();
         if (!shader_v->IsCompiled() || !shader_instanced_v->IsCompiled() || !shader_p->IsCompiled())
             return;
-
-        RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get();
-        bool vrs               = GetOption<bool>(Renderer_Option::VariableRateShading);
+        bool vrs = GetOption<bool>(Renderer_Option::VariableRateShading);
 
         lock_guard lock(m_mutex_renderables);
         cmd_list->BeginTimeblock(!is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent");
 
+        // clear the first time
         if (!is_transparent_pass)
         {
-            // clear the first time
+
             cmd_list->ClearRenderTarget(GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(), rhi_color_dont_care, 0.0f);
         }
 
-        auto pass = [cmd_list, shader_v, shader_instanced_v, shader_p, tex_depth, vrs](bool is_transparent_pass, bool is_occluder_pass)
+        auto pass = [cmd_list, shader_v, shader_instanced_v, shader_p, tex_depth, tex_depth_opaque, tex_depth_output, vrs](bool is_transparent_pass)
         {
             uint32_t start_index = !is_transparent_pass ? 0 : 2;
             uint32_t end_index   = !is_transparent_pass ? 2 : 4;
@@ -651,22 +653,6 @@ namespace Spartan
                     shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
                     if (!renderable || !renderable->ReadyToRender() || renderable->HasFlag(RenderableFlags::OccludedCpu))
                         continue;
-
-                    if (!is_transparent_pass)
-                    {
-                        bool render = true;
-                        if (is_occluder_pass)
-                        {
-                            render &= renderable->HasFlag(RenderableFlags::Occluder);
-                        }
-                        else // occludee
-                        {
-                            render &= !renderable->HasFlag(RenderableFlags::Occluder);
-                        }
-
-                        if (!render)
-                            continue;
-                    }
 
                     cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
 
@@ -716,27 +702,22 @@ namespace Spartan
 
         if (!is_transparent_pass) // opaque
         {
-            pass(false, true);  // occluders
-            pass(false, false); // occludees (and occlusion queries)
-
+            pass(false);
             visibility::get_gpu_occlusion_query_results(cmd_list, m_renderables);
 
-            cmd_list->Blit(
-                tex_depth,
-                GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque).get(),
-                false
-            );
+            cmd_list->Blit(tex_depth, tex_depth_opaque, false);
         }
         else // transparent
         {
-            pass(true, false);
+            pass(true);
         }
 
-        cmd_list->Blit(
-            tex_depth,
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output).get(),
-            false
-        );
+        cmd_list->Blit(tex_depth, tex_depth_output, false);
+
+        // transition to a readable state since they will never be written again
+        tex_depth->SetLayout(RHI_Image_Layout::General, cmd_list);
+        tex_depth_opaque->SetLayout(RHI_Image_Layout::General, cmd_list);
+        tex_depth_output->SetLayout(RHI_Image_Layout::General, cmd_list);
 
         cmd_list->EndTimeblock();
     }
@@ -2003,13 +1984,12 @@ namespace Spartan
         if (!GetOption<bool>(Renderer_Option::Debug_Grid))
             return;
 
-        // acquire shader
-        RHI_Shader* shader_v = GetShader(Renderer_Shader::grid_v).get();
-        RHI_Shader* shader_p = GetShader(Renderer_Shader::grid_p).get();
+        // acquire resources
+        RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output).get();
+        RHI_Shader* shader_v   = GetShader(Renderer_Shader::grid_v).get();
+        RHI_Shader* shader_p   = GetShader(Renderer_Shader::grid_p).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
-
-        RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output).get();
 
         cmd_list->BeginTimeblock("grid");
 
