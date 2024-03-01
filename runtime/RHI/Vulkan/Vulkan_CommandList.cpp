@@ -698,16 +698,11 @@ namespace Spartan
         if (m_pso.render_target_depth_texture != nullptr)
         {
             RHI_Texture* rt = m_pso.render_target_depth_texture;
-
             SP_ASSERT_MSG(rt->GetWidth() == rendering_info.renderArea.extent.width, "The depth buffer doesn't match the output resolution");
             SP_ASSERT(rt->IsDsv());
 
-            // Transition to the appropriate layout
+            // transition to the appropriate layout
             RHI_Image_Layout layout = rt->IsStencilFormat() ? RHI_Image_Layout::Depth_Stencil_Attachment : RHI_Image_Layout::Depth_Attachment;
-            if (!m_pso.depth_stencil_state->GetDepthWriteEnabled() && !m_pso.depth_stencil_state->GetStencilWriteEnabled())
-            {
-                layout = rt->IsDepthFormat() ? RHI_Image_Layout::Depth_Read : RHI_Image_Layout::Depth_Stencil_Read;
-            }
             rt->SetLayout(layout, this);
 
             attachment_depth_stencil.sType                           = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
