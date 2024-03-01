@@ -1336,7 +1336,6 @@ namespace Spartan
         // transition to appropriate layout (if needed)
         {
             RHI_Image_Layout target_layout = RHI_Image_Layout::Max;
-
             if (uav)
             {
                 SP_ASSERT(texture->IsUav());
@@ -1348,18 +1347,7 @@ namespace Spartan
             else
             {
                 SP_ASSERT(texture->IsSrv());
-
-                // color
-                if (texture->IsColorFormat())
-                {
-                    target_layout = RHI_Image_Layout::Shader_Read;
-                }
-
-                // depth
-                if (texture->IsDepthStencilFormat())
-                {
-                    target_layout = texture->IsDepthFormat() ? RHI_Image_Layout::Depth_Read : RHI_Image_Layout::Depth_Stencil_Read;
-                }
+                target_layout = RHI_Image_Layout::Shader_Read;
             }
 
             // verify that an appropriate layout has been deduced
