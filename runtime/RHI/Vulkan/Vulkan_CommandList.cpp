@@ -702,7 +702,7 @@ namespace Spartan
             SP_ASSERT(rt->IsDsv());
 
             // transition to the appropriate layout
-            RHI_Image_Layout layout = rt->IsStencilFormat() ? RHI_Image_Layout::Depth_Stencil_Attachment : RHI_Image_Layout::Depth_Attachment;
+            RHI_Image_Layout layout = rt->IsDepthFormat() ? RHI_Image_Layout::Depth_Attachment : RHI_Image_Layout::Depth_Stencil_Attachment;
             rt->SetLayout(layout, this);
 
             attachment_depth_stencil.sType                           = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;

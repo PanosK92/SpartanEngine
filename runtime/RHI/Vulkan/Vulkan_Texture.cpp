@@ -308,7 +308,7 @@ namespace Spartan
             }
             else if (texture->IsDsv())
             {
-                target_layout = RHI_Image_Layout::Depth_Stencil_Attachment;
+                target_layout = texture->IsDepthFormat() ? RHI_Image_Layout::Depth_Attachment : RHI_Image_Layout::Depth_Stencil_Attachment;
             }
 
             if (texture->IsUav())
