@@ -101,7 +101,8 @@ namespace Spartan
         RHI_Image_Layout layout = texture->GetLayout(mip_specified ? mip_index : 0);
 
         // validate layout
-        SP_ASSERT(layout == RHI_Image_Layout::General || layout == RHI_Image_Layout::Shader_Read || layout == RHI_Image_Layout::Depth_Stencil_Read);
+        SP_ASSERT(layout == RHI_Image_Layout::General || layout == RHI_Image_Layout::Shader_Read ||
+            layout == RHI_Image_Layout::Depth_Read ||layout == RHI_Image_Layout::Depth_Stencil_Read);
 
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
