@@ -738,8 +738,6 @@ namespace Spartan
             false
         );
 
-        //cmd_list->InsertBarrierTextureReadWrite(tex_depth);
-
         cmd_list->EndTimeblock();
     }
 
@@ -847,19 +845,16 @@ namespace Spartan
         if (!GetOption<bool>(Renderer_Option::ScreenSpaceGlobalIllumination))
             return;
 
-        // acquire shaders
+        // acquire resources
+        RHI_Texture* tex_ssgi   = GetRenderTarget(Renderer_RenderTarget::ssgi).get();
         RHI_Shader* shader_ssgi = GetShader(Renderer_Shader::ssgi_c).get();
         if (!shader_ssgi->IsCompiled())
             return;
-
-        // acquire render target
-        RHI_Texture* tex_ssgi = GetRenderTarget(Renderer_RenderTarget::ssgi).get();
 
         cmd_list->BeginTimeblock("ssgi");
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.name = "ssgi";
         pso.shader_compute = shader_ssgi;
         cmd_list->SetPipelineState(pso);
 
@@ -2028,8 +2023,6 @@ namespace Spartan
         pso.render_target_color_textures[0] = tex_out;
         pso.render_target_depth_texture     = tex_depth;
         cmd_list->SetPipelineState(pso);
-
-        cmd_list->InsertBarrierTextureReadWrite(tex_depth);
 
         // set transform
         {
