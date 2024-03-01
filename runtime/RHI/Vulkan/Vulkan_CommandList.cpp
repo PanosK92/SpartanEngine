@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Fence.h"
 #include "../RHI_SwapChain.h"
 #include "../RHI_RasterizerState.h"
+#include "../RHI_DepthStencilState.h"
 #include "../Rendering/Renderer.h"
 #include "../../Profiling/Profiler.h"
 //=====================================
@@ -703,9 +704,9 @@ namespace Spartan
 
             // Transition to the appropriate layout
             RHI_Image_Layout layout = rt->IsStencilFormat() ? RHI_Image_Layout::Depth_Stencil_Attachment : RHI_Image_Layout::Depth_Attachment;
-            if (m_pso.render_target_depth_texture_read_only)
+            if (!m_pso.depth_stencil_state->GetDepthWriteEnabled() && !m_pso.depth_stencil_state->GetStencilWriteEnabled())
             {
-                layout = RHI_Image_Layout::Depth_Stencil_Read;
+                layout = rt->IsDepthFormat() ? RHI_Image_Layout::Depth_Read : RHI_Image_Layout::Depth_Stencil_Read;
             }
             rt->SetLayout(layout, this);
 
@@ -1355,9 +1356,9 @@ namespace Spartan
                 }
 
                 // depth
-                if (texture->IsDepthFormat())
+                if (texture->IsDepthStencilFormat())
                 {
-                    target_layout = RHI_Image_Layout::Depth_Stencil_Read;
+                    target_layout = texture->IsDepthFormat() ? RHI_Image_Layout::Depth_Read : RHI_Image_Layout::Depth_Stencil_Read;
                 }
             }
 
