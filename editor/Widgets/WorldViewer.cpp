@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============================
 #include "WorldViewer.h"
 #include "Properties.h"
-#include "MenuBar.h"
+#include "TitleBar.h"
 #include "Viewport.h"
 #include "../ImGui/Source/imgui_stdlib.h"
 #include "World/Entity.h"
@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Constraint.h"
 #include "World/Components/Terrain.h"
 #include "Commands/CommandStack.h"
+#include "../ImGui/ImGuiExtension.h"
 //=========================================
 
 //= NAMESPACES =====
@@ -562,7 +563,7 @@ void WorldViewer::HandleKeyShortcuts()
 
         if (file_path.empty())
         {
-            m_editor->GetWidget<MenuBar>()->ShowWorldSaveDialog();
+            m_editor->GetWidget<TitleBar>()->ShowWorldSaveDialog();
         }
         else
         {
@@ -573,7 +574,7 @@ void WorldViewer::HandleKeyShortcuts()
     // Load: Ctrl + L
     if (Spartan::Input::GetKey(Spartan::KeyCode::Ctrl_Left) && Spartan::Input::GetKeyDown(Spartan::KeyCode::L))
     {
-        m_editor->GetWidget<MenuBar>()->ShowWorldLoadDialog();
+        m_editor->GetWidget<TitleBar>()->ShowWorldLoadDialog();
     }
 
     // Undo and Redo: Ctrl + Z, Ctrl+Shift+Z

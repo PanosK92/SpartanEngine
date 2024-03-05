@@ -23,6 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================
 #include "Components/Component.h"
+#include "../Math/Quaternion.h"
+#include <array>
+#include "../Math/Matrix.h"
+#include <mutex>
+#include "Event.h"
 //===============================
 
 namespace Spartan

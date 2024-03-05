@@ -38,7 +38,7 @@ namespace
     #define OPERATION_NAME (m_operation == FileDialog_Op_Open) ? "Open"      : (m_operation == FileDialog_Op_Load)   ? "Load"       : (m_operation == FileDialog_Op_Save) ? "Save" : "View"
     #define FILTER_NAME    (m_filter == FileDialog_Filter_All) ? "All (*.*)" : (m_filter == FileDialog_Filter_Model) ? "Model(*.*)" : "World (*.world)"
 
-    static void set_cursor_position_x(float pos_x)
+    void set_cursor_position_x(float pos_x)
     {
         ImGui::SetCursorPosX(pos_x);
         ImGui::Dummy(ImVec2(0, 0)); // imgui requirement to avoid assert
@@ -408,7 +408,7 @@ void FileDialog::ShowBottom(bool* is_visible)
     if (m_type == FileDialog_Type_Browser)
     {
         // move to the bottom of the window
-        m_offset_bottom = 20.0f * Spartan::Window::GetDpiScale();
+        m_offset_bottom = 24.0f * Spartan::Window::GetDpiScale();
         ImGui::SetCursorPosY(ImGui::GetWindowSize().y - m_offset_bottom);
 
         string text = (m_displayed_item_count == 1) ? "%d item" : "%d items";

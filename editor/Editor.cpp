@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ImGui/Implementation/imgui_impl_sdl2.h"
 #include "Widgets/AssetBrowser.h"
 #include "Widgets/Console.h"
-#include "Widgets/MenuBar.h"
+#include "Widgets/TitleBar.h"
 #include "Widgets/ProgressDialog.h"
 #include "Widgets/Properties.h"
 #include "Widgets/Viewport.h"
@@ -58,7 +58,7 @@ namespace
     constexpr ImVec4 k_palette_color_5 = {119.0f / 255.0f, 141.0f / 255.0f, 169.0f / 255.0f, 1.0f};
     constexpr ImVec4 k_palette_color_6 = {224.0f / 255.0f, 225.0f / 255.0f, 221.0f / 255.0f, 1.0f};
 
-    MenuBar* widget_menu_bar = nullptr;
+    TitleBar* widget_menu_bar = nullptr;
     Widget* widget_world     = nullptr;
 
     static void process_event(Spartan::sp_variant data)
@@ -198,20 +198,20 @@ Editor::Editor()
     EditorHelper::Initialize(this);
 
     // create all ImGui widgets
+    m_widgets.emplace_back(make_shared<ProgressDialog>(this));
     m_widgets.emplace_back(make_shared<Console>(this));
     m_widgets.emplace_back(make_shared<Profiler>(this));
     m_widgets.emplace_back(make_shared<ResourceViewer>(this));
     m_widgets.emplace_back(make_shared<ShaderEditor>(this));
     m_widgets.emplace_back(make_shared<RenderOptions>(this));
     m_widgets.emplace_back(make_shared<TextureViewer>(this));
-    m_widgets.emplace_back(make_shared<MenuBar>(this));
-    widget_menu_bar = static_cast<MenuBar*>(m_widgets.back().get());
     m_widgets.emplace_back(make_shared<Viewport>(this));
     m_widgets.emplace_back(make_shared<AssetBrowser>(this));
     m_widgets.emplace_back(make_shared<Properties>(this));
     m_widgets.emplace_back(make_shared<WorldViewer>(this));
     widget_world = m_widgets.back().get();
-    m_widgets.emplace_back(make_shared<ProgressDialog>(this));
+    m_widgets.emplace_back(make_shared<TitleBar>(this));
+    widget_menu_bar = static_cast<TitleBar*>(m_widgets.back().get());
 
     // allow ImGui to get event's from the engine's event processing loop
     SP_SUBSCRIBE_TO_EVENT(Spartan::EventType::Sdl, SP_EVENT_HANDLER_VARIANT_STATIC(process_event));
@@ -300,7 +300,7 @@ void Editor::BeginWindow()
 
     // set window position and size
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    const float padding_offset    = 2.0f * (style.FramePadding.y - MenuBar::GetPadding().y) - 1.0f;
+    const float padding_offset    = 2.0f * (style.FramePadding.y - TitleBar::GetPadding().y) - 1.0f;
     const float offset_y          = widget_menu_bar ? widget_menu_bar->GetHeight() + padding_offset : 0;
 
     ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y - offset_y));

@@ -20,16 +20,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 
-//= INCLUDES ==================
+//= INCLUDES =========================
 #include "pch.h"
 #include "Window.h"
 #include "../Input/Input.h"
 #include "../Display/Display.h"
+#include "../RHI/RHI_Implementation.h"
 SP_WARNINGS_OFF
 #include <SDL.h>
 #include <SDL_syswm.h>
 SP_WARNINGS_ON
-//=============================
+//====================================
 
 //= LINKING ============================
 #ifdef _MSC_VER
@@ -108,19 +109,20 @@ namespace Spartan
 
         // set window flags
         uint32_t flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED;
-
-        // if the swapchain surface is created using SDL_Vulkan_CreateSurface(), then the window needs this flag.
-        flags |= SDL_WINDOW_VULKAN;
+        if (RHI_Context::api_type == RHI_Api_Type::Vulkan)
+        {
+            flags |= SDL_WINDOW_VULKAN;
+        }
 
         // create window
-        m_title  = "Spartan " + to_string(sp_info::version_major) + "." + to_string(sp_info::version_minor) + "." + to_string(sp_info::version_revision);
-        window = SDL_CreateWindow(
-            m_title.c_str(),         // window title
-            SDL_WINDOWPOS_UNDEFINED, // initial x position
-            SDL_WINDOWPOS_UNDEFINED, // initial y position
-            width,                   // width in pixels
-            height,                  // height in pixels
-            flags                    // flags - see below
+        m_title = "Spartan " + to_string(sp_info::version_major) + "." + to_string(sp_info::version_minor) + "." + to_string(sp_info::version_revision);
+        window  = SDL_CreateWindow(
+            m_title.c_str(), // window title
+            0,               // initial x position
+            0,               // initial y position
+            width,           // width in pixels
+            height,          // height in pixels
+            flags            // flags - see below
         );
 
         if (!window)
@@ -150,16 +152,13 @@ namespace Spartan
 
     void Window::Shutdown()
     {
-        // Destroy window
         SDL_DestroyWindow(window);
-
-        // Shutdown SDL2
         SDL_Quit();
     }
 
     void Window::Tick()
     {
-        // Process events
+        // process events
         SDL_Event sdl_event;
         while (SDL_PollEvent(&sdl_event))
         {
@@ -193,25 +192,25 @@ namespace Spartan
                     case SDL_WINDOWEVENT_RESTORED:
                         break;
                     case SDL_WINDOWEVENT_ENTER:
-                        // Window has gained mouse focus
+                        // window has gained mouse focus
                         break;
                     case SDL_WINDOWEVENT_LEAVE:
-                        // Window has lost mouse focus
+                        // window has lost mouse focus
                         break;
                     case SDL_WINDOWEVENT_FOCUS_GAINED:
-                        // Window has gained keyboard focus
+                        // window has gained keyboard focus
                         break;
                     case SDL_WINDOWEVENT_FOCUS_LOST:
-                        // Window has lost keyboard focus
+                        // window has lost keyboard focus
                         break;
                     case SDL_WINDOWEVENT_CLOSE:
                         close = true;
                         break;
                     case SDL_WINDOWEVENT_TAKE_FOCUS:
-                        // Window is being offered a focus (should SetWindowInputFocus() on itself or a subwindow, or ignore)
+                        // window is being offered a focus (should SetWindowInputFocus() on itself or a subwindow, or ignore)
                         break;
                     case SDL_WINDOWEVENT_HIT_TEST:
-                        // Window had a hit test that wasn't SDL_HITTEST_NORMAL.
+                        // window had a hit test that wasn't SDL_HITTEST_NORMAL.
                         break;
                     case SDL_WINDOWEVENT_ICCPROF_CHANGED:
                         SP_LOG_INFO("The ICC profile of the window's display has changed");
@@ -230,9 +229,9 @@ namespace Spartan
             SP_FIRE_EVENT_DATA(EventType::Sdl, &sdl_event);
         }
 
-        // Handle shortcuts
+        // handle shortcuts
 
-        // Toggle full screen
+        // toggle full screen
         if (Input::GetKey(KeyCode::Alt_Right) && Input::GetKeyDown(KeyCode::Enter))
         {
             ToggleFullScreen();
@@ -373,11 +372,11 @@ namespace Spartan
             printf("Error: %s", SDL_GetError());
             return static_cast<void*>(nullptr);
         }
-#ifdef _WIN32
+        #ifdef _WIN32
         return static_cast<void*>(wmInfo.info.win.window);
-#elif __linux__
+        #elif __linux__
         return reinterpret_cast<void*>(wmInfo.info.x11.window);
-#endif
+        #endif
     }
 
     bool Window::WantsToClose()
@@ -431,10 +430,10 @@ namespace Spartan
 
     void Window::OnFirstFrameCompleted()
     {
-        // Show engine window
+        // show engine window
         Show();
 
-        // Hide and destroy splash screen window
+        // hide and destroy splash screen window
         SDL_DestroyTexture(m_splash_screen_texture);
         SDL_DestroyRenderer(m_splash_screen_renderer);
         SDL_DestroyWindow(m_splash_sceen_window);
