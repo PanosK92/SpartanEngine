@@ -21,26 +21,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============================
+//= INCLUDES ======
 #include "Widget.h"
-#include <memory>
-#include "../WidgetsDeferred/FileDialog.h"
-#include "Toolbar.h"
-//========================================
+//=================
 
-namespace Spartan { class Context; }
-class Toolbar;
-
-class MenuBar : public Widget
+class TitleBar : public Widget
 {
 public:
-    MenuBar(Editor* editor);
+    TitleBar(Editor* editor);
 
     void OnTick() override;
     void ShowWorldSaveDialog();
     void ShowWorldLoadDialog();
 
-    static ImVec2 GetPadding() { return {14.0f, 8.0f}; }
+    static ImVec2 GetPadding() { return { 14.0f, 8.0f }; }
 
 private:
     void DrawFileDialog() const;
@@ -48,8 +42,4 @@ private:
     void EntryWorld();
     void EntryView();
     void EntryHelp();
-
-    std::unique_ptr<Toolbar> m_tool_bar;
-    std::unique_ptr<FileDialog> m_file_dialog;
-    Editor* m_editor = nullptr;
 };

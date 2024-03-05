@@ -39,6 +39,8 @@ namespace
     bool mesh_import_dialog_is_visible = false;
     uint32_t mesh_import_dialog_flags  = 0;
     string mesh_import_file_path;
+    unique_ptr<FileDialog> file_dialog_view;
+    unique_ptr<FileDialog> file_dialog_load;
 
     static void mesh_import_dialog_checkbox(const MeshFlags option, const char* label, const char* tooltip = nullptr)
     {
@@ -121,12 +123,12 @@ namespace
 AssetBrowser::AssetBrowser(Editor* editor) : Widget(editor)
 {
     m_title             = "Assets";
-    m_file_dialog_view  = make_unique<FileDialog>(false, FileDialog_Type_Browser,       FileDialog_Op_Load, FileDialog_Filter_All);
-    n_file_dialog_load  = make_unique<FileDialog>(true,  FileDialog_Type_FileSelection, FileDialog_Op_Load, FileDialog_Filter_Model);
+    file_dialog_view  = make_unique<FileDialog>(false, FileDialog_Type_Browser,       FileDialog_Op_Load, FileDialog_Filter_All);
+    file_dialog_load  = make_unique<FileDialog>(true,  FileDialog_Type_FileSelection, FileDialog_Op_Load, FileDialog_Filter_Model);
     m_flags            |= ImGuiWindowFlags_NoScrollbar;
 
     // just clicked, not selected (double clicked, end of dialog)
-    m_file_dialog_view->SetCallbackOnItemClicked([this](const string& str) { OnPathClicked(str); });
+    file_dialog_view->SetCallbackOnItemClicked([this](const string& str) { OnPathClicked(str); });
 }
 
 void AssetBrowser::OnTickVisible()
@@ -139,10 +141,10 @@ void AssetBrowser::OnTickVisible()
     ImGui::SameLine();
     
     // view
-    m_file_dialog_view->Show(&show_file_dialog_view, m_editor);
+    file_dialog_view->Show(&show_file_dialog_view, m_editor);
 
     // show load file dialog, true if a selection is made
-    if (n_file_dialog_load->Show(&show_file_dialog_load, m_editor, nullptr, &mesh_import_file_path))
+    if (file_dialog_load->Show(&show_file_dialog_load, m_editor, nullptr, &mesh_import_file_path))
     {
         show_file_dialog_load = false;
         ShowMeshImportDialog(mesh_import_file_path);

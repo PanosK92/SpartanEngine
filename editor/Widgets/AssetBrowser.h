@@ -26,8 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 //=================
 
-class FileDialog;
-
 class AssetBrowser : public Widget
 {
 public:
@@ -38,7 +36,4 @@ public:
 
 private:
     void OnPathClicked(const std::string& path) const;
-
-    std::unique_ptr<FileDialog> m_file_dialog_view;
-    std::unique_ptr<FileDialog> n_file_dialog_load;
 };

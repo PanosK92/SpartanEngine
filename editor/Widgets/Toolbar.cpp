@@ -19,9 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================
+//= INCLUDES =======================
 #include "Toolbar.h"
-#include "MenuBar.h"
+#include "TitleBar.h"
 #include "Profiler.h"
 #include "ResourceViewer.h"
 #include "ShaderEditor.h"
@@ -29,7 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TextureViewer.h"
 #include "Core/Engine.h"
 #include "Profiling/RenderDoc.h"
-//==============================
+#include "../ImGui/ImGuiExtension.h"
+//==================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -61,7 +62,7 @@ namespace
 
         const ImGuiStyle& style   = ImGui::GetStyle();
         const float size_avail_y  = 2.0f * style.FramePadding.y + button_size;
-        const float button_size_y = button_size + 2.0f * MenuBar::GetPadding().y;
+        const float button_size_y = button_size + 2.0f * TitleBar::GetPadding().y;
         const float offset_y      = (button_size_y - size_avail_y) * 0.5f;
 
         ImGui::SetCursorPosY(offset_y);
@@ -103,7 +104,7 @@ void Toolbar::OnTick()
 {
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     const float size_avail_x      = viewport->Size.x;
-    const float button_size_final = button_size * Spartan::Window::GetDpiScale() + MenuBar::GetPadding().x * 2.0f;
+    const float button_size_final = button_size * Spartan::Window::GetDpiScale() + TitleBar::GetPadding().x * 2.0f;
 
     float num_buttons             = 1.0f;
     float size_toolbar            = num_buttons * button_size_final;
@@ -111,7 +112,7 @@ void Toolbar::OnTick()
 
     // play button
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,  { 18.0f, MenuBar::GetPadding().y - 2.0f });
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,  { 18.0f, TitleBar::GetPadding().y - 2.0f });
     {
         ImGui::PushStyleColor(ImGuiCol_Button, button_color_play);
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, button_color_play_hover);
@@ -127,7 +128,7 @@ void Toolbar::OnTick()
         ImGui::PopStyleColor(3);
         ImGui::PopStyleVar(1);
     }
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { MenuBar::GetPadding().x, MenuBar::GetPadding().y - 2.0f });
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { TitleBar::GetPadding().x, TitleBar::GetPadding().y - 2.0f });
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,  { 2.0f , 0.0f });
 
 

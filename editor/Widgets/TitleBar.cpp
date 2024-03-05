@@ -19,8 +19,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============
-#include "MenuBar.h"
+//= INCLUDES =============================
+#include "TitleBar.h"
 #include "Core/Settings.h"
 #include "Profiler.h"
 #include "ShaderEditor.h"
@@ -32,7 +32,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Properties.h"
 #include "Viewport.h"
 #include "WorldViewer.h"
-//=========================
+#include "Toolbar.h"
+#include "../WidgetsDeferred/FileDialog.h"
+//========================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -47,11 +49,14 @@ namespace
     bool show_imgui_metrics_window = false;
     bool show_imgui_style_window   = false;
     bool show_imgui_demo_widow     = false;
+    Editor* m_editor               = nullptr;
     string file_dialog_selection_path;
+    unique_ptr<Toolbar> toolbar;
+    unique_ptr<FileDialog> file_dialog;
 
     vector<string> contributors =
     {
-        // format: name, country, button text, button url, contribution, steam key
+        // name,              country,     button text, button url,                                               contribution,                   steam key
         "Apostolos Bouzalas,  Greece,         LinkedIn, https://www.linkedin.com/in/apostolos-bouzalas,           Bug fixes,                      N/A",
         "Iker Galardi,        Basque Country, LinkedIn, https://www.linkedin.com/in/iker-galardi/,                Linux port (WIP),               N/A",
         "Jesse Guerrero,      US,             LinkedIn, https://www.linkedin.com/in/jguer,                        UX improvements,                N/A",
@@ -307,16 +312,16 @@ namespace
     }
 }
 
-MenuBar::MenuBar(Editor *editor) : Widget(editor)
+TitleBar::TitleBar(Editor *editor) : Widget(editor)
 {
-    m_title        = "MenuBar";
-    m_is_window    = false;
-    m_tool_bar     = make_unique<Toolbar>(editor);
-    m_file_dialog  = make_unique<FileDialog>(true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
-    m_editor       = editor;
+    m_title     = "title_bar";
+    m_is_window = false;
+    m_editor    = editor;
+    toolbar     = make_unique<Toolbar>(editor);
+    file_dialog = make_unique<FileDialog>(true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
 }
 
-void MenuBar::OnTick()
+void TitleBar::OnTick()
 {
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, GetPadding());
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -329,7 +334,7 @@ void MenuBar::OnTick()
         EntryHelp();
 
         // toolbar
-        m_tool_bar->Tick();
+        toolbar->Tick();
 
         ImGui::EndMainMenuBar();
     }
@@ -362,7 +367,7 @@ void MenuBar::OnTick()
     window_shortcuts(m_editor);
 }
 
-void MenuBar::EntryWorld()
+void TitleBar::EntryWorld()
 {
     if (ImGui::BeginMenu("World"))
     {
@@ -394,7 +399,7 @@ void MenuBar::EntryWorld()
     }
 }
 
-void MenuBar::EntryView()
+void TitleBar::EntryView()
 {
     if (ImGui::BeginMenu("View"))
     {
@@ -426,7 +431,7 @@ void MenuBar::EntryView()
     }
 }
 
-void MenuBar::EntryHelp()
+void TitleBar::EntryHelp()
 {
     if (ImGui::BeginMenu("Help"))
     {
@@ -459,7 +464,7 @@ void MenuBar::EntryHelp()
     }
 }
 
-void MenuBar::HandleKeyShortcuts() const
+void TitleBar::HandleKeyShortcuts() const
 {
     if (Spartan::Input::GetKey(Spartan::KeyCode::Ctrl_Left) && Spartan::Input::GetKeyDown(Spartan::KeyCode::P))
     {
@@ -467,29 +472,29 @@ void MenuBar::HandleKeyShortcuts() const
     }
 }
 
-void MenuBar::ShowWorldSaveDialog()
+void TitleBar::ShowWorldSaveDialog()
 {
-    m_file_dialog->SetOperation(FileDialog_Op_Save);
+    file_dialog->SetOperation(FileDialog_Op_Save);
     show_file_dialog = true;
 }
 
-void MenuBar::ShowWorldLoadDialog()
+void TitleBar::ShowWorldLoadDialog()
 {
-    m_file_dialog->SetOperation(FileDialog_Op_Load);
+    file_dialog->SetOperation(FileDialog_Op_Load);
     show_file_dialog = true;
 }
 
-void MenuBar::DrawFileDialog() const
+void TitleBar::DrawFileDialog() const
 {
     if (show_file_dialog)
     {
         ImGui::SetNextWindowFocus();
     }
 
-    if (m_file_dialog->Show(&show_file_dialog, m_editor, nullptr, &file_dialog_selection_path))
+    if (file_dialog->Show(&show_file_dialog, m_editor, nullptr, &file_dialog_selection_path))
     {
         // load world
-        if (m_file_dialog->GetOperation() == FileDialog_Op_Open || m_file_dialog->GetOperation() == FileDialog_Op_Load)
+        if (file_dialog->GetOperation() == FileDialog_Op_Open || file_dialog->GetOperation() == FileDialog_Op_Load)
         {
             if (Spartan::FileSystem::IsEngineSceneFile(file_dialog_selection_path))
             {
@@ -498,9 +503,9 @@ void MenuBar::DrawFileDialog() const
             }
         }
         // save world
-        else if (m_file_dialog->GetOperation() == FileDialog_Op_Save)
+        else if (file_dialog->GetOperation() == FileDialog_Op_Save)
         {
-            if (m_file_dialog->GetFilter() == FileDialog_Filter_World)
+            if (file_dialog->GetFilter() == FileDialog_Filter_World)
             {
                 EditorHelper::SaveWorld(file_dialog_selection_path);
                 show_file_dialog = false;
