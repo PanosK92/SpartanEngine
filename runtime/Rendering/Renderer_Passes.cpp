@@ -936,7 +936,7 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // set textures
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));  // read from that
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)); // read from that
             cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, tex_sss); // write to that
 
             // iterate through all the lights

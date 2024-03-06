@@ -553,7 +553,7 @@ namespace Spartan
         Vector3 camera_rotation = Vector3(7.4f, -65.5f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, "project\\music\\take_control.mp3");
 
-        // create care
+        // create car
         {
             const float car_scale   = 0.0180f;
             const float wheel_scale = 0.3f;
@@ -772,6 +772,8 @@ namespace Spartan
                         light->SetAngle(145.0f * Math::Helper::DEG_TO_RAD);
                     }
                 }
+
+                Engine::SetFlag(EngineMode::Game, true);
             }
         }
 
@@ -800,7 +802,6 @@ namespace Spartan
             World::RemoveEntity(entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0"));
         }
 
-        Engine::SetFlag(EngineMode::Game, true);
     }
 
     void World::CreateDefaultWorldForest()
