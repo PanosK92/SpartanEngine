@@ -43,26 +43,26 @@ public:
 
     void Tick();
 
-    // Called always
+    // called always
     virtual void OnTick() {};
 
-    // Called only when the widget is visible
+    // called only when the widget is visible
     virtual void OnTickVisible() {};
 
-    // Called when the window becomes visible
+    // called when the window becomes visible
     virtual void OnVisible() {};
 
-    // Called when the window becomes invisible
+    // called when the window becomes invisible
     virtual void OnInvisible() {};
 
-    // Called just before ImGui::Begin()
+    // called just before ImGui::Begin()
     virtual void OnPreBegin();
 
-    // Use this to push style variables. They will be automatically popped.
+    // use this to push style variables. They will be automatically popped.
     template<typename T>
     void PushStyleVar(ImGuiStyleVar idx, T val) { ImGui::PushStyleVar(idx, val); m_var_push_count++; }
 
-    // Properties
+    // properties
     Spartan::Math::Vector2 GetCenter() const;
     float GetHeight()                  const { return m_height; }
     ImGuiWindow* GetWindow()           const { return m_window; }
@@ -71,7 +71,7 @@ public:
     void SetVisible(bool is_visible)         { m_visible = is_visible; }
 
 protected:
-    // Properties
+    // properties
     bool m_is_window                      = true;
     bool m_visible                        = true;
     int m_flags                           = ImGuiWindowFlags_NoCollapse;
@@ -83,10 +83,10 @@ protected:
     Spartan::Math::Vector2 m_padding      = k_widget_default_property;
     std::string m_title                   = "Title";
 
-    // The ImGui window this widget corresponds to
+    // the ImGui window this widget corresponds to
     ImGuiWindow* m_window = nullptr;
 
-    // Dependencies
+    // dependencies
     Editor* m_editor = nullptr;
 
 private:

@@ -139,6 +139,10 @@ void IconLoader::Initialize()
         IconLoader::LoadFromFile(data_dir + "Icons\\capture.png", IconType::Button_RenderDoc);
         IconLoader::LoadFromFile(data_dir + "Icons\\code.png", IconType::Button_Shader);
         IconLoader::LoadFromFile(data_dir + "Icons\\texture.png", IconType::Directory_File_Texture);
+
+        IconLoader::LoadFromFile(data_dir + "Icons\\window_minimise.png", IconType::Window_Minimize);
+        IconLoader::LoadFromFile(data_dir + "Icons\\window_maximise.png", IconType::Window_Maximize);
+        IconLoader::LoadFromFile(data_dir + "Icons\\window_close.png", IconType::Window_Close);
     });
 }
 

@@ -52,10 +52,10 @@ namespace Spartan
     { 
         std::string m_title;
         Math::Vector2 m_position = Math::Vector2::Zero;
-        uint32_t width           = 640;
-        uint32_t height          = 480;
+        uint32_t width           = 1280;
+        uint32_t height          = 720;
         float dpi_scale          = 1.0f;
-        bool close               = false;
+        bool wants_to_close      = false;
         SDL_Window* window       = nullptr;
 
         // splash-screen
@@ -120,9 +120,9 @@ namespace Spartan
             m_title.c_str(), // window title
             0,               // initial x position
             0,               // initial y position
-            width,           // width in pixels
-            height,          // height in pixels
-            flags            // flags - see below
+            width,
+            height,
+            flags
         );
 
         if (!window)
@@ -204,7 +204,7 @@ namespace Spartan
                         // window has lost keyboard focus
                         break;
                     case SDL_WINDOWEVENT_CLOSE:
-                        close = true;
+                        wants_to_close = true;
                         break;
                     case SDL_WINDOWEVENT_TAKE_FOCUS:
                         // window is being offered a focus (should SetWindowInputFocus() on itself or a subwindow, or ignore)
@@ -316,14 +316,22 @@ namespace Spartan
     {
         SP_ASSERT(window != nullptr);
 
-        SDL_SetWindowFullscreen(window, SDL_WINDOW_MINIMIZED);
+        SDL_MinimizeWindow(window);
     }
 
     void Window::Maximise()
     {
         SP_ASSERT(window != nullptr);
 
-        SDL_SetWindowFullscreen(window, SDL_WINDOW_MAXIMIZED);
+        Uint32 window_flags = SDL_GetWindowFlags(window);
+        if (window_flags & SDL_WINDOW_MAXIMIZED)
+        {
+            SDL_RestoreWindow(window);
+        }
+        else
+        {
+            SDL_MaximizeWindow(window);
+        }
     }
 
     void Window::SetSize(const uint32_t width, const uint32_t height)
@@ -379,9 +387,9 @@ namespace Spartan
         #endif
     }
 
-    bool Window::WantsToClose()
+    void Window::Close()
     {
-        return close;
+        wants_to_close = true;
     }
 
     bool Window::IsMinimised()
@@ -392,6 +400,11 @@ namespace Spartan
     bool Window::IsFullScreen()
     {
         return SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN;
+    }
+
+    bool Window::WantsToClose()
+    {
+        return wants_to_close;
     }
 
     void Window::CreateAndShowSplashScreen()

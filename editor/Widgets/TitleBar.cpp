@@ -50,13 +50,13 @@ namespace
     bool show_imgui_metrics_window = false;
     bool show_imgui_style_window   = false;
     bool show_imgui_demo_widow     = false;
-    Editor* m_editor               = nullptr;
+    Editor* editor                 = nullptr;
     string file_dialog_selection_path;;
     unique_ptr<FileDialog> file_dialog;
 
-    namespace windows
+    namespace menu
     { 
-        vector<string> contributors_list =
+        vector<string> contributors =
         {
             // name,              country,     button text, button url,                                               contribution,                   steam key
             "Apostolos Bouzalas,  Greece,         LinkedIn, https://www.linkedin.com/in/apostolos-bouzalas,           Bug fixes,                      N/A",
@@ -105,12 +105,12 @@ namespace
             return result;
         }
 
-        void contributors(Editor* editor)
+        void window_contributors()
         {
             if (!show_contributors_window)
                 return;
 
-            vector<string> comma_seperated_contributors = comma_seperate_contributors(contributors_list);
+            vector<string> comma_seperated_contributors = comma_seperate_contributors(contributors);
 
             ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
             ImGui::SetNextWindowFocus();
@@ -133,7 +133,7 @@ namespace
                     ImGui::TableHeadersRow();
 
                     uint32_t index = 0;
-                    for (uint32_t i = 0; i < static_cast<uint32_t>(contributors_list.size()); i++)
+                    for (uint32_t i = 0; i < static_cast<uint32_t>(contributors.size()); i++)
                     {
                         // switch row
                         ImGui::TableNextRow();
@@ -179,7 +179,7 @@ namespace
             ImGui::End();
         }
 
-        void about(Editor* editor)
+        void window_about()
         {
             if (!show_about_window)
                 return;
@@ -250,7 +250,7 @@ namespace
             ImGui::End();
         }
 
-        void shortcuts(Editor* editor)
+        void window_shortcuts()
         {
             if (!show_shortcuts_window)
                 return;
@@ -301,7 +301,7 @@ namespace
         }
 
         template <class T>
-        void menu_entry(Editor* editor)
+        void entry()
         {
             T* widget = editor->GetWidget<T>();
 
@@ -314,7 +314,7 @@ namespace
         }
     }
 
-    namespace buttons
+    namespace buttons_toolbar
     {
         float button_size               = 19.0f;
         ImVec4 button_color_play        = { 0.2f, 0.7f, 0.35f, 1.0f };
@@ -363,28 +363,27 @@ namespace
             float cursor_pos_x            = (size_avail_x - size_toolbar) * 0.5f;
 
             // play button
-            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0f);
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 18.0f, TitleBar::GetPadding().y - 2.0f });
             {
+                ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0f);
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 18.0f, TitleBar::GetPadding().y - 2.0f });
                 ImGui::PushStyleColor(ImGuiCol_Button, button_color_play);
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, button_color_play_hover);
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, button_color_play_active);
 
-                toolbar_button(
-                    IconType::Button_Play, "Play",
-                    []() { return Spartan::Engine::IsFlagSet(Spartan::EngineMode::Game);  },
-                    []() { return Spartan::Engine::ToggleFlag(Spartan::EngineMode::Game); },
-                    cursor_pos_x
-                );
+               toolbar_button(
+                   IconType::Button_Play, "Play",
+                   []() { return Spartan::Engine::IsFlagSet(Spartan::EngineMode::Game);  },
+                   []() { return Spartan::Engine::ToggleFlag(Spartan::EngineMode::Game); },
+                   cursor_pos_x
+               );
 
-                ImGui::PopStyleColor(3);
-                ImGui::PopStyleVar(1);
+               ImGui::PopStyleColor(3);
+               ImGui::PopStyleVar(1);
             }
+          
+            // all the other buttons
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { TitleBar::GetPadding().x, TitleBar::GetPadding().y - 2.0f });
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 2.0f , 0.0f });
-
-
-            // all the other buttons
             ImGui::PushStyleColor(ImGuiCol_Button, button_color_doc);
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, button_color_doc_hover);
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, button_color_doc_active);
@@ -434,28 +433,48 @@ namespace
             //);
         }
     }
+
+    namespace buttons_window
+    {
+        void tick()
+        {
+            // snap to the right
+            const ImGuiViewport* viewport = ImGui::GetMainViewport();
+            const float size_avail_x      = viewport->Size.x;
+            const float offset_right      = 120.0f * Spartan::Window::GetDpiScale();
+            ImGui::SetCursorPosX(size_avail_x - offset_right);
+
+            Spartan::Math::Vector2 icon_size = Spartan::Math::Vector2(24.0f, 24.0f);
+            if (ImGuiSp::image_button(0, nullptr, IconType::Window_Minimize, icon_size, false))
+            {
+                Spartan::Window::Minimise();
+            }
+
+            if (ImGuiSp::image_button(1, nullptr, IconType::Window_Maximize, icon_size, false))
+            {
+                Spartan::Window::Maximise();
+            }
+
+            if (ImGuiSp::image_button(2, nullptr, IconType::Window_Close, icon_size, false))
+            {
+                Spartan::Window::Close();
+            }
+        }
+    }
 }
 
-TitleBar::TitleBar(Editor *editor) : Widget(editor)
+TitleBar::TitleBar(Editor* _editor) : Widget(_editor)
 {
     m_title     = "title_bar";
     m_is_window = false;
-    m_editor    = editor;
-    m_flags     =
-        ImGuiWindowFlags_NoCollapse |
-        ImGuiWindowFlags_NoResize |
-        ImGuiWindowFlags_NoMove |
-        ImGuiWindowFlags_NoSavedSettings |
-        ImGuiWindowFlags_NoScrollbar |
-        ImGuiWindowFlags_NoTitleBar;
-
+    editor      = _editor;
     file_dialog = make_unique<FileDialog>(true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
 
-    buttons::widgets[IconType::Button_Profiler]        = m_editor->GetWidget<Profiler>();
-    buttons::widgets[IconType::Button_ResourceCache]   = m_editor->GetWidget<ResourceViewer>();
-    buttons::widgets[IconType::Button_Shader]          = m_editor->GetWidget<ShaderEditor>();
-    buttons::widgets[IconType::Component_Options]      = m_editor->GetWidget<RenderOptions>();
-    buttons::widgets[IconType::Directory_File_Texture] = m_editor->GetWidget<TextureViewer>();
+    buttons_toolbar::widgets[IconType::Button_Profiler]        = editor->GetWidget<Profiler>();
+    buttons_toolbar::widgets[IconType::Button_ResourceCache]   = editor->GetWidget<ResourceViewer>();
+    buttons_toolbar::widgets[IconType::Button_Shader]          = editor->GetWidget<ShaderEditor>();
+    buttons_toolbar::widgets[IconType::Component_Options]      = editor->GetWidget<RenderOptions>();
+    buttons_toolbar::widgets[IconType::Directory_File_Texture] = editor->GetWidget<TextureViewer>();
 
     Spartan::Engine::RemoveFlag(Spartan::EngineMode::Game);
 }
@@ -473,7 +492,7 @@ void TitleBar::OnTick()
             EntryView();
             EntryHelp();
 
-            buttons::tick();
+            buttons_toolbar::tick();
 
             ImGui::EndMainMenuBar();
         }
@@ -500,9 +519,9 @@ void TitleBar::OnTick()
             ImGui::ShowDemoWindow(&show_imgui_demo_widow);
         }
 
-        windows::about(m_editor);
-        windows::contributors(m_editor);
-        windows::shortcuts(m_editor);
+        menu::window_about();
+        menu::window_contributors();
+        menu::window_shortcuts();
     }
 
     HandleKeyShortcuts();
@@ -545,19 +564,19 @@ void TitleBar::EntryView()
 {
     if (ImGui::BeginMenu("View"))
     {
-        windows::menu_entry<Profiler>(m_editor);
-        windows::menu_entry<ShaderEditor>(m_editor);
-        windows::menu_entry<RenderOptions>(m_editor);
-        windows::menu_entry<TextureViewer>(m_editor);
-        windows::menu_entry<ResourceViewer>(m_editor);
+        menu::entry<Profiler>();
+        menu::entry<ShaderEditor>();
+        menu::entry<RenderOptions>();
+        menu::entry<TextureViewer>();
+        menu::entry<ResourceViewer>();
 
         if (ImGui::BeginMenu("Widgets"))
         {
-            windows::menu_entry<AssetBrowser>(m_editor);
-            windows::menu_entry<Console>(m_editor);
-            windows::menu_entry<Properties>(m_editor);
-            windows::menu_entry<Viewport>(m_editor);
-            windows::menu_entry<WorldViewer>(m_editor);
+            menu::entry<AssetBrowser>();
+            menu::entry<Console>();
+            menu::entry<Properties>();
+            menu::entry<Viewport>();
+            menu::entry<WorldViewer>();
             ImGui::EndMenu();
         }
 
