@@ -476,7 +476,7 @@ TitleBar::TitleBar(Editor* _editor) : Widget(_editor)
     buttons_toolbar::widgets[IconType::Component_Options]      = editor->GetWidget<RenderOptions>();
     buttons_toolbar::widgets[IconType::Directory_File_Texture] = editor->GetWidget<TextureViewer>();
 
-    Spartan::Engine::RemoveFlag(Spartan::EngineMode::Game);
+    Spartan::Engine::SetFlag(Spartan::EngineMode::Game, false);
 }
 
 void TitleBar::OnTick()

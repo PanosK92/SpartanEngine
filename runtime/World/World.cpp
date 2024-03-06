@@ -544,7 +544,7 @@ namespace Spartan
         }
 
         // start simulating (for the music to play)
-        Engine::AddFlag(EngineMode::Game);
+        Engine::SetFlag(EngineMode::Game, true);
     }
 
     void World::CreateDefaultWorldCar()
@@ -800,7 +800,7 @@ namespace Spartan
             World::RemoveEntity(entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0"));
         }
 
-        Engine::AddFlag(EngineMode::Game);
+        Engine::SetFlag(EngineMode::Game, true);
     }
 
     void World::CreateDefaultWorldForest()
@@ -1071,7 +1071,7 @@ namespace Spartan
                 World::Resolve();
 
                 // start simulating (for the music to play)
-                Engine::AddFlag(EngineMode::Game);
+                Engine::SetFlag(EngineMode::Game, true);
             });
         }
     }
@@ -1165,7 +1165,7 @@ namespace Spartan
         }
 
         // start simulating (for the physics and the music to work)
-        Engine::AddFlag(EngineMode::Game);
+        Engine::SetFlag(EngineMode::Game, true);
     }
 
     void World::CreateDefaultWorldDoomE1M1()
@@ -1197,7 +1197,7 @@ namespace Spartan
         }
 
         // start simulating (for the physics and the music to work)
-        Engine::AddFlag(EngineMode::Game);
+        Engine::SetFlag(EngineMode::Game, true);
     }
 
     void World::TickDefaultWorlds()
