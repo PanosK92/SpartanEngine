@@ -69,6 +69,9 @@ enum class IconType
     Directory_File_Font,
     Directory_File_Texture,
     Screenshot,
+    Window_Minimize,
+    Window_Maximize,
+    Window_Close,
     Undefined
 };
 

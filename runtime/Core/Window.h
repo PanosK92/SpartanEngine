@@ -34,7 +34,7 @@ namespace Spartan
         static void Shutdown();
         static void Tick();
 
-        // Behaviour
+        // behaviour
         static void Show();
         static void Hide();
         static void Focus();
@@ -45,18 +45,19 @@ namespace Spartan
         static void Minimise();
         static void Maximise();
 
-        // Size
+        // size
         static void SetSize(const uint32_t width, const uint32_t height);
         static uint32_t GetWidth();
         static uint32_t GetHeight();
         static float GetDpiScale();
 
-        // Misc
+        // misc
         static void* GetHandleSDL();
         static void* GetHandleRaw();
-        static bool WantsToClose();
+        static void Close();
         static bool IsMinimised();
         static bool IsFullScreen();
+        static bool WantsToClose();
 
     private:
         static void CreateAndShowSplashScreen();
