@@ -49,9 +49,9 @@ namespace Spartan
 
     void Engine::Initialize()
     {
-        AddFlag(EngineMode::Editor);
-        AddFlag(EngineMode::Physics);
-        AddFlag(EngineMode::Game);
+        SetFlag(EngineMode::Editor, true);
+        SetFlag(EngineMode::Physics, true);
+        SetFlag(EngineMode::Game, true);
 
         Stopwatch timer_initialize;
         {
@@ -115,23 +115,18 @@ namespace Spartan
         Profiler::PostTick();
     }
 
-    void Engine::AddFlag(const EngineMode flag)
-    {
-        flags |= static_cast<uint32_t>(flag);
-    }
-
-    void Engine::RemoveFlag(const EngineMode flag)
-    {
-        flags &= ~static_cast<uint32_t>(flag);
-    }
-
     bool Engine::IsFlagSet(const EngineMode flag)
     {
         return flags & static_cast<uint32_t>(flag);
     }
 
+    void Engine::SetFlag(const EngineMode flag, const bool enabled)
+    {
+        enabled ? (flags |= static_cast<uint32_t>(flag)) : (flags &= ~static_cast<uint32_t>(flag));
+    }
+
     void Engine::ToggleFlag(const EngineMode flag)
     {
-        IsFlagSet(flag) ? RemoveFlag(flag) : AddFlag(flag);
+        IsFlagSet(flag) ? (flags &= ~static_cast<uint32_t>(flag)) : (flags |= static_cast<uint32_t>(flag));
     }
 }
