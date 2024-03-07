@@ -49,6 +49,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - Screen space shadows from Bend Studio's Days Gone.
 - Screen space global illumination & reflections.
 - Variable rate shading.
+- Dynamic resolutions scaling.
 - Advanced shadow features with penumbra and colored translucency.
 - Physical light units (intensity from lumens and color from kelvin).
 - Comprehensive debug rendering options.

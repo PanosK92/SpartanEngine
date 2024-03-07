@@ -117,7 +117,7 @@ namespace Spartan
 
     void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)
     {
-        pso.Validate();
+        pso.Prepare();
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         SP_ASSERT_MSG(false, "Function is not implemented");
