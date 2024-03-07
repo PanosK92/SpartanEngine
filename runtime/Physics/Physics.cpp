@@ -58,10 +58,11 @@ namespace Spartan
         PhysicsDebugDraw* debug_draw                             = nullptr;
 
         // world properties
-        int max_sub_steps        = 1;
-        int max_solve_iterations = 256;
-        float internal_hz        = 200.0f; // almost mandatory for advanced car physics
-        Math::Vector3 gravity    = Math::Vector3(0.0f, -9.81f, 0.0f);
+        int max_solve_iterations       = 256;
+        const float internal_time_step = 1.0f / 200.0f; // 200 Hz physics resolution (needed for car simulation)
+        const float real_time_step     = 1.0f / 60.0f;  // 60 Hz update rate
+        float accumulator              = 0.0f;
+        Math::Vector3 gravity          = Math::Vector3(0.0f, -9.81f, 0.0f);
 
         // picking
         btRigidBody* picked_body                = nullptr;
@@ -168,17 +169,15 @@ namespace Spartan
                 MovePickedBody();
             }
 
-            // determine the internal time step and max sub-steps based on the internal frequency
-            float real_world_elapsed_time = static_cast<float>(Timer::GetDeltaTimeSec());
-            float internal_time_step      = 1.0f / internal_hz;
-            uint32_t max_substeps         = static_cast<uint32_t>(real_world_elapsed_time / internal_time_step);
-
-            // if max_substeps is zero, it means the internal frequency is too high for the elapsed real-world time.
-            // in this case, set max_substeps to 1 to ensure the simulation advances.
-            max_substeps = max_substeps > 0 ? max_substeps : 1;
-
-            // step the physics world
-            world->stepSimulation(real_world_elapsed_time, max_substeps, internal_time_step);
+            // accumulate elapsed time
+            float frameTime  = static_cast<float>(Timer::GetDeltaTimeSec());
+            accumulator     += frameTime;
+            // update physics as many times as needed to consume the accumulator at 200 Hz rate
+            while (accumulator >= internal_time_step)
+            {
+                world->stepSimulation(internal_time_step, 1, internal_time_step);
+                accumulator -= internal_time_step;
+            }
         }
 
         if (debug_draw)
@@ -296,7 +295,7 @@ namespace Spartan
 
     float Physics::GetTimeStepInternalSec()
     {
-        return 1.0f / internal_hz;
+        return 1.0f / internal_time_step;
     }
 
     void Physics::PickBody()
