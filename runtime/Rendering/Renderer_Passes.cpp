@@ -300,6 +300,31 @@ namespace Spartan
                 );
             }
         }
+
+        void dynamic_resolution()
+        {
+            if (Renderer::GetOption<float>(Renderer_Option::DynamicResolution) != 0.0f)
+            {
+                float gpu_time_target   = 16.67f;                           // target for 60 FPS
+                float adjustment_factor = 0.05f * Timer::GetDeltaTimeSec(); // how aggressively to adjust screen percentage
+                float screen_percentage = Renderer::GetOption<float>(Renderer_Option::ScreenPercentage) / 100.0f;
+                float gpu_time          = Profiler::GetTimeGpuLast();
+
+                if (gpu_time < gpu_time_target) // gpu is under target, increase resolution
+                {
+                    screen_percentage += adjustment_factor * (gpu_time_target - gpu_time);
+                }
+                else // gpu is over target, decrease resolution
+                {
+                    screen_percentage -= adjustment_factor * (gpu_time - gpu_time_target);
+                }
+
+                // clamp screen_percentage to a reasonable range
+                screen_percentage = std::clamp(screen_percentage, 0.5f, 1.0f);
+
+                Renderer::SetOption(Renderer_Option::ScreenPercentage, screen_percentage * 100.0f);
+            }
+        }
     }
 
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
@@ -329,6 +354,7 @@ namespace Spartan
         RHI_Texture* rt_output   = GetRenderTarget(Renderer_RenderTarget::frame_output).get();
 
         UpdateConstantBufferFrame(cmd_list);
+        dynamic_resolution();
 
         Pass_VariableRateShading(cmd_list);
         Pass_Skysphere(cmd_list);

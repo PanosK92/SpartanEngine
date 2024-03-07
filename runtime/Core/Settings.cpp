@@ -86,6 +86,7 @@ namespace Spartan
                 case Renderer_Option::Vsync:                         return "Vsync";
                 case Renderer_Option::VariableRateShading:           return "VariableRateShading";
                 case Renderer_Option::ScreenPercentage:              return "ScreenPercentage";
+                case Renderer_Option::DynamicResolution:             return "DynamicResolution";
                 default:
                 {
                     SP_ASSERT_MSG(false, "Renderer_Option not handled");

@@ -250,8 +250,11 @@ void RenderOptions::OnTickVisible()
                 Renderer::SetResolutionOutput(display_modes[resolution_output_index].width, display_modes[resolution_output_index].height);
             }
 
-            option_value("Screen percentage", Renderer_Option::ScreenPercentage, "Adjusts the percentage of the render resolution", 1.0f);
             option_check_box("Variable rate shading", Renderer_Option::VariableRateShading, "Improves performance by varying pixel shading detail");
+            option_check_box("Dynamic resolution", Renderer_Option::DynamicResolution, "Drives the screen percentage based on GPU load");
+            ImGui::BeginDisabled(Renderer::GetOption<bool>(Renderer_Option::DynamicResolution));
+            option_value("Screen percentage", Renderer_Option::ScreenPercentage, "Adjusts the percentage of the render resolution", 1.0f);
+            ImGui::EndDisabled();
 
             // upsampling
             {
