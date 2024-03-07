@@ -56,6 +56,7 @@ namespace Spartan
 
         const std::shared_ptr<RHI_Texture> GetHeightMap() const { return m_height_texture; }
         void SetHeightMap(const std::shared_ptr<RHI_Texture>& height_map);
+        void SetHeightMap(const std::string& file_path);
 
         float GetMinY() const     { return m_min_y; }
         void SetMinY(float min_z) { m_min_y = min_z; }

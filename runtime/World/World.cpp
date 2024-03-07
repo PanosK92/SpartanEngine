@@ -942,7 +942,7 @@ if (m_default_model_wheel = ResourceCache::Load<Mesh>("project\\models\\wheel\\m
             }
             
             // generate a height field
-            terrain->SetHeightMap(ResourceCache::Load<RHI_Texture2D>("project\\terrain\\height_map.png", RHI_Texture_Srv));
+            terrain->SetHeightMap("project\\terrain\\height_map.png");
             terrain->GenerateAsync([terrain, camera_position]()
             {
                 // add physics so we can walk on it
