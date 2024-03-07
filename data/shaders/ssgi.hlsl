@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // constants
-static const uint g_ao_directions = 2;
+static const uint g_ao_directions = 3;
 static const uint g_ao_steps      = 2;
 static const float g_ao_radius    = 3.0f;
 static const float g_ao_intensity = 4.0f;
@@ -66,8 +66,8 @@ float compute_occlusion(float3 origin_position, float3 origin_normal, uint2 samp
 void compute_ssgi(uint2 pos, inout float visibility, inout float3 diffuse_bounce)
 {
     const float2 origin_uv       = (pos + 0.5f) / pass_get_resolution_out();
-    const float3 origin_position = get_position_view_space(pos);
-    const float3 origin_normal   = get_normal_view_space(pos);
+    const float3 origin_position = get_position_view_space(origin_uv);
+    const float3 origin_normal   = get_normal_view_space(origin_uv);
 
     // compute step in pixels
     const float pixel_offset = max((g_ao_radius * pass_get_resolution_out().x * 0.5f) / origin_position.z, (float)g_ao_steps);
@@ -89,10 +89,10 @@ void compute_ssgi(uint2 pos, inout float visibility, inout float3 diffuse_bounce
         float2 rotation_direction = float2(cos(rotation_angle), sin(rotation_angle)) * get_rt_texel_size();
 
         [unroll]
-        for (uint step_index = 0; step_index < g_ao_steps; ++step_index)
+        for (uint step_index = 0; step_index < g_ao_steps; step_index++)
         {
             float2 uv_offset       = round(max(step_offset * (step_index + ray_offset), 1 + step_index)) * rotation_direction;
-            uint2 sample_pos       = (origin_uv + uv_offset) * pass_get_resolution_out();
+            uint2 sample_pos       = (origin_uv + uv_offset) * buffer_frame.resolution_render;
             float sample_occlusion = compute_occlusion(origin_position, origin_normal, sample_pos);
 
             occlusion      += sample_occlusion;
