@@ -547,7 +547,13 @@ namespace Spartan
         m_height_texture = height_map;
     }
 
-	void Terrain::GenerateTransforms(vector<Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop)
+    void Terrain::SetHeightMap(const string& file_path)
+    {
+        m_height_texture = make_shared<RHI_Texture2D>();
+        m_height_texture->LoadFromFile(file_path);
+    }
+
+    void Terrain::GenerateTransforms(vector<Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop)
 	{
         bool rotate_match_surface_normal = false;
         float max_slope                  = 0.0f;
@@ -577,7 +583,7 @@ namespace Spartan
         *transforms = generate_transforms(m_vertices, m_indices, count, max_slope, rotate_match_surface_normal, terrain_offset);
 	}
 
-	void Terrain::GenerateAsync(function<void()> on_complete)
+    void Terrain::GenerateAsync(function<void()> on_complete)
     {
         if (m_is_generating)
         {
@@ -604,7 +610,7 @@ namespace Spartan
             uint32_t height = 0;
             vector<Vector3> positions;
 
-            // 1. process height map        
+            // 1. process height map
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Process height map...");
 
