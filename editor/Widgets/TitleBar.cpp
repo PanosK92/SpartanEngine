@@ -611,7 +611,6 @@ void TitleBar::EntryHelp()
     if (ImGui::BeginMenu("Help"))
     {
         ImGui::MenuItem("About", nullptr, &show_about_window);
-        ImGui::MenuItem("Contributors", nullptr, &show_contributors_window);
 
         if (ImGui::MenuItem("Contributing", nullptr, nullptr))
         {
@@ -623,17 +622,22 @@ void TitleBar::EntryHelp()
             Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor");
         }
 
-        if (ImGui::MenuItem("Join the Discord server", nullptr, nullptr))
-        {
-            Spartan::FileSystem::OpenUrl("https://discord.gg/TG5r2BS");
-        }
+        ImGui::MenuItem("Contributors", nullptr, &show_contributors_window);
 
         if (ImGui::MenuItem("Report a bug", nullptr, nullptr))
         {
             Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/issues/new/choose");
         }
 
-        ImGui::MenuItem("Shortcuts & Input Reference", "Ctrl+P", &show_shortcuts_window);
+        if (ImGui::MenuItem("Shortcuts & Input Reference", "Ctrl+P", &show_shortcuts_window))
+        {
+
+        }
+
+        if (ImGui::MenuItem("Join the Discord server", nullptr, nullptr))
+        {
+            Spartan::FileSystem::OpenUrl("https://discord.gg/TG5r2BS");
+        }
 
         ImGui::EndMenu();
     }
