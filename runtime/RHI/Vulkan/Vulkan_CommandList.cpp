@@ -698,7 +698,10 @@ namespace Spartan
         if (m_pso.render_target_depth_texture != nullptr)
         {
             RHI_Texture* rt = m_pso.render_target_depth_texture;
-            SP_ASSERT_MSG(rt->GetWidth() == rendering_info.renderArea.extent.width, "The depth buffer doesn't match the output resolution");
+            if (Renderer::GetOption<float>(Renderer_Option::ScreenPercentage) == 100.0f)
+            { 
+                SP_ASSERT_MSG(rt->GetWidth() == rendering_info.renderArea.extent.width, "The depth buffer doesn't match the output resolution");
+            }
             SP_ASSERT(rt->IsDsv());
 
             // transition to the appropriate layout

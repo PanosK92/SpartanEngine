@@ -34,16 +34,16 @@ namespace Spartan
         RHI_PipelineState();
         ~RHI_PipelineState();
 
-        uint64_t ComputeHash();
-        uint64_t GetHash()    const { return m_hash; }
-        uint32_t GetWidth()   const;
-        uint32_t GetHeight()  const;
-        void Validate()       const;
+        void Prepare();
         bool HasClearValues() const;
+
+        uint64_t GetHash()    const { return m_hash; }
+        uint32_t GetWidth()   const { return m_width; }
+        uint32_t GetHeight()  const { return m_height; }
         bool IsGraphics()     const { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
         bool IsCompute()      const { return shader_compute != nullptr && !IsGraphics(); }
-        
-        //= STATIC - Can cause PSO generation =============================================
+
+        //= STATIC - can cause pso generation =============================================
         RHI_Shader* shader_vertex                  = nullptr;
         RHI_Shader* shader_pixel                   = nullptr;
         RHI_Shader* shader_compute                 = nullptr;
@@ -54,13 +54,13 @@ namespace Spartan
         RHI_PrimitiveTopology primitive_toplogy    = RHI_PrimitiveTopology::TriangleList;
         bool instancing                            = false;
 
-        // RTs
+        // rt
         std::array<RHI_Texture*, rhi_max_render_target_count> render_target_color_textures;
         RHI_Texture* render_target_depth_texture = nullptr;
         RHI_Texture* render_target_vrs           = nullptr;
         //=================================================================================
 
-        //= DYNAMIC - Will not cause PSO generation =================
+        //= DYNAMIC - will not cause pso generation =================
         uint32_t render_target_color_texture_array_index         = 0;
         uint32_t render_target_depth_stencil_texture_array_index = 0;
 
@@ -68,10 +68,14 @@ namespace Spartan
         uint32_t clear_stencil = rhi_stencil_load;
         std::array<Color, rhi_max_render_target_count> clear_color;
 
+        Math::Rectangle viewport;
+
         std::string name;
         //===========================================================
 
     private:
+        uint32_t m_width                  = 0;
+        uint32_t m_height                 = 0;
         uint64_t m_hash                   = 0;
         RHI_PipelineState* m_pso_previous = nullptr;
     };

@@ -64,6 +64,7 @@ namespace Spartan
         Hdr,
         Vsync,
         VariableRateShading,
+        ScreenPercentage,
         Max
     };
 
