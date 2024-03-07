@@ -1879,7 +1879,8 @@ namespace Spartan
             GetCamera().get(),
             m_cb_frame_cpu.delta_time,
             sharpness,
-            GetOption<float>(Renderer_Option::Exposure)
+            GetOption<float>(Renderer_Option::Exposure),
+            GetOption<float>(Renderer_Option::ScreenPercentage)
         );
 
         cmd_list->EndTimeblock();

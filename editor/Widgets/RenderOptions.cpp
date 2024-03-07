@@ -250,7 +250,7 @@ void RenderOptions::OnTickVisible()
                 Renderer::SetResolutionOutput(display_modes[resolution_output_index].width, display_modes[resolution_output_index].height);
             }
 
-            // variable rate shading
+            option_value("Screen percentage", Renderer_Option::ScreenPercentage, "Adjusts the percentage of the render resolution", 1.0f);
             option_check_box("Variable rate shading", Renderer_Option::VariableRateShading, "Improves performance by varying pixel shading detail");
 
             // upsampling

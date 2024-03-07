@@ -67,9 +67,10 @@ namespace Spartan
         RHI_Texture* tex_velocity,
         RHI_Texture* tex_output,
         Camera* camera,
-        float delta_time_sec,
-        float sharpness,
-        float exposure
+        const float delta_time_sec,
+        const float sharpness,
+        const float exposure,
+        const float screen_percentage
     )
     {
 

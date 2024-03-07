@@ -470,7 +470,7 @@ namespace Spartan
 
         void get_descriptors_from_pipeline_state(RHI_PipelineState& pipeline_state, vector<RHI_Descriptor>& descriptors)
         {
-            pipeline_state.Validate();
+            pipeline_state.Prepare();
 
             // use the hash of the pipeline state as the key for the cache
             uint64_t pipeline_state_hash = pipeline_state.GetHash();
@@ -1678,8 +1678,7 @@ namespace Spartan
 
     void RHI_Device::GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout)
     {
-        pso.Validate();
-        pso.ComputeHash();
+        pso.Prepare();
 
         lock_guard<mutex> lock(descriptors::descriptor_pipeline_mutex);
 

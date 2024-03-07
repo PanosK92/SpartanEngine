@@ -168,6 +168,7 @@ namespace Spartan
         SetOption(Renderer_Option::FogVolumetric,                 1.0f);
         SetOption(Renderer_Option::Antialiasing,                  static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 2 for taa
         SetOption(Renderer_Option::Upsampling,                    static_cast<float>(Renderer_Upsampling::FSR2));
+        SetOption(Renderer_Option::ScreenPercentage,              100.0f);
         SetOption(Renderer_Option::VariableRateShading,           0.0f);
         SetOption(Renderer_Option::Vsync,                         0.0f);
         SetOption(Renderer_Option::Debanding,                     0.0f);
@@ -632,6 +633,10 @@ namespace Spartan
             else if (option == Renderer_Option::ShadowResolution)
             {
                 value = Helper::Clamp(value, static_cast<float>(resolution_shadow_min), static_cast<float>(RHI_Device::PropertyGetMaxTexture2dDimension()));
+            }
+            else if (option == Renderer_Option::ScreenPercentage)
+            {
+                value = Helper::Clamp(value, 10.0f, 100.0f);
             }
         }
 

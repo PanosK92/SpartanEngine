@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_BlendState.h"
 #include "RHI_RasterizerState.h"
 #include "RHI_DepthStencilState.h"
+#include "../Rendering/Renderer.h"
 //================================
 
 //= NAMESPACES ===============
@@ -37,6 +38,133 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    namespace
+    {
+        void validate(RHI_PipelineState& pso)
+        {
+            bool has_shader_compute  = pso.shader_compute ? pso.shader_compute->IsCompiled() : false;
+            bool has_shader_vertex   = pso.shader_vertex ? pso.shader_vertex->IsCompiled() : false;
+            bool has_shader_pixel    = pso.shader_pixel ? pso.shader_pixel->IsCompiled() : false;
+            bool has_render_target   = pso.render_target_color_textures[0] || pso.render_target_depth_texture; // check that there is at least one render target
+            bool has_backbuffer      = pso.render_target_swapchain;                                            // check that no both the swapchain and the color render target are active
+            bool has_graphics_states = pso.rasterizer_state && pso.blend_state && pso.depth_stencil_state;
+            bool is_graphics         = (has_shader_vertex || has_shader_pixel) && !has_shader_compute;
+            bool is_compute          = has_shader_compute && (!has_shader_vertex && !has_shader_pixel);
+
+            SP_ASSERT_MSG(has_shader_compute || has_shader_vertex || has_shader_pixel, "There must be at least one shader");
+            if (is_graphics)
+            {
+                SP_ASSERT_MSG(has_graphics_states, "Graphics states are missing");
+                SP_ASSERT_MSG(has_render_target || has_backbuffer, "A render target is missing");
+                SP_ASSERT(pso.GetWidth() != 0 && pso.GetHeight() != 0);
+            }
+        }
+
+        uint64_t compute_hash(RHI_PipelineState& pso)
+        {
+            uint64_t hash = 0;
+
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.instancing));
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.primitive_toplogy));
+
+            if (pso.render_target_swapchain)
+            {
+                hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.render_target_swapchain->GetFormat()));
+            }
+
+            if (pso.rasterizer_state)
+            {
+                hash = rhi_hash_combine(hash, pso.rasterizer_state->GetHash());
+            }
+
+            if (pso.blend_state)
+            {
+                hash = rhi_hash_combine(hash, pso.blend_state->GetHash());
+            }
+
+            if (pso.depth_stencil_state)
+            {
+                hash = rhi_hash_combine(hash, pso.depth_stencil_state->GetHash());
+            }
+
+            // shaders
+            {
+                if (pso.shader_compute)
+                {
+                    hash = rhi_hash_combine(hash, pso.shader_compute->GetHash());
+                }
+
+                if (pso.shader_vertex)
+                {
+                    hash = rhi_hash_combine(hash, pso.shader_vertex->GetHash());
+                }
+
+                if (pso.shader_pixel)
+                {
+                    hash = rhi_hash_combine(hash, pso.shader_pixel->GetHash());
+                }
+            }
+
+            // rt
+            {
+                // color
+                for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
+                {
+                    if (RHI_Texture* texture = pso.render_target_color_textures[i])
+                    {
+                        hash = rhi_hash_combine(hash, static_cast<uint64_t>(texture->GetFormat()));
+                    }
+                }
+
+                // depth
+                if (pso.render_target_depth_texture)
+                {
+                    hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.render_target_depth_texture->GetFormat()));
+                }
+
+                // variable rate shading
+                if (pso.render_target_vrs)
+                {
+                    hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.render_target_depth_texture->GetFormat()));
+                }
+            }
+
+            return hash;
+        }
+
+        void get_dimensions(RHI_PipelineState& pso, uint32_t* width, uint32_t* height)
+        {
+            SP_ASSERT(width && height);
+
+            *width  = 0;
+            *height = 0;
+
+            if (pso.render_target_swapchain)
+            {
+                if (width)  *width  = pso.render_target_swapchain->GetWidth();
+                if (height) *height = pso.render_target_swapchain->GetHeight();
+            }
+            else if (pso.render_target_color_textures[0])
+            {
+                if (width)  *width  = pso.render_target_color_textures[0]->GetWidth();
+                if (height) *height = pso.render_target_color_textures[0]->GetHeight();
+            }
+            else if (pso.render_target_depth_texture)
+            {
+                if (width)  *width  = pso.render_target_depth_texture->GetWidth();
+                if (height) *height = pso.render_target_depth_texture->GetHeight();
+            }
+
+            // if this is a render resolution pass apply the screen percentage
+            if (*width == Renderer::GetResolutionRender().x)
+            { 
+                float screen_percentage  = Renderer::GetOption<float>(Renderer_Option::ScreenPercentage) / 100.0f;
+                *width                  *= screen_percentage;
+                *height                 *= screen_percentage;
+            }
+        }
+    }
+
     RHI_PipelineState::RHI_PipelineState()
     {
         clear_color.fill(rhi_color_load);
@@ -48,123 +176,11 @@ namespace Spartan
 
     }
 
-    uint64_t RHI_PipelineState::ComputeHash()
+    void RHI_PipelineState::Prepare()
     {
-        m_hash = 0;
-
-        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(instancing)); 
-        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(primitive_toplogy));
-
-        if (render_target_swapchain)
-        {
-            m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(render_target_swapchain->GetFormat()));
-        }
-
-        if (rasterizer_state)
-        {
-            m_hash = rhi_hash_combine(m_hash, rasterizer_state->GetHash());
-        }
-
-        if (blend_state)
-        {
-            m_hash = rhi_hash_combine(m_hash, blend_state->GetHash());
-        }
-
-        if (depth_stencil_state)
-        {
-            m_hash = rhi_hash_combine(m_hash, depth_stencil_state->GetHash());
-        }
-
-        // shaders
-        {
-            if (shader_compute)
-            {
-                m_hash = rhi_hash_combine(m_hash, shader_compute->GetHash());
-            }
-
-            if (shader_vertex)
-            {
-                m_hash = rhi_hash_combine(m_hash, shader_vertex->GetHash());
-            }
-
-            if (shader_pixel)
-            {
-                m_hash = rhi_hash_combine(m_hash, shader_pixel->GetHash());
-            }
-        }
-
-        // rt
-        {
-            // color
-            for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
-            {
-                if (RHI_Texture* texture = render_target_color_textures[i])
-                {
-                    m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(texture->GetFormat()));
-                }
-            }
-
-            // depth
-            if (render_target_depth_texture)
-            {
-                m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(render_target_depth_texture->GetFormat()));
-            }
-
-            // variable rate shading
-            if (render_target_vrs)
-            {
-                m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(render_target_depth_texture->GetFormat()));
-            }
-        }
-
-        return m_hash;
-    }
-
-    uint32_t RHI_PipelineState::GetWidth() const
-    {
-        if (render_target_swapchain)
-            return render_target_swapchain->GetWidth();
-
-        if (render_target_color_textures[0])
-            return render_target_color_textures[0]->GetWidth();
-
-        if (render_target_depth_texture)
-            return render_target_depth_texture->GetWidth();
-
-        return 0;
-    }
-
-    uint32_t RHI_PipelineState::GetHeight() const
-    {
-        if (render_target_swapchain)
-            return render_target_swapchain->GetHeight();
-
-        if (render_target_color_textures[0])
-            return render_target_color_textures[0]->GetHeight();
-
-        if (render_target_depth_texture)
-            return render_target_depth_texture->GetHeight();
-
-        return 0;
-    }
-
-    void RHI_PipelineState::Validate() const
-    {
-        bool has_shader_compute  = shader_compute ? shader_compute->IsCompiled() : false;
-        bool has_shader_vertex   = shader_vertex  ? shader_vertex->IsCompiled()  : false;
-        bool has_shader_pixel    = shader_pixel   ? shader_pixel->IsCompiled()   : false;
-        bool has_render_target   = render_target_color_textures[0] || render_target_depth_texture; // Check that there is at least one render target
-        bool has_backbuffer      = render_target_swapchain;                                        // Check that no both the swapchain and the color render target are active
-        bool has_graphics_states = rasterizer_state && blend_state && depth_stencil_state;
-        bool is_graphics         = (has_shader_vertex || has_shader_pixel) && !has_shader_compute;
-        bool is_compute          = has_shader_compute && (!has_shader_vertex && !has_shader_pixel);
-
-        SP_ASSERT_MSG(has_shader_compute || has_shader_vertex || has_shader_pixel, "There must be at least one shader");
-        if (is_graphics)
-        {
-            SP_ASSERT_MSG(has_graphics_states, "Graphics states are missing");
-            SP_ASSERT_MSG(has_render_target || has_backbuffer, "A render target is missing");
-        }
+        m_hash = compute_hash(*this);
+        get_dimensions(*this, &m_width, &m_height);
+        validate(*this);
     }
 
     bool RHI_PipelineState::HasClearValues() const
