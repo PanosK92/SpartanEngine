@@ -553,7 +553,7 @@ namespace Spartan
     void World::CreateDefaultWorldCar()
     {
         Vector3 camera_position = Vector3(8.7844f, 2.0f, -4.1412f);
-        Vector3 camera_rotation = Vector3(3.5996, -44.099f, 0.0f);
+        Vector3 camera_rotation = Vector3(3.5996f, -44.099f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, "project\\music\\take_control.mp3");
 
         // create car
@@ -1120,13 +1120,15 @@ if (m_default_model_wheel = ResourceCache::Load<Mesh>("project\\models\\wheel\\m
             light->SetFlag(LightFlags::Volumetric, false); // volumetric fog looks bad with point lights
         }
 
+        float scale = 2.0f; // I actually walked in sponza, it's that big
+
         // 3d model - Sponza
         if (m_default_model_sponza = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
         {
             shared_ptr<Entity> entity = m_default_model_sponza->GetRootEntity().lock();
             entity->SetObjectName("sponza");
             entity->SetPosition(Vector3(0.0f, 1.5f, 0.0f));
-            entity->SetScale(Vector3(2.0f, 2.0f, 2.0f)); // I actually walked in sponza, it's that big
+            entity->SetScale(scale);
 
             // make the lamp frame not cast shadows
             if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("lamp_1stfloor_entrance_1")->GetComponent<Renderable>())
@@ -1146,34 +1148,34 @@ if (m_default_model_wheel = ResourceCache::Load<Mesh>("project\\models\\wheel\\m
                     physics_body->SetMass(0.0f); // static
                 }
             }
+        }
 
-            // 3d model - sponza curtains
-            if (m_default_model_sponza_curtains = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
+        // 3d model - sponza curtains
+        if (m_default_model_sponza_curtains = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
+        {
+            shared_ptr<Entity> entity = m_default_model_sponza_curtains->GetRootEntity().lock();
+            entity->SetObjectName("sponza_curtains");
+            entity->SetPosition(Vector3(0.0f, 0.15f, 0.0f));
+            entity->SetScale(scale);
+
+            // disable back face culling
             {
-                entity = m_default_model_sponza_curtains->GetRootEntity().lock();
-                entity->SetObjectName("sponza_curtains");
-                entity->SetPosition(Vector3(0.0f, 0.15f, 0.0f));
-                entity->SetScale(Vector3(2.0f, 2.0f, 2.0f));
-
-                // disable back face culling
+                if (Material* material = entity->GetDescendantByName("curtain_03_2")->GetComponent<Renderable>()->GetMaterial())
                 {
-                    if (Material* material = entity->GetDescendantByName("curtain_03_2")->GetComponent<Renderable>()->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
-                    }
+                    material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                    material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                }
 
-                    if (Material* material = entity->GetDescendantByName("curtain_03_3")->GetComponent<Renderable>()->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
-                    }
+                if (Material* material = entity->GetDescendantByName("curtain_03_3")->GetComponent<Renderable>()->GetMaterial())
+                {
+                    material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                    material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                }
 
-                    if (Material* material = entity->GetDescendantByName("curtain_hanging_06_3")->GetComponent<Renderable>()->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
-                    }
+                if (Material* material = entity->GetDescendantByName("curtain_hanging_06_3")->GetComponent<Renderable>()->GetMaterial())
+                {
+                    material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                    material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                 }
             }
         }
