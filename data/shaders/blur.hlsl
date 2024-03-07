@@ -63,7 +63,7 @@ float3 gaussian_blur(const uint2 pos, const float2 uv, const float radius, const
         weights      += weight;
     }
 
-    return color / weights;
+    return color / (weights + FLT_MIN);
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]

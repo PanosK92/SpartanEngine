@@ -119,7 +119,7 @@ struct Surface
             if (is_ssgi_enabled() && pass_is_opaque())
             {
                 // Sample ssgi texture
-                float4 ssgi = tex_ssgi[position_screen];
+                float4 ssgi = tex_ssgi.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp_border), uv, 0.0f);
                 occlusion   = ssgi.a;
                 gi          = ssgi.rgb;
 
