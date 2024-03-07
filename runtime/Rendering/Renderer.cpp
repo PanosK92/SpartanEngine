@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Renderer.h"
 #include "ThreadPool.h"
+#include "ProgressTracker.h"
 #include "../Profiling/Profiler.h"
 #include "../Profiling/RenderDoc.h"
 #include "../Core/Window.h"
@@ -895,6 +896,11 @@ namespace Spartan
                 }
             }
         };
+
+        // avoid updating when the engine is loading anything as
+        // it can manifest flickering materials (due to them being updated)
+        if (ProgressTracker::IsLoading())
+            return;
 
         lock_guard lock(m_mutex_renderables);
 
