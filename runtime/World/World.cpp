@@ -553,7 +553,7 @@ namespace Spartan
     void World::CreateDefaultWorldCar()
     {
         Vector3 camera_position = Vector3(8.7844f, 2.0f, -4.1412f);
-        Vector3 camera_rotation = Vector3(7.4f, -65.5f, 0.0f);
+        Vector3 camera_rotation = Vector3(3.5996, -44.099f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, "project\\music\\take_control.mp3");
 
         // create car
@@ -784,9 +784,9 @@ if (m_default_model_wheel = ResourceCache::Load<Mesh>("project\\models\\wheel\\m
         {
             shared_ptr<Entity> ramp = World::CreateEntity();
             ramp->SetObjectName("ramp");
-            ramp->SetPosition(Vector3(0.0f, 0.6f, 13.0f));
-            ramp->SetRotation(Quaternion::FromEulerAngles(-12.0f, 0.0f, 0.0f));
-            ramp->SetScale(Vector3(10.0f, 1.0f, 10.0f));
+            ramp->SetPosition(Vector3(0.0f, 0.6f, 25.0f));
+            ramp->SetRotation(Quaternion::FromEulerAngles(-6.0f, 0.0f, 0.0f));
+            ramp->SetScale(Vector3(10.0f, 1.0f, 20.0f));
 
             // add a renderable component
             shared_ptr<Renderable> renderable = ramp->AddComponent<Renderable>();
