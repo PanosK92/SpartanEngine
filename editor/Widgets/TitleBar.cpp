@@ -191,33 +191,47 @@ namespace
                 ImGui::Text("Spartan %s", (to_string(sp_info::version_major) + "." + to_string(sp_info::version_minor) + "." + to_string(sp_info::version_revision)).c_str());
                 ImGui::Text("Author: Panos Karabelas");
                 ImGui::SameLine(ImGuiSp::GetWindowContentRegionWidth());
-                ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 50 * Spartan::Window::GetDpiScale());
-                ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5 * Spartan::Window::GetDpiScale());
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 70 * Spartan::Window::GetDpiScale());
+                float y = ImGui::GetCursorPosY() - 5 * Spartan::Window::GetDpiScale();
+                ImGui::SetCursorPosY(y);
 
                 if (ImGuiSp::button("GitHub"))
                 {
                     Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine");
                 }
 
+                ImGui::SameLine();
+                ImGui::SetCursorPosY(y);
+                if (ImGuiSp::button("X"))
+                {
+                    Spartan::FileSystem::OpenUrl("https://twitter.com/panoskarabelas1");
+                }
+
                 ImGui::Separator();
 
-                ImGui::BeginChildFrame(ImGui::GetID("about_license"), ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 15.5f), ImGuiWindowFlags_NoMove);
-                ImGui::Text("MIT License");
-                ImGui::Text("Permission is hereby granted, free of charge, to any person obtaining a copy");
-                ImGui::Text("of this software and associated documentation files(the \"Software\"), to deal");
-                ImGui::Text("in the Software without restriction, including without limitation the rights");
-                ImGui::Text("to use, copy, modify, merge, publish, distribute, sublicense, and / or sell");
-                ImGui::Text("copies of the Software, and to permit persons to whom the Software is furnished");
-                ImGui::Text("to do so, subject to the following conditions :");
-                ImGui::Text("The above copyright notice and this permission notice shall be included in");
-                ImGui::Text("all copies or substantial portions of the Software.");
-                ImGui::Text("THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR");
-                ImGui::Text("IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS");
-                ImGui::Text("FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR");
-                ImGui::Text("COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER");
-                ImGui::Text("IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN");
-                ImGui::Text("CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.");
-                ImGui::EndChildFrame();
+                ImGui::BeginChild(ImGui::GetID("about_license"), ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 15.5f), 0);
+                static const char* license_text =
+                    "MIT License\n"
+                    "\n"
+                    "Permission is hereby granted, free of charge, to any person obtaining a copy\n"
+                    "of this software and associated documentation files (the \"Software\"), to deal\n"
+                    "in the Software without restriction, including without limitation the rights\n"
+                    "to use, copy, modify, merge, publish, distribute, sublicense, and/or sell\n"
+                    "copies of the Software, and to permit persons to whom the Software is\n"
+                    "furnished to do so, subject to the following conditions:\n"
+                    "\n"
+                    "The above copyright notice and this permission notice shall be included in all\n"
+                    "copies or substantial portions of the Software.\n"
+                    "\n"
+                    "THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n"
+                    "IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n"
+                    "FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n"
+                    "AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n"
+                    "LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n"
+                    "OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\n"
+                    "SOFTWARE.";
+                ImGui::TextWrapped(license_text);
+                ImGui::EndChild();
 
                 ImGui::Separator();
 
