@@ -28,13 +28,13 @@
 
 //---- Don't define obsolete functions/enums/behaviors. Consider enabling from time to time after updating to clean your code of obsolete function/names.
 #define IMGUI_DISABLE_OBSOLETE_FUNCTIONS
-#define IMGUI_DISABLE_OBSOLETE_KEYIO                      // 1.87: disable legacy io.KeyMap[]+io.KeysDown[] in favor io.AddKeyEvent(). This will be folded into IMGUI_DISABLE_OBSOLETE_FUNCTIONS in a few versions.
+#define IMGUI_DISABLE_OBSOLETE_KEYIO                      // 1.87+ disable legacy io.KeyMap[]+io.KeysDown[] in favor io.AddKeyEvent(). This is automatically done by IMGUI_DISABLE_OBSOLETE_FUNCTIONS.
 
 //---- Disable all of Dear ImGui or don't implement standard windows/tools.
 // It is very strongly recommended to NOT disable the demo windows and debug tool during development. They are extremely useful in day to day work. Please read comments in imgui_demo.cpp.
 //#define IMGUI_DISABLE                                     // Disable everything: all headers and source files will be empty.
 //#define IMGUI_DISABLE_DEMO_WINDOWS                        // Disable demo windows: ShowDemoWindow()/ShowStyleEditor() will be empty.
-//#define IMGUI_DISABLE_DEBUG_TOOLS                         // Disable metrics/debugger and other debug tools: ShowMetricsWindow(), ShowDebugLogWindow() and ShowStackToolWindow() will be empty (this was called IMGUI_DISABLE_METRICS_WINDOW before 1.88).
+//#define IMGUI_DISABLE_DEBUG_TOOLS                         // Disable metrics/debugger and other debug tools: ShowMetricsWindow(), ShowDebugLogWindow() and ShowIDStackToolWindow() will be empty.
 
 //---- Don't implement some functions to reduce linkage requirements.
 //#define IMGUI_DISABLE_WIN32_DEFAULT_CLIPBOARD_FUNCTIONS   // [Win32] Don't implement default clipboard handler. Won't use and link with OpenClipboard/GetClipboardData/CloseClipboard etc. (user32.lib/.a, kernel32.lib/.a)
@@ -50,12 +50,14 @@
 //#define IMGUI_DISABLE_SSE                                 // Disable use of SSE intrinsics even if available
 
 //---- Include imgui_user.h at the end of imgui.h as a convenience
+// May be convenient for some users to only explicitly include vanilla imgui.h and have extra stuff included.
 //#define IMGUI_INCLUDE_IMGUI_USER_H
+//#define IMGUI_USER_H_FILENAME         "my_folder/my_imgui_user.h"
 
 //---- Pack colors to BGRA8 instead of RGBA8 (to avoid converting from one to another)
 //#define IMGUI_USE_BGRA_PACKED_COLOR
 
-//---- Use 32-bit for ImWchar (default is 16-bit) to support unicode planes 1-16. (e.g. point beyond 0xFFFF like emoticons, dingbats, symbols, shapes, ancient languages, etc...)
+//---- Use 32-bit for ImWchar (default is 16-bit) to support Unicode planes 1-16. (e.g. point beyond 0xFFFF like emoticons, dingbats, symbols, shapes, ancient languages, etc...)
 //#define IMGUI_USE_WCHAR32
 
 //---- Avoid multiple STB libraries implementations, or redefine path/filenames to prioritize another version
@@ -91,12 +93,12 @@
 #include "Math/Vector2.h"
 #include "Math/Vector4.h"
 
-#define IM_VEC2_CLASS_EXTRA                                                             \
-        ImVec2(const Spartan::Math::Vector2& f) { x = f.x; y = f.y; }                   \
+#define IM_VEC2_CLASS_EXTRA                                           \
+        ImVec2(const Spartan::Math::Vector2& f) { x = f.x; y = f.y; } \
         operator Spartan::Math::Vector2() const { return Spartan::Math::Vector2(x,y); }
 
-#define IM_VEC4_CLASS_EXTRA                                                                   \
-        ImVec4(const Spartan::Math::Vector4& f) { x = f.x; y = f.y; z = f.z; w = f.w; }       \
+#define IM_VEC4_CLASS_EXTRA                                                             \
+        ImVec4(const Spartan::Math::Vector4& f) { x = f.x; y = f.y; z = f.z; w = f.w; } \
         operator Spartan::Math::Vector4() const { return Spartan::Math::Vector4(x, y, z, w); }
 
 //---- ...Or use Dear ImGui's own very basic math operators.
