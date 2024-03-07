@@ -555,7 +555,7 @@ namespace Spartan
                                     drag_force_y = -drag_force_y;
                                 }
 
-                                m_physics_body_to_control->ApplyForce(buoyancy_force * 1000.0f, PhysicsForce::Constant);
+                                m_physics_body_to_control->ApplyForce(buoyancy_force * 2500.0f, PhysicsForce::Constant);
                                 m_physics_body_to_control->ApplyForce(Vector3(0.0f, drag_force_y, 0.0f) * 200.0f, PhysicsForce::Constant);
                             }
 
