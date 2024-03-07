@@ -158,9 +158,9 @@ namespace Spartan
             // if this is a render resolution pass apply the screen percentage
             if (*width == Renderer::GetResolutionRender().x)
             { 
-                float screen_percentage  = Renderer::GetOption<float>(Renderer_Option::ScreenPercentage) / 100.0f;
-                *width                  *= screen_percentage;
-                *height                 *= screen_percentage;
+                float screen_percentage = Renderer::GetOption<float>(Renderer_Option::ScreenPercentage) / 100.0f;
+                *width                  = static_cast<uint32_t>(*width * screen_percentage);
+                *height                 = static_cast<uint32_t>(*height * screen_percentage);
             }
         }
     }

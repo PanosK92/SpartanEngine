@@ -65,6 +65,7 @@ namespace Spartan
         Vsync,
         VariableRateShading,
         ScreenPercentage,
+        DynamicResolution,
         Max
     };
 
