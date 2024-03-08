@@ -308,8 +308,8 @@ namespace Spartan
             // configuration
             fsr2_dispatch_description.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth());
             fsr2_dispatch_description.motionVectorScale.y    = -static_cast<float>(tex_velocity->GetHeight());
-            fsr2_dispatch_description.enableSharpening       = sharpness != 0.0f;             
-            fsr2_dispatch_description.sharpness              = sharpness;                     
+            fsr2_dispatch_description.enableSharpening       = sharpness != 0.0f;
+            fsr2_dispatch_description.sharpness              = sharpness;
             fsr2_dispatch_description.frameTimeDelta         = delta_time_sec * 1000.0f;                                        // seconds to milliseconds
             fsr2_dispatch_description.preExposure            = exposure;                                                        // the exposure value if not using FFX_FSR2_ENABLE_AUTO_EXPOSURE
             fsr2_dispatch_description.renderSize.width       = static_cast<uint32_t>(tex_velocity->GetWidth() * render_ratio);  // the resolution that was used for rendering the input resources
