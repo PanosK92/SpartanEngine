@@ -86,7 +86,7 @@ struct Surface
         Material material      = buffer_materials[sample_normal.a];
         
         // fill properties
-        uv                    = (position_screen + 0.5f) / (pass_get_resolution_out() * buffer_frame.screen_ratio);
+        uv                    = (position_screen + 0.5f) / (pass_get_resolution_out() * buffer_frame.resolution_scale);
         depth                 = sample_depth;
         normal                = sample_normal.xyz;
         flags                 = material.flags;

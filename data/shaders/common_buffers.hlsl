@@ -55,7 +55,7 @@ struct FrameBufferData
     float2 padding_1;
 
     float3 camera_position_previous;
-    float screen_ratio;
+    float resolution_scale;
 };
 
 // 128 byte push constant buffer used by everything in the engine

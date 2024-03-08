@@ -279,7 +279,7 @@ namespace Spartan
         const float delta_time_sec,
         const float sharpness,
         const float exposure,
-        const float screen_percentage
+        const float resolution_scale
     )
     {
         // transition to the appropriate layouts (will only happen if needed)
@@ -303,25 +303,23 @@ namespace Spartan
                 fsr2_dispatch_description.commandList     = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
             }
 
-            float render_ratio = screen_percentage / 100.0f;
-
             // configuration
             fsr2_dispatch_description.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth());
             fsr2_dispatch_description.motionVectorScale.y    = -static_cast<float>(tex_velocity->GetHeight());
             fsr2_dispatch_description.enableSharpening       = sharpness != 0.0f;
             fsr2_dispatch_description.sharpness              = sharpness;
-            fsr2_dispatch_description.frameTimeDelta         = delta_time_sec * 1000.0f;                                        // seconds to milliseconds
-            fsr2_dispatch_description.preExposure            = exposure;                                                        // the exposure value if not using FFX_FSR2_ENABLE_AUTO_EXPOSURE
-            fsr2_dispatch_description.renderSize.width       = static_cast<uint32_t>(tex_velocity->GetWidth() * render_ratio);  // the resolution that was used for rendering the input resources
-            fsr2_dispatch_description.renderSize.height      = static_cast<uint32_t>(tex_velocity->GetHeight() * render_ratio); // the resolution that was used for rendering the input resources
-            fsr2_dispatch_description.cameraNear             = camera->GetFarPlane();                                           // far as near because we are using reverse-z
-            fsr2_dispatch_description.cameraFar              = camera->GetNearPlane();                                          // near as far because we are using reverse-z
+            fsr2_dispatch_description.frameTimeDelta         = delta_time_sec * 1000.0f;                                            // seconds to milliseconds
+            fsr2_dispatch_description.preExposure            = exposure;                                                            // the exposure value if not using FFX_FSR2_ENABLE_AUTO_EXPOSURE
+            fsr2_dispatch_description.renderSize.width       = static_cast<uint32_t>(tex_velocity->GetWidth() * resolution_scale);  // the resolution that was used for rendering the input resources
+            fsr2_dispatch_description.renderSize.height      = static_cast<uint32_t>(tex_velocity->GetHeight() * resolution_scale); // the resolution that was used for rendering the input resources
+            fsr2_dispatch_description.cameraNear             = camera->GetFarPlane();                                               // far as near because we are using reverse-z
+            fsr2_dispatch_description.cameraFar              = camera->GetNearPlane();                                              // near as far because we are using reverse-z
             fsr2_dispatch_description.cameraFovAngleVertical = camera->GetFovVerticalRad();
-            fsr2_dispatch_description.enableAutoReactive     = true;                                                            // generate reactive and transparency & composition masks
-            fsr2_dispatch_description.autoReactiveMax        = 0.9f;                                                            // a value to clamp the reactive mask
-            fsr2_dispatch_description.autoReactiveScale      = 1.0f;                                                            // a value to scale the reactive mask
-            fsr2_dispatch_description.autoTcThreshold        = 1.0f;                                                            // cutoff value for TC
-            fsr2_dispatch_description.autoTcScale            = 1.0f;                                                            // a value to scale the transparency and composition mask
+            fsr2_dispatch_description.enableAutoReactive     = true;                                                                // generate reactive and transparency & composition masks
+            fsr2_dispatch_description.autoReactiveMax        = 0.9f;                                                                // a value to clamp the reactive mask
+            fsr2_dispatch_description.autoReactiveScale      = 1.0f;                                                                // a value to scale the reactive mask
+            fsr2_dispatch_description.autoTcThreshold        = 1.0f;                                                                // cutoff value for TC
+            fsr2_dispatch_description.autoTcScale            = 1.0f;                                                                // a value to scale the transparency and composition mask
         }
 
         // dispatch

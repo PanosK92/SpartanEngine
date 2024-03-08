@@ -70,7 +70,7 @@ namespace Spartan
         const float delta_time_sec,
         const float sharpness,
         const float exposure,
-        const float screen_percentage
+        const float resolution_scale
     )
     {
 

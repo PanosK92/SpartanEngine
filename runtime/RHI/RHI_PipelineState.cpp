@@ -157,9 +157,9 @@ namespace Spartan
 
             if (pso.screen_percentage_enabled)
             { 
-                float screen_percentage = Renderer::GetOption<float>(Renderer_Option::ScreenPercentage) / 100.0f;
-                *width                  = static_cast<uint32_t>(*width * screen_percentage);
-                *height                 = static_cast<uint32_t>(*height * screen_percentage);
+                float resolution_scale = Renderer::GetOption<float>(Renderer_Option::ResolutionScale);
+                *width                 = static_cast<uint32_t>(*width * resolution_scale);
+                *height                = static_cast<uint32_t>(*height * resolution_scale);
             }
         }
     }

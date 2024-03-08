@@ -168,7 +168,7 @@ namespace Spartan
         SetOption(Renderer_Option::FogVolumetric,                 1.0f);
         SetOption(Renderer_Option::Antialiasing,                  static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 2 for taa
         SetOption(Renderer_Option::Upsampling,                    static_cast<float>(Renderer_Upsampling::FSR2));
-        SetOption(Renderer_Option::ScreenPercentage,              100.0f);
+        SetOption(Renderer_Option::ResolutionScale,               1.0f);
         SetOption(Renderer_Option::VariableRateShading,           0.0f);
         SetOption(Renderer_Option::Vsync,                         0.0f);
         SetOption(Renderer_Option::Debanding,                     0.0f);
@@ -420,7 +420,7 @@ namespace Spartan
         m_cb_frame_cpu.delta_time          = static_cast<float>(Timer::GetDeltaTimeSmoothedSec()); // removes stutters from motion related code
         m_cb_frame_cpu.frame               = static_cast<uint32_t>(frame_num);
         m_cb_frame_cpu.gamma               = GetOption<float>(Renderer_Option::Gamma);
-        m_cb_frame_cpu.screen_ratio        = GetOption<float>(Renderer_Option::ScreenPercentage) / 100.0f;
+        m_cb_frame_cpu.resolution_scale    = GetOption<float>(Renderer_Option::ResolutionScale);
 
         // these must match what common_buffer.hlsl is reading
         m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections),        1 << 0);
@@ -630,9 +630,9 @@ namespace Spartan
             {
                 value = Helper::Clamp(value, static_cast<float>(resolution_shadow_min), static_cast<float>(RHI_Device::PropertyGetMaxTexture2dDimension()));
             }
-            else if (option == Renderer_Option::ScreenPercentage)
+            else if (option == Renderer_Option::ResolutionScale)
             {
-                value = Helper::Clamp(value, 50.0f, 100.0f);
+                value = Helper::Clamp(value, 0.5f, 1.0f);
             }
         }
 
