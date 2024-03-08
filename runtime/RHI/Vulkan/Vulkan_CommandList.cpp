@@ -910,12 +910,21 @@ namespace Spartan
         Profiler::m_rhi_draw++;
     }
 
-    void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/, bool async /*= false*/)
+    void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         OnPreDrawDispatch();
 
         vkCmdDispatch(static_cast<VkCommandBuffer>(m_rhi_resource), x, y, z);
+    }
+
+    void RHI_CommandList::Dispatch(RHI_Texture* texture)
+    {
+        const float thread_group_count      = 8.0f;
+        const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(texture->GetWidth()) / thread_group_count));
+        const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(texture->GetHeight()) / thread_group_count));
+
+        Dispatch(thread_group_count_x, thread_group_count_y);
     }
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)

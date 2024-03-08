@@ -636,7 +636,7 @@ namespace Spartan
             }
             else if (option == Renderer_Option::ScreenPercentage)
             {
-                value = Helper::Clamp(value, 10.0f, 100.0f);
+                value = Helper::Clamp(value, 50.0f, 100.0f);
             }
         }
 

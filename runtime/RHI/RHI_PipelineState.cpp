@@ -155,7 +155,6 @@ namespace Spartan
                 if (height) *height = pso.render_target_depth_texture->GetHeight();
             }
 
-            // if this is a render resolution pass apply the screen percentage
             if (pso.screen_percentage_enabled)
             { 
                 float screen_percentage = Renderer::GetOption<float>(Renderer_Option::ScreenPercentage) / 100.0f;

@@ -237,10 +237,6 @@ namespace Spartan
             }
         }
 
-        const float thread_group_count = 8.0f;
-        #define thread_group_count_x(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetWidth())  / thread_group_count))
-        #define thread_group_count_y(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetHeight()) / thread_group_count))
-
         // called by: Pass_ShadowMaps(), Pass_Depth_Prepass(), Pass_GBuffer()
         void draw_renderable(RHI_CommandList* cmd_list, RHI_PipelineState& pso, Camera* camera, Renderable* renderable, Light* light = nullptr, uint32_t array_index = 0)
         {
@@ -305,8 +301,8 @@ namespace Spartan
         {
             if (Renderer::GetOption<float>(Renderer_Option::DynamicResolution) != 0.0f)
             {
-                float gpu_time_target   = 16.67f;                           // target for 60 FPS
-                float adjustment_factor = 0.05f * Timer::GetDeltaTimeSec(); // how aggressively to adjust screen percentage
+                float gpu_time_target   = 16.67f;                                               // target for 60 FPS
+                float adjustment_factor = static_cast<float>(0.05f * Timer::GetDeltaTimeSec()); // how aggressively to adjust screen percentage
                 float screen_percentage = Renderer::GetOption<float>(Renderer_Option::ScreenPercentage) / 100.0f;
                 float gpu_time          = Profiler::GetTimeGpuLast();
 
@@ -473,7 +469,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsUav::tex_uint, tex_out);
 
         // render
-        cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+        cmd_list->Dispatch(tex_out);
 
         cmd_list->EndTimeblock();
     }
@@ -877,7 +873,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse, GetRenderTarget(Renderer_RenderTarget::light_diffuse));
 
         // render
-        cmd_list->Dispatch(thread_group_count_x(tex_ssgi), thread_group_count_y(tex_ssgi));
+        cmd_list->Dispatch(tex_ssgi);
 
         // antiflicker pass to stabilize
         Pass_Antiflicker(cmd_list, tex_ssgi);
@@ -922,7 +918,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_ssr_roughness); // write
 
         // render
-        cmd_list->Dispatch(thread_group_count_x(tex_ssr), thread_group_count_y(tex_ssr));
+        cmd_list->Dispatch(tex_ssr);
 
         cmd_list->InsertBarrierTextureReadWrite(tex_ssr_roughness);
 
@@ -943,18 +939,12 @@ namespace Spartan
         if (!GetOption<bool>(Renderer_Option::ScreenSpaceShadows))
             return;
 
-        // acquire shaders
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::sss_c_bend).get();
-        if (!shader_c->IsCompiled())
-            return;
-
-        // acquire lights
+        // acquire resources
+        RHI_Shader* shader_c                       = GetShader(Renderer_Shader::sss_c_bend).get();
+        RHI_Texture* tex_sss                       = GetRenderTarget(Renderer_RenderTarget::sss).get();
         const vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Light];
-        if (entities.empty())
+        if (!shader_c->IsCompiled() || entities.empty())
             return;
-
-        // acquire render targets
-        RHI_Texture* tex_sss = GetRenderTarget(Renderer_RenderTarget::sss).get();
 
         cmd_list->BeginTimeblock("sss");
         {
@@ -1072,7 +1062,7 @@ namespace Spartan
             PushPassConstants(cmd_list);
 
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
-            cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+            cmd_list->Dispatch(tex_out);
 
         }
         cmd_list->EndTimeblock();
@@ -1156,7 +1146,7 @@ namespace Spartan
                 m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Fog), GetOption<float>(Renderer_Option::ShadowResolution), 0.0f);
                 PushPassConstants(cmd_list);
                 
-                cmd_list->Dispatch(thread_group_count_x(tex_diffuse), thread_group_count_y(tex_diffuse));
+                cmd_list->Dispatch(tex_diffuse);
             }
 
             array_slice_index = 0;
@@ -1196,7 +1186,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::environment,      GetRenderTarget(Renderer_RenderTarget::skysphere));
 
         // render
-        cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+        cmd_list->Dispatch(tex_out);
         cmd_list->EndTimeblock();
     }
 
@@ -1232,7 +1222,7 @@ namespace Spartan
         PushPassConstants(cmd_list);
 
         // render
-        cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+        cmd_list->Dispatch(tex_out);
         cmd_list->EndTimeblock();
     }
 
@@ -1250,6 +1240,7 @@ namespace Spartan
         const uint32_t height    = mip_requested ? (tex_in->GetHeight() >> mip) : tex_in->GetHeight();
 
         // compute thread group count
+        const uint32_t thread_group_count    = 8;
         const uint32_t thread_group_count_x_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(width) / thread_group_count));
         const uint32_t thread_group_count_y_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(height) / thread_group_count));
 
@@ -1442,7 +1433,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_out);     // output
 
         // render
-        cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+        cmd_list->Dispatch(tex_out);
 
         // record history
         cmd_list->Blit(tex_out, tex_history, false);
@@ -1484,7 +1475,7 @@ namespace Spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
 
             // Render
-            cmd_list->Dispatch(thread_group_count_x(tex_bloom), thread_group_count_y(tex_bloom));
+            cmd_list->Dispatch(tex_bloom);
         }
         cmd_list->EndMarker();
 
@@ -1518,6 +1509,7 @@ namespace Spartan
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_bloom, mip_index_big, 1);
 
                 // Blend
+                uint32_t thread_group_count    = 8;
                 uint32_t thread_group_count_x_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_width_large) / thread_group_count));
                 uint32_t thread_group_count_y_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_height_height) / thread_group_count));
                 cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
@@ -1546,7 +1538,7 @@ namespace Spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_bloom, 0, 1);
 
             // Render
-            cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+            cmd_list->Dispatch(tex_out);
         }
         cmd_list->EndMarker();
 
@@ -1580,7 +1572,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
 
         // render
-        cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+        cmd_list->Dispatch(tex_out);
 
         cmd_list->EndTimeblock();
     }
@@ -1608,7 +1600,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
         
         // render
-        cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+        cmd_list->Dispatch(tex_out);
 
         cmd_list->EndTimeblock();
     }
@@ -1639,7 +1631,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
 
         // render
-        cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+        cmd_list->Dispatch(tex_out);
 
         cmd_list->EndTimeblock();
     }
@@ -1671,7 +1663,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
 
         // render
-        cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+        cmd_list->Dispatch(tex_out);
 
         cmd_list->EndTimeblock();
     }
@@ -1702,7 +1694,7 @@ namespace Spartan
         
 
         // render
-        cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+        cmd_list->Dispatch(tex_out);
 
         cmd_list->EndTimeblock();
     }
@@ -1732,7 +1724,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
 
         // Render
-        cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+        cmd_list->Dispatch(tex_out);
 
         cmd_list->EndTimeblock();
     }
@@ -1761,7 +1753,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
 
         // render
-        cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+        cmd_list->Dispatch(tex_out);
 
         cmd_list->EndTimeblock();
     }
@@ -1789,11 +1781,11 @@ namespace Spartan
         // render
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_scratch);
-        cmd_list->Dispatch(thread_group_count_x(tex_in), thread_group_count_y(tex_in));
+        cmd_list->Dispatch(tex_in);
 
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_scratch);
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_in);
-        cmd_list->Dispatch(thread_group_count_x(tex_in), thread_group_count_y(tex_in));
+        cmd_list->Dispatch(tex_in);
 
         cmd_list->EndMarker();
     }
@@ -1829,7 +1821,7 @@ namespace Spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
 
             // render
-            cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+            cmd_list->Dispatch(tex_out);
 
             cmd_list->EndTimeblock();
         }
@@ -2214,7 +2206,7 @@ namespace Spartan
                             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_outline);
                         
                             // render
-                            cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+                            cmd_list->Dispatch(tex_out);
                         }
                         cmd_list->EndMarker();
                     }
@@ -2308,7 +2300,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_brdf_specular_lut);
 
         // render
-        cmd_list->Dispatch(thread_group_count_x(tex_brdf_specular_lut), thread_group_count_y(tex_brdf_specular_lut));
+        cmd_list->Dispatch(tex_brdf_specular_lut);
 
         cmd_list->EndTimeblock();
         light_integration_brdf_speculat_lut_completed = true;
@@ -2347,6 +2339,7 @@ namespace Spartan
                 PushPassConstants(cmd_list);
 
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
+                const uint32_t thread_group_count = 8;
                 cmd_list->Dispatch(
                     static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.x) / thread_group_count)),
                     static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.y) / thread_group_count))
