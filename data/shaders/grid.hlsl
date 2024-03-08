@@ -38,7 +38,6 @@ static const float3 color_axis_z   = float3(0.40, 0.50, 0.85);
 struct PixelInput
 {
     float4 position       : SV_POSITION;
-    float2 uv             : TEXCOORD;
     float4 position_world : POSITION_WORLD;
 };
 
@@ -49,7 +48,6 @@ PixelInput mainVS(Vertex_PosUvNorTan input)
     input.position.w      = 1.0f;
     output.position_world = mul(input.position, buffer_pass.transform);
     output.position       = mul(output.position_world, buffer_frame.view_projection_unjittered);
-    output.uv             = input.uv;
 
     return output;
 }

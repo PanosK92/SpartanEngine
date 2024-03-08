@@ -251,9 +251,9 @@ void RenderOptions::OnTickVisible()
             }
 
             option_check_box("Variable rate shading", Renderer_Option::VariableRateShading, "Improves performance by varying pixel shading detail");
-            option_check_box("Dynamic resolution", Renderer_Option::DynamicResolution, "Drives the screen percentage based on GPU load");
+            option_check_box("Dynamic resolution", Renderer_Option::DynamicResolution, "GPU load driven resolution scale");
             ImGui::BeginDisabled(Renderer::GetOption<bool>(Renderer_Option::DynamicResolution));
-            option_value("Screen percentage", Renderer_Option::ScreenPercentage, "Adjusts the percentage of the render resolution", 1.0f);
+            option_value("Resolution scale", Renderer_Option::ResolutionScale, "Adjusts the percentage of the render resolution", 0.01f);
             ImGui::EndDisabled();
 
             // upsampling

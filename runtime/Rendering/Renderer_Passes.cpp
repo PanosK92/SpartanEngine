@@ -303,7 +303,7 @@ namespace Spartan
             {
                 float gpu_time_target   = 16.67f;                                               // target for 60 FPS
                 float adjustment_factor = static_cast<float>(0.05f * Timer::GetDeltaTimeSec()); // how aggressively to adjust screen percentage
-                float screen_percentage = Renderer::GetOption<float>(Renderer_Option::ScreenPercentage) / 100.0f;
+                float screen_percentage = Renderer::GetOption<float>(Renderer_Option::ResolutionScale);
                 float gpu_time          = Profiler::GetTimeGpuLast();
 
                 if (gpu_time < gpu_time_target) // gpu is under target, increase resolution
@@ -318,7 +318,7 @@ namespace Spartan
                 // clamp screen_percentage to a reasonable range
                 screen_percentage = clamp(screen_percentage, 0.5f, 1.0f);
 
-                Renderer::SetOption(Renderer_Option::ScreenPercentage, screen_percentage * 100.0f);
+                Renderer::SetOption(Renderer_Option::ResolutionScale, screen_percentage);
             }
         }
     }
@@ -444,14 +444,12 @@ namespace Spartan
         if (!GetOption<bool>(Renderer_Option::VariableRateShading))
             return;
 
-        // acquire shader
+        // acquire resources
         RHI_Shader* shader_c = GetShader(Renderer_Shader::variable_rate_shading_c).get();
-        if (!shader_c->IsCompiled())
-            return;
-
-        // acquire textures
         RHI_Texture* tex_in  = GetFrameTexture();
         RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::shading_rate).get();
+        if (!shader_c->IsCompiled())
+            return;
 
         cmd_list->BeginTimeblock("variable_rate_shading");
 
@@ -1894,7 +1892,7 @@ namespace Spartan
             m_cb_frame_cpu.delta_time,
             sharpness,
             GetOption<float>(Renderer_Option::Exposure),
-            GetOption<float>(Renderer_Option::ScreenPercentage)
+            GetOption<float>(Renderer_Option::ResolutionScale)
         );
 
         cmd_list->EndTimeblock();
@@ -2000,7 +1998,7 @@ namespace Spartan
             return;
 
         // acquire resources
-        RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output).get();
+        RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get();
         RHI_Shader* shader_v   = GetShader(Renderer_Shader::grid_v).get();
         RHI_Shader* shader_p   = GetShader(Renderer_Shader::grid_p).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
@@ -2031,7 +2029,6 @@ namespace Spartan
             );
 
             m_pcb_pass_cpu.transform = Matrix::CreateScale(Vector3(1000.0f, 1.0f, 1000.0f)) * Matrix::CreateTranslation(translation);
-
             cmd_list->PushConstants(m_pcb_pass_cpu);
         }
 
