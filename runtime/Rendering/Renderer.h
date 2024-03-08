@@ -133,7 +133,6 @@ namespace Spartan
     private:
         // constant and push constant buffers
         static void UpdateConstantBufferFrame(RHI_CommandList* cmd_list);
-        static void PushPassConstants(RHI_CommandList* cmd_list);
 
         // resource creation
         static void CreateBuffers();
