@@ -1070,14 +1070,10 @@ namespace Spartan
 
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
-        // acquire shaders
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::light_c).get();
-        if (!shader_c->IsCompiled())
-            return;
-
-        // acquire lights
+        // acquire resources
+        RHI_Shader* shader_c                       = GetShader(Renderer_Shader::light_c).get();
         const vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Light];
-        if (entities.empty())
+        if (entities.empty() || !shader_c->IsCompiled())
             return;
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_transparent" : "light");
@@ -1092,11 +1088,9 @@ namespace Spartan
         cmd_list->ClearRenderTarget(tex_specular,   Color::standard_black);
         cmd_list->ClearRenderTarget(tex_volumetric, Color::standard_black);
 
-        // define pipeline state
+        // set pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
-
-        // set pipeline state
         cmd_list->SetPipelineState(pso);
 
         // iterate through all the lights
@@ -2050,7 +2044,7 @@ namespace Spartan
 
     void Renderer::Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        // acquire shaders
+        // acquire resources
         RHI_Shader* shader_v = GetShader(Renderer_Shader::line_v).get();
         RHI_Shader* shader_p = GetShader(Renderer_Shader::line_p).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
@@ -2085,7 +2079,7 @@ namespace Spartan
                 m_vertex_buffer_lines->CreateDynamic<RHI_Vertex_PosCol>(vertex_count);
             }
 
-            // if the vertex count is 0, the vertex buffer will be uninitialised.
+            // if the vertex count is 0, the vertex buffer will be uninitialised
             if (vertex_count != 0)
             {
                 // update vertex buffer

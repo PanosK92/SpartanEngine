@@ -63,7 +63,7 @@ namespace Spartan
         Math::Vector2 padding;
 
         Math::Vector3 camera_position_previous;
-        uint32_t padding_2;
+        float screen_ratio;
 
         void set_bit(const bool set, const uint32_t bit)
         {
@@ -94,6 +94,7 @@ namespace Spartan
                 resolution_render          == rhs.resolution_render          &&
                 taa_jitter_current         == rhs.taa_jitter_current         &&
                 taa_jitter_previous        == rhs.taa_jitter_previous        &&
+                screen_ratio               == rhs.screen_ratio               &&
                 options                    == rhs.options;
         }
 
