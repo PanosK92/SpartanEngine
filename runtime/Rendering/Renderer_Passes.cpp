@@ -316,7 +316,7 @@ namespace Spartan
                 }
 
                 // clamp screen_percentage to a reasonable range
-                screen_percentage = std::clamp(screen_percentage, 0.5f, 1.0f);
+                screen_percentage = clamp(screen_percentage, 0.5f, 1.0f);
 
                 Renderer::SetOption(Renderer_Option::ScreenPercentage, screen_percentage * 100.0f);
             }
