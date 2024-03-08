@@ -43,6 +43,9 @@ namespace Spartan
 {
     namespace
     {
+        mutex mutex_generate_mips;
+        bool light_integration_brdf_speculat_lut_completed = false;
+
         namespace visibility
         {
             unordered_map<uint64_t, float> distances_squared;
@@ -234,10 +237,7 @@ namespace Spartan
             }
         }
 
-        mutex mutex_generate_mips;
-        bool light_integration_brdf_speculat_lut_completed = false;
-        const float thread_group_count                     = 8.0f;
-
+        const float thread_group_count = 8.0f;
         #define thread_group_count_x(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetWidth())  / thread_group_count))
         #define thread_group_count_y(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetHeight()) / thread_group_count))
 
@@ -672,6 +672,7 @@ namespace Spartan
                 pso.render_target_depth_texture = tex_depth;
                 pso.clear_depth                 = rhi_depth_load;
                 pso.render_target_vrs           = vrs ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
+                pso.screen_percentage_enabled   = true;
                 cmd_list->SetPipelineState(pso);
 
                 for (shared_ptr<Entity>& entity : entities)
@@ -806,6 +807,7 @@ namespace Spartan
             pso.render_target_depth_texture     = tex_depth;
             pso.clear_depth                     = rhi_depth_load;
             pso.render_target_vrs               = vrs ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
+            pso.screen_percentage_enabled       = true;
             cmd_list->SetPipelineState(pso);
 
             for (shared_ptr<Entity>& entity : entities)
@@ -2224,7 +2226,7 @@ namespace Spartan
 
     void Renderer::Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        // early exit cases
+        // acquire resources
         const bool draw       = GetOption<bool>(Renderer_Option::Debug_PerformanceMetrics);
         const auto& shader_v  = GetShader(Renderer_Shader::font_v);
         const auto& shader_p  = GetShader(Renderer_Shader::font_p);

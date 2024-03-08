@@ -68,9 +68,8 @@ namespace Spartan
         uint32_t clear_stencil = rhi_stencil_load;
         std::array<Color, rhi_max_render_target_count> clear_color;
 
-        Math::Rectangle viewport;
-
         std::string name;
+        bool screen_percentage_enabled = false;
         //===========================================================
 
     private:

@@ -156,7 +156,7 @@ namespace Spartan
             }
 
             // if this is a render resolution pass apply the screen percentage
-            if (*width == Renderer::GetResolutionRender().x)
+            if (pso.screen_percentage_enabled)
             { 
                 float screen_percentage = Renderer::GetOption<float>(Renderer_Option::ScreenPercentage) / 100.0f;
                 *width                  = static_cast<uint32_t>(*width * screen_percentage);
