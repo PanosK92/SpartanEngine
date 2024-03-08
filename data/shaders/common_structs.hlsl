@@ -86,7 +86,7 @@ struct Surface
         Material material      = buffer_materials[sample_normal.a];
         
         // fill properties
-        uv                    = (position_screen + 0.5f) / pass_get_resolution_out();
+        uv                    = (position_screen + 0.5f) / (pass_get_resolution_out() * buffer_frame.screen_ratio);
         depth                 = sample_depth;
         normal                = sample_normal.xyz;
         flags                 = material.flags;
@@ -118,7 +118,7 @@ struct Surface
 
             if (is_ssgi_enabled() && pass_is_opaque())
             {
-                // Sample ssgi texture
+                // sample ssgi texture
                 float4 ssgi = tex_ssgi.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp_border), uv, 0.0f);
                 occlusion   = ssgi.a;
                 gi          = ssgi.rgb;
