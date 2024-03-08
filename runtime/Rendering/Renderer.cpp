@@ -432,11 +432,6 @@ namespace Spartan
         buffer->Update(&m_cb_frame_cpu);
     }
 
-    void Renderer::PushPassConstants(RHI_CommandList* cmd_list)
-    {
-        cmd_list->PushConstants(0, sizeof(Pcb_Pass), &m_pcb_pass_cpu);
-    }
-
     void Renderer::OnWorldResolved(sp_variant data)
     {
         m_mutex_renderables.lock();
