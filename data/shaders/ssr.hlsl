@@ -166,10 +166,11 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float v_dot_r          = dot(-camera_to_pixel, reflection);
 
     // trace
-    float reflection_distance = 0.0f;
-    float2 hit_uv             = trace_ray(thread_id.xy, position, reflection, surface.roughness, reflection_distance);
-    float alpha               = compute_alpha(thread_id.xy, hit_uv, v_dot_r);
-    float3 reflection_color   = tex.SampleLevel(samplers[sampler_bilinear_clamp], hit_uv, 0).rgb * alpha; // modulate with alpha because invalid UVs will get clamped colors
+    float reflection_distance  = 0.0f;
+    float2 hit_uv              = trace_ray(thread_id.xy, position, reflection, surface.roughness, reflection_distance);
+    hit_uv                    -= get_velocity_uv(hit_uv); // reproject
+    float alpha                = compute_alpha(thread_id.xy, hit_uv, v_dot_r);
+    float3 reflection_color    = tex.SampleLevel(samplers[sampler_bilinear_clamp], hit_uv, 0).rgb * alpha; // modulate with alpha because invalid UVs will get clamped colors
 
     // determine reflection roughness
     float max_reflection_distance = 1.0f;
