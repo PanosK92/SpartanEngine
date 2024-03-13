@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Semaphore.h"
 #include "../RHI_CommandPool.h"
 #include "../Display/Display.h"
+#include "../Rendering/Renderer.h"
 SP_WARNINGS_OFF
 #include <SDL_vulkan.h>
 SP_WARNINGS_ON
