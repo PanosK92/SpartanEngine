@@ -30,6 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
+    const uint32_t cmd_lists_per_pool = 3;
+
     class RHI_CommandPool : public SpObject
     {
     public:
@@ -38,12 +40,12 @@ namespace Spartan
 
         bool Tick();
 
-        RHI_CommandList* GetCurrentCommandList()       { return m_using_pool_a ? m_cmd_lists_0[m_index].get() : m_cmd_lists_1[m_index].get(); }
-        uint64_t GetSwapchainId()                const { return m_swap_chain_id; }
+        RHI_CommandList* GetCurrentCommandList() { return m_using_pool_a ? m_cmd_lists_0[m_index].get() : m_cmd_lists_1[m_index].get(); }
+        uint64_t GetSwapchainId() const          { return m_swap_chain_id; }
 
     private:
-        std::array<std::shared_ptr<RHI_CommandList>, 2> m_cmd_lists_0;
-        std::array<std::shared_ptr<RHI_CommandList>, 2> m_cmd_lists_1;
+        std::array<std::shared_ptr<RHI_CommandList>, cmd_lists_per_pool> m_cmd_lists_0;
+        std::array<std::shared_ptr<RHI_CommandList>, cmd_lists_per_pool> m_cmd_lists_1;
         std::array<void*, 2> m_rhi_resources;
 
         uint32_t m_index            = 0;

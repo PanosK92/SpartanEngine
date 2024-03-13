@@ -59,18 +59,13 @@ namespace Spartan
         }
 
         // create command lists
+        for (uint32_t i = 0; i < cmd_lists_per_pool; i++)
         {
-            string name = m_object_name + "_cmd_pool_0_0";
-            m_cmd_lists_0[0] = make_shared<RHI_CommandList>(queue_type, m_swap_chain_id, m_rhi_resources[0], name.c_str());
+            string name = m_object_name + "_cmd_pool_0_" + to_string(0);
+            m_cmd_lists_0[i] = make_shared<RHI_CommandList>(queue_type, m_swap_chain_id, m_rhi_resources[0], name.c_str());
 
-            name = m_object_name + "_cmd_pool_0_1";
-            m_cmd_lists_0[1] = make_shared<RHI_CommandList>(queue_type, m_swap_chain_id, m_rhi_resources[0], name.c_str());
-
-            name = m_object_name + "_cmd_pool_1_0";
-            m_cmd_lists_1[0] = make_shared<RHI_CommandList>(queue_type, m_swap_chain_id, m_rhi_resources[1], name.c_str());
-
-            name = m_object_name + "_cmd_pool_1_1";
-            m_cmd_lists_1[1] = make_shared<RHI_CommandList>(queue_type, m_swap_chain_id, m_rhi_resources[1], name.c_str());
+            name = m_object_name + "_cmd_pool_1_" + to_string(0);
+            m_cmd_lists_1[i] = make_shared<RHI_CommandList>(queue_type, m_swap_chain_id, m_rhi_resources[1], name.c_str());
         }
     }
 
@@ -80,30 +75,23 @@ namespace Spartan
         RHI_Device::QueueWait(m_queue_type);
 
         // free command lists
+        for (uint32_t i = 0; i < cmd_lists_per_pool; i++)
         {
-            for (shared_ptr<RHI_CommandList> cmd_list : m_cmd_lists_0)
-            {
-                VkCommandBuffer vk_cmd_buffer = reinterpret_cast<VkCommandBuffer>(cmd_list->GetRhiResource());
+            VkCommandBuffer vk_cmd_buffer = reinterpret_cast<VkCommandBuffer>(m_cmd_lists_0[i]->GetRhiResource());
+            vkFreeCommandBuffers(
+                RHI_Context::device,
+                static_cast<VkCommandPool>(m_rhi_resources[0]),
+                1,
+                &vk_cmd_buffer
+            );
 
-                vkFreeCommandBuffers(
-                    RHI_Context::device,
-                    static_cast<VkCommandPool>(m_rhi_resources[0]),
-                    1,
-                    &vk_cmd_buffer
-                );
-            }
-
-            for (shared_ptr<RHI_CommandList> cmd_list : m_cmd_lists_1)
-            {
-                VkCommandBuffer vk_cmd_buffer = reinterpret_cast<VkCommandBuffer>(cmd_list->GetRhiResource());
-
-                vkFreeCommandBuffers(
-                    RHI_Context::device,
-                    static_cast<VkCommandPool>(m_rhi_resources[1]),
-                    1,
-                    &vk_cmd_buffer
-                );
-            }
+            vk_cmd_buffer = reinterpret_cast<VkCommandBuffer>(m_cmd_lists_1[i]->GetRhiResource());
+            vkFreeCommandBuffers(
+                RHI_Context::device,
+                static_cast<VkCommandPool>(m_rhi_resources[1]),
+                1,
+                &vk_cmd_buffer
+            );
         }
 
         // destroy commend pools
@@ -124,7 +112,7 @@ namespace Spartan
         m_index++;
 
         // if we have no more command lists, switch to the other pool
-        if (m_index == 2)
+        if (m_index == cmd_lists_per_pool)
         {
             // switch command pool
             m_index            = 0;

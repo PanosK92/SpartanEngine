@@ -58,10 +58,10 @@ namespace Spartan
 
         // renderer resources
         array<shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTarget::max)> render_targets;
-        array<shared_ptr<RHI_Shader>, static_cast<uint32_t>(Renderer_Shader::max)>         shaders;
-        array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>       samplers;
-        shared_ptr<RHI_ConstantBuffer>                                                     constant_buffer_frame;
-        array<shared_ptr<RHI_StructuredBuffer>, 3>                                         structured_buffers;
+        array<shared_ptr<RHI_Shader>, static_cast<uint32_t>(Renderer_Shader::max)>        shaders;
+        array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>      samplers;
+        shared_ptr<RHI_ConstantBuffer>                                                    constant_buffer_frame;
+        array<shared_ptr<RHI_StructuredBuffer>, 3>                                        structured_buffers;
 
         // asset resources
         array<shared_ptr<RHI_Texture>, 10> standard_textures;
