@@ -123,12 +123,12 @@ namespace Spartan
         SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
-    void RHI_CommandList::BeginRenderPass()
+    void RHI_CommandList::RenderPassBegin()
     {
         SP_ASSERT_MSG(false, "Function is not implemented");
     }
     
-    void RHI_CommandList::EndRenderPass()
+    void RHI_CommandList::RenderPassEnd()
     {
         SP_ASSERT_MSG(false, "Function is not implemented");
     }
@@ -151,7 +151,6 @@ namespace Spartan
     void RHI_CommandList::Draw(const uint32_t vertex_count, uint32_t vertex_start_index /*= 0*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        OnPreDrawDispatch();
 
         static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->DrawInstanced(
             vertex_count,       // VertexCountPerInstance
@@ -165,7 +164,6 @@ namespace Spartan
     void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset, const uint32_t instance_start_index, const uint32_t instance_count)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        OnPreDrawDispatch();
 
         static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->DrawIndexedInstanced(
             index_count,         // IndexCountPerInstance
@@ -181,7 +179,6 @@ namespace Spartan
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        OnPreDrawDispatch();
 
         static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->Dispatch(x, y, z);
     }
