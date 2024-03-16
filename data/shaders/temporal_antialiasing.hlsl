@@ -194,11 +194,12 @@ float3 clip_history_to_neighbourhood_of_current_sample(float3 color_history, uin
 ------------------------------------------------------------------------------*/
 float get_factor_dissoclusion(float2 uv_reprojected, float2 velocity)
 {
-
-    float2 velocity_previous = tex_velocity_previous[uv_reprojected * pass_get_resolution_out()].xy;
-    float dissoclusion       = length(velocity_previous - velocity) - 0.0001f;
-
-    return saturate(dissoclusion * 5000.0f);
+    return 0.0f;
+    
+   //float2 velocity_previous = tex_velocity_previous[uv_reprojected * pass_get_resolution_out()].xy;
+   //float dissoclusion       = length(velocity_previous - velocity) - 0.0001f;
+   //
+   //return saturate(dissoclusion * 5000.0f);
 }
 
 float3 temporal_antialiasing(uint2 screen_position)
