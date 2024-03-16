@@ -834,7 +834,7 @@ if (m_default_model_wheel = ResourceCache::Load<Mesh>("project\\models\\wheel\\m
 
         // mood adjustment
         m_default_light_directional->GetComponent<Light>()->SetTemperature(2300.0f);
-        Renderer::SetOption(Renderer_Option::Debug_Grid, 0.0f);
+        Renderer::SetOption(Renderer_Option::Grid, 0.0f);
 
         // create
         m_default_terrain = CreateEntity();

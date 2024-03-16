@@ -232,13 +232,13 @@ namespace Spartan
 
     void Renderer::AddLinesToBeRendered()
     {
-        if (GetOption<bool>(Renderer_Option::Debug_PickingRay))
+        if (GetOption<bool>(Renderer_Option::PickingRay))
         {
             const auto& ray = GetCamera()->GetPickingRay();
             DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * GetCamera()->GetFarPlane(), Color(0, 1, 0, 1));
         }
         
-        if (GetOption<bool>(Renderer_Option::Debug_Lights))
+        if (GetOption<bool>(Renderer_Option::Lights))
         {
             auto& lights = GetEntities()[Renderer_Entity::Light];
             for (const auto& entity : lights)
@@ -289,7 +289,7 @@ namespace Spartan
             }
         }
         
-        if (GetOption<bool>(Renderer_Option::Debug_Aabb))
+        if (GetOption<bool>(Renderer_Option::Aabb))
         {
             auto get_color = [](shared_ptr<Renderable>& renderable)
             {

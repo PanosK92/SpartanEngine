@@ -250,7 +250,7 @@ namespace Spartan
             SwapBuffers();
         }
 
-        if (Renderer::GetOption<bool>(Renderer_Option::Debug_PerformanceMetrics))
+        if (Renderer::GetOption<bool>(Renderer_Option::PerformanceMetrics))
         {
             DrawPerformanceMetrics();
         }

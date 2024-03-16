@@ -733,7 +733,9 @@ namespace Spartan
             pass(true);
         }
 
-        cmd_list->Blit(tex_depth, tex_depth_output, false);
+        // blit to an output resolution texture
+        float resolution_scale = GetOption<float>(Renderer_Option::ResolutionScale);
+        cmd_list->Blit(tex_depth, tex_depth_output, false, resolution_scale);
 
         // transition to a readable state since they will never be written again
         tex_depth->SetLayout(RHI_Image_Layout::General, cmd_list);
@@ -763,7 +765,7 @@ namespace Spartan
         cmd_list->BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
 
         // deduce some things
-        bool wireframe                        = GetOption<bool>(Renderer_Option::Debug_Wireframe);
+        bool wireframe                        = GetOption<bool>(Renderer_Option::Wireframe);
         RHI_RasterizerState* rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
         rasterizer_state                      = wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe_cull_none).get() : rasterizer_state;
         bool vrs                              = GetOption<bool>(Renderer_Option::VariableRateShading);
@@ -1900,7 +1902,7 @@ namespace Spartan
 
     void Renderer::Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        if (!GetOption<bool>(Renderer_Option::Debug_Lights) || Engine::IsFlagSet(EngineMode::Game))
+        if (!GetOption<bool>(Renderer_Option::Lights) || Engine::IsFlagSet(EngineMode::Game))
             return;
 
         // acquire shaders
@@ -1994,13 +1996,12 @@ namespace Spartan
 
     void Renderer::Pass_Grid(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        if (!GetOption<bool>(Renderer_Option::Debug_Grid))
+        if (!GetOption<bool>(Renderer_Option::Grid))
             return;
 
         // acquire resources
-        RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get();
-        RHI_Shader* shader_v   = GetShader(Renderer_Shader::grid_v).get();
-        RHI_Shader* shader_p   = GetShader(Renderer_Shader::grid_p).get();
+        RHI_Shader* shader_v = GetShader(Renderer_Shader::grid_v).get();
+        RHI_Shader* shader_p = GetShader(Renderer_Shader::grid_p).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
@@ -2014,7 +2015,7 @@ namespace Spartan
         pso.blend_state                     = GetBlendState(Renderer_BlendState::Alpha).get();
         pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
         pso.render_target_color_textures[0] = tex_out;
-        pso.render_target_depth_texture     = tex_depth;
+        pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output).get();
         cmd_list->SetPipelineState(pso);
 
         // set transform
@@ -2127,7 +2128,7 @@ namespace Spartan
 
     void Renderer::Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        if (!GetOption<bool>(Renderer_Option::Debug_SelectionOutline) || Engine::IsFlagSet(EngineMode::Game))
+        if (!GetOption<bool>(Renderer_Option::SelectionOutline) || Engine::IsFlagSet(EngineMode::Game))
             return;
 
         // acquire shaders
@@ -2210,7 +2211,7 @@ namespace Spartan
     void Renderer::Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
         // acquire resources
-        const bool draw       = GetOption<bool>(Renderer_Option::Debug_PerformanceMetrics);
+        const bool draw       = GetOption<bool>(Renderer_Option::PerformanceMetrics);
         const auto& shader_v  = GetShader(Renderer_Shader::font_v);
         const auto& shader_p  = GetShader(Renderer_Shader::font_p);
         shared_ptr<Font> font = GetFont();
