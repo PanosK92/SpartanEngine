@@ -172,12 +172,12 @@ namespace Spartan
         SetOption(Renderer_Option::VariableRateShading,           0.0f);
         SetOption(Renderer_Option::Vsync,                         0.0f);
         SetOption(Renderer_Option::Debanding,                     0.0f);
-        SetOption(Renderer_Option::Debug_TransformHandle,         1.0f);
-        SetOption(Renderer_Option::Debug_SelectionOutline,        1.0f);
-        SetOption(Renderer_Option::Debug_Grid,                    1.0f);
-        SetOption(Renderer_Option::Debug_Lights,                  1.0f);
-        SetOption(Renderer_Option::Debug_Physics,                 0.0f);
-        SetOption(Renderer_Option::Debug_PerformanceMetrics,      1.0f);
+        SetOption(Renderer_Option::TransformHandle,         1.0f);
+        SetOption(Renderer_Option::SelectionOutline,        1.0f);
+        SetOption(Renderer_Option::Grid,                    1.0f);
+        SetOption(Renderer_Option::Lights,                  1.0f);
+        SetOption(Renderer_Option::Physics,                 0.0f);
+        SetOption(Renderer_Option::PerformanceMetrics,      1.0f);
 
         // load/create resources
         {
@@ -731,7 +731,7 @@ namespace Spartan
             {
                 SP_FIRE_EVENT(EventType::LightOnChanged);
             }
-            else if (option == Renderer_Option::Debug_PerformanceMetrics)
+            else if (option == Renderer_Option::PerformanceMetrics)
             {
                 static bool enabled = false;
                 if (!enabled && value == 1.0f)

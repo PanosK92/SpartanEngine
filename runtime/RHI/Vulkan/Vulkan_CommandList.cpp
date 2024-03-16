@@ -936,7 +936,7 @@ namespace Spartan
         vkCmdDispatch(static_cast<VkCommandBuffer>(m_rhi_resource), x, y, z);
     }
 
-    void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)
+    void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips, const float source_scaling)
     {
         SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearBlit) != 0,      "The texture needs the RHI_Texture_ClearOrBlit flag");
         SP_ASSERT_MSG((destination->GetFlags() & RHI_Texture_ClearBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
@@ -954,8 +954,8 @@ namespace Spartan
         for (uint32_t mip_index = 0; mip_index < blit_region_count; mip_index++)
         {
             VkOffset3D& source_blit_size = blit_offsets_source[mip_index];
-            source_blit_size.x           = source->GetWidth()  >> mip_index;
-            source_blit_size.y           = source->GetHeight() >> mip_index;
+            source_blit_size.x           = static_cast<int32_t>(source->GetWidth()  * source_scaling) >> mip_index;
+            source_blit_size.y           = static_cast<int32_t>(source->GetHeight() * source_scaling) >> mip_index;
             source_blit_size.z           = 1;
 
             VkOffset3D& destination_blit_size = blit_offsets_destination[mip_index];
