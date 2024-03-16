@@ -189,15 +189,13 @@ PixelInputType mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID
     #if INSTANCED
     float3 normal_transformed  = mul(input.normal, (float3x3)buffer_pass.transform);
     normal_transformed         = mul(normal_transformed, (float3x3)input.instance_transform);
-    output.normal_world        = normalize(normal_transformed);
-    
+    output.normal_world        = normalize(normal_transformed);  
     float3 tangent_transformed = mul(input.tangent, (float3x3)buffer_pass.transform);
     tangent_transformed        = mul(tangent_transformed, (float3x3)input.instance_transform);
-    output.tangent_world       = normalize(tangent_transformed);
-    
-    #else
+    output.tangent_world       = normalize(tangent_transformed);   
+    #else  
     output.normal_world  = normalize(mul(input.normal, (float3x3)buffer_pass.transform));
-    output.tangent_world = normalize(mul(input.tangent, (float3x3)buffer_pass.transform));
+    output.tangent_world = normalize(mul(input.tangent, (float3x3)buffer_pass.transform));  
     #endif
 
     // uv
@@ -296,7 +294,7 @@ PixelOutputType mainPS(PixelInputType input)
         
         // roughness + metalness
         {
-            float4 roughness_sample = 1.0f;    
+            float4 roughness_sample = 1.0f;
             if (surface.has_texture_roughness())
             {
                 roughness_sample  = sampling::smart(surface, material_roughness, uv, input.position_world, input.normal_world);

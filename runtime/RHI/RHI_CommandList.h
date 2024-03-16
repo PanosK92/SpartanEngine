@@ -154,9 +154,8 @@ namespace Spartan
         void* GetRhiResource() const { return m_rhi_resource; }
 
     private:
-        void OnPreDrawDispatch();
-        void BeginRenderPass();
-        void EndRenderPass();
+        void RenderPassBegin();
+        void RenderPassEnd();
 
         // sync
         std::shared_ptr<RHI_Fence> m_proccessed_fence;

@@ -373,11 +373,6 @@ namespace Spartan
         SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
-    void RHI_CommandList::OnPreDrawDispatch()
-    {
-        SP_ASSERT_MSG(false, "Function is not implemented");
-    }
-
     void RHI_CommandList::InsertBarrierTexture(void* image, const uint32_t aspect_mask,
         const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length,
         const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new

@@ -292,7 +292,7 @@ namespace Spartan
 
         namespace descriptor_sets
         {
-            bool dynamic_descriptor_needs_to_bind = false;
+            bool bind_dynamic = false;
 
             void set_dynamic(const RHI_PipelineState pso, void* resource, void* pipeline_layout, RHI_DescriptorSetLayout* layout)
             {
@@ -319,6 +319,7 @@ namespace Spartan
                     dynamic_offsets.data()                                // pDynamicOffsets
                 );
 
+                bind_dynamic = false;
                 Profiler::m_rhi_bindings_descriptor_set++;
             }
 
@@ -522,11 +523,7 @@ namespace Spartan
     void RHI_CommandList::End()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-
-        if (m_render_pass_active && m_pso.IsGraphics())
-        {
-            EndRenderPass();
-        }
+        RenderPassEnd();
 
         SP_ASSERT_MSG(
             vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource)) == VK_SUCCESS,
@@ -567,8 +564,8 @@ namespace Spartan
         // get (or create) a pipeline which matches the requested pipeline state
         RHI_Device::GetOrCreatePipeline(pso, m_pipeline, m_descriptor_layout_current);
 
-        uint64_t hash_previous     = m_pso.GetHash();
-        m_pso                      = pso;
+        uint64_t hash_previous = m_pso.GetHash();
+        m_pso                  = pso;
 
         // determine if the pipeline is dirty
         if (!m_pipeline_dirty)
@@ -610,24 +607,23 @@ namespace Spartan
             }
         }
 
-        if (m_render_pass_active)
+        // bind descriptors
         {
-            EndRenderPass();
+            // set bindless descriptors
+            descriptor_sets::set_bindless(m_pso, m_rhi_resource, m_pipeline->GetResource_PipelineLayout());
+
+            // set standard resources (dynamic descriptors)
+            Renderer::SetStandardResources(this);
+            descriptor_sets::set_dynamic(m_pso, m_rhi_resource, m_pipeline->GetResource_PipelineLayout(), m_descriptor_layout_current);
         }
 
-        descriptor_sets::set_bindless(m_pso, m_rhi_resource, m_pipeline->GetResource_PipelineLayout());
-        descriptor_sets::dynamic_descriptor_needs_to_bind = true;
+        RenderPassBegin();
     }
 
-    void RHI_CommandList::BeginRenderPass()
+    void RHI_CommandList::RenderPassBegin()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        SP_ASSERT_MSG(m_pso.IsGraphics(), "You can't use a render pass with a compute pipeline");
-
-        if (m_render_pass_active)
-        {
-            EndRenderPass();
-        }
+        RenderPassEnd();
 
         if (!m_pso.IsGraphics())
             return;
@@ -740,7 +736,7 @@ namespace Spartan
             rendering_info.pNext = &attachment_shading_rate;
         }
 
-        // begin dynamic render pass instance
+        // begin dynamic render pass
         vkCmdBeginRendering(static_cast<VkCommandBuffer>(m_rhi_resource), &rendering_info);
 
         // set dynamic states
@@ -760,13 +756,13 @@ namespace Spartan
         m_render_pass_active = true;
     }
 
-    void RHI_CommandList::EndRenderPass()
+    void RHI_CommandList::RenderPassEnd()
     {
-        if (m_render_pass_active)
-        {
-            vkCmdEndRendering(static_cast<VkCommandBuffer>(m_rhi_resource));
-            m_render_pass_active = false;
-        }
+        if (!m_render_pass_active)
+            return;
+
+        vkCmdEndRendering(static_cast<VkCommandBuffer>(m_rhi_resource));
+        m_render_pass_active = false;
 
         if (m_pso.render_target_swapchain)
         {
@@ -880,7 +876,16 @@ namespace Spartan
     void RHI_CommandList::Draw(const uint32_t vertex_count, const uint32_t vertex_start_index /*= 0*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        OnPreDrawDispatch();
+
+        if (!m_render_pass_active)
+        { 
+            RenderPassBegin();
+        }
+
+        if (descriptor_sets::bind_dynamic)
+        {
+            descriptor_sets::set_dynamic(m_pso, m_rhi_resource, m_pipeline->GetResource_PipelineLayout(), m_descriptor_layout_current);
+        }
 
         vkCmdDraw(
             static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
@@ -896,7 +901,16 @@ namespace Spartan
     void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset, const uint32_t instance_start_index, const uint32_t instance_count)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        OnPreDrawDispatch();
+
+        if (!m_render_pass_active)
+        {
+            RenderPassBegin();
+        }
+
+        if (descriptor_sets::bind_dynamic)
+        {
+            descriptor_sets::set_dynamic(m_pso, m_rhi_resource, m_pipeline->GetResource_PipelineLayout(), m_descriptor_layout_current);
+        }
 
         vkCmdDrawIndexed(
             static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
@@ -913,7 +927,11 @@ namespace Spartan
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        OnPreDrawDispatch();
+
+        if (descriptor_sets::bind_dynamic)
+        {
+            descriptor_sets::set_dynamic(m_pso, m_rhi_resource, m_pipeline->GetResource_PipelineLayout(), m_descriptor_layout_current);
+        }
 
         vkCmdDispatch(static_cast<VkCommandBuffer>(m_rhi_resource), x, y, z);
     }
@@ -1246,20 +1264,6 @@ namespace Spartan
         Profiler::m_rhi_bindings_buffer_index++;
     }
 
-    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer) const
-    {
-        SP_ASSERT(m_state == RHI_CommandListState::Recording);
-
-        if (!m_descriptor_layout_current)
-        {
-            SP_LOG_WARNING("Descriptor layout not set, try setting constant buffer \"%s\" within a render pass", constant_buffer->GetObjectName().c_str());
-            return;
-        }
-
-        // Set (will only happen if it's not already set)
-        m_descriptor_layout_current->SetConstantBuffer(slot, constant_buffer);
-    }
-
     void RHI_CommandList::PushConstants(const uint32_t offset, const uint32_t size, const void* data)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
@@ -1288,6 +1292,23 @@ namespace Spartan
             size,
             data
         );
+    }
+
+    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer) const
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        if (!m_descriptor_layout_current)
+        {
+            SP_LOG_WARNING("Descriptor layout not set, try setting constant buffer \"%s\" within a render pass", constant_buffer->GetObjectName().c_str());
+            return;
+        }
+
+        // set (will only happen if it's not already set)
+        m_descriptor_layout_current->SetConstantBuffer(slot, constant_buffer);
+
+        // todo: detect if there are changes, otherwise don't bother binding
+        descriptor_sets::bind_dynamic = true;
     }
 
     void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler) const
@@ -1371,13 +1392,16 @@ namespace Spartan
             // transition
             if (transition_required)
             {
-                EndRenderPass(); // transitioning to a different layout must happen outside of a render pass
+                RenderPassEnd(); // transitioning to a different layout must happen outside of a render pass
                 texture->SetLayout(target_layout, this, mip_index, mip_range);
             }
         }
 
         // Set (will only happen if it's not already set)
         m_descriptor_layout_current->SetTexture(slot, texture, mip_index, mip_range);
+
+        // todo: detect if there are changes, otherwise don't bother binding
+        descriptor_sets::bind_dynamic = true;
     }
 
     void RHI_CommandList::SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer) const
@@ -1391,6 +1415,9 @@ namespace Spartan
         }
 
         m_descriptor_layout_current->SetStructuredBuffer(slot, structured_buffer);
+
+        // todo: detect if there are changes, otherwise don't bother binding
+        descriptor_sets::bind_dynamic = true;
     }
 
     void RHI_CommandList::BeginMarker(const char* name)
@@ -1462,7 +1489,7 @@ namespace Spartan
 
         if (!m_render_pass_active)
         {
-            BeginRenderPass();
+            RenderPassBegin();
         }
 
         vkCmdBeginQuery(
@@ -1549,26 +1576,6 @@ namespace Spartan
         m_timeblock_active = nullptr;
     }
 
-    void RHI_CommandList::OnPreDrawDispatch()
-    {
-        SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        SP_ASSERT(m_pipeline != nullptr);
-
-        if (!m_render_pass_active && m_pso.IsGraphics())
-        {
-            BeginRenderPass();
-        }
-
-        Renderer::SetStandardResources(this);
-
-        // set dynamic resources
-        if (descriptor_sets::dynamic_descriptor_needs_to_bind)
-        {
-            descriptor_sets::set_dynamic(m_pso, m_rhi_resource, m_pipeline->GetResource_PipelineLayout(), m_descriptor_layout_current);
-            descriptor_sets::dynamic_descriptor_needs_to_bind = true;
-        }
-    }
-
     void RHI_CommandList::InsertBarrierTexture(void* image, const uint32_t aspect_mask,
         const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length,
         const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new
@@ -1576,6 +1583,7 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(image != nullptr);
+        RenderPassEnd();
 
         VkImageMemoryBarrier image_barrier            = {};
         image_barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1593,14 +1601,7 @@ namespace Spartan
         image_barrier.srcAccessMask                   = layout_to_access_mask(image_barrier.oldLayout, false); // operations that must complete before the barrier is crossed - example: write
         image_barrier.dstAccessMask                   = layout_to_access_mask(image_barrier.newLayout, true);  // operations that must wait for the barrier to be crossed     - example: read
 
-        if (m_render_pass_active)
-        {
-            // as per vulkan, you can't transition within a render pass
-            EndRenderPass();
-        }
-
         bool is_swapchain = layout_old == RHI_Image_Layout::Present_Source || layout_new == RHI_Image_Layout::Present_Source;
-
         vkCmdPipelineBarrier
         (
             static_cast<VkCommandBuffer>(m_rhi_resource),                                  // commandBuffer
@@ -1633,12 +1634,7 @@ namespace Spartan
     void RHI_CommandList::InsertBarrierStructuredBufferReadWrite(void* rhi_buffer)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-
-        // as per vulkan, you can't transition within a render pass
-        if (m_render_pass_active)
-        {
-            EndRenderPass();
-        }
+        RenderPassEnd();
 
         // stage before shader reads/writes
         VkPipelineStageFlags stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
