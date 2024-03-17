@@ -56,7 +56,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - Frustum & occlusion culling (software and hardware hybrid).
 - Physically based camera.
 - Volumetric fog.
-- Temporal anti-aliasing for smooth visuals.
+- Temporal anti-aliasing.
 - Post-process effects like fxaa, bloom, motion-blur, depth of field, chromatic aberration etc.
 - AMD FidelityFX features like FSR 2, SPD, etc.
 #### General
@@ -85,4 +85,4 @@ Questions can also be answered by my AI replica, [Panos](https://chat.openai.com
 # Use cases
 Are you utilizing any components from the Spartan Engine, or has it inspired aspects of your work? If yes, then reach out to me, I'd love to showcase your project.
 - Godot uses Spartan's TAA, see [here](https://github.com/godotengine/godot/blob/37d51d2cb7f6e47bef8329887e9e1740a914dc4e/servers/rendering/renderer_rd/shaders/effects/taa_resolve.glsl#L2)
-
+- Jesse Guerrero, a contributor, wrote a [book](https://www.amazon.com/dp/B0CXG1CMNK?ref_=cm_sw_r_cp_ud_dp_A14WVAH86VH407JE95MG_1) on beginning programming, showcasing Spartan's code, Discord community and leadership within it.
