@@ -172,12 +172,12 @@ namespace Spartan
         SetOption(Renderer_Option::VariableRateShading,           0.0f);
         SetOption(Renderer_Option::Vsync,                         0.0f);
         SetOption(Renderer_Option::Debanding,                     0.0f);
-        SetOption(Renderer_Option::TransformHandle,         1.0f);
-        SetOption(Renderer_Option::SelectionOutline,        1.0f);
-        SetOption(Renderer_Option::Grid,                    1.0f);
-        SetOption(Renderer_Option::Lights,                  1.0f);
-        SetOption(Renderer_Option::Physics,                 0.0f);
-        SetOption(Renderer_Option::PerformanceMetrics,      1.0f);
+        SetOption(Renderer_Option::TransformHandle,               1.0f);
+        SetOption(Renderer_Option::SelectionOutline,              1.0f);
+        SetOption(Renderer_Option::Grid,                          1.0f);
+        SetOption(Renderer_Option::Lights,                        1.0f);
+        SetOption(Renderer_Option::Physics,                       0.0f);
+        SetOption(Renderer_Option::PerformanceMetrics,            1.0f);
 
         // load/create resources
         {

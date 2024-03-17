@@ -53,15 +53,15 @@ namespace Spartan
         {
             switch (option)
             {
-                case Renderer_Option::Aabb:                    return "Debug_Aabb";
-                case Renderer_Option::PickingRay:              return "Debug_PickingRay";
-                case Renderer_Option::Grid:                    return "Debug_Grid";
-                case Renderer_Option::TransformHandle:         return "Debug_TransformHandle";
-                case Renderer_Option::SelectionOutline:        return "Debug_SelectionOutline";
-                case Renderer_Option::Lights:                  return "Debug_Lights";
-                case Renderer_Option::PerformanceMetrics:      return "Debug_PerformanceMetrics";
-                case Renderer_Option::Physics:                 return "Debug_Physics";
-                case Renderer_Option::Wireframe:               return "Debug_Wireframe";
+                case Renderer_Option::Aabb:                          return "Aabb";
+                case Renderer_Option::PickingRay:                    return "PickingRay";
+                case Renderer_Option::Grid:                          return "Grid";
+                case Renderer_Option::TransformHandle:               return "TransformHandle";
+                case Renderer_Option::SelectionOutline:              return "SelectionOutline";
+                case Renderer_Option::Lights:                        return "Lights";
+                case Renderer_Option::PerformanceMetrics:            return "PerformanceMetrics";
+                case Renderer_Option::Physics:                       return "Physics";
+                case Renderer_Option::Wireframe:                     return "Wireframe";
                 case Renderer_Option::Bloom:                         return "Bloom";
                 case Renderer_Option::Fog:                           return "Fog";
                 case Renderer_Option::FogVolumetric:                 return "FogVolumetric";
