@@ -118,10 +118,10 @@ struct Surface
 
             if (is_ssgi_enabled() && pass_is_opaque())
             {
-                // sample ssgi texture
-                float4 ssgi = tex_ssgi.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp_border), uv, 0.0f);
-                occlusion   = ssgi.a;
-                gi          = ssgi.rgb;
+                float2 uv_unscaled = (position_screen + 0.5f) / pass_get_resolution_out();
+                float4 ssgi        = tex_ssgi.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp_border), uv_unscaled, 0.0f);
+                occlusion          = ssgi.a;
+                gi                 = ssgi.rgb;
 
                 // combine occlusion with material occlusion
                 occlusion = min(sample_material.a, occlusion);
