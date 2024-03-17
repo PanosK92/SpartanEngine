@@ -207,7 +207,7 @@ namespace Spartan
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,           SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,              SP_EVENT_HANDLER_STATIC(OnClear));
             SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
-            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_EXPRESSION_STATIC( bindless_materials_dirty = true; ));
+            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_STATIC(BindlessUpdateMaterials));
             SP_SUBSCRIBE_TO_EVENT(EventType::LightOnChanged,          SP_EVENT_HANDLER_STATIC(BindlessUpdateLights));
 
             // fire
@@ -557,7 +557,6 @@ namespace Spartan
 
             if (bindless_materials_dirty)
             {
-                BindlessUpdateMaterials();
                 RHI_Device::UpdateBindlessResources(nullptr, &bindless_textures);
                 bindless_materials_dirty = false;
             }
