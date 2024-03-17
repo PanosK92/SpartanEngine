@@ -1331,7 +1331,7 @@ namespace Spartan
             }
             else
             {
-                cmd_list->Blit(get_render_in, rt_frame_output, false);
+                cmd_list->Blit(get_render_in, rt_frame_output, false, GetOption<float>(Renderer_Option::ResolutionScale));
             }
         }
 
