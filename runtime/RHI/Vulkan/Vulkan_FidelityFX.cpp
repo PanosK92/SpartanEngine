@@ -316,9 +316,9 @@ namespace Spartan
             fsr2_dispatch_description.cameraFar              = camera->GetNearPlane();                                              // near as far because we are using reverse-z
             fsr2_dispatch_description.cameraFovAngleVertical = camera->GetFovVerticalRad();
             fsr2_dispatch_description.enableAutoReactive     = true;                                                                // generate reactive and transparency & composition masks
-            fsr2_dispatch_description.autoReactiveMax        = 0.9f;                                                                // a value to clamp the reactive mask
+            fsr2_dispatch_description.autoReactiveMax        = 0.5f;                                                                // a value to clamp the reactive mask
             fsr2_dispatch_description.autoReactiveScale      = 1.0f;                                                                // a value to scale the reactive mask
-            fsr2_dispatch_description.autoTcThreshold        = 1.0f;                                                                // cutoff value for TC
+            fsr2_dispatch_description.autoTcThreshold        = 0.5f;                                                                // a value to clamp the transparency and composition mask
             fsr2_dispatch_description.autoTcScale            = 1.0f;                                                                // a value to scale the transparency and composition mask
         }
 
