@@ -209,31 +209,27 @@ float3 amd(float3 color)
 // HDR
 //==========================================================================================
 
-// HDR10 ST2084 
-float3 rec2084_curve_to_color(float3 color, float max_nits)
+float3 rec709_to_rec2020(float3 color)
 {
-    // constants for PQ transfer function based on ST 2084
-    const float m1 = 0.1593017578125f; // (2610 / 4096) * (1 / 4)
-    const float m2 = 78.84375f;        // (2523 / 32) * 128
-    const float c1 = 0.8359375f;       // (3424 / 4096)
-    const float c2 = 18.8515625f;      // (2413 / 128) * 32
-    const float c3 = 18.6875f;         // (2392 / 128) * 32
+    static const float3x3 conversion =
+    {
+        0.627402, 0.329292, 0.043306,
+        0.069095, 0.919544, 0.011360,
+        0.016394, 0.088028, 0.895578
+    };
+    
+    return mul(conversion, color);
+}
 
-    // calculate the original linear luminance from the color
-    float linear_luminance = dot(color, float3(0.2126, 0.7152, 0.0722));
-
-    // scale luminance to be between 0 and 1 based on max_nits
-    float scaled_luminance = linear_luminance / max_nits;
-
-    // apply the PQ transfer function to the luminance
-    float lp           = pow(scaled_luminance, m1);
-    float pq_luminance = pow((c1 + c2 * lp) / (1 + c3 * lp), m2);
-
-    // calculate the ratio of PQ encoded luminance to original luminance
-    float luminance_ratio = pq_luminance / linear_luminance;
-
-    // scale the original color by the luminance ratio to get the final color
-    return color * luminance_ratio;
+float3 linear_to_st2084(float3 color)
+{
+    float m1 = 2610.0 / 4096.0 / 4;
+    float m2 = 2523.0 / 4096.0 * 128;
+    float c1 = 3424.0 / 4096.0;
+    float c2 = 2413.0 / 4096.0 * 32;
+    float c3 = 2392.0 / 4096.0 * 32;
+    float3 cp = pow(abs(color), m1);
+    return pow((c1 + c2 * cp) / (1 + c3 * cp), m2);
 }
 
 //==========================================================================================
@@ -254,34 +250,47 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float exposure           = f3_value.z;
     float hdr                = f3_value2.x;
    
-    // 1. expose
-    float4 color = tex[thread_id.xy];
-    color.rgb *= exposure;
+    float4 color  = tex[thread_id.xy];
+    color.rgb    *= exposure;
 
-    // 2. tone-map (required for SDR output)
-    switch (tone_mapping)
+    if (hdr == 0.0f) // SDR
     {
-        case 0:
-            color.rgb = amd(color.rgb);
-            break;
-        case 1:
-            color.rgb = aces(color.rgb);
-            break;
-        case 2:
-            color.rgb = reinhard(color.rgb);
-            break;
-        case 3:
-            color.rgb = uncharted_2(color.rgb);
-            break;
-        case 4:
-            color.rgb = matrix_movie(color.rgb);
-            break;
-        case 5:
-            color.rgb = realism(color.rgb);
-            break;
-    }
+        switch (tone_mapping)
+        {
+            case 0:
+                color.rgb = amd(color.rgb);
+                break;
+            case 1:
+                color.rgb = aces(color.rgb);
+                break;
+            case 2:
+                color.rgb = reinhard(color.rgb);
+                break;
+            case 3:
+                color.rgb = uncharted_2(color.rgb);
+                break;
+            case 4:
+                color.rgb = matrix_movie(color.rgb);
+                break;
+            case 5:
+                color.rgb = realism(color.rgb);
+                break;
+        }
 
-    color.rgb = gamma(color.rgb);
+        color.rgb = gamma(color.rgb);
+    }
+    else // HDR
+    {
+        // define max brightness for ST.2084 and calculate HDR scalar based on display's max luminance
+        const float st2084_max = 10000.0;
+        const float hdr_scalar = luminance_max_nits / st2084_max;
+
+        // convert color space from Rec.709 to Rec.2020 for wider color gamut
+        color.rgb = rec709_to_rec2020(color.rgb);
+
+        // apply ST.2084 (PQ curve) for HDR, scaling luminance to display capabilities
+        color.rgb = linear_to_st2084(color.rgb * hdr_scalar);
+    }
 
     tex_uav[thread_id.xy] = color;
 }
