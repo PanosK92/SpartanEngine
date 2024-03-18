@@ -281,18 +281,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
             break;
     }
 
-    // 3. linear to color space conversion
-    if (hdr != 0.0f) // HDR10 ST2084
-    {
-        color.rgb = rec2084_curve_to_color(color.rgb, luminance_max_nits);
-    }
-    else // SDR
-    {
-        color.rgb = gamma(color.rgb);
-    }
+    color.rgb = gamma(color.rgb);
 
     tex_uav[thread_id.xy] = color;
 }
-
-
-

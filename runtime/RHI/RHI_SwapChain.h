@@ -45,6 +45,7 @@ namespace Spartan
             const uint32_t height,
             const RHI_Present_Mode present_mode,
             const uint32_t buffer_count,
+            const bool hdr,
             const char* name
         );
         ~RHI_SwapChain();

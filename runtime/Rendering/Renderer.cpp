@@ -141,6 +141,7 @@ namespace Spartan
             // present mode: for v-sync, we could mailbox for lower latency, but fifo is always supported, so we'll assume that
             GetOption<bool>(Renderer_Option::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
             swap_chain_buffer_count,
+            Display::GetHdr(),
             "renderer"
         );
 
@@ -149,35 +150,6 @@ namespace Spartan
 
         // fidelityfx suite
         RHI_FidelityFX::Initialize();
-
-        // options
-        m_options.clear();
-        SetOption(Renderer_Option::Hdr,                           swap_chain->IsHdr() ? 1.0f : 0.0f);                    // hdr is enabled by default if the swapchain is hdr
-        SetOption(Renderer_Option::Bloom,                         0.03f);                                                // non-zero values activate it and define the blend factor
-        SetOption(Renderer_Option::MotionBlur,                    1.0f);
-        SetOption(Renderer_Option::ScreenSpaceGlobalIllumination, 1.0f);
-        SetOption(Renderer_Option::ScreenSpaceShadows,            static_cast<float>(Renderer_ScreenspaceShadow::Bend));
-        SetOption(Renderer_Option::ScreenSpaceReflections,        1.0f);
-        SetOption(Renderer_Option::Anisotropy,                    16.0f);
-        SetOption(Renderer_Option::ShadowResolution,              2048.0f);
-        SetOption(Renderer_Option::Tonemapping,                   static_cast<float>(Renderer_Tonemapping::Aces));
-        SetOption(Renderer_Option::Gamma,                         2.2f);
-        SetOption(Renderer_Option::Exposure,                      1.0f);
-        SetOption(Renderer_Option::Sharpness,                     0.5f);                                                 // becomes the upsampler's sharpness as well
-        SetOption(Renderer_Option::Fog,                           1.0f);                                                 // controls the intensity of the volumetric fog as well
-        SetOption(Renderer_Option::FogVolumetric,                 1.0f);
-        SetOption(Renderer_Option::Antialiasing,                  static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 2 for taa
-        SetOption(Renderer_Option::Upsampling,                    static_cast<float>(Renderer_Upsampling::FSR2));
-        SetOption(Renderer_Option::ResolutionScale,               1.0f);
-        SetOption(Renderer_Option::VariableRateShading,           0.0f);
-        SetOption(Renderer_Option::Vsync,                         0.0f);
-        SetOption(Renderer_Option::Debanding,                     0.0f);
-        SetOption(Renderer_Option::TransformHandle,               1.0f);
-        SetOption(Renderer_Option::SelectionOutline,              1.0f);
-        SetOption(Renderer_Option::Grid,                          1.0f);
-        SetOption(Renderer_Option::Lights,                        1.0f);
-        SetOption(Renderer_Option::Physics,                       0.0f);
-        SetOption(Renderer_Option::PerformanceMetrics,            1.0f);
 
         // load/create resources
         {
@@ -213,6 +185,35 @@ namespace Spartan
             // fire
             SP_FIRE_EVENT(EventType::RendererOnInitialized);
         }
+
+        // options
+        m_options.clear();
+        SetOption(Renderer_Option::Hdr,                           swap_chain->IsHdr() ? 1.0f : 0.0f); 
+        SetOption(Renderer_Option::Tonemapping,                   static_cast<float>(Renderer_Tonemapping::Aces));
+        SetOption(Renderer_Option::Bloom,                         0.03f);                                                // non-zero values activate it and define the blend factor
+        SetOption(Renderer_Option::MotionBlur,                    1.0f);
+        SetOption(Renderer_Option::ScreenSpaceGlobalIllumination, 1.0f);
+        SetOption(Renderer_Option::ScreenSpaceShadows,            static_cast<float>(Renderer_ScreenspaceShadow::Bend));
+        SetOption(Renderer_Option::ScreenSpaceReflections,        1.0f);
+        SetOption(Renderer_Option::Anisotropy,                    16.0f);
+        SetOption(Renderer_Option::ShadowResolution,              2048.0f);
+        SetOption(Renderer_Option::Gamma,                         2.2f);
+        SetOption(Renderer_Option::Exposure,                      1.0f);
+        SetOption(Renderer_Option::Sharpness,                     0.5f);                                                 // becomes the upsampler's sharpness as well
+        SetOption(Renderer_Option::Fog,                           1.0f);                                                 // controls the intensity of the volumetric fog as well
+        SetOption(Renderer_Option::FogVolumetric,                 1.0f);
+        SetOption(Renderer_Option::Antialiasing,                  static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 2 for taa
+        SetOption(Renderer_Option::Upsampling,                    static_cast<float>(Renderer_Upsampling::Fsr2));
+        SetOption(Renderer_Option::ResolutionScale,               1.0f);
+        SetOption(Renderer_Option::VariableRateShading,           0.0f);
+        SetOption(Renderer_Option::Vsync,                         0.0f);
+        SetOption(Renderer_Option::Debanding,                     0.0f);
+        SetOption(Renderer_Option::TransformHandle,               1.0f);
+        SetOption(Renderer_Option::SelectionOutline,              1.0f);
+        SetOption(Renderer_Option::Grid,                          1.0f);
+        SetOption(Renderer_Option::Lights,                        1.0f);
+        SetOption(Renderer_Option::Physics,                       0.0f);
+        SetOption(Renderer_Option::PerformanceMetrics,            1.0f);
     }
 
     void Renderer::Shutdown()
@@ -387,7 +388,7 @@ namespace Spartan
 
         // generate jitter sample in case FSR (which also does TAA) is enabled
         Renderer_Upsampling upsampling_mode = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling);
-        if (upsampling_mode == Renderer_Upsampling::FSR2 || GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa)
+        if (upsampling_mode == Renderer_Upsampling::Fsr2 || GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa)
         {
             RHI_FidelityFX::FSR2_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
             m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(jitter_offset.x, jitter_offset.y, 0.0f));
@@ -660,14 +661,14 @@ namespace Spartan
             if (option == Renderer_Option::Antialiasing)
             {
                 bool taa_enabled = value == static_cast<float>(Renderer_Antialiasing::Taa) || value == static_cast<float>(Renderer_Antialiasing::TaaFxaa);
-                bool fsr_enabled = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::FSR2;
+                bool fsr_enabled = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::Fsr2;
 
                 if (taa_enabled)
                 {
                     // implicitly enable FSR since it's doing TAA.
                     if (!fsr_enabled)
                     {
-                        m_options[Renderer_Option::Upsampling] = static_cast<float>(Renderer_Upsampling::FSR2);
+                        m_options[Renderer_Option::Upsampling] = static_cast<float>(Renderer_Upsampling::Fsr2);
                         RHI_FidelityFX::FSR2_ResetHistory();
                     }
                 }
@@ -694,7 +695,7 @@ namespace Spartan
                         SP_LOG_INFO("Disabled TAA since it's done by FSR 2.0.");
                     }
                 }
-                else if (value == static_cast<float>(Renderer_Upsampling::FSR2))
+                else if (value == static_cast<float>(Renderer_Upsampling::Fsr2))
                 {
                     // Implicitly enable TAA since FSR 2.0 is doing it
                     if (!taa_enabled)
@@ -720,11 +721,17 @@ namespace Spartan
             }
             else if (option == Renderer_Option::Hdr)
             {
-                swap_chain->SetHdr(value == 1.0f);
+                if (swap_chain)
+                { 
+                    swap_chain->SetHdr(value == 1.0f);
+                }
             }
             else if (option == Renderer_Option::Vsync)
             {
-                swap_chain->SetVsync(value == 1.0f);
+                if (swap_chain)
+                {
+                    swap_chain->SetVsync(value == 1.0f);
+                }
             }
             else if (option == Renderer_Option::FogVolumetric || option == Renderer_Option::ScreenSpaceShadows)
             {

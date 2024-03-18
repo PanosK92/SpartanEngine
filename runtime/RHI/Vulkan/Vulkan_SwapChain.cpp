@@ -55,8 +55,8 @@ namespace Spartan
             // When displaying an image in sRGB, the values must be converted to linear space before they are displayed.
 
             VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;                                                                // SDR
-            color_space = format == RHI_Format::R16G16B16A16_Float ? VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT : color_space; // HDR
-            color_space = format == RHI_Format::R10G10B10A2_Unorm ? VK_COLOR_SPACE_HDR10_ST2084_EXT : color_space; // HDR
+            color_space                 = format == RHI_Format::R16G16B16A16_Float ? VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT : color_space; // HDR
+            color_space                 = format == RHI_Format::R10G10B10A2_Unorm  ? VK_COLOR_SPACE_HDR10_ST2084_EXT         : color_space; // HDR
 
             return color_space;
         }
@@ -177,18 +177,19 @@ namespace Spartan
         const uint32_t height,
         const RHI_Present_Mode present_mode,
         const uint32_t buffer_count,
+        const bool hdr,
         const char* name
     )
     {
         SP_ASSERT_MSG(RHI_Device::IsValidResolution(width, height), "Invalid resolution");
-        SP_ASSERT_MSG(buffer_count >= 2, "Buffer can't be less than 2");
+        SP_ASSERT_MSG(buffer_count >= 2, "Buffer count can't be less than 2");
 
-        m_format = format_sdr; // for now, we use SDR by default as HDR doesn't look rigth - Display::GetHdr() ? format_hdr : format_sdr;
+        m_format       = hdr ? format_hdr : format_sdr;
         m_buffer_count = buffer_count;
-        m_width = width;
-        m_height = height;
-        m_sdl_window = sdl_window;
-        m_object_name = name;
+        m_width        = width;
+        m_height       = height;
+        m_sdl_window   = sdl_window;
+        m_object_name  = name;
         m_present_mode = present_mode;
 
         Create();
