@@ -46,19 +46,33 @@ namespace Spartan
     {
         VkColorSpaceKHR get_color_space(const RHI_Format format)
         {
-            // VK_COLOR_SPACE_HDR10_ST2084_EXT represents the HDR10 color space with the ST.2084 (PQ)electro - optical transfer function.
-            // This is the most common HDR format used for HDR TVs and monitors.
-
-            // VK_COLOR_SPACE_SRGB_NONLINEAR_KHR represents the sRGB color space
-            // This is the standard color space for the web and is supported by most modern displays.
-            // sRGB is a nonlinear color space, which means that the values stored in an image are not directly proportional to the perceived brightness of the colors.
-            // When displaying an image in sRGB, the values must be converted to linear space before they are displayed.
-
-            VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;                                                                // SDR
-            color_space                 = format == RHI_Format::R16G16B16A16_Float ? VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT : color_space; // HDR
-            color_space                 = format == RHI_Format::R10G10B10A2_Unorm  ? VK_COLOR_SPACE_HDR10_ST2084_EXT         : color_space; // HDR
+            VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;                                                         // SDR
+            color_space                 = format == RHI_Format::R10G10B10A2_Unorm  ? VK_COLOR_SPACE_BT2020_LINEAR_EXT : color_space; // HDR
 
             return color_space;
+        }
+
+        void set_hdr_metadata(const VkSwapchainKHR& swapchain)
+        {
+            VkHdrMetadataEXT hdr_metadata          = {};
+            hdr_metadata.sType                     = VK_STRUCTURE_TYPE_HDR_METADATA_EXT;
+            hdr_metadata.displayPrimaryRed.x       = 0.708f;
+            hdr_metadata.displayPrimaryRed.y       = 0.292f;
+            hdr_metadata.displayPrimaryGreen.x     = 0.170f;
+            hdr_metadata.displayPrimaryGreen.y     = 0.797f;
+            hdr_metadata.displayPrimaryBlue.x      = 0.131f;
+            hdr_metadata.displayPrimaryBlue.y      = 0.046f;
+            hdr_metadata.whitePoint.x              = 0.3127f;
+            hdr_metadata.whitePoint.y              = 0.3290f;
+            const float nits_to_lumin              = 10000.0f;
+            hdr_metadata.maxLuminance              = Display::GetLuminanceMax() * nits_to_lumin;
+            hdr_metadata.minLuminance              = 0.001f * nits_to_lumin;
+            hdr_metadata.maxContentLightLevel      = 2000.0f;
+            hdr_metadata.maxFrameAverageLightLevel = 500.0f;
+
+            PFN_vkSetHdrMetadataEXT pfnVkSetHdrMetadataEXT = (PFN_vkSetHdrMetadataEXT)vkGetDeviceProcAddr(RHI_Context::device , "vkSetHdrMetadataEXT");
+            SP_ASSERT(pfnVkSetHdrMetadataEXT != nullptr);
+            pfnVkSetHdrMetadataEXT(RHI_Context::device, 1, &swapchain, &hdr_metadata);
         }
 
         VkSurfaceCapabilitiesKHR get_surface_capabilities(const VkSurfaceKHR surface)
@@ -272,6 +286,8 @@ namespace Spartan
 
             SP_VK_ASSERT_MSG(vkCreateSwapchainKHR(RHI_Context::device, &create_info, nullptr, &swap_chain),
                 "Failed to create swapchain");
+
+            set_hdr_metadata(swap_chain);
         }
 
         // images
