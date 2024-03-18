@@ -1353,7 +1353,7 @@ namespace Spartan
 
             // tone-mapping & gamma correction
             swap_output = !swap_output;
-            Pass_ToneMappingGammaCorrection(cmd_list, get_output_in, get_output_out);
+            Pass_Output(cmd_list, get_output_in, get_output_out);
 
             // sharpening
             if (GetOption<bool>(Renderer_Option::Sharpness))
@@ -1539,20 +1539,18 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_ToneMappingGammaCorrection(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
+    void Renderer::Pass_Output(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // acquire shaders
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::tonemapping_gamma_correction_c).get();
+        RHI_Shader* shader_c = GetShader(Renderer_Shader::output_c).get();
         if (!shader_c->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("tonemapping_gamma_correction");
-
-        // define pipeline state
-        static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
+        cmd_list->BeginTimeblock("output");
 
         // set pipeline state
+        static RHI_PipelineState pso;
+        pso.shader_compute = shader_c;
         cmd_list->SetPipelineState(pso);
 
         // set pass constants

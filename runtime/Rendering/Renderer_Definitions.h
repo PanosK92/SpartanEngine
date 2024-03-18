@@ -186,7 +186,7 @@ namespace Spartan
         bloom_downsample_c,
         bloom_blend_frame_c,
         bloom_upsample_blend_mip_c,
-        tonemapping_gamma_correction_c,
+        output_c,
         debanding_c,
         light_integration_brdf_specular_lut_c,
         light_integration_environment_filter_c,

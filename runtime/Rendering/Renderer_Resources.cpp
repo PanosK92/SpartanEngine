@@ -486,8 +486,8 @@ namespace Spartan
         shader(Renderer_Shader::chromatic_aberration_c)->Compile(RHI_Shader_Compute, shader_dir + "chromatic_aberration.hlsl", async);
 
         // tone-mapping & gamma correction
-        shader(Renderer_Shader::tonemapping_gamma_correction_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::tonemapping_gamma_correction_c)->Compile(RHI_Shader_Compute, shader_dir + "tone_mapping_gamma_correction.hlsl", async);
+        shader(Renderer_Shader::output_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::output_c)->Compile(RHI_Shader_Compute, shader_dir + "output.hlsl", async);
 
         // motion blur
         shader(Renderer_Shader::motion_blur_c) = make_shared<RHI_Shader>();
