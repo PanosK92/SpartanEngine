@@ -62,6 +62,7 @@ namespace Spartan
         const uint32_t height,
         const RHI_Present_Mode present_mode,
         const uint32_t buffer_count,
+        const bool hdr,
         const char* name
     )
     {
@@ -91,7 +92,7 @@ namespace Spartan
         }
 
         // Copy parameters
-        m_format       = IsHdr() ? format_hdr : format_sdr;
+        m_format       = hdr ? format_hdr : format_sdr;
         m_buffer_count = buffer_count;
         m_width        = width;
         m_height       = height;

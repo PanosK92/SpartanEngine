@@ -98,7 +98,7 @@ namespace Spartan
     enum class Renderer_Upsampling : uint32_t
     {
         Linear,
-        FSR2
+        Fsr2
     };
 
     enum class Renderer_BindingsCb

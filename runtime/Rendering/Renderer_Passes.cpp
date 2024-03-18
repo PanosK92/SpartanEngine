@@ -1325,7 +1325,7 @@ namespace Spartan
             swap_render = !swap_render;
 
             // use FSR 2 for different resolutions if enabled, otherwise blit
-            if (upsampling_mode == Renderer_Upsampling::FSR2)
+            if (upsampling_mode == Renderer_Upsampling::Fsr2)
             {
                 Pass_Ffx_Fsr2(cmd_list, get_render_in, rt_frame_output);
             }
