@@ -281,15 +281,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     }
     else // HDR
     {
-        // define max brightness for ST.2084 and calculate HDR scalar based on display's max luminance
-        const float st2084_max = 10000.0;
-        const float hdr_scalar = luminance_max_nits / st2084_max;
-
-        // convert color space from Rec.709 to Rec.2020 for wider color gamut
-        color.rgb = rec709_to_rec2020(color.rgb);
-
-        // apply ST.2084 (PQ curve) for HDR, scaling luminance to display capabilities
-        color.rgb = linear_to_st2084(color.rgb * hdr_scalar);
+        
     }
 
     tex_uav[thread_id.xy] = color;

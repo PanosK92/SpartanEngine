@@ -141,7 +141,7 @@ namespace Spartan
             // present mode: for v-sync, we could mailbox for lower latency, but fifo is always supported, so we'll assume that
             GetOption<bool>(Renderer_Option::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
             swap_chain_buffer_count,
-            false, //Display::GetHdr(),
+            Display::GetHdr(),
             "renderer"
         );
 
