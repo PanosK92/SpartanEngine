@@ -255,7 +255,7 @@ PixelOutputType mainPS(PixelInputType input)
         alpha_mask      = min(alpha_mask, albedo_sample.a);
         albedo_sample.a = 1.0f;
         
-        albedo_sample.rgb  = degamma(albedo_sample.rgb);
+        albedo_sample.rgb  = srgb_to_linear(albedo_sample.rgb);
         albedo            *= albedo_sample;
     }
 

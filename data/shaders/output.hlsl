@@ -288,7 +288,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
                 break;
         }
 
-        color.rgb = gamma(color.rgb);
+        color.rgb = linear_to_srgb(color.rgb);
     }
     else // HDR
     {
