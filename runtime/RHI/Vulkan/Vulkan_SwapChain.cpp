@@ -500,7 +500,6 @@ namespace Spartan
         {
             m_format = new_format;
             Resize(m_width, m_height, true);
-            SP_LOG_INFO("HDR has been %s", enabled ? "enabled" : "disabled");
         }
     }
 
