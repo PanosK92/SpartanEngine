@@ -61,13 +61,13 @@ namespace
     TitleBar* widget_menu_bar = nullptr;
     Widget* widget_world     = nullptr;
 
-    static void process_event(Spartan::sp_variant data)
+    void process_event(Spartan::sp_variant data)
     {
         SDL_Event* event_sdl = static_cast<SDL_Event*>(get<void*>(data));
         ImGui_ImplSDL2_ProcessEvent(event_sdl);
     }
 
-    static void apply_colors()
+    void apply_colors()
     {
         // use default dark style as a base
         ImGui::StyleColorsDark();
@@ -125,7 +125,7 @@ namespace
         colors[ImGuiCol_ModalWindowDimBg]      = k_palette_color_2;
     }
 
-    static void apply_style()
+    void apply_style()
     {
         ImGuiStyle& style = ImGui::GetStyle();
 

@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =========
-#include "common.hlsl"
+#include "output.hlsl"
 //====================
 
 Pixel_PosColUv mainVS(Vertex_Pos2dUvColor input)
@@ -37,16 +37,17 @@ Pixel_PosColUv mainVS(Vertex_Pos2dUvColor input)
 float4 mainPS(Pixel_PosColUv input) : SV_Target
 {
      // texture visualization options
-    float4 channels     = pass_get_f4_value();
-    float3 f3_value     = pass_get_f3_value();
-    bool gamma_correct  = f3_value.x == 1.0f;
-    bool packed         = f3_value.y == 1.0f;
-    bool boost          = f3_value.z == 1.0f;
-    float3 f3_value2    = pass_get_f3_value2();
-    bool absolute       = f3_value2.x == 1.0f;
-    bool point_sampling = f3_value2.y == 1.0f;
-    float mip           = f3_value2.z;
-    bool is_visualized  = pass_is_transparent();
+    float4 channels       = pass_get_f4_value();
+    float3 f3_value       = pass_get_f3_value();
+    bool gamma_correct    = f3_value.x == 1.0f;
+    bool packed           = f3_value.y == 1.0f;
+    bool boost            = f3_value.z == 1.0f;
+    float3 f3_value2      = pass_get_f3_value2();
+    bool absolute         = f3_value2.x == 1.0f;
+    bool point_sampling   = f3_value2.y == 1.0f;
+    float mip             = f3_value2.z;
+    bool is_visualized    = pass_is_transparent();
+    uint is_frame_texture = pass_get_material_index();
    
     float4 color_texture = point_sampling ? tex.SampleLevel(samplers[sampler_point_wrap], input.uv, mip) : tex.SampleLevel(samplers[sampler_bilinear_wrap], input.uv, mip);
  
@@ -80,5 +81,19 @@ float4 mainPS(Pixel_PosColUv input) : SV_Target
 
     float4 color = input.color * color_texture;
 
+    if (buffer_frame.hdr_enabled != 0.0f && is_frame_texture == 0)
+    {
+        // adjust the exposure based on the white point
+        color.rgb *= buffer_frame.hdr_white_point / buffer_frame.hdr_max_nits;
+    
+        // stay within the monitor's luminance range
+        float luminance_scale_factor = 50.0f / buffer_frame.hdr_max_nits;
+        color.rgb *= luminance_scale_factor;
+
+        // transfer
+        color.rgb = rec709_to_rec2020(color.rgb);
+        color.rgb = linear_to_st2084(color.rgb);
+    }
+    
     return color;
  }

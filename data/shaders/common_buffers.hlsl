@@ -52,10 +52,14 @@ struct FrameBufferData
 
     float gamma;
     float camera_last_movement_time;
-    float2 padding_1;
+    float hdr_enabled;
+    float hdr_max_nits;
 
     float3 camera_position_previous;
     float resolution_scale;
+
+    float hdr_white_point;
+    float3 padding;
 };
 
 // 128 byte push constant buffer used by everything in the engine

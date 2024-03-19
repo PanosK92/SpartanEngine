@@ -141,7 +141,7 @@ namespace Spartan
             // present mode: for v-sync, we could mailbox for lower latency, but fifo is always supported, so we'll assume that
             GetOption<bool>(Renderer_Option::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
             swap_chain_buffer_count,
-            false, //Display::GetHdr(),
+            false, //Display::GetHdr(), disable automatic HDR activation until the Editor also looks ok in HDR
             "renderer"
         );
 
@@ -423,6 +423,9 @@ namespace Spartan
         m_cb_frame_cpu.frame               = static_cast<uint32_t>(frame_num);
         m_cb_frame_cpu.gamma               = GetOption<float>(Renderer_Option::Gamma);
         m_cb_frame_cpu.resolution_scale    = GetOption<float>(Renderer_Option::ResolutionScale);
+        m_cb_frame_cpu.hdr_enabled         = GetOption<bool>(Renderer_Option::Hdr) ? 1.0f : 0.0f;
+        m_cb_frame_cpu.hdr_max_nits        = Display::GetLuminanceMax();
+        m_cb_frame_cpu.hdr_white_point     = GetOption<float>(Renderer_Option::WhitePoint);
 
         // these must match what common_buffer.hlsl is reading
         m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections),        1 << 0);
