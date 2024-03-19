@@ -60,10 +60,14 @@ namespace Spartan
 
         float gamma;
         float camera_last_movement_time;
-        Math::Vector2 padding;
+        float hdr_enabled;
+        float hdr_max_nits;
 
         Math::Vector3 camera_position_previous;
         float resolution_scale;
+
+        float hdr_white_point;
+        Math::Vector3 padding;
 
         void set_bit(const bool set, const uint32_t bit)
         {
@@ -94,7 +98,10 @@ namespace Spartan
                 resolution_render          == rhs.resolution_render          &&
                 taa_jitter_current         == rhs.taa_jitter_current         &&
                 taa_jitter_previous        == rhs.taa_jitter_previous        &&
-                resolution_scale               == rhs.resolution_scale               &&
+                resolution_scale           == rhs.resolution_scale           &&
+                hdr_enabled                == rhs.hdr_enabled                &&
+                hdr_max_nits               == rhs.hdr_max_nits               &&
+                hdr_white_point            == rhs.hdr_white_point            &&
                 options                    == rhs.options;
         }
 

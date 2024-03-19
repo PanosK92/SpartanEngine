@@ -243,17 +243,13 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         return;
 
     // get cpu data
-    float3 f3_value          = pass_get_f3_value();
-    float3 f3_value2         = pass_get_f3_value2();
-    float luminance_max_nits = f3_value.x;
-    float tone_mapping       = f3_value.y;
-    float exposure           = f3_value.z;
-    float hdr                = f3_value2.x;
-    float white_point        = f3_value2.y;
+    float3 f3_value    = pass_get_f3_value();
+    float tone_mapping = f3_value.y;
+    float exposure     = f3_value.z;
    
     float4 color  = tex[thread_id.xy];
 
-    if (hdr == 0.0f) // SDR
+    if (buffer_frame.hdr_enabled == 0.0f) // SDR
     {
         color.rgb *= exposure;
 
@@ -284,11 +280,11 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     else // HDR
     {
         // adjust the exposure based on the white point
-        float exposure_adjustment  = white_point / luminance_max_nits;
+        float exposure_adjustment  = buffer_frame.hdr_white_point / buffer_frame.hdr_max_nits;
         color.rgb                 *= exposure * exposure_adjustment;
         
         // stay within the monitor's luminance range
-        float luminance_scale_factor  = 50.0f / luminance_max_nits;
+        float luminance_scale_factor  = 50.0f / buffer_frame.hdr_max_nits;
         color.rgb                    *= luminance_scale_factor;
 
         // transfer

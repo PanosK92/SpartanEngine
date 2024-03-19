@@ -230,7 +230,7 @@ namespace Spartan
         *y = -2.0f * fsr2_dispatch_description.jitterOffset.y / resolution_render_y;
     }
 
-    void RHI_FidelityFX::FSR2_Resize(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output)
+    void RHI_FidelityFX::FSR2_Resize(const Vector2& resolution_render, const Vector2& resolution_output)
     {
         // destroy context
         if (fsr2_context_created)

@@ -336,9 +336,12 @@ namespace ImGui::RHI
                                 bool m_point_sampling      = false;
                                 float mip_level            = 0;
                                 bool is_texture_visualised = false;
+                                bool is_frame_texture      = false;
 
                                 if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
                                 {
+                                    is_frame_texture = Renderer::GetFrameTexture()->GetObjectId() == texture->GetObjectId();
+
                                     // during engine startup, some textures might be loading in different threads
                                     if (texture->IsReadyForUse())
                                     {
@@ -365,7 +368,7 @@ namespace ImGui::RHI
                                 rhi_resources->push_constant_buffer_pass.set_f4_value(m_channel_r, m_channel_g, m_channel_b, m_channel_a);
                                 rhi_resources->push_constant_buffer_pass.set_f3_value(m_gamma_correct, m_pack, m_boost);
                                 rhi_resources->push_constant_buffer_pass.set_f3_value2(m_abs, m_point_sampling, mip_level);
-                                rhi_resources->push_constant_buffer_pass.set_is_transparent_and_material_index(is_texture_visualised);
+                                rhi_resources->push_constant_buffer_pass.set_is_transparent_and_material_index(is_texture_visualised, is_frame_texture ? 1 : 0);
                             }
 
                             // compute transform matrix
