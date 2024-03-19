@@ -281,8 +281,15 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     }
     else // HDR
     {
-        
+        // stay within the monitor's luminance range
+        float luminance_scale_factor = 50.0 / luminance_max_nits;
+        color.rgb *= luminance_scale_factor;
+
+        // transfer
+        color.rgb = rec709_to_rec2020(color.rgb);
+        color.rgb = linear_to_st2084(color.rgb);
     }
 
     tex_uav[thread_id.xy] = color;
 }
+

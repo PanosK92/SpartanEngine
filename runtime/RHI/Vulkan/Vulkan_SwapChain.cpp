@@ -46,8 +46,8 @@ namespace Spartan
     {
         VkColorSpaceKHR get_color_space(const RHI_Format format)
         {
-            VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;                                                         // SDR
-            color_space                 = format == RHI_Format::R10G10B10A2_Unorm  ? VK_COLOR_SPACE_BT2020_LINEAR_EXT : color_space; // HDR
+            VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;                                                       // SDR
+            color_space                 = format == RHI_Format::R10G10B10A2_Unorm ? VK_COLOR_SPACE_HDR10_ST2084_EXT : color_space; // HDR
 
             return color_space;
         }
