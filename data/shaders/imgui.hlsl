@@ -78,6 +78,7 @@ float4 mainPS(Pixel_PosColUv input) : SV_Target
         }
     }
 
-    float4 color_vertex = input.color;
-    return color_vertex * color_texture;
+    float4 color = input.color * color_texture;
+
+    return color;
  }
