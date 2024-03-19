@@ -232,6 +232,24 @@ float3 linear_to_st2084(float3 color)
     return pow((c1 + c2 * cp) / (1 + c3 * cp), m2);
 }
 
+float3 hdr_tonemap(float3 color, float exposure)
+{
+    // adjust the exposure based on the white point
+    float exposure_adjustment  = buffer_frame.hdr_white_point / buffer_frame.hdr_max_nits;
+    color                     *= exposure * exposure_adjustment;
+    
+    // stay within the monitor's luminance range
+    float windows_nits_per_unit   = 80.0f; // https://learn.microsoft.com/en-us/windows/win32/direct3darticles/high-dynamic-range
+    float luminance_scale_factor  = windows_nits_per_unit / buffer_frame.hdr_max_nits;
+    color                        *= luminance_scale_factor;
+    
+    // transfer
+    color = rec709_to_rec2020(color);
+    color = linear_to_st2084(color);
+
+    return color;
+}
+
 //==========================================================================================
 // ENTRY
 //==========================================================================================
@@ -279,17 +297,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     }
     else // HDR
     {
-        // adjust the exposure based on the white point
-        float exposure_adjustment  = buffer_frame.hdr_white_point / buffer_frame.hdr_max_nits;
-        color.rgb                 *= exposure * exposure_adjustment;
-        
-        // stay within the monitor's luminance range
-        float luminance_scale_factor  = 50.0f / buffer_frame.hdr_max_nits;
-        color.rgb                    *= luminance_scale_factor;
-
-        // transfer
-        color.rgb = rec709_to_rec2020(color.rgb);
-        color.rgb = linear_to_st2084(color.rgb);
+        color.rgb = hdr_tonemap(color.rgb, exposure);
     }
 
     tex_uav[thread_id.xy] = color;

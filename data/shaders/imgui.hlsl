@@ -83,16 +83,8 @@ float4 mainPS(Pixel_PosColUv input) : SV_Target
 
     if (buffer_frame.hdr_enabled != 0.0f && is_frame_texture == 0)
     {
-        // adjust the exposure based on the white point
-        color.rgb *= buffer_frame.hdr_white_point / buffer_frame.hdr_max_nits;
-    
-        // stay within the monitor's luminance range
-        float luminance_scale_factor = 50.0f / buffer_frame.hdr_max_nits;
-        color.rgb *= luminance_scale_factor;
-
-        // transfer
-        color.rgb = rec709_to_rec2020(color.rgb);
-        color.rgb = linear_to_st2084(color.rgb);
+        float exposure = 1.0f;
+        color.rgb = hdr_tonemap(color.rgb, exposure);
     }
     
     return color;
