@@ -60,7 +60,7 @@ float4 mainPS(Pixel_PosColUv input) : SV_Target
     
         if (gamma_correct)
         {
-            color_texture.rgb = gamma(color_texture.rgb);
+            color_texture.rgb = linear_to_srgb(color_texture.rgb);
         }
     
         if (absolute)
@@ -83,7 +83,7 @@ float4 mainPS(Pixel_PosColUv input) : SV_Target
 
     if (buffer_frame.hdr_enabled != 0.0f && is_frame_texture == 0)
     {
-        color.rgb = degamma(color.rgb);
+        color.rgb = srgb_to_linear(color.rgb);
         float white_point = 600.0f;
         color.rgb = hdr_tonemap(color.rgb, white_point, 1.0f);
     }

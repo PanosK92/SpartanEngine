@@ -56,8 +56,25 @@ static const uint THREAD_GROUP_COUNT   = 64;
 float2 get_rt_texel_size()          { return float2(1.0f / pass_get_resolution_out().x, 1.0f /pass_get_resolution_out().y); }
 float2 get_tex_noise_normal_scale() { return float2(buffer_frame.resolution_render.x / 256.0f, buffer_frame.resolution_render.y / 256.0f); }
 float2 get_tex_noise_blue_scale()   { return float2(buffer_frame.resolution_render.x / 470.0f, buffer_frame.resolution_render.y / 470.0f); }
-float3 degamma(float3 color)        { return pow(color, buffer_frame.gamma); }
-float3 gamma(float3 color)          { return pow(color, 1.0f / buffer_frame.gamma); }
+
+/*------------------------------------------------------------------------------
+   COLOR SPACE
+------------------------------------------------------------------------------*/
+float3 srgb_to_linear(float3 color)
+{
+    float3 linear_low  = color / 12.92;
+    float3 linear_high = pow((color + 0.055) / 1.055, buffer_frame.gamma);
+    float3 is_high     = step(0.04045, color); // 1 if srgb > 0.04045, else 0
+    return lerp(linear_low, linear_high, is_high);
+}
+
+float3 linear_to_srgb(float3 color)
+{
+    float3 srgb_low  = color * 12.92;
+    float3 srgb_high = 1.055 * pow(color, 1.0 / buffer_frame.gamma) - 0.055;
+    float3 is_high   = step(0.0031308, color);// 1 if linear > 0.0031308, else 0
+    return lerp(srgb_low, srgb_high, is_high);
+}
 
 /*------------------------------------------------------------------------------
     MATH

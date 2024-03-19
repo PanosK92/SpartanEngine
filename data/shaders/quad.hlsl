@@ -37,6 +37,6 @@ Pixel_PosUv mainVS(Vertex_PosUvNorTan input)
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     float4 color = tex.Sample(samplers[sampler_bilinear_clamp], input.uv);
-    color.rgb    = degamma(color.rgb);
+    color.rgb    = srgb_to_linear(color.rgb);
     return color;
 }

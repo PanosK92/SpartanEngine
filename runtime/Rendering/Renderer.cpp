@@ -198,7 +198,7 @@ namespace Spartan
         SetOption(Renderer_Option::ScreenSpaceReflections,        1.0f);
         SetOption(Renderer_Option::Anisotropy,                    16.0f);
         SetOption(Renderer_Option::ShadowResolution,              2048.0f);
-        SetOption(Renderer_Option::Gamma,                         2.2f);
+        SetOption(Renderer_Option::Gamma,                         2.4f);
         SetOption(Renderer_Option::Exposure,                      1.0f);
         SetOption(Renderer_Option::Sharpness,                     0.5f);                                                 // becomes the upsampler's sharpness as well
         SetOption(Renderer_Option::Fog,                           1.0f);                                                 // controls the intensity of the volumetric fog as well
