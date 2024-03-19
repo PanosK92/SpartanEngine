@@ -361,7 +361,7 @@ void RenderOptions::OnTickVisible()
 
             option_check_box("HDR", Renderer_Option::Hdr, "High dynamic range");
             ImGui::BeginDisabled(!Renderer::GetOption<bool>(Renderer_Option::Hdr));
-            option_value("Paper white (nits)", Renderer_Option::PaperWhite, nullptr, 1.0f);
+            option_value("White point (nits)", Renderer_Option::WhitePoint, nullptr, 1.0f);
             ImGui::EndDisabled();
 
             // tonemapping

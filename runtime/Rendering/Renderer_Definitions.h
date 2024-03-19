@@ -56,7 +56,7 @@ namespace Spartan
         ShadowResolution,
         Gamma,
         Exposure,
-        PaperWhite,
+        WhitePoint,
         Antialiasing,
         Tonemapping,
         Upsampling,
