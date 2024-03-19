@@ -232,11 +232,11 @@ float3 linear_to_st2084(float3 color)
     return pow((c1 + c2 * cp) / (1 + c3 * cp), m2);
 }
 
-float3 hdr_tonemap(float3 color, float exposure)
+float3 hdr_tonemap(float3 color, float white_point, float exposure)
 {
     const float st2084_max      = 10000.0f; // https://en.wikipedia.org/wiki/Rec._2100
     const float hdr_scalar      = buffer_frame.hdr_max_nits / st2084_max;
-    const float exposure_scalar = (buffer_frame.hdr_white_point / buffer_frame.hdr_max_nits) * exposure;
+    const float exposure_scalar = (white_point / buffer_frame.hdr_max_nits) * exposure;
 
     color = rec709_to_rec2020(color);
     color *= hdr_scalar * exposure_scalar;
@@ -292,7 +292,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     }
     else // HDR
     {
-        color.rgb = hdr_tonemap(color.rgb, exposure);
+        color.rgb = hdr_tonemap(color.rgb, buffer_frame.hdr_white_point, exposure);
     }
 
     tex_uav[thread_id.xy] = color;
