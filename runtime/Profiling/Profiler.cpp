@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/ThreadPool.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
+#include "../Display/Display.h"
 //====================================
 
 //= NAMESPACES =====
@@ -489,7 +490,8 @@ namespace Spartan
             << "Render:\t\t\t" << static_cast<uint32_t>(Renderer::GetResolutionRender().x) << "x" << static_cast<int>(Renderer::GetResolutionRender().y) << " - " << resolution_scale * 100.0f << "%" << endl
             << "Output:\t\t\t" << static_cast<uint32_t>(Renderer::GetResolutionOutput().x) << "x" << static_cast<int>(Renderer::GetResolutionOutput().y) << endl
             << "Viewport:\t\t" << static_cast<uint32_t>(Renderer::GetViewport().width)     << "x" << static_cast<int>(Renderer::GetViewport().height)    << endl
-            << "HDR:\t\t\t\t"  << (Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled") << endl;
+            << "HDR:\t\t\t\t"  << (Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled") << endl
+            << "Max nits:\t\t" << Display::GetLuminanceMax() << endl;
 
         // cpu
         oss_metrics << endl << "CPU" << endl
