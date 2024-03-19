@@ -648,10 +648,15 @@ namespace Spartan
         {
             if (option == Renderer_Option::Hdr)
             {
-                if (value == 1.0f && !Display::GetHdr())
+                if (value == 1.0f)
                 {
-                    SP_LOG_INFO("This display doesn't support HDR");
-                    return;
+                    if (!Display::GetHdr())
+                    { 
+                        SP_LOG_INFO("This display doesn't support HDR");
+                        return;
+                    }
+
+                    SetOption(Renderer_Option::Tonemapping, static_cast<uint32_t>(Renderer_Tonemapping::Max));
                 }
             }
         }
