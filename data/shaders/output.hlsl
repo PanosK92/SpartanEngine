@@ -249,12 +249,14 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float tone_mapping       = f3_value.y;
     float exposure           = f3_value.z;
     float hdr                = f3_value2.x;
+    float white_point        = f3_value2.y;
    
     float4 color  = tex[thread_id.xy];
-    color.rgb    *= exposure;
 
     if (hdr == 0.0f) // SDR
     {
+        color.rgb *= exposure;
+
         switch (tone_mapping)
         {
             case 0:
@@ -281,9 +283,13 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     }
     else // HDR
     {
+        // adjust the exposure based on the white point
+        float exposure_adjustment  = white_point / luminance_max_nits;
+        color.rgb                 *= exposure * exposure_adjustment;
+        
         // stay within the monitor's luminance range
-        float luminance_scale_factor = 50.0 / luminance_max_nits;
-        color.rgb *= luminance_scale_factor;
+        float luminance_scale_factor  = 50.0f / luminance_max_nits;
+        color.rgb                    *= luminance_scale_factor;
 
         // transfer
         color.rgb = rec709_to_rec2020(color.rgb);
@@ -292,4 +298,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = color;
 }
-

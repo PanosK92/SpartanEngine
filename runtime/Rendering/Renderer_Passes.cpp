@@ -1556,7 +1556,7 @@ namespace Spartan
         // set pass constants
         m_pcb_pass_cpu.set_resolution_out(tex_out);
         m_pcb_pass_cpu.set_f3_value(Display::GetLuminanceMax(), GetOption<float>(Renderer_Option::Tonemapping), GetOption<float>(Renderer_Option::Exposure));
-        m_pcb_pass_cpu.set_f3_value2(GetOption<float>(Renderer_Option::Hdr), 0.0f, 0.0f);
+        m_pcb_pass_cpu.set_f3_value2(GetOption<float>(Renderer_Option::Hdr), GetOption<float>(Renderer_Option::WhitePoint), 0.0f);
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
         // set textures

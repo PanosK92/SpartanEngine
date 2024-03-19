@@ -77,7 +77,7 @@ namespace Spartan
                 case Renderer_Option::ShadowResolution:              return "ShadowResolution";
                 case Renderer_Option::Gamma:                         return "Gamma";
                 case Renderer_Option::Exposure:                      return "Exposure";
-                case Renderer_Option::PaperWhite:                    return "PaperWhite";
+                case Renderer_Option::WhitePoint:                    return "WhitePoint";
                 case Renderer_Option::Antialiasing:                  return "Antialiasing";
                 case Renderer_Option::Tonemapping:                   return "Tonemapping";
                 case Renderer_Option::Upsampling:                    return "Upsampling";
