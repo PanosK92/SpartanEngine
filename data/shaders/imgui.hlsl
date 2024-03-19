@@ -83,8 +83,8 @@ float4 mainPS(Pixel_PosColUv input) : SV_Target
 
     if (buffer_frame.hdr_enabled != 0.0f && is_frame_texture == 0)
     {
-        float exposure = 1.0f;
-        color.rgb = hdr_tonemap(color.rgb, exposure);
+        color.rgb = degamma(color.rgb);
+        color.rgb = hdr_tonemap(color.rgb, 1.0f);
     }
     
     return color;
