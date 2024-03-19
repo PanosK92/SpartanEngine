@@ -234,17 +234,16 @@ float3 linear_to_st2084(float3 color)
 
 float3 hdr_tonemap(float3 color, float exposure)
 {
-    // adjust the exposure based on the white point
-    float exposure_adjustment  = buffer_frame.hdr_white_point / buffer_frame.hdr_max_nits;
-    color                     *= exposure * exposure_adjustment;
-    
-    // stay within the monitor's luminance range
-    float windows_nits_per_unit   = 80.0f; // https://learn.microsoft.com/en-us/windows/win32/direct3darticles/high-dynamic-range
-    float luminance_scale_factor  = windows_nits_per_unit / buffer_frame.hdr_max_nits;
-    color                        *= luminance_scale_factor;
-    
-    // transfer
+    // a little hack that makes the SDR brightness match the HDR brightness
+    // a need to develop a more accurate method to do this
+    exposure *= 0.1f;
+
+    const float st2084_max      = 1000.0f; // https://en.wikipedia.org/wiki/Rec._2100
+    const float hdr_scalar      = buffer_frame.hdr_max_nits / st2084_max;
+    const float exposure_scalar = (buffer_frame.hdr_white_point / buffer_frame.hdr_max_nits) * exposure;
+
     color = rec709_to_rec2020(color);
+    color *= hdr_scalar * exposure_scalar;
     color = linear_to_st2084(color);
 
     return color;
