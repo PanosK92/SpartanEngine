@@ -234,11 +234,7 @@ float3 linear_to_st2084(float3 color)
 
 float3 hdr_tonemap(float3 color, float exposure)
 {
-    // a little hack that makes the SDR brightness match the HDR brightness
-    // a need to develop a more accurate method to do this
-    exposure *= 0.1f;
-
-    const float st2084_max      = 1000.0f; // https://en.wikipedia.org/wiki/Rec._2100
+    const float st2084_max      = 10000.0f; // https://en.wikipedia.org/wiki/Rec._2100
     const float hdr_scalar      = buffer_frame.hdr_max_nits / st2084_max;
     const float exposure_scalar = (buffer_frame.hdr_white_point / buffer_frame.hdr_max_nits) * exposure;
 
