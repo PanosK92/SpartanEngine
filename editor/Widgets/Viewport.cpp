@@ -64,10 +64,8 @@ void Viewport::OnTickVisible()
                 
                 if (!resolutions_set)
                 {
-                    // Only set the render and output resolutions once.
-                    // They are expensive operations and we don't want to do it frequently.
-
-                    Renderer::SetResolutionRender(width, height);
+                    // only set the render and output resolutions once
+                    // they are expensive operations and we don't want to do it frequently
                     Renderer::SetResolutionOutput(width, height);
 
                     resolutions_set = true;

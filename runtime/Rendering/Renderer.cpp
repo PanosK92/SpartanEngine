@@ -92,12 +92,12 @@ namespace Spartan
 
         // misc
         unordered_map<Renderer_Option, float> m_options;
-        uint64_t frame_num                     = 0;
-        Math::Vector2 jitter_offset            = Math::Vector2::Zero;
-        const uint32_t resolution_shadow_min   = 128;
-        float near_plane                       = 0.0f;
-        float far_plane                        = 1.0f;
-        bool dirty_orthographic_projection     = true;
+        uint64_t frame_num                   = 0;
+        Math::Vector2 jitter_offset          = Math::Vector2::Zero;
+        const uint32_t resolution_shadow_min = 128;
+        float near_plane                     = 0.0f;
+        float far_plane                      = 1.0f;
+        bool dirty_orthographic_projection   = true;
     }
 
     void Renderer::Initialize()
@@ -122,8 +122,9 @@ namespace Spartan
             // the resolution of the output frame (we can upscale to that linearly or with fsr 2)
             SetResolutionOutput(width, height, false);
 
-            // the resolution of the actual rendering
-            SetResolutionRender(width, height, false);
+            // set the render resolution to something smaller than the output resolution
+            // this is done because FSR 2 is not good at doing TAA if the render resolution is the same as the output resolution
+            SetResolutionRender(1920, 1080, false);
 
             // the resolution/size of the editor's viewport. This is overridden by the editor based on the actual viewport size
             SetViewport(static_cast<float>(width), static_cast<float>(height));

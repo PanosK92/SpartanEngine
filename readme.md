@@ -52,13 +52,15 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - Dynamic resolution scaling.
 - Advanced shadow features with penumbra and colored translucency.
 - Physical light units (intensity from lumens and color from kelvin).
-- Comprehensive debug rendering options.
 - Frustum & occlusion culling (software and hardware hybrid).
 - Physically based camera.
 - Volumetric fog.
 - Temporal anti-aliasing.
+- HDR output.
 - Post-process effects like fxaa, bloom, motion-blur, depth of field, chromatic aberration etc.
 - AMD FidelityFX features like FSR 2, SPD, etc.
+- Comprehensive debug rendering options.
+
 #### General
 - One-click project generation for easy setup.
 - Universal input support, including mouse, keyboard, and controllers (tested with a PS5 controller).
