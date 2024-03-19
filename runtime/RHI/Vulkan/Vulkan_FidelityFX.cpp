@@ -251,7 +251,7 @@ namespace Spartan
 
             // flags
             {
-                fsr2_context_description.flags      = FFX_FSR2_ENABLE_DEPTH_INVERTED | FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE;
+                fsr2_context_description.flags      = FFX_FSR2_ENABLE_DEPTH_INVERTED | FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE | FFX_FSR2_ENABLE_DYNAMIC_RESOLUTION;
                 #ifdef DEBUG
                 fsr2_context_description.flags     |= FFX_FSR2_ENABLE_DEBUG_CHECKING;
                 fsr2_context_description.fpMessage  = &ffx_message_callback;
@@ -310,8 +310,8 @@ namespace Spartan
             fsr2_dispatch_description.sharpness              = sharpness;
             fsr2_dispatch_description.frameTimeDelta         = delta_time_sec * 1000.0f;                                            // seconds to milliseconds
             fsr2_dispatch_description.preExposure            = exposure;                                                            // the exposure value if not using FFX_FSR2_ENABLE_AUTO_EXPOSURE
-            fsr2_dispatch_description.renderSize.width       = static_cast<uint32_t>(tex_velocity->GetWidth() * resolution_scale);  // the resolution that was used for rendering the input resources
-            fsr2_dispatch_description.renderSize.height      = static_cast<uint32_t>(tex_velocity->GetHeight() * resolution_scale); // the resolution that was used for rendering the input resources
+            fsr2_dispatch_description.renderSize.width       = static_cast<uint32_t>(tex_velocity->GetWidth() * resolution_scale);  // viewport size
+            fsr2_dispatch_description.renderSize.height      = static_cast<uint32_t>(tex_velocity->GetHeight() * resolution_scale); // viewport size
             fsr2_dispatch_description.cameraNear             = camera->GetFarPlane();                                               // far as near because we are using reverse-z
             fsr2_dispatch_description.cameraFar              = camera->GetNearPlane();                                              // near as far because we are using reverse-z
             fsr2_dispatch_description.cameraFovAngleVertical = camera->GetFovVerticalRad();
