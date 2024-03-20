@@ -211,7 +211,7 @@ float3 amd(float3 color)
 
 float3 to_hdr10(float3 color, float white_point)
 {
-    // convert Rec.709 to Rec.2020 color space
+    // convert Rec.709 (similar to srgb) to Rec.2020 color space
     {
         static const float3x3 from709to2020 =
         {
@@ -222,13 +222,11 @@ float3 to_hdr10(float3 color, float white_point)
         
         color = mul(from709to2020, color);
     }
-    
-    // Normalize color values based on the perceptual white point. In SDR, paper white (80 nits)
-    // is seen as grey in well-lit rooms, not true white. This function adjusts for a more
-    // realistic white perception in typical environments, like living rooms or offices,
-    // where brightness levels are higher (e.g., 200 nits). This normalization helps align HDR
-    // rendering with human visual perception under common lighting conditions.
-    const float st2084_max = 10000.0f; // the ST.2084 spec defines max nits as 10,000 nits
+
+    // Adjust color values to match human perception of white under common lighting, like in living rooms or offices.
+    // SDR's paper white (80 nits) appears grey in bright environments. This normalization aligns HDR visuals
+    // with real-world white perception by factoring in ambient brightness, up to the ST.2084 spec limit of 10,000 nits.
+    const float st2084_max = 10000.0f;
     color *= white_point / st2084_max;
 
     // apply ST.2084 (PQ curve) for HDR10 standard
@@ -297,4 +295,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = color;
 }
+
 
