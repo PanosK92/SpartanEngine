@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // These srgb/linear conversion functions surpass the simple pow(2.2) approach by accurately mirroring
 // the srgb standard's piecewise linear curve for low values and non-linear curve for higher values. This
 // ensures more precise color fidelity, particularly in gradients and low-light. The default engine gamma is 2.4.
+// a good read: https://entropymine.com/imageworsener/srgbformula/
 
 float3 srgb_to_linear(float3 color)
 {
