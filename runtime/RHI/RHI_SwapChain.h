@@ -94,8 +94,8 @@ namespace Spartan
         uint32_t m_image_index                                   = std::numeric_limits<uint32_t>::max();
         void* m_sdl_window                                       = nullptr;
         std::array<RHI_Image_Layout, max_buffer_count> m_layouts = { RHI_Image_Layout::Max, RHI_Image_Layout::Max, RHI_Image_Layout::Max };
-        std::array<std::shared_ptr<RHI_Semaphore>, max_buffer_count> m_acquire_semaphore;
-        std::array<std::shared_ptr<RHI_Fence>, max_buffer_count> m_acquire_fence;
+        std::array<std::shared_ptr<RHI_Semaphore>, max_buffer_count> m_image_acquired_semaphore;
+        std::array<std::shared_ptr<RHI_Fence>, max_buffer_count> m_image_acquired_fence;
         std::vector<RHI_Semaphore*> m_wait_semaphores;
 
         // rhi

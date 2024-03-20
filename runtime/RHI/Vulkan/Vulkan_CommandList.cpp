@@ -471,13 +471,13 @@ namespace Spartan
         }
 
         // sync objects
-        m_proccessed_fence = make_shared<RHI_Fence>(name);
+        m_rendering_complete_fence = make_shared<RHI_Fence>(name);
 
         // semaphore
         bool presents_to_swapchain = swapchain_id != 0;
         if (presents_to_swapchain)
         {
-            m_proccessed_semaphore = make_shared<RHI_Semaphore>(false, name);
+            m_rendering_complete_semaphore = make_shared<RHI_Semaphore>(false, name);
         }
 
         queries::initialize(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion);
@@ -485,8 +485,8 @@ namespace Spartan
 
     RHI_CommandList::~RHI_CommandList()
     {
-        m_proccessed_fence     = nullptr;
-        m_proccessed_semaphore = nullptr;
+        m_rendering_complete_fence     = nullptr;
+        m_rendering_complete_semaphore = nullptr;
 
         queries::shutdown(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion);
     }
@@ -539,10 +539,10 @@ namespace Spartan
 
         // we can reach this code path and have a submitted semaphore when exiting full screen
         // it's okay to reset it manually here but ideally, we should find out why this happens
-        if (m_proccessed_semaphore && m_proccessed_semaphore->GetStateCpu() == RHI_Sync_State::Submitted)
+        if (m_rendering_complete_semaphore && m_rendering_complete_semaphore->GetStateCpu() == RHI_Sync_State::Submitted)
         {
-            m_proccessed_fence     = make_shared<RHI_Fence>(m_object_name.c_str());
-            m_proccessed_semaphore = make_shared<RHI_Semaphore>(false, m_object_name.c_str());
+            m_rendering_complete_fence     = make_shared<RHI_Fence>(m_object_name.c_str());
+            m_rendering_complete_semaphore = make_shared<RHI_Semaphore>(false, m_object_name.c_str());
         }
 
         RHI_Device::QueueSubmit(
@@ -550,8 +550,8 @@ namespace Spartan
             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,            // wait flags
             static_cast<VkCommandBuffer>(m_rhi_resource), // cmd buffer
             nullptr,                                      // wait semaphore
-            m_proccessed_semaphore.get(),                 // signal semaphore
-            m_proccessed_fence.get()                      // signal fence
+            m_rendering_complete_semaphore.get(),         // signal semaphore
+            m_rendering_complete_fence.get()              // signal fence
         );
 
         m_state = RHI_CommandListState::Submitted;

@@ -58,24 +58,24 @@ namespace Spartan
 
     void Timer::PostTick()
     {
-        // If this is not the first tick, we calculate the delta time
+        // if this is not the first tick, we calculate the delta time
         if (last_tick_time.time_since_epoch() != chrono::steady_clock::duration::zero())
         {
             delta_time_ms = static_cast<double>(chrono::duration<double, milli>(chrono::steady_clock::now() - last_tick_time).count());
         }
 
-        // FPS Limit
+        // fps limit
         double target_ms = 1000.0 / fps_limit;
         while (delta_time_ms < target_ms)
         {
             delta_time_ms = static_cast<double>(chrono::duration<double, milli>(chrono::steady_clock::now() - last_tick_time).count());
         }
 
-        // Compute delta time based timings
+        // compute delta time based timings
         delta_time_smoothed_ms  = delta_time_smoothed_ms * (1.0 - weight_delta) + delta_time_ms * weight_delta;
         time_ms                += delta_time_ms;
 
-        // End
+        // end
         last_tick_time = chrono::steady_clock::now();
     }
 
@@ -86,7 +86,7 @@ namespace Spartan
             fps_in = static_cast<float>(Display::GetRefreshRate());
         }
 
-        // Clamp to a minimum of 10 FPS to avoid unresponsiveness
+        // clamp to a minimum of 10 FPS to avoid unresponsiveness
         fps_in = Math::Helper::Clamp(fps_in, fps_min, fps_max);
 
         if (fps_limit == fps_in)

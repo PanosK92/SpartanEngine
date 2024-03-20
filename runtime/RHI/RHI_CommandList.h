@@ -150,7 +150,7 @@ namespace Spartan
         void InsertBarrierStructuredBufferReadWrite(void* rhi_buffer);
 
         // misc
-        RHI_Semaphore* GetSemaphoreProccessed() { return m_proccessed_semaphore.get(); }
+        RHI_Semaphore* GetRenderingCompleteSemaphore() { return m_rendering_complete_semaphore.get(); }
         void* GetRhiResource() const { return m_rhi_resource; }
 
     private:
@@ -158,8 +158,8 @@ namespace Spartan
         void RenderPassEnd();
 
         // sync
-        std::shared_ptr<RHI_Fence> m_proccessed_fence;
-        std::shared_ptr<RHI_Semaphore> m_proccessed_semaphore;
+        std::shared_ptr<RHI_Fence> m_rendering_complete_fence;
+        std::shared_ptr<RHI_Semaphore> m_rendering_complete_semaphore;
 
         // variables to minimise state changes
         uint64_t m_vertex_buffer_id = 0;
