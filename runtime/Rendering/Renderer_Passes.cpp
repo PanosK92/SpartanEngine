@@ -1356,7 +1356,7 @@ namespace Spartan
             Pass_Output(cmd_list, get_output_in, get_output_out);
 
             // sharpening
-            if (GetOption<bool>(Renderer_Option::Sharpness))
+            if (GetOption<bool>(Renderer_Option::Sharpness) && upsampling_mode != Renderer_Upsampling::Fsr2)
             {
                 swap_output = !swap_output;
                 Pass_Ffx_Cas(cmd_list, get_output_in, get_output_out);
@@ -1746,39 +1746,31 @@ namespace Spartan
 
     void Renderer::Pass_Ffx_Cas(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
-        // acquire shaders
+        // acquire resources
         RHI_Shader* shader_c = GetShader(Renderer_Shader::ffx_cas_c).get();
         if (!shader_c->IsCompiled())
             return;
 
-        float sharpness = GetOption<float>(Renderer_Option::Sharpness);
-
-        if (sharpness != 0.0f)
-        {
-            cmd_list->BeginTimeblock("ffx_cas");
-
-            // define pipeline state
-            static RHI_PipelineState pso;
-            pso.name           = "ffx_cas";
-            pso.shader_compute = shader_c;
-
-            // set pipeline state
-            cmd_list->SetPipelineState(pso);
-
-            // set pass constants
-            m_pcb_pass_cpu.set_resolution_out(tex_out);
-            m_pcb_pass_cpu.set_f3_value(sharpness, 0.0f, 0.0f);
-            cmd_list->PushConstants(m_pcb_pass_cpu);
-
-            // set textures
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
-
-            // render
-            cmd_list->Dispatch(tex_out);
-
-            cmd_list->EndTimeblock();
-        }
+        cmd_list->BeginTimeblock("ffx_cas");
+        
+        // set pipeline state
+        static RHI_PipelineState pso;
+        pso.shader_compute = shader_c;
+        cmd_list->SetPipelineState(pso);
+        
+        // set pass constants
+        m_pcb_pass_cpu.set_resolution_out(tex_out);
+        m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Sharpness), 0.0f, 0.0f);
+        cmd_list->PushConstants(m_pcb_pass_cpu);
+        
+        // set textures
+        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
+        
+        // render
+        cmd_list->Dispatch(tex_out);
+        
+        cmd_list->EndTimeblock();
     }
 
     void Renderer::Pass_Ffx_Spd(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter, const uint32_t mip_start)
@@ -1840,9 +1832,6 @@ namespace Spartan
     {
         cmd_list->BeginTimeblock("amd_ffx_fsr2");
 
-        bool is_upsampling = GetResolutionRender().x < GetResolutionOutput().x || GetResolutionRender().y < GetResolutionOutput().y;
-        float sharpness    = is_upsampling ? GetOption<float>(Renderer_Option::Sharpness) : 0.0f; // if not upsampling we do Pass_Ffx_Cas()
-
         RHI_FidelityFX::FSR2_Dispatch(
             cmd_list,
             tex_in,
@@ -1852,7 +1841,7 @@ namespace Spartan
             tex_out,
             GetCamera().get(),
             m_cb_frame_cpu.delta_time,
-            sharpness,
+            GetOption<float>(Renderer_Option::Sharpness),
             GetOption<float>(Renderer_Option::Exposure),
             GetOption<float>(Renderer_Option::ResolutionScale)
         );

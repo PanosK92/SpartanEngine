@@ -476,6 +476,7 @@ namespace Spartan
 
         // we have long screen space shadows so they don't look good with small objects here
         m_default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
+        m_default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::Volumetric, false);
 
         float y = 5.0f;
 
@@ -555,6 +556,7 @@ namespace Spartan
         Vector3 camera_position = Vector3(8.7844f, 2.0f, -4.1412f);
         Vector3 camera_rotation = Vector3(3.5996f, -44.099f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, "project\\music\\take_control.mp3");
+        m_default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::Volumetric, false);
 
         // create car
         {

@@ -276,8 +276,9 @@ void RenderOptions::OnTickVisible()
                 ImGui::EndDisabled();
 
                 // sharpening
-                string label   = is_upsampling ? "Upsampling sharpness (RCAS)" : "Sharpness (CAS)";
-                string tooltip = is_upsampling ? "AMD FidelityFX Robust Contrast Adaptive Sharpening (RCAS)" : "AMD FidelityFX Contrast Adaptive Sharpening (CAS)";
+                bool use_rcas  = Renderer::GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::Fsr2;
+                string label   = use_rcas ? "Sharpness (RCAS)" : "Sharpness (CAS)";
+                string tooltip = use_rcas ? "AMD FidelityFX Robust Contrast Adaptive Sharpening (RCAS)" : "AMD FidelityFX Contrast Adaptive Sharpening (CAS)";
                 option_value(label.c_str(), Renderer_Option::Sharpness, tooltip.c_str(), 0.1f, 0.0f, 1.0f);
             }
         }
