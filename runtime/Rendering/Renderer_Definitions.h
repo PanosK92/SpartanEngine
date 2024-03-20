@@ -86,12 +86,10 @@ namespace Spartan
 
     enum class Renderer_Tonemapping : uint32_t
     {
-        Amd,
         Aces,
         Reinhard,
         Uncharted2,
         Matrix,
-        Realism,
         Max,
     };
 
