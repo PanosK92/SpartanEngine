@@ -350,8 +350,8 @@ namespace Spartan
         for (uint32_t i = 0; i < m_buffer_count; i++)
         {
             string name            = (string("swapchain_image_acquired_") + to_string(i));
-            m_acquire_semaphore[i] = make_shared<RHI_Semaphore>(false, name.c_str());
-            m_acquire_fence[i]     = make_shared<RHI_Fence>(name.c_str());
+            m_image_acquired_semaphore[i] = make_shared<RHI_Semaphore>(false, name.c_str());
+            m_image_acquired_fence[i]     = make_shared<RHI_Fence>(name.c_str());
         }
     }
 
@@ -366,7 +366,7 @@ namespace Spartan
         }
 
         m_rhi_rtv.fill(nullptr);
-        m_acquire_semaphore.fill(nullptr);
+        m_image_acquired_semaphore.fill(nullptr);
 
         RHI_Device::QueueWaitAll();
 
@@ -411,14 +411,14 @@ namespace Spartan
     {
         if (m_sync_index != numeric_limits<uint32_t>::max())
         {
-            m_acquire_fence[m_sync_index]->Wait();
-            m_acquire_fence[m_sync_index]->Reset();
+            m_image_acquired_fence[m_sync_index]->Wait();
+            m_image_acquired_fence[m_sync_index]->Reset();
         }
 
         // get sync objects
         m_sync_index                    = (m_sync_index + 1) % m_buffer_count;
-        RHI_Semaphore* signal_semaphore = m_acquire_semaphore[m_sync_index].get();
-        RHI_Fence* signal_fence         = m_acquire_fence[m_sync_index].get();
+        RHI_Semaphore* signal_semaphore = m_image_acquired_semaphore[m_sync_index].get();
+        RHI_Fence* signal_fence         = m_image_acquired_fence[m_sync_index].get();
         SP_ASSERT_MSG(signal_semaphore->GetStateCpu() != RHI_Sync_State::Submitted, "The semaphore is already signaled");
 
         // acquire next image
@@ -453,19 +453,19 @@ namespace Spartan
                 // the editor supports multiple windows, so we can be dealing with multiple swapchains
                 if (m_object_id == cmd_pool->GetSwapchainId())
                 {
-                    RHI_Semaphore* semaphore_cmd_list = cmd_pool->GetCurrentCommandList()->GetSemaphoreProccessed();
-                    if (semaphore_cmd_list->GetStateCpu() == RHI_Sync_State::Submitted)
+                    RHI_Semaphore* rendering_complete_semaphore = cmd_pool->GetCurrentCommandList()->GetRenderingCompleteSemaphore();
+                    if (rendering_complete_semaphore->GetStateCpu() == RHI_Sync_State::Submitted)
                     {
-                        m_wait_semaphores.emplace_back(semaphore_cmd_list);
+                        m_wait_semaphores.emplace_back(rendering_complete_semaphore);
                     }
                 }
             }
             SP_ASSERT_MSG(!m_wait_semaphores.empty(), "Present() present should not be called if no work is to be presented");
 
             // semaphore that's signaled when the image is acquired
-            RHI_Semaphore* semaphore_image_aquired = m_acquire_semaphore[m_sync_index].get();
-            SP_ASSERT(semaphore_image_aquired->GetStateCpu() == RHI_Sync_State::Submitted);
-            m_wait_semaphores.emplace_back(semaphore_image_aquired);
+            RHI_Semaphore* image_acquired_semaphore = m_image_acquired_semaphore[m_sync_index].get();
+            SP_ASSERT(image_acquired_semaphore->GetStateCpu() == RHI_Sync_State::Submitted);
+            m_wait_semaphores.emplace_back(image_acquired_semaphore);
         }
 
         RHI_Device::QueuePresent(m_rhi_swapchain, m_image_index, m_wait_semaphores);

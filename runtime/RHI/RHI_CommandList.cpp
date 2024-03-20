@@ -39,13 +39,13 @@ namespace Spartan
         // wait for execution to finish
         if (IsExecuting())
         {
-            SP_ASSERT_MSG(m_proccessed_fence->Wait(), "Timed out while waiting for the fence");
+            SP_ASSERT_MSG(m_rendering_complete_fence->Wait(), "Timed out while waiting for the fence");
         }
 
         // reset fence
-        if (m_proccessed_fence->GetStateCpu() == RHI_Sync_State::Submitted)
+        if (m_rendering_complete_fence->GetStateCpu() == RHI_Sync_State::Submitted)
         {
-            m_proccessed_fence->Reset();
+            m_rendering_complete_fence->Reset();
         }
 
         m_state = RHI_CommandListState::Idle;
@@ -55,7 +55,7 @@ namespace Spartan
     {
         return
             m_state == RHI_CommandListState::Submitted && // it has been submitted
-            !m_proccessed_fence->IsSignaled();            // and the fence is not signaled yet
+            !m_rendering_complete_fence->IsSignaled();            // and the fence is not signaled yet
     }
 
     void RHI_CommandList::Dispatch(RHI_Texture* texture)

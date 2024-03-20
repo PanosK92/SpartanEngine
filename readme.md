@@ -56,7 +56,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - Physically based camera.
 - Volumetric fog.
 - Temporal anti-aliasing.
-- HDR output.
+- HDR10 output.
 - Post-process effects like fxaa, bloom, motion-blur, depth of field, chromatic aberration etc.
 - AMD FidelityFX features like FSR 2, SPD, etc.
 - Comprehensive debug rendering options.
