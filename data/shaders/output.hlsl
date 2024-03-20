@@ -209,38 +209,38 @@ float3 amd(float3 color)
 // HDR
 //==========================================================================================
 
-float3 rec709_to_rec2020(float3 color)
+float3 to_hdr10(float3 color, float white_point)
 {
-    static const float3x3 conversion =
+    // convert Rec.709 to Rec.2020 color space
     {
-        0.627402, 0.329292, 0.043306,
-        0.069095, 0.919544, 0.011360,
-        0.016394, 0.088028, 0.895578
-    };
+        static const float3x3 from709to2020 =
+        {
+            { 0.6274040f, 0.3292820f, 0.0433136f },
+            { 0.0690970f, 0.9195400f, 0.0113612f },
+            { 0.0163916f, 0.0880132f, 0.8955950f }
+        };
+        
+        color = mul(from709to2020, color);
+    }
     
-    return mul(conversion, color);
-}
+    // Normalize color values based on the perceptual white point. In SDR, paper white (80 nits)
+    // is seen as grey in well-lit rooms, not true white. This function adjusts for a more
+    // realistic white perception in typical environments, like living rooms or offices,
+    // where brightness levels are higher (e.g., 200 nits). This normalization helps align HDR
+    // rendering with human visual perception under common lighting conditions.
+    const float st2084_max = 10000.0f; // the ST.2084 spec defines max nits as 10,000 nits
+    color *= white_point / st2084_max;
 
-float3 linear_to_st2084(float3 color)
-{
-    float m1 = 2610.0 / 4096.0 / 4;
-    float m2 = 2523.0 / 4096.0 * 128;
-    float c1 = 3424.0 / 4096.0;
-    float c2 = 2413.0 / 4096.0 * 32;
-    float c3 = 2392.0 / 4096.0 * 32;
-    float3 cp = pow(abs(color), m1);
-    return pow((c1 + c2 * cp) / (1 + c3 * cp), m2);
-}
-
-float3 hdr_tonemap(float3 color, float white_point, float exposure)
-{
-    const float st2084_max      = 10000.0f; // https://en.wikipedia.org/wiki/Rec._2100
-    const float hdr_scalar      = buffer_frame.hdr_max_nits / st2084_max;
-    const float exposure_scalar = (white_point / buffer_frame.hdr_max_nits) * exposure;
-
-    color = rec709_to_rec2020(color);
-    color *= hdr_scalar * exposure_scalar;
-    color = linear_to_st2084(color);
+    // apply ST.2084 (PQ curve) for HDR10 standard
+    {
+        static const float m1 = 2610.0 / 4096.0 / 4;
+        static const float m2 = 2523.0 / 4096.0 * 128;
+        static const float c1 = 3424.0 / 4096.0;
+        static const float c2 = 2413.0 / 4096.0 * 32;
+        static const float c3 = 2392.0 / 4096.0 * 32;
+        float3 cp             = pow(abs(color), m1);
+        color                 = pow((c1 + c2 * cp) / (1 + c3 * cp), m2);
+    }
 
     return color;
 }
@@ -292,8 +292,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     }
     else // HDR
     {
-        color.rgb = hdr_tonemap(color.rgb, buffer_frame.hdr_white_point, exposure);
+        color.rgb = to_hdr10(color.rgb, buffer_frame.hdr_white_point);
     }
 
     tex_uav[thread_id.xy] = color;
 }
+
