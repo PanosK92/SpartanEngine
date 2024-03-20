@@ -372,9 +372,6 @@ void RenderOptions::OnTickVisible()
                 Renderer::SetOption(Renderer_Option::Tonemapping, static_cast<float>(selection_index));
             }
 
-            // dithering
-            option_check_box("Debanding", Renderer_Option::Debanding, "Reduces color banding");
-
             // vsync
             option_check_box("VSync", Renderer_Option::Vsync, "Vertical Synchronization");
 

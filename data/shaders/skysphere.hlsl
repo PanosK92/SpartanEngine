@@ -168,4 +168,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
       
     tex_uav[thread_id.xy] = float4(color, 1.0f);
 }
-

@@ -493,10 +493,6 @@ namespace Spartan
         shader(Renderer_Shader::motion_blur_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::motion_blur_c)->Compile(RHI_Shader_Compute, shader_dir + "motion_blur.hlsl", async);
 
-        // dithering
-        shader(Renderer_Shader::debanding_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::debanding_c)->Compile(RHI_Shader_Compute, shader_dir + "debanding.hlsl", async);
-
         // ssgi
         shader(Renderer_Shader::ssgi_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::ssgi_c)->Compile(RHI_Shader_Compute, shader_dir + "ssgi.hlsl", async);

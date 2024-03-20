@@ -1362,13 +1362,6 @@ namespace Spartan
                 Pass_Ffx_Cas(cmd_list, get_output_in, get_output_out);
             }
 
-            // debanding
-            if (GetOption<bool>(Renderer_Option::Debanding))
-            {
-                swap_output = !swap_output;
-                Pass_Debanding(cmd_list, get_output_in, get_output_out);
-            }
-
             // fxaa
             if (fxaa_enabled)
             {
@@ -1685,36 +1678,6 @@ namespace Spartan
         
 
         // render
-        cmd_list->Dispatch(tex_out);
-
-        cmd_list->EndTimeblock();
-    }
-
-    void Renderer::Pass_Debanding(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
-    {
-        // Acquire shaders
-        RHI_Shader* shader = GetShader(Renderer_Shader::debanding_c).get();
-        if (!shader->IsCompiled())
-            return;
-
-        cmd_list->BeginTimeblock("debanding");
-
-        // Define pipeline state
-        static RHI_PipelineState pso;
-        pso.shader_compute = shader;
-
-        // Set pipeline state
-        cmd_list->SetPipelineState(pso);
-
-        // Set pass constants
-        m_pcb_pass_cpu.set_resolution_out(tex_out);
-        cmd_list->PushConstants(m_pcb_pass_cpu);
-
-        // Set textures
-        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
-
-        // Render
         cmd_list->Dispatch(tex_out);
 
         cmd_list->EndTimeblock();
