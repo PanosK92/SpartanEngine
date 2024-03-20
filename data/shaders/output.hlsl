@@ -86,44 +86,6 @@ float3 aces(float3 color)
 }
 
 //==========================================================================================
-// HDR
-//==========================================================================================
-
-float3 to_hdr10(float3 color, float white_point)
-{
-    // convert Rec.709 (similar to srgb) to Rec.2020 color space
-    {
-        static const float3x3 from709to2020 =
-        {
-            { 0.6274040f, 0.3292820f, 0.0433136f },
-            { 0.0690970f, 0.9195400f, 0.0113612f },
-            { 0.0163916f, 0.0880132f, 0.8955950f }
-        };
-        
-        color = mul(from709to2020, color);
-    }
-
-    // Adjust color values to match human perception of white under common lighting, like in living rooms or offices.
-    // SDR's paper white (80 nits) appears grey in bright environments. This normalization aligns HDR visuals
-    // with real-world white perception by factoring in ambient brightness, up to the ST.2084 spec limit of 10,000 nits.
-    const float st2084_max = 10000.0f;
-    color *= white_point / st2084_max;
-
-    // apply ST.2084 (PQ curve) for HDR10 standard
-    {
-        static const float m1 = 2610.0 / 4096.0 / 4;
-        static const float m2 = 2523.0 / 4096.0 * 128;
-        static const float c1 = 3424.0 / 4096.0;
-        static const float c2 = 2413.0 / 4096.0 * 32;
-        static const float c3 = 2392.0 / 4096.0 * 32;
-        float3 cp             = pow(abs(color), m1);
-        color                 = pow((c1 + c2 * cp) / (1 + c3 * cp), m2);
-    }
-
-    return color;
-}
-
-//==========================================================================================
 // ENTRY
 //==========================================================================================
 
@@ -164,10 +126,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     }
     else // HDR
     {
-        color.rgb = to_hdr10(color.rgb, buffer_frame.hdr_white_point);
+        color.rgb = linear_to_hdr10(color.rgb, buffer_frame.hdr_white_point);
     }
 
     tex_uav[thread_id.xy] = color;
 }
-
-

@@ -85,7 +85,7 @@ float4 mainPS(Pixel_PosColUv input) : SV_Target
     {
         color.rgb = srgb_to_linear(color.rgb);
         float white_point = 400.0f;
-        color.rgb = to_hdr10(color.rgb, white_point);
+        color.rgb = linear_to_hdr10(color.rgb, white_point);
     }
     
     return color;
