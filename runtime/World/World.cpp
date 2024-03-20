@@ -982,40 +982,6 @@ if (m_default_model_wheel = ResourceCache::Load<Mesh>("project\\models\\wheel\\m
                     }
                 }
 
-                // vegetation_tree_1
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\vegetation_tree_1\\tree.fbx"))
-                {
-                    shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
-                    entity->SetObjectName("tree_1");
-                    entity->SetScale(Vector3(0.01f, 0.01f, 0.01f));
-                    entity->SetParent(m_default_terrain);
-
-                    vector<Matrix> instances;
-
-                    if (Entity* bark = entity->GetDescendantByName("Mobile_Tree_1_1"))
-                    {
-                        Renderable* renderable = bark->GetComponent<Renderable>().get();
-                        renderable->GetMaterial()->SetTexture(MaterialTexture::Color, "project\\terrain\\vegetation_tree_1\\bark.png");
-
-                        // generate instances
-                        terrain->GenerateTransforms(&instances, 10000, TerrainProp::Tree);
-                        renderable->SetInstances(instances);
-                    }
-
-                    if (Entity* leafs = entity->GetDescendantByName("Mobile_Tree_1_2"))
-                    {
-                        Renderable* renderable = leafs->GetComponent<Renderable>().get();
-                        renderable->SetInstances(instances);
-
-                        // tweak material
-                        Material* material = renderable->GetMaterial();
-                        material->SetTexture(MaterialTexture::Color,                  "project\\terrain\\vegetation_tree_1\\leaf.png");
-                        material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
-                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
-                        material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
-                    }
-                }
-
                 // vegetation_tree_2
                 if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\vegetation_tree_2\\tree.fbx"))
                 {
