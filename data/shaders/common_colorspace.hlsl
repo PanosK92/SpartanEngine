@@ -19,10 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// These srgb/linear conversion functions surpass the simple pow(2.2) approach by accurately mirroring
-// the srgb standard's piecewise linear curve for low values and non-linear curve for higher values. This
-// ensures more precise color fidelity, particularly in gradients and low-light. The default engine gamma is 2.4.
-// a good read: https://entropymine.com/imageworsener/srgbformula/
+// For details, read my blog post: https://panoskarabelas.com/blog/posts/hdr_in_under_10_minutes/
 
 float3 srgb_to_linear(float3 color)
 {
@@ -54,9 +51,7 @@ float3 linear_to_hdr10(float3 color, float white_point)
         color = mul(from709to2020, color);
     }
 
-    // Adjust color values to match human perception of white under common lighting, like in living rooms or offices.
-    // SDR's paper white (80 nits) appears grey in bright environments. This normalization aligns HDR visuals
-    // with real-world white perception by factoring in ambient brightness, up to the ST.2084 spec limit of 10,000 nits.
+    // normalize HDR scene values ([0..>1] to [0..1]) for the ST.2084 curve
     const float st2084_max = 10000.0f;
     color *= white_point / st2084_max;
 
