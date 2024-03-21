@@ -21,17 +21,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =======
+//= INCLUDES ==========
 SP_WARNINGS_OFF
 #include <dxc/dxcapi.h>
 SP_WARNINGS_ON
-//==================
+//=====================
 
 namespace Spartan
 {
     /*
-    Version: dxcompiler.dll: 1.8 - 1.7.0.4386 (a743e97f8)
+    OVERVIEW: HLSL Compiler for Windows
 
+    Version: dxcompiler.dll: 1.8 - 1.8.2403.34 (c9660a8c0); dxil.dll: 1.8(101.8.2403.18)
+    
     USAGE: dxc.exe [options] <inputs>
     
     Common Options:
