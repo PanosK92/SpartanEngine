@@ -57,7 +57,7 @@ namespace Spartan
         // rt
         std::array<RHI_Texture*, rhi_max_render_target_count> render_target_color_textures;
         RHI_Texture* render_target_depth_texture = nullptr;
-        RHI_Texture* render_target_vrs           = nullptr;
+        RHI_Texture* vrs_input_texture           = nullptr;
         //=================================================================================
 
         //= DYNAMIC - will not cause pso generation =================
@@ -69,7 +69,7 @@ namespace Spartan
         std::array<Color, rhi_max_render_target_count> clear_color;
 
         std::string name;
-        bool screen_percentage_enabled = false;
+        bool resolution_scale = false;
         //===========================================================
 
     private:

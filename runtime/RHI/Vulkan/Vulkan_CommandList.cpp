@@ -724,13 +724,13 @@ namespace Spartan
 
         // variable rate shading
         VkRenderingFragmentShadingRateAttachmentInfoKHR attachment_shading_rate = {};
-        if (m_pso.render_target_vrs)
+        if (m_pso.vrs_input_texture)
         {
-            m_pso.render_target_vrs->SetLayout(RHI_Image_Layout::Shading_Rate_Attachment, this);
+            m_pso.vrs_input_texture->SetLayout(RHI_Image_Layout::Shading_Rate_Attachment, this);
 
             attachment_shading_rate.sType                          = VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR;
-            attachment_shading_rate.imageView                      = static_cast<VkImageView>(m_pso.render_target_vrs->GetRhiRtv());
-            attachment_shading_rate.imageLayout                    = vulkan_image_layout[static_cast<uint8_t>(m_pso.render_target_vrs->GetLayout(0))];
+            attachment_shading_rate.imageView                      = static_cast<VkImageView>(m_pso.vrs_input_texture->GetRhiRtv());
+            attachment_shading_rate.imageLayout                    = vulkan_image_layout[static_cast<uint8_t>(m_pso.vrs_input_texture->GetLayout(0))];
             attachment_shading_rate.shadingRateAttachmentTexelSize = { RHI_Device::PropertyGetMaxShadingRateTexelSizeX(), RHI_Device::PropertyGetMaxShadingRateTexelSizeY() };
 
             rendering_info.pNext = &attachment_shading_rate;
@@ -742,7 +742,7 @@ namespace Spartan
         // set dynamic states
         {
             // variable rate shading
-            RHI_Device::SetVariableRateShading(this, m_pso.render_target_vrs != nullptr);
+            RHI_Device::SetVariableRateShading(this, m_pso.vrs_input_texture != nullptr);
 
             // set viewport
             RHI_Viewport viewport = RHI_Viewport(
