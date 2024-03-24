@@ -26,10 +26,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BulletPhysicsHelper.h"
 #include "../Rendering/Renderer.h"
 #include "../Input/Input.h"
+#include "../World/Entity.h"
+#include "../World/Components/AudioSource.h"
 SP_WARNINGS_OFF
 #include <BulletDynamics/Vehicle/btRaycastVehicle.h>
 #include "LinearMath/btVector3.h"
-#include "../World/Entity.h"
 SP_WARNINGS_ON
 //==================================================
 
@@ -534,7 +535,7 @@ namespace Spartan
         }
     }
 
-    void Car::Create(btRigidBody* chassis)
+    void Car::Create(btRigidBody* chassis, Entity* entity)
     {
         m_parameters.body = chassis;
 
@@ -600,6 +601,13 @@ namespace Spartan
                     );
                 }
             }
+        }
+
+        // add basic audio
+        {
+            ///shared_ptr<AudioSource> audio_source = entity->AddComponent<AudioSource>();
+            ///audio_source->SetAudioClip("project\\music\\car_engine_idle.mp3");
+            ///audio_source->SetLoop(true);
         }
     }
 

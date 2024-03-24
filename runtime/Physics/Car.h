@@ -82,7 +82,7 @@ namespace Spartan
         ~Car() = default;
 
         // main
-        void Create(btRigidBody* chassis);
+        void Create(btRigidBody* chassis, Entity* entity);
         void Tick();
 
         // transforms
