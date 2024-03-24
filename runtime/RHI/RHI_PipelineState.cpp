@@ -123,9 +123,9 @@ namespace Spartan
                 }
 
                 // variable rate shading
-                if (pso.render_target_vrs)
+                if (pso.vrs_input_texture)
                 {
-                    hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.render_target_depth_texture->GetFormat()));
+                    hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.vrs_input_texture->GetFormat()));
                 }
             }
 
@@ -155,7 +155,7 @@ namespace Spartan
                 if (height) *height = pso.render_target_depth_texture->GetHeight();
             }
 
-            if (pso.screen_percentage_enabled)
+            if (pso.resolution_scale)
             { 
                 float resolution_scale = Renderer::GetOption<float>(Renderer_Option::ResolutionScale);
                 *width                 = static_cast<uint32_t>(*width * resolution_scale);

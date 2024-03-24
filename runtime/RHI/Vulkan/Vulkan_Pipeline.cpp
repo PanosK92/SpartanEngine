@@ -396,7 +396,7 @@ namespace Spartan
                     }
 
                     // variable rate shading
-                    if (m_state.render_target_vrs)
+                    if (m_state.vrs_input_texture)
                     { 
                         fragment_shading_rate_state.sType          = VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR;
                         fragment_shading_rate_state.combinerOps[0] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MAX_KHR;
@@ -430,7 +430,7 @@ namespace Spartan
                 pipeline_info.pDepthStencilState           = &depth_stencil_state;
                 pipeline_info.layout                       = static_cast<VkPipelineLayout>(m_resource_pipeline_layout);
                 pipeline_info.renderPass                   = nullptr;
-                pipeline_info.flags                        = m_state.render_target_vrs ? VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR : 0;
+                pipeline_info.flags                        = m_state.vrs_input_texture ? VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR : 0;
         
                 // create
                 SP_VK_ASSERT_MSG(vkCreateGraphicsPipelines(RHI_Context::device, nullptr, 1, &pipeline_info, nullptr, pipeline),
