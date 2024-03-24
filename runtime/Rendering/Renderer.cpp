@@ -659,6 +659,17 @@ namespace Spartan
                     SetOption(Renderer_Option::Tonemapping, static_cast<uint32_t>(Renderer_Tonemapping::Max));
                 }
             }
+            else if (option == Renderer_Option::VariableRateShading)
+            {
+                if (value == 1.0f)
+                {
+                    if (!RHI_Device::PropertyIsShadingRateSupported())
+                    { 
+                        SP_LOG_INFO("This GPU doesn't support variable rate shading");
+                        return;
+                    }
+                }
+            }
         }
 
         // set new value

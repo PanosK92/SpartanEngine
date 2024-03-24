@@ -733,7 +733,7 @@ namespace Spartan
 
         uint32_t enabled_graphics_shader_stages;
 
-        void detect(VkPhysicalDevice device_physical)
+        void detect(VkPhysicalDevice device_physical, bool* is_shading_rate_supported)
         {
             // structs which hold which features are enabled
             robustness_features_2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
@@ -766,8 +766,14 @@ namespace Spartan
             // check if certain features are supported and enable them
             {
                 // variable shading rate
-                SP_ASSERT(shading_rate_support.attachmentFragmentShadingRate == VK_TRUE);
-                shading_rate.attachmentFragmentShadingRate = VK_TRUE;
+                *is_shading_rate_supported = shading_rate_support.attachmentFragmentShadingRate == VK_TRUE;
+                if (*is_shading_rate_supported)
+                {
+                    // conditionally enable this as a lot of people have an NV 1080
+                    // however NV didn't support this until the 1650 and later
+                    // https://vulkan.gpuinfo.org/listdevicescoverage.php?platform=windows&extension=VK_KHR_fragment_shading_rate
+                    shading_rate.attachmentFragmentShadingRate = VK_TRUE;
+                }
 
                 // anisotropic filtering
                 SP_ASSERT(features_support.features.samplerAnisotropy == VK_TRUE);
@@ -1049,7 +1055,7 @@ namespace Spartan
                 }
             }
   
-            device_features::detect(RHI_Context::device_physical);
+            device_features::detect(RHI_Context::device_physical, &m_is_shading_rate_supported);
 
             // get the supported extensions out of the requested extensions
             vector<const char*> extensions_supported = get_physical_device_supported_extensions(RHI_Context::extensions_device, RHI_Context::device_physical);

@@ -96,6 +96,7 @@ namespace Spartan
         static uint32_t PropertyGetMaxPushConstantSize()              { return m_max_push_constant_size; }
         static uint32_t PropertyGetMaxShadingRateTexelSizeX()         { return m_max_shading_rate_texel_size_x; }
         static uint32_t PropertyGetMaxShadingRateTexelSizeY()         { return m_max_shading_rate_texel_size_y; }
+        static bool PropertyIsShadingRateSupported()                  { return m_is_shading_rate_supported; }
 
         // markers
         static void MarkerBegin(RHI_CommandList* cmd_list, const char* name, const Math::Vector4& color);
@@ -129,6 +130,7 @@ namespace Spartan
         static uint32_t m_max_push_constant_size;
         static uint32_t m_max_shading_rate_texel_size_x;
         static uint32_t m_max_shading_rate_texel_size_y;
+        static bool m_is_shading_rate_supported;
 
         // misc
         static bool m_wide_lines;
