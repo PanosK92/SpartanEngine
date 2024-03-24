@@ -2047,6 +2047,9 @@ namespace Spartan
 
     void RHI_Device::SetVariableRateShading(const RHI_CommandList* cmd_list, const bool enabled)
     {
+        if (!m_is_shading_rate_supported)
+            return;
+
         // set the fragment shading rate state for the current pipeline
         VkExtent2D fragment_size = { 1, 1 };
         VkFragmentShadingRateCombinerOpKHR combiner_operatins[2];
