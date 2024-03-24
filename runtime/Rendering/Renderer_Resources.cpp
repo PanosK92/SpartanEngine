@@ -284,7 +284,7 @@ namespace Spartan
         if (!render_target(Renderer_RenderTarget::brdf_specular_lut))
         {
             render_target(Renderer_RenderTarget::brdf_specular_lut) = make_unique<RHI_Texture2D>(512, 512, 1, RHI_Format::R8G8_Unorm, flags_standard, "brdf_specular_lut");
-            render_target(Renderer_RenderTarget::skysphere)         = make_unique<RHI_Texture2D>(4096, 2048, mip_count, RHI_Format::R11G11B10_Float, flags_standard | RHI_Texture_PerMipViews, "skysphere");
+            render_target(Renderer_RenderTarget::skysphere)         = make_unique<RHI_Texture2D>(4096, 4096, mip_count, RHI_Format::R11G11B10_Float, flags_standard | RHI_Texture_PerMipViews, "skysphere");
             render_target(Renderer_RenderTarget::blur)              = make_unique<RHI_Texture2D>(4096, 4096, 1, RHI_Format::R16G16B16A16_Float, flags_standard, "blur");
         }
         

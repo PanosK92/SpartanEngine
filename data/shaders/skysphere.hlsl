@@ -63,23 +63,31 @@ struct space
                     u.z);
     }
     
-    static float3 compute_star_color(float3 view_direction, float3 atmosphere_color, float time)
+    static float3 compute_star_color(float2 uv, float3 atmosphere_color, float time)
     {
-        float probability   = 10.0f;
-        float exposure      = 300.0f;
-        float flicker_speed = 0.4f;
-    
-        float stars_noise = pow(clamp(noise(view_direction * 200.0f), 0.0f, 1.0f), probability) * exposure;
-        stars_noise *= lerp(0.4, 1.4, noise(view_direction * 100.0f + time * flicker_speed));
+        // reverse spherical mapping to counteract distortion
+        float reversed_phi    = uv.x * 2.0 * PI;
+        float reversed_theta  = (1.0f - uv.y) * PI;
+        float3 view_direction = normalize(float3(sin(reversed_theta) * cos(reversed_phi), cos(reversed_theta), sin(reversed_theta) * sin(reversed_phi)));
 
-        float intensity = saturate(1.0f - luminance(atmosphere_color) - 0.9f);
-        return float3(stars_noise, stars_noise, stars_noise) * intensity;
+        // parameters
+        float scale         = 1000.0f;
+        float probability   = 18.5f;
+        float exposure      = 1000000.0f;
+        float flicker_speed = 0.2f;
+
+        float stars_noise_base  = noise(view_direction * scale);
+        float stars_noise       = pow(clamp(stars_noise_base, 0.0f, 1.0f), probability) * exposure;
+        stars_noise            *= lerp(0.5, 1.5, noise(view_direction * scale * 0.5f + time * flicker_speed));
+        float intensity         = saturate(1.0f - luminance(atmosphere_color) - 0.95f);
+
+        return float3(stars_noise, stars_noise, stars_noise)  * intensity;
     }
 
-    static float3 compute_color(float3 view_direction, float3 atmosphere_color, float time)
+    static float3 compute_color(float2 uv, float3 atmosphere_color, float time)
     {
         const float3 base_starlight_color = float3(0.05f, 0.05f, 0.1f); // soft, cool blue-gray tone
-        const float3 star_color           = compute_star_color(view_direction, atmosphere_color, time);
+        const float3 star_color           = compute_star_color(uv, atmosphere_color, time);
 
         return base_starlight_color * 0.05f + star_color;
     };
@@ -164,7 +172,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // compute individual factors that contribute to what we see when we look up there
     float3 color  = atmosphere::compute_color(view_direction, light.forward, buffer_frame.camera_position) * light.intensity * 0.03f;
     color        += sun::compute_color(view_direction, light.forward) * light.color.rgb * light.intensity;
-    color        += space::compute_color(view_direction, color, buffer_frame.time);
+    color        += space::compute_color(uv, color, buffer_frame.time);
       
     tex_uav[thread_id.xy] = float4(color, 1.0f);
 }
+

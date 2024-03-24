@@ -683,55 +683,55 @@ namespace Spartan
                     }
 
                     // load our own wheel
-if (m_default_model_wheel = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend"))
-{
-    shared_ptr<Entity> entity_wheel_root = m_default_model_wheel->GetRootEntity().lock();
-    entity_wheel_root->SetScale(Vector3(wheel_scale));
-
-    if (Entity* entity_wheel = entity_wheel_root->GetDescendantByName("wheel Low"))
-    {
-        // create material
-        shared_ptr<Material> material = make_shared<Material>();
-        material->SetTexture(MaterialTexture::Color, "project\\models\\wheel\\albedo.jpeg");
-        material->SetTexture(MaterialTexture::Normal, "project\\models\\wheel\\normal.png");
-        material->SetTexture(MaterialTexture::Roughness, "project\\models\\wheel\\roughness.png");
-        material->SetTexture(MaterialTexture::Metalness, "project\\models\\wheel\\metalness.png");
-
-        // create a file path for this material (required for the material to be able to be cached by the resource cache)
-        const string file_path = "project\\models\\wheel" + string(EXTENSION_MATERIAL);
-        material->SetResourceFilePath(file_path);
-
-        // set material
-        entity_wheel->GetComponent<Renderable>()->SetMaterial(material);
-    }
-
-    // add the wheels to the body
-    {
-        shared_ptr<Entity> wheel = entity_wheel_root;
-        wheel->SetObjectName("wheel_fl");
-        wheel->SetParent(entity_root);
-        physics_body->GetCar()->SetWheelTransform(wheel.get(), 0);
-
-        wheel = entity_wheel_root->Clone();
-        wheel->SetObjectName("wheel_fr");
-        wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
-        wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
-        wheel->SetParent(entity_root);
-        physics_body->GetCar()->SetWheelTransform(wheel.get(), 1);
-
-        wheel = entity_wheel_root->Clone();
-        wheel->SetObjectName("wheel_rl");
-        wheel->SetParent(entity_root);
-        physics_body->GetCar()->SetWheelTransform(wheel.get(), 2);
-
-        wheel = entity_wheel_root->Clone();
-        wheel->SetObjectName("wheel_rr");
-        wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
-        wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
-        wheel->SetParent(entity_root);
-        physics_body->GetCar()->SetWheelTransform(wheel.get(), 3);
-    }
-}
+                    if (m_default_model_wheel = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend"))
+                    {
+                        shared_ptr<Entity> entity_wheel_root = m_default_model_wheel->GetRootEntity().lock();
+                        entity_wheel_root->SetScale(Vector3(wheel_scale));
+                    
+                        if (Entity* entity_wheel = entity_wheel_root->GetDescendantByName("wheel Low"))
+                        {
+                            // create material
+                            shared_ptr<Material> material = make_shared<Material>();
+                            material->SetTexture(MaterialTexture::Color, "project\\models\\wheel\\albedo.jpeg");
+                            material->SetTexture(MaterialTexture::Normal, "project\\models\\wheel\\normal.png");
+                            material->SetTexture(MaterialTexture::Roughness, "project\\models\\wheel\\roughness.png");
+                            material->SetTexture(MaterialTexture::Metalness, "project\\models\\wheel\\metalness.png");
+                    
+                            // create a file path for this material (required for the material to be able to be cached by the resource cache)
+                            const string file_path = "project\\models\\wheel" + string(EXTENSION_MATERIAL);
+                            material->SetResourceFilePath(file_path);
+                    
+                            // set material
+                            entity_wheel->GetComponent<Renderable>()->SetMaterial(material);
+                        }
+                    
+                        // add the wheels to the body
+                        {
+                            shared_ptr<Entity> wheel = entity_wheel_root;
+                            wheel->SetObjectName("wheel_fl");
+                            wheel->SetParent(entity_root);
+                            physics_body->GetCar()->SetWheelTransform(wheel.get(), 0);
+                    
+                            wheel = entity_wheel_root->Clone();
+                            wheel->SetObjectName("wheel_fr");
+                            wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
+                            wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
+                            wheel->SetParent(entity_root);
+                            physics_body->GetCar()->SetWheelTransform(wheel.get(), 1);
+                    
+                            wheel = entity_wheel_root->Clone();
+                            wheel->SetObjectName("wheel_rl");
+                            wheel->SetParent(entity_root);
+                            physics_body->GetCar()->SetWheelTransform(wheel.get(), 2);
+                    
+                            wheel = entity_wheel_root->Clone();
+                            wheel->SetObjectName("wheel_rr");
+                            wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
+                            wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
+                            wheel->SetParent(entity_root);
+                            physics_body->GetCar()->SetWheelTransform(wheel.get(), 3);
+                        }
+                    }
                 }
 
                 // lights

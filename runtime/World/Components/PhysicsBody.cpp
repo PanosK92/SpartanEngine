@@ -576,7 +576,7 @@ namespace Spartan
 
         if (m_body_type == PhysicsBodyType::Vehicle)
         {
-            m_car->Create(rigid_body);
+            m_car->Create(rigid_body, m_entity_ptr);
         }
 
         // set flags
