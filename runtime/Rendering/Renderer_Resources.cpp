@@ -260,7 +260,11 @@ namespace Spartan
             render_target(Renderer_RenderTarget::sss)          = make_shared<RHI_Texture2DArray>(width_render, height_render, RHI_Format::R16_Float, 4, flags_standard | RHI_Texture_ClearBlit, "sss");
             render_target(Renderer_RenderTarget::ssgi)         = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_standard, "ssgi");
             render_target(Renderer_RenderTarget::antiflicker)  = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_standard | RHI_Texture_ClearBlit, "antiflicker");
-            render_target(Renderer_RenderTarget::shading_rate) = make_unique<RHI_Texture2D>(width_render / 4, height_render / 4, 1, RHI_Format::R8_Uint, RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_Rtv | RHI_Texture_Vrs, "shading_rate");
+
+            if (RHI_Device::PropertyIsShadingRateSupported())
+            { 
+                render_target(Renderer_RenderTarget::shading_rate) = make_unique<RHI_Texture2D>(width_render / 4, height_render / 4, 1, RHI_Format::R8_Uint, RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_Rtv | RHI_Texture_Vrs, "shading_rate");
+            }
         }
 
         // output resolution
