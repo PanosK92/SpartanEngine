@@ -775,6 +775,10 @@ namespace Spartan
                     shading_rate.attachmentFragmentShadingRate = VK_TRUE;
                 }
 
+                // depth clamp
+                SP_ASSERT(features_support.features.depthClamp == VK_TRUE);
+                pNext.features.depthClamp = VK_TRUE;
+
                 // anisotropic filtering
                 SP_ASSERT(features_support.features.samplerAnisotropy == VK_TRUE);
                 pNext.features.samplerAnisotropy = VK_TRUE;
