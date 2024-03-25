@@ -103,7 +103,7 @@ namespace Spartan
         void SetIntensity(const LightIntensity lumens);
         float GetIntensityLumens() const    { return m_intensity_lumens; }
         LightIntensity GetIntensity() const { return m_intensity; }
-        float GetIntensityWatt(Camera* camera) const;
+        float GetIntensityWatt() const;
 
         // bias
         static float GetBias()            { return -0.0005f; } // small values to avoid disconnected shadows

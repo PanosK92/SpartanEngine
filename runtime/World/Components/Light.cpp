@@ -328,8 +328,9 @@ namespace Spartan
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
-    float Light::GetIntensityWatt(Camera* camera) const
+    float Light::GetIntensityWatt() const
     {
+        Camera* camera = Renderer::GetCamera().get();
         SP_ASSERT(camera != nullptr);
 
         // this magic values are chosen empirically based on how the lights

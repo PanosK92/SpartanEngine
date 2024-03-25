@@ -29,18 +29,18 @@ static const float3 g_atmospheric_color = float3(0.4f, 0.4f, 0.8f);
 /*------------------------------------------------------------------------------
     FOG - RADIAL
 ------------------------------------------------------------------------------*/
-float3 got_fog_radial(const float3 pixel_position, const float3 camera_position)
+float3 got_fog_radial(const float camera_to_pixel_length, const float3 camera_position, const float directional_light_intensity)
 {
     // parameters
     const float g_fog_radius    = 150.0f; // how far away from the camera the fog starts
     const float g_fog_fade_rate = 0.05f;  // higher values make the fog fade in more abruptly
     
-    float distance_from_camera = length(pixel_position - camera_position) - g_fog_radius;
+    float distance_from_camera = camera_to_pixel_length - g_fog_radius;
     float distance_factor      = max(0.0f, distance_from_camera) / g_fog_radius; // normalize the distance
     float fog_factor           = 1.0f - exp(-g_fog_fade_rate * distance_factor); // exponential fog factor
     float fog_density          = pass_get_f3_value().y;
     
-    return fog_factor * fog_density * g_atmospheric_color;
+    return fog_factor * fog_density * g_atmospheric_color * directional_light_intensity;
 }
 
 /*------------------------------------------------------------------------------
