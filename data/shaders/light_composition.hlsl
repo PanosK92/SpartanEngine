@@ -129,16 +129,14 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (early_exit_1 || early_exit_2 || early_exit_3)
         return;
 
-    float4 color = float4(0.0f, 0.0f, 0.0f, surface.alpha); // maintain surface alpha, in case FSR benefits when generating the masks
-
-    // volumetric fog/light
-    color.rgb += tex_light_volumetric[thread_id.xy].rgb;
+    float4 color               = float4(0.0f, 0.0f, 0.0f, surface.alpha); // maintain surface alpha, in case FSR benefits when generating the masks
+    float distance_from_camera = surface.camera_to_pixel_length;
     
-    // sky
-    if (surface.is_sky()) 
+    if (surface.is_sky())
     {
-        color.rgb += tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(surface.camera_to_pixel), 0).rgb;
-        color.a    = 1.0f;
+        color.rgb            += tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(surface.camera_to_pixel), 0).rgb;
+        color.a               = 1.0f;
+        distance_from_camera  = FLT_MAX_10;
     }
     else // anything else
     {
@@ -165,10 +163,11 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         // compose
         float3 light  = (light_diffuse + surface.gi) * surface.albedo + light_specular;
         color.rgb    += lerp(light, light_transparent, 1.0f - color.a);
-
-        // fog
-        color.rgb += got_fog_radial(surface.position, buffer_frame.camera_position.xyz);
     }
+
+    // fog
+    float3 volumetric_fog  = tex_light_volumetric[thread_id.xy].rgb;
+    color.rgb             += got_fog_radial(distance_from_camera, buffer_frame.camera_position.xyz, buffer_frame.directional_light_intensity) + volumetric_fog;
 
     tex_uav[thread_id.xy] = saturate_16(color);
 }

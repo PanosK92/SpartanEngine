@@ -508,7 +508,7 @@ namespace Spartan
                     continue;
 
                 // skip lights which don't cast shadows or have an intensity of zero
-                if (!light->IsFlagSet(LightFlags::Shadows) || light->GetIntensityWatt(GetCamera().get()) == 0.0f)
+                if (!light->IsFlagSet(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f)
                     continue;
 
                 // skip lights that don't cast transparent shadows (if this is a transparent pass)

@@ -59,7 +59,8 @@ struct FrameBufferData
     float resolution_scale;
 
     float hdr_white_point;
-    float3 padding;
+    float directional_light_intensity;
+    float2 padding;
 };
 
 // 128 byte push constant buffer used by everything in the engine

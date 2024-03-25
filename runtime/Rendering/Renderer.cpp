@@ -98,6 +98,24 @@ namespace Spartan
         float near_plane                     = 0.0f;
         float far_plane                      = 1.0f;
         bool dirty_orthographic_projection   = true;
+
+        float get_directional_light_intensity_lumens(const vector<shared_ptr<Entity>>& lights)
+        {
+            float intensity = 0.0f;
+            for (const shared_ptr<Entity>& entity : lights)
+            {
+                if (const shared_ptr<Light>& light = entity->GetComponent<Light>())
+                {
+                    if (light->GetLightType() == LightType::Directional)
+                    {
+                        intensity = light->GetIntensityWatt();
+                        break;
+                    }
+                }
+            }
+
+            return intensity;
+        }
     }
 
     void Renderer::Initialize()
@@ -202,8 +220,8 @@ namespace Spartan
         SetOption(Renderer_Option::Gamma,                         2.4f);
         SetOption(Renderer_Option::Exposure,                      1.0f);
         SetOption(Renderer_Option::Sharpness,                     0.5f);                                                 // becomes the upsampler's sharpness as well
-        SetOption(Renderer_Option::Fog,                           1.0f);                                                 // controls the intensity of the volumetric fog as well
-        SetOption(Renderer_Option::FogVolumetric,                 1.0f);
+        SetOption(Renderer_Option::Fog,                           0.3f);                                                 // controls the intensity of the volumetric fog as well
+        SetOption(Renderer_Option::FogVolumetric,                 1.0f);                                                 // these is only a toggle for the volumetric fog
         SetOption(Renderer_Option::Antialiasing,                  static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 2 for taa
         SetOption(Renderer_Option::Upsampling,                    static_cast<float>(Renderer_Upsampling::Fsr2));
         SetOption(Renderer_Option::ResolutionScale,               1.0f);
@@ -414,18 +432,19 @@ namespace Spartan
             m_cb_frame_cpu.camera_last_movement_time  = (m_cb_frame_cpu.camera_position - m_cb_frame_cpu.camera_position_previous).LengthSquared() != 0.0f
                 ? static_cast<float>(Timer::GetTimeSec()) : m_cb_frame_cpu.camera_last_movement_time;
         }
-        m_cb_frame_cpu.resolution_output   = m_resolution_output;
-        m_cb_frame_cpu.resolution_render   = m_resolution_render;
-        m_cb_frame_cpu.taa_jitter_previous = m_cb_frame_cpu.taa_jitter_current;
-        m_cb_frame_cpu.taa_jitter_current  = jitter_offset;
-        m_cb_frame_cpu.time                = static_cast<float>(Timer::GetTimeSec());
-        m_cb_frame_cpu.delta_time          = static_cast<float>(Timer::GetDeltaTimeSmoothedSec()); // removes stutters from motion related code
-        m_cb_frame_cpu.frame               = static_cast<uint32_t>(frame_num);
-        m_cb_frame_cpu.gamma               = GetOption<float>(Renderer_Option::Gamma);
-        m_cb_frame_cpu.resolution_scale    = GetOption<float>(Renderer_Option::ResolutionScale);
-        m_cb_frame_cpu.hdr_enabled         = GetOption<bool>(Renderer_Option::Hdr) ? 1.0f : 0.0f;
-        m_cb_frame_cpu.hdr_max_nits        = Display::GetLuminanceMax();
-        m_cb_frame_cpu.hdr_white_point     = GetOption<float>(Renderer_Option::WhitePoint);
+        m_cb_frame_cpu.resolution_output           = m_resolution_output;
+        m_cb_frame_cpu.resolution_render           = m_resolution_render;
+        m_cb_frame_cpu.taa_jitter_previous         = m_cb_frame_cpu.taa_jitter_current;
+        m_cb_frame_cpu.taa_jitter_current          = jitter_offset;
+        m_cb_frame_cpu.time                        = static_cast<float>(Timer::GetTimeSec());
+        m_cb_frame_cpu.delta_time                  = static_cast<float>(Timer::GetDeltaTimeSmoothedSec()); // removes stutters from motion related code
+        m_cb_frame_cpu.frame                       = static_cast<uint32_t>(frame_num);
+        m_cb_frame_cpu.gamma                       = GetOption<float>(Renderer_Option::Gamma);
+        m_cb_frame_cpu.resolution_scale            = GetOption<float>(Renderer_Option::ResolutionScale);
+        m_cb_frame_cpu.hdr_enabled                 = GetOption<bool>(Renderer_Option::Hdr) ? 1.0f : 0.0f;
+        m_cb_frame_cpu.hdr_max_nits                = Display::GetLuminanceMax();
+        m_cb_frame_cpu.hdr_white_point             = GetOption<float>(Renderer_Option::WhitePoint);
+        m_cb_frame_cpu.directional_light_intensity = get_directional_light_intensity_lumens(m_renderables[Renderer_Entity::Light]);
 
         // these must match what common_buffer.hlsl is reading
         m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections),        1 << 0);
@@ -985,7 +1004,7 @@ namespace Spartan
                             properties[index].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
                         }
                     }
-                    properties[index].intensity    = light->GetIntensityWatt(GetCamera().get());
+                    properties[index].intensity    = light->GetIntensityWatt();
                     properties[index].range        = light->GetRange();
                     properties[index].angle        = light->GetAngle();
                     properties[index].bias         = light->GetBias();
