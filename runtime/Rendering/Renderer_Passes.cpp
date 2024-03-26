@@ -393,25 +393,30 @@ namespace Spartan
                 Pass_Light(cmd_list);                        // compute diffuse and specular buffers
                 Pass_Light_Composition(cmd_list, rt_render); // compose diffuse, specular, ssgi, volumetric etc.
                 Pass_Light_ImageBased(cmd_list, rt_render);  // apply IBL and SSR
-            
+
+                cmd_list->BeginMarker("frame_opaque");
                 cmd_list->Blit(rt_render, GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get(), false);
+                cmd_list->EndMarker();
             }
             
             // transparent
             if (do_transparent_pass) // actual geometry processing
             {
-                // blit the frame so that refraction can sample from it
-                cmd_list->Copy(rt_render, rt_render_2, true);
-            
-                // generate frame mips so that the reflections can simulate roughness
-                Pass_Ffx_Spd(cmd_list, rt_render_2, Renderer_DownsampleFilter::Average);
-            
-                // blur the smaller mips to reduce blockiness/flickering
-                for (uint32_t i = 1; i < rt_render_2->GetMipCount(); i++)
+                cmd_list->BeginMarker("frame_reflection");
                 {
-                    const float radius = 1.0f;
-                    Pass_Blur_Gaussian(cmd_list, rt_render_2, nullptr, Renderer_Shader::blur_gaussian_c, radius, i);
+                    cmd_list->Blit(rt_render, rt_render_2, false);
+            
+                    // generate mips to simulate roughness
+                    Pass_Ffx_Spd(cmd_list, rt_render_2, Renderer_DownsampleFilter::Average);
+            
+                    // blur the smaller mips to reduce blockiness/flickering
+                    for (uint32_t i = 1; i < rt_render_2->GetMipCount(); i++)
+                    {
+                        const float radius = 1.0f;
+                        Pass_Blur_Gaussian(cmd_list, rt_render_2, nullptr, Renderer_Shader::blur_gaussian_c, radius, i);
+                    }
                 }
+                cmd_list->EndMarker();
             
                 Pass_Depth_Prepass(cmd_list, do_transparent_pass);
                 Pass_GBuffer(cmd_list, do_transparent_pass);
