@@ -307,7 +307,7 @@ namespace Spartan
         {
             // filter out certain things
             {
-                // FidelityFX SDK
+                // fidelityfx sdk
                 if (p_callback_data->messageIdNumber == 0xdc18ad6b)
                 {
                     // [ UNASSIGNED-BestPractices-vkAllocateMemory-small-allocation ] | MessageID = 0xdc18ad6b | vkAllocateMemory():
@@ -316,13 +316,16 @@ namespace Spartan
                     return VK_FALSE;
                 }
 
-                // Occlusion queries
-                if (p_callback_data->messageIdNumber == 0x98f7c0cd)
+                // occlusion queries
                 {
-                    // [ UNASSIGNED-BestPractices-QueryPool-Unavailable ] Object 0:
-                    // handle = 0xb12fb2000000002c, name = query_pool_occlusion, type = VK_OBJECT_TYPE_QUERY_POOL; | MessageID = 0x98f7c0cd | vkGetQueryPoolResults():
-                    // QueryPool VkQueryPool 0xb12fb2000000002c[query_pool_occlusion] and query 0: vkCmdBeginQuery() was never called.
-                    return VK_FALSE;
+                    if (p_callback_data->messageIdNumber == 0xd39be754)
+                    {
+                        // Validation Warning :
+                        // [BestPractices - QueryPool - Unavailable] Object 0 :
+                        // handle = 0x980b0000000002e, name = query_pool_occlusion, type = VK_OBJECT_TYPE_QUERY_POOL; | MessageID = 0xd39be754 | vkGetQueryPoolResults() :
+                        // QueryPool VkQueryPool 0x980b0000000002e[query_pool_occlusion] and query 0 : vkCmdBeginQuery() was never called.
+                        return VK_FALSE;
+                    }
                 }
 
                 if (p_callback_data->messageIdNumber == 0x42f2f4ed) // validation error - depth_ouput
