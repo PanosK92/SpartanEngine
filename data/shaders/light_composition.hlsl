@@ -62,7 +62,7 @@ struct translucency
             float3 color          = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level).rgb;
             
             // dont refract surfaces which are behind this surface
-            const bool is_behind = get_linear_depth(surface.depth) < get_linear_depth(refracted_uv);
+            const bool is_behind = get_linear_depth(surface.depth) > get_linear_depth(refracted_uv);
             if (is_behind)
             {
                 // simulate light breaking off into individual color bands via chromatic aberration
@@ -172,3 +172,4 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = saturate_16(color);
 }
+
