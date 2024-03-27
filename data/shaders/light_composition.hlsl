@@ -44,17 +44,16 @@ struct translucency
         
         static float3 get_color(Surface surface)
         {
-            const float scale = 0.05f;
+            const float scale = 0.1f;
             
-            // comute view space data
-            float3 view_pos    = world_to_view(surface.position);
-            float3 view_normal = world_to_view(surface.normal, false);
-            float3 view_dir    = normalize(view_pos);
+            // compute refraction vector (Snell's Law)
+            float3 normal_vector        = world_to_view(surface.normal, false);
+            float3 incident_vector      = world_to_view(surface.camera_to_pixel, false);
+            float3 refraction_direction = refract_vector(incident_vector, normal_vector, 1.0f / surface.ior);
             
             // compute refracted uv
-            float3 refracted_dir        = refract_vector(view_dir, view_normal, 1.0f / surface.ior);
-            float2 refraction_uv_offset = refracted_dir.xy * scale;
-            float2 refracted_uv         = surface.uv + refraction_uv_offset;
+            float2 refraction_uv_offset = refraction_direction.xy * scale;
+            float2 refracted_uv         = saturate(surface.uv + refraction_uv_offset);
     
             // get base color (no refraction)
             float frame_mip_count = pass_get_f3_value().x;
@@ -97,18 +96,18 @@ struct translucency
     {
         static float4 get_color(Surface surface)
         {
-            // color spectrum light absorption
-            const float3 light_absorption = float3(0.3f, 0.2f, 0.1f);
+            const float MAX_DEPTH         = 100.0f;
+            const float ALPHA_FACTOR      = 0.12f;
+            const float3 light_absorption = float3(0.3f, 0.2f, 0.1f); // color spectrum light absorption
 
-            // compute depth
+            // compute water depth
             float water_level       = get_position(surface.uv).y;
             float water_floor_level = get_position(get_depth_opaque(surface.uv), surface.uv).y;
-            float water_depth       = max(water_level - water_floor_level, 0.0f);
+            float water_depth       = clamp(water_level - water_floor_level, 0.0f, MAX_DEPTH);
 
-            // compute color and alpha at that depth
+            // compute color and alpha at that depth with slight adjustments
             float3 color = float3(exp(-light_absorption.x * water_depth), exp(-light_absorption.y * water_depth), exp(-light_absorption.z * water_depth));
-            float alpha  = 1.0f - exp(-water_depth * 0.2f);
-
+            float alpha  = 1.0f - exp(-water_depth * ALPHA_FACTOR); 
             return float4(color, alpha);
         }
     };
@@ -172,4 +171,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = saturate_16(color);
 }
+
+
+
 
