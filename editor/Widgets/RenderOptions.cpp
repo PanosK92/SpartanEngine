@@ -288,6 +288,29 @@ void RenderOptions::OnTickVisible()
             }
         }
 
+        if (option("Output"))
+        {
+            option_check_box("HDR", Renderer_Option::Hdr, "High dynamic range");
+
+            bool hdr_enabled = Renderer::GetOption<bool>(Renderer_Option::Hdr);
+
+            // white point
+            ImGui::BeginDisabled(!hdr_enabled);
+            option_value("White point (nits)", Renderer_Option::WhitePoint, nullptr, 1.0f);
+            ImGui::EndDisabled();
+
+            // tone mapping
+            static vector<string> tonemapping_options = { "ACES", "Reinhard", "Uncharted 2", "Matrix", "Off" };
+            ImGui::BeginDisabled(hdr_enabled);
+            uint32_t selection_index = Renderer::GetOption<uint32_t>(Renderer_Option::Tonemapping);
+            if (option_combo_box("Tonemapping", tonemapping_options, selection_index))
+            {
+                Renderer::SetOption(Renderer_Option::Tonemapping, static_cast<float>(selection_index));
+            }
+            ImGui::EndDisabled();
+        }
+
+
         if (option("Screen space lighting"))
         {
             // ssr
@@ -363,19 +386,6 @@ void RenderOptions::OnTickVisible()
         {
             option_value("Fog",      Renderer_Option::Fog, "Controls the density of the fog", 0.1f);
             option_value("Exposure", Renderer_Option::Exposure);
-
-            option_check_box("HDR", Renderer_Option::Hdr, "High dynamic range");
-            ImGui::BeginDisabled(!Renderer::GetOption<bool>(Renderer_Option::Hdr));
-            option_value("White point (nits)", Renderer_Option::WhitePoint, nullptr, 1.0f);
-            ImGui::EndDisabled();
-
-            // tonemapping
-            static vector<string> tonemapping_options = { "ACES", "Reinhard", "Uncharted 2", "Matrix", "Off" };
-            uint32_t selection_index = Renderer::GetOption<uint32_t>(Renderer_Option::Tonemapping);
-            if (option_combo_box("Tonemapping", tonemapping_options, selection_index))
-            {
-                Renderer::SetOption(Renderer_Option::Tonemapping, static_cast<float>(selection_index));
-            }
 
             // vsync
             option_check_box("VSync", Renderer_Option::Vsync, "Vertical Synchronization");
