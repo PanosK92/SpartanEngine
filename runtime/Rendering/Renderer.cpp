@@ -217,7 +217,6 @@ namespace Spartan
         SetOption(Renderer_Option::ScreenSpaceReflections,        1.0f);
         SetOption(Renderer_Option::Anisotropy,                    16.0f);
         SetOption(Renderer_Option::ShadowResolution,              2048.0f);
-        SetOption(Renderer_Option::Gamma,                         2.4f);
         SetOption(Renderer_Option::Exposure,                      1.0f);
         SetOption(Renderer_Option::Sharpness,                     0.5f);                                                 // becomes the upsampler's sharpness as well
         SetOption(Renderer_Option::Fog,                           0.3f);                                                 // controls the intensity of the volumetric fog as well
@@ -439,7 +438,6 @@ namespace Spartan
         m_cb_frame_cpu.time                        = static_cast<float>(Timer::GetTimeSec());
         m_cb_frame_cpu.delta_time                  = static_cast<float>(Timer::GetDeltaTimeSmoothedSec()); // removes stutters from motion related code
         m_cb_frame_cpu.frame                       = static_cast<uint32_t>(frame_num);
-        m_cb_frame_cpu.gamma                       = GetOption<float>(Renderer_Option::Gamma);
         m_cb_frame_cpu.resolution_scale            = GetOption<float>(Renderer_Option::ResolutionScale);
         m_cb_frame_cpu.hdr_enabled                 = GetOption<bool>(Renderer_Option::Hdr) ? 1.0f : 0.0f;
         m_cb_frame_cpu.hdr_max_nits                = Display::GetLuminanceMax();

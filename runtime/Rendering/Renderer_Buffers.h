@@ -58,17 +58,16 @@ namespace Spartan
         Math::Vector3 camera_direction;
         float camera_far;
 
-        float gamma;
         float camera_last_movement_time;
         float hdr_enabled;
         float hdr_max_nits;
+        float hdr_white_point;
 
         Math::Vector3 camera_position_previous;
         float resolution_scale;
 
-        float hdr_white_point;
         float directional_light_intensity;
-        Math::Vector2 padding;
+        Math::Vector3 padding;
 
         void set_bit(const bool set, const uint32_t bit)
         {
@@ -94,7 +93,6 @@ namespace Spartan
                 camera_position_previous    == rhs.camera_position_previous   &&
                 camera_direction            == rhs.camera_direction           &&
                 camera_last_movement_time   == rhs.camera_last_movement_time  &&
-                gamma                       == rhs.gamma                      &&
                 resolution_output           == rhs.resolution_output          &&
                 resolution_render           == rhs.resolution_render          &&
                 taa_jitter_current          == rhs.taa_jitter_current         &&

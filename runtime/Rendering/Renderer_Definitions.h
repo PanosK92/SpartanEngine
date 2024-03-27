@@ -53,7 +53,6 @@ namespace Spartan
         ChromaticAberration,
         Anisotropy,
         ShadowResolution,
-        Gamma,
         Exposure,
         WhitePoint,
         Antialiasing,
