@@ -154,9 +154,10 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
             // water light penetration
             if (surface.is_water())
             {
-                float4 light_water    = translucency::water::get_color(surface);
-                light_transparent.rgb = lerp(light_transparent.rgb, light_water.rgb, light_water.a);
-                color.a               = light_water.a;
+                float4 light_water     = translucency::water::get_color(surface);
+                light_transparent.rgb  = lerp(light_transparent.rgb, light_water.rgb, light_water.a);
+                color.a                = light_water.a;
+                tex_uav2[thread_id.xy] = float4(surface.albedo, color.a); // update albedo alpha (for the IBL pass, right after)
             }
         }
         
