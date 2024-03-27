@@ -361,9 +361,8 @@ void RenderOptions::OnTickVisible()
 
         if (option("Misc", false))
         {
-            option_value("Fog",             Renderer_Option::Fog, "Controls the density of the fog", 0.1f);
-            option_value("Gamma",           Renderer_Option::Gamma);
-            option_value("Exposure",        Renderer_Option::Exposure);
+            option_value("Fog",      Renderer_Option::Fog, "Controls the density of the fog", 0.1f);
+            option_value("Exposure", Renderer_Option::Exposure);
 
             option_check_box("HDR", Renderer_Option::Hdr, "High dynamic range");
             ImGui::BeginDisabled(!Renderer::GetOption<bool>(Renderer_Option::Hdr));
