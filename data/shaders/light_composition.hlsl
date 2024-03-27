@@ -59,34 +59,29 @@ struct translucency
             float frame_mip_count = pass_get_f3_value().x;
             float mip_level       = lerp(0, frame_mip_count, surface.roughness_alpha);
             float3 color          = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level).rgb;
-            
-            // dont refract surfaces which are behind this surface
-            const bool is_behind = get_linear_depth(surface.depth) > get_linear_depth(refracted_uv);
-            if (is_behind)
+
+            // simulate light breaking off into individual color bands via chromatic aberration
+            float3 color_refracted = 0.0f;
             {
-                // simulate light breaking off into individual color bands via chromatic aberration
-                float3 color_refracted = 0.0f;
+                float chromatic_aberration_strength  = surface.ior * 0.0005f;
+                chromatic_aberration_strength       *= (1.0f + surface.roughness_alpha);
+                
+                float2 ca_offsets[3];
+                ca_offsets[0] = float2(chromatic_aberration_strength, 0.0f);
+                ca_offsets[1] = float2(0.0f, 0.0f);
+                ca_offsets[2] = float2(-chromatic_aberration_strength, 0.0f); 
+        
+                [unroll]
+                for (int i = 0; i < 3; ++i)
                 {
-                    float chromatic_aberration_strength  = surface.ior * 0.0005f;
-                    chromatic_aberration_strength       *= (1.0f + surface.roughness_alpha);
-                    
-                    float2 ca_offsets[3];
-                    ca_offsets[0] = float2(chromatic_aberration_strength, 0.0f);
-                    ca_offsets[1] = float2(0.0f, 0.0f);
-                    ca_offsets[2] = float2(-chromatic_aberration_strength, 0.0f); 
-        
-                    [unroll]
-                    for (int i = 0; i < 3; ++i)
-                    {
-                        float4 sampled_color = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], refracted_uv + ca_offsets[i], mip_level);
-                        color_refracted[i] = sampled_color[i];
-                    }
+                    float4 sampled_color = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], refracted_uv + ca_offsets[i], mip_level);
+                    color_refracted[i] = sampled_color[i];
                 }
-        
-                // screen fade
-                float fade_factor = compute_fade_factor(refracted_uv);
-                color             = lerp(color, color_refracted, fade_factor);
             }
+        
+            // screen fade
+            float fade_factor = compute_fade_factor(refracted_uv);
+            color             = lerp(color, color_refracted, fade_factor);
     
             return color;
         }
