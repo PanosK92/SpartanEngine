@@ -970,7 +970,7 @@ namespace Spartan
                         material->SetTexture(MaterialTexture::Normal,               "project\\terrain\\water_normal.jpeg");
                         material->SetProperty(MaterialProperty::Ior,                1.333f); // water
                         material->SetProperty(MaterialProperty::Roughness,          0.0f);
-                        material->SetProperty(MaterialProperty::Normal,             0.3f);
+                        material->SetProperty(MaterialProperty::Normal,             0.1f);
                         material->SetProperty(MaterialProperty::TextureTilingX,     200.0f);
                         material->SetProperty(MaterialProperty::TextureTilingY,     200.0f);
                         material->SetProperty(MaterialProperty::VertexAnimateWater, 1.0f);

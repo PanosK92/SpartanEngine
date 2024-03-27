@@ -97,7 +97,7 @@ struct translucency
         static float4 get_color(Surface surface)
         {
             const float MAX_DEPTH         = 100.0f;
-            const float ALPHA_FACTOR      = 0.12f;
+            const float ALPHA_FACTOR      = 0.2f;
             const float3 light_absorption = float3(0.3f, 0.2f, 0.1f); // color spectrum light absorption
 
             // compute water depth
