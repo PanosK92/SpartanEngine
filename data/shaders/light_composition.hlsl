@@ -89,9 +89,6 @@ struct translucency
             float water_level       = get_position(surface.uv).y;
             float water_floor_level = get_position(get_depth_opaque(surface.uv), surface.uv).y;
             float water_depth       = clamp(water_level - water_floor_level, 0.0f, MAX_DEPTH);
-            
-            // make the water more opaque the further it is
-            water_depth += surface.camera_to_pixel_length / 30.0f;
 
             // compute color and alpha at that depth with slight adjustments
             float3 color = float3(exp(-light_absorption.x * water_depth), exp(-light_absorption.y * water_depth), exp(-light_absorption.z * water_depth));
