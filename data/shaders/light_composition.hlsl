@@ -37,6 +37,7 @@ struct translucency
         
         static float3 refract_vector(float3 i, float3 n, float eta)
         {
+            // Snell's Law
             float cosi  = dot(-i, n);
             float cost2 = 1.0f - eta * eta * (1.0f - cosi * cosi);
             return eta * i + (eta * cosi - sqrt(abs(cost2))) * n;
@@ -46,7 +47,7 @@ struct translucency
         {
             const float scale = 0.1f;
             
-            // compute refraction vector (Snell's Law)
+            // compute refraction vector
             float3 normal_vector        = world_to_view(surface.normal, false);
             float3 incident_vector      = world_to_view(surface.camera_to_pixel, false);
             float3 refraction_direction = refract_vector(incident_vector, normal_vector, 1.0f / surface.ior);
@@ -54,6 +55,12 @@ struct translucency
             // compute refracted uv
             float2 refraction_uv_offset = refraction_direction.xy * scale;
             float2 refracted_uv         = saturate(surface.uv + refraction_uv_offset);
+
+            // don't refract what's behind the surface
+            float depth_surface    = get_linear_depth(surface.depth);
+            float depth_refraction = get_linear_depth(refracted_uv);
+            float is_behind        = depth_surface < depth_refraction;
+            refracted_uv           = lerp(surface.uv, refracted_uv, is_behind);
     
             // get base color (no refraction)
             float frame_mip_count = pass_get_f3_value().x;
@@ -166,7 +173,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = saturate_16(color);
 }
-
-
-
-
