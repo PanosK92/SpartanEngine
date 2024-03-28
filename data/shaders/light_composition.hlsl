@@ -65,8 +65,8 @@ struct translucency
             // get base color
             float frame_mip_count   = pass_get_f3_value().x;
             float mip_level         = lerp(0, frame_mip_count, surface.roughness_alpha);
-            float3 color            = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level).rgb;
-            float3 color_refraction = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], refracted_uv, mip_level).rgb;
+            float3 color            = tex_frame.SampleLevel(samplers[sampler_anisotropic_wrap], surface.uv, mip_level).rgb;
+            float3 color_refraction = tex_frame.SampleLevel(samplers[sampler_anisotropic_wrap], refracted_uv, mip_level).rgb;
         
             // screen fade
             float fade_factor = compute_fade_factor(refracted_uv);
@@ -83,7 +83,6 @@ struct translucency
             const float MAX_DEPTH            = 100.0f;
             const float ALPHA_FACTOR         = 0.2f;
             const float FOAM_DEPTH_THRESHOLD = 2.0f;
-            const float FOAM_INTENSITY       = 1.0f;
             const float3 light_absorption    = float3(0.3f, 0.2f, 0.1f); // color spectrum light absorption
 
             // compute water depth
@@ -97,12 +96,7 @@ struct translucency
             // compute color and alpha at that depth with slight adjustments
             float3 color = float3(exp(-light_absorption.x * water_depth), exp(-light_absorption.y * water_depth), exp(-light_absorption.z * water_depth));
             alpha        = 1.0f - exp(-water_depth * ALPHA_FACTOR);
-
-            // foam
-            float foam_visibility = saturate(1.0f - water_depth / FOAM_DEPTH_THRESHOLD);
-            float3 foam_color     = tex.Sample(samplers[sampler_trilinear_clamp], surface.uv).rgb;
-            color                 = lerp(color, foam_color * FOAM_INTENSITY, foam_visibility);
-
+            
             return color;
         }
     };
@@ -166,6 +160,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = saturate_16(color);
 }
-
-
-
