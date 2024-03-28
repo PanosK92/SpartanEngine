@@ -1759,17 +1759,17 @@ namespace Spartan
         }
         else
         {
-            // Can it be mapped ? Buffers that use Map()/Unmap() need this, persistent buffers also need this.
+            // can it be mapped ? buffers that use Map()/Unmap() need this, persistent buffers also need this.
             allocation_create_info.flags |= is_mappable ? VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT : 0;
 
-            // Can it be mapped upon creation ? This is what a persistent buffer would use.
+            // can it be mapped upon creation ? this is what a persistent buffer would use
             allocation_create_info.flags |= (map_on_creation && !is_transfer_buffer) ? VMA_ALLOCATION_CREATE_MAPPED_BIT : 0;
 
-            // Cached on the CPU ? Our constant buffers are using dynamic offsets and do a lot of updates, so we need fast access.
-            allocation_create_info.flags |= (is_buffer_constant || is_buffer_storage) ? VK_MEMORY_PROPERTY_HOST_CACHED_BIT : 0;
+            // make everything immediately available on the GPU
+            allocation_create_info.flags |= (is_buffer_constant || is_buffer_storage) ? VK_MEMORY_PROPERTY_HOST_COHERENT_BIT : 0;
         }
 
-        // Create the buffer
+        // create the buffer
         VmaAllocation allocation = nullptr;
         VmaAllocationInfo allocation_info;
         SP_VK_ASSERT_MSG(vmaCreateBuffer(
@@ -1781,7 +1781,7 @@ namespace Spartan
                 &allocation_info),
         "Failed to created buffer");
 
-        // If a pointer to the buffer data has been passed, map the buffer and copy over the data
+        // if a pointer to the buffer data has been passed, map the buffer and copy over the data
         if (data_initial != nullptr)
         {
             SP_ASSERT(is_mappable && "Mapping initial data requires the buffer to be created with a VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT memory flag.");

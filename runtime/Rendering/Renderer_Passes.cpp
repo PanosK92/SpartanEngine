@@ -349,7 +349,6 @@ namespace Spartan
         RHI_Texture* rt_render_2 = GetRenderTarget(Renderer_RenderTarget::frame_render_2).get();
         RHI_Texture* rt_output   = GetRenderTarget(Renderer_RenderTarget::frame_output).get();
 
-        UpdateConstantBufferFrame(cmd_list);
         dynamic_resolution();
 
         Pass_VariableRateShading(cmd_list);

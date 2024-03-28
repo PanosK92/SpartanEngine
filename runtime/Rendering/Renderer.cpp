@@ -86,7 +86,6 @@ namespace Spartan
         vector<RHI_Texture*> textures_mip_generation;
 
         // bindless
-        void* buffer_structured_to_add_barrier = nullptr;
         static array<RHI_Texture*, rhi_max_array_size> bindless_textures;
         bool bindless_materials_dirty = true;
 
@@ -584,11 +583,7 @@ namespace Spartan
             }
         }
 
-        if (buffer_structured_to_add_barrier)
-        {
-            cmd_list->InsertBarrierStructuredBufferReadWrite(buffer_structured_to_add_barrier);
-            buffer_structured_to_add_barrier = nullptr;
-        }
+        UpdateConstantBufferFrame(cmd_current);
 
         // generate mips - if any
         {
@@ -1025,10 +1020,9 @@ namespace Spartan
 
         // cpu to gpu
         uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Light)) * index;
-        GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->ResetOffset();
-        GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->Update(&properties[0], update_size);
-
-        buffer_structured_to_add_barrier = GetStructuredBuffer(Renderer_StructuredBuffer::Lights)->GetRhiResource();
+        RHI_StructuredBuffer* buffer = GetStructuredBuffer(Renderer_StructuredBuffer::Lights).get();
+        buffer->ResetOffset();
+        buffer->Update(&properties[0], update_size);
     }
 
     void Renderer::Screenshot(const string& file_path)

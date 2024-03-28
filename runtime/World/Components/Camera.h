@@ -70,7 +70,7 @@ namespace Spartan
         const Math::Matrix& GetProjectionMatrix() const     { return m_projection; }
         const Math::Matrix& GetViewProjectionMatrix() const { return m_view_projection; }
 
-        // raycasting
+        // ray casting
         const Math::Ray ComputePickingRay();
         const Math::Ray& GetPickingRay() const { return m_ray; }
 
