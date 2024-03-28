@@ -291,7 +291,8 @@ namespace Spartan
         Gizmo_light_directional,
         Gizmo_light_point,
         Gizmo_light_spot,
-        Gizmo_audio_source
+        Gizmo_audio_source,
+        Foam
     };
 
     enum class Renderer_MeshType

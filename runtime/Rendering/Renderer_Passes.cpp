@@ -393,31 +393,30 @@ namespace Spartan
                 Pass_Light(cmd_list);                        // compute diffuse and specular buffers
                 Pass_Light_Composition(cmd_list, rt_render); // compose diffuse, specular, ssgi, volumetric etc.
                 Pass_Light_ImageBased(cmd_list, rt_render);  // apply IBL and SSR
-
-                cmd_list->BeginMarker("frame_opaque");
-                cmd_list->Blit(rt_render, GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get(), false);
-                cmd_list->EndMarker();
             }
+
+            // used for refraction and by FSR 2 (to produce masks)
+            cmd_list->BeginTimeblock("frame_opaque");
+            {
+                RHI_Texture* tex_render_opaque = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get();
+
+                cmd_list->Blit(rt_render, tex_render_opaque, false);
+
+                // generate mips to simulate roughness
+                Pass_Ffx_Spd(cmd_list, tex_render_opaque, Renderer_DownsampleFilter::Average);
+
+                // blur the smaller mips to reduce blockiness/flickering
+                for (uint32_t i = 1; i < tex_render_opaque->GetMipCount(); i++)
+                {
+                    const float radius = 1.0f;
+                    Pass_Blur_Gaussian(cmd_list, tex_render_opaque, nullptr, Renderer_Shader::blur_gaussian_c, radius, i);
+                }
+            }
+            cmd_list->EndTimeblock();
             
             // transparent
-            if (do_transparent_pass) // actual geometry processing
+            if (do_transparent_pass)
             {
-                cmd_list->BeginMarker("frame_opaque_for_refraction");
-                {
-                    cmd_list->Blit(rt_render, rt_render_2, false);
-            
-                    // generate mips to simulate roughness
-                    Pass_Ffx_Spd(cmd_list, rt_render_2, Renderer_DownsampleFilter::Average);
-            
-                    // blur the smaller mips to reduce blockiness/flickering
-                    for (uint32_t i = 1; i < rt_render_2->GetMipCount(); i++)
-                    {
-                        const float radius = 1.0f;
-                        Pass_Blur_Gaussian(cmd_list, rt_render_2, nullptr, Renderer_Shader::blur_gaussian_c, radius, i);
-                    }
-                }
-                cmd_list->EndMarker();
-            
                 Pass_Depth_Prepass(cmd_list, do_transparent_pass);
                 Pass_GBuffer(cmd_list, do_transparent_pass);
                 Pass_Ssr(cmd_list, rt_render, do_transparent_pass);
@@ -427,7 +426,6 @@ namespace Spartan
             }
 
             Pass_PostProcess(cmd_list);
-
             Pass_Grid(cmd_list, rt_output);
             Pass_Lines(cmd_list, rt_output);
             Pass_Outline(cmd_list, rt_output);
@@ -1179,10 +1177,11 @@ namespace Spartan
         SetGbufferTextures(cmd_list);
         cmd_list->SetTexture(Renderer_BindingsUav::tex,              tex_out);
         cmd_list->SetTexture(Renderer_BindingsUav::tex2,             GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex,              GetStandardTexture(Renderer_StandardTexture::Foam));
         cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,    is_transparent_pass ? GetRenderTarget(Renderer_RenderTarget::light_diffuse_transparent).get()  : GetRenderTarget(Renderer_RenderTarget::light_diffuse).get());
         cmd_list->SetTexture(Renderer_BindingsSrv::light_specular,   is_transparent_pass ? GetRenderTarget(Renderer_RenderTarget::light_specular_transparent).get() : GetRenderTarget(Renderer_RenderTarget::light_specular).get());
         cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric, GetRenderTarget(Renderer_RenderTarget::light_volumetric));
-        cmd_list->SetTexture(Renderer_BindingsSrv::frame,            GetRenderTarget(Renderer_RenderTarget::frame_render_2)); // refraction
+        cmd_list->SetTexture(Renderer_BindingsSrv::frame,            GetRenderTarget(Renderer_RenderTarget::frame_render_opaque)); // refraction
         cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,             GetRenderTarget(Renderer_RenderTarget::ssgi));
         cmd_list->SetTexture(Renderer_BindingsSrv::environment,      GetRenderTarget(Renderer_RenderTarget::skysphere));
 
