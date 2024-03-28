@@ -45,7 +45,7 @@ struct translucency
         
         static float3 get_color(Surface surface)
         {
-            const float scale = 0.1f;
+            const float scale = 1.0f;
             
             // compute refraction vector
             float3 normal_vector        = world_to_view(surface.normal, false);
@@ -53,42 +53,24 @@ struct translucency
             float3 refraction_direction = refract_vector(incident_vector, normal_vector, 1.0f / surface.ior);
             
             // compute refracted uv
-            float2 refraction_uv_offset = refraction_direction.xy * scale;
+            float2 refraction_uv_offset = refraction_direction.xy * (scale / surface.camera_to_pixel_length);
             float2 refracted_uv         = saturate(surface.uv + refraction_uv_offset);
 
             // don't refract what's behind the surface
-            float depth_surface    = get_linear_depth(surface.depth);
-            float depth_refraction = get_linear_depth(refracted_uv);
+            float depth_surface    = get_linear_depth(surface.depth); // depth transparent
+            float depth_refraction = get_linear_depth(get_depth_opaque(refracted_uv)); // depth opaque
             float is_behind        = depth_surface < depth_refraction;
-            refracted_uv           = lerp(surface.uv, refracted_uv, is_behind);
+            refracted_uv           = lerp(refracted_uv, refracted_uv, is_behind);
     
-            // get base color (no refraction)
-            float frame_mip_count = pass_get_f3_value().x;
-            float mip_level       = lerp(0, frame_mip_count, surface.roughness_alpha);
-            float3 color          = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level).rgb;
-
-            // simulate light breaking off into individual color bands via chromatic aberration
-            float3 color_refracted = 0.0f;
-            {
-                float chromatic_aberration_strength  = surface.ior * 0.0005f;
-                chromatic_aberration_strength       *= (1.0f + surface.roughness_alpha);
-                
-                float2 ca_offsets[3];
-                ca_offsets[0] = float2(chromatic_aberration_strength, 0.0f);
-                ca_offsets[1] = float2(0.0f, 0.0f);
-                ca_offsets[2] = float2(-chromatic_aberration_strength, 0.0f); 
-        
-                [unroll]
-                for (int i = 0; i < 3; ++i)
-                {
-                    float4 sampled_color = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], refracted_uv + ca_offsets[i], mip_level);
-                    color_refracted[i] = sampled_color[i];
-                }
-            }
+            // get base color
+            float frame_mip_count   = pass_get_f3_value().x;
+            float mip_level         = lerp(0, frame_mip_count, surface.roughness_alpha);
+            float3 color            = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level).rgb;
+            float3 color_refraction = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], refracted_uv, mip_level).rgb;
         
             // screen fade
             float fade_factor = compute_fade_factor(refracted_uv);
-            color             = lerp(color, color_refracted, fade_factor);
+            color             = lerp(color, color_refraction, fade_factor);
     
             return color;
         }
@@ -96,7 +78,7 @@ struct translucency
     
     struct water
     {
-        static float4 get_color(Surface surface)
+        static float3 get_absorption(Surface surface, inout float alpha)
         {
             const float MAX_DEPTH         = 100.0f;
             const float ALPHA_FACTOR      = 0.2f;
@@ -106,11 +88,15 @@ struct translucency
             float water_level       = get_position(surface.uv).y;
             float water_floor_level = get_position(get_depth_opaque(surface.uv), surface.uv).y;
             float water_depth       = clamp(water_level - water_floor_level, 0.0f, MAX_DEPTH);
+            
+            // make the water more opaque the further it is
+            water_depth += surface.camera_to_pixel_length / 30.0f;
 
             // compute color and alpha at that depth with slight adjustments
             float3 color = float3(exp(-light_absorption.x * water_depth), exp(-light_absorption.y * water_depth), exp(-light_absorption.z * water_depth));
-            float alpha  = 1.0f - exp(-water_depth * ALPHA_FACTOR); 
-            return float4(color, alpha);
+            alpha        = 1.0f - exp(-water_depth * ALPHA_FACTOR);
+
+            return color;
         }
     };
 };
@@ -145,20 +131,20 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         float3 light_diffuse  = tex_light_diffuse[thread_id.xy].rgb;
         float3 light_specular = tex_light_specular[thread_id.xy].rgb;
 
-        // refraction
+        // transparent
         float3 light_transparent = 0.0f;
         if (surface.is_transparent())
         {
             // refraction
             light_transparent = translucency::refraction::get_color(surface);
 
-            // water light penetration
+            // water
             if (surface.is_water())
             {
-                float4 light_water     = translucency::water::get_color(surface);
-                light_transparent.rgb  = lerp(light_transparent.rgb, light_water.rgb, light_water.a);
-                color.a                = light_water.a;
-                tex_uav2[thread_id.xy] = float4(surface.albedo, color.a); // update albedo alpha (for the IBL pass, right after)
+                light_transparent.rgb *= translucency::water::get_absorption(surface, color.a);
+
+                // override g-buffer albedo alpha, for the IBL pass, right after
+                tex_uav2[thread_id.xy]  = float4(surface.albedo, color.a);
             }
         }
         
@@ -173,3 +159,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = saturate_16(color);
 }
+
+
