@@ -64,7 +64,7 @@ namespace Spartan
         array<shared_ptr<RHI_StructuredBuffer>, 3>                                        structured_buffers;
 
         // asset resources
-        array<shared_ptr<RHI_Texture>, 10> standard_textures;
+        array<shared_ptr<RHI_Texture>, 11> standard_textures;
         array<shared_ptr<Mesh>, 7>         standard_meshes;
         shared_ptr<Font>                   standard_font;
         shared_ptr<Material>               standard_material;
@@ -221,9 +221,9 @@ namespace Spartan
                 uint32_t frame_render_flags    = flags_render_target | RHI_Texture_ClearBlit;
                 RHI_Format frame_render_format = RHI_Format::R16G16B16A16_Float;
 
-                render_target(Renderer_RenderTarget::frame_render)        = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, frame_render_format, frame_render_flags | RHI_Texture_PerMipViews, "frame_render");
-                render_target(Renderer_RenderTarget::frame_render_2)      = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, frame_render_format, frame_render_flags | RHI_Texture_PerMipViews, "frame_render_2");
-                render_target(Renderer_RenderTarget::frame_render_opaque) = make_unique<RHI_Texture2D>(width_render, height_render, 1,         frame_render_format, frame_render_flags,                           "frame_render_opaque");
+                render_target(Renderer_RenderTarget::frame_render)        = make_unique<RHI_Texture2D>(width_render, height_render, 1,         frame_render_format, frame_render_flags, "frame_render");
+                render_target(Renderer_RenderTarget::frame_render_2)      = make_unique<RHI_Texture2D>(width_render, height_render, 1,         frame_render_format, frame_render_flags, "frame_render_2");
+                render_target(Renderer_RenderTarget::frame_render_opaque) = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, frame_render_format, frame_render_flags | RHI_Texture_PerMipViews, "frame_render_opaque");
                 //render_target(Renderer_RenderTexture::frame_render_history) = make_unique<RHI_Texture2D>(width_render, height_render, 1, frame_render_format, frame_render_flags, "rt_frame_render_history");
             }
 
@@ -595,9 +595,9 @@ namespace Spartan
     void Renderer::CreateStandardTextures()
     {
         const string dir_texture = ResourceCache::GetResourceDirectory(ResourceDirectory::Textures) + "\\";
-        #define standard_texture(x) standard_textures[static_cast<uint8_t>(x)]
+        #define standard_texture(x) standard_textures[static_cast<uint32_t>(x)]
 
-        // noise textures
+        // noise
         {
             standard_texture(Renderer_StandardTexture::Noise_normal) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_noise_normal");
             standard_texture(Renderer_StandardTexture::Noise_normal)->LoadFromFile(dir_texture + "noise_normal.png");
@@ -606,7 +606,7 @@ namespace Spartan
             standard_texture(Renderer_StandardTexture::Noise_blue)->LoadFromFile(dir_texture + "noise_blue_0.png");
         }
 
-        // color textures
+        // color
         {
             standard_texture(Renderer_StandardTexture::White) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_white");
             standard_texture(Renderer_StandardTexture::White)->LoadFromFile(dir_texture + "white.png");
@@ -621,7 +621,7 @@ namespace Spartan
             standard_texture(Renderer_StandardTexture::Checkerboard)->LoadFromFile(dir_texture + "no_texture.png");
         }
 
-        // gizmo icons
+        // gizmos
         {
             standard_texture(Renderer_StandardTexture::Gizmo_light_directional) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_icon_light_directional");
             standard_texture(Renderer_StandardTexture::Gizmo_light_directional)->LoadFromFile(dir_texture + "sun.png");
@@ -635,6 +635,12 @@ namespace Spartan
             standard_texture(Renderer_StandardTexture::Gizmo_audio_source) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_icon_audio_source");
             standard_texture(Renderer_StandardTexture::Gizmo_audio_source)->LoadFromFile(dir_texture + "audio.png");
         }
+
+        // misc
+        {
+            standard_texture(Renderer_StandardTexture::Foam) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_foam");
+            standard_texture(Renderer_StandardTexture::Foam)->LoadFromFile(dir_texture + "foam.jpg");
+        } 
     }
 
     void Renderer::CreateStandardMaterials()

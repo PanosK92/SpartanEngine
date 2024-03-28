@@ -78,11 +78,13 @@ struct translucency
     
     struct water
     {
-        static float3 get_absorption(Surface surface, inout float alpha)
+        static float3 get_color(Surface surface, inout float alpha)
         {
-            const float MAX_DEPTH         = 100.0f;
-            const float ALPHA_FACTOR      = 0.2f;
-            const float3 light_absorption = float3(0.3f, 0.2f, 0.1f); // color spectrum light absorption
+            const float MAX_DEPTH            = 100.0f;
+            const float ALPHA_FACTOR         = 0.2f;
+            const float FOAM_DEPTH_THRESHOLD = 2.0f;
+            const float FOAM_INTENSITY       = 1.0f;
+            const float3 light_absorption    = float3(0.3f, 0.2f, 0.1f); // color spectrum light absorption
 
             // compute water depth
             float water_level       = get_position(surface.uv).y;
@@ -95,6 +97,11 @@ struct translucency
             // compute color and alpha at that depth with slight adjustments
             float3 color = float3(exp(-light_absorption.x * water_depth), exp(-light_absorption.y * water_depth), exp(-light_absorption.z * water_depth));
             alpha        = 1.0f - exp(-water_depth * ALPHA_FACTOR);
+
+            // foam
+            float foam_visibility = saturate(1.0f - water_depth / FOAM_DEPTH_THRESHOLD);
+            float3 foam_color     = tex.Sample(samplers[sampler_trilinear_clamp], surface.uv).rgb;
+            color                 = lerp(color, foam_color * FOAM_INTENSITY, foam_visibility);
 
             return color;
         }
@@ -141,7 +148,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
             // water
             if (surface.is_water())
             {
-                light_transparent.rgb *= translucency::water::get_absorption(surface, color.a);
+                light_transparent.rgb *= translucency::water::get_color(surface, color.a);
 
                 // override g-buffer albedo alpha, for the IBL pass, right after
                 tex_uav2[thread_id.xy]  = float4(surface.albedo, color.a);
@@ -159,5 +166,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = saturate_16(color);
 }
+
 
 
