@@ -387,9 +387,4 @@ namespace Spartan
     {
 
     }
-
-    void RHI_CommandList::InsertBarrierStructuredBufferReadWrite(void* rhi_buffer)
-    {
-        SP_ASSERT(m_state == RHI_CommandListState::Recording);
-    }
 }
