@@ -402,7 +402,7 @@ namespace Spartan
             // transparent
             if (do_transparent_pass) // actual geometry processing
             {
-                cmd_list->BeginMarker("frame_reflection");
+                cmd_list->BeginMarker("frame_opaque_for_refraction");
                 {
                     cmd_list->Blit(rt_render, rt_render_2, false);
             
@@ -427,6 +427,7 @@ namespace Spartan
             }
 
             Pass_PostProcess(cmd_list);
+
             Pass_Grid(cmd_list, rt_output);
             Pass_Lines(cmd_list, rt_output);
             Pass_Outline(cmd_list, rt_output);
