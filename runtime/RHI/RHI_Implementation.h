@@ -24,11 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // RUNTIME
 #if defined(SPARTAN_RUNTIME) || (SPARTAN_RUNTIME_STATIC == 1)
 
-// Definition - DirectX 12
+// definition - DirectX 12
 #if defined(API_GRAPHICS_D3D12)
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
-#pragma warning(push, 0) // Hide warnings which belong DirectX
+#pragma warning(push, 0) // hide warnings which belong DirectX
 #include <d3d12.h>
 #include <dxgi1_6.h>
 #include <dxcapi.h>
@@ -155,11 +155,11 @@ static const D3D12_BLEND_OP d3d12_blend_operation[] =
 
 #endif
 
-// Definition - Vulkan
+// definition - vulkan
 #if defined(API_GRAPHICS_VULKAN) 
 #pragma comment(lib, "vulkan-1.lib")
 #if defined(_MSC_VER)
-// Include definition of vkCreateWin32SurfaceKHR via vulkan.h
+// include definition of vkCreateWin32SurfaceKHR via vulkan.h
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 #pragma warning(push, 0)
@@ -324,9 +324,7 @@ static const VkImageLayout vulkan_image_layout[] =
 {
     VK_IMAGE_LAYOUT_GENERAL,
     VK_IMAGE_LAYOUT_PREINITIALIZED,
-    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-    VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
     VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR,
     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,

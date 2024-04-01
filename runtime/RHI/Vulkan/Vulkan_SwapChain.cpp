@@ -308,10 +308,11 @@ namespace Spartan
                         1,
                         1,
                         RHI_Image_Layout::Max,
-                        RHI_Image_Layout::Color_Attachment
+                        RHI_Image_Layout::Attachment,
+                        false
                     );
 
-                    m_layouts[i] = RHI_Image_Layout::Color_Attachment;
+                    m_layouts[i] = RHI_Image_Layout::Attachment;
                 }
 
                 // end/flush
@@ -481,7 +482,8 @@ namespace Spartan
             m_rhi_rt[m_image_index],
             VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 1,
             m_layouts[m_image_index],
-            layout
+            layout,
+            false
         );
 
         m_layouts[m_image_index] = layout;
