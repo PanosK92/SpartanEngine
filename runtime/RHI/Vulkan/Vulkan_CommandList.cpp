@@ -72,7 +72,7 @@ namespace Spartan
             return VK_ATTACHMENT_LOAD_OP_CLEAR;
         };
 
-        VkPipelineStageFlags layout_to_access_mask(const VkImageLayout layout, const bool is_destination_mask)
+        VkPipelineStageFlags layout_to_access_mask(const VkImageLayout layout, const bool is_destination_mask, const bool is_depth)
         {
             VkPipelineStageFlags access_mask = 0;
 
@@ -109,7 +109,7 @@ namespace Spartan
                 access_mask = VK_ACCESS_TRANSFER_WRITE_BIT;
                 break;
 
-                // attachments - color
+                // attachments
             case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
                 access_mask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
                 break;
@@ -131,7 +131,19 @@ namespace Spartan
                 access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
                 break;
 
-                // attachments - shading rate
+             // attachments
+            case VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL:
+                if (is_depth)
+                {
+                    access_mask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT_KHR | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT_KHR;
+                    
+                }
+                else
+                { 
+                    access_mask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT_KHR | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT_KHR;
+                }
+                break;
+
             case VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR:
                 access_mask = VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
                 break;
@@ -645,7 +657,7 @@ namespace Spartan
             if (swapchain)
             {
                 // transition to the appropriate layout
-                swapchain->SetLayout(RHI_Image_Layout::Color_Attachment, this);
+                swapchain->SetLayout(RHI_Image_Layout::Attachment, this);
 
                 VkRenderingAttachmentInfo color_attachment = {};
                 color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
@@ -670,7 +682,7 @@ namespace Spartan
                     SP_ASSERT_MSG(rt->IsRtv(), "The texture wasn't created with the RHI_Texture_RenderTarget flag and/or isn't a color format");
 
                     // transition to the appropriate layout
-                    rt->SetLayout(RHI_Image_Layout::Color_Attachment, this);
+                    rt->SetLayout(RHI_Image_Layout::Attachment, this);
 
                     VkRenderingAttachmentInfo color_attachment = {};
                     color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
@@ -701,7 +713,7 @@ namespace Spartan
             SP_ASSERT(rt->IsDsv());
 
             // transition to the appropriate layout
-            RHI_Image_Layout layout = rt->IsDepthFormat() ? RHI_Image_Layout::Depth_Attachment : RHI_Image_Layout::Depth_Stencil_Attachment;
+            RHI_Image_Layout layout = RHI_Image_Layout::Attachment;
             rt->SetLayout(layout, this);
 
             attachment_depth_stencil.sType                           = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
@@ -1578,7 +1590,7 @@ namespace Spartan
 
     void RHI_CommandList::InsertBarrierTexture(void* image, const uint32_t aspect_mask,
         const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length,
-        const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new
+        const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new, const bool is_depth
     )
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
@@ -1598,8 +1610,8 @@ namespace Spartan
         image_barrier.subresourceRange.levelCount     = mip_range;
         image_barrier.subresourceRange.baseArrayLayer = 0;
         image_barrier.subresourceRange.layerCount     = array_length;
-        image_barrier.srcAccessMask                   = layout_to_access_mask(image_barrier.oldLayout, false); // operations that must complete before the barrier is crossed - example: write
-        image_barrier.dstAccessMask                   = layout_to_access_mask(image_barrier.newLayout, true);  // operations that must wait for the barrier to be crossed     - example: read
+        image_barrier.srcAccessMask                   = layout_to_access_mask(image_barrier.oldLayout, false, is_depth); // operations that must complete before the barrier is crossed - example: write
+        image_barrier.dstAccessMask                   = layout_to_access_mask(image_barrier.newLayout, true, is_depth);  // operations that must wait for the barrier to be crossed     - example: read
 
         bool is_swapchain = layout_old == RHI_Image_Layout::Present_Source || layout_new == RHI_Image_Layout::Present_Source;
         vkCmdPipelineBarrier
@@ -1622,12 +1634,12 @@ namespace Spartan
     void RHI_CommandList::InsertBarrierTexture(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
     {
         SP_ASSERT(texture != nullptr);
-        InsertBarrierTexture(texture->GetRhiResource(), get_aspect_mask(texture), mip_start, mip_range, array_length, layout_old, layout_new);
+        InsertBarrierTexture(texture->GetRhiResource(), get_aspect_mask(texture), mip_start, mip_range, array_length, layout_old, layout_new, texture->IsDsv());
     }
 
     void RHI_CommandList::InsertBarrierTextureReadWrite(RHI_Texture* texture)
     {
         SP_ASSERT(texture != nullptr);
-        InsertBarrierTexture(texture->GetRhiResource(), get_aspect_mask(texture), 0, 1, 1, texture->GetLayout(0), texture->GetLayout(0));
+        InsertBarrierTexture(texture->GetRhiResource(), get_aspect_mask(texture), 0, 1, 1, texture->GetLayout(0), texture->GetLayout(0), texture->IsDsv());
     }
 }

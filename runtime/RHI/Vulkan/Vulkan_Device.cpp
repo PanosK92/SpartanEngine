@@ -823,11 +823,14 @@ namespace Spartan
                     robustness_features_2.nullDescriptor = VK_TRUE;
                 }
 
-                // dynamic states
+                // quality of life improvements to the API
                 {
                     // rendering without render passes and frame buffer objects
                     SP_ASSERT(features_1_3_support.dynamicRendering == VK_TRUE);
                     features_1_3.dynamicRendering = VK_TRUE;
+
+                    SP_ASSERT(features_1_3_support.synchronization2 == VK_TRUE);
+                    features_1_3.synchronization2 = VK_TRUE;
                 }
 
                 // FSR 2

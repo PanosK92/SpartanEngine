@@ -302,13 +302,9 @@ namespace Spartan
         {
             RHI_Image_Layout target_layout = RHI_Image_Layout::Preinitialized;
 
-            if (texture->IsRtv())
+            if (texture->IsRt())
             {
-                target_layout = RHI_Image_Layout::Color_Attachment;
-            }
-            else if (texture->IsDsv())
-            {
-                target_layout = texture->IsDepthFormat() ? RHI_Image_Layout::Depth_Attachment : RHI_Image_Layout::Depth_Stencil_Attachment;
+                target_layout = RHI_Image_Layout::Attachment;
             }
 
             if (texture->IsUav())

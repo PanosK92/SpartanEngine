@@ -278,9 +278,7 @@ namespace Spartan
     {
         General,
         Preinitialized,
-        Color_Attachment,
-        Depth_Attachment,
-        Depth_Stencil_Attachment,
+        Attachment,
         Shading_Rate_Attachment,
         Shader_Read,
         Transfer_Source,
