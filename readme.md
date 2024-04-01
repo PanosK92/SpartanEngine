@@ -3,9 +3,9 @@
 
 <p> Spartan Engine is a research-focused game engine designed for real-time solutions, it's not intended for game development. Initially created to enrich my portfolio, I've achieved what I wanted from it and now aim to give back to the community. This engine is now a hub for learning, with the mission of collaboration and connection. It offers exclusive perks like contributor recognition, networking opportunities with tech professionals, and learning resources, including an active Discord community and insightful YouTube videos. Beyond just coding, Spartan is about building a uniquely supportive community.</p>
 
-- <img align="left" width="32" src="https://clipart.info/images/ccovers/1534043159circle-twitter-logo-png.png"/>For occasional updates regarding the project's development, you can follow me on <a href="https://twitter.com/panoskarabelas1?ref_src=twsrc%5Etfw">twitter</a>.
+- <img align="left" width="32" src="https://i.pinimg.com/736x/99/65/5e/99655e9fe24eb0a7ea38de683cedb735.jpg"/>For occasional updates regarding the project's development, you can follow me on <a href="https://twitter.com/panoskarabelas1?ref_src=twsrc%5Etfw">X</a>.
   
-- <img align="left" width="32" height="32" src="https://www.freeiconspng.com/thumbs/discord-icon/discord-icon-7.png">For questions, suggestions, help and any kind of general discussion join the [discord server](https://discord.gg/TG5r2BS).
+- <img align="left" width="32" height="32" src="https://www.freeiconspng.com/thumbs/discord-icon/discord-icon-7.png">For projected and general discussions, join the [discord server](https://discord.gg/TG5r2BS).
   
 - <img align="left" width="32" height="32" src="https://www.freeiconspng.com/uploads/git-github-hub-icon-25.png">For issues and anything directly related to the project, feel free to open an issue.
   
