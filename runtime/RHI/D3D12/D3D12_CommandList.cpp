@@ -372,7 +372,7 @@ namespace Spartan
 
     void RHI_CommandList::InsertBarrierTexture(void* image, const uint32_t aspect_mask,
         const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length,
-        const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new
+        const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new, const bool is_depth
     )
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
