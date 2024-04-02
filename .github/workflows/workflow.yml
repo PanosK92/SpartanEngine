@@ -11,7 +11,7 @@ jobs:
     env:
       msbuild_path: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Generate project files
         shell: python
@@ -48,16 +48,16 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
      
       - name: Download Vulkan build
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: build_vulkan
           path: build_vulkan.7z
       
       - name: Publish release
-        uses: "marvinpinto/action-automatic-releases@v1.2.1"
+        uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           automatic_release_tag: "latest"
