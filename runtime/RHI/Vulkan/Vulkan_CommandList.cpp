@@ -573,7 +573,7 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        // get a pipeline which matches the requested pipeline state
+        // get (or create) a pipeline which matches the requested pipeline state
         RHI_Device::GetOrCreatePipeline(pso, m_pipeline, m_descriptor_layout_current);
 
         uint64_t hash_previous = m_pso.GetHash();
