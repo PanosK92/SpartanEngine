@@ -72,9 +72,9 @@ namespace Spartan
             return VK_ATTACHMENT_LOAD_OP_CLEAR;
         };
 
-        VkPipelineStageFlags layout_to_access_mask(const VkImageLayout layout, const bool is_destination_mask, const bool is_depth)
+        VkPipelineStageFlags2 layout_to_access_mask(const VkImageLayout layout, const bool is_destination_mask, const bool is_depth)
         {
-            VkPipelineStageFlags access_mask = 0;
+            VkPipelineStageFlags2 access_mask = 0;
 
             switch (layout)
             {
@@ -173,19 +173,19 @@ namespace Spartan
             return access_mask;
         }
 
-        VkPipelineStageFlags access_mask_to_pipeline_stage_mask(VkAccessFlags access_flags, bool is_swapchain)
+        VkPipelineStageFlags2 access_mask_to_pipeline_stage_mask(VkAccessFlags2 access_flags, bool is_swapchain)
         {
             if (is_swapchain)
             {
                 return VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
             }
 
-            VkPipelineStageFlags stages      = 0;
+            VkPipelineStageFlags2 stages      = 0;
             uint32_t enabled_graphics_stages = RHI_Device::GetEnabledGraphicsStages();
 
             while (access_flags != 0)
             {
-                VkAccessFlagBits access_flag = static_cast<VkAccessFlagBits>(access_flags & (~(access_flags - 1)));
+                VkAccessFlagBits2 access_flag = static_cast<VkAccessFlagBits2>(access_flags & (~(access_flags - 1)));
                 SP_ASSERT(access_flag != 0 && (access_flag & (access_flag - 1)) == 0);
                 access_flags &= ~access_flag;
 
@@ -1597,8 +1597,10 @@ namespace Spartan
         SP_ASSERT(image != nullptr);
         RenderPassEnd();
 
-        VkImageMemoryBarrier image_barrier            = {};
-        image_barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        bool is_swapchain = layout_old == RHI_Image_Layout::Present_Source || layout_new == RHI_Image_Layout::Present_Source;
+
+        VkImageMemoryBarrier2 image_barrier           = {};
+        image_barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR;
         image_barrier.pNext                           = nullptr;
         image_barrier.oldLayout                       = vulkan_image_layout[static_cast<VkImageLayout>(layout_old)];
         image_barrier.newLayout                       = vulkan_image_layout[static_cast<VkImageLayout>(layout_new)];
@@ -1610,24 +1612,17 @@ namespace Spartan
         image_barrier.subresourceRange.levelCount     = mip_range;
         image_barrier.subresourceRange.baseArrayLayer = 0;
         image_barrier.subresourceRange.layerCount     = array_length;
-        image_barrier.srcAccessMask                   = layout_to_access_mask(image_barrier.oldLayout, false, is_depth); // operations that must complete before the barrier is crossed - example: write
-        image_barrier.dstAccessMask                   = layout_to_access_mask(image_barrier.newLayout, true, is_depth);  // operations that must wait for the barrier to be crossed     - example: read
+        image_barrier.srcAccessMask                   = layout_to_access_mask(image_barrier.oldLayout, false, is_depth);               // operations that must complete before the barrier
+        image_barrier.srcStageMask                    = access_mask_to_pipeline_stage_mask(image_barrier.srcAccessMask, is_swapchain); // stage at which the barrier applies, on the source side
+        image_barrier.dstAccessMask                   = layout_to_access_mask(image_barrier.newLayout, true, is_depth);                // operations that must wait for the barrier, on the new layout
+        image_barrier.dstStageMask                    = access_mask_to_pipeline_stage_mask(image_barrier.dstAccessMask, is_swapchain); // stage at which the barrier applies, on the destination side
 
-        bool is_swapchain = layout_old == RHI_Image_Layout::Present_Source || layout_new == RHI_Image_Layout::Present_Source;
-        vkCmdPipelineBarrier
-        (
-            static_cast<VkCommandBuffer>(m_rhi_resource),                                  // commandBuffer
-            access_mask_to_pipeline_stage_mask(image_barrier.srcAccessMask, is_swapchain), // pipeline stage(s) that must be completed before the barrier is crossed
-            access_mask_to_pipeline_stage_mask(image_barrier.dstAccessMask, is_swapchain), // pipeline stage(s) that must wait for the barrier to be crossed before beginning
-            0,                                                                             // dependencyFlags
-            0,                                                                             // memoryBarrierCount
-            nullptr,                                                                       // pMemoryBarriers
-            0,                                                                             // bufferMemoryBarrierCount
-            nullptr,                                                                       // pBufferMemoryBarriers
-            1,                                                                             // imageMemoryBarrierCount
-            &image_barrier                                                                 // pImageMemoryBarriers
-        );
+        VkDependencyInfo dependency_info        = {};
+        dependency_info.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
+        dependency_info.imageMemoryBarrierCount = 1;
+        dependency_info.pImageMemoryBarriers    = &image_barrier;
 
+        vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
         Profiler::m_rhi_pipeline_barriers++;
     }
 
