@@ -53,11 +53,11 @@ jobs:
       - name: Create artifact
         if: github.event_name != 'pull_request' && matrix.api != 'd3d12'
         shell: cmd
-        run: 'build_scripts\package_artifact.bat ${{ matrix.api }}'
+        run: build_scripts\package_artifact.bat ${{ matrix.api }}
       
       - name: Upload artifact
         if: github.event_name != 'pull_request' && matrix.api != 'd3d12'
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: build_${{ matrix.api }}
           path: build_${{ matrix.api }}.7z
