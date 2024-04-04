@@ -29,7 +29,7 @@ jobs:
         
       - name: Run engine
         shell: cmd
-        run: build_scripts\run_ci_test.bat ${{ matrix.api }}
+        run: build_scripts\ci_test.bat ${{ matrix.api }}
 
       - name: Check run results
         shell: pwsh
@@ -51,7 +51,7 @@ jobs:
       - name: Create artifact
         if: github.event_name != 'pull_request' && matrix.api != 'd3d12'
         shell: cmd
-        run: 'build_scripts\package_artifact.bat ${{ matrix.api }}'
+        run: build_scripts\package_artifact.bat ${{ matrix.api }}
       
       - name: Upload artifact
         if: github.event_name != 'pull_request' && matrix.api != 'd3d12'
