@@ -27,13 +27,13 @@ jobs:
         shell: cmd
         run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m spartan.sln'
         
-      - name: Run Engine
+      - name: Run engine
         shell: cmd
         run: |
-          start /wait /b spartan_vulkan.exe -ci_test
+          start spartan_vulkan.exe -ci_test
           timeout /t 15
 
-      - name: Check CI Test File
+      - name: Check run results
         shell: pwsh
         run: |
           $file = "ci_test.txt"
