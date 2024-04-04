@@ -30,7 +30,7 @@ jobs:
       - name: Run engine
         shell: cmd
         run: |
-          binaries/spartan_vulkan.exe -ci_test
+          .\binaries\spartan_vulkan.exe -ci_test
           timeout /t 15
 
       - name: Check run results
