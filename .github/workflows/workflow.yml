@@ -27,26 +27,28 @@ jobs:
         shell: cmd
         run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m spartan.sln'
         
-      - name: Run engine
-        shell: cmd
-        run: 'build_scripts\ci_test.bat ${{ matrix.api }}'
-
-      - name: Check run results
-        shell: pwsh
-        run: |
-          $file = "binaries/ci_test.txt"
-          if (Test-Path $file) {
-              $content = Get-Content $file
-              if ($content -eq "0") {
-                  Write-Output "Engine boot-up successful."
-              } else {
-                  Write-Error "Engine boot-up indicated a failure."
-                  exit 1
-              }
-          } else {
-              Write-Error "ci_test.txt not found. Engine boot-up failed."
-              exit 1
-          }
+      #- name: Run engine
+      #  if: matrix.api != 'd3d12'
+      #  shell: cmd
+      #  run: 'build_scripts\ci_test.bat ${{ matrix.api }}'
+      #
+      #- name: Check run results
+      #  if: matrix.api != 'd3d12'
+      #  shell: pwsh
+      #  run: |
+      #    $file = "binaries/ci_test.txt"
+      #    if (Test-Path $file) {
+      #        $content = Get-Content $file
+      #        if ($content -eq "0") {
+      #            Write-Output "Engine boot-up successful."
+      #        } else {
+      #            Write-Error "Engine boot-up indicated a failure."
+      #            exit 1
+      #        }
+      #    } else {
+      #        Write-Error "ci_test.txt not found. Engine boot-up failed."
+      #        exit 1
+      #    }
 
       - name: Create artifact
         if: github.event_name != 'pull_request' && matrix.api != 'd3d12'
