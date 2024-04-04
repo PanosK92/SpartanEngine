@@ -7,7 +7,7 @@ jobs:
     strategy:
       matrix:
         api: [vulkan, d3d12]
-    runs-on: "windows-2022"
+    runs-on: "windows-latest"
     env:
       msbuild_path: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
@@ -73,8 +73,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
      
-      - name: Download Vulkan build
-        uses: actions/download-artifact@v2
+      - name: Download vulkan build
+        uses: actions/download-artifact@v4
         with:
           name: build_vulkan
           path: build_vulkan.7z
