@@ -29,14 +29,12 @@ jobs:
         
       - name: Run engine
         shell: cmd
-        run: |
-          ..\binaries\spartan_vulkan.exe -ci_test
-          timeout /t 15
+        run: build_scripts\run_ci_test.bat ${{ matrix.api }}
 
       - name: Check run results
         shell: pwsh
         run: |
-          $file = "../binaries/ci_test.txt"
+          $file = "binaries/ci_test.txt"
           if (Test-Path $file) {
               $content = Get-Content $file
               if ($content -eq "0") {
