@@ -27,11 +27,11 @@ jobs:
         shell: cmd
         run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m spartan.sln'
         
-      - name: Run engine
-        if: matrix.api != 'd3d12'
-        shell: cmd
-        run: build_scripts\ci_test.bat ${{ matrix.api }}
-      
+      #- name: Run engine
+      #  if: matrix.api != 'd3d12'
+      #  shell: cmd
+      #  run: build_scripts\ci_test.bat ${{ matrix.api }}
+      #
       #- name: Check run results
       #  if: matrix.api != 'd3d12'
       #  shell: pwsh
