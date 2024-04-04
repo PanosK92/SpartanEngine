@@ -40,7 +40,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 
 # Features
 #### Rendering
-- One of the best and most modern Vulkan renderers you will find out there.
+- Cutting edge Vulkan renderer.
 - 128-byte push constant buffer for lightning fast CPU to GPU data transfer.
 - On the fly GPU-based mip generation - with only one dispatch.
 - Fully bindless design (materials, lights, even the samplers).
