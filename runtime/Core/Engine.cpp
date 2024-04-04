@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================================
 #include "pch.h"
+#include "Event.h"
 #include "Window.h"
 #include "ThreadPool.h"
 #include "../Audio/Audio.h"
@@ -45,25 +46,25 @@ namespace Spartan
     namespace
     {
         vector<string> arguments;
-        bool ci_test   = false;
         uint32_t flags = 0;
 
-        bool has_argument(const string& argument)
+        void write_ci_test_file(const uint32_t value)
         {
-            for (const auto& arg : arguments)
+            if (Engine::HasArgument("-ci_test"))
             {
-                if (arg == argument)
-                    return true;
+                ofstream file("ci_test.txt"); 
+                if (file.is_open())
+                {
+                    file << value;
+                    file.close();
+                }
             }
-
-            return false;
         }
     }
 
     void Engine::Initialize(const vector<string>& args)
     {
         arguments = args;
-        ci_test   = has_argument("-ci_test");
 
         SetFlag(EngineMode::Editor, true);
         SetFlag(EngineMode::Physics, true);
@@ -92,6 +93,8 @@ namespace Spartan
         }
 
         SP_LOG_INFO("Initialization took %.1f ms", timer_initialize.GetElapsedTimeMs());
+
+        SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnFirstFrameCompleted, SP_EVENT_HANDLER_EXPRESSION_STATIC(write_ci_test_file(0);));
     }
 
     void Engine::Shutdown()
@@ -144,5 +147,16 @@ namespace Spartan
     void Engine::ToggleFlag(const EngineMode flag)
     {
         IsFlagSet(flag) ? (flags &= ~static_cast<uint32_t>(flag)) : (flags |= static_cast<uint32_t>(flag));
+    }
+
+    bool Engine::HasArgument(const string& argument)
+    {
+        for (const auto& arg : arguments)
+        {
+            if (arg == argument)
+                return true;
+        }
+
+        return false;
     }
 }

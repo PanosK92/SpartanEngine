@@ -43,5 +43,6 @@ namespace Spartan
         static bool IsFlagSet(const EngineMode flag);
         static void SetFlag(const EngineMode flag, const bool enabled);
         static void ToggleFlag(const EngineMode flag);
+        static bool HasArgument(const std::string& argument);
     };
 }
