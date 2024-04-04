@@ -45,12 +45,25 @@ namespace Spartan
     namespace
     {
         vector<string> arguments;
+        bool ci_test   = false;
         uint32_t flags = 0;
+
+        bool has_argument(const string& argument)
+        {
+            for (const auto& arg : arguments)
+            {
+                if (arg == argument)
+                    return true;
+            }
+
+            return false;
+        }
     }
 
     void Engine::Initialize(const vector<string>& args)
     {
         arguments = args;
+        ci_test   = has_argument("-ci_test");
 
         SetFlag(EngineMode::Editor, true);
         SetFlag(EngineMode::Physics, true);
