@@ -20,15 +20,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #include "Editor.h"
+#include <vector>
+#include <string>
 
-#ifdef _MSC_VER // Windows
+#ifdef _MSC_VER // windows
 #include <Windows.h>
+#include <shellapi.h>
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
-#else // Linux
-int main(int argc, char** argv)
-#endif
 {
-    Editor editor;
+    // convert command line to argv-like format
+    int argc;
+    LPWSTR* argv_w = CommandLineToArgvW(GetCommandLineW(), &argc);
+    std::vector<std::string> args;
+    args.reserve(argc);
+    for (int i = 0; i < argc; ++i)
+    {
+        // convert wide characters to normal string
+        char arg[1024];
+        WideCharToMultiByte(CP_UTF8, 0, argv_w[i], -1, arg, sizeof(arg), nullptr, nullptr);
+        args.push_back(std::string(arg));
+    }
+    LocalFree(argv_w);
+#else // linux
+int main(int argc, char** argv)
+{
+    std::vector<std::string> args(argv, argv + argc);
+#endif
+    Editor editor = Editor(args);
     editor.Tick();
     return 0;
 }

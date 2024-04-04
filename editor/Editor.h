@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class Editor
 {
 public:
-    Editor();
+    Editor(const std::vector<std::string>& args);
     ~Editor();
 
     void Tick();

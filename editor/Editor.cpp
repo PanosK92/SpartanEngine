@@ -157,12 +157,9 @@ namespace
     }
 }
 
-Editor::Editor()
+Editor::Editor(const std::vector<std::string>& args)
 {
-    // initialize the engine
-    Spartan::Engine::Initialize();
-
-    // initialize ImGui
+    Spartan::Engine::Initialize(args);
     ImGui::CreateContext();
 
     // configure ImGui

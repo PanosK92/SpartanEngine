@@ -44,11 +44,14 @@ namespace Spartan
 {
     namespace
     {
+        vector<string> arguments;
         uint32_t flags = 0;
     }
 
-    void Engine::Initialize()
+    void Engine::Initialize(const vector<string>& args)
     {
+        arguments = args;
+
         SetFlag(EngineMode::Editor, true);
         SetFlag(EngineMode::Physics, true);
         SetFlag(EngineMode::Game, true);
