@@ -27,6 +27,29 @@ jobs:
         shell: cmd
         run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m spartan.sln'
         
+      - name: Run Engine
+        shell: cmd
+        run: |
+          start /wait /b spartan_vulkan.exe -ci_test
+          timeout /t 15
+
+      - name: Check CI Test File
+        shell: pwsh
+        run: |
+          $file = "ci_test.txt"
+          if (Test-Path $file) {
+              $content = Get-Content $file
+              if ($content -eq "0") {
+                  Write-Output "Engine boot-up successful."
+              } else {
+                  Write-Error "Engine boot-up indicated a failure."
+                  exit 1
+              }
+          } else {
+              Write-Error "ci_test.txt not found. Engine boot-up failed."
+              exit 1
+          }
+
       - name: Create artifact
         if: github.event_name != 'pull_request' && matrix.api != 'd3d12'
         shell: cmd
