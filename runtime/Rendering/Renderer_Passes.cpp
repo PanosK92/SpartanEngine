@@ -808,6 +808,7 @@ namespace Spartan
             pso.clear_depth                     = rhi_depth_load;
             pso.vrs_input_texture               = vrs ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
             pso.resolution_scale                = true;
+            cmd_list->SetPipelineState(pso);
 
             for (shared_ptr<Entity>& entity : entities)
             {
@@ -850,10 +851,10 @@ namespace Spartan
                         has_tesselation = renderable->GetMaterial()->HasTexture(MaterialTexture::Height4) ? true : has_tesselation;
                     }
 
-                    pso.shader_hull   = has_tesselation ? shader_h : nullptr;
-                    pso.shader_domain = has_tesselation ? shader_d : nullptr;
+                    //pso.shader_hull   = has_tesselation ? shader_h : nullptr;
+                    //pso.shader_domain = has_tesselation ? shader_d : nullptr;
 
-                    cmd_list->SetPipelineState(pso);
+                    //cmd_list->SetPipelineState(pso);
                 }
 
                 draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
