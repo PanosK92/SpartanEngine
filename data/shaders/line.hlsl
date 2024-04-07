@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-Pixel_PosColor mainVS(Vertex_PosColor input)
+Pixel_PosColor main_vs(Vertex_PosColor input)
 {
     Pixel_PosColor output;
 
@@ -35,7 +35,7 @@ Pixel_PosColor mainVS(Vertex_PosColor input)
     return output;
 }
 
-float4 mainPS(Pixel_PosColor input) : SV_TARGET
+float4 main_ps(Pixel_PosColor input) : SV_TARGET
 {
     return input.color;
 }

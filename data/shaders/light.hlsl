@@ -51,7 +51,7 @@ float3 subsurface_scattering(Surface surface, Light light)
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void mainCS(uint3 thread_id : SV_DispatchThreadID)
+void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;

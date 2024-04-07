@@ -41,7 +41,7 @@ struct PixelInput
     float4 position_world : POSITION_WORLD;
 };
 
-PixelInput mainVS(Vertex_PosUvNorTan input)
+PixelInput main_vs(Vertex_PosUvNorTan input)
 {
     PixelInput output;
 
@@ -52,7 +52,7 @@ PixelInput mainVS(Vertex_PosUvNorTan input)
     return output;
 }
 
-float4 mainPS(PixelInput input) : SV_TARGET
+float4 main_ps(PixelInput input) : SV_TARGET
 {
     float3 world_pos = input.position_world.xyz;
 

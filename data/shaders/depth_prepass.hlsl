@@ -30,7 +30,7 @@ struct PixelIn
     float3 world_position : TEXCOORD1;
 };
 
-PixelIn mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
+PixelIn main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     PixelIn output;
     
@@ -41,7 +41,7 @@ PixelIn mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 }
 
 // alpha test
-void mainPS(PixelIn input)
+void main_ps(PixelIn input)
 {
     const float3 f3_value     = pass_get_f3_value();
     const bool has_alpha_mask = f3_value.x == 1.0f;

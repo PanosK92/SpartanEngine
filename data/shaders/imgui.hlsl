@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "output.hlsl"
 //====================
 
-Pixel_PosColUv mainVS(Vertex_Pos2dUvColor input)
+Pixel_PosColUv main_vs(Vertex_Pos2dUvColor input)
 {
     Pixel_PosColUv output;
 
@@ -34,7 +34,7 @@ Pixel_PosColUv mainVS(Vertex_Pos2dUvColor input)
     return output;
 }
 
-float4 mainPS(Pixel_PosColUv input) : SV_Target
+float4 main_ps(Pixel_PosColUv input) : SV_Target
 {
      // texture visualization options
     float4 channels       = pass_get_f4_value();

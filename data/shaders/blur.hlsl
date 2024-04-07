@@ -67,7 +67,7 @@ float3 gaussian_blur(const uint2 pos, const float2 uv, const float radius, const
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void mainCS(uint3 thread_id : SV_DispatchThreadID)
+void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     if (any(int2(thread_id.xy) >= pass_get_resolution_in()) || any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
