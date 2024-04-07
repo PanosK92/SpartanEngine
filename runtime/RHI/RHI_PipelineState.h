@@ -42,6 +42,7 @@ namespace Spartan
         uint32_t GetHeight() const      { return m_height; }
         bool IsGraphics() const         { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
         bool IsCompute() const          { return shader_compute != nullptr && !IsGraphics(); }
+        bool HasTessellation() const    { return shader_domain != nullptr && shader_hull != nullptr; }
 
         //= STATIC - can cause pso generation =============================================
         RHI_Shader* shader_vertex                  = nullptr;
