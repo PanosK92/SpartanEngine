@@ -157,7 +157,39 @@ namespace Spartan
             shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_vertex->GetRhiResource());
             shader_stage_info.pName                           = m_state.shader_vertex->GetEntryPoint();
 
-            // Validate shader stage
+            // validate shader stage
+            SP_ASSERT(shader_stage_info.module != nullptr);
+            SP_ASSERT(shader_stage_info.pName != nullptr);
+
+            shader_stages.push_back(shader_stage_info);
+        }
+
+        // shader - hull
+        if (m_state.shader_hull)
+        {
+            VkPipelineShaderStageCreateInfo shader_stage_info = {};
+            shader_stage_info.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            shader_stage_info.stage                           = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+            shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_hull->GetRhiResource());
+            shader_stage_info.pName                           = m_state.shader_hull->GetEntryPoint();
+
+            // validate shader stage
+            SP_ASSERT(shader_stage_info.module != nullptr);
+            SP_ASSERT(shader_stage_info.pName != nullptr);
+
+            shader_stages.push_back(shader_stage_info);
+        }
+
+        // shader - domain
+        if (m_state.shader_domain)
+        {
+            VkPipelineShaderStageCreateInfo shader_stage_info = {};
+            shader_stage_info.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            shader_stage_info.stage                           = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+            shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_domain->GetRhiResource());
+            shader_stage_info.pName                           = m_state.shader_domain->GetEntryPoint();
+
+            // validate shader stage
             SP_ASSERT(shader_stage_info.module != nullptr);
             SP_ASSERT(shader_stage_info.pName != nullptr);
 
