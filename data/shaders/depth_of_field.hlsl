@@ -79,7 +79,7 @@ float get_average_depth_circle(float2 center, float radius, uint sample_count)
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void mainCS(uint3 thread_id : SV_DispatchThreadID)
+void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;

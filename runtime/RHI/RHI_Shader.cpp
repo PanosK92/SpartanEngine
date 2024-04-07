@@ -250,9 +250,9 @@ namespace Spartan
 
     const char* RHI_Shader::GetEntryPoint() const
     {
-        if (m_shader_type == RHI_Shader_Vertex)  return "mainVS";
-        if (m_shader_type == RHI_Shader_Pixel)   return "mainPS";
-        if (m_shader_type == RHI_Shader_Compute) return "mainCS";
+        if (m_shader_type == RHI_Shader_Vertex)  return "main_vs";
+        if (m_shader_type == RHI_Shader_Pixel)   return "main_ps";
+        if (m_shader_type == RHI_Shader_Compute) return "main_cs";
 
         return nullptr;
     }

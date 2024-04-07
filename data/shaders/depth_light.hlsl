@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-Pixel_PosUv mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
+Pixel_PosUv main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     Pixel_PosUv output;
     
@@ -37,7 +37,7 @@ Pixel_PosUv mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
     return output;
 }
 
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+float4 main_ps(Pixel_PosUv input) : SV_TARGET
 {
     // alpha test
     const float3 f3_value     = pass_get_f3_value();

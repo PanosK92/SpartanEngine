@@ -108,7 +108,7 @@ void SpdResetAtomicCounter(AU1 slice)
 #include "ffx_spd.h"
 
 [numthreads(256, 1, 1)]
-void mainCS(uint3 work_group_id : SV_GroupID, uint local_thread_index : SV_GroupIndex)
+void main_cs(uint3 work_group_id : SV_GroupID, uint local_thread_index : SV_GroupIndex)
 {
     const float3 f3_value  = pass_get_f3_value();
     float mip_count        = f3_value.x;

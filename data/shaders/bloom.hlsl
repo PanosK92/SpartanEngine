@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if LUMINANCE
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void mainCS(uint3 thread_id : SV_DispatchThreadID)
+void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
@@ -61,7 +61,7 @@ float3 tent_antiflicker_filter(float2 uv, float2 texel_size)
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void mainCS(uint3 thread_id : SV_DispatchThreadID)
+void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
@@ -78,7 +78,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 #if BLEND_FRAME
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void mainCS(uint3 thread_id : SV_DispatchThreadID)
+void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))

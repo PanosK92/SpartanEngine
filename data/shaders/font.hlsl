@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-Pixel_PosUv mainVS(Vertex_PosUv input)
+Pixel_PosUv main_vs(Vertex_PosUv input)
 {
     Pixel_PosUv output;
 
@@ -34,7 +34,7 @@ Pixel_PosUv mainVS(Vertex_PosUv input)
     return output;
 }
 
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+float4 main_ps(Pixel_PosUv input) : SV_TARGET
 {
     float4 color = float4(0.0f, 0.0f, 0.0f, 1.0f);
     

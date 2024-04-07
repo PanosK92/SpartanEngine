@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-Pixel_PosUv mainVS(Vertex_PosUvNorTan input)
+Pixel_PosUv main_vs(Vertex_PosUvNorTan input)
 {
     Pixel_PosUv output;
 
@@ -34,7 +34,7 @@ Pixel_PosUv mainVS(Vertex_PosUvNorTan input)
     return output;
 }
 
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+float4 main_ps(Pixel_PosUv input) : SV_TARGET
 {
     float4 color = tex.Sample(samplers[sampler_bilinear_clamp], input.uv);
     color.rgb    = srgb_to_linear(color.rgb);

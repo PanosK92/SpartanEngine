@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const float g_chromatic_aberration_intensity = 5.0f;
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void mainCS(uint3 thread_id : SV_DispatchThreadID)
+void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;

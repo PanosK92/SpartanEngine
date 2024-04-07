@@ -176,7 +176,7 @@ struct sampling
     }
 };
 
-PixelInputType mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
+PixelInputType main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     PixelInputType output;
 
@@ -206,7 +206,7 @@ PixelInputType mainVS(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID
 
 static const float g_quality_distance_low = 500.0f;
 
-PixelOutputType mainPS(PixelInputType input)
+PixelOutputType main_ps(PixelInputType input)
 {
     // initial g-buffer values
     float4 albedo   = GetMaterial().color;
