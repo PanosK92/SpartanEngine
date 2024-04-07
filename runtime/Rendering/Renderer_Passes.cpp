@@ -750,19 +750,20 @@ namespace Spartan
 
     void Renderer::Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
-        // acquire shaders
+        // acquire resources
         RHI_Shader* shader_v           = GetShader(Renderer_Shader::gbuffer_v).get();
-        RHI_Shader* shader_v_instanced = GetShader(Renderer_Shader::gbuffer_instanced_v).get();
+        RHI_Shader* shader_v_instanced = GetShader(Renderer_Shader::gbuffer_v_instanced).get();
+        RHI_Shader* shader_h           = GetShader(Renderer_Shader::gbuffer_h).get();
+        RHI_Shader* shader_d           = GetShader(Renderer_Shader::gbuffer_d).get();
         RHI_Shader* shader_p           = GetShader(Renderer_Shader::gbuffer_p).get();
-        if (!shader_v->IsCompiled() || !shader_v_instanced->IsCompiled() || !shader_p->IsCompiled())
-            return;
+        RHI_Texture* tex_color         = GetRenderTarget(Renderer_RenderTarget::gbuffer_color).get();
+        RHI_Texture* tex_normal        = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get();
+        RHI_Texture* tex_material      = GetRenderTarget(Renderer_RenderTarget::gbuffer_material).get();
+        RHI_Texture* tex_velocity      = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get();
+        RHI_Texture* tex_depth         = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get();
 
-        // acquire render targets
-        RHI_Texture* tex_color    = GetRenderTarget(Renderer_RenderTarget::gbuffer_color).get();
-        RHI_Texture* tex_normal   = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get();
-        RHI_Texture* tex_material = GetRenderTarget(Renderer_RenderTarget::gbuffer_material).get();
-        RHI_Texture* tex_velocity = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get();
-        RHI_Texture* tex_depth    = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get();
+        if (!shader_v->IsCompiled() || !shader_v_instanced->IsCompiled() || !shader_h->IsCompiled() || !shader_d->IsCompiled() || !shader_p->IsCompiled())
+            return;
 
         lock_guard lock(m_mutex_renderables);
         cmd_list->BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
@@ -807,7 +808,6 @@ namespace Spartan
             pso.clear_depth                     = rhi_depth_load;
             pso.vrs_input_texture               = vrs ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
             pso.resolution_scale                = true;
-            cmd_list->SetPipelineState(pso);
 
             for (shared_ptr<Entity>& entity : entities)
             {
@@ -837,6 +837,23 @@ namespace Spartan
                     cmd_list->PushConstants(m_pcb_pass_cpu);
 
                     entity->SetMatrixPrevious(m_pcb_pass_cpu.transform);
+                }
+
+                // toggle tessellation
+                {
+                    bool has_tesselation = false;
+                    if (Material* material = renderable->GetMaterial())
+                    { 
+                        has_tesselation = renderable->GetMaterial()->HasTexture(MaterialTexture::Height)  ? true : has_tesselation;
+                        has_tesselation = renderable->GetMaterial()->HasTexture(MaterialTexture::Height2) ? true : has_tesselation;
+                        has_tesselation = renderable->GetMaterial()->HasTexture(MaterialTexture::Height3) ? true : has_tesselation;
+                        has_tesselation = renderable->GetMaterial()->HasTexture(MaterialTexture::Height4) ? true : has_tesselation;
+                    }
+
+                    pso.shader_hull   = has_tesselation ? shader_h : nullptr;
+                    pso.shader_domain = has_tesselation ? shader_d : nullptr;
+
+                    cmd_list->SetPipelineState(pso);
                 }
 
                 draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());

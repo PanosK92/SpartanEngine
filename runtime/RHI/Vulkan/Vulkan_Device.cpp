@@ -771,9 +771,13 @@ namespace Spartan
 
             // check if certain features are supported and enable them
             {
-                // tesselation
+                // tessellation
                 SP_ASSERT(features_support.features.tessellationShader == VK_TRUE);
                 pNext.features.tessellationShader = VK_TRUE;
+
+                // geometry
+                SP_ASSERT(features_support.features.geometryShader == VK_TRUE);
+                pNext.features.geometryShader = VK_TRUE;
 
                 // variable shading rate
                 *is_shading_rate_supported = shading_rate_support.attachmentFragmentShadingRate == VK_TRUE;
@@ -874,6 +878,7 @@ namespace Spartan
                 enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
                 enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT;
                 enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
+                enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
                 enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
             }
         }

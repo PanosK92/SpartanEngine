@@ -163,9 +163,9 @@ namespace Spartan
     enum class Renderer_Shader : uint8_t
     {
         gbuffer_v,
-        gbuffer_instanced_v,
-        gbuffer_hs,
-        gbuffer_ds,
+        gbuffer_v_instanced,
+        gbuffer_h,
+        gbuffer_d,
         gbuffer_p,
         depth_prepass_v,
         depth_prepass_instanced_v,
