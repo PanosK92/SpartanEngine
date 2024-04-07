@@ -25,11 +25,11 @@ static const float g_quality_distance_low = 500.0f;
 
 struct PixelInputType
 {
-    float4 position             : SV_POSITION;
+    float4 position_clip        : SV_POSITION;
     float2 uv                   : TEXCOORD;
-    float3 normal_world         : WORLD_NORMAL;
-    float3 tangent_world        : WORLD_TANGENT;
-    float3 position_world       : WORLD_POS;
+    float3 normal               : WORLD_NORMAL;
+    float3 tangent              : WORLD_TANGENT;
+    float3 position             : WORLD_POS;
     float4 position_ss_current  : SCREEN_POS;
     float4 position_ss_previous : SCREEN_POS_PREVIOUS;
 };
@@ -193,24 +193,24 @@ PixelInputType main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     {
         output.position_ss_current  = mul(position_world, buffer_frame.view_projection);
         output.position_ss_previous = mul(position_world_previous, buffer_frame.view_projection_previous);
-        output.position             = output.position_ss_current;
+        output.position_clip        = output.position_ss_current;
     }
 
     // write out some things
-    output.position_world = position_world.xyz;
-    output.uv             = input.uv;
+    output.position = position_world.xyz;
+    output.uv       = input.uv;
 
     // transform normals and tangents to world space
     #if INSTANCED
     float3 normal_transformed  = mul(input.normal, (float3x3)buffer_pass.transform);
     normal_transformed         = mul(normal_transformed, (float3x3)input.instance_transform);
-    output.normal_world        = normalize(normal_transformed);
+    output.normal              = normalize(normal_transformed);
     float3 tangent_transformed = mul(input.tangent, (float3x3)buffer_pass.transform);
     tangent_transformed        = mul(tangent_transformed, (float3x3)input.instance_transform);
-    output.tangent_world       = normalize(tangent_transformed);
-    #else  
-    output.normal_world  = normalize(mul(input.normal, (float3x3)buffer_pass.transform));
-    output.tangent_world = normalize(mul(input.tangent, (float3x3)buffer_pass.transform));
+    output.tangent             = normalize(tangent_transformed);
+    #else
+    output.normal  = normalize(mul(input.normal, (float3x3)buffer_pass.transform));
+    output.tangent = normalize(mul(input.tangent, (float3x3)buffer_pass.transform));
     #endif
 
     return output;
@@ -236,10 +236,11 @@ HsConstantDataOutput patch_constant_function(InputPatch<PixelInputType, 3> input
 }
 
 [domain("tri")]
-[partitioning("integer")]
+[partitioning("fractional_odd")]
 [outputtopology("triangle_cw")]
-[outputcontrolpoints(3)]
 [patchconstantfunc("patch_constant_function")]
+[outputcontrolpoints(3)]
+[maxtessfactor(15.0f)]
 PixelInputType main_hs(InputPatch<PixelInputType, 3> input_patch, uint cp_id : SV_OutputControlPointID, uint patch_id : SV_PrimitiveID)
 {
     return input_patch[cp_id];
@@ -249,19 +250,19 @@ PixelInputType main_hs(InputPatch<PixelInputType, 3> input_patch, uint cp_id : S
 PixelInputType main_ds(HsConstantDataOutput input, float3 uvw_coord : SV_DomainLocation, const OutputPatch<PixelInputType, 3> patch)
 {
     PixelInputType output;
-    float3 position = uvw_coord.x * patch[0].position_world + uvw_coord.y * patch[1].position_world + uvw_coord.z * patch[2].position_world;
+    float3 position = uvw_coord.x * patch[0].position + uvw_coord.y * patch[1].position + uvw_coord.z * patch[2].position;
     float2 uv       = uvw_coord.x * patch[0].uv + uvw_coord.y * patch[1].uv + uvw_coord.z * patch[2].uv;
 
     // apply displacement
     float displacement           = GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), uv, 0.0f).r;
     float displacement_strength  = 10.0f;
-    output.position_world       += output.normal_world * displacement * displacement_strength;
+    output.position             += output.normal * displacement * displacement_strength;
 
     // output
     // note: we don't account for tesselated and vertex proccess materials (say vegetation)
-    output.position_ss_current  = mul(float4(output.position_world, 1.0), buffer_frame.view_projection);
-    output.position_ss_previous = mul(output.position, buffer_frame.view_projection_previous);
-    output.position             = output.position_ss_current;
+    output.position_ss_current  = mul(float4(output.position, 1.0), buffer_frame.view_projection);
+    output.position_ss_previous = mul(float4(output.position, 1.0), buffer_frame.view_projection_previous);
+    output.position_clip        = output.position_ss_current;
     output.uv                   = uv;
 
     return output;
@@ -270,7 +271,7 @@ PixelInputType main_ds(HsConstantDataOutput input, float3 uvw_coord : SV_DomainL
 PixelOutputType main_ps(PixelInputType input)
 {
     float4 albedo   = GetMaterial().color;
-    float3 normal   = input.normal_world.xyz;
+    float3 normal   = input.normal.xyz;
     float roughness = GetMaterial().roughness;
     float metalness = GetMaterial().metallness;
     float occlusion = 1.0f;
@@ -309,7 +310,7 @@ PixelOutputType main_ps(PixelInputType input)
     // albedo
     if (surface.has_texture_albedo())
     {
-        float4 albedo_sample = sampling::smart(surface, material_albedo, uv, input.position_world, input.normal_world);
+        float4 albedo_sample = sampling::smart(surface, material_albedo, uv, input.position, input.normal);
 
         // read albedo's alpha channel as an alpha mask as well
         alpha_mask      = min(alpha_mask, albedo_sample.a);
@@ -320,11 +321,11 @@ PixelOutputType main_ps(PixelInputType input)
     }
 
     // discard masked pixels
-    if (alpha_mask <= get_alpha_threshold(input.position_world))
+    if (alpha_mask <= get_alpha_threshold(input.position))
         discard;
 
     // compute pixel distance
-    float3 camera_to_pixel_world = buffer_frame.camera_position - input.position_world.xyz;
+    float3 camera_to_pixel_world = buffer_frame.camera_position - input.position.xyz;
     float pixel_distance         = length(camera_to_pixel_world);
 
     if (pixel_distance < g_quality_distance_low)
@@ -334,7 +335,7 @@ PixelOutputType main_ps(PixelInputType input)
         {
             float scale = GetMaterial().height * 0.01f;
 
-            float3x3 world_to_tangent       = make_world_to_tangent_matrix(input.normal_world, input.tangent_world);
+            float3x3 world_to_tangent       = make_world_to_tangent_matrix(input.normal, input.tangent);
             float3 camera_to_pixel_tangent  = normalize(mul(normalize(camera_to_pixel_world), world_to_tangent));
             float height                    = GET_TEXTURE(material_height).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).r - 0.5f;
             uv                             += (camera_to_pixel_tangent.xy / camera_to_pixel_tangent.z) * height * scale;
@@ -344,11 +345,11 @@ PixelOutputType main_ps(PixelInputType input)
         if (surface.has_texture_normal())
         {
             // get tangent space normal and apply the user defined intensity, then transform it to world space
-            float3 normal_sample       = sampling::smart(surface, material_normal, uv, input.position_world, input.normal_world).xyz;
+            float3 normal_sample       = sampling::smart(surface, material_normal, uv, input.position, input.normal).xyz;
             float3 tangent_normal      = normalize(unpack(normal_sample));
             float normal_intensity     = clamp(GetMaterial().normal, 0.012f, GetMaterial().normal);
             tangent_normal.xy         *= saturate(normal_intensity);
-            float3x3 tangent_to_world  = make_tangent_to_world_matrix(input.normal_world, input.tangent_world);
+            float3x3 tangent_to_world  = make_tangent_to_world_matrix(input.normal, input.tangent);
             normal                     = normalize(mul(tangent_normal, tangent_to_world).xyz);
         }
         
@@ -357,7 +358,7 @@ PixelOutputType main_ps(PixelInputType input)
             float4 roughness_sample = 1.0f;
             if (surface.has_texture_roughness())
             {
-                roughness_sample  = sampling::smart(surface, material_roughness, uv, input.position_world, input.normal_world);
+                roughness_sample  = sampling::smart(surface, material_roughness, uv, input.position, input.normal);
                 roughness        *= roughness_sample.g;
             }
             
@@ -366,14 +367,14 @@ PixelOutputType main_ps(PixelInputType input)
             
             if (surface.has_texture_metalness() && !surface.has_single_texture_roughness_metalness())
             {
-                metalness *= sampling::smart(surface, material_metalness, uv, input.position_world, input.normal_world).r;
+                metalness *= sampling::smart(surface, material_metalness, uv, input.position, input.normal).r;
             }
         }
 
         // occlusion
         if (surface.has_texture_occlusion())
         {
-            occlusion = sampling::smart(surface, material_occlusion, uv, input.position_world, input.normal_world).r;
+            occlusion = sampling::smart(surface, material_occlusion, uv, input.position, input.normal).r;
         }
 
         // emission
