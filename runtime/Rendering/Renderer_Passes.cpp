@@ -850,6 +850,7 @@ namespace Spartan
 
                     //pso.shader_hull   = is_tessellated ? shader_h : nullptr;
                     //pso.shader_domain = is_tessellated ? shader_d : nullptr;
+                    //
                     //cmd_list->SetPipelineState(pso);
                 }
 
