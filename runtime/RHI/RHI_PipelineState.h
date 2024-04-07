@@ -36,12 +36,12 @@ namespace Spartan
 
         void Prepare();
         bool HasClearValues() const;
-
-        uint64_t GetHash()    const { return m_hash; }
-        uint32_t GetWidth()   const { return m_width; }
-        uint32_t GetHeight()  const { return m_height; }
-        bool IsGraphics()     const { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
-        bool IsCompute()      const { return shader_compute != nullptr && !IsGraphics(); }
+        uint64_t GetHash() const        { return m_hash; }
+        uint64_t GetHashDynamic() const { return m_hash_dynamic; }
+        uint32_t GetWidth() const       { return m_width; }
+        uint32_t GetHeight() const      { return m_height; }
+        bool IsGraphics() const         { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
+        bool IsCompute() const          { return shader_compute != nullptr && !IsGraphics(); }
 
         //= STATIC - can cause pso generation =============================================
         RHI_Shader* shader_vertex                  = nullptr;
@@ -78,6 +78,7 @@ namespace Spartan
         uint32_t m_width                  = 0;
         uint32_t m_height                 = 0;
         uint64_t m_hash                   = 0;
+        uint64_t m_hash_dynamic           = 0;
         RHI_PipelineState* m_pso_previous = nullptr;
     };
 }

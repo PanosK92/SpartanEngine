@@ -168,7 +168,6 @@ namespace Spartan
         uint32_t m_timestamp_index                           = 0;
         RHI_Pipeline* m_pipeline                             = nullptr;
         bool m_render_pass_active                            = false;
-        bool m_pipeline_dirty                                = false;
         RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
         std::atomic<RHI_CommandListState> m_state            = RHI_CommandListState::Idle;
         RHI_Queue_Type m_queue_type                          = RHI_Queue_Type::Max;

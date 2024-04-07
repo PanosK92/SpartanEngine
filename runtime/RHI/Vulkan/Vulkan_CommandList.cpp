@@ -518,8 +518,8 @@ namespace Spartan
         SP_ASSERT_MSG(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource), &begin_info) == VK_SUCCESS, "Failed to begin command buffer");
 
         // update states
-        m_state          = RHI_CommandListState::Recording;
-        m_pipeline_dirty = true;
+        m_state = RHI_CommandListState::Recording;
+        m_pso   = RHI_PipelineState();
 
         // queries
         if (m_queue_type != RHI_Queue_Type::Copy)
@@ -573,20 +573,24 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        // get (or create) a pipeline which matches the requested pipeline state
-        RHI_Device::GetOrCreatePipeline(pso, m_pipeline, m_descriptor_layout_current);
-
-        uint64_t hash_previous = m_pso.GetHash();
-        m_pso                  = pso;
-
         // determine if the pipeline is dirty
-        if (!m_pipeline_dirty)
+        pso.Prepare();
+        if (m_pso.GetHash() == pso.GetHash())
         {
-            m_pipeline_dirty = hash_previous != m_pso.GetHash();
+            if (m_pso.GetHashDynamic() != pso.GetHashDynamic())
+            {
+                m_pso = pso; // copy over the pso it can carry some dynamic state (clear values, etc)
+                RenderPassBegin();
+            }
+
+            return;
         }
 
+        // get (or create) a pipeline which matches the requested pipeline state
+        m_pso = pso;
+        RHI_Device::GetOrCreatePipeline(m_pso, m_pipeline, m_descriptor_layout_current);
+
         // bind pipeline
-        if (m_pipeline_dirty)
         {
             // get vulkan pipeline object
             SP_ASSERT(m_pipeline != nullptr);
@@ -596,7 +600,6 @@ namespace Spartan
             // bind
             VkPipelineBindPoint pipeline_bind_point = m_pso.IsCompute() ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
             vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_rhi_resource), pipeline_bind_point, vk_pipeline);
-            m_pipeline_dirty = false;
 
             // profile
             Profiler::m_rhi_bindings_pipeline++;

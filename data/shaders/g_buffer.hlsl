@@ -182,18 +182,25 @@ PixelInputType main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
 {
     PixelInputType output;
 
-    // transform to world space
+    // transform position to world space
     float4 position_world          = transform_to_world_space(input, instance_id, buffer_pass.transform, buffer_frame.time);
     float4 position_world_previous = transform_to_world_space(input, instance_id, pass_get_transform_previous(), buffer_frame.time - buffer_frame.delta_time);
 
-    // transform to screen space
-    output.position_ss_current  = mul(position_world, buffer_frame.view_projection);
-    output.position_ss_previous = mul(position_world_previous, buffer_frame.view_projection_previous);
+    // transform world space position to screen space
+    //Surface surface;
+    //surface.flags = GetMaterial().flags;
+    //if (!surface.is_tessellated())
+    {
+        output.position_ss_current  = mul(position_world, buffer_frame.view_projection);
+        output.position_ss_previous = mul(position_world_previous, buffer_frame.view_projection_previous);
+        output.position             = output.position_ss_current;
+    }
 
-    output.position       = output.position_ss_current;
+    // write out some things
     output.position_world = position_world.xyz;
-    
-    // normal
+    output.uv             = input.uv;
+
+    // transform normals and tangents to world space
     #if INSTANCED
     float3 normal_transformed  = mul(input.normal, (float3x3)buffer_pass.transform);
     normal_transformed         = mul(normal_transformed, (float3x3)input.instance_transform);
@@ -206,26 +213,25 @@ PixelInputType main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     output.tangent_world = normalize(mul(input.tangent, (float3x3)buffer_pass.transform));
     #endif
 
-    // uv
-    output.uv = input.uv;
-    
     return output;
 }
 
-//= HULL SHADER ====================================================================================================================
-struct HS_CONSTANT_DATA_OUTPUT
+//= HULL SHADER =======================================================================================================================
+struct HsConstantDataOutput
 {
     float edges[3] : SV_TessFactor;
     float inside   : SV_InsideTessFactor;
 };
 
-HS_CONSTANT_DATA_OUTPUT PatchConstantFunction(InputPatch<PixelInputType, 3> inputPatch, uint patchId : SV_PrimitiveID)
+HsConstantDataOutput patch_constant_function(InputPatch<PixelInputType, 3> input_patch, uint patch_id : SV_PrimitiveID)
 {
-    HS_CONSTANT_DATA_OUTPUT output;
-    output.edges[0] = 4; 
+    HsConstantDataOutput output;
+
+    output.edges[0] = 4;
     output.edges[1] = 4;
     output.edges[2] = 4;
     output.inside   = 4;
+
     return output;
 }
 
@@ -233,18 +239,18 @@ HS_CONSTANT_DATA_OUTPUT PatchConstantFunction(InputPatch<PixelInputType, 3> inpu
 [partitioning("integer")]
 [outputtopology("triangle_cw")]
 [outputcontrolpoints(3)]
-[patchconstantfunc("PatchConstantFunction")]
+[patchconstantfunc("patch_constant_function")]
 PixelInputType main_hs(InputPatch<PixelInputType, 3> input_patch, uint cp_id : SV_OutputControlPointID, uint patch_id : SV_PrimitiveID)
 {
     return input_patch[cp_id];
 }
-//==================================================================================================================================
+//=====================================================================================================================================
 
-PixelInputType main_ds(HS_CONSTANT_DATA_OUTPUT input, float3 uvwCoord : SV_DomainLocation, const OutputPatch<PixelInputType, 3> patch)
+PixelInputType main_ds(HsConstantDataOutput input, float3 uvw_coord : SV_DomainLocation, const OutputPatch<PixelInputType, 3> patch)
 {
     PixelInputType output;
-    float3 position = uvwCoord.x * patch[0].position_world + uvwCoord.y * patch[1].position_world + uvwCoord.z * patch[2].position_world;
-    float2 uv       = uvwCoord.x * patch[0].uv + uvwCoord.y * patch[1].uv + uvwCoord.z * patch[2].uv;
+    float3 position = uvw_coord.x * patch[0].position_world + uvw_coord.y * patch[1].position_world + uvw_coord.z * patch[2].position_world;
+    float2 uv       = uvw_coord.x * patch[0].uv + uvw_coord.y * patch[1].uv + uvw_coord.z * patch[2].uv;
 
     // apply displacement
     float displacement           = GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), uv, 0.0f).r;
@@ -252,8 +258,12 @@ PixelInputType main_ds(HS_CONSTANT_DATA_OUTPUT input, float3 uvwCoord : SV_Domai
     output.position_world       += output.normal_world * displacement * displacement_strength;
 
     // output
-    output.position = mul(float4(output.position_world, 1.0), buffer_frame.view_projection);
-    output.uv       = uv;
+    // note: we don't account for tesselated and vertex proccess materials (say vegetation)
+    output.position_ss_current  = mul(float4(output.position_world, 1.0), buffer_frame.view_projection);
+    output.position_ss_previous = mul(output.position, buffer_frame.view_projection_previous);
+    output.position             = output.position_ss_current;
+    output.uv                   = uv;
+
     return output;
 }
 
@@ -272,11 +282,11 @@ PixelOutputType main_ps(PixelInputType input)
         // convert to ndc
         float2 position_ndc_current  = (input.position_ss_current.xy / input.position_ss_current.w);
         float2 position_ndc_previous = (input.position_ss_previous.xy / input.position_ss_previous.w);
-    
+
         // remove the ndc jitter
         position_ndc_current  -= buffer_frame.taa_jitter_current;
         position_ndc_previous -= buffer_frame.taa_jitter_previous;
-    
+
         // compute the velocity
         velocity = ndc_to_uv(position_ndc_current) - ndc_to_uv(position_ndc_previous);
     }
@@ -284,7 +294,7 @@ PixelOutputType main_ps(PixelInputType input)
     Material material = GetMaterial();
     Surface surface; 
     surface.flags = material.flags; // a surface can interpret the material flags
-    
+ 
     // uv
     float2 uv = input.uv;
     uv        = float2(uv.x * material.tiling.x + material.offset.x, uv.y * material.tiling.y + material.offset.y);
@@ -295,7 +305,7 @@ PixelOutputType main_ps(PixelInputType input)
     {
         alpha_mask = GET_TEXTURE(material_mask).Sample(samplers[sampler_point_wrap], uv).r;
     }
-    
+
     // albedo
     if (surface.has_texture_albedo())
     {
@@ -329,7 +339,7 @@ PixelOutputType main_ps(PixelInputType input)
             float height                    = GET_TEXTURE(material_height).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).r - 0.5f;
             uv                             += (camera_to_pixel_tangent.xy / camera_to_pixel_tangent.z) * height * scale;
         }
-        
+
         // normal mapping
         if (surface.has_texture_normal())
         {
@@ -359,7 +369,7 @@ PixelOutputType main_ps(PixelInputType input)
                 metalness *= sampling::smart(surface, material_metalness, uv, input.position_world, input.normal_world).r;
             }
         }
-        
+
         // occlusion
         if (surface.has_texture_occlusion())
         {
