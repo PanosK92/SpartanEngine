@@ -33,9 +33,10 @@ struct PixelIn
 PixelIn main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     PixelIn output;
-    
-    output.position = compute_screen_space_position(input, instance_id, buffer_pass.transform, buffer_frame.view_projection, buffer_frame.time, output.world_position);
-    output.uv       = input.uv;
+
+    output.world_position = transform_to_world_space(input, instance_id, buffer_pass.transform, buffer_frame.time).xyz;
+    output.position       = mul(float4(output.world_position, 1.0f), buffer_frame.view_projection);
+    output.uv             = input.uv;
     
     return output;
 }

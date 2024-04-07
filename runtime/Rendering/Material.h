@@ -111,6 +111,14 @@ namespace Spartan
         void SetProperty(const MaterialProperty property_type, const float value);
         void SetColor(const Color& color);
 
+        bool IsTessellated() const
+        {
+            return HasTexture(MaterialTexture::Height) ||
+            HasTexture(MaterialTexture::Height2) ||
+            HasTexture(MaterialTexture::Height3) ||
+            HasTexture(MaterialTexture::Height4);
+        }
+
         // index
         void SetIndex(const uint32_t index) { m_index = index; }
         uint32_t GetIndex() const           { return m_index; }

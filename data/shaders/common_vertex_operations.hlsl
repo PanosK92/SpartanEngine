@@ -19,40 +19,31 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// this function is shared between depth_prepass.hlsl and g_buffer.hlsl, this is because the calculations have to be exactly the same
+// this function is shared between depth_prepass.hlsl, g_buffer.hlsl and depth_light.hlsl, this is because the calculations have to be exactly the same
 
-float4 compute_screen_space_position(Vertex_PosUvNorTan input, uint instance_id, matrix transform, matrix view_projection, float time, inout float3 world_position)
+float4 transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matrix transform, float time)
 {
-    float4 position = input.position;
-    position.w      = 1.0f;
-
-    world_position = mul(position, transform).xyz;
+    float3 position = mul(input.position, transform).xyz;
 
     Surface surface;
     surface.flags = GetMaterial().flags;
     
     #if INSTANCED // implies vegetation
     matrix instance = input.instance_transform;
-    world_position  = mul(float4(world_position, 1.0f), instance).xyz;
+    position = mul(float4(position, 1.0f), instance).xyz;
     if (surface.vertex_animate_wind()) // vegetation
     {
         float3 animation_pivot = float3(instance._31, instance._32, instance._33); // position
-        world_position = vertex_processing::vegetation::apply_wind(instance_id, world_position, animation_pivot, time);
-        world_position = vertex_processing::vegetation::apply_player_bend(world_position, animation_pivot);
+        position = vertex_processing::vegetation::apply_wind(instance_id, position, animation_pivot, time);
+        position = vertex_processing::vegetation::apply_player_bend(position, animation_pivot);
     }
     #endif
 
     if (surface.vertex_animate_water())
     {
-        world_position = vertex_processing::water::apply_wave(world_position, time);
-        world_position = vertex_processing::water::apply_ripple(world_position, time);
+        position = vertex_processing::water::apply_wave(position, time);
+        position = vertex_processing::water::apply_ripple(position, time);
     }
 
-    return mul(float4(world_position, 1.0f), view_projection);
-}
-
-float4 compute_screen_space_position(Vertex_PosUvNorTan input, uint instance_id, matrix transform, matrix view_projection, float time)
-{
-    float3 position_world_dummy = 0.0f;
-    return compute_screen_space_position(input, instance_id, transform, view_projection, time, position_world_dummy);
+    return float4(position, 1.0f);
 }
