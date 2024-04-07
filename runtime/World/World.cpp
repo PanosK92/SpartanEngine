@@ -923,24 +923,28 @@ namespace Spartan
                 material->SetTexture(MaterialTexture::Normal,    "project\\terrain\\grass\\normal.png");
                 material->SetTexture(MaterialTexture::Roughness, "project\\terrain\\grass\\roughness.png");
                 material->SetTexture(MaterialTexture::Occlusion, "project\\terrain\\grass\\occlusion.png");
+                material->SetTexture(MaterialTexture::Height,    "project\\terrain\\grass\\height.png");
 
                 // texture slope
                 material->SetTexture(MaterialTexture::Color2,     "project\\terrain\\rock\\albedo.png");
                 material->SetTexture(MaterialTexture::Normal2,    "project\\terrain\\rock\\normal.png");
                 material->SetTexture(MaterialTexture::Roughness2, "project\\terrain\\rock\\roughness.png");
                 material->SetTexture(MaterialTexture::Occlusion2, "project\\terrain\\rock\\occlusion.png");
+                material->SetTexture(MaterialTexture::Height2,    "project\\terrain\\rock\\height.png");
 
                 // texture subterranean
                 material->SetTexture(MaterialTexture::Color3,     "project\\terrain\\sand\\albedo.png");
                 material->SetTexture(MaterialTexture::Normal3,    "project\\terrain\\sand\\normal.png");
                 material->SetTexture(MaterialTexture::Roughness3, "project\\terrain\\sand\\roughness.png");
                 material->SetTexture(MaterialTexture::Occlusion3, "project\\terrain\\sand\\occlusion.png");
+                material->SetTexture(MaterialTexture::Height3,    "project\\terrain\\sand\\height.png");
 
                 // texture snow
                 material->SetTexture(MaterialTexture::Color4,     "project\\terrain\\snow\\albedo.png");
                 material->SetTexture(MaterialTexture::Normal4,    "project\\terrain\\snow\\normal.png");
                 material->SetTexture(MaterialTexture::Roughness4, "project\\terrain\\snow\\roughness.png");
                 material->SetTexture(MaterialTexture::Occlusion4, "project\\terrain\\snow\\occlusion.png");
+                material->SetTexture(MaterialTexture::Height4,    "project\\terrain\\snow\\height.png");
             }
             
             // generate a height field
