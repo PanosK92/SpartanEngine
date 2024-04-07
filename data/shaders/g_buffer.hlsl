@@ -21,6 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
+static const float g_quality_distance_low = 500.0f;
+
 struct PixelInputType
 {
     float4 position             : SV_POSITION;
@@ -38,6 +40,12 @@ struct PixelOutputType
     float4 normal   : SV_Target1;
     float4 material : SV_Target2;
     float2 velocity : SV_Target3;
+};
+
+struct PatchTess
+{
+    float EdgeTess[3] : SV_TessFactor;
+    float InsideTess  : SV_InsideTessFactor;
 };
 
 struct sampling
@@ -204,7 +212,70 @@ PixelInputType main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     return output;
 }
 
-static const float g_quality_distance_low = 500.0f;
+// patch constant function that calculates tessellation levels
+PatchTess PatchConstantFunction(InputPatch<Vertex_PosUvNorTan, 3> inputPatch, uint patchId : SV_PrimitiveID)
+{
+    PatchTess pt;
+
+    const float tessellation_factor = 1.0f; // This could be dynamically adjusted based on camera distance
+   
+    pt.EdgeTess[0] = tessellation_factor;
+    pt.EdgeTess[1] = tessellation_factor;
+    pt.EdgeTess[2] = tessellation_factor;
+    pt.InsideTess  = tessellation_factor;
+    
+    return pt;
+}
+
+[domain("tri")]
+[partitioning("fractional_odd")]
+[outputtopology("triangle_cw")]
+[outputcontrolpoints(3)]
+[patchconstantfunc("PatchConstantFunction")]
+Vertex_PosUvNorTan main_hs(InputPatch<Vertex_PosUvNorTan, 3> patch, uint cpId : SV_OutputControlPointID)
+{
+    Vertex_PosUvNorTan output;
+    output.position = patch[cpId].position;
+    return output;
+}
+
+[domain("tri")]
+Vertex_PosUvNorTan main_ds(PatchTess patchTess, float3 barycentricCoord : SV_DomainLocation, const OutputPatch<Vertex_PosUvNorTan, 3> tri)
+{
+    Vertex_PosUvNorTan output;
+
+    // interpolate attributes based on barycentric coordinates
+    float3 position = barycentricCoord.x * tri[0].position +
+                      barycentricCoord.y * tri[1].position +
+                      barycentricCoord.z * tri[2].position;
+    float2 uv = barycentricCoord.x * tri[0].uv +
+                barycentricCoord.y * tri[1].uv +
+                barycentricCoord.z * tri[2].uv;
+
+    // sample the detail map for displacement
+    float displacement = GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), uv, 0.0f).r;
+    
+    // apply displacement
+    float bump_intensity = GetMaterial().height;
+    position.z += displacement * bump_intensity;
+
+    // transform position to screen space
+    output.position = mul(float4(position, 1.0), buffer_frame.view_projection);
+
+    // Assuming normals and tangents are provided per vertex and need to be interpolated like position
+    float3 normal = normalize(barycentricCoord.x * tri[0].normal +
+                              barycentricCoord.y * tri[1].normal +
+                              barycentricCoord.z * tri[2].normal);
+    float3 tangent = normalize(barycentricCoord.x * tri[0].tangent +
+                               barycentricCoord.y * tri[1].tangent +
+                               barycentricCoord.z * tri[2].tangent);
+
+    output.uv      = uv;
+    output.normal  = normal; // Ensure this is the world-space normal if required
+    output.tangent = tangent; // Ensure this is the world-space tangent if required
+
+    return output;
+}
 
 PixelOutputType main_ps(PixelInputType input)
 {

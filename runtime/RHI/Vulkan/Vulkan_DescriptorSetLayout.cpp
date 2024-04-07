@@ -92,6 +92,8 @@ namespace Spartan
             // stage flags
             VkShaderStageFlags stage_flags  = 0;
             stage_flags                    |= (descriptor.stage & RHI_Shader_Vertex)  ? VK_SHADER_STAGE_VERTEX_BIT   : 0;
+            stage_flags                    |= (descriptor.stage & RHI_Shader_Hull)    ? VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT : 0;
+            stage_flags                    |= (descriptor.stage & RHI_Shader_Domain)  ? VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT : 0;
             stage_flags                    |= (descriptor.stage & RHI_Shader_Pixel)   ? VK_SHADER_STAGE_FRAGMENT_BIT : 0;
             stage_flags                    |= (descriptor.stage & RHI_Shader_Compute) ? VK_SHADER_STAGE_COMPUTE_BIT  : 0;
 

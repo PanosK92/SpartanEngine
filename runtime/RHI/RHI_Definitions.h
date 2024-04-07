@@ -298,8 +298,10 @@ namespace Spartan
     {
         RHI_Shader_Unknown = 0,
         RHI_Shader_Vertex  = 1 << 0,
-        RHI_Shader_Pixel   = 1 << 1,
-        RHI_Shader_Compute = 1 << 2,
+        RHI_Shader_Hull    = 1 << 1,
+        RHI_Shader_Domain  = 1 << 2,
+        RHI_Shader_Pixel   = 1 << 3,
+        RHI_Shader_Compute = 1 << 4,
     };
 
     enum class RHI_Device_Resource

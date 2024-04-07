@@ -251,6 +251,8 @@ namespace Spartan
     const char* RHI_Shader::GetEntryPoint() const
     {
         if (m_shader_type == RHI_Shader_Vertex)  return "main_vs";
+        if (m_shader_type == RHI_Shader_Hull)    return "main_hs";
+        if (m_shader_type == RHI_Shader_Domain)  return "main_ds";
         if (m_shader_type == RHI_Shader_Pixel)   return "main_ps";
         if (m_shader_type == RHI_Shader_Compute) return "main_cs";
 
@@ -260,6 +262,8 @@ namespace Spartan
     const char* RHI_Shader::GetTargetProfile() const
     {
         if (m_shader_type == RHI_Shader_Vertex)  return "vs_6_8";
+        if (m_shader_type == RHI_Shader_Hull)    return "hs_6_8";
+        if (m_shader_type == RHI_Shader_Domain)  return "ds_6_8";
         if (m_shader_type == RHI_Shader_Pixel)   return "ps_6_8";
         if (m_shader_type == RHI_Shader_Compute) return "cs_6_8";
 

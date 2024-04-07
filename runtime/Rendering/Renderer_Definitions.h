@@ -164,6 +164,8 @@ namespace Spartan
     {
         gbuffer_v,
         gbuffer_instanced_v,
+        gbuffer_hs,
+        gbuffer_ds,
         gbuffer_p,
         depth_prepass_v,
         depth_prepass_instanced_v,
