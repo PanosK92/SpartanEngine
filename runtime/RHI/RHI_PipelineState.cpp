@@ -89,19 +89,29 @@ namespace Spartan
 
             // shaders
             {
-                if (pso.shader_compute)
-                {
-                    hash = rhi_hash_combine(hash, pso.shader_compute->GetHash());
-                }
-
                 if (pso.shader_vertex)
                 {
                     hash = rhi_hash_combine(hash, pso.shader_vertex->GetHash());
                 }
 
+                if (pso.shader_hull)
+                {
+                    hash = rhi_hash_combine(hash, pso.shader_hull->GetHash());
+                }
+
+                if (pso.shader_domain)
+                {
+                    hash = rhi_hash_combine(hash, pso.shader_domain->GetHash());
+                }
+
                 if (pso.shader_pixel)
                 {
                     hash = rhi_hash_combine(hash, pso.shader_pixel->GetHash());
+                }
+
+                if (pso.shader_compute)
+                {
+                    hash = rhi_hash_combine(hash, pso.shader_compute->GetHash());
                 }
             }
 

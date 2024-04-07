@@ -364,6 +364,12 @@ namespace Spartan
             shader(Renderer_Shader::gbuffer_instanced_v)->AddDefine("INSTANCED");
             shader(Renderer_Shader::gbuffer_instanced_v)->Compile(RHI_Shader_Vertex, shader_dir + "g_buffer.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
 
+            shader(Renderer_Shader::gbuffer_hs) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::gbuffer_hs)->Compile(RHI_Shader_Hull, shader_dir + "g_buffer.hlsl", async);
+
+            shader(Renderer_Shader::gbuffer_ds) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::gbuffer_ds)->Compile(RHI_Shader_Domain, shader_dir + "g_buffer.hlsl", async);
+
             shader(Renderer_Shader::gbuffer_p) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::gbuffer_p)->Compile(RHI_Shader_Pixel, shader_dir + "g_buffer.hlsl", async);
         }

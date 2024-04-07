@@ -45,6 +45,8 @@ namespace Spartan
 
         //= STATIC - can cause pso generation =============================================
         RHI_Shader* shader_vertex                  = nullptr;
+        RHI_Shader* shader_hull                    = nullptr;
+        RHI_Shader* shader_domain                  = nullptr;
         RHI_Shader* shader_pixel                   = nullptr;
         RHI_Shader* shader_compute                 = nullptr;
         RHI_RasterizerState* rasterizer_state      = nullptr;

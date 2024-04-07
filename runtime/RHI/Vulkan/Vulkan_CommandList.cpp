@@ -1282,18 +1282,30 @@ namespace Spartan
         SP_ASSERT(size <= RHI_Device::PropertyGetMaxPushConstantSize());
 
         uint32_t stages = 0;
-        if (m_pso.IsCompute())
-        {
-            stages = VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT;
-        }
-        else if (m_pso.IsGraphics())
-        {
-            stages = VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT;
 
-            if (m_pso.shader_pixel != nullptr)
-            {
-                stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT;
-            }
+        if (m_pso.shader_compute)
+        {
+            stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT;
+        }
+
+        if (m_pso.shader_vertex)
+        {
+            stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT;
+        }
+
+        if (m_pso.shader_hull)
+        {
+            stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+        }
+
+        if (m_pso.shader_domain)
+        {
+            stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+        }
+
+        if (m_pso.shader_pixel)
+        {
+            stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT;
         }
 
         vkCmdPushConstants(
