@@ -31,7 +31,7 @@ Pixel_PosUv main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
     uint index_array = (uint)pass_get_f3_value2().x;
     Light_ light     = buffer_lights[index_light];
     
-    output.position  = compute_screen_space_position(input, instance_id, buffer_pass.transform, light.view_projection[index_array], buffer_frame.time);
+    output.position  = mul(transform_to_world_space(input, instance_id, buffer_pass.transform, buffer_frame.time), light.view_projection[index_array]);
     output.uv        = input.uv;
 
     return output;

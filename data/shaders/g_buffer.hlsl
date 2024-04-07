@@ -42,12 +42,6 @@ struct PixelOutputType
     float2 velocity : SV_Target3;
 };
 
-struct PatchTess
-{
-    float EdgeTess[3] : SV_TessFactor;
-    float InsideTess  : SV_InsideTessFactor;
-};
-
 struct sampling
 {
     static float4 interleave(uint texture_index_1, uint texture_index_2, float2 uv)
@@ -188,22 +182,28 @@ PixelInputType main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
 {
     PixelInputType output;
 
-    // position
-    output.position             = compute_screen_space_position(input, instance_id, buffer_pass.transform, buffer_frame.view_projection, buffer_frame.time);
-    output.position_ss_current  = output.position;
-    output.position_ss_previous = compute_screen_space_position(input, instance_id, pass_get_transform_previous(), buffer_frame.view_projection_previous, buffer_frame.time - buffer_frame.delta_time, output.position_world);
+    // transform to world space
+    float4 position_world          = transform_to_world_space(input, instance_id, buffer_pass.transform, buffer_frame.time);
+    float4 position_world_previous = transform_to_world_space(input, instance_id, pass_get_transform_previous(), buffer_frame.time - buffer_frame.delta_time);
+
+    // transform to screen space
+    output.position_ss_current  = mul(position_world, buffer_frame.view_projection);
+    output.position_ss_previous = mul(position_world_previous, buffer_frame.view_projection_previous);
+
+    output.position       = output.position_ss_current;
+    output.position_world = position_world.xyz;
     
     // normal
     #if INSTANCED
     float3 normal_transformed  = mul(input.normal, (float3x3)buffer_pass.transform);
     normal_transformed         = mul(normal_transformed, (float3x3)input.instance_transform);
-    output.normal_world        = normalize(normal_transformed);  
+    output.normal_world        = normalize(normal_transformed);
     float3 tangent_transformed = mul(input.tangent, (float3x3)buffer_pass.transform);
     tangent_transformed        = mul(tangent_transformed, (float3x3)input.instance_transform);
-    output.tangent_world       = normalize(tangent_transformed);   
+    output.tangent_world       = normalize(tangent_transformed);
     #else  
     output.normal_world  = normalize(mul(input.normal, (float3x3)buffer_pass.transform));
-    output.tangent_world = normalize(mul(input.tangent, (float3x3)buffer_pass.transform));  
+    output.tangent_world = normalize(mul(input.tangent, (float3x3)buffer_pass.transform));
     #endif
 
     // uv
@@ -212,74 +212,53 @@ PixelInputType main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     return output;
 }
 
-// patch constant function that calculates tessellation levels
-PatchTess PatchConstantFunction(InputPatch<Vertex_PosUvNorTan, 3> inputPatch, uint patchId : SV_PrimitiveID)
+//= HULL SHADER ====================================================================================================================
+struct HS_CONSTANT_DATA_OUTPUT
 {
-    PatchTess pt;
+    float edges[3] : SV_TessFactor;
+    float inside   : SV_InsideTessFactor;
+};
 
-    const float tessellation_factor = 1.0f; // This could be dynamically adjusted based on camera distance
-   
-    pt.EdgeTess[0] = tessellation_factor;
-    pt.EdgeTess[1] = tessellation_factor;
-    pt.EdgeTess[2] = tessellation_factor;
-    pt.InsideTess  = tessellation_factor;
-    
-    return pt;
-}
-
-[domain("tri")]
-[partitioning("fractional_odd")]
-[outputtopology("triangle_cw")]
-[outputcontrolpoints(3)]
-[patchconstantfunc("PatchConstantFunction")]
-Vertex_PosUvNorTan main_hs(InputPatch<Vertex_PosUvNorTan, 3> patch, uint cpId : SV_OutputControlPointID)
+HS_CONSTANT_DATA_OUTPUT PatchConstantFunction(InputPatch<PixelInputType, 3> inputPatch, uint patchId : SV_PrimitiveID)
 {
-    Vertex_PosUvNorTan output;
-    output.position = patch[cpId].position;
+    HS_CONSTANT_DATA_OUTPUT output;
+    output.edges[0] = 4; 
+    output.edges[1] = 4;
+    output.edges[2] = 4;
+    output.inside   = 4;
     return output;
 }
 
 [domain("tri")]
-Vertex_PosUvNorTan main_ds(PatchTess patchTess, float3 barycentricCoord : SV_DomainLocation, const OutputPatch<Vertex_PosUvNorTan, 3> tri)
+[partitioning("integer")]
+[outputtopology("triangle_cw")]
+[outputcontrolpoints(3)]
+[patchconstantfunc("PatchConstantFunction")]
+PixelInputType main_hs(InputPatch<PixelInputType, 3> input_patch, uint cp_id : SV_OutputControlPointID, uint patch_id : SV_PrimitiveID)
 {
-    Vertex_PosUvNorTan output;
+    return input_patch[cp_id];
+}
+//==================================================================================================================================
 
-    // interpolate attributes based on barycentric coordinates
-    float3 position = barycentricCoord.x * tri[0].position +
-                      barycentricCoord.y * tri[1].position +
-                      barycentricCoord.z * tri[2].position;
-    float2 uv = barycentricCoord.x * tri[0].uv +
-                barycentricCoord.y * tri[1].uv +
-                barycentricCoord.z * tri[2].uv;
+PixelInputType main_ds(HS_CONSTANT_DATA_OUTPUT input, float3 uvwCoord : SV_DomainLocation, const OutputPatch<PixelInputType, 3> patch)
+{
+    PixelInputType output;
+    float3 position = uvwCoord.x * patch[0].position_world + uvwCoord.y * patch[1].position_world + uvwCoord.z * patch[2].position_world;
+    float2 uv       = uvwCoord.x * patch[0].uv + uvwCoord.y * patch[1].uv + uvwCoord.z * patch[2].uv;
 
-    // sample the detail map for displacement
-    float displacement = GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), uv, 0.0f).r;
-    
     // apply displacement
-    float bump_intensity = GetMaterial().height;
-    position.z += displacement * bump_intensity;
+    float displacement           = GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), uv, 0.0f).r;
+    float displacement_strength  = 10.0f;
+    output.position_world       += output.normal_world * displacement * displacement_strength;
 
-    // transform position to screen space
-    output.position = mul(float4(position, 1.0), buffer_frame.view_projection);
-
-    // Assuming normals and tangents are provided per vertex and need to be interpolated like position
-    float3 normal = normalize(barycentricCoord.x * tri[0].normal +
-                              barycentricCoord.y * tri[1].normal +
-                              barycentricCoord.z * tri[2].normal);
-    float3 tangent = normalize(barycentricCoord.x * tri[0].tangent +
-                               barycentricCoord.y * tri[1].tangent +
-                               barycentricCoord.z * tri[2].tangent);
-
-    output.uv      = uv;
-    output.normal  = normal; // Ensure this is the world-space normal if required
-    output.tangent = tangent; // Ensure this is the world-space tangent if required
-
+    // output
+    output.position = mul(float4(output.position_world, 1.0), buffer_frame.view_projection);
+    output.uv       = uv;
     return output;
 }
 
 PixelOutputType main_ps(PixelInputType input)
 {
-    // initial g-buffer values
     float4 albedo   = GetMaterial().color;
     float3 normal   = input.normal_world.xyz;
     float roughness = GetMaterial().roughness;
