@@ -216,21 +216,23 @@ PixelInputType main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     return output;
 }
 
-//= HULL SHADER =======================================================================================================================
+//= HULL SHADER ================================================================================================
+#define MAX_POINTS 3
+
 struct HsConstantDataOutput
 {
     float edges[3] : SV_TessFactor;
     float inside   : SV_InsideTessFactor;
 };
 
-HsConstantDataOutput patch_constant_function(InputPatch<PixelInputType, 3> input_patch, uint patch_id : SV_PrimitiveID)
+HsConstantDataOutput patch_constant_function(InputPatch<PixelInputType, MAX_POINTS> input_patch)
 {
     HsConstantDataOutput output;
 
-    output.edges[0] = 4;
-    output.edges[1] = 4;
-    output.edges[2] = 4;
-    output.inside   = 4;
+    output.edges[0] = 4.0f;
+    output.edges[1] = 4.0f;
+    output.edges[2] = 4.0f;
+    output.inside   = 4.0f;
 
     return output;
 }
@@ -239,35 +241,35 @@ HsConstantDataOutput patch_constant_function(InputPatch<PixelInputType, 3> input
 [partitioning("fractional_odd")]
 [outputtopology("triangle_cw")]
 [patchconstantfunc("patch_constant_function")]
-[outputcontrolpoints(3)]
-[maxtessfactor(15.0f)]
-PixelInputType main_hs(InputPatch<PixelInputType, 3> input_patch, uint cp_id : SV_OutputControlPointID, uint patch_id : SV_PrimitiveID)
+[outputcontrolpoints(MAX_POINTS)]
+[maxtessfactor(15)]
+PixelInputType main_hs(InputPatch<PixelInputType, MAX_POINTS> input_patch, uint cp_id : SV_OutputControlPointID)
 {
     return input_patch[cp_id];
 }
-//=====================================================================================================================================
+//==============================================================================================================
 
+[domain("tri")]
 PixelInputType main_ds(HsConstantDataOutput input, float3 uvw_coord : SV_DomainLocation, const OutputPatch<PixelInputType, 3> patch)
 {
     PixelInputType output;
-    float3 position = uvw_coord.x * patch[0].position + uvw_coord.y * patch[1].position + uvw_coord.z * patch[2].position;
-    float2 uv       = uvw_coord.x * patch[0].uv + uvw_coord.y * patch[1].uv + uvw_coord.z * patch[2].uv;
+    output.position = uvw_coord.x * patch[0].position + uvw_coord.y * patch[1].position + uvw_coord.z * patch[2].position;
+    output.uv       = uvw_coord.x * patch[0].uv + uvw_coord.y * patch[1].uv + uvw_coord.z * patch[2].uv;
+    output.normal   = normalize(uvw_coord.x * patch[0].normal + uvw_coord.y * patch[1].normal + uvw_coord.z * patch[2].normal);
+    output.tangent  = normalize(uvw_coord.x * patch[0].tangent + uvw_coord.y * patch[1].tangent + uvw_coord.z * patch[2].tangent);
 
     // apply displacement
-    float displacement           = GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), uv, 0.0f).r;
-    float displacement_strength  = 10.0f;
+    float displacement           = GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), output.uv, 0.0f).r;
+    float displacement_strength  = GetMaterial().height * 10.0f;
     output.position             += output.normal * displacement * displacement_strength;
 
-    // output
-    // note: we don't account for tesselated and vertex proccess materials (say vegetation)
+    // pass through unchanged attributes
     output.position_ss_current  = mul(float4(output.position, 1.0), buffer_frame.view_projection);
     output.position_ss_previous = mul(float4(output.position, 1.0), buffer_frame.view_projection_previous);
     output.position_clip        = output.position_ss_current;
-    output.uv                   = uv;
 
     return output;
 }
-
 PixelOutputType main_ps(PixelInputType input)
 {
     float4 albedo   = GetMaterial().color;

@@ -293,14 +293,21 @@ namespace Spartan
             vertex_input_state.pVertexAttributeDescriptions    = vertex_attribute_descs.data();
         }
         
-        // input assembly
+        // input assembly state
         VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {};
         {
             input_assembly_state.sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
             input_assembly_state.topology               = vulkan_primitive_topology[static_cast<uint32_t>(m_state.primitive_toplogy)];
             input_assembly_state.primitiveRestartEnable = VK_FALSE;
         }
-        
+
+        // tessellation state
+        VkPipelineTessellationStateCreateInfo tesselation_state = {};
+        {
+            tesselation_state.sType              = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+            tesselation_state.patchControlPoints = 3;
+        }
+
         // rasterizer state
         VkPipelineRasterizationStateCreateInfo rasterizer_state = {};
         if (m_state.rasterizer_state)
@@ -457,6 +464,7 @@ namespace Spartan
                 pipeline_info.pStages                      = shader_stages.data();
                 pipeline_info.pVertexInputState            = &vertex_input_state;
                 pipeline_info.pInputAssemblyState          = &input_assembly_state;
+                pipeline_info.pTessellationState           = m_state.HasTessellation() ? &tesselation_state : nullptr;
                 pipeline_info.pDynamicState                = &dynamic_state;
                 pipeline_info.pViewportState               = &viewport_state;
                 pipeline_info.pRasterizationState          = &rasterizer_state;

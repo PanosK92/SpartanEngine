@@ -44,8 +44,11 @@ namespace Spartan
         {
             string type_str = "unknown";
             type_str = (shader_stage & RHI_Shader_Vertex)  ? "vertex"  : type_str;
+            type_str = (shader_stage & RHI_Shader_Hull)    ? "hull"    : type_str;
+            type_str = (shader_stage & RHI_Shader_Domain)  ? "domain"  : type_str;
             type_str = (shader_stage & RHI_Shader_Pixel)   ? "pixel"   : type_str;
             type_str = (shader_stage & RHI_Shader_Compute) ? "compute" : type_str;
+
 
             string defines_str;
             for (const auto& define : defines)
