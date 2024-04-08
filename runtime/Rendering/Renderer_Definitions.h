@@ -162,10 +162,10 @@ namespace Spartan
 
     enum class Renderer_Shader : uint8_t
     {
+        tessellation_h,
+        tessellation_d,
         gbuffer_v,
         gbuffer_v_instanced,
-        gbuffer_h,
-        gbuffer_d,
         gbuffer_p,
         depth_prepass_v,
         depth_prepass_instanced_v,

@@ -19,8 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// this function is shared between depth_prepass.hlsl, g_buffer.hlsl and depth_light.hlsl, this is because the calculations have to be exactly the same
+//= INCLUDES =========
+#include "common.hlsl"
+//====================
 
+// this function is shared between depth_prepass.hlsl, g_buffer.hlsl and depth_light.hlsl
+// this is because the calculations have to be exactly the same and therefore produce identical depth values
 float4 transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matrix transform, float time)
 {
     float3 position = mul(input.position, transform).xyz;
@@ -46,4 +50,60 @@ float4 transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matr
     }
 
     return float4(position, 1.0f);
+}
+
+// tessellation
+
+#define MAX_POINTS 3
+
+struct HsConstantDataOutput
+{
+    float edges[3] : SV_TessFactor;
+    float inside   : SV_InsideTessFactor;
+};
+
+HsConstantDataOutput patch_constant_function(InputPatch<gbuffer_vertex, MAX_POINTS> input_patch)
+{
+    HsConstantDataOutput output;
+
+    output.edges[0] = 4.0f;
+    output.edges[1] = 4.0f;
+    output.edges[2] = 4.0f;
+    output.inside   = 4.0f;
+
+    return output;
+}
+
+[domain("tri")]
+[partitioning("fractional_even")]
+[outputtopology("triangle_cw")]
+[patchconstantfunc("patch_constant_function")]
+[outputcontrolpoints(MAX_POINTS)]
+[maxtessfactor(15)]
+gbuffer_vertex main_hs(InputPatch<gbuffer_vertex, MAX_POINTS> input_patch, uint cp_id : SV_OutputControlPointID)
+{
+    return input_patch[cp_id];
+}
+
+[domain("tri")]
+gbuffer_vertex main_ds(HsConstantDataOutput input, float3 uvw_coord : SV_DomainLocation, const OutputPatch<gbuffer_vertex, 3> patch)
+{
+    gbuffer_vertex output;
+
+    output.position = uvw_coord.x * patch[0].position + uvw_coord.y * patch[1].position + uvw_coord.z * patch[2].position;
+    output.uv       = uvw_coord.x * patch[0].uv + uvw_coord.y * patch[1].uv + uvw_coord.z * patch[2].uv;
+    output.normal   = normalize(uvw_coord.x * patch[0].normal + uvw_coord.y * patch[1].normal + uvw_coord.z * patch[2].normal);
+    output.tangent  = normalize(uvw_coord.x * patch[0].tangent + uvw_coord.y * patch[1].tangent + uvw_coord.z * patch[2].tangent);
+
+    // apply displacement
+    float displacement           = GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), output.uv, 0.0f).r;
+    float displacement_strength  = GetMaterial().height * 10.0f;
+    output.position             += output.normal * displacement * displacement_strength;
+
+    // pass through unchanged attributes
+    output.position_ss_current  = mul(float4(output.position, 1.0), buffer_frame.view_projection);
+    output.position_ss_previous = mul(float4(output.position, 1.0), buffer_frame.view_projection_previous);
+    output.position_clip        = output.position_ss_current;
+
+    return output;
 }
