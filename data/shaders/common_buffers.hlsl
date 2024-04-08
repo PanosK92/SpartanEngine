@@ -94,7 +94,8 @@ bool pass_is_transparent()
     // extract the transparency flag by shifting right 24 bits and then check if the bit is set
     return (combined_value >> 24) & 1;
 }
-bool pass_is_opaque()  { return !pass_is_transparent(); }
+
+bool pass_is_opaque() { return !pass_is_transparent(); }
 
 uint pass_get_material_index()
 {
