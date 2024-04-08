@@ -394,8 +394,9 @@ namespace Spartan
             {
                 array<uint64_t, rhi_max_queries_occlusion> data;
                 unordered_map<uint64_t, uint32_t> id_to_index;
-                uint32_t index        = 0;
-                uint32_t index_active = 0;
+                uint32_t index              = 0;
+                uint32_t index_active       = 0;
+                bool occlusion_query_active = false;
 
                 void update(void* query_pool, const uint32_t query_count)
                 {
@@ -589,6 +590,9 @@ namespace Spartan
         // get (or create) a pipeline which matches the requested pipeline state
         m_pso = pso;
         RHI_Device::GetOrCreatePipeline(m_pso, m_pipeline, m_descriptor_layout_current);
+
+        // (in case one is active)
+        EndOcclusionQuery();
 
         // bind pipeline
         {
@@ -1525,15 +1529,22 @@ namespace Spartan
             queries::occlusion::index_active,
             0
         );
+
+        queries::occlusion::occlusion_query_active = true;
     }
 
     void RHI_CommandList::EndOcclusionQuery()
     {
+        if (!queries::occlusion::occlusion_query_active)
+            return;
+
         vkCmdEndQuery(
             static_cast<VkCommandBuffer>(m_rhi_resource),
             static_cast<VkQueryPool>(m_rhi_query_pool_occlusion),
             queries::occlusion::index_active
         );
+
+        queries::occlusion::occlusion_query_active = false;
     }
 
     bool RHI_CommandList::GetOcclusionQueryResult(const uint64_t entity_id)

@@ -474,6 +474,29 @@ namespace Spartan
         unordered_map<uint64_t, shared_ptr<RHI_Pipeline>> pipelines;
         unordered_map<uint64_t, vector<RHI_Descriptor>> descriptor_cache;
 
+        void merge_descriptors(vector<RHI_Descriptor>& base_descriptors, const std::vector<RHI_Descriptor>& additional_descriptors)
+        {
+            for (const RHI_Descriptor& descriptor_additional : additional_descriptors)
+            {
+                bool updated_existing = false;
+                for (RHI_Descriptor& descriptor_base : base_descriptors)
+                {
+                    if (descriptor_base.slot == descriptor_additional.slot)
+                    {
+                        descriptor_base.stage |= descriptor_additional.stage;
+                        updated_existing = true;
+                        break;
+                    }
+                }
+
+                // if no updating took place, this is an additional shader only resource, add it
+                if (!updated_existing)
+                {
+                    base_descriptors.emplace_back(descriptor_additional);
+                }
+            }
+        }
+
         void get_descriptors_from_pipeline_state(RHI_PipelineState& pipeline_state, vector<RHI_Descriptor>& descriptors)
         {
             pipeline_state.Prepare();
@@ -503,31 +526,22 @@ namespace Spartan
                 SP_ASSERT(pipeline_state.shader_vertex->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
                 descriptors = pipeline_state.shader_vertex->GetDescriptors();
 
-                // if there is a pixel shader, merge its resources into our map as well
                 if (pipeline_state.shader_pixel)
                 {
                     SP_ASSERT(pipeline_state.shader_pixel->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
+                    merge_descriptors(descriptors, pipeline_state.shader_pixel->GetDescriptors());
+                }
 
-                    for (const RHI_Descriptor& descriptor_pixel : pipeline_state.shader_pixel->GetDescriptors())
-                    {
-                        // assume that the descriptor has been created in the vertex shader and only try to update its shader stage
-                        bool updated_existing = false;
-                        for (RHI_Descriptor& descriptor_vertex : descriptors)
-                        {
-                            if (descriptor_vertex.slot == descriptor_pixel.slot)
-                            {
-                                descriptor_vertex.stage |= descriptor_pixel.stage;
-                                updated_existing = true;
-                                break;
-                            }
-                        }
+                if (pipeline_state.shader_hull)
+                {
+                    SP_ASSERT(pipeline_state.shader_hull->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
+                    merge_descriptors(descriptors, pipeline_state.shader_hull->GetDescriptors());
+                }
 
-                        // if no updating took place, this is a pixel shader only resource, add it
-                        if (!updated_existing)
-                        {
-                            descriptors.emplace_back(descriptor_pixel);
-                        }
-                    }
+                if (pipeline_state.shader_domain)
+                {
+                    SP_ASSERT(pipeline_state.shader_domain->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
+                    merge_descriptors(descriptors, pipeline_state.shader_domain->GetDescriptors());
                 }
             }
 
@@ -588,7 +602,7 @@ namespace Spartan
                   layout_binding.binding                      = binding;
                   layout_binding.descriptorType               = resource_type == RHI_Device_Resource::textures_material ? VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLER;
                   layout_binding.descriptorCount              = rhi_max_array_size;
-                  layout_binding.stageFlags                   = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
+                  layout_binding.stageFlags                   = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
                   layout_binding.pImmutableSamplers           = nullptr;
 
                   VkDescriptorBindingFlags binding_flags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;

@@ -23,25 +23,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-// this function is shared between depth_prepass.hlsl, g_buffer.hlsl and depth_light.hlsl
+// these functions are shared between depth_prepass.hlsl, g_buffer.hlsl and depth_light.hlsl
 // this is because the calculations have to be exactly the same and therefore produce identical depth values
-float4 transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matrix transform, float time)
-{
-    float3 position = mul(input.position, transform).xyz;
+// this is the most complicated shader as all of the engine geomtry passes through here
 
+float3 apply_animations(float3 position, float3 animation_pivot, uint instance_id, float time)
+{
     Surface surface;
     surface.flags = GetMaterial().flags;
-    
-    #if INSTANCED // implies vegetation
-    matrix instance = input.instance_transform;
-    position = mul(float4(position, 1.0f), instance).xyz;
-    if (surface.vertex_animate_wind()) // vegetation
+
+    if(surface.vertex_animate_wind())
     {
-        float3 animation_pivot = float3(instance._31, instance._32, instance._33); // position
         position = vertex_processing::vegetation::apply_wind(instance_id, position, animation_pivot, time);
         position = vertex_processing::vegetation::apply_player_bend(position, animation_pivot);
     }
-    #endif
 
     if (surface.vertex_animate_water())
     {
@@ -49,7 +44,71 @@ float4 transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matr
         position = vertex_processing::water::apply_ripple(position, time);
     }
 
-    return float4(position, 1.0f);
+    return position;
+}
+
+#ifdef TRANSFORM_LIGHT
+#define TRANSFORM_POSITION_ONLY
+#endif
+
+#ifndef TRANSFORM_LIGHT
+void transform_to_world_space(inout gbuffer_vertex vertex, Vertex_PosUvNorTan input, uint instance_id, matrix transform)
+#else
+float3 transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matrix transform)
+#endif
+{
+    // transform position
+    float3 position          = mul(input.position, transform).xyz;
+    float3 position_previous = 0.0f;
+#if INSTANCED
+    position = mul(float4(position, 1.0f), input.instance_transform).xyz;
+#endif
+#ifdef TRANSFORM_COMPUTE_PREVIOUS_POSITION
+    position_previous     = mul(input.position, pass_get_transform_previous()).xyz;
+    #if INSTANCED
+        position_previous = mul(float4(position_previous, 1.0f), input.instance_transform).xyz;
+    #endif
+#endif
+    
+    // transform normals and tangents
+#ifndef TRANSFORM_POSITION_ONLY
+#if INSTANCED
+    float3 normal_transformed  = mul(input.normal, (float3x3)transform);
+    normal_transformed         = mul(normal_transformed, (float3x3)input.instance_transform);
+    vertex.normal              = normalize(normal_transformed);
+    float3 tangent_transformed = mul(input.tangent, (float3x3)transform);
+    tangent_transformed        = mul(tangent_transformed, (float3x3)input.instance_transform);
+    vertex.tangent             = normalize(tangent_transformed);
+#else
+    vertex.normal  = normalize(mul(input.normal, (float3x3)transform));
+    vertex.tangent = normalize(mul(input.tangent, (float3x3)transform));
+#endif
+#endif
+
+    // animations
+    matrix pivot  = buffer_pass.transform;
+#if INSTANCED
+    pivot        *= input.instance_transform;
+#endif
+    float3 animation_pivot = float3(pivot._31, pivot._32, pivot._33); // position
+    position               = apply_animations(position, animation_pivot, instance_id, buffer_frame.time);
+#ifdef TRANSFORM_COMPUTE_PREVIOUS_POSITION
+    position_previous      = apply_animations(position_previous, animation_pivot, instance_id, buffer_frame.time - buffer_frame.delta_time);
+#endif
+
+#ifndef TRANSFORM_LIGHT
+    vertex.position          = position;
+    vertex.position_previous = position_previous;
+#else
+    return position;
+#endif
+}
+
+void transform_to_clip_space(inout gbuffer_vertex vertex)
+{
+    vertex.position_ss_current  = mul(float4(vertex.position, 1.0f), buffer_frame.view_projection);
+    vertex.position_ss_previous = mul(float4(vertex.position_previous, 1.0f), buffer_frame.view_projection_previous);
+    vertex.position_clip        = vertex.position_ss_current;
 }
 
 // tessellation
@@ -97,7 +156,7 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 uvw_coord : SV_DomainL
 
     // apply displacement
     float displacement           = GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), output.uv, 0.0f).r;
-    float displacement_strength  = GetMaterial().height * 10.0f;
+    float displacement_strength  = GetMaterial().height;
     output.position             += output.normal * displacement * displacement_strength;
 
     // pass through unchanged attributes

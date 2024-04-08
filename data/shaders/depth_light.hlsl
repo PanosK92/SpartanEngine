@@ -19,6 +19,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#define TRANSFORM_LIGHT
+
 //= INCLUDES =========
 #include "common.hlsl"
 //====================
@@ -26,14 +28,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 Pixel_PosUv main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     Pixel_PosUv output;
-    
+    output.uv = input.uv;
+
     uint index_light = (uint)pass_get_f3_value2().y;
     uint index_array = (uint)pass_get_f3_value2().x;
     Light_ light     = buffer_lights[index_light];
-    
-    output.position  = mul(transform_to_world_space(input, instance_id, buffer_pass.transform, buffer_frame.time), light.view_projection[index_array]);
-    output.uv        = input.uv;
 
+    float3 position_world = transform_to_world_space(input, instance_id, buffer_pass.transform);
+    output.position = mul(float4(position_world, 1.0f), light.view_projection[index_array]);
+    
     return output;
 }
 

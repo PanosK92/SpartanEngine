@@ -68,7 +68,7 @@ namespace Spartan
                 if (descriptor.type == RHI_Descriptor_Type::PushConstantBuffer)
                 {
                     SP_ASSERT(descriptor.struct_size <= RHI_Device::PropertyGetMaxPushConstantSize());
-
+                    
                     VkPushConstantRange push_constant_range  = {};
                     push_constant_range.offset               = 0;
                     push_constant_range.size                 = descriptor.struct_size;
@@ -297,7 +297,7 @@ namespace Spartan
         VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {};
         {
             input_assembly_state.sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-            input_assembly_state.topology               = vulkan_primitive_topology[static_cast<uint32_t>(m_state.primitive_toplogy)];
+            input_assembly_state.topology               = m_state.HasTessellation() ? VK_PRIMITIVE_TOPOLOGY_PATCH_LIST : vulkan_primitive_topology[static_cast<uint32_t>(m_state.primitive_toplogy)];
             input_assembly_state.primitiveRestartEnable = VK_FALSE;
         }
 

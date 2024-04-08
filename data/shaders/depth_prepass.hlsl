@@ -19,6 +19,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#define TRANSFORM_POSITION_ONLY
+
 //= INCLUDES =========
 #include "common.hlsl"
 //====================
@@ -26,11 +28,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     gbuffer_vertex vertex;
+    vertex.uv = input.uv;
 
-    vertex.position       = transform_to_world_space(input, instance_id, buffer_pass.transform, buffer_frame.time).xyz;
-    vertex.position_clip  = mul(float4(vertex.position, 1.0f), buffer_frame.view_projection);
-    vertex.uv             = input.uv;
+    transform_to_world_space(vertex, input, instance_id, buffer_pass.transform);
     
+    //Surface surface;
+    //surface.flags = GetMaterial().flags;
+    //if (!surface.is_tessellated())
+    {
+        transform_to_clip_space(vertex);
+    }
+
     return vertex;
 }
 

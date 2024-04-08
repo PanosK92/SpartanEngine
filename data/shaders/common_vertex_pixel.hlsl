@@ -63,6 +63,7 @@ struct gbuffer_vertex
     float3 normal               : WORLD_NORMAL;
     float3 tangent              : WORLD_TANGENT;
     float3 position             : WORLD_POS;
+    float3 position_previous    : WORLD_POS_PREVIOUS;
     float4 position_ss_current  : SCREEN_POS;
     float4 position_ss_previous : SCREEN_POS_PREVIOUS;
 };
