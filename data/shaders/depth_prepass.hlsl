@@ -23,35 +23,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-struct PixelIn
+gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
-    float4 position       : SV_POSITION;
-    float2 uv             : TEXCOORD;
-    float3 world_position : TEXCOORD1;
-};
+    gbuffer_vertex vertex;
 
-PixelIn main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
-{
-    PixelIn output;
-
-    output.world_position = transform_to_world_space(input, instance_id, buffer_pass.transform, buffer_frame.time).xyz;
-    output.position       = mul(float4(output.world_position, 1.0f), buffer_frame.view_projection);
-    output.uv             = input.uv;
+    vertex.position       = transform_to_world_space(input, instance_id, buffer_pass.transform, buffer_frame.time).xyz;
+    vertex.position_clip  = mul(float4(vertex.position, 1.0f), buffer_frame.view_projection);
+    vertex.uv             = input.uv;
     
-    return output;
+    return vertex;
 }
 
 // alpha test
-void main_ps(PixelIn input)
+void main_ps(gbuffer_vertex vertex)
 {
     const float3 f3_value     = pass_get_f3_value();
     const bool has_alpha_mask = f3_value.x == 1.0f;
     const bool has_albedo     = f3_value.y == 1.0f;
     const float alpha         = f3_value.z;
 
-    float alpha_threshold = get_alpha_threshold(input.world_position);
-    bool mask_alpha       = has_alpha_mask && GET_TEXTURE(material_mask).Sample(samplers[sampler_point_wrap], input.uv).r <= alpha_threshold;
-    bool mask_albedo      = alpha == 1.0f && has_albedo && GET_TEXTURE(material_albedo).Sample(samplers[sampler_anisotropic_wrap], input.uv).a <= alpha_threshold;
+    float alpha_threshold = get_alpha_threshold(vertex.position);
+    bool mask_alpha       = has_alpha_mask && GET_TEXTURE(material_mask).Sample(samplers[sampler_point_wrap], vertex.uv).r <= alpha_threshold;
+    bool mask_albedo      = alpha == 1.0f && has_albedo && GET_TEXTURE(material_albedo).Sample(samplers[sampler_anisotropic_wrap], vertex.uv).a <= alpha_threshold;
     
     if (mask_alpha || mask_albedo)
         discard;

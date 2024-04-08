@@ -627,6 +627,8 @@ namespace Spartan
         // acquire resources
         RHI_Shader* shader_v           = GetShader(Renderer_Shader::depth_prepass_v).get();
         RHI_Shader* shader_instanced_v = GetShader(Renderer_Shader::depth_prepass_instanced_v).get();
+        RHI_Shader* shader_h           = GetShader(Renderer_Shader::tessellation_d).get();
+        RHI_Shader* shader_d           = GetShader(Renderer_Shader::tessellation_h).get();
         RHI_Shader* shader_p           = GetShader(Renderer_Shader::depth_prepass_alpha_test_p).get();
         RHI_Texture* tex_depth         = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get();
         RHI_Texture* tex_depth_opaque  = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque).get();
@@ -645,7 +647,7 @@ namespace Spartan
             cmd_list->ClearRenderTarget(GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(), rhi_color_dont_care, 0.0f);
         }
 
-        auto pass = [cmd_list, shader_v, shader_instanced_v, shader_p, tex_depth, tex_depth_opaque, tex_depth_output, vrs](bool is_transparent_pass)
+        auto pass = [cmd_list, shader_v, shader_instanced_v, shader_h, shader_d, shader_p, tex_depth, tex_depth_opaque, tex_depth_output, vrs](bool is_transparent_pass)
         {
             uint32_t start_index = !is_transparent_pass ? 0 : 2;
             uint32_t end_index   = !is_transparent_pass ? 2 : 4;
@@ -714,6 +716,20 @@ namespace Spartan
                         cmd_list->BeginOcclusionQuery(entity->GetObjectId());
                     }
 
+                    // toggle tessellation
+                    {
+                        bool is_tessellated = false;
+                        if (Material* material = renderable->GetMaterial())
+                        {
+                            is_tessellated = material->IsTessellated();
+                        }
+
+                        //pso.shader_hull   = is_tessellated ? shader_h : nullptr;
+                        //pso.shader_domain = is_tessellated ? shader_d : nullptr;
+                        //
+                        //cmd_list->SetPipelineState(pso);
+                    }
+
                     draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
 
                     if (!is_transparent_pass)
@@ -753,15 +769,14 @@ namespace Spartan
         // acquire resources
         RHI_Shader* shader_v           = GetShader(Renderer_Shader::gbuffer_v).get();
         RHI_Shader* shader_v_instanced = GetShader(Renderer_Shader::gbuffer_v_instanced).get();
-        RHI_Shader* shader_h           = GetShader(Renderer_Shader::gbuffer_h).get();
-        RHI_Shader* shader_d           = GetShader(Renderer_Shader::gbuffer_d).get();
+        RHI_Shader* shader_h           = GetShader(Renderer_Shader::tessellation_d).get();
+        RHI_Shader* shader_d           = GetShader(Renderer_Shader::tessellation_h).get();
         RHI_Shader* shader_p           = GetShader(Renderer_Shader::gbuffer_p).get();
         RHI_Texture* tex_color         = GetRenderTarget(Renderer_RenderTarget::gbuffer_color).get();
         RHI_Texture* tex_normal        = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get();
         RHI_Texture* tex_material      = GetRenderTarget(Renderer_RenderTarget::gbuffer_material).get();
         RHI_Texture* tex_velocity      = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get();
         RHI_Texture* tex_depth         = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get();
-
         if (!shader_v->IsCompiled() || !shader_v_instanced->IsCompiled() || !shader_h->IsCompiled() || !shader_d->IsCompiled() || !shader_p->IsCompiled())
             return;
 

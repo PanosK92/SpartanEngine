@@ -364,14 +364,17 @@ namespace Spartan
             shader(Renderer_Shader::gbuffer_v_instanced)->AddDefine("INSTANCED");
             shader(Renderer_Shader::gbuffer_v_instanced)->Compile(RHI_Shader_Vertex, shader_dir + "g_buffer.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
 
-            shader(Renderer_Shader::gbuffer_h) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::gbuffer_h)->Compile(RHI_Shader_Hull, shader_dir + "g_buffer.hlsl", async);
-
-            shader(Renderer_Shader::gbuffer_d) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::gbuffer_d)->Compile(RHI_Shader_Domain, shader_dir + "g_buffer.hlsl", async);
-
             shader(Renderer_Shader::gbuffer_p) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::gbuffer_p)->Compile(RHI_Shader_Pixel, shader_dir + "g_buffer.hlsl", async);
+        }
+
+        // tessellation
+        {
+            shader(Renderer_Shader::tessellation_h) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::tessellation_h)->Compile(RHI_Shader_Hull, shader_dir + "common_vertex_operations.hlsl", async);
+
+            shader(Renderer_Shader::tessellation_d) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::tessellation_d)->Compile(RHI_Shader_Domain, shader_dir + "common_vertex_operations.hlsl", async);
         }
 
         // light

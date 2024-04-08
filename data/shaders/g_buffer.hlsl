@@ -21,20 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const float g_quality_distance_low = 500.0f;
+static const float g_quality_max_distance = 500.0f;
 
-struct PixelInputType
-{
-    float4 position_clip        : SV_POSITION;
-    float2 uv                   : TEXCOORD;
-    float3 normal               : WORLD_NORMAL;
-    float3 tangent              : WORLD_TANGENT;
-    float3 position             : WORLD_POS;
-    float4 position_ss_current  : SCREEN_POS;
-    float4 position_ss_previous : SCREEN_POS_PREVIOUS;
-};
-
-struct PixelOutputType
+struct gbuffer
 {
     float4 albedo   : SV_Target0;
     float4 normal   : SV_Target1;
@@ -178,9 +167,9 @@ struct sampling
     }
 };
 
-PixelInputType main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
+gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
-    PixelInputType output;
+    gbuffer_vertex vertex;
 
     // transform position to world space
     float4 position_world          = transform_to_world_space(input, instance_id, buffer_pass.transform, buffer_frame.time);
@@ -191,86 +180,32 @@ PixelInputType main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     //surface.flags = GetMaterial().flags;
     //if (!surface.is_tessellated())
     {
-        output.position_ss_current  = mul(position_world, buffer_frame.view_projection);
-        output.position_ss_previous = mul(position_world_previous, buffer_frame.view_projection_previous);
-        output.position_clip        = output.position_ss_current;
+        vertex.position_ss_current  = mul(position_world, buffer_frame.view_projection);
+        vertex.position_ss_previous = mul(position_world_previous, buffer_frame.view_projection_previous);
+        vertex.position_clip        = vertex.position_ss_current;
     }
 
     // write out some things
-    output.position = position_world.xyz;
-    output.uv       = input.uv;
+    vertex.position = position_world.xyz;
+    vertex.uv       = input.uv;
 
     // transform normals and tangents to world space
     #if INSTANCED
     float3 normal_transformed  = mul(input.normal, (float3x3)buffer_pass.transform);
     normal_transformed         = mul(normal_transformed, (float3x3)input.instance_transform);
-    output.normal              = normalize(normal_transformed);
+    vertex.normal              = normalize(normal_transformed);
     float3 tangent_transformed = mul(input.tangent, (float3x3)buffer_pass.transform);
     tangent_transformed        = mul(tangent_transformed, (float3x3)input.instance_transform);
-    output.tangent             = normalize(tangent_transformed);
+    vertex.tangent             = normalize(tangent_transformed);
     #else
-    output.normal  = normalize(mul(input.normal, (float3x3)buffer_pass.transform));
-    output.tangent = normalize(mul(input.tangent, (float3x3)buffer_pass.transform));
+    vertex.normal  = normalize(mul(input.normal, (float3x3)buffer_pass.transform));
+    vertex.tangent = normalize(mul(input.tangent, (float3x3)buffer_pass.transform));
     #endif
 
-    return output;
+    return vertex;
 }
 
-//= HULL SHADER ================================================================================================
-#define MAX_POINTS 3
-
-struct HsConstantDataOutput
-{
-    float edges[3] : SV_TessFactor;
-    float inside   : SV_InsideTessFactor;
-};
-
-HsConstantDataOutput patch_constant_function(InputPatch<PixelInputType, MAX_POINTS> input_patch)
-{
-    HsConstantDataOutput output;
-
-    output.edges[0] = 4.0f;
-    output.edges[1] = 4.0f;
-    output.edges[2] = 4.0f;
-    output.inside   = 4.0f;
-
-    return output;
-}
-
-[domain("tri")]
-[partitioning("fractional_odd")]
-[outputtopology("triangle_cw")]
-[patchconstantfunc("patch_constant_function")]
-[outputcontrolpoints(MAX_POINTS)]
-[maxtessfactor(15)]
-PixelInputType main_hs(InputPatch<PixelInputType, MAX_POINTS> input_patch, uint cp_id : SV_OutputControlPointID)
-{
-    return input_patch[cp_id];
-}
-//==============================================================================================================
-
-[domain("tri")]
-PixelInputType main_ds(HsConstantDataOutput input, float3 uvw_coord : SV_DomainLocation, const OutputPatch<PixelInputType, 3> patch)
-{
-    PixelInputType output;
-    output.position = uvw_coord.x * patch[0].position + uvw_coord.y * patch[1].position + uvw_coord.z * patch[2].position;
-    output.uv       = uvw_coord.x * patch[0].uv + uvw_coord.y * patch[1].uv + uvw_coord.z * patch[2].uv;
-    output.normal   = normalize(uvw_coord.x * patch[0].normal + uvw_coord.y * patch[1].normal + uvw_coord.z * patch[2].normal);
-    output.tangent  = normalize(uvw_coord.x * patch[0].tangent + uvw_coord.y * patch[1].tangent + uvw_coord.z * patch[2].tangent);
-
-    // apply displacement
-    float displacement           = GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), output.uv, 0.0f).r;
-    float displacement_strength  = GetMaterial().height * 10.0f;
-    output.position             += output.normal * displacement * displacement_strength;
-
-    // pass through unchanged attributes
-    output.position_ss_current  = mul(float4(output.position, 1.0), buffer_frame.view_projection);
-    output.position_ss_previous = mul(float4(output.position, 1.0), buffer_frame.view_projection_previous);
-    output.position_clip        = output.position_ss_current;
-
-    return output;
-}
-PixelOutputType main_ps(PixelInputType input)
+gbuffer main_ps(gbuffer_vertex input)
 {
     float4 albedo   = GetMaterial().color;
     float3 normal   = input.normal.xyz;
@@ -330,7 +265,7 @@ PixelOutputType main_ps(PixelInputType input)
     float3 camera_to_pixel_world = buffer_frame.camera_position - input.position.xyz;
     float pixel_distance         = length(camera_to_pixel_world);
 
-    if (pixel_distance < g_quality_distance_low)
+    if (pixel_distance < g_quality_max_distance)
     {
         // parallax mapping
         if (surface.has_texture_height())
@@ -402,7 +337,7 @@ PixelOutputType main_ps(PixelInputType input)
     }
 
     // write to g-buffer
-    PixelOutputType g_buffer;
+    gbuffer g_buffer;
     g_buffer.albedo   = albedo;
     g_buffer.normal   = float4(normal, pass_get_material_index());
     g_buffer.material = float4(roughness, metalness, emission, occlusion);

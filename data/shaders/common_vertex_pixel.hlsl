@@ -19,7 +19,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// Vertex
+// vertex
+
 struct Vertex_Pos
 {
     float4 position : POSITION0;
@@ -55,7 +56,19 @@ struct Vertex_PosUvNorTan
     #endif
 };
 
-// Pixel
+struct gbuffer_vertex
+{
+    float4 position_clip        : SV_POSITION;
+    float2 uv                   : TEXCOORD;
+    float3 normal               : WORLD_NORMAL;
+    float3 tangent              : WORLD_TANGENT;
+    float3 position             : WORLD_POS;
+    float4 position_ss_current  : SCREEN_POS;
+    float4 position_ss_previous : SCREEN_POS_PREVIOUS;
+};
+
+// pixel
+
 struct Pixel_Pos
 {
     float4 position : SV_POSITION;
