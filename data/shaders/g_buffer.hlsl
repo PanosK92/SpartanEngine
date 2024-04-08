@@ -17,6 +17,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#define TRANSFORM_COMPUTE_PREVIOUS_POSITION
+
 //= INCLUDES =========
 #include "common.hlsl"
 //====================
@@ -170,37 +172,17 @@ struct sampling
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     gbuffer_vertex vertex;
-
-    // transform position to world space
-    float4 position_world          = transform_to_world_space(input, instance_id, buffer_pass.transform, buffer_frame.time);
-    float4 position_world_previous = transform_to_world_space(input, instance_id, pass_get_transform_previous(), buffer_frame.time - buffer_frame.delta_time);
+    vertex.uv = input.uv;
+    
+    transform_to_world_space(vertex, input, instance_id, buffer_pass.transform);
 
     // transform world space position to screen space
     //Surface surface;
     //surface.flags = GetMaterial().flags;
     //if (!surface.is_tessellated())
     {
-        vertex.position_ss_current  = mul(position_world, buffer_frame.view_projection);
-        vertex.position_ss_previous = mul(position_world_previous, buffer_frame.view_projection_previous);
-        vertex.position_clip        = vertex.position_ss_current;
+        transform_to_clip_space(vertex);
     }
-
-    // write out some things
-    vertex.position = position_world.xyz;
-    vertex.uv       = input.uv;
-
-    // transform normals and tangents to world space
-    #if INSTANCED
-    float3 normal_transformed  = mul(input.normal, (float3x3)buffer_pass.transform);
-    normal_transformed         = mul(normal_transformed, (float3x3)input.instance_transform);
-    vertex.normal              = normalize(normal_transformed);
-    float3 tangent_transformed = mul(input.tangent, (float3x3)buffer_pass.transform);
-    tangent_transformed        = mul(tangent_transformed, (float3x3)input.instance_transform);
-    vertex.tangent             = normalize(tangent_transformed);
-    #else
-    vertex.normal  = normalize(mul(input.normal, (float3x3)buffer_pass.transform));
-    vertex.tangent = normalize(mul(input.tangent, (float3x3)buffer_pass.transform));
-    #endif
 
     return vertex;
 }

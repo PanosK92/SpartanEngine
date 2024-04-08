@@ -627,15 +627,14 @@ namespace Spartan
         // acquire resources
         RHI_Shader* shader_v           = GetShader(Renderer_Shader::depth_prepass_v).get();
         RHI_Shader* shader_instanced_v = GetShader(Renderer_Shader::depth_prepass_instanced_v).get();
-        RHI_Shader* shader_h           = GetShader(Renderer_Shader::tessellation_d).get();
-        RHI_Shader* shader_d           = GetShader(Renderer_Shader::tessellation_h).get();
+        RHI_Shader* shader_h           = GetShader(Renderer_Shader::tessellation_h).get();
+        RHI_Shader* shader_d           = GetShader(Renderer_Shader::tessellation_d).get();
         RHI_Shader* shader_p           = GetShader(Renderer_Shader::depth_prepass_alpha_test_p).get();
         RHI_Texture* tex_depth         = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get();
         RHI_Texture* tex_depth_opaque  = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque).get();
         RHI_Texture* tex_depth_output  = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output).get();
         if (!shader_v->IsCompiled() || !shader_instanced_v->IsCompiled() || !shader_p->IsCompiled())
             return;
-        bool vrs = GetOption<bool>(Renderer_Option::VariableRateShading);
 
         lock_guard lock(m_mutex_renderables);
         cmd_list->BeginTimeblock(!is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent");
@@ -646,6 +645,8 @@ namespace Spartan
 
             cmd_list->ClearRenderTarget(GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(), rhi_color_dont_care, 0.0f);
         }
+
+        bool vrs = GetOption<bool>(Renderer_Option::VariableRateShading);
 
         auto pass = [cmd_list, shader_v, shader_instanced_v, shader_h, shader_d, shader_p, tex_depth, tex_depth_opaque, tex_depth_output, vrs](bool is_transparent_pass)
         {
@@ -769,8 +770,8 @@ namespace Spartan
         // acquire resources
         RHI_Shader* shader_v           = GetShader(Renderer_Shader::gbuffer_v).get();
         RHI_Shader* shader_v_instanced = GetShader(Renderer_Shader::gbuffer_v_instanced).get();
-        RHI_Shader* shader_h           = GetShader(Renderer_Shader::tessellation_d).get();
-        RHI_Shader* shader_d           = GetShader(Renderer_Shader::tessellation_h).get();
+        RHI_Shader* shader_h           = GetShader(Renderer_Shader::tessellation_h).get();
+        RHI_Shader* shader_d           = GetShader(Renderer_Shader::tessellation_d).get();
         RHI_Shader* shader_p           = GetShader(Renderer_Shader::gbuffer_p).get();
         RHI_Texture* tex_color         = GetRenderTarget(Renderer_RenderTarget::gbuffer_color).get();
         RHI_Texture* tex_normal        = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get();
