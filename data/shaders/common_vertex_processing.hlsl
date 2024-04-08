@@ -23,6 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
+// - these functions are shared between depth_prepass.hlsl, g_buffer.hlsl and depth_light.hlsl
+// - this is because the calculations have to be exactly the same and therefore produce identical values over time and space (depth values)
+
 struct vertex_processing
 {
     struct vegetation
@@ -179,43 +182,34 @@ struct vertex_processing
             return position_vertex;
         }
     };
+
+    static float3 ambient_animation(float3 position, float3 animation_pivot, uint instance_id, float time)
+    {
+        Surface surface;
+        surface.flags = GetMaterial().flags;
+    
+        if(surface.vertex_animate_wind())
+        {
+            position = vegetation::apply_wind(instance_id, position, animation_pivot, time);
+            position = vegetation::apply_player_bend(position, animation_pivot);
+        }
+    
+        if (surface.vertex_animate_water())
+        {
+            position = water::apply_wave(position, time);
+            position = water::apply_ripple(position, time);
+        }
+    
+        return position;
+    }
 };
 
-// these functions are shared between depth_prepass.hlsl, g_buffer.hlsl and depth_light.hlsl
-// this is because the calculations have to be exactly the same and therefore produce identical values over time and space (depth values)
-// this is the most complicated shader as all of the engine geomtry passes through here
-
-float3 apply_animations(float3 position, float3 animation_pivot, uint instance_id, float time)
+gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matrix transform)
 {
-    Surface surface;
-    surface.flags = GetMaterial().flags;
+    gbuffer_vertex vertex;
+    vertex.uv = input.uv;
 
-    if(surface.vertex_animate_wind())
-    {
-        position = vertex_processing::vegetation::apply_wind(instance_id, position, animation_pivot, time);
-        position = vertex_processing::vegetation::apply_player_bend(position, animation_pivot);
-    }
-
-    if (surface.vertex_animate_water())
-    {
-        position = vertex_processing::water::apply_wave(position, time);
-        position = vertex_processing::water::apply_ripple(position, time);
-    }
-
-    return position;
-}
-
-#ifdef TRANSFORM_LIGHT
-#define TRANSFORM_POSITION_ONLY
-#endif
-
-#ifndef TRANSFORM_LIGHT
-void transform_to_world_space(inout gbuffer_vertex vertex, Vertex_PosUvNorTan input, uint instance_id, matrix transform)
-#else
-float3 transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matrix transform)
-#endif
-{
-    // transform position
+    // transform to world space
     float3 position          = mul(input.position, transform).xyz;
     float3 position_previous = 0.0f;
 #if INSTANCED
@@ -228,8 +222,8 @@ float3 transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matr
     #endif
 #endif
     
-    // transform normals and tangents
-#ifndef TRANSFORM_POSITION_ONLY
+    // transform to world space instanced
+#ifndef TRANSFORM_IGNORE_NORMALS
 #if INSTANCED
     float3 normal_transformed  = mul(input.normal, (float3x3)transform);
     normal_transformed         = mul(normal_transformed, (float3x3)input.instance_transform);
@@ -249,17 +243,15 @@ float3 transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matr
     pivot        *= input.instance_transform;
 #endif
     float3 animation_pivot = float3(pivot._31, pivot._32, pivot._33); // position
-    position               = apply_animations(position, animation_pivot, instance_id, buffer_frame.time);
+    position               = vertex_processing::ambient_animation(position, animation_pivot, instance_id, buffer_frame.time);
 #ifdef TRANSFORM_COMPUTE_PREVIOUS_POSITION
-    position_previous      = apply_animations(position_previous, animation_pivot, instance_id, buffer_frame.time - buffer_frame.delta_time);
+    position_previous      = vertex_processing::ambient_animation(position_previous, animation_pivot, instance_id, buffer_frame.time - buffer_frame.delta_time);
 #endif
 
-#ifndef TRANSFORM_LIGHT
     vertex.position          = position;
     vertex.position_previous = position_previous;
-#else
-    return position;
-#endif
+
+    return vertex;
 }
 
 void transform_to_clip_space(inout gbuffer_vertex vertex)
