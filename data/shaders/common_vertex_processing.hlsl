@@ -209,41 +209,32 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     gbuffer_vertex vertex;
     vertex.uv = input.uv;
 
+    // compute the final world transform
+#if INSTANCED
+    transform = mul(transform, input.instance_transform);
+#endif
+#ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
+    matrix transform_previous = pass_get_transform_previous();
+    #if INSTANCED
+        transform_previous    = mul(transform_previous, input.instance_transform);
+    #endif
+#endif
+
     // transform to world space
     vertex.position          = mul(input.position, transform).xyz;
-#ifdef TRANSFORM_COMPUTE_PREVIOUS_POSITION
-    vertex.position_previous = mul(input.position, pass_get_transform_previous()).xyz;
-#endif
- #ifndef TRANSFORM_IGNORE_NORMALS
-    vertex.normal            = mul(input.normal, (float3x3)transform);
-    vertex.tangent           = mul(input.tangent, (float3x3)transform);
-#endif
-    
-    // transform to world space instanced
-#if INSTANCED
-    vertex.position              = mul(float4(vertex.position, 1.0f), input.instance_transform).xyz;
-#ifdef TRANSFORM_COMPUTE_PREVIOUS_POSITION
-      vertex.position_previous = mul(float4(vertex.position_previous, 1.0f), input.instance_transform).xyz;
+#ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
+    vertex.position_previous = vertex.position;//mul(input.position, transform_previous).xyz;
 #endif
 #ifndef TRANSFORM_IGNORE_NORMALS
-    vertex.normal  = mul(vertex.normal, (float3x3)input.instance_transform);
-    vertex.tangent = mul(vertex.tangent, (float3x3)input.instance_transform);
-#endif
-#endif
-
-#ifndef TRANSFORM_IGNORE_NORMALS
-    vertex.normal  = normalize(vertex.normal);
-    vertex.tangent = normalize(vertex.tangent);
+    vertex.normal            = normalize(mul(input.normal, (float3x3)transform));
+    vertex.tangent           = normalize(mul(input.tangent, (float3x3)transform));
 #endif
 
-    // animations
-    matrix pivot  = buffer_pass.transform;
-#if INSTANCED
-    pivot        *= input.instance_transform;
-#endif
-    float3 animation_pivot   =  float3(pivot._31, pivot._32, pivot._33); // position
+    // apply ambient animation
+    float3 animation_pivot   = float3(transform._31, transform._32, transform._33); // position
     vertex.position          = vertex_processing::ambient_animation(vertex.position, animation_pivot, instance_id, buffer_frame.time);
-#ifdef TRANSFORM_COMPUTE_PREVIOUS_POSITION
+#ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
+    animation_pivot          = float3(transform_previous._31, transform_previous._32, transform_previous._33);
     vertex.position_previous = vertex_processing::ambient_animation(vertex.position_previous, animation_pivot, instance_id, buffer_frame.time - buffer_frame.delta_time);
 #endif
 
@@ -254,7 +245,7 @@ void transform_to_clip_space(inout gbuffer_vertex vertex)
 {
     vertex.position_clip_current  = mul(float4(vertex.position, 1.0f), buffer_frame.view_projection);
     vertex.position_clip          = vertex.position_clip_current;
-#ifdef TRANSFORM_COMPUTE_PREVIOUS_POSITION
+#ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
     vertex.position_clip_previous = mul(float4(vertex.position_previous, 1.0f), buffer_frame.view_projection_previous);
 #endif
 }
