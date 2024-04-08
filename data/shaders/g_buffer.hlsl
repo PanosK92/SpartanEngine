@@ -171,10 +171,7 @@ struct sampling
 
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
-    gbuffer_vertex vertex;
-    vertex.uv = input.uv;
-
-    transform_to_world_space(vertex, input, instance_id, buffer_pass.transform);
+    gbuffer_vertex vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);
 
     // transform world space position to screen space
     //Surface surface;

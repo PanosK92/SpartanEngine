@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#define TRANSFORM_LIGHT
+#define TRANSFORM_IGNORE_NORMALS
 
 //= INCLUDES =========
 #include "common.hlsl"
@@ -34,8 +34,8 @@ Pixel_PosUv main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
     uint index_array = (uint)pass_get_f3_value2().x;
     Light_ light     = buffer_lights[index_light];
 
-    float3 position_world = transform_to_world_space(input, instance_id, buffer_pass.transform);
-    output.position = mul(float4(position_world, 1.0f), light.view_projection[index_array]);
+    gbuffer_vertex vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);
+    output.position = mul(float4(vertex.position, 1.0f), light.view_projection[index_array]);
     
     return output;
 }

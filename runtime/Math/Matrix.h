@@ -63,8 +63,7 @@ namespace Spartan::Math
 
         ~Matrix() = default;
 
-        // Generate a matrix with row first memory alignment
-        // We need this for compatibility reasons with ImGui
+        // generate a matrix with row first memory alignment, we need this for compatibility reasons with imgui
         [[nodiscard]] static Matrix GenerateRowFirst(const Vector3& position, const Quaternion& rotation, const Vector3& scale)
         {
             const Matrix mRotation = CreateRotation(rotation).Transposed();
@@ -78,7 +77,6 @@ namespace Spartan::Math
             );
         }
 
-        //= TRANSLATION ===========================================
         [[nodiscard]] Vector3 GetTranslation() const { return Vector3(m30, m31, m32); }
 
         static inline Matrix CreateTranslation(const Vector3& translation)
@@ -90,9 +88,7 @@ namespace Spartan::Math
                 translation.x, translation.y, translation.z, 1.0f
             );
         }
-        //=========================================================
 
-        //= ROTATION =====================================================================================
         static inline Matrix CreateRotation(const Quaternion& rotation)
         {
             const float num9 = rotation.x * rotation.x;
@@ -196,9 +192,7 @@ namespace Spartan::Math
 
             return quaternion;
         }
-        //================================================================================================
 
-        //= SCALE ========================================================================================
         [[nodiscard]] Vector3 GetScale() const
         {
             const int xs = (Helper::Sign(m00 * m01 * m02 * m03) < 0) ? -1 : 1;
@@ -223,9 +217,7 @@ namespace Spartan::Math
                 0, 0, 0, 1
             );
         }
-        //================================================================================================
 
-        //= MISC ===========================================================================================================================
         static inline Matrix CreateLookAtLH(const Vector3& position, const Vector3& target, const Vector3& up)
         {
             const Vector3 zAxis = Vector3::Normalize(target - position);
@@ -273,9 +265,7 @@ namespace Spartan::Math
                 0,       0,       -near_plane * far_plane / (far_plane - near_plane), 0
             );
         }
-        //=================================================================================================================================
 
-        //= TRANSPOSE ======================================================
         [[nodiscard]] Matrix Transposed() const { return Transpose(*this); }
         void Transpose() { *this = Transpose(*this); }
         static inline Matrix Transpose(const Matrix& matrix)
@@ -287,9 +277,7 @@ namespace Spartan::Math
                 matrix.m03, matrix.m13, matrix.m23, matrix.m33
             );
         }
-        //==================================================================
 
-        //= INVERT =======================================================================================
         [[nodiscard]] Matrix Inverted() const { return Invert(*this); }
         static inline Matrix Invert(const Matrix& matrix)
         {
@@ -347,7 +335,6 @@ namespace Spartan::Math
                 i20, i21, i22, i23,
                 i30, i31, i32, i33);
         }
-        //================================================================================================
 
         void Decompose(Vector3& scale, Quaternion& rotation, Vector3& translation) const
         {
@@ -364,7 +351,6 @@ namespace Spartan::Math
             m30 = 0; m31 = 0; m32 = 0; m33 = 1;
         }
 
-        //= MULTIPLICATION ===========================================================================
         Matrix operator*(const Matrix& rhs) const
         {
             return Matrix(
@@ -417,9 +403,7 @@ namespace Spartan::Math
                 (rhs.x * m03) + (rhs.y * m13) + (rhs.z * m23) + (rhs.w * m33)
             );
         }
-        //============================================================================================
 
-        //= COMPARISON =====================================================
         bool operator==(const Matrix& rhs) const
         {
             const float* data_left    = Data();
@@ -450,23 +434,22 @@ namespace Spartan::Math
 
             return true;
         }
-        //==================================================================
 
         [[nodiscard]] const float* Data() const { return &m00; }
         [[nodiscard]] std::string ToString() const;
 
-        // Column-major memory representation
+        // column-major memory representation
         float m00 = 0.0f, m10 = 0.0f, m20 = 0.0f, m30 = 0.0f;
         float m01 = 0.0f, m11 = 0.0f, m21 = 0.0f, m31 = 0.0f;
         float m02 = 0.0f, m12 = 0.0f, m22 = 0.0f, m32 = 0.0f;
         float m03 = 0.0f, m13 = 0.0f, m23 = 0.0f, m33 = 0.0f;
-        // Note: DirectX compiler assumes column-major as a default,
-        // we go with it so that we can map directly map matrices to the GPU.
+        // note: directx compiler assumes column-major as a default,
+        // we go with it so that we can map directly map matrices to the gpu
 
         static const Matrix Identity;
     };
 
-    // Reverse order operators
+    // reverse order operators
     inline SP_CLASS Vector3 operator*(const Vector3& lhs, const Matrix& rhs) { return rhs * lhs; }
     inline SP_CLASS Vector4 operator*(const Vector4& lhs, const Matrix& rhs) { return rhs * lhs; }
 }
