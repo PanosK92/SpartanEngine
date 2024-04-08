@@ -668,7 +668,6 @@ float get_alpha_threshold(float3 world_position)
 //= INCLUDES ===========================
 #include "common_structs.hlsl"
 #include "common_vertex_processing.hlsl"
-#include "common_vertex_operations.hlsl"
 //======================================
 
 #endif // SPARTAN_COMMON

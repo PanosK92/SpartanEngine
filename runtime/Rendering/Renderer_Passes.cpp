@@ -673,6 +673,7 @@ namespace Spartan
                 pso.clear_depth                 = rhi_depth_load;
                 pso.vrs_input_texture           = vrs ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
                 pso.resolution_scale            = true;
+                pso.disable_clearing            = false;
                 cmd_list->SetPipelineState(pso);
 
                 for (shared_ptr<Entity>& entity : entities)
@@ -729,6 +730,7 @@ namespace Spartan
                         //pso.shader_domain = is_tessellated ? shader_d : nullptr;
                         //
                         //cmd_list->SetPipelineState(pso);
+                        //pso.disable_clearing = true; // only clear on first pipeline set
                     }
 
                     draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
@@ -824,6 +826,7 @@ namespace Spartan
             pso.clear_depth                     = rhi_depth_load;
             pso.vrs_input_texture               = vrs ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
             pso.resolution_scale                = true;
+            pso.disable_clearing                = false;
             cmd_list->SetPipelineState(pso);
 
             for (shared_ptr<Entity>& entity : entities)
@@ -868,6 +871,7 @@ namespace Spartan
                     //pso.shader_domain = is_tessellated ? shader_d : nullptr;
                     //
                     //cmd_list->SetPipelineState(pso);
+                    //pso.disable_clearing = true; // only clear on first pipeline set
                 }
 
                 draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());

@@ -73,6 +73,7 @@ namespace Spartan
 
         std::string name;
         bool resolution_scale = false;
+        bool disable_clearing = false;
         //===========================================================
 
     private:
