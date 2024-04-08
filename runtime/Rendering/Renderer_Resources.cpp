@@ -371,10 +371,10 @@ namespace Spartan
         // tessellation
         {
             shader(Renderer_Shader::tessellation_h) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::tessellation_h)->Compile(RHI_Shader_Hull, shader_dir + "common_vertex_operations.hlsl", async);
+            shader(Renderer_Shader::tessellation_h)->Compile(RHI_Shader_Hull, shader_dir + "common_vertex_processing.hlsl", async);
 
             shader(Renderer_Shader::tessellation_d) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::tessellation_d)->Compile(RHI_Shader_Domain, shader_dir + "common_vertex_operations.hlsl", async);
+            shader(Renderer_Shader::tessellation_d)->Compile(RHI_Shader_Domain, shader_dir + "common_vertex_processing.hlsl", async);
         }
 
         // light

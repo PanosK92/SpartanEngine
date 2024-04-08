@@ -173,7 +173,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
 {
     gbuffer_vertex vertex;
     vertex.uv = input.uv;
-    
+
     transform_to_world_space(vertex, input, instance_id, buffer_pass.transform);
 
     // transform world space position to screen space
@@ -200,8 +200,8 @@ gbuffer main_ps(gbuffer_vertex input)
     // velocity
     {
         // convert to ndc
-        float2 position_ndc_current  = (input.position_ss_current.xy / input.position_ss_current.w);
-        float2 position_ndc_previous = (input.position_ss_previous.xy / input.position_ss_previous.w);
+        float2 position_ndc_current  = (input.position_clip_current.xy / input.position_clip_current.w);
+        float2 position_ndc_previous = (input.position_clip_previous.xy / input.position_clip_previous.w);
 
         // remove the ndc jitter
         position_ndc_current  -= buffer_frame.taa_jitter_current;
