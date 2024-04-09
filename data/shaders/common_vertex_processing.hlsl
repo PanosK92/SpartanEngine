@@ -217,6 +217,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     transform                 = mul(transform, transform_instance);
 #ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
     // clip the last row as it has encoded data in the first two elements
+    matrix full              = pass_get_transform_previous();
     matrix<float, 3, 3> temp = (float3x3)pass_get_transform_previous();
     // manually construt a matrix that can be multiplied with another matrix
     matrix transform_previous = matrix(
@@ -225,7 +226,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
         temp._m20, temp._m21, temp._m22, 0.0f,
         0.0f,      0.0f,      0.0f,      1.0f
     );
-    transform_previous = mul(transform_previous, transform_instance);
+    transform_previous = is_instanced ? mul(transform_previous, transform_instance) : full;
 #endif
 
     // transform to world space
