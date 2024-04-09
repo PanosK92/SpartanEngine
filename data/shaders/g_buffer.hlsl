@@ -182,10 +182,10 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     return vertex;
 }
 
-gbuffer main_ps(gbuffer_vertex input)
+gbuffer main_ps(gbuffer_vertex vertex)
 {
     float4 albedo   = GetMaterial().color;
-    float3 normal   = input.normal.xyz;
+    float3 normal   = vertex.normal.xyz;
     float roughness = GetMaterial().roughness;
     float metalness = GetMaterial().metallness;
     float occlusion = 1.0f;
@@ -195,8 +195,8 @@ gbuffer main_ps(gbuffer_vertex input)
     // velocity
     {
         // convert to ndc
-        float2 position_ndc_current  = (input.position_clip_current.xy / input.position_clip_current.w);
-        float2 position_ndc_previous = (input.position_clip_previous.xy / input.position_clip_previous.w);
+        float2 position_ndc_current  = (vertex.position_clip_current.xy / vertex.position_clip_current.w);
+        float2 position_ndc_previous = (vertex.position_clip_previous.xy / vertex.position_clip_previous.w);
 
         // remove the ndc jitter
         position_ndc_current  -= buffer_frame.taa_jitter_current;
@@ -207,24 +207,19 @@ gbuffer main_ps(gbuffer_vertex input)
     }
 
     Material material = GetMaterial();
-    Surface surface; 
-    surface.flags = material.flags; // a surface can interpret the material flags
+    Surface surface; surface.flags = material.flags;
  
-    // uv
-    float2 uv = input.uv;
-    uv        = float2(uv.x * material.tiling.x + material.offset.x, uv.y * material.tiling.y + material.offset.y);
-
     // alpha mask
     float alpha_mask = 1.0f;
     if (surface.has_texture_alpha_mask())
     {
-        alpha_mask = GET_TEXTURE(material_mask).Sample(samplers[sampler_point_wrap], uv).r;
+        alpha_mask = GET_TEXTURE(material_mask).Sample(samplers[sampler_point_wrap], vertex.uv).r;
     }
 
     // albedo
     if (surface.has_texture_albedo())
     {
-        float4 albedo_sample = sampling::smart(surface, material_albedo, uv, input.position, input.normal);
+        float4 albedo_sample = sampling::smart(surface, material_albedo, vertex.uv, vertex.position, vertex.normal);
 
         // read albedo's alpha channel as an alpha mask as well
         alpha_mask      = min(alpha_mask, albedo_sample.a);
@@ -235,11 +230,11 @@ gbuffer main_ps(gbuffer_vertex input)
     }
 
     // discard masked pixels
-    if (alpha_mask <= get_alpha_threshold(input.position))
+    if (alpha_mask <= get_alpha_threshold(vertex.position))
         discard;
 
     // compute pixel distance
-    float3 camera_to_pixel_world = buffer_frame.camera_position - input.position.xyz;
+    float3 camera_to_pixel_world = buffer_frame.camera_position - vertex.position.xyz;
     float pixel_distance         = length(camera_to_pixel_world);
 
     if (pixel_distance < g_quality_max_distance)
@@ -248,11 +243,11 @@ gbuffer main_ps(gbuffer_vertex input)
         if (surface.has_texture_normal())
         {
             // get tangent space normal and apply the user defined intensity, then transform it to world space
-            float3 normal_sample       = sampling::smart(surface, material_normal, uv, input.position, input.normal).xyz;
+            float3 normal_sample       = sampling::smart(surface, material_normal, vertex.uv, vertex.position, vertex.normal).xyz;
             float3 tangent_normal      = normalize(unpack(normal_sample));
             float normal_intensity     = clamp(GetMaterial().normal, 0.012f, GetMaterial().normal);
             tangent_normal.xy         *= saturate(normal_intensity);
-            float3x3 tangent_to_world  = make_tangent_to_world_matrix(input.normal, input.tangent);
+            float3x3 tangent_to_world  = make_tangent_to_world_matrix(vertex.normal, vertex.tangent);
             normal                     = normalize(mul(tangent_normal, tangent_to_world).xyz);
         }
         
@@ -261,7 +256,7 @@ gbuffer main_ps(gbuffer_vertex input)
             float4 roughness_sample = 1.0f;
             if (surface.has_texture_roughness())
             {
-                roughness_sample  = sampling::smart(surface, material_roughness, uv, input.position, input.normal);
+                roughness_sample  = sampling::smart(surface, material_roughness, vertex.uv, vertex.position, vertex.normal);
                 roughness        *= roughness_sample.g;
             }
             
@@ -270,20 +265,20 @@ gbuffer main_ps(gbuffer_vertex input)
             
             if (surface.has_texture_metalness() && !surface.has_single_texture_roughness_metalness())
             {
-                metalness *= sampling::smart(surface, material_metalness, uv, input.position, input.normal).r;
+                metalness *= sampling::smart(surface, material_metalness, vertex.uv, vertex.position, vertex.normal).r;
             }
         }
 
         // occlusion
         if (surface.has_texture_occlusion())
         {
-            occlusion = sampling::smart(surface, material_occlusion, uv, input.position, input.normal).r;
+            occlusion = sampling::smart(surface, material_occlusion, vertex.uv, vertex.position, vertex.normal).r;
         }
 
         // emission
         if (surface.has_texture_emissive())
         {
-            float3 emissive_color  = GET_TEXTURE(material_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).rgb;
+            float3 emissive_color  = GET_TEXTURE(material_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv).rgb;
             emission               = luminance(emissive_color);
             albedo.rgb            += emissive_color;
         }
