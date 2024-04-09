@@ -201,13 +201,18 @@ struct vertex_processing
     }
 };
 
+static float3 extract_position(matrix transform)
+{
+    return float3(transform._31, transform._32, transform._33);
+}
+
 gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matrix transform)
 {
     gbuffer_vertex vertex;
     vertex.uv = input.uv;
 
     // compute the final world transform
-    bool is_instanced         = instance_id != 0; // no ideal as you can have instancing with instance_id = 0, however it's very performant branching due to predictability
+    bool is_instanced         = instance_id != 0; // not ideal as you can have instancing with instance_id = 0, however it's very performant branching due to predictability
     matrix transform_instance = is_instanced ? input.instance_transform : matrix_identity;
     transform                 = mul(transform, transform_instance);
 #ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
@@ -217,7 +222,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     // transform to world space
     vertex.position          = mul(input.position, transform).xyz;
 #ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
-    vertex.position_previous = mul(input.position, transform_previous).xyz;
+    vertex.position_previous = mul(input.position, is_instanced ? transform : transform_previous).xyz; // temp, till I fix the transform issue
 #endif
 #ifndef TRANSFORM_IGNORE_NORMALS
     vertex.normal            = normalize(mul(input.normal, (float3x3)transform));
@@ -226,12 +231,10 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
 
     // apply ambient animation
     Surface surface;
-    surface.flags = GetMaterial().flags;
-    float3 animation_pivot   = float3(transform._31, transform._32, transform._33); // position
-    vertex.position          = vertex_processing::ambient_animation(surface, vertex.position, animation_pivot, instance_id, buffer_frame.time);
+    surface.flags            = GetMaterial().flags;
+    vertex.position          = vertex_processing::ambient_animation(surface, vertex.position, extract_position(transform), instance_id, buffer_frame.time);
 #ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
-    animation_pivot          = float3(transform_previous._31, transform_previous._32, transform_previous._33);
-    vertex.position_previous = vertex_processing::ambient_animation(surface, vertex.position_previous, animation_pivot, instance_id, buffer_frame.time - buffer_frame.delta_time);
+    vertex.position_previous = vertex_processing::ambient_animation(surface, vertex.position_previous, extract_position(transform_previous), instance_id, buffer_frame.time - buffer_frame.delta_time);
 #endif
 
     return vertex;
@@ -239,8 +242,8 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
 
 void transform_to_clip_space(inout gbuffer_vertex vertex)
 {
-    vertex.position_clip_current  = mul(float4(vertex.position, 1.0f), buffer_frame.view_projection);
-    vertex.position_clip          = vertex.position_clip_current;
+    vertex.position_clip          = mul(float4(vertex.position, 1.0f), buffer_frame.view_projection);
+    vertex.position_clip_current  = vertex.position_clip;
 #ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
     vertex.position_clip_previous = mul(float4(vertex.position_previous, 1.0f), buffer_frame.view_projection_previous);
 #endif

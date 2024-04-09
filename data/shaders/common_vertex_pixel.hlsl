@@ -56,13 +56,13 @@ struct Vertex_PosUvNorTan
 
 struct gbuffer_vertex
 {
-    float3 position               : WORLD_POS;
-    float3 position_previous      : WORLD_POS_PREVIOUS;
+    float3 position               : POS_WORLD;
+    float3 position_previous      : POS_WORLD_PREVIOUS;
     float4 position_clip          : SV_POSITION;
-    float4 position_clip_current  : SCREEN_POS;
-    float4 position_clip_previous : SCREEN_POS_PREVIOUS; 
-    float3 normal                 : WORLD_NORMAL;
-    float3 tangent                : WORLD_TANGENT;
+    float4 position_clip_current  : POS_CLIP;
+    float4 position_clip_previous : POS_CLIP_PREVIOUS;
+    float3 normal                 : NORMAL_WORLD;
+    float3 tangent                : TANGENT_WORLD;
     float2 uv                     : TEXCOORD;
 };
 
