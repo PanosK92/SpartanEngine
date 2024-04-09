@@ -23,9 +23,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "output.hlsl"
 //====================
 
-Pixel_PosColUv main_vs(Vertex_Pos2dUvColor input)
+struct Vertex_Pos2dUvColor
 {
-    Pixel_PosColUv output;
+    float2 position : POSITION0;
+    float2 uv       : TEXCOORD0;
+    float4 color    : COLOR0;
+};
+
+struct vertex
+{
+    float4 position : SV_POSITION;
+    float4 color    : COLOR0;
+    float2 uv       : TEXCOORD;
+};
+
+vertex main_vs(Vertex_Pos2dUvColor input)
+{
+    vertex output;
 
     output.position = mul(buffer_pass.transform, float4(input.position.x, input.position.y, 0.0f, 1.0f));
     output.color    = input.color;
@@ -34,7 +48,7 @@ Pixel_PosColUv main_vs(Vertex_Pos2dUvColor input)
     return output;
 }
 
-float4 main_ps(Pixel_PosColUv input) : SV_Target
+float4 main_ps(vertex input) : SV_Target
 {
      // texture visualization options
     float4 channels       = pass_get_f4_value();

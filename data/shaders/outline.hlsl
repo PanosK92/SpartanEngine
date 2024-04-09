@@ -23,18 +23,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-Pixel_Pos main_vs(Vertex_PosUv input)
+struct vertex
 {
-    Pixel_Pos output;
+    float4 position : SV_POSITION;
+    float2 uv       : TEXCOORD0;
+};
 
+vertex main_vs(vertex input)
+{
     input.position.w = 1.0f;
-    output.position  = mul(input.position, buffer_pass.transform);
-    output.position  = mul(output.position, buffer_frame.view_projection_unjittered);
+    input.position   = mul(input.position, buffer_pass.transform);
+    input.position   = mul(input.position, buffer_frame.view_projection_unjittered);
 
-    return output;
+    return input;
 }
  
-float4 main_ps(Pixel_Pos input) : SV_Target
+float4 main_ps(vertex input) : SV_Target
 {
     // just a color
     return pass_get_f4_value();
@@ -43,7 +47,6 @@ float4 main_ps(Pixel_Pos input) : SV_Target
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    // Out of bounds check
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 

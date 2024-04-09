@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SPARTAN_COMMON
 
 //= INCLUDES ==========================
-#include "common_vertex_pixel.hlsl"
 #include "common_buffers.hlsl"
 #include "common_samplers.hlsl"
 #include "common_textures_storage.hlsl"

@@ -26,9 +26,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-Pixel_PosUv main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
+struct vertex
 {
-    Pixel_PosUv output;
+    float4 position : SV_POSITION;
+    float2 uv       : TEXCOORD;
+};
+
+vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
+{
+    vertex output;
     output.uv = input.uv;
 
     uint index_light = (uint)pass_get_f3_value2().y;
@@ -41,7 +47,7 @@ Pixel_PosUv main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
     return output;
 }
 
-float4 main_ps(Pixel_PosUv input) : SV_TARGET
+float4 main_ps(vertex input) : SV_TARGET
 {
     // alpha test
     const float3 f3_value     = pass_get_f3_value();
