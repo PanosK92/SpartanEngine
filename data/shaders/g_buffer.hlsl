@@ -176,7 +176,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     //surface.flags = GetMaterial().flags;
     //if (!surface.is_tessellated())
     {
-        transform_to_clip_space(vertex);
+        vertex = transform_to_clip_space(vertex);
     }
 
     return vertex;

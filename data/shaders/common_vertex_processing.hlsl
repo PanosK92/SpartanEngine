@@ -26,6 +26,29 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // - these functions are shared between depth_prepass.hlsl, g_buffer.hlsl and depth_light.hlsl
 // - this is because the calculations have to be exactly the same and therefore produce identical values over time and space (depth values)
 
+// vertex buffer input
+struct Vertex_PosUvNorTan
+{
+    float4 position           : POSITION0;
+    float2 uv                 : TEXCOORD0;
+    float3 normal             : NORMAL0;
+    float3 tangent            : TANGENT0;
+    matrix instance_transform : INSTANCE_TRANSFORM0;
+};
+
+// vertex buffer output
+struct gbuffer_vertex
+{
+    float3 position               : POS_WORLD;
+    float3 position_previous      : POS_WORLD_PREVIOUS;
+    float4 position_clip          : SV_POSITION;
+    float4 position_clip_current  : POS_CLIP;
+    float4 position_clip_previous : POS_CLIP_PREVIOUS;
+    float3 normal                 : NORMAL_WORLD;
+    float3 tangent                : TANGENT_WORLD;
+    float2 uv                     : TEXCOORD;
+};
+
 struct vertex_processing
 {
     struct vegetation
@@ -224,7 +247,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
 #ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
     // clip the last row as it has encoded data in the first two elements
     matrix full              = pass_get_transform_previous();
-    matrix<float, 3, 3> temp = (float3x3)pass_get_transform_previous();
+    matrix<float, 3, 3> temp = (float3x3)full;
     // manually construt a matrix that can be multiplied with another matrix
     matrix transform_previous = matrix(
         temp._m00, temp._m01, temp._m02, 0.0f,
@@ -254,13 +277,15 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     return vertex;
 }
 
-void transform_to_clip_space(inout gbuffer_vertex vertex)
+gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex)
 {
     vertex.position_clip          = mul(float4(vertex.position, 1.0f), buffer_frame.view_projection);
     vertex.position_clip_current  = vertex.position_clip;
 #ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
     vertex.position_clip_previous = mul(float4(vertex.position_previous, 1.0f), buffer_frame.view_projection_previous);
 #endif
+
+    return vertex;
 }
 
 // tessellation
@@ -277,7 +302,7 @@ HsConstantDataOutput patch_constant_function(InputPatch<gbuffer_vertex, MAX_POIN
 {
     HsConstantDataOutput output;
 
-    const float subdivisions = 4.0f;
+    const float subdivisions = 8.0f;
 
     output.edges[0] = subdivisions;
     output.edges[1] = subdivisions;
@@ -301,34 +326,35 @@ gbuffer_vertex main_hs(InputPatch<gbuffer_vertex, MAX_POINTS> input_patch, uint 
 [domain("tri")]
 gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_DomainLocation, const OutputPatch<gbuffer_vertex, 3> patch)
 {
-    gbuffer_vertex output;
+    gbuffer_vertex vertex;
 
+    // change the winding order
+    //bary_coords.xy = bary_coords.yx;
+    
     // interpolate position using barycentric coordinates
-    output.position = patch[0].position * bary_coords.x +
+    vertex.position = patch[0].position * bary_coords.x +
                       patch[1].position * bary_coords.y +
                       patch[2].position * bary_coords.z;
 
     // interpolate normal using barycentric coordinates
-    output.normal = normalize(patch[0].normal * bary_coords.x +
+    vertex.normal = normalize(patch[0].normal * bary_coords.x +
                               patch[1].normal * bary_coords.y +
                               patch[2].normal * bary_coords.z);
 
     // interpolate tangent using barycentric coordinates
-    output.tangent = normalize(patch[0].tangent * bary_coords.x +
+    vertex.tangent = normalize(patch[0].tangent * bary_coords.x +
                                patch[1].tangent * bary_coords.y +
                                patch[2].tangent * bary_coords.z);
 
     // interpolate texture coordinates using barycentric coordinates
-    output.uv = patch[0].uv * bary_coords.x +
+    vertex.uv = patch[0].uv * bary_coords.x +
                 patch[1].uv * bary_coords.y +
                 patch[2].uv * bary_coords.z;
 
     // apply displacement
-    float displacement           = GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), output.uv, 0.0f).r;
-    float displacement_strength  = GetMaterial().height;
-    output.position             += output.normal * displacement * displacement_strength;
+    //float displacement           = GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), output.uv, 0.0f).r * 2.0f - 1.0f;
+    //float displacement_strength  = GetMaterial().height;
+    //output.position             += output.normal * displacement * displacement_strength;
 
-    transform_to_clip_space(output);
-
-    return output;
+    return transform_to_clip_space(vertex);
 }

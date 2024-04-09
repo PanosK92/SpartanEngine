@@ -23,18 +23,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-Pixel_PosUv main_vs(Vertex_PosUv input)
+struct vertex
 {
-    Pixel_PosUv output;
+    float4 position : SV_POSITION;
+    float2 uv       : TEXCOORD;
+};
 
+vertex main_vs(vertex input)
+{
     input.position.w = 1.0f;
-    output.position  = mul(input.position, buffer_frame.view_projection_orthographic);
-    output.uv        = input.uv;
+    input.position  = mul(input.position, buffer_frame.view_projection_orthographic);
 
-    return output;
+    return input;
 }
 
-float4 main_ps(Pixel_PosUv input) : SV_TARGET
+float4 main_ps(vertex input) : SV_TARGET
 {
     float4 color = float4(0.0f, 0.0f, 0.0f, 1.0f);
     
