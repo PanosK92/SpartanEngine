@@ -244,17 +244,6 @@ gbuffer main_ps(gbuffer_vertex input)
 
     if (pixel_distance < g_quality_max_distance)
     {
-        // parallax mapping
-        if (surface.has_texture_height())
-        {
-            float scale = GetMaterial().height * 0.01f;
-
-            float3x3 world_to_tangent       = make_world_to_tangent_matrix(input.normal, input.tangent);
-            float3 camera_to_pixel_tangent  = normalize(mul(normalize(camera_to_pixel_world), world_to_tangent));
-            float height                    = GET_TEXTURE(material_height).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv).r - 0.5f;
-            uv                             += (camera_to_pixel_tangent.xy / camera_to_pixel_tangent.z) * height * scale;
-        }
-
         // normal mapping
         if (surface.has_texture_normal())
         {
