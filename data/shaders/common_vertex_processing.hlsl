@@ -209,7 +209,13 @@ static float3 extract_position(matrix transform)
 gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matrix transform)
 {
     gbuffer_vertex vertex;
-    vertex.uv = input.uv;
+
+    // get material and surface
+    Material material = GetMaterial();
+    Surface surface; surface.flags = material.flags;
+
+    // compute uv
+    vertex.uv = float2(input.uv.x * material.tiling.x + material.offset.x, input.uv.y * material.tiling.y + material.offset.y);
 
     // compute the final world transform
     bool is_instanced         = instance_id != 0; // not ideal as you can have instancing with instance_id = 0, however it's very performant branching due to predictability
@@ -240,8 +246,6 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
 #endif
 
     // apply ambient animation
-    Surface surface;
-    surface.flags            = GetMaterial().flags;
     vertex.position          = vertex_processing::ambient_animation(surface, vertex.position, extract_position(transform), instance_id, buffer_frame.time);
 #ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
     vertex.position_previous = vertex_processing::ambient_animation(surface, vertex.position_previous, extract_position(transform_previous), instance_id, buffer_frame.time - buffer_frame.delta_time);
