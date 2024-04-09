@@ -41,15 +41,26 @@ namespace ImGui::TransformGizmo
 
     void apply_style()
     {
-        ImGuizmo::Style& style           = ImGuizmo::GetStyle();
-        style.TranslationLineThickness   = 6.0f;
-        style.TranslationLineArrowSize   = 10.0f;
-        style.RotationLineThickness      = 4.0f;
-        style.RotationOuterLineThickness = 5.0f;
-        style.ScaleLineThickness         = 6.0f;
-        style.ScaleLineCircleSize        = 6.0f;
-        style.HatchedAxisLineThickness   = 6.0f;
-        style.CenterCircleSize           = 6.0f;
+        const ImVec4 inspector_color_x = ImVec4(0.75f, 0.20f, 0.20f, 0.80f);
+        const ImVec4 inspector_color_y = ImVec4(0.20f, 0.75f, 0.20f, 0.80f);
+        const ImVec4 inspector_color_z = ImVec4(0.20f, 0.20f, 0.75f, 0.80f);
+
+        ImGuizmo::Style& style                            = ImGuizmo::GetStyle();
+        style.Colors[ImGuizmo::COLOR::DIRECTION_X]        = ImVec4(inspector_color_x.x, inspector_color_x.y, inspector_color_x.z, 1.0f);
+        style.Colors[ImGuizmo::COLOR::DIRECTION_Y]        = ImVec4(inspector_color_y.x, inspector_color_y.y, inspector_color_y.z, 1.0f);
+        style.Colors[ImGuizmo::COLOR::DIRECTION_Z]        = ImVec4(inspector_color_z.x, inspector_color_z.y, inspector_color_z.z, 1.0f);
+        style.Colors[ImGuizmo::COLOR::PLANE_X]            = inspector_color_x;
+        style.Colors[ImGuizmo::COLOR::PLANE_Y]            = inspector_color_y;
+        style.Colors[ImGuizmo::COLOR::PLANE_Z]            = inspector_color_z;
+        style.Colors[ImGuizmo::COLOR::HATCHED_AXIS_LINES] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+
+        style.CenterCircleSize           = 5.0f;
+        style.TranslationLineThickness   = 4.0f;
+        style.TranslationLineArrowSize   = 6.0f;
+        style.RotationLineThickness      = 3.0f;
+        style.RotationOuterLineThickness = 2.0f;
+        style.ScaleLineThickness         = 4.0f;
+        style.ScaleLineCircleSize        = 7.0f;
     }
 
     static void tick()
