@@ -189,18 +189,8 @@ namespace Spartan
 
         void set_is_transparent_and_material_index(const bool is_transparent, const uint32_t material_index = 0)
         {
-            // ensure the index fits within 24 bits (adjust this mask if you have different constraints)
-            uint32_t masked_index = material_index & 0x00FFFFFF;
-
-            // shift the transparency flag to the 25th bit
-            uint32_t transparency_flag = is_transparent ? 1 : 0;
-            transparency_flag <<= 24;
-
-            // combine the masked index and the transparency flag
-            uint32_t combined_value = masked_index | transparency_flag;
-
-            // store as float
-            m_value.m13 = static_cast<float>(combined_value);
+            m_value.m03 = static_cast<float>(material_index);
+            m_value.m13 = is_transparent ? 1.0f : 0.0f;
         }
 
         bool operator==(const Pcb_Pass& rhs) const

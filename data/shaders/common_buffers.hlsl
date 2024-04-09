@@ -86,26 +86,9 @@ float3 pass_get_f3_value()           { return float3(buffer_pass.values._m00, bu
 float3 pass_get_f3_value2()          { return float3(buffer_pass.values._m20, buffer_pass.values._m21, buffer_pass.values._m31); }
 float4 pass_get_f4_value()           { return float4(buffer_pass.values._m10, buffer_pass.values._m11, buffer_pass.values._m12, buffer_pass.values._m33); }
 
-bool pass_is_transparent()
-{
-    // convert the float back to uint
-    uint combined_value = uint(buffer_pass.values._m13);
-    
-    // extract the transparency flag by shifting right 24 bits and then check if the bit is set
-    return (combined_value >> 24) & 1;
-}
-
-bool pass_is_opaque() { return !pass_is_transparent(); }
-
-uint pass_get_material_index()
-{
-    // convert the float back to uint
-    uint combinedValue = uint(buffer_pass.values._m13);
-    // mask out the transparency bit to only get the material index
-    
-    return combinedValue & 0x00FFFFFF; // mask out any bits above the 24th
-}
-
+bool pass_is_transparent()     { return buffer_pass.values._m13 == 1.0f; }
+bool pass_is_opaque()          { return !pass_is_transparent(); }
+uint pass_get_material_index() { return buffer_pass.values._m03; }
 // _m32 is available for use
 
 #endif // SPARTAN_COMMON_BUFFERS
