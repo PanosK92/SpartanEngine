@@ -216,7 +216,16 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     matrix transform_instance = is_instanced ? input.instance_transform : matrix_identity;
     transform                 = mul(transform, transform_instance);
 #ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
-    matrix transform_previous = mul(pass_get_transform_previous(), transform_instance);
+    // clip the last row as it has encoded data in the first two elements
+    matrix<float, 3, 3> temp = (float3x3)pass_get_transform_previous();
+    // manually construt a matrix that can be multiplied with another matrix
+    matrix transform_previous = matrix(
+        temp._m00, temp._m01, temp._m02, 0.0f,
+        temp._m10, temp._m11, temp._m12, 0.0f,
+        temp._m20, temp._m21, temp._m22, 0.0f,
+        0.0f,      0.0f,      0.0f,      1.0f
+    );
+    transform_previous = mul(transform_previous, transform_instance);
 #endif
 
     // transform to world space
