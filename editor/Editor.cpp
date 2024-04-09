@@ -45,21 +45,10 @@ using namespace std;
 
 namespace
 {
-    // font
-    constexpr float k_font_size  = 18.0f;
-    constexpr float k_font_scale = 1.0f;
-
-    // color
-    constexpr ImVec4 k_palette_color_0 = {10.0f / 255.0f, 12.0f / 255.0f, 17.0f / 255.0f, 1.0f};
-    constexpr ImVec4 k_palette_color_1 = {18.0f / 255.0f, 20.0f / 255.0f, 25.0f / 255.0f, 1.0f};
-    constexpr ImVec4 k_palette_color_2 = {22.0f / 255.0f, 30.0f / 255.0f, 45.0f / 255.0f, 1.0f};
-    constexpr ImVec4 k_palette_color_3 = {35.0f / 255.0f, 48.0f / 255.0f, 76.0f / 255.0f, 1.0f};
-    constexpr ImVec4 k_palette_color_4 = {65.0f / 255.0f, 90.0f / 255.0f, 119.0f / 255.0f, 1.0f};
-    constexpr ImVec4 k_palette_color_5 = {119.0f / 255.0f, 141.0f / 255.0f, 169.0f / 255.0f, 1.0f};
-    constexpr ImVec4 k_palette_color_6 = {224.0f / 255.0f, 225.0f / 255.0f, 221.0f / 255.0f, 1.0f};
-
+    float k_font_size         = 18.0f;
+    float k_font_scale        = 1.0f;
     TitleBar* widget_menu_bar = nullptr;
-    Widget* widget_world     = nullptr;
+    Widget* widget_world      = nullptr;
 
     void process_event(Spartan::sp_variant data)
     {
@@ -72,6 +61,15 @@ namespace
         // use default dark style as a base
         ImGui::StyleColorsDark();
         ImVec4* colors = ImGui::GetStyle().Colors;
+
+        // color
+        const ImVec4 k_palette_color_0 = { 10.0f / 255.0f, 12.0f / 255.0f, 17.0f / 255.0f, 1.0f };
+        const ImVec4 k_palette_color_1 = { 18.0f / 255.0f, 20.0f / 255.0f, 25.0f / 255.0f, 1.0f };
+        const ImVec4 k_palette_color_2 = { 22.0f / 255.0f, 30.0f / 255.0f, 45.0f / 255.0f, 1.0f };
+        const ImVec4 k_palette_color_3 = { 35.0f / 255.0f, 48.0f / 255.0f, 76.0f / 255.0f, 1.0f };
+        const ImVec4 k_palette_color_4 = { 65.0f / 255.0f, 90.0f / 255.0f, 119.0f / 255.0f, 1.0f };
+        const ImVec4 k_palette_color_5 = { 119.0f / 255.0f, 141.0f / 255.0f, 169.0f / 255.0f, 1.0f };
+        const ImVec4 k_palette_color_6 = { 224.0f / 255.0f, 225.0f / 255.0f, 221.0f / 255.0f, 1.0f };
 
         colors[ImGuiCol_Text]                  = k_palette_color_6;
         colors[ImGuiCol_TextDisabled]          = k_palette_color_6;

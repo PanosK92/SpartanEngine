@@ -223,7 +223,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     // transform to world space
     vertex.position          = mul(input.position, transform).xyz;
 #ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
-    vertex.position_previous = vertex.position;//mul(input.position, transform_previous).xyz;
+    vertex.position_previous = mul(input.position, transform_previous).xyz;
 #endif
 #ifndef TRANSFORM_IGNORE_NORMALS
     vertex.normal            = normalize(mul(input.normal, (float3x3)transform));
