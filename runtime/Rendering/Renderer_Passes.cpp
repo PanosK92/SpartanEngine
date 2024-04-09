@@ -626,14 +626,13 @@ namespace Spartan
     {
         // acquire resources
         RHI_Shader* shader_v           = GetShader(Renderer_Shader::depth_prepass_v).get();
-        RHI_Shader* shader_instanced_v = GetShader(Renderer_Shader::depth_prepass_instanced_v).get();
         RHI_Shader* shader_h           = GetShader(Renderer_Shader::tessellation_h).get();
         RHI_Shader* shader_d           = GetShader(Renderer_Shader::tessellation_d).get();
         RHI_Shader* shader_p           = GetShader(Renderer_Shader::depth_prepass_alpha_test_p).get();
         RHI_Texture* tex_depth         = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get();
         RHI_Texture* tex_depth_opaque  = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque).get();
         RHI_Texture* tex_depth_output  = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output).get();
-        if (!shader_v->IsCompiled() || !shader_instanced_v->IsCompiled() || !shader_p->IsCompiled())
+        if (!shader_v->IsCompiled() || !shader_h->IsCompiled() || !shader_d->IsCompiled() || !shader_p->IsCompiled())
             return;
 
         lock_guard lock(m_mutex_renderables);
@@ -648,7 +647,7 @@ namespace Spartan
 
         bool vrs = GetOption<bool>(Renderer_Option::VariableRateShading);
 
-        auto pass = [cmd_list, shader_v, shader_instanced_v, shader_h, shader_d, shader_p, tex_depth, tex_depth_opaque, tex_depth_output, vrs](bool is_transparent_pass)
+        auto pass = [cmd_list, shader_v, shader_h, shader_d, shader_p, tex_depth, tex_depth_opaque, tex_depth_output, vrs](bool is_transparent_pass)
         {
             uint32_t start_index = !is_transparent_pass ? 0 : 2;
             uint32_t end_index   = !is_transparent_pass ? 2 : 4;
@@ -664,7 +663,7 @@ namespace Spartan
                 static RHI_PipelineState pso;
                 pso.name                        = !is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent";
                 pso.instancing                  = i == 1 || i == 3;
-                pso.shader_vertex               = !pso.instancing ? shader_v : shader_instanced_v;
+                pso.shader_vertex               = shader_v;
                 pso.shader_pixel                = pso.instancing ? shader_p : nullptr; // alpha testing - instanced geometry is vegetation which needs alpha testing (not an ideal way to detect this)
                 pso.rasterizer_state            = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
                 pso.blend_state                 = GetBlendState(Renderer_BlendState::Disabled).get();
@@ -771,7 +770,6 @@ namespace Spartan
     {
         // acquire resources
         RHI_Shader* shader_v           = GetShader(Renderer_Shader::gbuffer_v).get();
-        RHI_Shader* shader_v_instanced = GetShader(Renderer_Shader::gbuffer_v_instanced).get();
         RHI_Shader* shader_h           = GetShader(Renderer_Shader::tessellation_h).get();
         RHI_Shader* shader_d           = GetShader(Renderer_Shader::tessellation_d).get();
         RHI_Shader* shader_p           = GetShader(Renderer_Shader::gbuffer_p).get();
@@ -780,7 +778,7 @@ namespace Spartan
         RHI_Texture* tex_material      = GetRenderTarget(Renderer_RenderTarget::gbuffer_material).get();
         RHI_Texture* tex_velocity      = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get();
         RHI_Texture* tex_depth         = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get();
-        if (!shader_v->IsCompiled() || !shader_v_instanced->IsCompiled() || !shader_h->IsCompiled() || !shader_d->IsCompiled() || !shader_p->IsCompiled())
+        if (!shader_v->IsCompiled() || !shader_h->IsCompiled() || !shader_d->IsCompiled() || !shader_p->IsCompiled())
             return;
 
         lock_guard lock(m_mutex_renderables);
@@ -810,7 +808,7 @@ namespace Spartan
             pso.name                            = is_transparent_pass ? "g_buffer_transparent" : "g_buffer";
             pso.instancing                      = i == 1 || i == 3;
             pso.shader_pixel                    = shader_p;
-            pso.shader_vertex                   = pso.instancing ? shader_v_instanced : shader_v;
+            pso.shader_vertex                   = shader_v;
             pso.blend_state                     = GetBlendState(Renderer_BlendState::Disabled).get();
             pso.rasterizer_state                = rasterizer_state;
             pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();

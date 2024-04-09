@@ -115,9 +115,9 @@ struct vertex_processing
     {
         static float3 apply_wave(float3 position_vertex, float time)
         {
-            static const float base_wave_height    = 0.1f;
+            static const float base_wave_height    = 0.2f;
             static const float base_wave_frequency = 20.0f;
-            static const float base_wave_speed     = 0.2f;
+            static const float base_wave_speed     = 0.3f;
 
             // interleave 4 waves to have a more complex wave pattern
             float3 offset = 0.0f;
@@ -183,11 +183,8 @@ struct vertex_processing
         }
     };
 
-    static float3 ambient_animation(float3 position, float3 animation_pivot, uint instance_id, float time)
+    static float3 ambient_animation(Surface surface, float3 position, float3 animation_pivot, uint instance_id, float time)
     {
-        Surface surface;
-        surface.flags = GetMaterial().flags;
-    
         if(surface.vertex_animate_wind())
         {
             position = vegetation::apply_wind(instance_id, position, animation_pivot, time);
@@ -210,14 +207,11 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     vertex.uv = input.uv;
 
     // compute the final world transform
-#if INSTANCED
-    transform = mul(transform, input.instance_transform);
-#endif
+    bool is_instanced         = instance_id != 0; // no ideal as you can have instancing with instance_id = 0, however it's very performant branching due to predictability
+    matrix transform_instance = is_instanced ? input.instance_transform : matrix_identity;
+    transform                 = mul(transform, transform_instance);
 #ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
-    matrix transform_previous = pass_get_transform_previous();
-    #if INSTANCED
-        transform_previous    = mul(transform_previous, input.instance_transform);
-    #endif
+    matrix transform_previous = mul(pass_get_transform_previous(), transform_instance);
 #endif
 
     // transform to world space
@@ -231,11 +225,13 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
 #endif
 
     // apply ambient animation
+    Surface surface;
+    surface.flags = GetMaterial().flags;
     float3 animation_pivot   = float3(transform._31, transform._32, transform._33); // position
-    vertex.position          = vertex_processing::ambient_animation(vertex.position, animation_pivot, instance_id, buffer_frame.time);
+    vertex.position          = vertex_processing::ambient_animation(surface, vertex.position, animation_pivot, instance_id, buffer_frame.time);
 #ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
     animation_pivot          = float3(transform_previous._31, transform_previous._32, transform_previous._33);
-    vertex.position_previous = vertex_processing::ambient_animation(vertex.position_previous, animation_pivot, instance_id, buffer_frame.time - buffer_frame.delta_time);
+    vertex.position_previous = vertex_processing::ambient_animation(surface, vertex.position_previous, animation_pivot, instance_id, buffer_frame.time - buffer_frame.delta_time);
 #endif
 
     return vertex;

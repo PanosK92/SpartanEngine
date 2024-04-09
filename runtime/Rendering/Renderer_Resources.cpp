@@ -334,10 +334,6 @@ namespace Spartan
             shader(Renderer_Shader::depth_prepass_v) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::depth_prepass_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_prepass.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
 
-            shader(Renderer_Shader::depth_prepass_instanced_v) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::depth_prepass_instanced_v)->AddDefine("INSTANCED");
-            shader(Renderer_Shader::depth_prepass_instanced_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_prepass.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-
             shader(Renderer_Shader::depth_prepass_alpha_test_p) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::depth_prepass_alpha_test_p)->Compile(RHI_Shader_Pixel, shader_dir + "depth_prepass.hlsl", async);
         }
@@ -359,10 +355,6 @@ namespace Spartan
         {
             shader(Renderer_Shader::gbuffer_v) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::gbuffer_v)->Compile(RHI_Shader_Vertex, shader_dir + "g_buffer.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-
-            shader(Renderer_Shader::gbuffer_v_instanced) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::gbuffer_v_instanced)->AddDefine("INSTANCED");
-            shader(Renderer_Shader::gbuffer_v_instanced)->Compile(RHI_Shader_Vertex, shader_dir + "g_buffer.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
 
             shader(Renderer_Shader::gbuffer_p) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::gbuffer_p)->Compile(RHI_Shader_Pixel, shader_dir + "g_buffer.hlsl", async);
