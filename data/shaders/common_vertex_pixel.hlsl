@@ -51,9 +51,7 @@ struct Vertex_PosUvNorTan
     float2 uv                 : TEXCOORD0;
     float3 normal             : NORMAL0;
     float3 tangent            : TANGENT0;
-    #if INSTANCED
     matrix instance_transform : INSTANCE_TRANSFORM0;
-    #endif
 };
 
 struct gbuffer_vertex
