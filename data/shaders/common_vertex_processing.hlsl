@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-// - these functions are shared between depth_prepass.hlsl, g_buffer.hlsl and depth_light.hlsl
-// - this is because the calculations have to be exactly the same and therefore produce identical values over time and space (depth values)
+// - the functions are shared between depth_prepass.hlsl, g_buffer.hlsl and depth_light.hlsl
+// - this is because the calculations have to be exactly the same and therefore produce identical values over time (motion vectors) and space (depth pre-pass vs g-buffer)
 
 // vertex buffer input
 struct Vertex_PosUvNorTan
@@ -48,6 +48,11 @@ struct gbuffer_vertex
     float3 tangent                : TANGENT_WORLD;
     float2 uv                     : TEXCOORD;
 };
+
+static float3 extract_position(matrix transform)
+{
+    return float3(transform._31, transform._32, transform._33);
+}
 
 struct vertex_processing
 {
@@ -224,11 +229,6 @@ struct vertex_processing
     }
 };
 
-static float3 extract_position(matrix transform)
-{
-    return float3(transform._31, transform._32, transform._33);
-}
-
 gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matrix transform)
 {
     gbuffer_vertex vertex;
@@ -302,7 +302,7 @@ HsConstantDataOutput patch_constant_function(InputPatch<gbuffer_vertex, MAX_POIN
 {
     HsConstantDataOutput output;
 
-    const float subdivisions = 8.0f;
+    const float subdivisions = 1.0f;
 
     output.edges[0] = subdivisions;
     output.edges[1] = subdivisions;
@@ -328,9 +328,6 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
 {
     gbuffer_vertex vertex;
 
-    // change the winding order
-    //bary_coords.xy = bary_coords.yx;
-    
     // interpolate position using barycentric coordinates
     vertex.position = patch[0].position * bary_coords.x +
                       patch[1].position * bary_coords.y +
@@ -352,9 +349,9 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
                 patch[2].uv * bary_coords.z;
 
     // apply displacement
-    //float displacement           = GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), output.uv, 0.0f).r * 2.0f - 1.0f;
-    //float displacement_strength  = GetMaterial().height;
-    //output.position             += output.normal * displacement * displacement_strength;
+    float displacement           = GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv, 0.0f).r * 2.0f - 1.0f;
+    float displacement_strength  = GetMaterial().height * 0.2f;
+    vertex.position             += vertex.normal * displacement * displacement_strength;
 
     return transform_to_clip_space(vertex);
 }

@@ -158,7 +158,6 @@ namespace Spartan
                 hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.clear_color[i].a));
             }
             hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.resolution_scale));
-            hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.disable_clearing));
 
             return hash;
         }

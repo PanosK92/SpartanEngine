@@ -127,7 +127,7 @@ namespace Spartan
                 arguments.emplace_back("-fvk-use-dx-position-w"); // reciprocate SV_Position.w after reading from stage input in PS to accommodate the difference between Vulkan and DirectX
 
                 // Negate SV_Position.y before writing to stage output in VS/DS/GS to accommodate Vulkan's coordinate system
-                if (m_shader_type == RHI_Shader_Vertex)
+                if (m_shader_type == RHI_Shader_Vertex || m_shader_type == RHI_Shader_Domain)
                 {
                     arguments.emplace_back("-fvk-invert-y");
                 }

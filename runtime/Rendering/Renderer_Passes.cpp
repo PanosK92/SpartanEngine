@@ -638,16 +638,17 @@ namespace Spartan
         lock_guard lock(m_mutex_renderables);
         cmd_list->BeginTimeblock(!is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent");
 
-        // clear the first time
-        if (!is_transparent_pass)
-        {
+        // define pipeline state
+        static RHI_PipelineState pso;
+        pso.shader_vertex               = shader_v;
+        pso.rasterizer_state            = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
+        pso.blend_state                 = GetBlendState(Renderer_BlendState::Disabled).get();
+        pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
+        pso.render_target_depth_texture = tex_depth;
+        pso.vrs_input_texture           = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
+        pso.resolution_scale            = true;
 
-            cmd_list->ClearRenderTarget(GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(), rhi_color_dont_care, 0.0f);
-        }
-
-        bool vrs = GetOption<bool>(Renderer_Option::VariableRateShading);
-
-        auto pass = [cmd_list, shader_v, shader_h, shader_d, shader_p, tex_depth, tex_depth_opaque, tex_depth_output, vrs](bool is_transparent_pass)
+        auto pass = [cmd_list, shader_h, shader_d, shader_p, tex_depth_output](bool is_transparent_pass)
         {
             uint32_t start_index = !is_transparent_pass ? 0 : 2;
             uint32_t end_index   = !is_transparent_pass ? 2 : 4;
@@ -660,19 +661,9 @@ namespace Spartan
                     continue;
 
                 // set pipeline state
-                static RHI_PipelineState pso;
-                pso.name                        = !is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent";
-                pso.instancing                  = i == 1 || i == 3;
-                pso.shader_vertex               = shader_v;
-                pso.shader_pixel                = pso.instancing ? shader_p : nullptr; // alpha testing - instanced geometry is vegetation which needs alpha testing (not an ideal way to detect this)
-                pso.rasterizer_state            = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
-                pso.blend_state                 = GetBlendState(Renderer_BlendState::Disabled).get();
-                pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
-                pso.render_target_depth_texture = tex_depth;
-                pso.clear_depth                 = rhi_depth_load;
-                pso.vrs_input_texture           = vrs ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
-                pso.resolution_scale            = true;
-                pso.disable_clearing            = false;
+                pso.name         = !is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent";
+                pso.instancing   = i == 1 || i == 3;
+                pso.shader_pixel = pso.instancing ? shader_p : nullptr; // alpha testing - instanced geometry is vegetation which needs alpha testing (not an ideal way to detect this)
                 cmd_list->SetPipelineState(pso);
 
                 for (shared_ptr<Entity>& entity : entities)
@@ -718,21 +709,20 @@ namespace Spartan
                     }
 
                     // toggle tessellation
+                    if (Material* material = renderable->GetMaterial())
                     {
-                        bool is_tessellated = false;
-                        if (Material* material = renderable->GetMaterial())
+                        bool is_tessellated = material->IsTessellated();
+                        if ((is_tessellated && !pso.shader_hull) || (!is_tessellated && pso.shader_hull))
                         {
-                            is_tessellated = material->IsTessellated();
+                            //pso.shader_hull   = is_tessellated ? shader_h : nullptr;
+                            //pso.shader_domain = is_tessellated ? shader_d : nullptr;
+                            //pso.clear_depth   = rhi_depth_load;
+                            //cmd_list->SetPipelineState(pso);
                         }
-
-                        //pso.shader_hull   = is_tessellated ? shader_h : nullptr;
-                        //pso.shader_domain = is_tessellated ? shader_d : nullptr;
-                        //
-                        //cmd_list->SetPipelineState(pso);
-                        //pso.disable_clearing = true; // only clear on first pipeline set
                     }
 
                     draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
+                    pso.clear_depth = rhi_depth_load;
 
                     if (!is_transparent_pass)
                     {
@@ -744,9 +734,9 @@ namespace Spartan
 
         if (!is_transparent_pass) // opaque
         {
+            pso.clear_depth = 0.0f;
             pass(false);
             visibility::get_gpu_occlusion_query_results(cmd_list, m_renderables);
-
             cmd_list->Blit(tex_depth, tex_depth_opaque, false);
         }
         else // transparent
@@ -804,11 +794,11 @@ namespace Spartan
             // can be enabled, and if it is, it will expect the RTs to contain both the opaque and transparent data
 
             // set pipeline state
-            RHI_PipelineState pso;
+            static RHI_PipelineState pso;
             pso.name                            = is_transparent_pass ? "g_buffer_transparent" : "g_buffer";
             pso.instancing                      = i == 1 || i == 3;
-            pso.shader_pixel                    = shader_p;
             pso.shader_vertex                   = shader_v;
+            pso.shader_pixel                    = shader_p;
             pso.blend_state                     = GetBlendState(Renderer_BlendState::Disabled).get();
             pso.rasterizer_state                = rasterizer_state;
             pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
@@ -824,7 +814,6 @@ namespace Spartan
             pso.clear_depth                     = rhi_depth_load;
             pso.vrs_input_texture               = vrs ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
             pso.resolution_scale                = true;
-            pso.disable_clearing                = false;
             cmd_list->SetPipelineState(pso);
 
             for (shared_ptr<Entity>& entity : entities)
@@ -858,21 +847,33 @@ namespace Spartan
                 }
 
                 // toggle tessellation
+                if (Material* material = renderable->GetMaterial())
                 {
-                    bool is_tessellated = false;
-                    if (Material* material = renderable->GetMaterial())
-                    { 
-                        is_tessellated = material->IsTessellated();
+                    bool is_tessellated = material->IsTessellated();
+                    if ((is_tessellated && !pso.shader_hull) || (!is_tessellated && pso.shader_hull))
+                    {
+                        //pso.shader_hull    = is_tessellated ? shader_h : nullptr;
+                        //pso.shader_domain  = is_tessellated ? shader_d : nullptr;
+                        //pso.clear_color[0] = rhi_color_load;
+                        //pso.clear_color[1] = rhi_color_load;
+                        //pso.clear_color[2] = rhi_color_load;
+                        //pso.clear_color[3] = rhi_color_load;
+                        //pso.clear_depth    = rhi_depth_load;
+                        //cmd_list->SetPipelineState(pso);
                     }
-
-                    //pso.shader_hull   = is_tessellated ? shader_h : nullptr;
-                    //pso.shader_domain = is_tessellated ? shader_d : nullptr;
-                    //
-                    //cmd_list->SetPipelineState(pso);
-                    //pso.disable_clearing = true; // only clear on first pipeline set
                 }
 
                 draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
+
+                // after the first clear, load
+                if (is_first_pass)
+                { 
+                    pso.clear_color[0] = rhi_color_load;
+                    pso.clear_color[1] = rhi_color_load;
+                    pso.clear_color[2] = rhi_color_load;
+                    pso.clear_color[3] = rhi_color_load;
+                    pso.clear_depth    = rhi_depth_load;
+                }
 
                 is_first_pass = false;
             }
