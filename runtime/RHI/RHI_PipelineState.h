@@ -36,13 +36,14 @@ namespace Spartan
 
         void Prepare();
         bool HasClearValues() const;
-        uint64_t GetHash() const        { return m_hash; }
-        uint64_t GetHashDynamic() const { return m_hash_dynamic; }
-        uint32_t GetWidth() const       { return m_width; }
-        uint32_t GetHeight() const      { return m_height; }
-        bool IsGraphics() const         { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
-        bool IsCompute() const          { return shader_compute != nullptr && !IsGraphics(); }
-        bool HasTessellation() const    { return shader_domain != nullptr && shader_hull != nullptr; }
+        void RemoveClearValues();
+        uint64_t GetHash() const           { return m_hash; }
+        uint64_t GetHashRenderPass() const { return m_hash_render_pass; }
+        uint32_t GetWidth() const          { return m_width; }
+        uint32_t GetHeight() const         { return m_height; }
+        bool IsGraphics() const            { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
+        bool IsCompute() const             { return shader_compute != nullptr && !IsGraphics(); }
+        bool HasTessellation() const       { return shader_domain != nullptr && shader_hull != nullptr; }
 
         //= STATIC - can cause pso generation =============================================
         RHI_Shader* shader_vertex                  = nullptr;
@@ -64,22 +65,18 @@ namespace Spartan
         //=================================================================================
 
         //= DYNAMIC - will not cause pso generation =================
-        uint32_t render_target_color_texture_array_index         = 0;
-        uint32_t render_target_depth_stencil_texture_array_index = 0;
-
-        float clear_depth      = rhi_depth_load;
-        uint32_t clear_stencil = rhi_stencil_load;
+        bool resolution_scale                      = false;
+        uint32_t render_target_array_index         = 0;
+        float clear_depth                          = rhi_depth_load;
+        uint32_t clear_stencil                     = rhi_stencil_load;
         std::array<Color, rhi_max_render_target_count> clear_color;
-
         std::string name;
-        bool resolution_scale = false;
         //===========================================================
 
     private:
-        uint32_t m_width                  = 0;
-        uint32_t m_height                 = 0;
-        uint64_t m_hash                   = 0;
-        uint64_t m_hash_dynamic           = 0;
-        RHI_PipelineState* m_pso_previous = nullptr;
+        uint32_t m_width            = 0;
+        uint32_t m_height           = 0;
+        uint64_t m_hash             = 0;
+        uint64_t m_hash_render_pass = 0;
     };
 }

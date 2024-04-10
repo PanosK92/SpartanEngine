@@ -343,10 +343,6 @@ namespace Spartan
             shader(Renderer_Shader::depth_light_v) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::depth_light_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_light.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
 
-            shader(Renderer_Shader::depth_light_instanced_v) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::depth_light_instanced_v)->AddDefine("INSTANCED");
-            shader(Renderer_Shader::depth_light_instanced_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_light.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-
             shader(Renderer_Shader::depth_light_p) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::depth_light_p)->Compile(RHI_Shader_Pixel, shader_dir + "depth_light.hlsl", async);
         }

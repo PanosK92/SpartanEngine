@@ -45,6 +45,9 @@ namespace Spartan
     {
         mutex mutex_generate_mips;
         bool light_integration_brdf_speculat_lut_completed = false;
+        int64_t mesh_index_transparent                         = 0;
+        int64_t mesh_index_non_instanced_opaque                = 0;
+        int64_t mesh_index_non_instanced_transparent           = 0;
 
         namespace visibility
         {
@@ -59,106 +62,125 @@ namespace Spartan
                 boxes.clear();
             }
 
-            void frustum_culling_and_depth_sorting(Camera* camera, unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& renderables_)
+            float get_squared_distance(const shared_ptr<Entity>& entity)
             {
-                auto sort_renderables = [&camera, &renderables_](Renderer_Entity entity_type, const bool are_transparent)
+                Vector3 camera_position = Renderer::GetCamera()->GetEntity()->GetPosition();
+                uint64_t entity_id      = entity->GetObjectId();
+
+                auto it = distances_squared.find(entity_id);
+                if (it != distances_squared.end())
                 {
-                    vector<shared_ptr<Entity>>& renderables = renderables_[entity_type];
+                    return it->second;
+                }
+                else
+                {
+                    shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                    BoundingBoxType type              = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+                    Vector3 position                  = renderable->GetBoundingBox(type).GetCenter();
+                    float distance_squared            = (position - camera_position).LengthSquared();
+                    distances_squared[entity_id]      = distance_squared;
 
-                    // frustum culling
-                    for (shared_ptr<Entity>& entity : renderables)
-                    {
-                        shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-
-                        renderable->SetFlag(RenderableFlags::OccludedCpu, !camera->IsInViewFrustum(renderable));
-                        renderable->SetFlag(RenderableFlags::Occluder,    false);
-                    }
-
-                    // depth sorting
-                    {
-                        Vector3 camera_position = camera->GetEntity()->GetPosition();
-
-                        auto squared_distance = [&camera_position](const shared_ptr<Entity>& entity)
-                        {
-                            uint64_t entity_id = entity->GetObjectId();
-
-                            auto it = distances_squared.find(entity_id);
-                            if (it != distances_squared.end())
-                            {
-                                return it->second;
-                            }
-                            else
-                            {
-                                shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                                BoundingBoxType type              = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                                Vector3 position                  = renderable->GetBoundingBox(type).GetCenter();
-                                float distance_squared            = (position - camera_position).LengthSquared();
-                                distances_squared[entity_id]      = distance_squared;
-
-                                return distance_squared;
-                            }
-                        };
-
-                        sort(renderables.begin(), renderables.end(), [&squared_distance, &are_transparent](const shared_ptr<Entity>& a, const shared_ptr<Entity>& b)
-                        {
-                            // skip entities which are outside of the view frustum
-                            if (a->GetComponent<Renderable>()->HasFlag(OccludedCpu) || b->GetComponent<Renderable>()->HasFlag(OccludedCpu))
-                                return false;
-
-                            if (are_transparent)
-                            {
-                                // back-to-front for transparent
-                                return squared_distance(a) > squared_distance(b);
-                            }
-                            else
-                            {
-                                // front-to-back for opaque
-                                return squared_distance(a) < squared_distance(b);
-                            }
-                        });
-                    }
-                };
-
-                sort_renderables(Renderer_Entity::Geometry, false);
-                sort_renderables(Renderer_Entity::GeometryInstanced, false);
-                sort_renderables(Renderer_Entity::GeometryTransparent, true);
-                sort_renderables(Renderer_Entity::GeometryTransparentInstanced, true);
+                    return distance_squared;
+                }
             }
 
-            void determine_occluders(Camera* camera, unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& renderables)
+            void frustum_culling(vector<shared_ptr<Entity>>& renderables)
             {
-                bool is_transparent_pass = false;
-                uint32_t start_index     = !is_transparent_pass ? 0 : 2;
-                uint32_t end_index       = !is_transparent_pass ? 2 : 4;
-                uint32_t occluder_count  = 0;
-                for (uint32_t i = start_index; i < end_index; i++)
+                for (shared_ptr<Entity>& entity : renderables)
                 {
-                    auto& entities = renderables[static_cast<Renderer_Entity>(i)];
-                    if (entities.empty())
+                    shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                    renderable->SetFlag(RenderableFlags::OccludedCpu, !Renderer::GetCamera()->IsInViewFrustum(renderable));
+                    renderable->SetFlag(RenderableFlags::Occluder, false);
+                }
+            }
+
+            void sort(vector<shared_ptr<Entity>>& renderables)
+            {
+                // 1. sort by depth
+                sort(renderables.begin(), renderables.end(), [](const shared_ptr<Entity>& a, const shared_ptr<Entity>& b)
+                {
+                    bool a_occluded = a->GetComponent<Renderable>()->HasFlag(OccludedCpu);
+                    bool b_occluded = b->GetComponent<Renderable>()->HasFlag(OccludedCpu);
+                    
+                    if (a_occluded && b_occluded) return false; // keep occluded entities order if both are occluded
+                    if (a_occluded) return false;               // move a to the end if it's occluded
+                    if (b_occluded) return true;                // move b to the end if it's occluded
+                    
+                    // front-to-back for opaque (todo, handle inverse sorting for transparents)
+                    return get_squared_distance(a) < get_squared_distance(b);
+                });
+
+                // 2. sort by instancing, instanced objects go to the front
+                stable_sort(renderables.begin(), renderables.end(), [](const shared_ptr<Entity>& a, const shared_ptr<Entity>& b)
+                {
+                    return a->GetComponent<Renderable>()->HasInstancing() > b->GetComponent<Renderable>()->HasInstancing();
+                });
+
+                // 3. sort by transparency, transparent materials go to the end
+                stable_sort(renderables.begin(), renderables.end(), [](const shared_ptr<Entity>& a, const shared_ptr<Entity>& b)
+                {
+                    bool a_transparent = a->GetComponent<Renderable>()->GetMaterial()->IsTransparent();
+                    bool b_transparent = b->GetComponent<Renderable>()->GetMaterial()->IsTransparent();
+
+                    // non-transparent objects should come first, so invert the condition
+                    return !a_transparent && b_transparent;
+                });
+            }
+
+            void frustum_cull_and_sort(vector<shared_ptr<Entity>>& renderables)
+            {
+                frustum_culling(renderables);
+                sort(renderables);
+
+                // find transparent index
+                auto transparent_start = find_if(renderables.begin(), renderables.end(), [](const shared_ptr<Entity>& entity)
+                {
+                    return entity->GetComponent<Renderable>()->GetMaterial()->IsTransparent();
+                });
+                mesh_index_transparent = distance(renderables.begin(), transparent_start);
+
+                // find non-instanced index for opaque objects
+                auto non_instanced_opaque_start = find_if(renderables.begin(), renderables.end(), [&](const shared_ptr<Entity>& entity)
+                {
+                    shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                    bool is_transparent               = renderable->GetMaterial()->IsTransparent();
+                    bool is_instanced                 = renderable->HasInstancing();
+
+                    return !is_transparent && !is_instanced;
+                });
+                mesh_index_non_instanced_opaque = distance(renderables.begin(), non_instanced_opaque_start);
+
+                // find non-instanced index for transparent objects
+                auto non_instanced_transparent_start = find_if(transparent_start, renderables.end(), [&](const shared_ptr<Entity>& entity)
+                {
+                    return !entity->GetComponent<Renderable>()->HasInstancing();
+                });
+                mesh_index_non_instanced_transparent = distance(renderables.begin(), non_instanced_transparent_start);
+            }
+
+            void determine_occluders(vector<shared_ptr<Entity>>& renderables)
+            {
+                uint32_t occluder_count = 0;
+                for (shared_ptr<Entity>& entity : renderables)
+                {
+                    shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                    if (!renderable || !renderable->ReadyToRender() || renderable->HasFlag(RenderableFlags::OccludedCpu))
                         continue;
 
-                    for (uint32_t index_entity = 0; index_entity < entities.size(); index_entity++)
+                    // compute screen space rectangle
+                    BoundingBoxType box_type          = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
+                    BoundingBox box                   = renderable->GetBoundingBox(box_type);
+                    Rectangle rectangle               = Renderer::GetCamera()->WorldToScreenCoordinates(box);
+                    boxes[entity->GetObjectId()]      = box;
+                    rectangles[entity->GetObjectId()] = rectangle;
+
+                    bool factor_screen_size = rectangle.Area() >= 65536.0f;
+                    bool factor_inside      = box.Contains(Renderer::GetCamera()->GetEntity()->GetPosition()); // say we are in a building
+                    bool factor_count       = occluder_count < 32;
+                    if (factor_count && factor_screen_size && !factor_inside)
                     {
-                        shared_ptr<Entity>& entity        = entities[index_entity];
-                        shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                        if (!renderable || !renderable->ReadyToRender() || renderable->HasFlag(RenderableFlags::OccludedCpu))
-                            continue;
-
-                        // compute screen space rectangle
-                        BoundingBoxType box_type          = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                        BoundingBox box                   = renderable->GetBoundingBox(box_type);
-                        Rectangle rectangle               = camera->WorldToScreenCoordinates(box);
-                        boxes[entity->GetObjectId()]      = box;
-                        rectangles[entity->GetObjectId()] = rectangle;
-
-                        bool factor_screen_size = rectangle.Area() >= 65536.0f;
-                        bool factor_inside      = box.Contains(camera->GetEntity()->GetPosition()); // say we are in a building
-                        bool factor_count       = occluder_count < 32;
-                        if (factor_count && factor_screen_size && !factor_inside)
-                        {
-                            renderable->SetFlag(RenderableFlags::Occluder, true);
-                            occluder_count++;
-                        }
+                        renderable->SetFlag(RenderableFlags::Occluder, true);
+                        occluder_count++;
                     }
                 }
             }
@@ -370,7 +392,7 @@ namespace Spartan
         if (shared_ptr<Camera> camera = GetCamera())
         { 
             // determine if a transparent pass is required
-            const bool do_transparent_pass = !GetEntities()[Renderer_Entity::GeometryTransparent].empty();
+            const bool do_transparent_pass = mesh_index_transparent != -1;
             
             // shadow maps
             {
@@ -481,126 +503,115 @@ namespace Spartan
         // opaque entities write their depth information to a depth buffer, using just a vertex shader
         // transparent objects read the opaque depth but don't write their own, instead, they write their color information using a pixel shader
 
-        // acquire shaders
-        RHI_Shader* shader_v           = GetShader(Renderer_Shader::depth_light_v).get();
-        RHI_Shader* shader_instanced_v = GetShader(Renderer_Shader::depth_light_instanced_v).get();
-        RHI_Shader* shader_p           = GetShader(Renderer_Shader::depth_light_p).get();
-        if (!shader_v->IsCompiled() || !shader_instanced_v->IsCompiled() || !shader_p->IsCompiled())
+        // acquire resources
+        RHI_Shader* shader_v = GetShader(Renderer_Shader::depth_light_v).get();
+        RHI_Shader* shader_p = GetShader(Renderer_Shader::depth_light_p).get();
+        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
         lock_guard lock(m_mutex_renderables);
         cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_color" : "shadow_maps_depth");
 
-        uint32_t start_index = !is_transparent_pass ? 0 : 2;
-        uint32_t end_index   = !is_transparent_pass ? 2 : 4;
-        for (uint32_t i = start_index; i < end_index; i++)
+        // define shared pso
+        static RHI_PipelineState pso;
+        pso.shader_vertex       = shader_v;
+        pso.shader_pixel        = shader_p;
+        pso.blend_state         = is_transparent_pass ? GetBlendState(Renderer_BlendState::Alpha).get() : GetBlendState(Renderer_BlendState::Disabled).get();
+        pso.depth_stencil_state = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
+        pso.name                = "shadow_maps";
+
+        // iterate over lights
+        auto& lights = m_renderables[Renderer_Entity::Light];
+        for (shared_ptr<Entity>& light_entity : lights)
         {
-            // acquire entities
-            auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
-            if (entities.empty())
+            shared_ptr<Light> light = light_entity->GetComponent<Light>();
+
+            if (!light)
                 continue;
 
-            // go through all of the lights
-            auto& lights = GetEntities()[Renderer_Entity::Light];
-            for (uint32_t light_index = 0; light_index < lights.size(); light_index++)
+            // skip lights which don't cast shadows or have an intensity of zero
+            if (!light->IsFlagSet(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f)
+                continue;
+
+            // skip lights that don't cast transparent shadows (if this is a transparent pass)
+            if (is_transparent_pass && !light->IsFlagSet(LightFlags::ShadowsTransparent))
+                continue;
+
+            // define light pso
             {
-                shared_ptr<Light> light = lights[light_index]->GetComponent<Light>();
-
-                // can happen when loading a new scene and the lights get deleted
-                if (!light)
-                    continue;
-
-                // skip lights which don't cast shadows or have an intensity of zero
-                if (!light->IsFlagSet(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f)
-                    continue;
-
-                // skip lights that don't cast transparent shadows (if this is a transparent pass)
-                if (is_transparent_pass && !light->IsFlagSet(LightFlags::ShadowsTransparent))
-                    continue;
-
-                // set pipeline state
-                static RHI_PipelineState pso;
-                pso.instancing                      = i == 1 || i == 3;
-                pso.shader_vertex                   = !pso.instancing ? shader_v : shader_instanced_v;
-                pso.shader_pixel                    = shader_p;
-                pso.blend_state                     = is_transparent_pass ? GetBlendState(Renderer_BlendState::Alpha).get() : GetBlendState(Renderer_BlendState::Disabled).get();
-                pso.depth_stencil_state             = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
                 pso.render_target_color_textures[0] = light->GetColorTexture();
                 pso.render_target_depth_texture     = light->GetDepthTexture();
-                pso.name                            = "shadow_maps";
-
-                // go through all of the cascades/faces
-                for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetArrayLength(); array_index++)
+                pso.clear_color[0]                  = Color::standard_white;
+                pso.clear_depth                     = 0.0f;
+                if (light->GetLightType() == LightType::Directional)
                 {
-                    // set render target texture array index
-                    pso.render_target_color_texture_array_index         = array_index;
-                    pso.render_target_depth_stencil_texture_array_index = array_index;
+                    // disable depth clipping so that we can capture silhouettes even behind the light
+                    pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Light_directional).get();
+                }
+                else
+                {
+                    pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Light_point_spot).get();
+                }
+            }
 
-                    // set clear values
-                    pso.clear_color[0] = Color::standard_white;
-                    pso.clear_depth    = (!pso.instancing && !is_transparent_pass) ? 0.0f : rhi_depth_load; // reverse-z
+            // iterate over light cascade/faces
+            for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetArrayLength(); array_index++)
+            {
+                // iterate over entities
+                int64_t index_start = !is_transparent_pass ? 0 : mesh_index_transparent;
+                int64_t index_end   = !is_transparent_pass ? mesh_index_transparent : static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size());
+                for (int64_t i = index_start; i < index_end; i++)
+                {
+                    // this can happen during async loading
+                    if (i >= static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size()))
+                        continue;
 
-                    // set appropriate rasterizer state
-                    if (light->GetLightType() == LightType::Directional)
+                    shared_ptr<Entity>& entity        = m_renderables[Renderer_Entity::Mesh][i];
+                    shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                    if (!renderable || !renderable->ReadyToRender() || !light->IsInViewFrustum(renderable.get(), array_index) || !renderable->HasFlag(RenderableFlags::CastsShadows))
+                        continue;
+
+                    cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
+
+                    // define and set dynamic pso
                     {
-                        // disable depth clipping so that we can capture silhouettes even behind the light
-                        pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Light_directional).get();
+                        pso.instancing                = renderable->HasInstancing();
+                        pso.render_target_array_index = array_index;
+                        cmd_list->SetPipelineState(pso);
                     }
-                    else
+
+                    // set vertex, index and instance buffers
                     {
-                        pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Light_point_spot).get();
-                    }
-
-                    // start pso
-                    cmd_list->SetPipelineState(pso);
-
-                    // go through all of the entities
-                    for (shared_ptr<Entity>& entity : entities)
-                    {
-                        // acquire renderable component
-                        shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                        if (!renderable || !renderable->ReadyToRender() || !renderable->HasFlag(RenderableFlags::CastsShadows))
-                            continue;
-
-                        // skip objects outside of the view frustum
-                        if (!light->IsInViewFrustum(renderable.get(), array_index))
-                            continue;
-
-                        cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
-
-                        // set vertex, index and instance buffers
+                        cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
+                        if (pso.instancing)
                         {
-                            cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
-                            if (pso.instancing)
-                            {
-                                cmd_list->SetBufferVertex(renderable->GetInstanceBuffer(), 1);
-                            }
-
-                            cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+                            cmd_list->SetBufferVertex(renderable->GetInstanceBuffer(), 1);
                         }
 
-                        // set pass constants
+                        cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+                    }
+
+                    // set pass constants
+                    {
+                        // for the vertex shader
+                        m_pcb_pass_cpu.set_f3_value2(static_cast<float>(array_index), static_cast<float>(light->GetIndex()), 0.0f);
+                        m_pcb_pass_cpu.transform = entity->GetMatrix();
+
+                        // for the pixel shader
+                        if (Material* material = renderable->GetMaterial())
                         {
-                            // for the vertex shader
-                            m_pcb_pass_cpu.set_f3_value2(static_cast<float>(array_index), static_cast<float>(light->GetIndex()), 0.0f);
-                            m_pcb_pass_cpu.transform = entity->GetMatrix();
+                            m_pcb_pass_cpu.set_f3_value(
+                                material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
+                                material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f
+                            );
 
-                            // for the pixel shader
-                            if (Material* material = renderable->GetMaterial())
-                            {
-                                m_pcb_pass_cpu.set_f3_value(
-                                    material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
-                                    material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f
-                                );
-
-                                m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
-                            }
-
-                            cmd_list->PushConstants(m_pcb_pass_cpu);
+                            m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
                         }
 
-                        draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get(), light.get(), array_index);
+                        cmd_list->PushConstants(m_pcb_pass_cpu);
                     }
+
+                    draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get(), light.get(), array_index);
                 }
             }
         }
@@ -616,8 +627,8 @@ namespace Spartan
         cmd_list->BeginTimeblock("visibility", false, false);
 
         visibility::clear();
-        visibility::frustum_culling_and_depth_sorting(m_camera.get(), m_renderables);
-        visibility::determine_occluders(m_camera.get(), m_renderables);
+        visibility::frustum_cull_and_sort(m_renderables[Renderer_Entity::Mesh]);
+        visibility::determine_occluders(m_renderables[Renderer_Entity::Mesh]);
 
         cmd_list->EndTimeblock();
     }
@@ -648,99 +659,105 @@ namespace Spartan
         pso.vrs_input_texture           = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
         pso.resolution_scale            = true;
 
-        auto pass = [cmd_list, shader_h, shader_d, shader_p, tex_depth_output](bool is_transparent_pass)
+        auto pass = [cmd_list, shader_h, shader_d, shader_p](bool is_transparent_pass)
         {
-            uint32_t start_index = !is_transparent_pass ? 0 : 2;
-            uint32_t end_index   = !is_transparent_pass ? 2 : 4;
-            bool is_first_pass   = true;
-            for (uint32_t i = start_index; i < end_index; i++)
+            int64_t index_start = !is_transparent_pass ? 0 : mesh_index_transparent;
+            int64_t index_end   = !is_transparent_pass ? mesh_index_transparent : static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size());
+            for (int64_t i = index_start; i < index_end; i++)
             {
-                // acquire entities
-                auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
-                if (entities.empty())
+                // this can happen during async loading
+                if (i >= static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size()))
                     continue;
 
-                // set pipeline state
-                pso.name         = !is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent";
-                pso.instancing   = i == 1 || i == 3;
-                pso.shader_pixel = pso.instancing ? shader_p : nullptr; // alpha testing - instanced geometry is vegetation which needs alpha testing (not an ideal way to detect this)
-                cmd_list->SetPipelineState(pso);
+                shared_ptr<Entity>& entity        = m_renderables[Renderer_Entity::Mesh][i];
+                shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                if (!renderable || !renderable->ReadyToRender() || renderable->HasFlag(RenderableFlags::OccludedCpu))
+                    continue;
 
-                for (shared_ptr<Entity>& entity : entities)
+                cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
+
+                // toggle instancing
+                if (pso.instancing != renderable->HasInstancing())
                 {
-                    shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                    if (!renderable || !renderable->ReadyToRender() || renderable->HasFlag(RenderableFlags::OccludedCpu))
-                        continue;
+                    pso.instancing   = renderable->HasInstancing();
+                    pso.shader_pixel = pso.instancing ? shader_p : nullptr; // alpha testing - instanced geometry is vegetation which needs alpha testing (not an ideal way to detect this)
+                    pso.clear_depth  = rhi_depth_load; // on consecutive pso switches we keep the depth buffer loaded
+                    cmd_list->SetPipelineState(pso);
+                }
 
-                    cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
-
-                    // set vertex, index and instance buffers
+                // toggle tessellation
+                if (Material* material = renderable->GetMaterial())
+                {
+                    bool is_tessellated = material->IsTessellated();
+                    if ((is_tessellated && !pso.shader_hull) || (!is_tessellated && pso.shader_hull))
                     {
-                        cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
-                        if (pso.instancing)
-                        {
-                            cmd_list->SetBufferVertex(renderable->GetInstanceBuffer(), 1);
-                        }
+                        //pso.shader_hull   = is_tessellated ? shader_h : nullptr;
+                        //pso.shader_domain = is_tessellated ? shader_d : nullptr;
+                        //pso.clear_depth   = rhi_depth_load;
+                        //cmd_list->SetPipelineState(pso);
+                    }
+                }
 
-                        cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+                // set vertex, index and instance buffers
+                {
+                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
+                    if (pso.instancing)
+                    {
+                        cmd_list->SetBufferVertex(renderable->GetInstanceBuffer(), 1);
                     }
 
-                    // set pass constants
-                    {
-                        if (Material* material = renderable->GetMaterial())
-                        {
-                            // for alpha testing
-                            m_pcb_pass_cpu.set_f3_value(
-                                material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
-                                material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
-                                material->GetProperty(MaterialProperty::ColorA)
-                            );
+                    cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+                }
 
-                            m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
-                        }
-
-                        m_pcb_pass_cpu.transform = entity->GetMatrix();
-                        cmd_list->PushConstants(m_pcb_pass_cpu);
-                    }
-
-                    if (!is_transparent_pass)
-                    {
-                        cmd_list->BeginOcclusionQuery(entity->GetObjectId());
-                    }
-
-                    // toggle tessellation
+                // set pass constants
+                {
                     if (Material* material = renderable->GetMaterial())
                     {
-                        bool is_tessellated = material->IsTessellated();
-                        if ((is_tessellated && !pso.shader_hull) || (!is_tessellated && pso.shader_hull))
-                        {
-                            //pso.shader_hull   = is_tessellated ? shader_h : nullptr;
-                            //pso.shader_domain = is_tessellated ? shader_d : nullptr;
-                            //pso.clear_depth   = rhi_depth_load;
-                            //cmd_list->SetPipelineState(pso);
-                        }
+                        // for alpha testing
+                        m_pcb_pass_cpu.set_f3_value(
+                            material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
+                            material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
+                            material->GetProperty(MaterialProperty::ColorA)
+                        );
+
+                        m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
                     }
 
-                    draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
-                    pso.clear_depth = rhi_depth_load;
+                    m_pcb_pass_cpu.transform = entity->GetMatrix();
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+                }
 
-                    if (!is_transparent_pass)
-                    {
-                        cmd_list->EndOcclusionQuery();
-                    }
+                if (!is_transparent_pass)
+                {
+                    cmd_list->BeginOcclusionQuery(entity->GetObjectId());
+                }
+
+                draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
+
+                if (!is_transparent_pass)
+                {
+                    cmd_list->EndOcclusionQuery();
                 }
             }
         };
 
         if (!is_transparent_pass) // opaque
         {
+            pso.name        = "depth_prepass";
             pso.clear_depth = 0.0f;
+            cmd_list->SetPipelineState(pso);
+
             pass(false);
+
             visibility::get_gpu_occlusion_query_results(cmd_list, m_renderables);
             cmd_list->Blit(tex_depth, tex_depth_opaque, false);
         }
         else // transparent
         {
+            pso.name        = "depth_prepass_transparent";
+            pso.clear_depth = rhi_depth_load;
+            cmd_list->SetPipelineState(pso);
+
             pass(true);
         }
 
@@ -759,15 +776,15 @@ namespace Spartan
     void Renderer::Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // acquire resources
-        RHI_Shader* shader_v           = GetShader(Renderer_Shader::gbuffer_v).get();
-        RHI_Shader* shader_h           = GetShader(Renderer_Shader::tessellation_h).get();
-        RHI_Shader* shader_d           = GetShader(Renderer_Shader::tessellation_d).get();
-        RHI_Shader* shader_p           = GetShader(Renderer_Shader::gbuffer_p).get();
-        RHI_Texture* tex_color         = GetRenderTarget(Renderer_RenderTarget::gbuffer_color).get();
-        RHI_Texture* tex_normal        = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get();
-        RHI_Texture* tex_material      = GetRenderTarget(Renderer_RenderTarget::gbuffer_material).get();
-        RHI_Texture* tex_velocity      = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get();
-        RHI_Texture* tex_depth         = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get();
+        RHI_Shader* shader_v      = GetShader(Renderer_Shader::gbuffer_v).get();
+        RHI_Shader* shader_h      = GetShader(Renderer_Shader::tessellation_h).get();
+        RHI_Shader* shader_d      = GetShader(Renderer_Shader::tessellation_d).get();
+        RHI_Shader* shader_p      = GetShader(Renderer_Shader::gbuffer_p).get();
+        RHI_Texture* tex_color    = GetRenderTarget(Renderer_RenderTarget::gbuffer_color).get();
+        RHI_Texture* tex_normal   = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get();
+        RHI_Texture* tex_material = GetRenderTarget(Renderer_RenderTarget::gbuffer_material).get();
+        RHI_Texture* tex_velocity = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get();
+        RHI_Texture* tex_depth    = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get();
         if (!shader_v->IsCompiled() || !shader_h->IsCompiled() || !shader_d->IsCompiled() || !shader_p->IsCompiled())
             return;
 
@@ -775,108 +792,97 @@ namespace Spartan
         cmd_list->BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
 
         // deduce some things
-        bool wireframe                        = GetOption<bool>(Renderer_Option::Wireframe);
         RHI_RasterizerState* rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
-        rasterizer_state                      = wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe_cull_none).get() : rasterizer_state;
-        bool vrs                              = GetOption<bool>(Renderer_Option::VariableRateShading);
+        rasterizer_state                      = GetOption<bool>(Renderer_Option::Wireframe) ? GetRasterizerState(Renderer_RasterizerState::Wireframe_cull_none).get() : rasterizer_state;
+ 
+        // set pipeline state
+        static RHI_PipelineState pso;
+        pso.name                            = is_transparent_pass ? "g_buffer_transparent" : "g_buffer";
+        pso.shader_vertex                   = shader_v;
+        pso.shader_pixel                    = shader_p;
+        pso.blend_state                     = GetBlendState(Renderer_BlendState::Disabled).get();
+        pso.rasterizer_state                = rasterizer_state;
+        pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
+        pso.render_target_color_textures[0] = tex_color;
+        // note: if is_transparent_pass is true we could simply clear the RTs, however we don't do this as fsr
+        // can be enabled, and if it is, it will expect the RTs to contain both the opaque and transparent data
+        pso.clear_color[0]                  = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
+        pso.render_target_color_textures[1] = tex_normal;
+        pso.clear_color[1]                  = pso.clear_color[0];
+        pso.render_target_color_textures[2] = tex_material;
+        pso.clear_color[2]                  = pso.clear_color[0];
+        pso.render_target_color_textures[3] = tex_velocity;
+        pso.clear_color[3]                  = pso.clear_color[0];
+        pso.render_target_depth_texture     = tex_depth;
+        pso.clear_depth                     = rhi_depth_load;
+        pso.vrs_input_texture               = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
+        pso.resolution_scale                = true;
+        cmd_list->SetPipelineState(pso);
 
-        uint32_t start_index = !is_transparent_pass ? 0 : 2;
-        uint32_t end_index   = !is_transparent_pass ? 2 : 4;
-        bool is_first_pass   = true;
-        for (uint32_t i = start_index; i < end_index; i++)
+        int64_t index_start = !is_transparent_pass ? 0 : mesh_index_transparent;
+        int64_t index_end   = !is_transparent_pass ? mesh_index_transparent : static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size());
+        for (int64_t i = index_start; i < index_end; i++)
         {
-            // acquire entities
-            auto& entities = m_renderables[static_cast<Renderer_Entity>(i)];
-            if (entities.empty())
+            // this can happen during async loading
+            if (i >= static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size()))
                 continue;
 
-            // note: if is_transparent_pass is true we could simply clear the RTs, however we don't do this as fsr
-            // can be enabled, and if it is, it will expect the RTs to contain both the opaque and transparent data
+            shared_ptr<Entity>& entity        = m_renderables[Renderer_Entity::Mesh][i];
+            shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+            if (!renderable || !renderable->ReadyToRender() || !renderable->IsVisible())
+                continue;
 
-            // set pipeline state
-            static RHI_PipelineState pso;
-            pso.name                            = is_transparent_pass ? "g_buffer_transparent" : "g_buffer";
-            pso.instancing                      = i == 1 || i == 3;
-            pso.shader_vertex                   = shader_v;
-            pso.shader_pixel                    = shader_p;
-            pso.blend_state                     = GetBlendState(Renderer_BlendState::Disabled).get();
-            pso.rasterizer_state                = rasterizer_state;
-            pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
-            pso.render_target_color_textures[0] = tex_color;
-            pso.clear_color[0]                  = (!is_first_pass || pso.instancing || is_transparent_pass) ? rhi_color_load : Color::standard_transparent;
-            pso.render_target_color_textures[1] = tex_normal;
-            pso.clear_color[1]                  = pso.clear_color[0];
-            pso.render_target_color_textures[2] = tex_material;
-            pso.clear_color[2]                  = pso.clear_color[0];
-            pso.render_target_color_textures[3] = tex_velocity;
-            pso.clear_color[3]                  = pso.clear_color[0];
-            pso.render_target_depth_texture     = tex_depth;
-            pso.clear_depth                     = rhi_depth_load;
-            pso.vrs_input_texture               = vrs ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
-            pso.resolution_scale                = true;
-            cmd_list->SetPipelineState(pso);
+            cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
 
-            for (shared_ptr<Entity>& entity : entities)
+            // toggle instancing
+            if (pso.instancing != renderable->HasInstancing())
             {
-                // when async loading certain renderable  can be null
-                shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                if (!renderable || !renderable->ReadyToRender() || !renderable->IsVisible())
-                    continue;
-
-                cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
-
-                // set vertex, index and instance buffers
-                {
-                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
-                    if (pso.instancing)
-                    {
-                        cmd_list->SetBufferVertex(renderable->GetInstanceBuffer(), 1);
-                    }
-
-                    cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
-                }
-
-                // set pass constants
-                {
-                    m_pcb_pass_cpu.transform = entity->GetMatrix();
-                    m_pcb_pass_cpu.set_transform_previous(entity->GetMatrixPrevious());
-                    m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, renderable->GetMaterial()->GetIndex());
-                    cmd_list->PushConstants(m_pcb_pass_cpu);
-
-                    entity->SetMatrixPrevious(m_pcb_pass_cpu.transform);
-                }
-
-                // toggle tessellation
-                if (Material* material = renderable->GetMaterial())
-                {
-                    bool is_tessellated = material->IsTessellated();
-                    if ((is_tessellated && !pso.shader_hull) || (!is_tessellated && pso.shader_hull))
-                    {
-                        //pso.shader_hull    = is_tessellated ? shader_h : nullptr;
-                        //pso.shader_domain  = is_tessellated ? shader_d : nullptr;
-                        //pso.clear_color[0] = rhi_color_load;
-                        //pso.clear_color[1] = rhi_color_load;
-                        //pso.clear_color[2] = rhi_color_load;
-                        //pso.clear_color[3] = rhi_color_load;
-                        //pso.clear_depth    = rhi_depth_load;
-                        //cmd_list->SetPipelineState(pso);
-                    }
-                }
-
-                draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
-
-                // after the first clear, load
-                if (is_first_pass)
-                { 
-                    pso.clear_color[0] = rhi_color_load;
-                    pso.clear_color[1] = rhi_color_load;
-                    pso.clear_color[2] = rhi_color_load;
-                    pso.clear_color[3] = rhi_color_load;
-                    pso.clear_depth    = rhi_depth_load;
-                }
-
-                is_first_pass = false;
+                pso.instancing     = renderable->HasInstancing();
+                pso.clear_color[0] = rhi_color_load;
+                pso.clear_color[1] = rhi_color_load;
+                pso.clear_color[2] = rhi_color_load;
+                pso.clear_color[3] = rhi_color_load;
+                cmd_list->SetPipelineState(pso);
             }
+
+            // toggle tessellation
+            if (Material* material = renderable->GetMaterial())
+            {
+                bool is_tessellated = material->IsTessellated();
+                if ((is_tessellated && !pso.shader_hull) || (!is_tessellated && pso.shader_hull))
+                {
+                    //pso.shader_hull    = is_tessellated ? shader_h : nullptr;
+                    //pso.shader_domain  = is_tessellated ? shader_d : nullptr;
+                    //pso.clear_color[0] = rhi_color_load;
+                    //pso.clear_color[1] = rhi_color_load;
+                    //pso.clear_color[2] = rhi_color_load;
+                    //pso.clear_color[3] = rhi_color_load;
+                    //cmd_list->SetPipelineState(pso);
+                }
+            }
+
+            // set vertex, index and instance buffers
+            {
+                cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
+                if (pso.instancing)
+                {
+                    cmd_list->SetBufferVertex(renderable->GetInstanceBuffer(), 1);
+                }
+
+                cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+            }
+
+            // set pass constants
+            {
+                m_pcb_pass_cpu.transform = entity->GetMatrix();
+                m_pcb_pass_cpu.set_transform_previous(entity->GetMatrixPrevious());
+                m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, renderable->GetMaterial()->GetIndex());
+                cmd_list->PushConstants(m_pcb_pass_cpu);
+
+                entity->SetMatrixPrevious(m_pcb_pass_cpu.transform);
+            }
+
+            draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
         }
 
         cmd_list->EndTimeblock();
