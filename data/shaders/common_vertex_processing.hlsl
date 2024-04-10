@@ -302,7 +302,7 @@ HsConstantDataOutput patch_constant_function(InputPatch<gbuffer_vertex, MAX_POIN
 {
     HsConstantDataOutput output;
 
-    const float subdivisions = 1.0f;
+    const float subdivisions = 2.0f;
 
     output.edges[0] = subdivisions;
     output.edges[1] = subdivisions;
@@ -333,6 +333,11 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
                       patch[1].position * bary_coords.y +
                       patch[2].position * bary_coords.z;
 
+    // interpolate position using barycentric coordinates
+    vertex.position_previous = patch[0].position_previous * bary_coords.x +
+                               patch[1].position_previous * bary_coords.y +
+                               patch[2].position_previous * bary_coords.z;
+
     // interpolate normal using barycentric coordinates
     vertex.normal = normalize(patch[0].normal * bary_coords.x +
                               patch[1].normal * bary_coords.y +
@@ -351,7 +356,8 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
     // apply displacement
     //float displacement           = GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv, 0.0f).r * 2.0f - 1.0f;
     //float displacement_strength  = GetMaterial().height * 0.2f;
-    //vertex.position             += vertex.normal * displacement * displacement_strength;
-
+    //float3 displacement_vector   = vertex.normal * displacement * displacement_strength;
+    //vertex.position             += displacement_vector;
+    
     return transform_to_clip_space(vertex);
 }

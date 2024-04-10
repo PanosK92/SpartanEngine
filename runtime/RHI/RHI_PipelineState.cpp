@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "RHI_PipelineState.h"
 #include "RHI_Shader.h"
-#include "RHI_Texture.h"
 #include "RHI_SwapChain.h"
 #include "RHI_BlendState.h"
 #include "RHI_RasterizerState.h"
