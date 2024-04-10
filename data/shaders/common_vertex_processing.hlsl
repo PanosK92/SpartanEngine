@@ -291,7 +291,8 @@ gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex)
 // tessellation
 
 #define MAX_POINTS 3
-#define MAX_TESS_FACTOR 15
+#define MAX_TESS_FACTOR 12
+#define TESS_END_DISTANCE 35.0f
 
 struct HsConstantDataOutput
 {
@@ -306,7 +307,7 @@ HsConstantDataOutput patch_constant_function(InputPatch<gbuffer_vertex, MAX_POIN
     float3 patch_center    = (input_patch[0].position + input_patch[1].position + input_patch[2].position) / 3.0f;
     float3 camera_to_patch = patch_center - buffer_frame.camera_position;
     float distance_squared = dot(camera_to_patch, camera_to_patch);
-    float lerp_factor      = min(distance_squared / (10.0f * 10.0f), 1.0f); // drop to a minimum of 1.0f at 10 units away
+    float lerp_factor      = min(distance_squared / (TESS_END_DISTANCE * TESS_END_DISTANCE), 1.0f); // drop to a minimum of 1.0f at 10 units away
     float subdivisions     = lerp(MAX_TESS_FACTOR, 1.0f, lerp_factor);
 
     output.edges[0] = subdivisions;
@@ -359,10 +360,14 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
                 patch[2].uv * bary_coords.z;
 
     // apply displacement
-    //float displacement           = GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv, 0.0f).r * 2.0f - 1.0f;
-    //float displacement_strength  = GetMaterial().height * 0.2f;
-    //float3 displacement_vector   = vertex.normal * displacement * displacement_strength;
-    //vertex.position             += displacement_vector;
+    float height              = GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv, 0.0f).r * 2.0f - 1.0f;
+    float strength            = GetMaterial().height * 0.2f;
+    float3 tangent1           = patch[1].position - patch[0].position;
+    float3 tangent2           = patch[2].position - patch[0].position;
+    float3 normal_stable      = cross(tangent1, tangent2);
+    float3 displacement       = normal_stable * strength * height;
+    vertex.position          += displacement;
+    vertex.position_previous += displacement;
     
     return transform_to_clip_space(vertex);
 }
