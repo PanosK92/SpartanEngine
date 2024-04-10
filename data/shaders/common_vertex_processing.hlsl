@@ -291,6 +291,7 @@ gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex)
 // tessellation
 
 #define MAX_POINTS 3
+#define MAX_TESS_FACTOR 15
 
 struct HsConstantDataOutput
 {
@@ -302,7 +303,11 @@ HsConstantDataOutput patch_constant_function(InputPatch<gbuffer_vertex, MAX_POIN
 {
     HsConstantDataOutput output;
 
-    const float subdivisions = 2.0f;
+    float3 patch_center    = (input_patch[0].position + input_patch[1].position + input_patch[2].position) / 3.0f;
+    float3 camera_to_patch = patch_center - buffer_frame.camera_position;
+    float distance_squared = dot(camera_to_patch, camera_to_patch);
+    float lerp_factor      = min(distance_squared / (10.0f * 10.0f), 1.0f); // drop to a minimum of 1.0f at 10 units away
+    float subdivisions     = lerp(MAX_TESS_FACTOR, 1.0f, lerp_factor);
 
     output.edges[0] = subdivisions;
     output.edges[1] = subdivisions;
@@ -317,7 +322,7 @@ HsConstantDataOutput patch_constant_function(InputPatch<gbuffer_vertex, MAX_POIN
 [outputtopology("triangle_cw")]
 [patchconstantfunc("patch_constant_function")]
 [outputcontrolpoints(MAX_POINTS)]
-[maxtessfactor(15)]
+[maxtessfactor(MAX_TESS_FACTOR)]
 gbuffer_vertex main_hs(InputPatch<gbuffer_vertex, MAX_POINTS> input_patch, uint cp_id : SV_OutputControlPointID)
 {
     return input_patch[cp_id];
