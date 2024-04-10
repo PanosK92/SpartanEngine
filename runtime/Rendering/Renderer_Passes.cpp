@@ -673,25 +673,37 @@ namespace Spartan
 
                 cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
 
-                // toggle instancing
-                if (pso.instancing != renderable->HasInstancing())
+                // toggles
                 {
-                    pso.instancing   = renderable->HasInstancing();
-                    pso.shader_pixel = pso.instancing ? shader_p : nullptr; // alpha testing - instanced geometry is vegetation which needs alpha testing (not an ideal way to detect this)
-                    pso.clear_depth  = rhi_depth_load; // on consecutive pso switches we keep the depth buffer loaded
-                    cmd_list->SetPipelineState(pso);
-                }
+                    bool toggled = false;
 
-                // toggle tessellation
-                if (Material* material = renderable->GetMaterial())
-                {
-                    bool is_tessellated = material->IsTessellated();
-                    if ((is_tessellated && !pso.shader_hull) || (!is_tessellated && pso.shader_hull))
+                    // instancing
+                    if (pso.instancing != renderable->HasInstancing())
                     {
-                        //pso.shader_hull   = is_tessellated ? shader_h : nullptr;
-                        //pso.shader_domain = is_tessellated ? shader_d : nullptr;
-                        //pso.clear_depth   = rhi_depth_load;
-                        //cmd_list->SetPipelineState(pso);
+                        pso.instancing   = renderable->HasInstancing();
+                        pso.shader_pixel = pso.instancing ? shader_p : nullptr; // alpha testing - instanced geometry is vegetation which needs alpha testing (not an ideal way to detect this)
+                        pso.clear_depth  = rhi_depth_load;
+
+                        toggled = true;
+                    }
+
+                    // tessellation
+                    if (Material* material = renderable->GetMaterial())
+                    {
+                        bool is_tessellated = material->IsTessellated();
+                        if ((is_tessellated && !pso.shader_hull) || (!is_tessellated && pso.shader_hull))
+                        {
+                            pso.shader_hull   = is_tessellated ? shader_h : nullptr;
+                            pso.shader_domain = is_tessellated ? shader_d : nullptr;
+                            pso.clear_depth   = rhi_depth_load;
+
+                            toggled = true;
+                        }
+                    }
+
+                    if (toggled)
+                    {
+                        cmd_list->SetPipelineState(pso);
                     }
                 }
 
@@ -831,30 +843,42 @@ namespace Spartan
 
             cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
 
-            // toggle instancing
-            if (pso.instancing != renderable->HasInstancing())
+            // toggles
             {
-                pso.instancing     = renderable->HasInstancing();
-                pso.clear_color[0] = rhi_color_load;
-                pso.clear_color[1] = rhi_color_load;
-                pso.clear_color[2] = rhi_color_load;
-                pso.clear_color[3] = rhi_color_load;
-                cmd_list->SetPipelineState(pso);
-            }
+                bool toggled = false;
 
-            // toggle tessellation
-            if (Material* material = renderable->GetMaterial())
-            {
-                bool is_tessellated = material->IsTessellated();
-                if ((is_tessellated && !pso.shader_hull) || (!is_tessellated && pso.shader_hull))
+                // toggle instancing
+                if (pso.instancing != renderable->HasInstancing())
                 {
-                    //pso.shader_hull    = is_tessellated ? shader_h : nullptr;
-                    //pso.shader_domain  = is_tessellated ? shader_d : nullptr;
-                    //pso.clear_color[0] = rhi_color_load;
-                    //pso.clear_color[1] = rhi_color_load;
-                    //pso.clear_color[2] = rhi_color_load;
-                    //pso.clear_color[3] = rhi_color_load;
-                    //cmd_list->SetPipelineState(pso);
+                    pso.instancing     = renderable->HasInstancing();
+                    pso.clear_color[0] = rhi_color_load;
+                    pso.clear_color[1] = rhi_color_load;
+                    pso.clear_color[2] = rhi_color_load;
+                    pso.clear_color[3] = rhi_color_load;
+
+                    toggled = true;
+                }
+
+                // toggle tessellation
+                if (Material* material = renderable->GetMaterial())
+                {
+                    bool is_tessellated = material->IsTessellated();
+                    if ((is_tessellated && !pso.shader_hull) || (!is_tessellated && pso.shader_hull))
+                    {
+                        pso.shader_hull    = is_tessellated ? shader_h : nullptr;
+                        pso.shader_domain  = is_tessellated ? shader_d : nullptr;
+                        pso.clear_color[0] = rhi_color_load;
+                        pso.clear_color[1] = rhi_color_load;
+                        pso.clear_color[2] = rhi_color_load;
+                        pso.clear_color[3] = rhi_color_load;
+
+                        toggled = true;
+                    }
+                }
+
+                if (toggled)
+                {
+                    cmd_list->SetPipelineState(pso);
                 }
             }
 

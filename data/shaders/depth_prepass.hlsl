@@ -30,9 +30,9 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
 {
     gbuffer_vertex vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);
     
-    //Surface surface;
-    //surface.flags = GetMaterial().flags;
-    //if (!surface.is_tessellated())
+    Surface surface;
+    surface.flags = GetMaterial().flags;
+    if (!surface.is_tessellated())
     {
         vertex = transform_to_clip_space(vertex);
     }
