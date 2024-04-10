@@ -590,9 +590,6 @@ namespace Spartan
         m_pso = pso;
         RHI_Device::GetOrCreatePipeline(m_pso, m_pipeline, m_descriptor_layout_current);
 
-        // (in case one is active)
-        EndOcclusionQuery();
-
         // bind pipeline
         {
             // get vulkan pipeline object

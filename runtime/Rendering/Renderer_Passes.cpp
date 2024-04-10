@@ -99,12 +99,9 @@ namespace Spartan
                 // 1. sort by depth
                 sort(renderables.begin(), renderables.end(), [](const shared_ptr<Entity>& a, const shared_ptr<Entity>& b)
                 {
-                    bool a_occluded = a->GetComponent<Renderable>()->HasFlag(OccludedCpu);
-                    bool b_occluded = b->GetComponent<Renderable>()->HasFlag(OccludedCpu);
-                    
-                    if (a_occluded && b_occluded) return false; // keep occluded entities order if both are occluded
-                    if (a_occluded) return false;               // move a to the end if it's occluded
-                    if (b_occluded) return true;                // move b to the end if it's occluded
+                    // skip entities which are outside of the view frustum
+                    if (a->GetComponent<Renderable>()->HasFlag(OccludedCpu) || b->GetComponent<Renderable>()->HasFlag(OccludedCpu))
+                        return false;
                     
                     // front-to-back for opaque (todo, handle inverse sorting for transparents)
                     return get_squared_distance(a) < get_squared_distance(b);
