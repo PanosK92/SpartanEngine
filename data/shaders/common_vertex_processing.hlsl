@@ -349,9 +349,9 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
                 patch[2].uv * bary_coords.z;
 
     // apply displacement
-    float displacement           = GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv, 0.0f).r * 2.0f - 1.0f;
-    float displacement_strength  = GetMaterial().height * 0.2f;
-    vertex.position             += vertex.normal * displacement * displacement_strength;
+    //float displacement           = GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv, 0.0f).r * 2.0f - 1.0f;
+    //float displacement_strength  = GetMaterial().height * 0.2f;
+    //vertex.position             += vertex.normal * displacement * displacement_strength;
 
     return transform_to_clip_space(vertex);
 }
