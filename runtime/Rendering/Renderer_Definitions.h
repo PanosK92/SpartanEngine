@@ -169,7 +169,6 @@ namespace Spartan
         depth_prepass_v,
         depth_prepass_alpha_test_p,
         depth_light_v,
-        depth_light_instanced_v,
         depth_light_p,
         quad_v,
         quad_p,
@@ -250,10 +249,7 @@ namespace Spartan
 
     enum class Renderer_Entity
     {
-        Geometry,
-        GeometryInstanced,
-        GeometryTransparent,
-        GeometryTransparentInstanced,
+        Mesh,
         Light,
         Camera,
         AudioSource

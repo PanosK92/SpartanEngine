@@ -242,7 +242,6 @@ namespace Spartan
 
             if (m_state.instancing)
             {
-                // hardcoded for now
                 vertex_input_binding_descs.push_back
                 ({
                     1,                            // binding

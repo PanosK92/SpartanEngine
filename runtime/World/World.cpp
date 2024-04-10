@@ -825,7 +825,6 @@ namespace Spartan
             World::RemoveEntity(entity_car->GetDescendantByName("RR_Wheel_TireMaterial_0"));
             World::RemoveEntity(entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0"));
         }
-
     }
 
     void World::CreateDefaultWorldForest()

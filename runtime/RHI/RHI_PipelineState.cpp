@@ -142,12 +142,11 @@ namespace Spartan
             return hash;
         }
 
-        uint64_t compute_hash_dynamic(RHI_PipelineState& pso)
+        uint64_t compute_hash_render_pass(RHI_PipelineState& pso)
         {
             uint64_t hash = 0;
 
-            hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.render_target_color_texture_array_index));
-            hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.render_target_depth_stencil_texture_array_index));
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.render_target_array_index));
             hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.clear_depth));
             hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.clear_stencil));
             for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
@@ -157,7 +156,6 @@ namespace Spartan
                 hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.clear_color[i].b));
                 hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.clear_color[i].a));
             }
-            hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.resolution_scale));
 
             return hash;
         }
@@ -207,8 +205,8 @@ namespace Spartan
 
     void RHI_PipelineState::Prepare()
     {
-        m_hash         = compute_hash(*this);
-        m_hash_dynamic = compute_hash_dynamic(*this);
+        m_hash             = compute_hash(*this);
+        m_hash_render_pass = compute_hash_render_pass(*this);
 
         get_dimensions(*this, &m_width, &m_height);
         validate(*this);
@@ -231,4 +229,12 @@ namespace Spartan
         return false;
     }
 
+    void RHI_PipelineState::RemoveClearValues()
+    {
+        clear_color[0] = rhi_color_load;
+        clear_color[1] = rhi_color_load;
+        clear_color[2] = rhi_color_load;
+        clear_color[3] = rhi_color_load;
+        clear_depth    = rhi_depth_load;
+    }
 }

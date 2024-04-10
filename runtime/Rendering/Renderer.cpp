@@ -471,26 +471,9 @@ namespace Spartan
 
             if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
             {
-                bool is_transparent = false;
-                bool is_visible = true;
-
-                if (const Material* material = renderable->GetMaterial())
-                {
-                    is_transparent = material->GetProperty(MaterialProperty::ColorA) < 1.0f;
-                    is_visible = material->GetProperty(MaterialProperty::ColorA) != 0.0f;
-                }
-
-                if (is_visible)
-                {
-                    if (is_transparent)
-                    {
-                        m_renderables[renderable->HasInstancing() ? Renderer_Entity::GeometryTransparentInstanced : Renderer_Entity::GeometryTransparent].emplace_back(entity);
-                    }
-                    else
-                    {
-                        m_renderables[renderable->HasInstancing() ? Renderer_Entity::GeometryInstanced : Renderer_Entity::Geometry].emplace_back(entity);
-                    }
-
+                if (renderable->HasMaterial() && renderable->IsVisible())
+                { 
+                    m_renderables[Renderer_Entity::Mesh].emplace_back(entity);
                 }
             }
 
@@ -949,11 +932,7 @@ namespace Spartan
             bindless_textures.fill(nullptr);
             unique_material_ids.clear();
             index = 0;
-
-            update_entities(m_renderables[Renderer_Entity::Geometry]);
-            update_entities(m_renderables[Renderer_Entity::GeometryInstanced]);
-            update_entities(m_renderables[Renderer_Entity::GeometryTransparent]);
-            update_entities(m_renderables[Renderer_Entity::GeometryTransparentInstanced]);
+            update_entities(m_renderables[Renderer_Entity::Mesh]);
         }
 
         // gpu

@@ -331,10 +331,7 @@ namespace Spartan
                 }
             };
 
-            draw_bounding_boxes(Renderer_Entity::Geometry);
-            draw_bounding_boxes(Renderer_Entity::GeometryTransparent);
-            draw_instance_group_bounding_boxes(Renderer_Entity::GeometryInstanced);
-            draw_instance_group_bounding_boxes(Renderer_Entity::GeometryTransparentInstanced);
+            draw_bounding_boxes(Renderer_Entity::Mesh);
         }
     }
 }
