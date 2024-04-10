@@ -471,9 +471,12 @@ namespace Spartan
 
             if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
             {
-                if (renderable->HasMaterial() && renderable->IsVisible())
-                { 
-                    m_renderables[Renderer_Entity::Mesh].emplace_back(entity);
+                if (Material* material = renderable->GetMaterial())
+                {
+                    if (material->IsVisible())
+                    { 
+                        m_renderables[Renderer_Entity::Mesh].emplace_back(entity);
+                    }
                 }
             }
 
