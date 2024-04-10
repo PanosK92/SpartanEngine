@@ -291,7 +291,7 @@ gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex)
 // tessellation
 
 #define MAX_POINTS 3
-#define MAX_TESS_FACTOR 12
+#define MAX_TESS_FACTOR 64
 #define TESS_END_DISTANCE 35.0f
 
 struct HsConstantDataOutput
@@ -310,9 +310,9 @@ HsConstantDataOutput patch_constant_function(InputPatch<gbuffer_vertex, MAX_POIN
     float lerp_factor      = min(distance_squared / (TESS_END_DISTANCE * TESS_END_DISTANCE), 1.0f); // drop to a minimum of 1.0f at 10 units away
     float subdivisions     = lerp(MAX_TESS_FACTOR, 1.0f, lerp_factor);
 
-    output.edges[0] = subdivisions;
-    output.edges[1] = subdivisions;
-    output.edges[2] = subdivisions;
+    output.edges[0] = subdivisions * 0.5;
+    output.edges[1] = subdivisions * 0.5;
+    output.edges[2] = subdivisions * 0.5;
     output.inside   = subdivisions;
 
     return output;
@@ -360,12 +360,12 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
                 patch[2].uv * bary_coords.z;
 
     // apply displacement
-    float height              = GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv, 0.0f).r * 2.0f - 1.0f;
-    float strength            = GetMaterial().height * 0.2f;
-    float3 tangent1           = patch[1].position - patch[0].position;
-    float3 tangent2           = patch[2].position - patch[0].position;
-    float3 normal_stable      = cross(tangent1, tangent2);
-    float3 displacement       = normal_stable * strength * height;
+    float height              = 1.0f - GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv, 0.0f).r;
+    float strength            = GetMaterial().height * 0.3f;
+    float3 tangent_1          = patch[1].position - patch[0].position;
+    float3 tangent_2          = patch[2].position - patch[0].position;
+    float3 normal_stable      = cross(tangent_1, tangent_2);
+    float3 displacement       = -normal_stable * strength * height;
     vertex.position          += displacement;
     vertex.position_previous += displacement;
     
