@@ -36,14 +36,12 @@ namespace Spartan
 
         void Prepare();
         bool HasClearValues() const;
-        void RemoveClearValues();
-        uint64_t GetHash() const           { return m_hash; }
-        uint64_t GetHashRenderPass() const { return m_hash_render_pass; }
-        uint32_t GetWidth() const          { return m_width; }
-        uint32_t GetHeight() const         { return m_height; }
-        bool IsGraphics() const            { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
-        bool IsCompute() const             { return shader_compute != nullptr && !IsGraphics(); }
-        bool HasTessellation() const       { return shader_domain != nullptr && shader_hull != nullptr; }
+        uint64_t GetHash() const     { return m_hash; }
+        uint32_t GetWidth() const    { return m_width; }
+        uint32_t GetHeight() const   { return m_height; }
+        bool IsGraphics() const      { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
+        bool IsCompute() const       { return shader_compute != nullptr && !IsGraphics(); }
+        bool HasTessellation() const { return shader_domain != nullptr && shader_hull != nullptr; }
 
         //= STATIC - can cause pso generation =============================================
         RHI_Shader* shader_vertex                  = nullptr;
@@ -74,9 +72,8 @@ namespace Spartan
         //===========================================================
 
     private:
-        uint32_t m_width            = 0;
-        uint32_t m_height           = 0;
-        uint64_t m_hash             = 0;
-        uint64_t m_hash_render_pass = 0;
+        uint32_t m_width  = 0;
+        uint32_t m_height = 0;
+        uint64_t m_hash   = 0;
     };
 }

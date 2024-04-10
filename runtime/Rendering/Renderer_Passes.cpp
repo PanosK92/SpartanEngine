@@ -539,7 +539,7 @@ namespace Spartan
                 pso.render_target_color_textures[0] = light->GetColorTexture();
                 pso.render_target_depth_texture     = light->GetDepthTexture();
                 pso.clear_color[0]                  = Color::standard_white;
-                pso.clear_depth                     = 0.0f;
+                pso.clear_depth                     = is_transparent_pass ? rhi_depth_load : 0.0f;;
                 if (light->GetLightType() == LightType::Directional)
                 {
                     // disable depth clipping so that we can capture silhouettes even behind the light
