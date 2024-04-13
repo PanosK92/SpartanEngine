@@ -167,8 +167,8 @@ float fast_sqrt(float x)
 
 float fast_length(float3 v)
 {
-    float LengthSqr = dot(v, v);
-    return fast_sqrt(LengthSqr);
+    float length_squared = dot(v, v);
+    return fast_sqrt(length_squared);
 }
 
 float fast_sin(float x)

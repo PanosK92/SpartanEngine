@@ -292,7 +292,7 @@ gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex)
 
 #define MAX_POINTS 3
 #define MAX_TESS_FACTOR 64
-#define TESS_END_DISTANCE 35.0f
+#define TESS_END_DISTANCE 50.0f
 
 struct HsConstantDataOutput
 {
@@ -359,15 +359,18 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
                 patch[1].uv * bary_coords.y +
                 patch[2].uv * bary_coords.z;
 
-    // apply displacement
-    float height              = 1.0f - GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv, 0.0f).r;
-    float strength            = GetMaterial().height * 0.3f;
-    float3 tangent_1          = patch[1].position - patch[0].position;
-    float3 tangent_2          = patch[2].position - patch[0].position;
-    float3 normal_stable      = cross(tangent_1, tangent_2);
-    float3 displacement       = -normal_stable * strength * height;
-    vertex.position          += displacement;
-    vertex.position_previous += displacement;
+    // apply displacement - if tessellation actually happened
+    if (input.edges[0] > 1.0f)
+    {
+        float height              = 1.0f - GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv, 0.0f).r;
+        float strength            = GetMaterial().height * 0.3f;
+        float3 tangent_1          = patch[1].position - patch[0].position;
+        float3 tangent_2          = patch[2].position - patch[0].position;
+        float3 normal_stable      = cross(tangent_1, tangent_2);
+        float3 displacement       = -normal_stable * strength * height;
+        vertex.position          += displacement;
+        vertex.position_previous += displacement;
+    }
     
     return transform_to_clip_space(vertex);
 }
