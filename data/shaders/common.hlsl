@@ -32,24 +32,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /*------------------------------------------------------------------------------
     CONSTANTS
 ------------------------------------------------------------------------------*/
-static const float PI                  = 3.14159265f;
-static const float PI2                 = 6.28318530f;
-static const float PI4                 = 12.5663706f;
-static const float INV_PI              = 0.31830988f;
-static const float PI_HALF             = PI * 0.5f;
-static const float FLT_MIN             = 0.00000001f;
-static const float FLT_MAX_10          = 511.0f;
-static const float FLT_MAX_11          = 1023.0f;
-static const float FLT_MAX_14          = 8191.0f;
-static const float FLT_MAX_16          = 32767.0f;
-static const float FLT_MAX_16U         = 65535.0f;
-static const float RPC_9               = 0.11111111111f;
-static const float RPC_16              = 0.0625f;
-static const float RPC_32              = 0.03125f;
-static const uint THREAD_GROUP_COUNT_X = 8;
-static const uint THREAD_GROUP_COUNT_Y = 8;
-static const uint THREAD_GROUP_COUNT   = 64;
-
+static const float PI                   = 3.14159265f;
+static const float PI2                  = 6.28318530f;
+static const float PI4                  = 12.5663706f;
+static const float INV_PI               = 0.31830988f;
+static const float PI_HALF              = PI * 0.5f;
+static const float FLT_MIN              = 0.00000001f;
+static const float FLT_MAX_10           = 511.0f;
+static const float FLT_MAX_11           = 1023.0f;
+static const float FLT_MAX_14           = 8191.0f;
+static const float FLT_MAX_16           = 32767.0f;
+static const float FLT_MAX_16U          = 65535.0f;
+static const float RPC_9                = 0.11111111111f;
+static const float RPC_16               = 0.0625f;
+static const float RPC_32               = 0.03125f;
+static const uint  THREAD_GROUP_COUNT_X = 8;
+static const uint  THREAD_GROUP_COUNT_Y = 8;
+static const uint  THREAD_GROUP_COUNT   = 64;
+static const float DEG_TO_RAD           = PI / 180.0f;
 /*------------------------------------------------------------------------------
    COMMON
 ------------------------------------------------------------------------------*/

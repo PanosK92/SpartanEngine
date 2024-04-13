@@ -47,6 +47,8 @@ struct gbuffer_vertex
     float3 normal                 : NORMAL_WORLD;
     float3 tangent                : TANGENT_WORLD;
     float2 uv                     : TEXCOORD;
+    float alpha                   : TEXTURE_BLEND_ALPHA;
+    uint texture_indices[4]       : TEXTURE_INDICES;
 };
 
 static float3 extract_position(matrix transform)
@@ -67,31 +69,31 @@ struct vertex_processing
         {
             float i = floor(x);
             float f = frac(x);
-            f       = f * f * (3.0 - 2.0 * f);
+            f = f * f * (3.0 - 2.0 * f);
 
             return lerp(hash(i), hash(i + 1.0), f);
         }
 
         static float3 apply_wind(uint instance_id, float3 position_vertex, float3 animation_pivot, float time)
         {
-            const float3 base_wind_direction     = float3(1, 0, 0);
-            const float  wind_vertex_sway_extent = 0.4f; // oscillation amplitude
-            const float  wind_vertex_sway_speed  = 4.0f; // oscillation frequency
+            const float3 base_wind_direction = float3(1, 0, 0);
+            const float wind_vertex_sway_extent = 0.4f; // oscillation amplitude
+            const float wind_vertex_sway_speed = 4.0f; // oscillation frequency
         
             // base oscillation, a combination of two sine waves with a phase difference
             float phase_offset = float(instance_id) * PI_HALF;
-            float phase1       = (time * wind_vertex_sway_speed) + position_vertex.x + phase_offset;
+            float phase1 = (time * wind_vertex_sway_speed) + position_vertex.x + phase_offset;
             
             // phase difference to ensure continuous motion
             float phase_diff = PI / 3.0f; // choosing a non-half-multiples of PI to avoid total cancellation
-            float phase2     = phase1 + phase_diff; 
+            float phase2 = phase1 + phase_diff;
             float base_wave1 = sin(phase1);
             float base_wave2 = sin(phase2);
             
             // perlin noise for low-frequency wind changes
-            float low_freq_noise        = perlin_noise(time * 0.1f);
+            float low_freq_noise = perlin_noise(time * 0.1f);
             float wind_direction_factor = lerp(-1.0f, 1.0f, low_freq_noise);
-            float3 wind_direction       = base_wind_direction * wind_direction_factor;
+            float3 wind_direction = base_wind_direction * wind_direction_factor;
             
             // high-frequency perlin noise for flutter
             float high_freq_noise = perlin_noise(position_vertex.x * 10.0f + time * 10.0f) - 0.5f;
@@ -152,9 +154,9 @@ struct vertex_processing
             for (int i = 0; i < 4; i++)
             {
                 // modulate base wave parameters based on index
-                float wave_height    = base_wave_height * (0.75f + i * 0.1f);
+                float wave_height = base_wave_height * (0.75f + i * 0.1f);
                 float wave_frequency = base_wave_frequency * (0.9f + i * 0.05f);
-                float wave_speed     = base_wave_speed * (0.9f + i * 0.05f);
+                float wave_speed = base_wave_speed * (0.9f + i * 0.05f);
     
                 // dynamically calculate wave direction based on index
                 float angle = 2.0f * 3.14159f * i / 4.0f;
@@ -166,8 +168,8 @@ struct vertex_processing
     
                 // phase and amplitude
                 float phase = dot(wave_direction, position_vertex.xz) * k + time * w;
-                float c     = cos(phase);
-                float s     = sin(phase);
+                float c = cos(phase);
+                float s = sin(phase);
     
                 // calculate new position for this wave and add to the offset
                 offset.x += wave_height * wave_direction.x * c;
@@ -176,7 +178,7 @@ struct vertex_processing
             }
     
             position_vertex.xz += offset.xz;
-            position_vertex.y  += offset.y;
+            position_vertex.y += offset.y;
     
             return position_vertex;
         }
@@ -201,7 +203,7 @@ struct vertex_processing
                 float ripple_phase = ripple_frequency * (time * ripple_speed - distance);
 
                 // adjust the ripple height based on time since last movement
-                float decay_factor  = max(1.0f - (time_since_last_movement / ripple_decay_after_movement), 0.0f);
+                float decay_factor = max(1.0f - (time_since_last_movement / ripple_decay_after_movement), 0.0f);
                 float ripple_height = ripple_max_height * sin(ripple_phase) * exp(-ripple_decay_rate * distance) * decay_factor;
 
                 position_vertex.y += ripple_height;
@@ -213,7 +215,7 @@ struct vertex_processing
 
     static float3 ambient_animation(Surface surface, float3 position, float3 animation_pivot, uint instance_id, float time)
     {
-        if(surface.vertex_animate_wind())
+        if (surface.vertex_animate_wind())
         {
             position = vegetation::apply_wind(instance_id, position, animation_pivot, time);
             position = vegetation::apply_player_bend(position, animation_pivot);
@@ -226,6 +228,144 @@ struct vertex_processing
         }
     
         return position;
+    }
+};
+
+struct sampling
+{
+    // hash function with simple hashing to generate a gradient
+    static float2 hash(float2 p)
+    {
+        float3 p3 = frac(float3(p.xyx) * 0.1 + float3(p.y, p.x, p.x) * 0.3 + float3(p.y, p.x, p.y) * 0.3);
+        p3 += dot(p3, p3.yzx + 19.19);
+        return frac((p3.xx + p3.yz) * p3.zy);
+    }
+
+    // single function to generate Perlin noise and rotate UVs
+    static float2 rotate_uv(float2 uv, float noise_amount, float max_rotation_deg)
+    {
+        float2 i        = floor(uv * noise_amount);
+        float2 f        = frac(uv * noise_amount);
+        float a         = dot(hash(i + float2(0.0, 0.0)), f - float2(0.0, 0.0));
+        float b         = dot(hash(i + float2(1.0, 0.0)), f - float2(1.0, 0.0));
+        float c         = dot(hash(i + float2(0.0, 1.0)), f - float2(0.0, 1.0));
+        float d         = dot(hash(i + float2(1.0, 1.0)), f - float2(1.0, 1.0));
+        float2 u        = f * f * (3.0 - 2.0 * f);
+        float noise     = lerp(lerp(a, b, u.x), lerp(c, d, u.y), u.y);
+        float angle     = noise * max_rotation_deg * DEG_TO_RAD;
+        float cos_angle = cos(angle);
+        float sin_angle = sin(angle);
+        
+        return float2(uv.x * cos_angle - uv.y * sin_angle, uv.x * sin_angle + uv.y * cos_angle);
+    }
+
+    static void uv_reduce_tiling(float2 uv, inout float2 uv1, inout float2 uv2)
+    {
+        const float max_rotation_degrees = 0.1f;
+        
+        uv1 = rotate_uv(uv, 0.1f, max_rotation_degrees);
+        uv2 = rotate_uv(uv, 0.4f, max_rotation_degrees);
+    }
+
+    static void uv_interleave(const float2 uv, inout float2 uv_1, inout float2 uv_2)
+    {
+        const float2 direction_1 = float2(1.0, 0.5);
+        const float2 direction_2 = float2(-0.5, 1.0);
+        const float speed_1      = 0.2;
+        const float speed_2      = 0.15;
+        
+        uv_1 = uv + buffer_frame.time * speed_1 * direction_1;
+        uv_2 = uv + buffer_frame.time * speed_2 * direction_2;
+    }
+
+    static float apply_snow_level_variation(float3 position_world, float base_snow_level)
+    {
+        // define constants
+        const float frequency = 0.3f;
+        const float amplitude = 10.0f;
+    
+        // apply sine wave based on world position
+        float sine_value = sin(position_world.x * frequency);
+    
+        // map sine value from [-1, 1] to [0, 1]
+        sine_value = sine_value * 0.5 + 0.5;
+    
+        // apply height variation and add to base snow level
+        return base_snow_level + sine_value * amplitude;
+    }
+
+    static float4 smart(Surface surface, inout gbuffer_vertex vertex, uint texture_index)
+    {
+        // parameters
+        const uint texture_index_rock = texture_index + 1;
+        const uint texture_index_sand = texture_index + 2;
+        const uint texture_index_snow = texture_index + 3;
+        const float sea_level         = 0.0f;
+        const float sand_offset       = 4.0f;
+        const float snow_level        = apply_snow_level_variation(vertex.position, 75.0f);
+        const float snow_blend_speed  = 0.1f;
+    
+        // compute uvs first to minimize texture fetching
+        float2 uv_1 = 0.0f;
+        float2 uv_2 = 0.0f;
+        uv_reduce_tiling(vertex.uv, uv_1, uv_2);
+
+        // compute blend factors
+        float slope             = saturate(pow(saturate(dot(vertex.normal, float3(0.0f, 1.0f, 0.0f)) - -0.25f), 24.0f));
+        float distance_to_snow  = vertex.position.y - snow_level;
+        float snow_blend_factor = saturate(1.0 - max(0.0, -distance_to_snow) * snow_blend_speed);
+        float sand_blend_factor = saturate(vertex.position.y / sand_offset);
+    
+        // defer texture sampling
+        float4 color, tex_flat, tex_slope, tex_sand, tex_snow;
+        if (surface.vertex_animate_water())
+        {
+            float2 uv_interleaved_1, uv_interleaved_2;
+            uv_interleave(vertex.uv, uv_interleaved_1, uv_interleaved_2);
+
+            float3 sample_1 = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_interleaved_1).rgb;
+            float3 sample_2 = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_interleaved_2).rgb;
+            color            = float4(normalize(sample_1 + sample_2), 0.0f);
+        }
+       else if (surface.texture_slope_based())
+        {
+            float4 tex_flat_1  = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_1);
+            float4 tex_flat_2  = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_2);
+            float4 tex_slope_1 = GET_TEXTURE(texture_index_rock).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_1);
+            float4 tex_slope_2 = GET_TEXTURE(texture_index_rock).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_2);
+            float4 tex_sand_1  = GET_TEXTURE(texture_index_sand).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_1);
+            float4 tex_sand_2  = GET_TEXTURE(texture_index_sand).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_2);
+            float4 tex_snow_1  = GET_TEXTURE(texture_index_snow).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_1);
+            float4 tex_snow_2  = GET_TEXTURE(texture_index_snow).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_2);
+        
+            // blend each texture pair
+            float4 tex_flat  = lerp(tex_flat_1, tex_flat_2, 0.5f);
+            float4 tex_slope = lerp(tex_slope_1, tex_slope_2, 0.5f);
+            float4 tex_sand  = lerp(tex_sand_1, tex_sand_2, 0.5f);
+            float4 tex_snow  = lerp(tex_snow_1, tex_snow_2, 0.5f);
+        
+            // determine where the sand should appear: only below a certain elevation
+            float sand_blend_threshold = sea_level + sand_offset; // define a threshold above which no sand should appear
+            float sand_factor          = saturate((vertex.position.y - sea_level) / (sand_blend_threshold - sea_level));
+            sand_blend_factor          = 1.0f - sand_factor; // invert factor: 1 near sea level, 0 above the threshold
+
+            // blend textures
+            float4 terrain = lerp(tex_slope, tex_flat, slope);           // blend base terrain with slope
+            terrain        = lerp(terrain, tex_sand, sand_blend_factor); // then blend in sand based on height
+            color          = lerp(terrain, tex_snow, snow_blend_factor); // blend in the snow
+        }
+        else // default texture sampling
+        {
+            color = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv);
+        }
+    
+        // final snow blend for vegetation
+        if (surface.vertex_animate_wind())
+        {
+            color.rgb = lerp(color.rgb, 0.95f, snow_blend_factor);
+        }
+    
+        return color;
     }
 };
 
