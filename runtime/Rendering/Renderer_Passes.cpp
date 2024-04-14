@@ -655,6 +655,14 @@ namespace Spartan
         pso.render_target_depth_texture = tex_depth;
         pso.vrs_input_texture           = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
         pso.resolution_scale            = true;
+        pso.clear_depth                 = rhi_depth_load;
+
+        // clear here as clearing from the render pass too complicated
+        // as they can dynamically start and end based on various toggles
+        if (!is_transparent_pass)
+        { 
+            cmd_list->ClearRenderTarget(tex_depth, Color::standard_black, 0.0f);
+        }
 
         auto pass = [cmd_list, shader_h, shader_d, shader_p](bool is_transparent_pass)
         {
@@ -699,7 +707,6 @@ namespace Spartan
 
                     if (toggled)
                     {
-                        pso.clear_depth = rhi_depth_load;
                         cmd_list->SetPipelineState(pso);
                     }
                 }
@@ -749,8 +756,6 @@ namespace Spartan
 
         if (!is_transparent_pass) // opaque
         {
-            pso.name        = "depth_prepass";
-            pso.clear_depth = 0.0f;
             cmd_list->SetPipelineState(pso);
 
             pass(false);
@@ -760,8 +765,6 @@ namespace Spartan
         }
         else // transparent
         {
-            pso.name        = "depth_prepass_transparent";
-            pso.clear_depth = rhi_depth_load;
             cmd_list->SetPipelineState(pso);
 
             pass(true);
@@ -810,19 +813,28 @@ namespace Spartan
         pso.rasterizer_state                = rasterizer_state;
         pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
         pso.render_target_color_textures[0] = tex_color;
-        // note: if is_transparent_pass is true we could simply clear the RTs, however we don't do this as fsr
-        // can be enabled, and if it is, it will expect the RTs to contain both the opaque and transparent data
-        pso.clear_color[0]                  = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
+        pso.clear_color[0]                  = rhi_color_load;
         pso.render_target_color_textures[1] = tex_normal;
-        pso.clear_color[1]                  = pso.clear_color[0];
+        pso.clear_color[1]                  = rhi_color_load;
         pso.render_target_color_textures[2] = tex_material;
-        pso.clear_color[2]                  = pso.clear_color[0];
+        pso.clear_color[2]                  = rhi_color_load;
         pso.render_target_color_textures[3] = tex_velocity;
-        pso.clear_color[3]                  = pso.clear_color[0];
+        pso.clear_color[3]                  = rhi_color_load;
         pso.render_target_depth_texture     = tex_depth;
         pso.clear_depth                     = rhi_depth_load;
         pso.vrs_input_texture               = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
         pso.resolution_scale                = true;
+
+        // clear here as clearing from the render pass too complicated
+        // as they can dynamically start and end based on various toggles
+        if (!is_transparent_pass)
+        {
+            cmd_list->ClearRenderTarget(pso.render_target_color_textures[0], Color::standard_transparent, 0.0f);
+            cmd_list->ClearRenderTarget(pso.render_target_color_textures[1], Color::standard_transparent, 0.0f);
+            cmd_list->ClearRenderTarget(pso.render_target_color_textures[2], Color::standard_transparent, 0.0f);
+            cmd_list->ClearRenderTarget(pso.render_target_color_textures[3], Color::standard_transparent, 0.0f);
+        }
+
         cmd_list->SetPipelineState(pso);
 
         int64_t index_start = !is_transparent_pass ? 0 : mesh_index_transparent;
