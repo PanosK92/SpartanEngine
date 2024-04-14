@@ -513,8 +513,8 @@ namespace Spartan
         static RHI_PipelineState pso;
         pso.shader_vertex       = shader_v;
         pso.shader_pixel        = shader_p;
-        pso.blend_state         = is_transparent_pass ? GetBlendState(Renderer_BlendState::Alpha).get() : GetBlendState(Renderer_BlendState::Disabled).get();
-        pso.depth_stencil_state = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
+        pso.blend_state         = is_transparent_pass ? GetBlendState(Renderer_BlendState::Alpha).get() : GetBlendState(Renderer_BlendState::Off).get();
+        pso.depth_stencil_state = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Read).get() : GetDepthStencilState(Renderer_DepthStencilState::ReadWrite).get();
         pso.name                = "shadow_maps";
 
         // iterate over lights
@@ -649,13 +649,13 @@ namespace Spartan
         // define pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex               = shader_v;
+        pso.shader_pixel                = shader_p;
         pso.rasterizer_state            = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
-        pso.blend_state                 = GetBlendState(Renderer_BlendState::Disabled).get();
-        pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
-        pso.render_target_depth_texture = tex_depth;
+        pso.blend_state                 = GetBlendState(Renderer_BlendState::Off).get();
+        pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite).get();
         pso.vrs_input_texture           = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
+        pso.render_target_depth_texture = tex_depth;
         pso.resolution_scale            = true;
-        pso.clear_depth                 = rhi_depth_load;
 
         // clear here as clearing from the render pass too complicated
         // as they can dynamically start and end based on various toggles
@@ -689,7 +689,7 @@ namespace Spartan
                     if (pso.instancing != renderable->HasInstancing())
                     {
                         pso.instancing   = renderable->HasInstancing();
-                        pso.shader_pixel = pso.instancing ? shader_p : nullptr; // alpha testing - instanced geometry is vegetation which needs alpha testing (not an ideal way to detect this)
+                        pso.shader_pixel = pso.instancing ? shader_p : nullptr; // vegetation is instanced and uses alpha testing (not ideal way to handle this)
                         toggled          = true;
                     }
 
@@ -804,26 +804,21 @@ namespace Spartan
         RHI_RasterizerState* rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
         rasterizer_state                      = GetOption<bool>(Renderer_Option::Wireframe) ? GetRasterizerState(Renderer_RasterizerState::Wireframe_cull_none).get() : rasterizer_state;
  
-        // set pipeline state
+        // define pipeline state
         static RHI_PipelineState pso;
         pso.name                            = is_transparent_pass ? "g_buffer_transparent" : "g_buffer";
         pso.shader_vertex                   = shader_v;
         pso.shader_pixel                    = shader_p;
-        pso.blend_state                     = GetBlendState(Renderer_BlendState::Disabled).get();
+        pso.blend_state                     = GetBlendState(Renderer_BlendState::Off).get();
         pso.rasterizer_state                = rasterizer_state;
-        pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
-        pso.render_target_color_textures[0] = tex_color;
-        pso.clear_color[0]                  = rhi_color_load;
-        pso.render_target_color_textures[1] = tex_normal;
-        pso.clear_color[1]                  = rhi_color_load;
-        pso.render_target_color_textures[2] = tex_material;
-        pso.clear_color[2]                  = rhi_color_load;
-        pso.render_target_color_textures[3] = tex_velocity;
-        pso.clear_color[3]                  = rhi_color_load;
-        pso.render_target_depth_texture     = tex_depth;
-        pso.clear_depth                     = rhi_depth_load;
+        pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Read).get();
         pso.vrs_input_texture               = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
         pso.resolution_scale                = true;
+        pso.render_target_color_textures[0] = tex_color;
+        pso.render_target_color_textures[1] = tex_normal;
+        pso.render_target_color_textures[2] = tex_material;
+        pso.render_target_color_textures[3] = tex_velocity;
+        pso.render_target_depth_texture     = tex_depth;
 
         // clear here as clearing from the render pass too complicated
         // as they can dynamically start and end based on various toggles
@@ -877,11 +872,6 @@ namespace Spartan
 
                 if (toggled)
                 {
-                    pso.clear_color[0] = rhi_color_load;
-                    pso.clear_color[1] = rhi_color_load;
-                    pso.clear_color[2] = rhi_color_load;
-                    pso.clear_color[3] = rhi_color_load;
-
                     cmd_list->SetPipelineState(pso);
                 }
             }
@@ -2032,7 +2022,7 @@ namespace Spartan
         pso.shader_pixel                    = shader_p;
         pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid_cull_none).get();
         pso.blend_state                     = GetBlendState(Renderer_BlendState::Alpha).get();
-        pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
+        pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Read).get();
         pso.render_target_color_textures[0] = tex_out;
         pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output).get();
         cmd_list->SetPipelineState(pso);
@@ -2109,7 +2099,7 @@ namespace Spartan
                     cmd_list->BeginMarker("depth_off");
 
                     // set pipeline state
-                    pso.blend_state         = GetBlendState(Renderer_BlendState::Disabled).get();
+                    pso.blend_state         = GetBlendState(Renderer_BlendState::Off).get();
                     pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
                     pso.primitive_toplogy   = RHI_PrimitiveTopology::LineList;
                     cmd_list->SetPipelineState(pso);
@@ -2127,7 +2117,7 @@ namespace Spartan
 
                     // set pipeline state
                     pso.blend_state         = GetBlendState(Renderer_BlendState::Alpha).get();
-                    pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get();
+                    pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::Read).get();
                     pso.primitive_toplogy   = RHI_PrimitiveTopology::LineList;
                     cmd_list->SetPipelineState(pso);
 
@@ -2174,7 +2164,7 @@ namespace Spartan
                             pso.shader_vertex                   = shader_v;
                             pso.shader_pixel                    = shader_p;
                             pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
-                            pso.blend_state                     = GetBlendState(Renderer_BlendState::Disabled).get();
+                            pso.blend_state                     = GetBlendState(Renderer_BlendState::Off).get();
                             pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
                             pso.render_target_color_textures[0] = tex_outline;
                             pso.clear_color[0]                  = Color::standard_transparent;
