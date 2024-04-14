@@ -118,8 +118,7 @@ namespace Spartan
             return HasTexture(MaterialTexture::Height)  ||
                    HasTexture(MaterialTexture::Height2) ||
                    HasTexture(MaterialTexture::Height3) ||
-                   HasTexture(MaterialTexture::Height4) ||
-                   GetProperty(MaterialProperty::VertexAnimateWater);
+                   HasTexture(MaterialTexture::Height4);
         }
 
         // index

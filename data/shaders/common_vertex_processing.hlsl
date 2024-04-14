@@ -47,8 +47,6 @@ struct gbuffer_vertex
     float3 normal                 : NORMAL_WORLD;
     float3 tangent                : TANGENT_WORLD;
     float2 uv                     : TEXCOORD;
-    float alpha                   : TEXTURE_BLEND_ALPHA;
-    uint texture_indices[4]       : TEXTURE_INDICES;
 };
 
 static float3 extract_position(matrix transform)
@@ -444,15 +442,17 @@ HsConstantDataOutput patch_constant_function(InputPatch<gbuffer_vertex, MAX_POIN
 {
     HsConstantDataOutput output;
 
-    float3 patch_center    = (input_patch[0].position + input_patch[1].position + input_patch[2].position) / 3.0f;
-    float3 camera_to_patch = patch_center - buffer_frame.camera_position;
-    float distance_squared = dot(camera_to_patch, camera_to_patch);
-    float lerp_factor      = min(distance_squared / (TESS_END_DISTANCE * TESS_END_DISTANCE), 1.0f); // drop to a minimum of 1.0f at 10 units away
-    float subdivisions     = lerp(MAX_TESS_FACTOR, 1.0f, lerp_factor);
+    float3 patch_center       = (input_patch[0].position + input_patch[1].position + input_patch[2].position) / 3.0f;
+    float3 camera_to_patch    = patch_center - buffer_frame.camera_position;
+    float distance_squared    = dot(camera_to_patch, camera_to_patch);
+    float normalized_distance = min(distance_squared / (TESS_END_DISTANCE * TESS_END_DISTANCE), 1.0f); // normalize
+    float drop_off_factor     = pow(2, -normalized_distance * 10);
+    float subdivisions        = MAX_TESS_FACTOR * drop_off_factor;
+    subdivisions              = max(subdivisions, 1.0f);
 
-    output.edges[0] = subdivisions * 0.5;
-    output.edges[1] = subdivisions * 0.5;
-    output.edges[2] = subdivisions * 0.5;
+    output.edges[0] = subdivisions;
+    output.edges[1] = subdivisions;
+    output.edges[2] = subdivisions;
     output.inside   = subdivisions;
 
     return output;
