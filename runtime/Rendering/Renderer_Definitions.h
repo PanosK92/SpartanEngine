@@ -315,15 +315,13 @@ namespace Spartan
     enum class Renderer_DepthStencilState
     {
         Off,
-        Stencil_read,
-        Depth_read_write_stencil_read,
-        Depth_read,
-        Depth_read_write_stencil_write
+        Read,
+        ReadWrite,
     };
 
     enum class Renderer_BlendState
     {
-        Disabled,
+        Off,
         Alpha,
         Additive
     };

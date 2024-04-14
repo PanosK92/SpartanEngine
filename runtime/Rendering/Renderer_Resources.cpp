@@ -53,7 +53,7 @@ namespace Spartan
     {
         // graphics states
         array<shared_ptr<RHI_RasterizerState>, 5>   rasterizer_states;
-        array<shared_ptr<RHI_DepthStencilState>, 5> depth_stencil_states;
+        array<shared_ptr<RHI_DepthStencilState>, 3> depth_stencil_states;
         array<shared_ptr<RHI_BlendState>, 3>        blend_states;
 
         // renderer resources
@@ -100,15 +100,11 @@ namespace Spartan
 
     void Renderer::CreateDepthStencilStates()
     {
-        RHI_Comparison_Function reverse_z_aware_comp_func = RHI_Comparison_Function::GreaterEqual; // reverse-z
-
         #define depth_stencil_state(x) depth_stencil_states[static_cast<uint8_t>(x)]
         // arguments: depth_test, depth_write, depth_function, stencil_test, stencil_write, stencil_function
-        depth_stencil_state(Renderer_DepthStencilState::Off)                            = make_shared<RHI_DepthStencilState>(false, false, RHI_Comparison_Function::Never, false, false, RHI_Comparison_Function::Never);
-        depth_stencil_state(Renderer_DepthStencilState::Depth_read_write_stencil_read)  = make_shared<RHI_DepthStencilState>(true,  true,  reverse_z_aware_comp_func,      false, false, RHI_Comparison_Function::Never);
-        depth_stencil_state(Renderer_DepthStencilState::Depth_read)                     = make_shared<RHI_DepthStencilState>(true,  false, reverse_z_aware_comp_func,      false, false, RHI_Comparison_Function::Never);
-        depth_stencil_state(Renderer_DepthStencilState::Stencil_read)                   = make_shared<RHI_DepthStencilState>(false, false, RHI_Comparison_Function::Never, true,  false, RHI_Comparison_Function::Equal);
-        depth_stencil_state(Renderer_DepthStencilState::Depth_read_write_stencil_write) = make_shared<RHI_DepthStencilState>(true,  true,  reverse_z_aware_comp_func,      false, true,  RHI_Comparison_Function::Always);
+        depth_stencil_state(Renderer_DepthStencilState::Off)       = make_shared<RHI_DepthStencilState>(false, false, RHI_Comparison_Function::Never);
+        depth_stencil_state(Renderer_DepthStencilState::Read)      = make_shared<RHI_DepthStencilState>(true,  false, RHI_Comparison_Function::GreaterEqual);
+        depth_stencil_state(Renderer_DepthStencilState::ReadWrite) = make_shared<RHI_DepthStencilState>(true,  true,  RHI_Comparison_Function::GreaterEqual);
     }
 
     void Renderer::CreateRasterizerStates()
@@ -131,7 +127,7 @@ namespace Spartan
     {
         #define blend_state(x) blend_states[static_cast<uint8_t>(x)]
         // blend_enabled, source_blend, dest_blend, blend_op, source_blend_alpha, dest_blend_alpha, blend_op_alpha, blend_factor
-        blend_state(Renderer_BlendState::Disabled) = make_shared<RHI_BlendState>(false);
+        blend_state(Renderer_BlendState::Off) = make_shared<RHI_BlendState>(false);
         blend_state(Renderer_BlendState::Alpha)    = make_shared<RHI_BlendState>(true, RHI_Blend::Src_Alpha, RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
         blend_state(Renderer_BlendState::Additive) = make_shared<RHI_BlendState>(true, RHI_Blend::One,       RHI_Blend::One,           RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 1.0f);
     }
@@ -209,33 +205,32 @@ namespace Spartan
         #define render_target(x) render_targets[static_cast<uint8_t>(x)]
 
         // typical flags
-        uint32_t flags_standard      = RHI_Texture_Uav | RHI_Texture_Srv;
-        uint32_t flags_render_target = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv;
-        uint32_t flags_depth_buffer  = RHI_Texture_Rtv | RHI_Texture_Srv;
-        uint32_t flags_gbuffer       = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit;
+        uint32_t flags_standard = RHI_Texture_Uav | RHI_Texture_Srv;
+        uint32_t flags_rt       = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv;
+        uint32_t flags_rt_depth = RHI_Texture_Rtv | RHI_Texture_Srv;
+        uint32_t flags_all      = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit;
 
         // render resolution
         if (create_render)
         {
             // frame
             {
-                uint32_t frame_render_flags    = flags_render_target | RHI_Texture_ClearBlit;
                 RHI_Format frame_render_format = RHI_Format::R16G16B16A16_Float;
 
-                render_target(Renderer_RenderTarget::frame_render)        = make_unique<RHI_Texture2D>(width_render, height_render, 1,         frame_render_format, frame_render_flags, "frame_render");
-                render_target(Renderer_RenderTarget::frame_render_2)      = make_unique<RHI_Texture2D>(width_render, height_render, 1,         frame_render_format, frame_render_flags, "frame_render_2");
-                render_target(Renderer_RenderTarget::frame_render_opaque) = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, frame_render_format, frame_render_flags | RHI_Texture_PerMipViews, "frame_render_opaque");
+                render_target(Renderer_RenderTarget::frame_render)        = make_unique<RHI_Texture2D>(width_render, height_render, 1,         frame_render_format, flags_all, "frame_render");
+                render_target(Renderer_RenderTarget::frame_render_2)      = make_unique<RHI_Texture2D>(width_render, height_render, 1,         frame_render_format, flags_all, "frame_render_2");
+                render_target(Renderer_RenderTarget::frame_render_opaque) = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, frame_render_format, flags_all | RHI_Texture_PerMipViews, "frame_render_opaque");
                 //render_target(Renderer_RenderTexture::frame_render_history) = make_unique<RHI_Texture2D>(width_render, height_render, 1, frame_render_format, frame_render_flags, "rt_frame_render_history");
             }
 
             // g-buffer
             {
-                render_target(Renderer_RenderTarget::gbuffer_color)        = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     flags_gbuffer,  "gbuffer_color");
-                render_target(Renderer_RenderTarget::gbuffer_normal)       = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_gbuffer,  "gbuffer_normal");
-                render_target(Renderer_RenderTarget::gbuffer_material)     = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     flags_gbuffer,  "gbuffer_material");
-                render_target(Renderer_RenderTarget::gbuffer_velocity)     = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16_Float,       flags_gbuffer, "gbuffer_velocity");
-                render_target(Renderer_RenderTarget::gbuffer_depth)        = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          flags_gbuffer, "gbuffer_depth");
-                render_target(Renderer_RenderTarget::gbuffer_depth_opaque) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          flags_gbuffer, "gbuffer_depth_opaque");
+                render_target(Renderer_RenderTarget::gbuffer_color)        = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     flags_all,  "gbuffer_color");
+                render_target(Renderer_RenderTarget::gbuffer_normal)       = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_all,  "gbuffer_normal");
+                render_target(Renderer_RenderTarget::gbuffer_material)     = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     flags_all,  "gbuffer_material");
+                render_target(Renderer_RenderTarget::gbuffer_velocity)     = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16_Float,       flags_all, "gbuffer_velocity");
+                render_target(Renderer_RenderTarget::gbuffer_depth)        = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          flags_all, "gbuffer_depth");
+                render_target(Renderer_RenderTarget::gbuffer_depth_opaque) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          flags_all, "gbuffer_depth_opaque");
             }
 
             // light
@@ -272,13 +267,13 @@ namespace Spartan
         if (create_output)
         {
             // frame
-            render_target(Renderer_RenderTarget::frame_output)   = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, flags_render_target | RHI_Texture_ClearBlit, "frame_output");
-            render_target(Renderer_RenderTarget::frame_output_2) = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, flags_render_target | RHI_Texture_ClearBlit, "frame_output_2");
+            render_target(Renderer_RenderTarget::frame_output)   = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, flags_rt | RHI_Texture_ClearBlit, "frame_output");
+            render_target(Renderer_RenderTarget::frame_output_2) = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, flags_rt | RHI_Texture_ClearBlit, "frame_output_2");
 
             // misc
             render_target(Renderer_RenderTarget::bloom)                = make_shared<RHI_Texture2D>(width_output, height_output, mip_count, RHI_Format::R11G11B10_Float, flags_standard | RHI_Texture_PerMipViews, "bloom");
-            render_target(Renderer_RenderTarget::outline)              = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R8G8B8A8_Unorm, flags_render_target, "outline");
-            render_target(Renderer_RenderTarget::gbuffer_depth_output) = make_shared<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::D32_Float, flags_depth_buffer | RHI_Texture_ClearBlit, "gbuffer_depth_output");
+            render_target(Renderer_RenderTarget::outline)              = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R8G8B8A8_Unorm, flags_rt, "outline");
+            render_target(Renderer_RenderTarget::gbuffer_depth_output) = make_shared<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::D32_Float, flags_rt_depth | RHI_Texture_ClearBlit, "gbuffer_depth_output");
         }
 
         // fixed resolution - created only once
@@ -550,7 +545,7 @@ namespace Spartan
             }
             else if (type == Renderer_MeshType::Grid)
             {
-                uint32_t resolution = 512; // a high number here can kill performance in the forest scene
+                uint32_t resolution = 10;
                 Geometry::CreateGrid(&vertices, &indices, resolution);
                 mesh->SetResourceFilePath(project_directory + "standard_grid" + EXTENSION_MODEL);
             }
