@@ -609,9 +609,12 @@ namespace Spartan
             // set some dynamic states
             if (m_pso.IsGraphics())
             {
-                m_cull_mode = RHI_CullMode::Max;
-                SetCullMode(m_pso.rasterizer_state->GetCullMode());
+                // cull mode
+                m_cull_mode_dynamic = RHI_CullMode::Back;
+                m_cull_mode_dynamic = m_pso.rasterizer_state->GetPolygonMode() != RHI_PolygonMode::Solid ? RHI_CullMode::None : m_cull_mode_dynamic;
+                SetCullMode(m_cull_mode_dynamic);
 
+                // scissor rectangle
                 Math::Rectangle scissor_rect;
                 scissor_rect.left   = 0.0f;
                 scissor_rect.top    = 0.0f;
@@ -1226,7 +1229,7 @@ namespace Spartan
     void RHI_CommandList::SetCullMode(const RHI_CullMode cull_mode)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        if (m_cull_mode == cull_mode)
+        if (m_cull_mode_dynamic == cull_mode)
             return;
 
         vkCmdSetCullMode(
@@ -1234,7 +1237,7 @@ namespace Spartan
             vulkan_cull_mode[static_cast<uint32_t>(cull_mode)]
         );
 
-        m_cull_mode = cull_mode;
+        m_cull_mode_dynamic = cull_mode;
     }
 
     void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint32_t binding /*= 0*/)

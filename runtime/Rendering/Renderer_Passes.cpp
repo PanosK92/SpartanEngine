@@ -657,7 +657,7 @@ namespace Spartan
         static RHI_PipelineState pso;
         pso.shader_vertex               = shader_v;
         pso.shader_pixel                = shader_p;
-        pso.rasterizer_state            = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
+        pso.rasterizer_state            = GetRasterizerState(Renderer_RasterizerState::Solid).get();
         pso.blend_state                 = GetBlendState(Renderer_BlendState::Off).get();
         pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite).get();
         pso.vrs_input_texture           = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
@@ -686,8 +686,6 @@ namespace Spartan
                 if (!renderable || !renderable->ReadyToRender() || renderable->HasFlag(RenderableFlags::OccludedCpu))
                     continue;
 
-                cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
-
                 // toggles
                 {
                     bool toggled = false;
@@ -700,9 +698,11 @@ namespace Spartan
                         toggled          = true;
                     }
 
-                    // tessellation
+                    // tessellation & culling
                     if (Material* material = renderable->GetMaterial())
                     {
+                        cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
+
                         bool is_tessellated = material->IsTessellated();
                         if ((is_tessellated && !pso.shader_hull) || (!is_tessellated && pso.shader_hull))
                         {
@@ -808,8 +808,8 @@ namespace Spartan
         cmd_list->BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
 
         // deduce some things
-        RHI_RasterizerState* rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
-        rasterizer_state                      = GetOption<bool>(Renderer_Option::Wireframe) ? GetRasterizerState(Renderer_RasterizerState::Wireframe_cull_none).get() : rasterizer_state;
+        RHI_RasterizerState* rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid).get();
+        rasterizer_state                      = GetOption<bool>(Renderer_Option::Wireframe) ? GetRasterizerState(Renderer_RasterizerState::Wireframe).get() : rasterizer_state;
  
         // define pipeline state
         static RHI_PipelineState pso;
@@ -852,22 +852,22 @@ namespace Spartan
             if (!renderable || !renderable->ReadyToRender() || !renderable->IsVisible())
                 continue;
 
-            cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
-
             // toggles
             {
                 bool toggled = false;
 
-                // toggle instancing
+                // instancing
                 if (pso.instancing != renderable->HasInstancing())
                 {
                     pso.instancing = renderable->HasInstancing();
                     toggled        = true;
                 }
 
-                // toggle tessellation
+                // tessellation & culling
                 if (Material* material = renderable->GetMaterial())
                 {
+                    cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
+
                     bool is_tessellated = material->IsTessellated();
                     if ((is_tessellated && !pso.shader_hull) || (!is_tessellated && pso.shader_hull))
                     {
@@ -1939,7 +1939,7 @@ namespace Spartan
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
         pso.shader_pixel                    = shader_p;
-        pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
+        pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid).get();
         pso.blend_state                     = GetBlendState(Renderer_BlendState::Alpha).get();
         pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
         pso.render_target_color_textures[0] = tex_out;
@@ -2027,7 +2027,7 @@ namespace Spartan
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
         pso.shader_pixel                    = shader_p;
-        pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid_cull_none).get();
+        pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid).get();
         pso.blend_state                     = GetBlendState(Renderer_BlendState::Alpha).get();
         pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Read).get();
         pso.render_target_color_textures[0] = tex_out;
@@ -2072,7 +2072,7 @@ namespace Spartan
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
         pso.shader_pixel                    = shader_p;
-        pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Wireframe_cull_none).get();
+        pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Wireframe).get();
         pso.render_target_color_textures[0] = tex_out;
         pso.clear_color[0]                  = rhi_color_load;
         pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output).get();
@@ -2170,7 +2170,7 @@ namespace Spartan
                             static RHI_PipelineState pso;
                             pso.shader_vertex                   = shader_v;
                             pso.shader_pixel                    = shader_p;
-                            pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
+                            pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid).get();
                             pso.blend_state                     = GetBlendState(Renderer_BlendState::Off).get();
                             pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
                             pso.render_target_color_textures[0] = tex_outline;
@@ -2240,7 +2240,7 @@ namespace Spartan
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v.get();
         pso.shader_pixel                    = shader_p.get();
-        pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
+        pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid).get();
         pso.blend_state                     = GetBlendState(Renderer_BlendState::Alpha).get();
         pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
         pso.render_target_color_textures[0] = tex_out;

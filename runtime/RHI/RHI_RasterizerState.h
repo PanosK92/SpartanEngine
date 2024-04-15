@@ -34,10 +34,8 @@ namespace Spartan
     public:
         RHI_RasterizerState() = default;
         RHI_RasterizerState(
-            const RHI_CullMode cull_mode,
             const RHI_PolygonMode fill_mode,
             const bool depth_clip_enabled,
-            const bool scissor_enabled,
             const float depth_bias              = 0.0f,
             const float depth_bias_clamp        = 0.0f,
             const float depth_bias_slope_scaled = 0.0f,
@@ -45,10 +43,8 @@ namespace Spartan
         );
         ~RHI_RasterizerState();
 
-        RHI_CullMode GetCullMode()       const { return m_cull_mode; }
         RHI_PolygonMode GetPolygonMode() const { return m_polygon_mode; }
         bool GetDepthClipEnabled()       const { return m_depth_clip_enabled; }
-        bool GetScissorEnabled()         const { return m_scissor_enabled; }
         void* GetRhiResource()           const { return m_rhi_resource; }
         float GetLineWidth()             const { return m_line_width; }
         float GetDepthBias()             const { return m_depth_bias; }
@@ -62,10 +58,8 @@ namespace Spartan
         }
 
     private:
-        RHI_CullMode m_cull_mode        = RHI_CullMode::Max;
         RHI_PolygonMode m_polygon_mode  = RHI_PolygonMode::Max;
         bool m_depth_clip_enabled       = false;
-        bool m_scissor_enabled          = false;
         float m_depth_bias              = 0.0f;
         float m_depth_bias_clamp        = 0.0f;
         float m_depth_bias_slope_scaled = 0.0f;
