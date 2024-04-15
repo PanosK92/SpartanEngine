@@ -58,7 +58,7 @@ namespace Spartan
             // Rasterizer description
             D3D12_RASTERIZER_DESC desc_rasterizer = {};
             desc_rasterizer.FillMode              = d3d12_polygon_mode[static_cast<uint32_t>(m_state.rasterizer_state->GetPolygonMode())];
-            desc_rasterizer.CullMode              = d3d12_cull_mode[static_cast<uint32_t>(m_state.rasterizer_state->GetCullMode())];
+            desc_rasterizer.CullMode              = d3d12_cull_mode[static_cast<uint32_t>(RHI_CullMode::Back)];
             desc_rasterizer.FrontCounterClockwise = false;
             desc_rasterizer.DepthBias             = static_cast<INT>(m_state.rasterizer_state->GetDepthBias());
             desc_rasterizer.DepthBiasClamp        = m_state.rasterizer_state->GetDepthBiasClamp();
