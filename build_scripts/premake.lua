@@ -40,8 +40,8 @@ API_INCLUDES = {
 
 API_EXCLUDES = 
 {
-    d3d12  = { RUNTIME_DIR .. "/RHI/D3D11/**", RUNTIME_DIR .. "/RHI/Vulkan/**" },
-    vulkan = { RUNTIME_DIR .. "/RHI/D3D11/**", RUNTIME_DIR .. "/RHI/D3D12/**" },
+    d3d12  = { RUNTIME_DIR .. "/RHI/Vulkan/**" },
+    vulkan = { RUNTIME_DIR .. "/RHI/D3D12/**" },
 }
 
 API_LIBRARIES = {
