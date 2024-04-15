@@ -171,7 +171,7 @@ namespace Spartan
         RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
         std::atomic<RHI_CommandListState> m_state            = RHI_CommandListState::Idle;
         RHI_Queue_Type m_queue_type                          = RHI_Queue_Type::Max;
-        RHI_CullMode m_cull_mode_dynamic                             = RHI_CullMode::Max;
+        RHI_CullMode m_cull_mode                             = RHI_CullMode::Max;
         const char* m_timeblock_active                       = nullptr;
         static bool m_memory_query_support;
         std::mutex m_mutex_reset;

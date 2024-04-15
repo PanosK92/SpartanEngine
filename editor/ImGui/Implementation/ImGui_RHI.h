@@ -129,17 +129,9 @@ namespace ImGui::RHI
     {
         // create required RHI objects
         {
-            g_viewport_data = ViewportRhiResources("imgui", Renderer::GetSwapChain());
-
+            g_viewport_data       = ViewportRhiResources("imgui", Renderer::GetSwapChain());
             g_depth_stencil_state = make_shared<RHI_DepthStencilState>(false, false, RHI_Comparison_Function::Always);
-
-            g_rasterizer_state = make_shared<RHI_RasterizerState>
-            (
-                RHI_PolygonMode::Solid,
-                true,  // depth clip
-                false, // multi-sample
-                false  // anti-aliased lines
-            );
+            g_rasterizer_state    = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Solid, true);
 
             g_blend_state = make_shared<RHI_BlendState>
             (

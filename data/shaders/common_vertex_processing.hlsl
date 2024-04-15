@@ -47,6 +47,9 @@ struct gbuffer_vertex
     float3 normal                 : NORMAL_WORLD;
     float3 tangent                : TANGENT_WORLD;
     float2 uv                     : TEXCOORD;
+    uint instance_id              : INSTANCE_ID;
+    matrix transform              : TRANSFORM;
+    matrix transform_previous     : TRANSFORM_PREVIOUS;
 };
 
 static float3 extract_position(matrix transform)
@@ -371,11 +374,8 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
 {
     gbuffer_vertex vertex;
 
-    // get material and surface
-    Material material = GetMaterial();
-    Surface surface; surface.flags = material.flags;
-
     // compute uv
+    Material material = GetMaterial();
     vertex.uv = float2(input.uv.x * material.tiling.x + material.offset.x, input.uv.y * material.tiling.y + material.offset.y);
 
     // compute the final world transform
@@ -406,17 +406,27 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     vertex.tangent           = normalize(mul(input.tangent, (float3x3)transform));
 #endif
 
-    // apply ambient animation
-    vertex.position          = vertex_processing::ambient_animation(surface, vertex.position, extract_position(transform), instance_id, buffer_frame.time);
+    // save some things into the vertex
+    vertex.instance_id        = instance_id;
+    vertex.transform          = transform;
 #ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
-    vertex.position_previous = vertex_processing::ambient_animation(surface, vertex.position_previous, extract_position(transform_previous), instance_id, buffer_frame.time - buffer_frame.delta_time);
+    vertex.transform_previous = transform_previous;
 #endif
-
     return vertex;
 }
 
 gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex)
 {
+    // get material and surface
+    Material material = GetMaterial();
+    Surface surface; surface.flags = material.flags;
+    
+     // apply ambient animation - done here so it can benefit from potentially tessellated surfaces
+    vertex.position          = vertex_processing::ambient_animation(surface, vertex.position, extract_position(vertex.transform), vertex.instance_id, buffer_frame.time);
+#ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
+    vertex.position_previous = vertex_processing::ambient_animation(surface, vertex.position_previous, extract_position(vertex.transform_previous), vertex.instance_id, buffer_frame.time - buffer_frame.delta_time);
+#endif
+    
     vertex.position_clip          = mul(float4(vertex.position, 1.0f), buffer_frame.view_projection);
     vertex.position_clip_current  = vertex.position_clip;
 #ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
