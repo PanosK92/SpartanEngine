@@ -495,7 +495,7 @@ namespace Spartan
         uint32_t resolution     = Renderer::GetOption<uint32_t>(Renderer_Option::ShadowResolution);
         RHI_Format format_depth = RHI_Format::D32_Float;
         RHI_Format format_color = RHI_Format::R8G8B8A8_Unorm;
-        uint32_t flags          = RHI_Texture_Rtv | RHI_Texture_Srv;
+        uint32_t flags          = RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_ClearBlit;
 
         if (GetLightType() == LightType::Directional)
         {
