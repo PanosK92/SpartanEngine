@@ -1,15 +1,14 @@
 /*
----------------------------------------------------------------------------
 Open Asset Import Library (assimp)
----------------------------------------------------------------------------
+----------------------------------------------------------------------
 
-Copyright (c) 2006-2024, assimp team
+Copyright (c) 2006-2020, assimp team
 
 All rights reserved.
 
 Redistribution and use of this software in source and binary forms,
-with or without modification, are permitted provided that the following
-conditions are met:
+with or without modification, are permitted provided that the
+following conditions are met:
 
 * Redistributions of source code must retain the above
   copyright notice, this list of conditions and the
@@ -36,49 +35,45 @@ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
----------------------------------------------------------------------------
+
+----------------------------------------------------------------------
 */
 
-/** @file OBJMATERIAL.h
- *  @brief Obj-specific material macros
- *
+/** @file Provides facilities to replace the default assert handler. */
+
+#ifndef INCLUDED_AI_ASSERTHANDLER_H
+#define INCLUDED_AI_ASSERTHANDLER_H
+
+#include <assimp/ai_assert.h>
+#include <assimp/defs.h>
+
+namespace Assimp {
+
+// ---------------------------------------------------------------------------
+/**
+ *  @brief  Signature of functions which handle assert violations.
  */
-
-#ifndef AI_OBJMATERIAL_H_INC
-#define AI_OBJMATERIAL_H_INC
-
-#ifdef __GNUC__
-#   pragma GCC system_header
-#endif
-
-#include <assimp/material.h>
+using AiAssertHandler = void (*)(const char* failedExpression, const char* file, int line);
 
 // ---------------------------------------------------------------------------
-
-// the original illum property
-#define AI_MATKEY_OBJ_ILLUM "$mat.illum", 0, 0
-
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Pure key names for all obj texture-related properties
-//! @cond MATS_DOC_FULL
-
-// support for bump -bm
-#define _AI_MATKEY_OBJ_BUMPMULT_BASE "$tex.bumpmult"
-//! @endcond
+/**
+ *  @brief  Set the assert handler.
+ */
+ASSIMP_API void setAiAssertHandler(AiAssertHandler handler);
 
 // ---------------------------------------------------------------------------
-#define AI_MATKEY_OBJ_BUMPMULT(type, N) _AI_MATKEY_OBJ_BUMPMULT_BASE, type, N
+/** The assert handler which is set by default.
+ *
+ *  @brief  This issues a message to stderr and calls abort.
+ */
+AI_WONT_RETURN ASSIMP_API void defaultAiAssertHandler(const char* failedExpression, const char* file, int line) AI_WONT_RETURN_SUFFIX;
 
-//! @cond MATS_DOC_FULL
-#define AI_MATKEY_OBJ_BUMPMULT_NORMALS(N) \
-    AI_MATKEY_OBJ_BUMPMULT(aiTextureType_NORMALS, N)
+// ---------------------------------------------------------------------------
+/**
+ *  @brief  Dispatches an assert violation to the assert handler.
+ */
+ASSIMP_API void aiAssertViolation(const char* failedExpression, const char* file, int line);
 
-#define AI_MATKEY_OBJ_BUMPMULT_HEIGHT(N) \
-    AI_MATKEY_OBJ_BUMPMULT(aiTextureType_HEIGHT, N)
+} // end of namespace Assimp
 
-//! @endcond
-
-
-#endif
+#endif // INCLUDED_AI_ASSERTHANDLER_H

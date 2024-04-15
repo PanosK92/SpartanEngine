@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========
+//= INCLUDES ==============
 SP_WARNINGS_OFF
-#include <dxc/dxcapi.h>
+#include <dxc/dxc/dxcapi.h>
 SP_WARNINGS_ON
-//=====================
+//=========================
 
 namespace Spartan
 {
