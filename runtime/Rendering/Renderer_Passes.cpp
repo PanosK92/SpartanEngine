@@ -538,8 +538,6 @@ namespace Spartan
             {
                 pso.render_target_color_textures[0] = light->GetColorTexture();
                 pso.render_target_depth_texture     = light->GetDepthTexture();
-                pso.clear_color[0]                  = Color::standard_white;
-                pso.clear_depth                     = is_transparent_pass ? rhi_depth_load : 0.0f;;
                 if (light->GetLightType() == LightType::Directional)
                 {
                     // disable depth clipping so that we can capture silhouettes even behind the light
@@ -549,6 +547,15 @@ namespace Spartan
                 {
                     pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Light_point_spot).get();
                 }
+            }
+
+            // clear here and not via the render pass, which can dynamically start and end based on various toggles
+            {
+                if (pso.render_target_color_textures[0])
+                { 
+                    cmd_list->ClearRenderTarget(pso.render_target_color_textures[0], Color::standard_white);
+                }
+                cmd_list->ClearRenderTarget(pso.render_target_depth_texture, rhi_color_dont_care, 0.0f);
             }
 
             // iterate over light cascade/faces
