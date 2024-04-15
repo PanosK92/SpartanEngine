@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     gbuffer_vertex vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);
-    
+
     Surface surface;
     surface.flags = GetMaterial().flags;
     if (!surface.is_tessellated())
@@ -40,7 +40,6 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     return vertex;
 }
 
-// alpha test
 void main_ps(gbuffer_vertex vertex)
 {
     const float3 f3_value     = pass_get_f3_value();
@@ -51,7 +50,7 @@ void main_ps(gbuffer_vertex vertex)
     float alpha_threshold = get_alpha_threshold(vertex.position);
     bool mask_alpha       = has_alpha_mask && GET_TEXTURE(material_mask).Sample(samplers[sampler_point_wrap], vertex.uv).r <= alpha_threshold;
     bool mask_albedo      = alpha == 1.0f && has_albedo && GET_TEXTURE(material_albedo).Sample(samplers[sampler_anisotropic_wrap], vertex.uv).a <= alpha_threshold;
-    
+
     if (mask_alpha || mask_albedo)
         discard;
 }

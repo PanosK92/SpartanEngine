@@ -62,14 +62,14 @@ namespace Spartan
         RHI_Texture* vrs_input_texture           = nullptr;
         //=================================================================================
 
-        //= DYNAMIC - will not cause pso generation =================
+        //= DYNAMIC - will not cause pso generation ==================
         bool resolution_scale                      = false;
         uint32_t render_target_array_index         = 0;
         float clear_depth                          = rhi_depth_load;
         uint32_t clear_stencil                     = rhi_stencil_load;
         std::array<Color, rhi_max_render_target_count> clear_color;
         std::string name;
-        //===========================================================
+        //============================================================
 
     private:
         uint32_t m_width  = 0;

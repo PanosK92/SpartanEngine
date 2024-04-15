@@ -135,10 +135,8 @@ namespace ImGui::RHI
 
             g_rasterizer_state = make_shared<RHI_RasterizerState>
             (
-                RHI_CullMode::None,
                 RHI_PolygonMode::Solid,
                 true,  // depth clip
-                true,  // scissor
                 false, // multi-sample
                 false  // anti-aliased lines
             );

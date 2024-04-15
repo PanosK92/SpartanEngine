@@ -116,11 +116,10 @@ namespace Spartan
 
         #define rasterizer_state(x) rasterizer_states[static_cast<uint8_t>(x)]
         // cull mode, filled mode, depth clip, scissor, bias, bias clamp, slope scaled bias, line width
-        rasterizer_state(Renderer_RasterizerState::Solid_cull_back)     = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, 0.0f,              0.0f,             0.0f,                    line_width);
-        rasterizer_state(Renderer_RasterizerState::Solid_cull_none)     = make_shared<RHI_RasterizerState>(RHI_CullMode::None, RHI_PolygonMode::Solid,     true,  false, 0.0f,              0.0f,             0.0f,                    line_width);
-        rasterizer_state(Renderer_RasterizerState::Wireframe_cull_none) = make_shared<RHI_RasterizerState>(RHI_CullMode::None, RHI_PolygonMode::Wireframe, true,  false, 0.0f,              0.0f,             0.0f,                    line_width);
-        rasterizer_state(Renderer_RasterizerState::Light_point_spot)    = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, depth_bias,        depth_bias_clamp, depth_bias_slope_scaled, 0.0f);
-        rasterizer_state(Renderer_RasterizerState::Light_directional)   = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     false, false, depth_bias * 0.1f, depth_bias_clamp, depth_bias_slope_scaled, 0.0f);
+        rasterizer_state(Renderer_RasterizerState::Solid)             = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Solid,     true,  0.0f,              0.0f,             0.0f,                    line_width);
+        rasterizer_state(Renderer_RasterizerState::Wireframe)         = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Wireframe, true,  0.0f,              0.0f,             0.0f,                    line_width);
+        rasterizer_state(Renderer_RasterizerState::Light_point_spot)  = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Solid,     true,  depth_bias,        depth_bias_clamp, depth_bias_slope_scaled, 0.0f);
+        rasterizer_state(Renderer_RasterizerState::Light_directional) = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Solid,     false, depth_bias * 0.1f, depth_bias_clamp, depth_bias_slope_scaled, 0.0f);
     }
 
     void Renderer::CreateBlendStates()
@@ -545,7 +544,7 @@ namespace Spartan
             }
             else if (type == Renderer_MeshType::Grid)
             {
-                uint32_t resolution = 100;
+                uint32_t resolution = 10;
                 Geometry::CreateGrid(&vertices, &indices, resolution);
                 mesh->SetResourceFilePath(project_directory + "standard_grid" + EXTENSION_MODEL);
             }
