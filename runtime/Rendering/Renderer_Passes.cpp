@@ -807,10 +807,10 @@ namespace Spartan
         lock_guard lock(m_mutex_renderables);
         cmd_list->BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
 
-        // deduce some things
+        // deduce certain states
         RHI_RasterizerState* rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid).get();
         rasterizer_state                      = GetOption<bool>(Renderer_Option::Wireframe) ? GetRasterizerState(Renderer_RasterizerState::Wireframe).get() : rasterizer_state;
- 
+
         // define pipeline state
         static RHI_PipelineState pso;
         pso.name                            = is_transparent_pass ? "g_buffer_transparent" : "g_buffer";
