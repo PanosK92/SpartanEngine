@@ -206,6 +206,7 @@ function runtime_project_configuration()
             links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
             links { "SDL2" }
             links { "Compressonator_MT" }
+			links { "OpenImageDenoise" , "OpenImageDenoise_core", "OpenImageDenoise_utils" }
 			links(API_LIBRARIES[ARG_API_GRAPHICS].release or {})
 			
         -- "Debug"
@@ -219,8 +220,9 @@ function runtime_project_configuration()
                 links { "FreeImageLib_debug" }
                 links { "freetype_debug" }
                 links { "BulletCollision_debug", "BulletDynamics_debug", "BulletSoftBody_debug", "LinearMath_debug" }
-                links { "SDL2_debug.lib" }
-                links { "Compressonator_MT_debug.lib" }
+                links { "SDL2_debug" }
+                links { "Compressonator_MT_debug" }
+				links { "OpenImageDenoise_debug" , "OpenImageDenoise_core_debug", "OpenImageDenoise_utils_debug" }
                 links(API_LIBRARIES[ARG_API_GRAPHICS].debug or {})
             else
                 links { "dxcompiler" }
@@ -231,6 +233,7 @@ function runtime_project_configuration()
                 links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
                 links { "SDL2" }
                 links { "Compressonator_MT" }
+				links { "OpenImageDenoise" , "OpenImageDenoise_core", "OpenImageDenoise_utils" }
             end
 end
 
