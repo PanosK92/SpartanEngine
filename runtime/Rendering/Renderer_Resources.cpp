@@ -52,7 +52,7 @@ namespace Spartan
     namespace
     {
         // graphics states
-        array<shared_ptr<RHI_RasterizerState>, 5>   rasterizer_states;
+        array<shared_ptr<RHI_RasterizerState>, 4>   rasterizer_states;
         array<shared_ptr<RHI_DepthStencilState>, 3> depth_stencil_states;
         array<shared_ptr<RHI_BlendState>, 3>        blend_states;
 
