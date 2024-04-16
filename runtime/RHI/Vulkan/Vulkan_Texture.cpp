@@ -52,7 +52,7 @@ namespace Spartan
             if (format_properties3.optimalTilingFeatures & feature_flags)
                 return VK_IMAGE_TILING_OPTIMAL;
 
-            // Check for linear support
+            // check for linear support
             if (format_properties3.linearTilingFeatures & feature_flags)
                 return VK_IMAGE_TILING_LINEAR;
 
