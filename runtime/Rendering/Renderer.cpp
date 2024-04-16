@@ -846,8 +846,13 @@ namespace Spartan
             if (unique_material_ids.find(material->GetObjectId()) != unique_material_ids.end())
                 return;
 
+            // if not, add it to the list
+            unique_material_ids.insert(material->GetObjectId());
+
             // properties
             {
+                SP_ASSERT(index < rhi_max_array_size);
+
                 properties[index].world_space_height     = material->GetProperty(MaterialProperty::WorldSpaceHeight);
                 properties[index].color.x                = material->GetProperty(MaterialProperty::ColorR);
                 properties[index].color.y                = material->GetProperty(MaterialProperty::ColorG);

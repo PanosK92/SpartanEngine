@@ -1196,8 +1196,8 @@ namespace Spartan
 
     void World::CreateDefaultWorldBistro()
     {
-        Vector3 camera_position = Vector3(-120.0f, 23.0f, -30.0f);
-        Vector3 camera_rotation = Vector3(0.0f, 90.0f, 0.0f);
+        Vector3 camera_position = Vector3(-19.5587f, 2.9248f, -5.28f);
+        Vector3 camera_rotation = Vector3(2.3365f, 102.5297f, 0.0f);
         create_default_world_common(camera_position, camera_rotation);
 
         // doom level
@@ -1205,8 +1205,8 @@ namespace Spartan
         {
             shared_ptr<Entity> entity = m_default_model_doom->GetRootEntity().lock();
             entity->SetObjectName("bistro");
-            entity->SetPosition(Vector3(0.0f, 14.0f, -355.5300f));
-            entity->SetScale(Vector3(0.1f, 0.1f, 0.1f));
+            entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+            entity->SetScale(Vector3(1.0f, 1.0f, 1.0f));
 
             // enable physics for all meshes
             vector<Entity*> entities;
