@@ -136,7 +136,7 @@ def generate_project_files():
 def main():
     library_url = 'https://www.dropbox.com/scl/fi/n651qe5l6fsusi534hdvd/libraries.7z?rlkey=78f01m1m6vdah28lgkg88e53z&dl=1'
     library_destination = 'third_party/libraries/libraries.7z'
-    assets_url = 'https://www.dropbox.com/scl/fi/dne41kzr05ld39unfjro4/assets.7z?rlkey=wu0a9z9e5i0ektrtpvndg1ksn&dl=1'
+    assets_url = 'https://www.dropbox.com/scl/fi/0s2a5pq1od0v2h1hmaond/assets.7z?rlkey=tshqt5ef5tgscug5wlbdtj5s8&dl=1'
     assets_destination = 'assets/assets.7z'
 
     # Check if the libraries file exists, download if not
