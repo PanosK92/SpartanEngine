@@ -101,6 +101,15 @@ def extract_third_party_dependencies():
     )
     os.system(cmd)
 
+def extract_assets():
+    print("1.5 Extracting assets...")
+    cmd = (
+        "build_scripts\\7z.exe x assets\\assets.7z -oassets\\ -aoa"
+        if sys.argv[1] == "vs2022"
+        else "7za x assets/assets.7z -oassets/ -aoa"
+    )
+    os.system(cmd)
+
 def create_binaries_folder():
     print("\n2. Copying required data to the binaries directory..")
     copy("data", paths["binaries"]["data"])
@@ -125,15 +134,23 @@ def generate_project_files():
     subprocess.Popen(cmd, shell=True).communicate()
 
 def main():
-    file_url = 'https://www.dropbox.com/scl/fi/n651qe5l6fsusi534hdvd/libraries.7z?rlkey=78f01m1m6vdah28lgkg88e53z&dl=1'
-    file_destination = 'third_party/libraries/libraries.7z'
-    
+    library_url = 'https://www.dropbox.com/scl/fi/n651qe5l6fsusi534hdvd/libraries.7z?rlkey=78f01m1m6vdah28lgkg88e53z&dl=1'
+    library_destination = 'third_party/libraries/libraries.7z'
+    assets_url = 'https://www.dropbox.com/scl/fi/dne41kzr05ld39unfjro4/assets.7z?rlkey=wu0a9z9e5i0ektrtpvndg1ksn&dl=1'
+    assets_destination = 'assets/assets.7z'
+
     # Check if the libraries file exists, download if not
-    if not os.path.exists(file_destination):
+    if not os.path.exists(library_destination):
         print("libraries.7z not found, downloading from Dropbox...")
-        download_file(file_url, file_destination)
-    
+        download_file(library_url, library_destination)
     extract_third_party_dependencies()
+
+    # Check if the assets file exists, download if not
+    if not os.path.exists(assets_destination):
+        print("assets.7z not found, downloading from Dropbox...")
+        download_file(assets_url, assets_destination)
+    extract_assets()
+
     create_binaries_folder()
     copy_dlls()
     copy_assets()
