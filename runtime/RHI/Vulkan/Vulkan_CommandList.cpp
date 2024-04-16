@@ -519,8 +519,9 @@ namespace Spartan
         SP_ASSERT_MSG(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource), &begin_info) == VK_SUCCESS, "Failed to begin command buffer");
 
         // update states
-        m_state = RHI_CommandListState::Recording;
-        m_pso   = RHI_PipelineState();
+        m_state     = RHI_CommandListState::Recording;
+        m_pso       = RHI_PipelineState();
+        m_cull_mode = RHI_CullMode::Max;
 
         // queries
         if (m_queue_type != RHI_Queue_Type::Copy)
@@ -610,12 +611,9 @@ namespace Spartan
             if (m_pso.IsGraphics())
             {
                 // cull mode
-                if (m_cull_mode == RHI_CullMode::Max)
-                { 
-                    m_cull_mode = RHI_CullMode::Back;
-                    m_cull_mode = m_pso.rasterizer_state->GetPolygonMode() != RHI_PolygonMode::Solid ? RHI_CullMode::None : m_cull_mode;
-                }
-                SetCullMode(m_cull_mode);
+                RHI_CullMode cull_mode = RHI_CullMode::Back;
+                cull_mode              = m_pso.rasterizer_state->GetPolygonMode() != RHI_PolygonMode::Solid ? RHI_CullMode::None : cull_mode;
+                SetCullMode(cull_mode);
 
                 // scissor rectangle
                 Math::Rectangle scissor_rect;
@@ -1497,9 +1495,6 @@ namespace Spartan
             static_cast<VkQueryPool>(m_rhi_query_pool_timestamps),
             m_timestamp_index++
         );
-
-        // that's a hack, need to detect render pass end properly
-        m_cull_mode = RHI_CullMode::Max;
     }
 
     float RHI_CommandList::GetTimestampResult(const uint32_t index_timestamp)
