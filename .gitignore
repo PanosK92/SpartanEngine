@@ -256,3 +256,5 @@ ModelManifest.xml
 # Rider IDE config dir
 .idea/
 /third_party/libraries/libraries.7z
+/assets
+/assets
