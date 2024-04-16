@@ -393,8 +393,9 @@ namespace Spartan
         m_width  = width;
         m_height = height;
 
-        // reset image index
+        // reset indices
         m_image_index = numeric_limits<uint32_t>::max();
+        m_sync_index  = numeric_limits<uint32_t>::max();
 
         Destroy();
         Create();
