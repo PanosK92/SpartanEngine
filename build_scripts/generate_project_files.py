@@ -23,6 +23,19 @@ import sys
 import subprocess
 from pathlib import Path
 import requests
+import importlib
+
+def install_and_import(package):
+    try:
+        importlib.import_module(package)
+    except ImportError:
+        print(f"{package} not installed. Installing now...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+    finally:
+        globals()[package] = importlib.import_module(package)
+
+install_and_import('tqdm')
+from tqdm import tqdm
 
 paths = {
     "binaries": {
@@ -45,24 +58,25 @@ paths = {
     },
 }
 
-
 def download_file(url, destination):
-    """Downloads a file from the specified URL to the given destination."""
+    """Downloads a file from the specified URL to the given destination with a progress bar."""
     response = requests.get(url, stream=True)
-    if response.status_code == 200:
-        with open(destination, 'wb') as f:
-            for chunk in response.iter_content(1024):
-                f.write(chunk)
-        print("Download complete!")
-    else:
-        print("Failed to download file: HTTP ", response.status_code)
-
+    total_size = int(response.headers.get('content-length', 0))
+    block_size = 1024  # 1 Kibibyte
+    t = tqdm(total=total_size, unit='iB', unit_scale=True)
+    with open(destination, 'wb') as f:
+        for chunk in response.iter_content(block_size):
+            t.update(len(chunk))
+            f.write(chunk)
+    t.close()
+    if total_size != 0 and t.n != total_size:
+        print("ERROR, something went wrong")
+    print("Download complete!")
 
 def is_directory(path):
     if not os.path.exists(path):
         return os.path.splitext(path)[1] == ""
     return os.path.isdir(path)
-
 
 def copy(source, destination):
     if os.path.isfile(source) and is_directory(destination):
@@ -77,7 +91,6 @@ def copy(source, destination):
         print(f"Error: {source} and {destination} are not compatible.")
         sys.exit(1)
 
-
 def extract_third_party_dependencies():
     print("1. Extracting third-party dependencies...")
     cmd = (
@@ -87,23 +100,19 @@ def extract_third_party_dependencies():
     )
     os.system(cmd)
 
-
 def create_binaries_folder():
     print("\n2. Copying required data to the binaries directory..")
     copy("data", paths["binaries"]["data"])
-
 
 def copy_dlls():
     print("\n3. Copying required DLLs to the binary directory...")
     for lib in paths["third_party_libs"].values():
         copy(lib, Path("binaries"))
 
-
 def copy_assets():
     print("\n4. Copying some assets to the project directory...")
     for asset_type, asset_path in paths["assets"].items():
         copy(asset_path, paths["binaries"][asset_type])
-
 
 def generate_project_files():
     print("\n5. Generating project files...")
@@ -114,23 +123,21 @@ def generate_project_files():
     )
     subprocess.Popen(cmd, shell=True).communicate()
 
-
 def main():
     file_url = 'https://www.dropbox.com/scl/fi/n651qe5l6fsusi534hdvd/libraries.7z?rlkey=78f01m1m6vdah28lgkg88e53z&dl=1'
     file_destination = 'third_party/libraries/libraries.7z'
     
-    # check if the libraries file exists, download if not
+    # Check if the libraries file exists, download if not
     if not os.path.exists(file_destination):
         print("libraries.7z not found, downloading from Dropbox...")
         download_file(file_url, file_destination)
-        
+    
     extract_third_party_dependencies()
     create_binaries_folder()
     copy_dlls()
     copy_assets()
     generate_project_files()
     sys.exit(0)
-
 
 if __name__ == "__main__":
     main()
