@@ -60,6 +60,7 @@ paths = {
 
 def download_file(url, destination):
     """Downloads a file from the specified URL to the given destination with a progress bar."""
+    os.makedirs(os.path.dirname(destination), exist_ok=True)  # Ensure the directory exists
     response = requests.get(url, stream=True)
     total_size = int(response.headers.get('content-length', 0))
     block_size = 1024  # 1 Kibibyte
