@@ -22,6 +22,7 @@ import shutil
 import sys
 import subprocess
 from pathlib import Path
+import requests
 
 paths = {
     "binaries": {
@@ -43,6 +44,18 @@ paths = {
         "materials": Path("assets/materials"),
     },
 }
+
+
+def download_file(url, destination):
+    """Downloads a file from the specified URL to the given destination."""
+    response = requests.get(url, stream=True)
+    if response.status_code == 200:
+        with open(destination, 'wb') as f:
+            for chunk in response.iter_content(1024):
+                f.write(chunk)
+        print("Download complete!")
+    else:
+        print("Failed to download file: HTTP ", response.status_code)
 
 
 def is_directory(path):
@@ -103,6 +116,14 @@ def generate_project_files():
 
 
 def main():
+    file_url = 'https://www.dropbox.com/scl/fi/n651qe5l6fsusi534hdvd/libraries.7z?rlkey=78f01m1m6vdah28lgkg88e53z&dl=1'
+    file_destination = 'third_party/libraries/libraries.7z'
+    
+    # check if the libraries file exists, download if not
+    if not os.path.exists(file_destination):
+        print("libraries.7z not found, downloading from Dropbox...")
+        download_file(file_url, file_destination)
+        
     extract_third_party_dependencies()
     create_binaries_folder()
     copy_dlls()
