@@ -523,6 +523,20 @@ namespace Spartan
         m_pso       = RHI_PipelineState();
         m_cull_mode = RHI_CullMode::Max;
 
+        // set dynamic states
+        {
+            // cull mode
+            SetCullMode(RHI_CullMode::Back);
+
+            // scissor rectangle
+            static Math::Rectangle scissor_rect;
+            scissor_rect.left   = 0.0f;
+            scissor_rect.top    = 0.0f;
+            scissor_rect.right  = static_cast<float>(m_pso.GetWidth());
+            scissor_rect.bottom = static_cast<float>(m_pso.GetHeight());
+            SetScissorRectangle(scissor_rect);
+        }
+
         // queries
         if (m_queue_type != RHI_Queue_Type::Copy)
         {
@@ -611,9 +625,10 @@ namespace Spartan
             if (m_pso.IsGraphics())
             {
                 // cull mode
-                RHI_CullMode cull_mode = RHI_CullMode::Back;
-                cull_mode              = m_pso.rasterizer_state->GetPolygonMode() != RHI_PolygonMode::Solid ? RHI_CullMode::None : cull_mode;
-                SetCullMode(cull_mode);
+                if (m_pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe)
+                {
+                    SetCullMode(RHI_CullMode::None);
+                }
 
                 // scissor rectangle
                 Math::Rectangle scissor_rect;
