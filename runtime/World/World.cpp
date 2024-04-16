@@ -1194,6 +1194,38 @@ namespace Spartan
         Engine::SetFlag(EngineMode::Game, true);
     }
 
+    void World::CreateDefaultWorldBistro()
+    {
+        Vector3 camera_position = Vector3(-120.0f, 23.0f, -30.0f);
+        Vector3 camera_rotation = Vector3(0.0f, 90.0f, 0.0f);
+        create_default_world_common(camera_position, camera_rotation);
+
+        // doom level
+        if (m_default_model_doom = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroExterior.fbx"))
+        {
+            shared_ptr<Entity> entity = m_default_model_doom->GetRootEntity().lock();
+            entity->SetObjectName("bistro");
+            entity->SetPosition(Vector3(0.0f, 14.0f, -355.5300f));
+            entity->SetScale(Vector3(0.1f, 0.1f, 0.1f));
+
+            // enable physics for all meshes
+            vector<Entity*> entities;
+            entity->GetDescendants(&entities);
+            for (Entity* entity : entities)
+            {
+                if (entity->GetComponent<Renderable>() != nullptr)
+                {
+                    PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                    physics_body->SetShapeType(PhysicsShape::Mesh);
+                    physics_body->SetMass(0.0f); // static
+                }
+            }
+        }
+
+        // start simulating (for the physics and the music to work)
+        Engine::SetFlag(EngineMode::Game, true);
+    }
+
     void World::TickDefaultWorlds()
     {
         // forest default world logic

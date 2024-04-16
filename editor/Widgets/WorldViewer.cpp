@@ -68,7 +68,8 @@ namespace
                     "3. Car",
                     "4. Forest",
                     "5. Sponza",
-                    "6. Doom E1M1"
+                    "6. Doom E1M1",
+                    "7. Bistro"
                 };
                 static int item_index = 3; // forest
                 static int item_count = IM_ARRAYSIZE(items);
@@ -79,45 +80,33 @@ namespace
                 // button
                 if (ImGuiSp::button_centered_on_line("Ok"))
                 {
-                    if (item_index == 1)
+                    Spartan::ThreadPool::AddTask([]()
                     {
-                        Spartan::ThreadPool::AddTask([]()
+                        if (item_index == 1)
                         {
                             Spartan::World::CreateDefaultWorldObjects();
-                        });
-                    }
-                    else if (item_index == 2)
-                    {
-                        Spartan::ThreadPool::AddTask([]()
+                        }
+                        else if (item_index == 2)
                         {
                             Spartan::World::CreateDefaultWorldCar();
-                        });
-    
-                    }
-                    else if (item_index == 3)
-                    {
-                        Spartan::ThreadPool::AddTask([]()
+                        }
+                        else if (item_index == 3)
                         {
                             Spartan::World::CreateDefaultWorldForest();
-                        });
-    
-                    }
-                    else if (item_index == 4)
-                    {
-                        Spartan::ThreadPool::AddTask([]()
+                        }
+                        else if (item_index == 4)
                         {
                             Spartan::World::CreateDefaultWorldSponza();
-                        });
-    
-                    }
-                    else if (item_index == 5)
-                    {
-                        Spartan::ThreadPool::AddTask([]()
+                        }
+                        else if (item_index == 5)
                         {
                             Spartan::World::CreateDefaultWorldDoomE1M1();
-                        });
-
-                    }
+                        }
+                        else if (item_index == 6)
+                        {
+                            Spartan::World::CreateDefaultWorldBistro();
+                        }
+                    });
     
                     is_default_world_window_visible = false;
                 }

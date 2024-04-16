@@ -46,6 +46,7 @@ namespace Spartan
         static void CreateDefaultWorldForest();
         static void CreateDefaultWorldSponza();
         static void CreateDefaultWorldDoomE1M1();
+        static void CreateDefaultWorldBistro();
         static void TickDefaultWorlds();
 
         // entities
