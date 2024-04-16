@@ -524,6 +524,7 @@ namespace Spartan
         m_cull_mode = RHI_CullMode::Max;
 
         // set dynamic states
+        if (m_queue_type == RHI_Queue_Type::Graphics)
         {
             // cull mode
             SetCullMode(RHI_CullMode::Back);

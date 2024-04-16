@@ -119,7 +119,8 @@ namespace Spartan
             resource_description.depth                  = texture->GetArrayLength(); // depth or array length
             resource_description.format                 = to_ffx_surface_format(texture->GetFormat());
             resource_description.flags                  = FfxResourceFlags::FFX_RESOURCE_FLAGS_NONE;
-            resource_description.usage                  = texture->IsDepthFormat() ? FFX_RESOURCE_USAGE_DEPTHTARGET : FFX_RESOURCE_USAGE_READ_ONLY;
+            resource_description.usage                  = FFX_RESOURCE_USAGE_READ_ONLY;
+            resource_description.usage                  = static_cast<FfxResourceUsage>(resource_description.usage | (texture->IsDepthFormat() ? FFX_RESOURCE_USAGE_DEPTHTARGET : 0));
             resource_description.usage                  = static_cast<FfxResourceUsage>(resource_description.usage | (texture->IsUav() ? FFX_RESOURCE_USAGE_UAV : 0));
             resource_description.usage                  = static_cast<FfxResourceUsage>(resource_description.usage | usage_additional);
 
