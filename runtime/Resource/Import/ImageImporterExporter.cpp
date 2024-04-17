@@ -38,149 +38,149 @@ namespace Spartan
 {
     namespace
     {
-        static bool get_is_srgb(FIBITMAP* bitmap)
-    {
-        if (FIICCPROFILE* icc_profile = FreeImage_GetICCProfile(bitmap))
+        bool get_is_srgb(FIBITMAP* bitmap)
         {
-            int i, tag_count, tag_ofs, tag_size;
-            unsigned char* icc, * tag, * icc_end;
-            char tag_data[256];
-
-            if (!icc_profile->data)
-                return false;
-
-            icc = static_cast<unsigned char*>(icc_profile->data);
-            if (icc[36] != 'a' || icc[37] != 'c' || icc[38] != 's' || icc[39] != 'p')
-                return false; // not an ICC file
-
-            icc_end = icc + icc_profile->size;
-            tag_count = icc[128 + 0] * 0x1000000 + icc[128 + 1] * 0x10000 + icc[128 + 2] * 0x100 + icc[128 + 3];
-
-            // search for 'desc' tag
-            for (i = 0; i < tag_count; i++)
+            if (FIICCPROFILE* icc_profile = FreeImage_GetICCProfile(bitmap))
             {
-                tag = icc + 128 + 4 + i * 12;
-                if (tag > icc_end)
-                    return false; // invalid ICC file
+                int i, tag_count, tag_ofs, tag_size;
+                unsigned char* icc, * tag, * icc_end;
+                char tag_data[256];
 
-                // check for a desc flag
-                if (memcmp(tag, "desc", 4) == 0)
+                if (!icc_profile->data)
+                    return false;
+
+                icc = static_cast<unsigned char*>(icc_profile->data);
+                if (icc[36] != 'a' || icc[37] != 'c' || icc[38] != 's' || icc[39] != 'p')
+                    return false; // not an ICC file
+
+                icc_end = icc + icc_profile->size;
+                tag_count = icc[128 + 0] * 0x1000000 + icc[128 + 1] * 0x10000 + icc[128 + 2] * 0x100 + icc[128 + 3];
+
+                // search for 'desc' tag
+                for (i = 0; i < tag_count; i++)
                 {
-                    tag_ofs = tag[4] * 0x1000000 + tag[5] * 0x10000 + tag[6] * 0x100 + tag[7];
-                    tag_size = tag[8] * 0x1000000 + tag[9] * 0x10000 + tag[10] * 0x100 + tag[11];
-
-                    if (static_cast<uint32_t>(tag_ofs + tag_size) > icc_profile->size)
+                    tag = icc + 128 + 4 + i * 12;
+                    if (tag > icc_end)
                         return false; // invalid ICC file
 
-                    strncpy(tag_data, (char*)(icc + tag_ofs + 12), min(255, tag_size - 12));
-                    if (strcmp(tag_data, "sRGB IEC61966-2.1") == 0 || strcmp(tag_data, "sRGB IEC61966-2-1") == 0 || strcmp(tag_data, "sRGB IEC61966") == 0 || strcmp(tag_data, "* wsRGB") == 0)
-                        return true;
+                    // check for a desc flag
+                    if (memcmp(tag, "desc", 4) == 0)
+                    {
+                        tag_ofs = tag[4] * 0x1000000 + tag[5] * 0x10000 + tag[6] * 0x100 + tag[7];
+                        tag_size = tag[8] * 0x1000000 + tag[9] * 0x10000 + tag[10] * 0x100 + tag[11];
 
-                    return false;
+                        if (static_cast<uint32_t>(tag_ofs + tag_size) > icc_profile->size)
+                            return false; // invalid ICC file
+
+                        strncpy(tag_data, (char*)(icc + tag_ofs + 12), min(255, tag_size - 12));
+                        if (strcmp(tag_data, "sRGB IEC61966-2.1") == 0 || strcmp(tag_data, "sRGB IEC61966-2-1") == 0 || strcmp(tag_data, "sRGB IEC61966") == 0 || strcmp(tag_data, "* wsRGB") == 0)
+                            return true;
+
+                        return false;
+                    }
                 }
+
+                return false;
             }
 
             return false;
         }
 
-        return false;
-    }
-
-        static uint32_t get_bits_per_channel(FIBITMAP* bitmap)
-    {
-        SP_ASSERT(bitmap != nullptr);
-    
-        const FREE_IMAGE_TYPE type = FreeImage_GetImageType(bitmap);
-        uint32_t size = 0;
-    
-        if (type == FIT_BITMAP)
+        uint32_t get_bits_per_channel(FIBITMAP* bitmap)
         {
-            size = sizeof(BYTE);
-        }
-        else if (type == FIT_UINT16 || type == FIT_RGB16 || type == FIT_RGBA16)
-        {
-            size = sizeof(WORD);
-        }
-        else if (type == FIT_FLOAT || type == FIT_RGBF || type == FIT_RGBAF)
-        {
-            size = sizeof(float);
-        }
-
-        SP_ASSERT(size != 0);
-
-        return size * 8;
-    }
-
-        static uint32_t get_channel_count(FIBITMAP* bitmap)
-    {
-        SP_ASSERT(bitmap != nullptr);
-
-        const uint32_t bits_per_pixel   = FreeImage_GetBPP(bitmap);
-        const uint32_t bits_per_channel = get_bits_per_channel(bitmap);
-        const uint32_t channel_count    = bits_per_pixel / bits_per_channel;
-
-        SP_ASSERT(channel_count != 0);
-    
-        return channel_count;
-    }
-
-        static RHI_Format get_rhi_format(const uint32_t bits_per_channel, const uint32_t channel_count)
-    {
-        SP_ASSERT(bits_per_channel != 0);
-        SP_ASSERT(channel_count != 0);
-
-        RHI_Format format = RHI_Format::Max;
-
-        if (channel_count == 1)
-        {
-            if (bits_per_channel == 8)
+            SP_ASSERT(bitmap != nullptr);
+        
+            const FREE_IMAGE_TYPE type = FreeImage_GetImageType(bitmap);
+            uint32_t size = 0;
+        
+            if (type == FIT_BITMAP)
             {
-                format = RHI_Format::R8_Unorm;
+                size = sizeof(BYTE);
             }
-            else if (bits_per_channel == 16)
+            else if (type == FIT_UINT16 || type == FIT_RGB16 || type == FIT_RGBA16)
             {
-                format = RHI_Format::R16_Unorm;
+                size = sizeof(WORD);
             }
-        }
-        else if (channel_count == 2)
-        {
-            if (bits_per_channel == 8)
+            else if (type == FIT_FLOAT || type == FIT_RGBF || type == FIT_RGBAF)
             {
-                format = RHI_Format::R8G8_Unorm;
+                size = sizeof(float);
             }
-        }
-        else if (channel_count == 3)
-        {
-            if (bits_per_channel == 32)
-            {
-                format = RHI_Format::R32G32B32_Float;
-            }
-        }
-        else if (channel_count == 4)
-        {
-            if (bits_per_channel == 8)
-            {
-                format = RHI_Format::R8G8B8A8_Unorm;
-            }
-            else if (bits_per_channel == 16)
-            {
-                format = RHI_Format::R16G16B16A16_Unorm;
-            }
-            else if (bits_per_channel == 32)
-            {
-                format = RHI_Format::R32G32B32A32_Float;
-            }
+
+            SP_ASSERT(size != 0);
+
+            return size * 8;
         }
 
-        SP_ASSERT(format != RHI_Format::Max);
+        uint32_t get_channel_count(FIBITMAP* bitmap)
+        {
+            SP_ASSERT(bitmap != nullptr);
 
-        return format;
-    }
+            const uint32_t bits_per_pixel   = FreeImage_GetBPP(bitmap);
+            const uint32_t bits_per_channel = get_bits_per_channel(bitmap);
+            const uint32_t channel_count    = bits_per_pixel / bits_per_channel;
+
+            SP_ASSERT(channel_count != 0);
+        
+            return channel_count;
+        }
+
+        RHI_Format get_rhi_format(const uint32_t bits_per_channel, const uint32_t channel_count)
+        {
+            SP_ASSERT(bits_per_channel != 0);
+            SP_ASSERT(channel_count != 0);
+
+            RHI_Format format = RHI_Format::Max;
+
+            if (channel_count == 1)
+            {
+                if (bits_per_channel == 8)
+                {
+                    format = RHI_Format::R8_Unorm;
+                }
+                else if (bits_per_channel == 16)
+                {
+                    format = RHI_Format::R16_Unorm;
+                }
+            }
+            else if (channel_count == 2)
+            {
+                if (bits_per_channel == 8)
+                {
+                    format = RHI_Format::R8G8_Unorm;
+                }
+            }
+            else if (channel_count == 3)
+            {
+                if (bits_per_channel == 32)
+                {
+                    format = RHI_Format::R32G32B32_Float;
+                }
+            }
+            else if (channel_count == 4)
+            {
+                if (bits_per_channel == 8)
+                {
+                    format = RHI_Format::R8G8B8A8_Unorm;
+                }
+                else if (bits_per_channel == 16)
+                {
+                    format = RHI_Format::R16G16B16A16_Unorm;
+                }
+                else if (bits_per_channel == 32)
+                {
+                    format = RHI_Format::R32G32B32A32_Float;
+                }
+            }
+
+            SP_ASSERT(format != RHI_Format::Max);
+
+            return format;
+        }
 
         // converts a bitmap to 8 bits. If the bitmap was a high-color bitmap (16, 24 or 32-bit) or
         // if it was a monochrome or greyscale bitmap (1 or 4-bit), the end result will be a greyscale
         // bitmap, otherwise (1 or 4-bit palletized bitmaps) it will be a palletized bitmap
-        static FIBITMAP* convert_to_8bits(FIBITMAP* bitmap)
+        FIBITMAP* convert_to_8bits(FIBITMAP* bitmap)
         {
             SP_ASSERT(bitmap != nullptr);
 
@@ -193,7 +193,7 @@ namespace Spartan
             return bitmap;
         }
 
-        static FIBITMAP* convert_to_32bits(FIBITMAP* bitmap)
+        FIBITMAP* convert_to_32bits(FIBITMAP* bitmap)
         {
             SP_ASSERT(bitmap != nullptr);
 
@@ -206,7 +206,7 @@ namespace Spartan
             return bitmap;
         }
 
-        static FIBITMAP* rescale(FIBITMAP* bitmap, const uint32_t width, const uint32_t height)
+        FIBITMAP* rescale(FIBITMAP* bitmap, const uint32_t width, const uint32_t height)
         {
             SP_ASSERT(bitmap != nullptr);
             SP_ASSERT(width != 0);
@@ -225,7 +225,7 @@ namespace Spartan
             return bitmap;
         }
 
-        static FIBITMAP* apply_bitmap_corrections(FIBITMAP* bitmap)
+        FIBITMAP* apply_bitmap_corrections(FIBITMAP* bitmap)
         {
             SP_ASSERT(bitmap != nullptr);
         
@@ -285,7 +285,7 @@ namespace Spartan
             return bitmap;
         }
 
-        static void get_bits_from_bitmap(RHI_Texture_Mip* mip, FIBITMAP* bitmap, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel)
+        void get_bits_from_bitmap(RHI_Texture_Mip* mip, FIBITMAP* bitmap, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel)
         {
             // Validate
             SP_ASSERT(mip != nullptr);
@@ -308,7 +308,7 @@ namespace Spartan
             memcpy(&mip->bytes[0], bytes, size_bytes);
         }
 
-        static void free_image_error_handler(const FREE_IMAGE_FORMAT fif, const char* message)
+        void free_image_error_handler(const FREE_IMAGE_FORMAT fif, const char* message)
         {
             const auto text   = (message != nullptr) ? message : "Unknown error";
             const auto format = (fif != FIF_UNKNOWN) ? FreeImage_GetFormatFromFIF(fif) : "Unknown";
@@ -365,7 +365,7 @@ namespace Spartan
             SP_LOG_ERROR("Failed to load \"%s\"", file_path.c_str());
             return false;
         }
-
+        
         // deduce image properties. Important that this is done here, before ApplyBitmapCorrections(), as after that, results for grayscale seem to be always false
         const bool is_transparent = FreeImage_IsTransparent(bitmap);
         const bool is_greyscale   = FreeImage_GetColorType(bitmap) == FREE_IMAGE_COLOR_TYPE::FIC_MINISBLACK;
