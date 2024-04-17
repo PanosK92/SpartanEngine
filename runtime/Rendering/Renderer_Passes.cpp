@@ -983,8 +983,8 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_ssr_roughness); // write
 
         // render
+        cmd_list->InsertBarrierTextureReadWrite(tex_ssr_roughness);
         cmd_list->Dispatch(tex_ssr);
-
         cmd_list->InsertBarrierTextureReadWrite(tex_ssr_roughness);
 
         // antiflicker pass to stabilize
@@ -1326,9 +1326,9 @@ namespace Spartan
 
             // set textures
             SetGbufferTextures(cmd_list);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in, mip, mip_range);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_in, mip, mip_range);
             cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_radius);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_blur); // write
+            cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_blur); // write
 
             // render
             cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
