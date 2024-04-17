@@ -169,7 +169,6 @@ namespace Spartan
         static void Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         // passes - post-process
         static void Pass_PostProcess(RHI_CommandList* cmd_list);
-        static void Pass_Taa(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Output(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Fxaa(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_FilmGrain(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);

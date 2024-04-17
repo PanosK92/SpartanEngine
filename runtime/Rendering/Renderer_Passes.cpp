@@ -1460,41 +1460,6 @@ namespace Spartan
         cmd_list->EndMarker();
     }
 
-    void Renderer::Pass_Taa(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
-    {
-        // acquire shader
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::taa_c).get();
-        if (!shader_c->IsCompiled())
-            return;
-
-        cmd_list->BeginMarker("taa");
-
-        RHI_Texture* tex_history = GetRenderTarget(Renderer_RenderTarget::frame_render_history).get();
-
-        // set pipeline state
-        static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
-        cmd_list->SetPipelineState(pso);
-
-        // set pass constants
-        m_pcb_pass_cpu.set_resolution_out(tex_out);
-        cmd_list->PushConstants(m_pcb_pass_cpu);
-
-        // set textures
-        SetGbufferTextures(cmd_list);
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_in);      // input
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_history); // history
-        cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_out);     // output
-
-        // render
-        cmd_list->Dispatch(tex_out);
-
-        // record history
-        cmd_list->Blit(tex_out, tex_history, false);
-
-        cmd_list->EndMarker();
-    }
-
     void Renderer::Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
