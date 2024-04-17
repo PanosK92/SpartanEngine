@@ -837,54 +837,50 @@ SupportsExportType(FREE_IMAGE_TYPE type) {
 
 // ----------------------------------------------------------
 
-static void * DLL_CALLCONV
-Open(FreeImageIO *io, fi_handle handle, BOOL read) {
-	return NULL;
-}
-
-static void DLL_CALLCONV
-Close(FreeImageIO *io, fi_handle handle, void *data) {
-}
-
-// ----------------------------------------------------------
-
-static FIBITMAP * DLL_CALLCONV
-Load(FreeImageIO *io, fi_handle handle, int page, int flags, void *data) {
+static FIBITMAP* DLL_CALLCONV
+Load(FreeImageIO* io, fi_handle handle, int page, int flags, void* data) {
 	DDSHEADER header;
-	FIBITMAP *dib = NULL;
+	FIBITMAP* dib = NULL;
 
 	memset(&header, 0, sizeof(header));
-	io->read_proc(&header, 1, sizeof(header), handle);
+	if (io->read_proc(&header, 1, sizeof(header), handle) != sizeof(header)) {
+		FreeImage_OutputMessageProc(FIF_DDS, "Failed to read the DDS header");
+		return NULL;
+	}
 #ifdef FREEIMAGE_BIGENDIAN
 	SwapHeader(&header);
 #endif
-	
-	// values which indicate what type of data is in the surface, see DDPF_*
+
 	const DWORD dwFlags = header.surfaceDesc.ddspf.dwFlags;
 
-	const DDSURFACEDESC2 *surfaceDesc = &(header.surfaceDesc);
-
 	if ((dwFlags & DDPF_RGB) == DDPF_RGB) {
-		// uncompressed data
-		dib = LoadRGB(surfaceDesc, io, handle);
+		dib = LoadRGB(&header.surfaceDesc, io, handle);
+		if (!dib) {
+			FreeImage_OutputMessageProc(FIF_DDS, "Unsupported or corrupt RGB format in DDS file");
+		}
 	}
 	else if ((dwFlags & DDPF_FOURCC) == DDPF_FOURCC) {
-		// compressed data
-		switch (surfaceDesc->ddspf.dwFourCC) {
-			case FOURCC_DXT1:
-				dib = LoadDXT(1, surfaceDesc, io, handle);
-				break;
-			case FOURCC_DXT3:
-				dib = LoadDXT(3, surfaceDesc, io, handle);
-				break;
-			case FOURCC_DXT5:
-				dib = LoadDXT(5, surfaceDesc, io, handle);
-				break;
+		switch (header.surfaceDesc.ddspf.dwFourCC) {
+		case FOURCC_DXT1:
+		case FOURCC_DXT3:
+		case FOURCC_DXT5:
+			dib = LoadDXT(header.surfaceDesc.ddspf.dwFourCC - FOURCC_DXT1 + 1, &header.surfaceDesc, io, handle);
+			break;
+		default:
+			FreeImage_OutputMessageProc(FIF_DDS, "Unsupported FOURCC code: %u", header.surfaceDesc.ddspf.dwFourCC);
+			break;
 		}
+		if (!dib) {
+			FreeImage_OutputMessageProc(FIF_DDS, "Failed to load compressed DDS data");
+		}
+	}
+	else {
+		FreeImage_OutputMessageProc(FIF_DDS, "DDS file contains unsupported pixel format flags");
 	}
 
 	return dib;
 }
+
 
 /*
 static BOOL DLL_CALLCONV
@@ -905,8 +901,8 @@ InitDDS(Plugin *plugin, int format_id) {
 	plugin->description_proc = Description;
 	plugin->extension_proc = Extension;
 	plugin->regexpr_proc = RegExpr;
-	plugin->open_proc = Open;
-	plugin->close_proc = Close;
+	plugin->open_proc = NULL;
+	plugin->close_proc = NULL;
 	plugin->pagecount_proc = NULL;
 	plugin->pagecapability_proc = NULL;
 	plugin->load_proc = Load;
