@@ -135,8 +135,8 @@ namespace Spartan
                 m_is_mouse_visible = root.child("IsMouseVisible").text().as_bool();
                 fps_limit          = root.child("FPSLimit").text().as_float();
 
-                Renderer::SetResolutionOutput(root.child("ResolutionOutputWidth").text().as_int(), root.child("ResolutionOutputHeight").text().as_int());
                 Renderer::SetResolutionRender(root.child("ResolutionRenderWidth").text().as_int(), root.child("ResolutionRenderHeight").text().as_int());
+                Renderer::SetResolutionOutput(root.child("ResolutionOutputWidth").text().as_int(), root.child("ResolutionOutputHeight").text().as_int());
 
                 m_render_options.clear();
                 for (uint32_t i = 0; i < static_cast<uint32_t>(Renderer_Option::Max); i++)

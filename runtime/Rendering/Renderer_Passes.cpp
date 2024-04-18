@@ -972,7 +972,6 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
-        m_pcb_pass_cpu.set_resolution_out(tex_ssr);
         m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
