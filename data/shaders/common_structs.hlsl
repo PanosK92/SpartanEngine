@@ -77,7 +77,7 @@ struct Surface
     bool is_opaque()                              { return alpha == 1.0f; }
     bool is_transparent()                         { return alpha > 0.0f && alpha < 1.0f; }
     
-    void Build(uint2 position_screen, bool use_albedo, bool replace_color_with_one)
+    void Build(uint2 position_screen, float2 resolution_out, bool use_albedo, bool replace_color_with_one)
     {
         // access resources
         float4 sample_albedo   = use_albedo ? tex_albedo[position_screen] : 0.0f;
@@ -87,7 +87,7 @@ struct Surface
         Material material      = buffer_materials[sample_normal.a];
         
         // fill properties
-        uv                    = (position_screen + 0.5f) / (pass_get_resolution_out() * buffer_frame.resolution_scale);
+        uv                    = (position_screen + 0.5f) / (resolution_out * buffer_frame.resolution_scale);
         depth                 = sample_depth;
         normal                = sample_normal.xyz;
         flags                 = material.flags;
@@ -119,7 +119,7 @@ struct Surface
 
             if (is_ssgi_enabled() && pass_is_opaque())
             {
-                float2 uv_unscaled = (position_screen + 0.5f) / pass_get_resolution_out();
+                float2 uv_unscaled = (position_screen + 0.5f) / resolution_out;
                 float4 ssgi        = tex_ssgi.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp_border), uv_unscaled, 0.0f);
                 occlusion          = ssgi.a;
                 gi                 = ssgi.rgb;
@@ -133,6 +133,11 @@ struct Surface
         camera_to_pixel        = position - buffer_frame.camera_position.xyz;
         camera_to_pixel_length = length(camera_to_pixel);
         camera_to_pixel        = normalize(camera_to_pixel);
+    }
+
+    void Build(uint2 position_screen, bool use_albedo, bool replace_color_with_one)
+    {
+        Build(position_screen, pass_get_resolution_out(), use_albedo, replace_color_with_one);
     }
 };
 
