@@ -40,15 +40,16 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float intensity       = camera_error * g_chromatic_aberration_intensity;
     float2 shift          = float2(intensity, -intensity);
 
-    // Lens effect
+    // lens effect
     shift.x *= abs(uv.x * 2.0f - 1.0f);
     shift.y *= abs(uv.y * 2.0f - 1.0f);
 
-    // Sample color
-    float3 color = 0.0f; 
-    color.r      = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + (get_rt_texel_size() * shift), 0).r;
-    color.g      = tex[thread_id.xy].g;
-    color.b      = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv - (get_rt_texel_size() * shift), 0).b;
+    // sample color
+    float3 color      = 0.0f;
+    float2 texel_size = 1.0f / resolution_out;
+    color.r           = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + (texel_size * shift), 0).r;
+    color.g           = tex[thread_id.xy].g;
+    color.b           = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv - (texel_size * shift), 0).b;
 
     tex_uav[thread_id.xy] = float4(color, tex[thread_id.xy].a);
 }
