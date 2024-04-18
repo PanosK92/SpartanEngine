@@ -102,11 +102,13 @@ struct translucency
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
+    float2 resolution_out;
+    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
+    if (any(int2(thread_id.xy) >= resolution_out))
         return;
 
     Surface surface;
-    surface.Build(thread_id.xy, true, false);
+    surface.Build(thread_id.xy, resolution_out, true, false);
 
     bool early_exit_1 = pass_is_opaque() && surface.is_transparent(); // if this is an opaque pass, ignore all transparent pixels.
     bool early_exit_2 = pass_is_transparent() && surface.is_opaque(); // if this is a transparent pass, ignore all opaque pixels.

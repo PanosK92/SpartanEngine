@@ -1195,7 +1195,6 @@ namespace Spartan
                 }
 
                 // push pass constants
-                m_pcb_pass_cpu.set_resolution_out(tex_diffuse);
                 m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
                 m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Fog), GetOption<float>(Renderer_Option::ShadowResolution), 0.0f);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
@@ -1224,7 +1223,6 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // push pass constants
-        m_pcb_pass_cpu.set_resolution_out(tex_out);
         m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
         m_pcb_pass_cpu.set_f3_value(static_cast<float>(GetRenderTarget(Renderer_RenderTarget::frame_render)->GetMipCount()), GetOption<float>(Renderer_Option::Fog), 0.0f);
         cmd_list->PushConstants(m_pcb_pass_cpu);
