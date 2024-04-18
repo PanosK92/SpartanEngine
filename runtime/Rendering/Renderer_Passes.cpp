@@ -1306,9 +1306,7 @@ namespace Spartan
         // horizontal pass
         {
             // set pass constants
-            m_pcb_pass_cpu.set_resolution_in(Vector2(static_cast<float>(width), static_cast<float>(height)));
-            m_pcb_pass_cpu.set_resolution_out(tex_blur);
-            m_pcb_pass_cpu.set_f3_value(radius, 0.0f);
+            m_pcb_pass_cpu.set_f3_value(radius, 0.0f); // horizontal
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             // set textures
@@ -1324,7 +1322,7 @@ namespace Spartan
         // vertical pass
         {
             // set pass constants
-            m_pcb_pass_cpu.set_f3_value(radius, 1.0f);
+            m_pcb_pass_cpu.set_f3_value(radius, 1.0f); // vertical
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             // set textures
@@ -2230,13 +2228,11 @@ namespace Spartan
 
     void Renderer::Pass_Light_Integration_EnvironmentPrefilter(RHI_CommandList* cmd_list)
     {
-        // acquire shader
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::light_integration_environment_filter_c).get();
+        // acquire resources
+        RHI_Texture* tex_environment = GetRenderTarget(Renderer_RenderTarget::skysphere).get();
+        RHI_Shader* shader_c         = GetShader(Renderer_Shader::light_integration_environment_filter_c).get();
         if (!shader_c || !shader_c->IsCompiled())
             return;
-
-        // acquire render target
-        RHI_Texture* tex_environment = GetRenderTarget(Renderer_RenderTarget::skysphere).get();
 
         cmd_list->BeginTimeblock("light_integration_environment_filter");
         {
@@ -2256,7 +2252,6 @@ namespace Spartan
             Vector2 resolution = Vector2(tex_environment->GetWidth() >> mip_level, tex_environment->GetHeight() >> mip_level);
             {
                 // set pass constants
-                m_pcb_pass_cpu.set_resolution_out(resolution);
                 m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(mip_count), 0.0f);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
 
