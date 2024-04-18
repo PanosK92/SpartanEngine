@@ -119,29 +119,11 @@ namespace Spartan
             m_value = transform_previous;
         }
 
-        void set_resolution_in(const RHI_Texture* texture)
+        void set_f2_value(float x, float y)
         {
-            m_value.m03 = static_cast<float>(texture->GetWidth());
-            m_value.m22 = static_cast<float>(texture->GetHeight());
-        };
-
-        void set_resolution_in(const Math::Vector2& resolution)
-        {
-            m_value.m03 = resolution.x;
-            m_value.m22 = resolution.y;
-        };
-
-        void set_resolution_out(const RHI_Texture* texture)
-        {
-            m_value.m23 = static_cast<float>(texture->GetWidth());
-            m_value.m30 = static_cast<float>(texture->GetHeight());
-        };
-
-        void set_resolution_out(const Math::Vector2& resolution)
-        {
-            m_value.m23 = resolution.x;
-            m_value.m30 = resolution.y;
-        };
+            m_value.m23 = x;
+            m_value.m30 = y;
+        }
 
         void set_f3_value(const Math::Vector3& value)
         {

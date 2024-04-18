@@ -100,7 +100,7 @@ float compute_penumbra(Light light, float vogel_angle, float3 uv, float compare)
 float Technique_Vogel(Light light, Surface surface, float3 uv, float compare)
 {
     float shadow          = 0.0f;
-    float temporal_offset = get_noise_interleaved_gradient(surface.uv * pass_get_resolution_out(), true, true);
+    float temporal_offset = get_noise_interleaved_gradient(surface.pos, true, true);
     float temporal_angle  = temporal_offset * PI2;
     float penumbra        = light.is_directional() ? 1.0f : compute_penumbra(light, temporal_angle, uv, compare);
 
@@ -118,7 +118,7 @@ float Technique_Vogel(Light light, Surface surface, float3 uv, float compare)
 float3 Technique_Vogel_Color(Light light, Surface surface, float3 uv)
 {
     float3 shadow     = 0.0f;
-    float vogel_angle = get_noise_interleaved_gradient(surface.uv * pass_get_resolution_out(), true, false) * PI2;
+    float vogel_angle = get_noise_interleaved_gradient(surface.pos, true, false) * PI2;
 
     // todo: in the case of the point light, the uv is the direction, filtering works ok but I could improved it.
     

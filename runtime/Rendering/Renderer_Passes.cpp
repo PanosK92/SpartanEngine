@@ -1063,7 +1063,7 @@ namespace Spartan
                     for (int32_t dispatch_index = 0; dispatch_index < dispatch_list.DispatchCount; ++dispatch_index)
                     {
                         const Bend::DispatchData& dispatch = dispatch_list.Dispatch[dispatch_index];
-                        m_pcb_pass_cpu.set_resolution_in({ dispatch.WaveOffset_Shader[0], dispatch.WaveOffset_Shader[1] });
+                        m_pcb_pass_cpu.set_f2_value(dispatch.WaveOffset_Shader[0], dispatch.WaveOffset_Shader[1]);
                         cmd_list->PushConstants(m_pcb_pass_cpu);
                         cmd_list->Dispatch(dispatch.WaveCount[0], dispatch.WaveCount[1], dispatch.WaveCount[2]);
                     }

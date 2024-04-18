@@ -80,15 +80,14 @@ bool is_ssgi_enabled() { return buffer_frame.options & uint(1U << 1); }
 
 // easy access to the push constant properties
 matrix pass_get_transform_previous() { return buffer_pass.values; }
-float2 pass_get_resolution_in()      { return float2(buffer_pass.values._m03, buffer_pass.values._m22); }
-float2 pass_get_resolution_out()     { return float2(buffer_pass.values._m23, buffer_pass.values._m30); }
+float2 pass_get_f2_value()           { return float2(buffer_pass.values._m23, buffer_pass.values._m30); }
 float3 pass_get_f3_value()           { return float3(buffer_pass.values._m00, buffer_pass.values._m01, buffer_pass.values._m02); }
 float3 pass_get_f3_value2()          { return float3(buffer_pass.values._m20, buffer_pass.values._m21, buffer_pass.values._m31); }
 float4 pass_get_f4_value()           { return float4(buffer_pass.values._m10, buffer_pass.values._m11, buffer_pass.values._m12, buffer_pass.values._m33); }
 
+uint pass_get_material_index() { return buffer_pass.values._m03; }
 bool pass_is_transparent()     { return buffer_pass.values._m13 == 1.0f; }
 bool pass_is_opaque()          { return !pass_is_transparent(); }
-uint pass_get_material_index() { return buffer_pass.values._m03; }
 // _m32 is available for use
 
 #endif // SPARTAN_COMMON_BUFFERS

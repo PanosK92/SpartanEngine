@@ -53,7 +53,6 @@ static const float DEG_TO_RAD           = PI / 180.0f;
 /*------------------------------------------------------------------------------
    COMMON
 ------------------------------------------------------------------------------*/
-float2 get_rt_texel_size()          { return float2(1.0f / pass_get_resolution_out().x, 1.0f /pass_get_resolution_out().y); }
 float2 get_tex_noise_normal_scale() { return float2(buffer_frame.resolution_render.x / 256.0f, buffer_frame.resolution_render.y / 256.0f); }
 float2 get_tex_noise_blue_scale()   { return float2(buffer_frame.resolution_render.x / 470.0f, buffer_frame.resolution_render.y / 470.0f); }
 
@@ -391,9 +390,9 @@ float3 get_view_direction(float2 uv)
     return get_view_direction(get_position(uv));
 }
 
-float3 get_view_direction(uint2 pos)
+float3 get_view_direction(uint2 pos, float2 resolution)
 {
-    const float2 uv = (pos + 0.5f) / pass_get_resolution_out();
+    const float2 uv = (pos + 0.5f) / resolution;
     return get_view_direction(uv);
 }
 
@@ -402,9 +401,9 @@ float3 get_view_direction_view_space(float2 uv)
     return mul(float4(get_view_direction(get_position(uv)), 0.0f), buffer_frame.view).xyz;
 }
 
-float3 get_view_direction_view_space(uint2 pos)
+float3 get_view_direction_view_space(uint2 pos, float2 resolution)
 {
-    const float2 uv = (pos + 0.5f) / pass_get_resolution_out();
+    const float2 uv = (pos + 0.5f) / resolution;
     return get_view_direction_view_space(uv);
 }
 
@@ -511,44 +510,6 @@ float microw_shadowing_cod(float n_dot_l, float visibility)
     float aperture = rsqrt(1.0 - visibility);
     float microShadow = saturate(n_dot_l * aperture);
     return microShadow * microShadow;
-}
-
-/*------------------------------------------------------------------------------
-    PRIMITIVES
-------------------------------------------------------------------------------*/
-float draw_line(float2 p1, float2 p2, float2 uv, float a)
-{
-    float r = 0.0f;
-    float one_px = 1. / pass_get_resolution_out().x; // not really one px
-
-    // get dist between points
-    float d = distance(p1, p2);
-
-    // get dist between current pixel and p1
-    float duv = distance(p1, uv);
-
-    // if point is on line, according to dist, it should match current uv 
-    r = 1.0f - floor(1.0f - (a * one_px) + distance(lerp(p1, p2, clamp(duv / d, 0.0f, 1.0f)), uv));
-
-    return r;
-}
-
-float draw_line_view_space(float3 p1, float3 p2, float2 uv, float a)
-{
-    float2 p1_uv = view_to_uv(p1);
-    float2 p2_uv = view_to_uv(p2);
-    return draw_line(p1_uv, p2_uv, uv, a);
-}
-
-float draw_circle(float2 origin, float radius, float2 uv)
-{
-    return (distance(origin, uv) <= radius) ? 1.0f : 0.0f;
-}
-
-float draw_circle_view_space(float3 origin, float radius, float2 uv)
-{
-    float2 origin_uv = view_to_uv(origin);
-    return draw_circle(origin_uv, radius, uv);
 }
 
 /*------------------------------------------------------------------------------

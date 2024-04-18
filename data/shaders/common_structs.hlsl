@@ -48,6 +48,7 @@ struct Surface
     float3 gi;
     float3 emissive;
     float3 F0;
+    uint2  pos;
     float2 uv;
     float  depth;
     float3 position;
@@ -87,6 +88,7 @@ struct Surface
         Material material      = buffer_materials[sample_normal.a];
         
         // fill properties
+        pos                   = position_screen;
         uv                    = (position_screen + 0.5f) / (resolution_out * buffer_frame.resolution_scale);
         depth                 = sample_depth;
         normal                = sample_normal.xyz;
@@ -133,11 +135,6 @@ struct Surface
         camera_to_pixel        = position - buffer_frame.camera_position.xyz;
         camera_to_pixel_length = length(camera_to_pixel);
         camera_to_pixel        = normalize(camera_to_pixel);
-    }
-
-    void Build(uint2 position_screen, bool use_albedo, bool replace_color_with_one)
-    {
-        Build(position_screen, pass_get_resolution_out(), use_albedo, replace_color_with_one);
     }
 };
 
