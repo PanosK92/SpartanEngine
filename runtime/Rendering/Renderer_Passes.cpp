@@ -928,10 +928,6 @@ namespace Spartan
         pso.shader_compute = shader_ssgi;
         cmd_list->SetPipelineState(pso);
 
-        // set pass constants
-        m_pcb_pass_cpu.set_resolution_out(tex_ssgi);
-        cmd_list->PushConstants(m_pcb_pass_cpu);
-
         // set textures
         SetGbufferTextures(cmd_list);
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssgi);
