@@ -35,7 +35,8 @@ groupshared AU1 spd_counter;
 
 AF4 SpdLoadSourceImage(ASU2 p, AU1 slice)
 {
-    float2 uv = (p + 0.5f) / pass_get_resolution_out();
+    float2 resolution_out = pass_get_f3_value2().xy;
+    float2 uv             = (p + 0.5f) / resolution_out;
     return tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0);
 }
 
