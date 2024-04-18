@@ -480,10 +480,6 @@ namespace Spartan
         pso.shader_compute = shader_c;
         cmd_list->SetPipelineState(pso);
 
-        // set pass constants
-        m_pcb_pass_cpu.set_resolution_out(tex_out);
-        cmd_list->PushConstants(m_pcb_pass_cpu);
-
         // set textures
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
         cmd_list->SetTexture(Renderer_BindingsUav::tex_uint, tex_out);
@@ -2131,10 +2127,6 @@ namespace Spartan
                             pso.shader_compute = shader_c;
                             cmd_list->SetPipelineState(pso);
                         
-                            // set pass constants
-                            m_pcb_pass_cpu.set_resolution_out(tex_out);
-                            cmd_list->PushConstants(m_pcb_pass_cpu);
-                        
                             // set textures
                             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
                             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_outline);
@@ -2225,10 +2217,6 @@ namespace Spartan
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
         cmd_list->SetPipelineState(pso);
-
-        // set pass constants
-        m_pcb_pass_cpu.set_resolution_out(tex_brdf_specular_lut);
-        cmd_list->PushConstants(m_pcb_pass_cpu);
 
         // set texture
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_brdf_specular_lut);
