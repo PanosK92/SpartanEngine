@@ -41,8 +41,6 @@ namespace Spartan
     { 
         bool m_is_fullscreen            = false;
         bool m_is_mouse_visible         = false;
-        Vector2 m_resolution_output     = Vector2::Zero;
-        Vector2 m_resolution_render     = Vector2::Zero;
         float fps_limit                 = 0.0f;
         bool m_has_loaded_user_settings = false;
         string file_path                = "spartan.xml";
@@ -102,10 +100,10 @@ namespace Spartan
             {
                 root.append_child("FullScreen").text().set(m_is_fullscreen);
                 root.append_child("IsMouseVisible").text().set(m_is_mouse_visible);
-                root.append_child("ResolutionOutputWidth").text().set(m_resolution_output.x);
-                root.append_child("ResolutionOutputHeight").text().set(m_resolution_output.y);
-                root.append_child("ResolutionRenderWidth").text().set(m_resolution_render.x);
-                root.append_child("ResolutionRenderHeight").text().set(m_resolution_render.y);
+                root.append_child("ResolutionOutputWidth").text().set(Renderer::GetResolutionOutput().x);
+                root.append_child("ResolutionOutputHeight").text().set(Renderer::GetResolutionOutput().y);
+                root.append_child("ResolutionRenderWidth").text().set(Renderer::GetResolutionRender().x);
+                root.append_child("ResolutionRenderHeight").text().set(Renderer::GetResolutionRender().y);
                 root.append_child("FPSLimit").text().set(fps_limit);
 
                 for (auto& [option, value] : m_render_options)
@@ -133,13 +131,12 @@ namespace Spartan
 
             // load settings
             {
-                m_is_fullscreen       = root.child("FullScreen").text().as_bool();
-                m_is_mouse_visible    = root.child("IsMouseVisible").text().as_bool();
-                m_resolution_output.x = root.child("ResolutionOutputWidth").text().as_float();
-                m_resolution_output.y = root.child("ResolutionOutputHeight").text().as_float();
-                m_resolution_render.x = root.child("ResolutionRenderWidth").text().as_float();
-                m_resolution_render.y = root.child("ResolutionRenderHeight").text().as_float();
-                fps_limit             = root.child("FPSLimit").text().as_float();
+                m_is_fullscreen    = root.child("FullScreen").text().as_bool();
+                m_is_mouse_visible = root.child("IsMouseVisible").text().as_bool();
+                fps_limit          = root.child("FPSLimit").text().as_float();
+
+                Renderer::SetResolutionOutput(root.child("ResolutionOutputWidth").text().as_float(), root.child("ResolutionOutputHeight").text().as_float());
+                Renderer::SetResolutionRender(root.child("ResolutionRenderWidth").text().as_float(), root.child("ResolutionRenderHeight").text().as_float());
 
                 m_render_options.clear();
                 for (uint32_t i = 0; i < static_cast<uint32_t>(Renderer_Option::Max); i++)
@@ -162,8 +159,6 @@ namespace Spartan
 
             Timer::SetFpsLimit(fps_limit);
             Input::SetMouseCursorVisible(m_is_mouse_visible);
-            Renderer::SetResolutionOutput(static_cast<uint32_t>(m_resolution_output.x), static_cast<uint32_t>(m_resolution_output.y));
-            Renderer::SetResolutionRender(static_cast<uint32_t>(m_resolution_render.x), static_cast<uint32_t>(m_resolution_render.y));
             Renderer::SetOptions(m_render_options);
 
             if (m_is_fullscreen)
@@ -174,12 +169,10 @@ namespace Spartan
 
         static void reflect()
         {
-            fps_limit           = Timer::GetFpsLimit();
-            m_is_fullscreen     = Window::IsFullScreen();
-            m_is_mouse_visible  = Input::GetMouseCursorVisible();
-            m_resolution_output = Renderer::GetResolutionOutput();
-            m_resolution_render = Renderer::GetResolutionRender();
-            m_render_options    = Renderer::GetOptions();
+            fps_limit          = Timer::GetFpsLimit();
+            m_is_fullscreen    = Window::IsFullScreen();
+            m_is_mouse_visible = Input::GetMouseCursorVisible();
+            m_render_options   = Renderer::GetOptions();
         }
     }
 
