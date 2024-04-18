@@ -1453,56 +1453,49 @@ namespace Spartan
 
     void Renderer::Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
-        // Acquire shaders
+        // acquire resources
         RHI_Shader* shader_luminance        = GetShader(Renderer_Shader::bloom_luminance_c).get();
         RHI_Shader* shader_upsampleBlendMip = GetShader(Renderer_Shader::bloom_upsample_blend_mip_c).get();
         RHI_Shader* shader_blendFrame       = GetShader(Renderer_Shader::bloom_blend_frame_c).get();
-
+        RHI_Texture* tex_bloom              = GetRenderTarget(Renderer_RenderTarget::bloom).get();
         if (!shader_luminance->IsCompiled() || !shader_upsampleBlendMip->IsCompiled() || !shader_blendFrame->IsCompiled())
             return;
 
         cmd_list->BeginTimeblock("bloom");
 
-        // Acquire render target
-        RHI_Texture* tex_bloom = GetRenderTarget(Renderer_RenderTarget::bloom).get();
-
-        // Luminance
+        // luminance
         cmd_list->BeginMarker("luminance");
         {
-            // Define pipeline state
+            // define pipeline state
             static RHI_PipelineState pso;
             pso.shader_compute = shader_luminance;
 
-            // Set pipeline state
+            // set pipeline state
             cmd_list->SetPipelineState(pso);
 
-            // Set pass constants
-            m_pcb_pass_cpu.set_resolution_out(tex_bloom);
-            cmd_list->PushConstants(m_pcb_pass_cpu);
-
-            // Set textures
+            // set textures
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_bloom);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
 
-            // Render
+            // render
             cmd_list->Dispatch(tex_bloom);
         }
         cmd_list->EndMarker();
 
-        // Generate mips
+        // generate mips
         Pass_Ffx_Spd(cmd_list, tex_bloom, Renderer_DownsampleFilter::Antiflicker);
 
-        // Starting from the lowest mip, upsample and blend with the higher one
+        // starting from the lowest mip, upsample and blend with the higher one
         cmd_list->BeginMarker("upsample_and_blend_with_higher_mip");
         {
-            // Define pipeline state
+            // define pipeline state
             static RHI_PipelineState pso;
             pso.shader_compute = shader_upsampleBlendMip;
 
-            // Set pipeline state
+            // set pipeline state
             cmd_list->SetPipelineState(pso);
 
-            // Render
+            // render
             for (int i = static_cast<int>(tex_bloom->GetMipCount() - 1); i > 0; i--)
             {
                 int mip_index_small   = i;
@@ -1510,11 +1503,7 @@ namespace Spartan
                 int mip_width_large   = tex_bloom->GetWidth() >> mip_index_big;
                 int mip_height_height = tex_bloom->GetHeight() >> mip_index_big;
 
-                // Set pass constants
-                m_pcb_pass_cpu.set_resolution_out(Vector2(static_cast<float>(mip_width_large), static_cast<float>(mip_height_height)));
-                cmd_list->PushConstants(m_pcb_pass_cpu);
-
-                // Set textures
+                // set textures
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_bloom, mip_index_small, 1);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_bloom, mip_index_big, 1);
 
@@ -1527,27 +1516,26 @@ namespace Spartan
         }
         cmd_list->EndMarker();
 
-        // Blend with the frame
+        // blend with the frame
         cmd_list->BeginMarker("blend_with_frame");
         {
-            // Define pipeline state
+            // define pipeline state
             static RHI_PipelineState pso;
             pso.shader_compute = shader_blendFrame;
 
-            // Set pipeline state
+            // set pipeline state
             cmd_list->SetPipelineState(pso);
 
-            // Set pass constants
-            m_pcb_pass_cpu.set_resolution_out(tex_out);
+            // set pass constants
             m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Bloom), 0.0f, 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
-            // Set textures
+            // set textures
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_bloom, 0, 1);
 
-            // Render
+            // render
             cmd_list->Dispatch(tex_out);
         }
         cmd_list->EndMarker();

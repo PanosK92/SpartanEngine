@@ -81,8 +81,8 @@ void compute_ssgi(uint2 pos, float2 resolution_out, inout float visibility, inou
     const float ray_offset               = frac(offset_spatial + offset_temporal) + (get_random(origin_uv) * 2.0 - 1.0) * 0.25;
 
     // compute light/occlusion
-    float2 texel_size =  float2(1.0f / pass_get_resolution_out().x, 1.0f / pass_get_resolution_out().y);
-    float occlusion = 0.0f;
+    float2 texel_size = 1.0f / resolution_out;
+    float occlusion   = 0.0f;
     [unroll]
     for (uint direction_index = 0; direction_index < g_ao_directions; direction_index++)
     {
