@@ -41,17 +41,18 @@ float gaussian_weight(float x, float sigma)
     return exp(-0.5 * (x * x) / (sigma * sigma)) / (sigma * sqrt(2.0 * 3.14159265));
 }
 
-float3 gaussian_blur(float2 uv, float coc)
+float3 gaussian_blur(float2 uv, float coc, float2 resolution_out)
 {
-    float sigma  = max(1.0, coc * BLUR_RADIUS);
-    float3 color = float3(0.0, 0.0, 0.0);
+    float2 texel_size = 1.0f / resolution_out;
+    float sigma       = max(1.0, coc * BLUR_RADIUS);
+    float3 color      = float3(0.0, 0.0, 0.0);
     
     float total_weight = 0.0;
     for (int i = -BLUR_RADIUS; i <= BLUR_RADIUS; i++)
     {
         for (int j = -BLUR_RADIUS; j <= BLUR_RADIUS; j++)
         {
-            float2 offset  = float2(i, j) * get_rt_texel_size();
+            float2 offset  = float2(i, j) * texel_size;
             float weight   = gaussian_weight(length(float2(i, j)), sigma);
             color         += tex.Sample(samplers[sampler_bilinear_clamp], uv + offset).rgb * weight;
             total_weight  += weight;
@@ -61,10 +62,10 @@ float3 gaussian_blur(float2 uv, float coc)
     return color / total_weight;
 }
 
-float get_average_depth_circle(float2 center, float radius, uint sample_count)
+float get_average_depth_circle(float2 center, float radius, uint sample_count, float2 resolution_out)
 {
     float average_depth = 0.0f;
-    float2 texel_size   = get_rt_texel_size();
+    float2 texel_size   = 1.0f / resolution_out;
     float angle_step    = PI2 / (float)sample_count;
 
     for (int i = 0; i < sample_count; i++)
@@ -81,20 +82,22 @@ float get_average_depth_circle(float2 center, float radius, uint sample_count)
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
+    float2 resolution_out;
+    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
+    if (any(int2(thread_id.xy) >= resolution_out))
         return;
 
-    const float2 uv = (thread_id.xy + 0.5f) / pass_get_resolution_out();
+    const float2 uv = (thread_id.xy + 0.5f) / resolution_out;
 
     // get focal depth from camera
     const float circle_radius = 0.1f;
     const uint  sample_count  = 10;
-    float focal_depth         = get_average_depth_circle(float2(0.5, 0.5f), circle_radius, sample_count);
+    float focal_depth         = get_average_depth_circle(float2(0.5, 0.5f), circle_radius, sample_count, resolution_out);
     float aperture            = pass_get_f3_value().x;
 
     // do the actual blurring
     float coc             = compute_coc(uv, focal_depth, aperture);
-    float3 blurred_color  = gaussian_blur(uv, coc);
+    float3 blurred_color  = gaussian_blur(uv, coc, resolution_out);
     float4 original_color = tex[thread_id.xy];
     float3 final_color    = lerp(original_color.rgb, blurred_color, coc);
 
