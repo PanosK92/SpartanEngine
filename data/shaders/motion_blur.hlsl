@@ -26,10 +26,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const float g_motion_blur_strength = 1.0f;
 static const uint  g_motion_blur_samples  = 32;
 
-float2 get_velocity_3x3_average(float2 uv)
+float2 get_velocity_3x3_average(float2 uv, float2 resolution_out)
 {
+    float2 texel_size     = 1.0f / resolution_out;
     float2 total_velocity = 0.0f;
-    int sample_count = 0;
+    int sample_count      = 0;
 
     [unroll]
     for (int y = -1; y <= 1; ++y)
@@ -37,7 +38,7 @@ float2 get_velocity_3x3_average(float2 uv)
         [unroll]
         for (int x = -1; x <= 1; ++x)
         {
-            float2 offset = float2(x, y) * get_rt_texel_size();
+            float2 offset = float2(x, y) * texel_size;
             float2 velocity = tex_velocity.SampleLevel(samplers[sampler_point_clamp_edge], uv + offset, 0).xy;
 
             total_velocity += velocity;
@@ -51,12 +52,14 @@ float2 get_velocity_3x3_average(float2 uv)
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
+    float2 resolution_out;
+    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
+    if (any(int2(thread_id.xy) >= resolution_out))
         return;
 
-    float2 uv       = (thread_id.xy + 0.5f) / pass_get_resolution_out();
+    float2 uv       = (thread_id.xy + 0.5f) / resolution_out;
     float4 color    = tex[thread_id.xy];
-    float2 velocity = get_velocity_3x3_average(uv);
+    float2 velocity = get_velocity_3x3_average(uv, resolution_out);
 
     // compute motion blur strength from camera's shutter speed
     float camera_shutter_speed = pass_get_f3_value().x;

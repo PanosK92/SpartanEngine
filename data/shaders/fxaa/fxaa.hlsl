@@ -28,19 +28,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Fxaa3_11.h"
 //=============================
 
-static const float g_fxaa_subPix           = 0.75f;   // The amount of sub-pixel aliasing removal. This can effect sharpness.
-static const float g_fxaa_edgeThreshold    = 0.12f;   // The minimum amount of local contrast required to apply algorithm.
-static const float g_fxaa_edgeThresholdMin = 0.0625f; // Trims the algorithm from processing darks
+static const float g_fxaa_subPix           = 0.75f;   // the amount of sub-pixel aliasing removal. This can effect sharpness.
+static const float g_fxaa_edgeThreshold    = 0.12f;   // the minimum amount of local contrast required to apply algorithm.
+static const float g_fxaa_edgeThresholdMin = 0.0625f; // trims the algorithm from processing darks
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
+    float2 resolution_out;
+    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
+    if (any(int2(thread_id.xy) >= resolution_out))
         return;
 
-    const float2 pos = (thread_id.xy + 0.5f) / pass_get_resolution_out();
+    const float2 pos = (thread_id.xy + 0.5f) / resolution_out;
     FxaaTex fxaa_tex = { samplers[sampler_bilinear_clamp], tex };
-    float2 texl_size = get_rt_texel_size();
+    float2 texl_size = 1.0f / resolution_out;
 
     float3 color = FxaaPixelShader
     (
