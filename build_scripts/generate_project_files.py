@@ -141,13 +141,13 @@ def main():
 
     # Check if the libraries file exists, download if not
     if not os.path.exists(library_destination):
-        print("libraries.7z not found, downloading from Dropbox...")
+        print("libraries.7z not found, downloading from...")
         download_file(library_url, library_destination)
     extract_third_party_dependencies()
 
     # Check if the assets file exists, download if not
     if not os.path.exists(assets_destination):
-        print("assets.7z not found, downloading from Dropbox...")
+        print("assets.7z not found, downloading...")
         download_file(assets_url, assets_destination)
     extract_assets()
 
