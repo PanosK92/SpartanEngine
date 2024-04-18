@@ -29,10 +29,12 @@ static const float g_chromatic_aberration_intensity = 5.0f;
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
+    float2 resolution_out;
+    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
+    if (any(int2(thread_id.xy) >= resolution_out))
         return;
 
-    const float2 uv       = (thread_id.xy + 0.5f) / pass_get_resolution_out();
+    const float2 uv       = (thread_id.xy + 0.5f) / resolution_out;
     float camera_aperture = pass_get_f3_value().x;
     float camera_error    = sqrt(1.0f / camera_aperture);
     float intensity       = camera_error * g_chromatic_aberration_intensity;
