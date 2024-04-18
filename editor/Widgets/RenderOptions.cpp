@@ -207,15 +207,12 @@ void RenderOptions::OnVisible()
         display_modes.clear();
         display_modes_string.clear();
 
-        if (display_modes.empty())
+        for (const DisplayMode& display_mode : Display::GetDisplayModes())
         {
-            for (const DisplayMode& display_mode : Display::GetDisplayModes())
+            if (display_mode.hz == Display::GetRefreshRate())
             {
-                if (display_mode.hz == Display::GetRefreshRate())
-                {
-                    display_modes.emplace_back(display_mode);
-                    display_modes_string.emplace_back(to_string(display_mode.width) + "x" + to_string(display_mode.height));
-                }
+                display_modes.emplace_back(display_mode);
+                display_modes_string.emplace_back(to_string(display_mode.width) + "x" + to_string(display_mode.height));
             }
         }
     }
