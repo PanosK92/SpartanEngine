@@ -53,12 +53,14 @@ float3 subsurface_scattering(Surface surface, Light light)
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
+    float2 resolution_out;
+    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
+    if (any(int2(thread_id.xy) >= resolution_out))
         return;
 
     // create surface
     Surface surface;
-    surface.Build(thread_id.xy, true, true);
+    surface.Build(thread_id.xy, resolution_out, true, true);
 
     // early exit cases
     bool early_exit_1 = pass_is_opaque()      && surface.is_transparent() && !surface.is_sky(); // do shade sky pixels during the opaque pass (volumetric lighting)
