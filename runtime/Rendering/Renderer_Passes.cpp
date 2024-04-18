@@ -1270,7 +1270,6 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsUav::tex,         tex_out);
 
         // set pass constants
-        m_pcb_pass_cpu.set_resolution_out(tex_out);
         m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
         uint32_t mip_count_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount();
         uint32_t mip_count_ssr       = GetRenderTarget(Renderer_RenderTarget::ssr)->GetMipCount();
