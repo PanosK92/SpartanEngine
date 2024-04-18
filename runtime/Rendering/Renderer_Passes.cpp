@@ -2039,6 +2039,7 @@ namespace Spartan
         pso.render_target_color_textures[0] = tex_out;
         pso.clear_color[0]                  = rhi_color_load;
         pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output).get();
+        pso.primitive_toplogy               = RHI_PrimitiveTopology::LineList;
 
         // world space rendering
         m_pcb_pass_cpu.transform = Matrix::Identity;
@@ -2056,7 +2057,6 @@ namespace Spartan
                 m_vertex_buffer_lines->CreateDynamic<RHI_Vertex_PosCol>(vertex_count);
             }
 
-            // if the vertex count is 0, the vertex buffer will be uninitialised
             if (vertex_count != 0)
             {
                 // update vertex buffer
@@ -2071,7 +2071,6 @@ namespace Spartan
                     // set pipeline state
                     pso.blend_state         = GetBlendState(Renderer_BlendState::Off).get();
                     pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
-                    pso.primitive_toplogy   = RHI_PrimitiveTopology::LineList;
                     cmd_list->SetPipelineState(pso);
 
                     cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
@@ -2088,7 +2087,6 @@ namespace Spartan
                     // set pipeline state
                     pso.blend_state         = GetBlendState(Renderer_BlendState::Alpha).get();
                     pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::Read).get();
-                    pso.primitive_toplogy   = RHI_PrimitiveTopology::LineList;
                     cmd_list->SetPipelineState(pso);
 
                     cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
