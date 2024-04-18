@@ -63,14 +63,14 @@ float compute_occlusion(float3 origin_position, float3 origin_normal, uint2 samp
     return occlusion * falloff;
 }
 
-void compute_ssgi(uint2 pos, inout float visibility, inout float3 diffuse_bounce)
+void compute_ssgi(uint2 pos, float2 resolution_out, inout float visibility, inout float3 diffuse_bounce)
 {
-    const float2 origin_uv       = (pos + 0.5f) / pass_get_resolution_out();
+    const float2 origin_uv       = (pos + 0.5f) / resolution_out;
     const float3 origin_position = get_position_view_space(origin_uv);
     const float3 origin_normal   = get_normal_view_space(origin_uv);
 
     // compute step in pixels
-    const float pixel_offset = max((g_ao_radius * pass_get_resolution_out().x * 0.5f) / origin_position.z, (float)g_ao_steps);
+    const float pixel_offset = max((g_ao_radius * resolution_out.x * 0.5f) / origin_position.z, (float)g_ao_steps);
     const float step_offset  = pixel_offset / float(g_ao_steps + 1.0f); // divide by steps + 1 so that the farthest samples are not fully attenuated
 
     // offsets (noise over space and time)
@@ -81,12 +81,13 @@ void compute_ssgi(uint2 pos, inout float visibility, inout float3 diffuse_bounce
     const float ray_offset               = frac(offset_spatial + offset_temporal) + (get_random(origin_uv) * 2.0 - 1.0) * 0.25;
 
     // compute light/occlusion
+    float2 texel_size =  float2(1.0f / pass_get_resolution_out().x, 1.0f / pass_get_resolution_out().y);
     float occlusion = 0.0f;
     [unroll]
     for (uint direction_index = 0; direction_index < g_ao_directions; direction_index++)
     {
         float rotation_angle      = (direction_index + noise_gradient_temporal + offset_rotation_temporal) * ao_step_direction;
-        float2 rotation_direction = float2(cos(rotation_angle), sin(rotation_angle)) * get_rt_texel_size();
+        float2 rotation_direction = float2(cos(rotation_angle), sin(rotation_angle)) * texel_size;
 
         [unroll]
         for (uint step_index = 0; step_index < g_ao_steps; step_index++)
@@ -107,13 +108,15 @@ void compute_ssgi(uint2 pos, inout float visibility, inout float3 diffuse_bounce
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
+    float2 resolution_out;
+    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
+    if (any(int2(thread_id.xy) >= resolution_out))
         return;
 
     // ssgi
     float visibility      = 0.0f;
     float3 diffuse_bounce = 0.0f;
-    compute_ssgi(thread_id.xy, visibility, diffuse_bounce);
+    compute_ssgi(thread_id.xy, resolution_out, visibility, diffuse_bounce);
 
     // out
     tex_uav[thread_id.xy] = float4(diffuse_bounce, visibility);
