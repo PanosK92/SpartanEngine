@@ -1671,7 +1671,6 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
-        m_pcb_pass_cpu.set_resolution_out(tex_out);
         m_pcb_pass_cpu.set_f3_value(m_camera->GetAperture(), 0.0f, 0.0f);
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
@@ -1702,7 +1701,6 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
-        m_pcb_pass_cpu.set_resolution_out(tex_out);
         m_pcb_pass_cpu.set_f3_value(m_camera->GetIso(), 0.0f, 0.0f);
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
@@ -1731,10 +1729,6 @@ namespace Spartan
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
         cmd_list->SetPipelineState(pso);
-
-        // set pass constants
-        m_pcb_pass_cpu.set_resolution_out(tex_in);
-        cmd_list->PushConstants(m_pcb_pass_cpu);
 
         // render
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
