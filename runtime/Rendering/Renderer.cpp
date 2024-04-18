@@ -570,6 +570,7 @@ namespace Spartan
         }
 
         UpdateConstantBufferFrame(cmd_current);
+        AddLinesToBeRendered();
 
         // generate mips - if any
         {

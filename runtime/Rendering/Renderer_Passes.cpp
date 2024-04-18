@@ -2029,8 +2029,6 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        AddLinesToBeRendered();
-
         cmd_list->BeginTimeblock("lines");
 
         // set pipeline state
