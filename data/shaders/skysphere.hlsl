@@ -155,12 +155,13 @@ struct atmosphere
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    uint2 resolution = pass_get_resolution_out();
-    if (any(thread_id.xy >= resolution))
+    float2 resolution_out;
+    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
+    if (any(int2(thread_id.xy) >= resolution_out))
         return;
 
     // convert spherical map UV to direction
-    float2 uv             = (float2(thread_id.xy) + 0.5f) / resolution;
+    float2 uv             = (float2(thread_id.xy) + 0.5f) / resolution_out;
     float phi             = uv.x * 2.0 * PI;
     float theta           = (1.0f - uv.y) * PI;
     float3 view_direction = normalize(float3(sin(theta) * cos(phi), cos(theta), sin(theta) * sin(phi)));
@@ -176,4 +177,3 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
       
     tex_uav[thread_id.xy] = float4(color, 1.0f);
 }
-

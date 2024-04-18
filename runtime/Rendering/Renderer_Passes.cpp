@@ -1117,7 +1117,6 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // set pass constants
-            m_pcb_pass_cpu.set_resolution_out(tex_out);
             m_pcb_pass_cpu.set_f3_value2(0.0f, static_cast<float>(light_directional->GetIndex()), 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
