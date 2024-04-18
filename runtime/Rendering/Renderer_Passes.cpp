@@ -1757,7 +1757,6 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
         
         // set pass constants
-        m_pcb_pass_cpu.set_resolution_out(tex_out);
         m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Sharpness), 0.0f, 0.0f);
         cmd_list->PushConstants(m_pcb_pass_cpu);
         
@@ -1812,8 +1811,8 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // push pass data
-            m_pcb_pass_cpu.set_resolution_out(tex);
             m_pcb_pass_cpu.set_f3_value(static_cast<float>(output_mip_count), static_cast<float>(thread_group_count_x_ * thread_group_count_y_), 0.0f);
+            m_pcb_pass_cpu.set_f3_value2(static_cast<float>(tex->GetWidth()), static_cast<float>(tex->GetHeight()), 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             // set textures
