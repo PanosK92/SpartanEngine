@@ -154,7 +154,7 @@ float3 BRDF_Diffuse(Surface surface, AngularInfo angular_info)
 float3 BRDF_Specular_Isotropic(inout Surface surface, AngularInfo angular_info)
 {
     float  V = V_SmithJointApprox(surface.roughness_alpha, angular_info.n_dot_v, angular_info.n_dot_l);
-    float D  = D_GGX(angular_info.n_dot_h, surface.roughness_alpha_squared);
+    float  D = D_GGX(angular_info.n_dot_h, surface.roughness_alpha_squared);
     float3 F = F_Schlick(surface.F0, angular_info.v_dot_h);
 
     surface.diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
