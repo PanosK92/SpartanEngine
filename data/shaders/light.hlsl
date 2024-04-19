@@ -26,30 +26,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fog.hlsl"
 //============================
 
-float3 subsurface_scattering(Surface surface, Light light)
+float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_info)
 {
+    // compute surface thickness
     const float depth_face_front  = linearize_depth(surface.depth);
     const float depth_face_back   = linearize_depth(tex_depth_backface[surface.pos].r);
-    const float surface_thickness = 1.0f - saturate(depth_face_back - depth_face_front); // reverse-z
-    const float sss_strength      = surface.subsurface_scattering * surface_thickness * 0.1f;
+    const float surface_thickness = max(1.0f - saturate(depth_face_back - depth_face_front), 0.01f);
 
-    // calculate backlit effect - light penetrating through the surface
-    float backlit    = max(dot(surface.normal, -light.to_pixel), 0);
-    float sss_effect = exp(-backlit) * sss_strength;
+    // compute backface lighting
+    float n_dot_l_backface = saturate(dot(surface.normal, light.to_pixel));
+    float3 light_radiance  = light.color * light.intensity * light.attenuation * surface.occlusion * n_dot_l_backface;
+    
+    // determine sss
+    float sss_strength = surface.subsurface_scattering * exp(-surface_thickness) * 7.0f;
+    float3 sss_color   = surface.albedo * light_radiance * sss_strength;
 
-    // calculate light contribution (without shadows)
-    float attenuation = light.compute_attenuation(surface.position);
-    float3 light_color_contribution = light.color * light.intensity * attenuation;
-
-    // use surface albedo and light color contribution for SSS color
-    float3 sss_color = surface.albedo * light_color_contribution * sss_effect;
-
-    // fresnel effect using schlick's approximation
-    float fresnel = pow(1.0f - dot(surface.normal, -light.to_pixel), 5.0f);
-    fresnel       = lerp(0.04f, 1.0f, fresnel);  // base reflectivity for non-metallic surfaces
-
-    // final color calculation considering fresnel effect
-    return sss_color * fresnel;
+    // fresnel effect using schlick's approximation to modulate final color
+    float3 F              = F_Schlick(surface.F0, angular_info.v_dot_h);
+    float3 diffuse_energy = compute_diffuse_energy(F, surface.metallic);
+    
+    // combine SSS color with fresnel effect
+    return sss_color * F * diffuse_energy;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -141,7 +138,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             // subsurface scattering
             if (surface.subsurface_scattering > 0.0f)
             {
-                light_subsurface += subsurface_scattering(surface, light);
+                light_subsurface += subsurface_scattering(surface, light, angular_info);
             }
         
             // diffuse
@@ -164,9 +161,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     /* specular */   tex_uav2[thread_id.xy] += float4(saturate_11(light_specular * light.radiance), 1.0f);
     /* volumetric */ tex_uav3[thread_id.xy] += float4(saturate_11(volumetric_fog), 1.0f);
 }
-
-
-
 
 
 
