@@ -1227,6 +1227,38 @@ namespace Spartan
         Engine::SetFlag(EngineMode::Game, true);
     }
 
+    void World::CreateDefaultWorldMinecraft()
+    {
+        Vector3 camera_position = Vector3(-51.7576f, 21.4551f, -85.3699f);
+        Vector3 camera_rotation = Vector3(11.3991f, 30.6026f, 0.0f);
+        create_default_world_common(camera_position, camera_rotation);
+
+        // doom level
+        if (m_default_model_doom = ResourceCache::Load<Mesh>("project\\models\\vokselia_spawn\\vokselia_spawn.obj"))
+        {
+            shared_ptr<Entity> entity = m_default_model_doom->GetRootEntity().lock();
+            entity->SetObjectName("minecraft");
+            entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+            entity->SetScale(Vector3(100.0f, 100.0f, 100.0f));
+
+            // enable physics for all meshes
+            vector<Entity*> entities;
+            entity->GetDescendants(&entities);
+            for (Entity* entity : entities)
+            {
+                if (entity->GetComponent<Renderable>() != nullptr)
+                {
+                    PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                    physics_body->SetShapeType(PhysicsShape::Mesh);
+                    physics_body->SetMass(0.0f); // static
+                }
+            }
+        }
+
+        // start simulating (for the physics and the music to work)
+        Engine::SetFlag(EngineMode::Game, true);
+    }
+
     void World::TickDefaultWorlds()
     {
         // forest default world logic

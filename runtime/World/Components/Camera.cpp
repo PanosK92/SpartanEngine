@@ -570,7 +570,7 @@ namespace Spartan
                         {
                             if (is_grounded)
                             {
-                                m_physics_body_to_control->ApplyForce(Vector3::Up * 350.0f, PhysicsForce::Impulse);
+                                m_physics_body_to_control->ApplyForce(Vector3::Up * 400.0f, PhysicsForce::Impulse);
                             }
                         }
                     }

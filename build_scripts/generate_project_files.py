@@ -25,18 +25,6 @@ from pathlib import Path
 import requests
 import importlib
 
-def install_and_import(package):
-    try:
-        importlib.import_module(package)
-    except ImportError:
-        print(f"{package} not installed. Installing now...")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-    finally:
-        globals()[package] = importlib.import_module(package)
-
-install_and_import('tqdm')
-from tqdm import tqdm
-
 paths = {
     "binaries": {
         "data": Path("binaries/data"),
@@ -57,6 +45,18 @@ paths = {
         "materials": Path("assets/materials"),
     },
 }
+
+def install_and_import(package):
+    try:
+        importlib.import_module(package)
+    except ImportError:
+        print(f"{package} not installed. Installing now...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+    finally:
+        globals()[package] = importlib.import_module(package)
+
+install_and_import('tqdm')
+from tqdm import tqdm
 
 def download_file(url, destination):
     """Downloads a file from the specified URL to the given destination with a progress bar."""
