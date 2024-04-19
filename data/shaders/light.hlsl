@@ -28,14 +28,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 float3 subsurface_scattering(Surface surface, Light light)
 {
-    float sss_strength = 0.005f * surface.subsurface_scattering;
-    float sss_width    = 1.0f; // the last missing puzzle piece - determine actual surface thickness
+    const float depth_face_front  = linearize_depth(surface.depth);
+    const float depth_face_back   = linearize_depth(tex_depth_backface[surface.pos].r);
+    const float surface_thickness = 1.0f - saturate(depth_face_back - depth_face_front); // reverse-z
+    const float sss_strength      = surface.subsurface_scattering * surface_thickness * 0.1f;
 
     // calculate backlit effect - light penetrating through the surface
     float backlit    = max(dot(surface.normal, -light.to_pixel), 0);
-    float sss_effect = exp(-backlit * sss_width) * sss_strength;
+    float sss_effect = exp(-backlit) * sss_strength;
 
-    // calculate attenuation and color contribution
+    // calculate light contribution (without shadows)
     float attenuation = light.compute_attenuation(surface.position);
     float3 light_color_contribution = light.color * light.intensity * attenuation;
 
@@ -162,3 +164,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     /* specular */   tex_uav2[thread_id.xy] += float4(saturate_11(light_specular * light.radiance), 1.0f);
     /* volumetric */ tex_uav3[thread_id.xy] += float4(saturate_11(volumetric_fog), 1.0f);
 }
+
+
+
+
+
+

@@ -105,46 +105,47 @@ namespace Spartan
     enum class Renderer_BindingsSrv
     {
         // g-buffer
-        gbuffer_albedo       = 0,
-        gbuffer_normal       = 1,
-        gbuffer_material     = 2,
-        gbuffer_velocity     = 3,
-        gbuffer_depth        = 4,
-        gbuffer_depth_opaque = 5,
+        gbuffer_albedo         = 0,
+        gbuffer_normal         = 1,
+        gbuffer_material       = 2,
+        gbuffer_velocity       = 3,
+        gbuffer_depth          = 4,
+        gbuffer_depth_backface = 5,
+        gbuffer_depth_opaque   = 6,
 
         // lighting
-        light_diffuse              = 6,
-        light_diffuse_transparent  = 7,
-        light_specular             = 8,
-        light_specular_transparent = 9,
-        light_volumetric           = 10,
+        light_diffuse              = 7,
+        light_diffuse_transparent  = 8,
+        light_specular             = 9,
+        light_specular_transparent = 10,
+        light_volumetric           = 11,
     
         // light depth/color maps
-        light_directional_depth = 11,
-        light_directional_color = 12,
-        light_point_depth       = 13,
-        light_point_color       = 14,
-        light_spot_depth        = 15,
-        light_spot_color        = 16,
+        light_directional_depth = 12,
+        light_directional_color = 13,
+        light_point_depth       = 14,
+        light_point_color       = 15,
+        light_spot_depth        = 16,
+        light_spot_color        = 17,
     
         // noise
-        noise_normal = 17,
-        noise_blue   = 18,
+        noise_normal = 18,
+        noise_blue   = 19,
     
         // misc
-        lutIbl           = 19,
-        environment      = 20,
-        ssgi             = 21,
-        ssr              = 22,
-        frame            = 23,
-        tex              = 24,
-        tex2             = 25,
-        font_atlas       = 26,
-        reflection_probe = 27,
-        sss              = 28,
+        lutIbl           = 20,
+        environment      = 21,
+        ssgi             = 22,
+        ssr              = 23,
+        frame            = 24,
+        tex              = 25,
+        tex2             = 26,
+        font_atlas       = 27,
+        reflection_probe = 28,
+        sss              = 29,
 
         // bindless
-        materials = 29
+        materials = 30
     };
 
     enum class Renderer_BindingsUav
@@ -220,6 +221,7 @@ namespace Spartan
         gbuffer_velocity,
         gbuffer_depth,
         gbuffer_depth_opaque,
+        gbuffer_depth_backface,
         gbuffer_depth_output,
         brdf_specular_lut,
         light_diffuse,

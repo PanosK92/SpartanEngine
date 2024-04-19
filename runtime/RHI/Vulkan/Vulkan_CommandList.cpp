@@ -595,9 +595,11 @@ namespace Spartan
         if (m_pso.GetHash() == pso.GetHash())
         {
             // if the index of the render target array has changed, we need to begin a new render pass
-            if (m_pso.render_target_array_index != pso.render_target_array_index)
+            if (m_pso.render_target_array_index   != pso.render_target_array_index ||
+                m_pso.render_target_depth_texture != pso.render_target_depth_texture)
             {
-                m_pso.render_target_array_index = pso.render_target_array_index;
+                m_pso.render_target_array_index   = pso.render_target_array_index;
+                m_pso.render_target_depth_texture = pso.render_target_depth_texture;
                 RenderPassBegin();
             }
 
