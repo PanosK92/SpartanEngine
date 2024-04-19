@@ -69,11 +69,12 @@ namespace
                     "4. Forest",
                     "5. Sponza",
                     "6. Doom E1M1",
-                    "7. Bistro"
+                    "7. Bistro",
+                    "8. Minecraft"
                 };
                 static int item_index = 3; // forest
                 static int item_count = IM_ARRAYSIZE(items);
-                ImGui::PushItemWidth(450.0f * Spartan::Window::GetDpiScale());
+                ImGui::PushItemWidth(500.0f * Spartan::Window::GetDpiScale());
                 ImGui::ListBox("##list_box", &item_index, items, item_count, item_count);
                 ImGui::PopItemWidth();
     
@@ -105,6 +106,10 @@ namespace
                         else if (item_index == 6)
                         {
                             Spartan::World::CreateDefaultWorldBistro();
+                        }
+                        else if (item_index == 7)
+                        {
+                            Spartan::World::CreateDefaultWorldMinecraft();
                         }
                     });
     
