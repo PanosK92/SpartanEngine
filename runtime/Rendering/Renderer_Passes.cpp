@@ -636,13 +636,14 @@ namespace Spartan
     void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // acquire resources
-        RHI_Shader* shader_v           = GetShader(Renderer_Shader::depth_prepass_v).get();
-        RHI_Shader* shader_h           = GetShader(Renderer_Shader::tessellation_h).get();
-        RHI_Shader* shader_d           = GetShader(Renderer_Shader::tessellation_d).get();
-        RHI_Shader* shader_p           = GetShader(Renderer_Shader::depth_prepass_alpha_test_p).get();
-        RHI_Texture* tex_depth         = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get();
-        RHI_Texture* tex_depth_opaque  = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque).get();
-        RHI_Texture* tex_depth_output  = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output).get();
+        RHI_Shader* shader_v            = GetShader(Renderer_Shader::depth_prepass_v).get();
+        RHI_Shader* shader_h            = GetShader(Renderer_Shader::tessellation_h).get();
+        RHI_Shader* shader_d            = GetShader(Renderer_Shader::tessellation_d).get();
+        RHI_Shader* shader_p            = GetShader(Renderer_Shader::depth_prepass_alpha_test_p).get();
+        RHI_Texture* tex_depth          = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get();
+        RHI_Texture* tex_depth_opaque   = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque).get();
+        RHI_Texture* tex_depth_backface = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_backface).get();
+        RHI_Texture* tex_depth_output   = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output).get();
         if (!shader_v->IsCompiled() || !shader_h->IsCompiled() || !shader_d->IsCompiled() || !shader_p->IsCompiled())
             return;
 
@@ -665,9 +666,10 @@ namespace Spartan
         if (!is_transparent_pass)
         { 
             cmd_list->ClearRenderTarget(tex_depth, Color::standard_black, 0.0f);
+            cmd_list->ClearRenderTarget(tex_depth_backface, Color::standard_black, 0.0f);
         }
 
-        auto pass = [cmd_list, shader_h, shader_d, shader_p](bool is_transparent_pass)
+        auto pass = [cmd_list, shader_h, shader_d, shader_p](bool is_transparent_pass, bool is_back_face_pass)
         {
             int64_t index_start = !is_transparent_pass ? 0 : mesh_index_transparent;
             int64_t index_end   = !is_transparent_pass ? mesh_index_transparent : static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size());
@@ -697,7 +699,12 @@ namespace Spartan
                     // tessellation & culling
                     if (Material* material = renderable->GetMaterial())
                     {
-                        cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
+                        bool has_sss = renderable->GetMaterial()->GetProperty(MaterialProperty::SubsurfaceScattering) != 0;
+                        if (is_back_face_pass && !has_sss)
+                            continue;
+
+                        RHI_CullMode cull_mode = (is_back_face_pass && has_sss) ? RHI_CullMode::Front : static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
+                        cmd_list->SetCullMode(cull_mode);
 
                         bool is_tessellated = material->IsTessellated();
                         if ((is_tessellated && !pso.shader_hull) || (!is_tessellated && pso.shader_hull))
@@ -761,7 +768,7 @@ namespace Spartan
         {
             cmd_list->SetPipelineState(pso);
 
-            pass(false);
+            pass(false, false);
 
             visibility::get_gpu_occlusion_query_results(cmd_list, m_renderables);
             cmd_list->Blit(tex_depth, tex_depth_opaque, false);
@@ -769,8 +776,14 @@ namespace Spartan
         else // transparent
         {
             cmd_list->SetPipelineState(pso);
+            pass(true ,false);
+        }
 
-            pass(true);
+        // back face
+        {
+            pso.render_target_depth_texture = tex_depth_backface;
+            cmd_list->SetPipelineState(pso);
+            pass(false, true);
         }
 
         // blit to an output resolution texture
@@ -1063,7 +1076,7 @@ namespace Spartan
                     for (int32_t dispatch_index = 0; dispatch_index < dispatch_list.DispatchCount; ++dispatch_index)
                     {
                         const Bend::DispatchData& dispatch = dispatch_list.Dispatch[dispatch_index];
-                        m_pcb_pass_cpu.set_f2_value(dispatch.WaveOffset_Shader[0], dispatch.WaveOffset_Shader[1]);
+                        m_pcb_pass_cpu.set_f2_value(static_cast<float>(dispatch.WaveOffset_Shader[0]), static_cast<float>(dispatch.WaveOffset_Shader[1]));
                         cmd_list->PushConstants(m_pcb_pass_cpu);
                         cmd_list->Dispatch(dispatch.WaveCount[0], dispatch.WaveCount[1], dispatch.WaveCount[2]);
                     }
@@ -1859,7 +1872,7 @@ namespace Spartan
 
         cmd_list->BeginTimeblock("icons");
 
-        // define pipeline state
+        // set pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
         pso.shader_pixel                    = shader_p;
@@ -1867,9 +1880,9 @@ namespace Spartan
         pso.blend_state                     = GetBlendState(Renderer_BlendState::Alpha).get();
         pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
         pso.render_target_color_textures[0] = tex_out;
-
-        // set pipeline state
         cmd_list->SetPipelineState(pso);
+
+        cmd_list->SetCullMode(RHI_CullMode::Back);
 
         auto draw_icon = [&cmd_list](Entity* entity, RHI_Texture* texture)
         {
@@ -1973,6 +1986,7 @@ namespace Spartan
             cmd_list->PushConstants(m_pcb_pass_cpu);
         }
 
+        cmd_list->SetCullMode(RHI_CullMode::Back);
         cmd_list->SetBufferVertex(GetStandardMesh(Renderer_MeshType::Quad)->GetVertexBuffer());
         cmd_list->SetBufferIndex(GetStandardMesh(Renderer_MeshType::Quad)->GetIndexBuffer());
         cmd_list->DrawIndexed(6);
@@ -2163,6 +2177,8 @@ namespace Spartan
         pso.clear_color[0]                  = rhi_color_load;
         pso.name                            = "Pass_Text";
         cmd_list->SetPipelineState(pso);
+
+        cmd_list->SetCullMode(RHI_CullMode::Back);
 
         // set vertex and index buffer
         font->UpdateVertexAndIndexBuffers();

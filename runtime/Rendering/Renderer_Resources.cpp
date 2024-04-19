@@ -207,7 +207,7 @@ namespace Spartan
         uint32_t flags              = RHI_Texture_Uav | RHI_Texture_Srv;
         uint32_t flags_rt           = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv;
         uint32_t flags_rt_clearable = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit;
-        uint32_t flags_rt_depth     = RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit; // GPUs are picky about feature support for depth
+        uint32_t flags_rt_depth     = RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit; // GPUs are picky about feature are supported for depth
 
         // render resolution
         if (create_render)
@@ -223,12 +223,13 @@ namespace Spartan
 
             // g-buffer
             {
-                render_target(Renderer_RenderTarget::gbuffer_color)        = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     flags_rt_clearable, "gbuffer_color");
-                render_target(Renderer_RenderTarget::gbuffer_normal)       = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_rt_clearable, "gbuffer_normal");
-                render_target(Renderer_RenderTarget::gbuffer_material)     = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     flags_rt_clearable, "gbuffer_material");
-                render_target(Renderer_RenderTarget::gbuffer_velocity)     = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16_Float,       flags_rt_clearable, "gbuffer_velocity");
-                render_target(Renderer_RenderTarget::gbuffer_depth)        = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth");
-                render_target(Renderer_RenderTarget::gbuffer_depth_opaque) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth_opaque");
+                render_target(Renderer_RenderTarget::gbuffer_color)          = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     flags_rt_clearable, "gbuffer_color");
+                render_target(Renderer_RenderTarget::gbuffer_normal)         = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_rt_clearable, "gbuffer_normal");
+                render_target(Renderer_RenderTarget::gbuffer_material)       = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     flags_rt_clearable, "gbuffer_material");
+                render_target(Renderer_RenderTarget::gbuffer_velocity)       = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16_Float,       flags_rt_clearable, "gbuffer_velocity");
+                render_target(Renderer_RenderTarget::gbuffer_depth)          = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth");
+                render_target(Renderer_RenderTarget::gbuffer_depth_opaque)   = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth_opaque");
+                render_target(Renderer_RenderTarget::gbuffer_depth_backface) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth_backface");
             }
 
             // light
