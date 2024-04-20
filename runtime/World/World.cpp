@@ -1277,7 +1277,34 @@ namespace Spartan
 
     void World::CreateDefaultWorldLivingRoom()
     {
+        Vector3 camera_position = Vector3(3.6573f, 2.4959f, -15.6978f);
+        Vector3 camera_rotation = Vector3(3.9999f, -12.1947f, 0.0f);
+        create_default_world_common(camera_position, camera_rotation);
 
+        // doom level
+        if (m_default_model_doom = ResourceCache::Load<Mesh>("project\\models\\living_room\\living_room.obj"))
+        {
+            shared_ptr<Entity> entity = m_default_model_doom->GetRootEntity().lock();
+            entity->SetObjectName("living_Room");
+            entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+            entity->SetScale(Vector3(2.5f, 2.5f, 2.5f));
+
+            // enable physics for all meshes
+            vector<Entity*> entities;
+            entity->GetDescendants(&entities);
+            for (Entity* entity : entities)
+            {
+                if (entity->GetComponent<Renderable>() != nullptr)
+                {
+                    PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                    physics_body->SetShapeType(PhysicsShape::Mesh);
+                    physics_body->SetMass(0.0f); // static
+                }
+            }
+        }
+
+        // start simulating (for the physics and the music to work)
+        Engine::SetFlag(EngineMode::Game, true);
     }
 
     void World::TickDefaultWorlds()
