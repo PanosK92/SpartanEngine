@@ -73,7 +73,7 @@ namespace Spartan
         TextureSlopeBased,
         VertexAnimateWind,
         VertexAnimateWater,
-        CullMode, // 0 - none, 1 - front, 2 - back - Same as RHI_CullMode
+        CullMode, // values correspond to RHI_CullMode
         Max
     };
 

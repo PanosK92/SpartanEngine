@@ -278,10 +278,10 @@ namespace ImGui::RHI
 
         cmd_list->Begin();
         cmd_list->BeginTimeblock(name, true, Spartan::Profiler::IsGpuTimingEnabled() && gpu_timing);
+        cmd_list->SetPipelineState(pso);
         cmd_list->SetBufferVertex(vertex_buffer);
         cmd_list->SetBufferIndex(index_buffer);
         cmd_list->SetCullMode(RHI_CullMode::None);
-        cmd_list->SetPipelineState(pso);
 
         // render
         {
