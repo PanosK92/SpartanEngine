@@ -70,7 +70,8 @@ namespace
                     "5. Sponza",
                     "6. Doom E1M1",
                     "7. Bistro",
-                    "8. Minecraft"
+                    "8. Minecraft",
+                    "9. Living Room"
                 };
                 static int item_index = 3; // forest
                 static int item_count = IM_ARRAYSIZE(items);
@@ -83,33 +84,9 @@ namespace
                 {
                     Spartan::ThreadPool::AddTask([]()
                     {
-                        if (item_index == 1)
-                        {
-                            Spartan::World::CreateDefaultWorldObjects();
-                        }
-                        else if (item_index == 2)
-                        {
-                            Spartan::World::CreateDefaultWorldCar();
-                        }
-                        else if (item_index == 3)
-                        {
-                            Spartan::World::CreateDefaultWorldForest();
-                        }
-                        else if (item_index == 4)
-                        {
-                            Spartan::World::CreateDefaultWorldSponza();
-                        }
-                        else if (item_index == 5)
-                        {
-                            Spartan::World::CreateDefaultWorldDoomE1M1();
-                        }
-                        else if (item_index == 6)
-                        {
-                            Spartan::World::CreateDefaultWorldBistro();
-                        }
-                        else if (item_index == 7)
-                        {
-                            Spartan::World::CreateDefaultWorldMinecraft();
+                        if (item_index > 0)
+                        { 
+                            Spartan::World::LoadDefaultWorld(static_cast<Spartan::DefaultWorld>(item_index - 1));
                         }
                     });
     
