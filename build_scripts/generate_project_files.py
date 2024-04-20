@@ -134,14 +134,14 @@ def generate_project_files():
     subprocess.Popen(cmd, shell=True).communicate()
 
 def main():
-    library_url = 'https://www.dropbox.com/scl/fi/j6anhygpafhxsa95gj4zj/libraries.7z?rlkey=ekbi65zkc3szmxkvolkljpku7&dl=1'
+    library_url = 'https://www.dropbox.com/scl/fi/j6anhygpafhxsa95gj4zj/libraries.7z?rlkey=ekbi65zkc3szmxkvolkljpku7&st=hdr38p7r&dl=1'
     library_destination = 'third_party/libraries/libraries.7z'
-    assets_url = 'https://www.dropbox.com/scl/fi/0s2a5pq1od0v2h1hmaond/assets.7z?rlkey=tshqt5ef5tgscug5wlbdtj5s8&dl=1'
+    assets_url = 'https://www.dropbox.com/scl/fi/eileae6i72nzm2k72kj7e/assets.7z?rlkey=e4zay9wtm9s6xycys9benjfla&st=pzcwtkzl&dl=1'
     assets_destination = 'assets/assets.7z'
 
     # Check if the libraries file exists, download if not
     if not os.path.exists(library_destination):
-        print("libraries.7z not found, downloading from...")
+        print("libraries.7z not found, downloading...")
         download_file(library_url, library_destination)
     extract_third_party_dependencies()
 
