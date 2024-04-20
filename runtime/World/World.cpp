@@ -1281,12 +1281,11 @@ namespace Spartan
         Vector3 camera_rotation = Vector3(3.9999f, -12.1947f, 0.0f);
         create_default_world_common(camera_position, camera_rotation);
 
-        // doom level
         if (m_default_model_doom = ResourceCache::Load<Mesh>("project\\models\\living_room\\living_room.obj"))
         {
             shared_ptr<Entity> entity = m_default_model_doom->GetRootEntity().lock();
             entity->SetObjectName("living_Room");
-            entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+            entity->SetPosition(Vector3(0.0f, 0.03f, 0.0f));
             entity->SetScale(Vector3(2.5f, 2.5f, 2.5f));
 
             // enable physics for all meshes
@@ -1299,6 +1298,70 @@ namespace Spartan
                     PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
                     physics_body->SetShapeType(PhysicsShape::Mesh);
                     physics_body->SetMass(0.0f); // static
+                }
+            }
+
+            // make the radiator metallic
+            if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("Mesh_93")->GetComponent<Renderable>())
+            {
+                if (Material* material = renderable->GetMaterial())
+                {
+                    material->SetProperty(MaterialProperty::Roughness, 0.3f);
+                    material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                }
+            }
+
+            // make the vase/plate smoother
+            if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("Mesh_122")->GetComponent<Renderable>())
+            {
+                if (Material* material = renderable->GetMaterial())
+                {
+                    material->SetProperty(MaterialProperty::Roughness, 0.4f);
+                }
+            }
+
+            // make the tv smoother
+            if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("Mesh_20")->GetComponent<Renderable>())
+            {
+                if (Material* material = renderable->GetMaterial())
+                {
+                    material->SetProperty(MaterialProperty::Roughness, 0.0f);
+                }
+            }
+
+            // make the floor smoother
+            if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("Mesh_111")->GetComponent<Renderable>())
+            {
+                if (Material* material = renderable->GetMaterial())
+                {
+                    material->SetProperty(MaterialProperty::Roughness, 0.5f);
+                }
+            }
+
+            // remove window blinds
+            World::RemoveEntity(entity->GetDescendantByName("Default_1"));
+            World::RemoveEntity(entity->GetDescendantByName("Default_2"));
+            World::RemoveEntity(entity->GetDescendantByName("Default_3"));
+
+            // make the same come in through the window
+            m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(30.0f, 180.0f, 0.0f));
+
+
+            // make the walls double sided
+            if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("Mesh_114")->GetComponent<Renderable>())
+            {
+                if (Material* material = renderable->GetMaterial())
+                {
+                    material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                }
+            }
+
+            // make the ceiling double sided
+            if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("Mesh_110")->GetComponent<Renderable>())
+            {
+                if (Material* material = renderable->GetMaterial())
+                {
+                    material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
                 }
             }
         }

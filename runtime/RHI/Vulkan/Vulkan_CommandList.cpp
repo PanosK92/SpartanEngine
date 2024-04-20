@@ -521,7 +521,7 @@ namespace Spartan
         // update states
         m_state     = RHI_CommandListState::Recording;
         m_pso       = RHI_PipelineState();
-        m_cull_mode = RHI_CullMode::Max;
+        m_cull_mode = RHI_CullMode::Back;
 
         // set dynamic states
         if (m_queue_type == RHI_Queue_Type::Graphics)
@@ -1251,12 +1251,11 @@ namespace Spartan
         if (m_cull_mode == cull_mode)
             return;
 
+        m_cull_mode = cull_mode;
         vkCmdSetCullMode(
             static_cast<VkCommandBuffer>(m_rhi_resource),
-            vulkan_cull_mode[static_cast<uint32_t>(cull_mode)]
+            vulkan_cull_mode[static_cast<uint32_t>(m_cull_mode)]
         );
-
-        m_cull_mode = cull_mode;
     }
 
     void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint32_t binding /*= 0*/)

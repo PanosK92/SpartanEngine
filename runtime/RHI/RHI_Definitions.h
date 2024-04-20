@@ -111,10 +111,9 @@ namespace Spartan
 
     enum class RHI_CullMode
     {
-        None,
-        Front,
         Back,
-        Max
+        Front,
+        None
     };
 
     enum class RHI_PolygonMode

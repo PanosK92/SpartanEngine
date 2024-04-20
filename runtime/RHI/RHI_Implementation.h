@@ -174,11 +174,10 @@ static const VkPolygonMode vulkan_polygon_mode[] =
 };
 
 static const VkCullModeFlags vulkan_cull_mode[] =
-{    
-    VK_CULL_MODE_NONE,
-    VK_CULL_MODE_FRONT_BIT,
+{
     VK_CULL_MODE_BACK_BIT,
-    VK_CULL_MODE_FLAG_BITS_MAX_ENUM
+    VK_CULL_MODE_FRONT_BIT,
+    VK_CULL_MODE_NONE
 };
 
 static const VkPrimitiveTopology vulkan_primitive_topology[] =
