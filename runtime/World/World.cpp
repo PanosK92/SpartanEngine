@@ -347,6 +347,22 @@ namespace Spartan
         return true;
     }
 
+    void World::LoadDefaultWorld(DefaultWorld default_world)
+    {
+        switch (default_world)
+        {
+            case DefaultWorld::Objects:    CreateDefaultWorldObjects();    break;
+            case DefaultWorld::Car:        CreateDefaultWorldCar();        break;
+            case DefaultWorld::Forest:     CreateDefaultWorldForest();     break;
+            case DefaultWorld::Sponza:     CreateDefaultWorldSponza();     break;
+            case DefaultWorld::DoomE1M1:   CreateDefaultWorldDoomE1M1();   break;
+            case DefaultWorld::Bistro:     CreateDefaultWorldBistro();     break;
+            case DefaultWorld::Minecraft:  CreateDefaultWorldMinecraft();  break;
+            case DefaultWorld::LivingRoom: CreateDefaultWorldLivingRoom(); break;
+            default: break;
+        }  
+    }
+
     void World::Resolve()
     {
         m_resolve = true;
@@ -1257,6 +1273,11 @@ namespace Spartan
 
         // start simulating (for the physics and the music to work)
         Engine::SetFlag(EngineMode::Game, true);
+    }
+
+    void World::CreateDefaultWorldLivingRoom()
+    {
+
     }
 
     void World::TickDefaultWorlds()
