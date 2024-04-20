@@ -1345,7 +1345,7 @@ namespace Spartan
 
             // make the same come in through the window
             m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(30.0f, 180.0f, 0.0f));
-
+            m_default_light_directional->GetComponent<Light>()->SetIntensity(LightIntensity::sky_overcast_day);
 
             // make the walls double sided
             if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("Mesh_114")->GetComponent<Renderable>())
