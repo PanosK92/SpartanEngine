@@ -62,14 +62,13 @@ namespace Spartan
         shared_ptr<Entity> m_default_environment         = nullptr;
         shared_ptr<Entity> m_default_model_floor         = nullptr;
         shared_ptr<Entity> m_default_light_directional   = nullptr;
-        shared_ptr<Mesh> m_default_model_sponza          = nullptr;
+        shared_ptr<Mesh> m_default_model                 = nullptr;
         shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
         shared_ptr<Mesh> m_default_model_car             = nullptr;
         shared_ptr<Mesh> m_default_model_wheel           = nullptr;
         shared_ptr<Mesh> m_default_model_helmet_flight   = nullptr;
         shared_ptr<Mesh> m_default_model_helmet_damaged  = nullptr;
         shared_ptr<Mesh> m_default_model_material_ball   = nullptr;
-        shared_ptr<Mesh> m_default_model_doom            = nullptr;
 
         void create_default_world_common(
             const Math::Vector3& camera_position = Vector3(0.0f, 2.0f, -10.0f),
@@ -170,7 +169,7 @@ namespace Spartan
 
         m_default_environment           = nullptr;
         m_default_model_floor           = nullptr;
-        m_default_model_sponza          = nullptr;
+        m_default_model                 = nullptr;
         m_default_model_sponza_curtains = nullptr;
         m_default_model_car             = nullptr;
         m_default_model_wheel           = nullptr;
@@ -180,7 +179,6 @@ namespace Spartan
         m_default_cube                  = nullptr;
         m_default_physics_body_camera   = nullptr;
         m_default_terrain               = nullptr;
-        m_default_model_doom            = nullptr;
         m_default_light_directional     = nullptr;
     }
 
@@ -1109,9 +1107,9 @@ namespace Spartan
         float scale = 2.0f; // I actually walked in sponza, it's that big
 
         // 3d model - Sponza
-        if (m_default_model_sponza = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
+        if (m_default_model = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
         {
-            shared_ptr<Entity> entity = m_default_model_sponza->GetRootEntity().lock();
+            shared_ptr<Entity> entity = m_default_model->GetRootEntity().lock();
             entity->SetObjectName("sponza");
             entity->SetPosition(Vector3(0.0f, 1.5f, 0.0f));
             entity->SetScale(scale);
@@ -1169,7 +1167,7 @@ namespace Spartan
         // delete dirt decals since they look bad
         // they are hovering over the surfaces, to avoid z-fighting, and they also cast shadows underneath them
         {
-            shared_ptr<Entity> entity = m_default_model_sponza->GetRootEntity().lock();
+            shared_ptr<Entity> entity = m_default_model->GetRootEntity().lock();
             RemoveEntity(entity->GetDescendantByName("decals_1st_floor"));
             RemoveEntity(entity->GetDescendantByName("decals_2nd_floor"));
             RemoveEntity(entity->GetDescendantByName("decals_3rd_floor"));
@@ -1186,9 +1184,9 @@ namespace Spartan
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\doom_e1m1.mp3", false, false);
 
         // doom level
-        if (m_default_model_doom = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
+        if (m_default_model = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
         {
-            shared_ptr<Entity> entity = m_default_model_doom->GetRootEntity().lock();
+            shared_ptr<Entity> entity = m_default_model->GetRootEntity().lock();
             entity->SetObjectName("doom_e1m1");
             entity->SetPosition(Vector3(0.0f, 14.0f, -355.5300f));
             entity->SetScale(Vector3(0.1f, 0.1f, 0.1f));
@@ -1217,10 +1215,9 @@ namespace Spartan
         Vector3 camera_rotation = Vector3(2.3365f, 102.5297f, 0.0f);
         create_default_world_common(camera_position, camera_rotation);
 
-        // doom level
-        if (m_default_model_doom = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroExterior.fbx"))
+        if (m_default_model = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroExterior.fbx"))
         {
-            shared_ptr<Entity> entity = m_default_model_doom->GetRootEntity().lock();
+            shared_ptr<Entity> entity = m_default_model->GetRootEntity().lock();
             entity->SetObjectName("bistro");
             entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
             entity->SetScale(Vector3(1.0f, 1.0f, 1.0f));
@@ -1249,10 +1246,9 @@ namespace Spartan
         Vector3 camera_rotation = Vector3(11.3991f, 30.6026f, 0.0f);
         create_default_world_common(camera_position, camera_rotation);
 
-        // doom level
-        if (m_default_model_doom = ResourceCache::Load<Mesh>("project\\models\\vokselia_spawn\\vokselia_spawn.obj"))
+        if (m_default_model = ResourceCache::Load<Mesh>("project\\models\\vokselia_spawn\\vokselia_spawn.obj"))
         {
-            shared_ptr<Entity> entity = m_default_model_doom->GetRootEntity().lock();
+            shared_ptr<Entity> entity = m_default_model->GetRootEntity().lock();
             entity->SetObjectName("minecraft");
             entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
             entity->SetScale(Vector3(100.0f, 100.0f, 100.0f));
@@ -1281,9 +1277,9 @@ namespace Spartan
         Vector3 camera_rotation = Vector3(3.9999f, -12.1947f, 0.0f);
         create_default_world_common(camera_position, camera_rotation);
 
-        if (m_default_model_doom = ResourceCache::Load<Mesh>("project\\models\\living_room\\living_room.obj"))
+        if (m_default_model = ResourceCache::Load<Mesh>("project\\models\\living_room\\living_room.obj"))
         {
-            shared_ptr<Entity> entity = m_default_model_doom->GetRootEntity().lock();
+            shared_ptr<Entity> entity = m_default_model->GetRootEntity().lock();
             entity->SetObjectName("living_Room");
             entity->SetPosition(Vector3(0.0f, 0.03f, 0.0f));
             entity->SetScale(Vector3(2.5f, 2.5f, 2.5f));
