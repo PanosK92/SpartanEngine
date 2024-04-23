@@ -1,12 +1,10 @@
-# editorconfig.org
-
 # top-most EditorConfig file
 root = true
 
-# Default settings:
-# Use 4 spaces as indentation
+# use 4 spaces as indentation
 [*]
 indent_style = space
 indent_size = 4
 insert_final_newline = true
 trim_trailing_whitespace = true
+force_editorconfig_settings = true
