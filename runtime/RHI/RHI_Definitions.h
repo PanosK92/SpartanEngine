@@ -113,7 +113,8 @@ namespace Spartan
     {
         Back,
         Front,
-        None
+        None,
+        Max,
     };
 
     enum class RHI_PolygonMode

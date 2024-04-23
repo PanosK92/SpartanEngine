@@ -521,7 +521,7 @@ namespace Spartan
         // update states
         m_state     = RHI_CommandListState::Recording;
         m_pso       = RHI_PipelineState();
-        m_cull_mode = RHI_CullMode::Back;
+        m_cull_mode = RHI_CullMode::Max;
 
         // set dynamic states
         if (m_queue_type == RHI_Queue_Type::Graphics)
