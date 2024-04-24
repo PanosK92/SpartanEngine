@@ -291,7 +291,10 @@ namespace Spartan
         if (HasData())
         {
             stage(this);
-            m_slices.clear();
+            if ((m_flags & RHI_texture_KeepData) == 0)
+            { 
+                m_slices.clear();
+            }
         }
 
         // transition to target layout
