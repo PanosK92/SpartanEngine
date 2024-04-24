@@ -377,7 +377,7 @@ namespace Spartan
         m_is_ready_for_use = true;
 
         // gpu based mip generation
-        if (m_mip_count > 1)
+        if (m_flags & RHI_Texture_Mips)
         {
             Renderer::AddTextureForMipGeneration(this);
         }
