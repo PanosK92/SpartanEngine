@@ -197,6 +197,21 @@ namespace Spartan
     {
         SP_ASSERT(ptr != nullptr);
         SP_ASSERT(size != 0);
+
+        static bool spriv_cross_registered = false;
+        if (!spriv_cross_registered)
+        {
+            unsigned int major         = (SPV_VERSION >> 16) & 0xff; // extract major version
+            unsigned int minor         = (SPV_VERSION >> 8) & 0xff;  // extract minor version
+            unsigned int path_revision = SPV_VERSION & 0xff;         // extract patch version
+            unsigned int revision      = SPV_REVISION;               // get revision
+
+            std::ostringstream version;
+            version << major << "." << minor << "." << path_revision << "." << revision;
+
+            Settings::RegisterThirdPartyLib("SPIRV-Cross", version.str(), "https://github.com/KhronosGroup/SPIRV-Cross");
+            spriv_cross_registered = true;
+        }
         
         const CompilerHLSL compiler = CompilerHLSL(ptr, size);
         ShaderResources resources   = compiler.get_shader_resources();
