@@ -313,7 +313,7 @@ namespace Spartan
             //                                                                         Texture type,                Texture type Assimp (PBR),       Texture type Assimp (Legacy/fallback)
             load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Color,      aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
             load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Roughness,  aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS); // use specular as fallback
-            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Metalness,  aiTextureType_METALNESS,         aiTextureType_AMBIENT);   // use ambient as fallback
+            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Metalness,  aiTextureType_METALNESS,         aiTextureType_NONE);
             load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Normal,     aiTextureType_NORMAL_CAMERA,     aiTextureType_NORMALS);
             load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Occlusion,  aiTextureType_AMBIENT_OCCLUSION, aiTextureType_LIGHTMAP);
             load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Emission,   aiTextureType_EMISSION_COLOR,    aiTextureType_EMISSIVE);
@@ -334,22 +334,16 @@ namespace Spartan
                 }
             }
 
-            // if the is no roughness texture, try to get an overall roughness from the shininess value
+            // if the is no roughness texture, try to determine one
             if (!material->HasTexture(MaterialTexture::Roughness))
             {
-                float shininess;
-                if (AI_SUCCESS == aiGetMaterialFloat(material_assimp, AI_MATKEY_SHININESS, &shininess))
+                float roughness = 0.8f;
+                if (material->GetProperty(MaterialProperty::Metalness) != 0)
                 {
-                    float roughness = clamp(1.0f - shininess / 100.0f, 0.0f, 1.0f);
-
-                    // if it's metallic, it's most likely no fully rough
-                    if (material->GetProperty(MaterialProperty::Metalness) != 0)
-                    {
-                        roughness *= 0.5f;
-                    }
-
-                    material->SetProperty(MaterialProperty::Roughness, roughness);
+                    roughness = 0.5f;
                 }
+
+                material->SetProperty(MaterialProperty::Roughness, roughness);
             }
 
             return material;
