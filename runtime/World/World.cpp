@@ -1217,7 +1217,30 @@ namespace Spartan
         if (m_default_model = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroExterior.fbx"))
         {
             shared_ptr<Entity> entity = m_default_model->GetRootEntity().lock();
-            entity->SetObjectName("bistro");
+            entity->SetObjectName("bistro_exterior");
+            entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+            entity->SetScale(Vector3(1.0f, 1.0f, 1.0f));
+
+            // enable physics for all meshes
+            vector<Entity*> entities;
+            entity->GetDescendants(&entities);
+            for (Entity* entity : entities)
+            {
+                if (entity->GetComponent<Renderable>() != nullptr)
+                {
+                    PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                    physics_body->SetShapeType(PhysicsShape::Mesh);
+                    physics_body->SetMass(0.0f); // static
+                }
+            }
+
+            entity->GetDescendantByName("dOORS_2")->SetPosition(Vector3(0.0, -10.0f, 0.0f));
+        }
+
+        if (m_default_model = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroInterior.fbx"))
+        {
+            shared_ptr<Entity> entity = m_default_model->GetRootEntity().lock();
+            entity->SetObjectName("bistro_interior");
             entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
             entity->SetScale(Vector3(1.0f, 1.0f, 1.0f));
 
