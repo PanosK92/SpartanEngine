@@ -178,10 +178,7 @@ namespace Spartan
 
     void Settings::Initialize()
     {
-        // register third party libs which don't register on their own as they are not part of some other initialization procedure
-        RegisterThirdPartyLib("pugixml",               "1.11.4",    "https://github.com/zeux/pugixml");
-        RegisterThirdPartyLib("SPIRV-Cross",           "03-06-2022", "https://github.com/KhronosGroup/SPIRV-Cross");
-        RegisterThirdPartyLib("DirectXShaderCompiler", "1.7.2207.3", "https://github.com/microsoft/DirectXShaderCompiler");
+        RegisterThirdPartyLib("pugixml", "1.13", "https://github.com/zeux/pugixml");
 
         if (FileSystem::Exists(file_path))
         {

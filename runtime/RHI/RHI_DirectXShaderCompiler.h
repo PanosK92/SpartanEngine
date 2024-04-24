@@ -266,13 +266,33 @@ namespace Spartan
     public:
         static IDxcResult* Compile(const std::string& source, std::vector<std::string>& arguments)
         {
-            // Initialise (only happens once)
+            // initialize (only happens once)
             static IDxcUtils* m_utils        = nullptr;
             static IDxcCompiler3* m_compiler = nullptr;
             if (!m_compiler)
             {
                 DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_compiler));
                 DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_utils));
+
+                // Try to get the version information
+                IDxcVersionInfo* version_info = nullptr;
+                HRESULT hr = m_compiler->QueryInterface(&version_info);
+                if (SUCCEEDED(hr) && version_info)
+                {
+                    UINT32 major, minor;
+                    version_info->GetVersion(&major, &minor);
+
+                    // format the version string
+                    std::ostringstream stream;
+                    stream << major << "." << minor;
+
+                    Settings::RegisterThirdPartyLib("DirectXShaderCompiler", stream.str(), "https://github.com/microsoft/DirectXShaderCompiler");
+                    version_info->Release();
+                }
+                else
+                {
+                    SP_LOG_ERROR("Failed to get library version");
+                }
             }
 
             // Get shader source

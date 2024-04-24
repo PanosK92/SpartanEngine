@@ -49,7 +49,6 @@ namespace Spartan
             type_str = (shader_stage & RHI_Shader_Pixel)   ? "pixel"   : type_str;
             type_str = (shader_stage & RHI_Shader_Compute) ? "compute" : type_str;
 
-
             string defines_str;
             for (const auto& define : defines)
             {
@@ -163,48 +162,48 @@ namespace Spartan
             return;
         }
 
-        // Load source
+        // load source
         ifstream in(file_path);
         stringstream buffer;
         buffer << in.rdbuf();
         string source = buffer.str();
         
-        // Go through every line
+        // go through every line
         istringstream stream(source);
         string source_line;
         while (getline(stream, source_line))
         {
-            // Add the line to the preprocessed source
+            // add the line to the preprocessed source
             bool is_include_directive = source_line.find(include_directive_prefix) != string::npos;
             if (!is_include_directive)
             {
                 m_preprocessed_source += source_line + "\n";
             }
-            // If the line is an include directive, process it recursively
+            // if the line is an include directive, process it recursively
             else
             {
-                // Construct include file
+                // construct include file
                 string file_name         = FileSystem::GetStringBetweenExpressions(source_line, include_directive_prefix, "\"");
                 string include_file_path = FileSystem::GetDirectoryFromFilePath(file_path) + file_name;
 
-                // Process
+                // process
                 PreprocessIncludeDirectives(include_file_path);
             }
         }
 
-        // Save name
+        // save name
         m_names.emplace_back(FileSystem::GetFileNameFromFilePath(file_path));
 
-        // Save file path
+        // save file path
         m_file_paths.emplace_back(file_path);
 
-        // Save source
+        // save source
         m_sources.emplace_back(source);
     }
 
     void RHI_Shader::LoadFromDrive(const string& file_path)
     {
-        // Initialise a couple of things
+        // initialize a couple of things
         m_object_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
         m_file_path   = file_path;
         m_preprocessed_source.clear();
@@ -213,10 +212,10 @@ namespace Spartan
         m_sources.clear();
         m_file_paths_multiple.clear();
 
-        // Construct the source by recursively processing all include directives, starting from the actual file path.
+        // construct the source by recursively processing all include directives, starting from the actual file path.
         PreprocessIncludeDirectives(file_path);
 
-        // Update hash
+        // update hash
         {
             hash<string> hasher;
             m_hash = 0;
@@ -228,8 +227,8 @@ namespace Spartan
             }
         }
 
-        // Reverse the vectors so they have the main shader before the subsequent include directives.
-        // This also helps with the editor's shader editor where you are interested more in the first source.
+        // reverse the vectors so they have the main shader before the subsequent include directives.
+        // this also helps with the editor's shader editor where you are interested more in the first source.
         reverse(m_names.begin(), m_names.end());
         reverse(m_file_paths.begin(), m_file_paths.end());
         reverse(m_sources.begin(), m_sources.end());
