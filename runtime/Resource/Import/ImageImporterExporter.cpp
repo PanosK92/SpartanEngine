@@ -337,6 +337,8 @@ namespace Spartan
             }
         }
 
+        uint32_t texture_flags = texture->GetFlags();
+
         // freeimage partially supports dds, they are certain configurations that it can't load
         // So in the case of a dds format in general, we don't rely on freeimage
         if (format == FIF_DDS)
@@ -380,6 +382,11 @@ namespace Spartan
                 memcpy(&mip.bytes[0], data->m_mem, mip.bytes.size());
             }
 
+            // DDS already comes with compressed mips
+            texture_flags &= ~RHI_Texture_Mips;
+            texture_flags &= ~RHI_Texture_Compressed;
+            texture->SetFlags(texture_flags);
+
             return true;
         }
 
@@ -393,7 +400,6 @@ namespace Spartan
         
         // deduce certain properties
         // done before ApplyBitmapCorrections(), as after that, results for grayscale seem to be always false
-        uint32_t texture_flags  = texture->GetFlags();
         texture_flags          |= FreeImage_IsTransparent(bitmap) ? RHI_Texture_Transparent : 0;
         texture_flags          |= (FreeImage_GetColorType(bitmap) == FREE_IMAGE_COLOR_TYPE::FIC_MINISBLACK) ? RHI_Texture_Greyscale : 0;
         texture_flags          |= get_is_srgb(bitmap) ? RHI_Texture_Srgb : 0;
