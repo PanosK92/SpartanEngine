@@ -353,7 +353,7 @@ namespace Spartan
             case DefaultWorld::Car:        CreateDefaultWorldCar();        break;
             case DefaultWorld::Forest:     CreateDefaultWorldForest();     break;
             case DefaultWorld::Sponza:     CreateDefaultWorldSponza();     break;
-            case DefaultWorld::DoomE1M1:   CreateDefaultWorldDoomE1M1();   break;
+            case DefaultWorld::Doom:       CreateDefaultWorldDoom();       break;
             case DefaultWorld::Bistro:     CreateDefaultWorldBistro();     break;
             case DefaultWorld::Minecraft:  CreateDefaultWorldMinecraft();  break;
             case DefaultWorld::LivingRoom: CreateDefaultWorldLivingRoom(); break;
@@ -1177,7 +1177,7 @@ namespace Spartan
         Engine::SetFlag(EngineMode::Game, true);
     }
 
-    void World::CreateDefaultWorldDoomE1M1()
+    void World::CreateDefaultWorldDoom()
     {
         Vector3 camera_position = Vector3(-120.0f, 23.0f, -30.0f);
         Vector3 camera_rotation = Vector3(0.0f, 90.0f, 0.0f);
