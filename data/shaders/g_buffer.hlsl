@@ -107,14 +107,18 @@ gbuffer main_ps(gbuffer_vertex vertex)
         if (surface.has_texture_normal())
         {
             // get tangent space normal and apply the user defined intensity, then transform it to world space
-            float3 normal_sample       = sampling::smart(surface, vertex, material_normal).xyz;
-            float3 tangent_normal      = normalize(unpack(normal_sample));
-            float normal_intensity     = clamp(GetMaterial().normal, 0.012f, GetMaterial().normal);
+            float3 normal_sample = sampling::smart(surface, vertex, material_normal).xyz;
+            float3 tangent_normal = normalize(unpack(normal_sample));
+        
+            // reconstruct z-component as this can be a BC5 two channel normal map
+            tangent_normal.z = sqrt(max(0.0, 1.0 - tangent_normal.x * tangent_normal.x - tangent_normal.y * tangent_normal.y));
+        
+            float normal_intensity     = max(0.012f, GetMaterial().normal);
             tangent_normal.xy         *= saturate(normal_intensity);
             float3x3 tangent_to_world  = make_tangent_to_world_matrix(vertex.normal, vertex.tangent);
             normal                     = normalize(mul(tangent_normal, tangent_to_world).xyz);
         }
-        
+
         // roughness + metalness
         {
             float4 roughness_sample = 1.0f;
