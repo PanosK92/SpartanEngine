@@ -34,7 +34,7 @@ namespace Spartan
         Car,
         Forest,
         Sponza,
-        DoomE1M1,
+        Doom,
         Bistro,
         Minecraft,
         LivingRoom,
@@ -77,7 +77,7 @@ namespace Spartan
         static void CreateDefaultWorldCar();
         static void CreateDefaultWorldForest();
         static void CreateDefaultWorldSponza();
-        static void CreateDefaultWorldDoomE1M1();
+        static void CreateDefaultWorldDoom();
         static void CreateDefaultWorldBistro();
         static void CreateDefaultWorldMinecraft();
         static void CreateDefaultWorldLivingRoom();

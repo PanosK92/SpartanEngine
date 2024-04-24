@@ -68,7 +68,7 @@ namespace
                     "3. Car",
                     "4. Forest",
                     "5. Sponza",
-                    "6. Doom E1M1",
+                    "6. Doom",
                     "7. Bistro",
                     "8. Minecraft",
                     "9. Living Room"
