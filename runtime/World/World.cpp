@@ -1183,7 +1183,6 @@ namespace Spartan
         Vector3 camera_rotation = Vector3(0.0f, 90.0f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\doom_e1m1.mp3", false, false);
 
-        // doom level
         if (m_default_model = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
         {
             shared_ptr<Entity> entity = m_default_model->GetRootEntity().lock();

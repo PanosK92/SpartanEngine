@@ -192,7 +192,10 @@ namespace Spartan
         D32_Float,
         D32_Float_S8X24_Uint,
         // Compressed
-        BC7,
+        BC1_Unorm,
+        BC3_Unorm,
+        BC5_Unorm,
+        BC7_Unorm,
         ASTC,
         // Surface
         B8R8G8A8_Unorm,
@@ -399,7 +402,7 @@ namespace Spartan
             case RHI_Format::R32G32B32A32_Float:   return "RHI_Format_R32G32B32A32_Float";
             case RHI_Format::D32_Float:            return "RHI_Format_D32_Float";
             case RHI_Format::D32_Float_S8X24_Uint: return "RHI_Format_D32_Float_S8X24_Uint";
-            case RHI_Format::BC7:                  return "RHI_Format_BC7";
+            case RHI_Format::BC7_Unorm:                  return "RHI_Format_BC7";
             case RHI_Format::Max:            return "RHI_Format_Undefined";
         }
 

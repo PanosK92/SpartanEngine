@@ -320,7 +320,6 @@ namespace Spartan
 
     void ModelImporter::Initialize()
     {
-        // Get version
         const int major = aiGetVersionMajor();
         const int minor = aiGetVersionMinor();
         const int rev   = aiGetVersionRevision();

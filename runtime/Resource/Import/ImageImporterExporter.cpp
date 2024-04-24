@@ -27,6 +27,8 @@ SP_WARNINGS_OFF
 #define FREEIMAGE_LIB
 #include <FreeImage/FreeImage.h>
 #include <FreeImage/Utilities.h>
+#define TINYDDSLOADER_IMPLEMENTATION
+#include "tinyddsloader.h"
 SP_WARNINGS_ON
 //==================================
 
@@ -285,29 +287,6 @@ namespace Spartan
             return bitmap;
         }
 
-        void get_bits_from_bitmap(RHI_Texture_Mip* mip, FIBITMAP* bitmap, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel)
-        {
-            // Validate
-            SP_ASSERT(mip != nullptr);
-            SP_ASSERT(bitmap != nullptr);
-            SP_ASSERT(width != 0);
-            SP_ASSERT(height != 0);
-            SP_ASSERT(channel_count != 0);
-
-            // Compute expected data size and reserve enough memory
-            const size_t size_bytes = static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(channel_count) * static_cast<size_t>(bits_per_channel / 8);
-            if (size_bytes != mip->bytes.size())
-            {
-                mip->bytes.clear();
-                mip->bytes.reserve(size_bytes);
-                mip->bytes.resize(size_bytes);
-            }
-
-            // Copy the data over to our vector
-            BYTE* bytes = FreeImage_GetBits(bitmap);
-            memcpy(&mip->bytes[0], bytes, size_bytes);
-        }
-
         void free_image_error_handler(const FREE_IMAGE_FORMAT fif, const char* message)
         {
             const auto text   = (message != nullptr) ? message : "Unknown error";
@@ -358,7 +337,53 @@ namespace Spartan
             }
         }
 
-        // load the image
+        // freeimage partially supports dds, they are certain configurations that it can't load
+        // So in the case of a dds format in general, we don't rely on freeimage
+        if (format == FIF_DDS)
+        {
+            // load
+            tinyddsloader::DDSFile dds_file;
+            auto result = dds_file.Load(file_path.c_str());
+            if (result != tinyddsloader::Success)
+            {
+                SP_LOG_ERROR("Failed to load DSS file");
+                return false;
+            }
+
+            // get format
+            auto format_dxgi = dds_file.GetFormat();
+            RHI_Format format = RHI_Format::Max;
+            if (format_dxgi == tinyddsloader::DDSFile::DXGIFormat::BC1_UNorm)
+            {
+                format = RHI_Format::BC1_Unorm;
+            }
+            else if (format_dxgi == tinyddsloader::DDSFile::DXGIFormat::BC3_UNorm)
+            {
+                format = RHI_Format::BC3_Unorm;
+            }
+            else if (format_dxgi == tinyddsloader::DDSFile::DXGIFormat::BC5_UNorm)
+            {
+                format = RHI_Format::BC5_Unorm;
+            }
+            SP_ASSERT(format != RHI_Format::Max);
+
+            // set properties
+            texture->SetWidth(dds_file.GetWidth());
+            texture->SetHeight(dds_file.GetHeight());
+            texture->SetFormat(format);
+
+            // set data
+            for (uint32_t mip_index = 0; mip_index < dds_file.GetMipCount(); mip_index++)
+            {
+                RHI_Texture_Mip& mip = texture->CreateMip(0);
+                const auto& data     = dds_file.GetImageData(mip_index, 0);
+                memcpy(&mip.bytes[0], data->m_mem, mip.bytes.size());
+            }
+
+            return true;
+        }
+
+        // load
         FIBITMAP* bitmap = FreeImage_Load(format, file_path.c_str());
         if (!bitmap)
         {
@@ -366,10 +391,13 @@ namespace Spartan
             return false;
         }
         
-        // deduce image properties. Important that this is done here, before ApplyBitmapCorrections(), as after that, results for grayscale seem to be always false
-        const bool is_transparent = FreeImage_IsTransparent(bitmap);
-        const bool is_greyscale   = FreeImage_GetColorType(bitmap) == FREE_IMAGE_COLOR_TYPE::FIC_MINISBLACK;
-        const bool is_srgb        = get_is_srgb(bitmap);
+        // deduce certain properties
+        // done before ApplyBitmapCorrections(), as after that, results for grayscale seem to be always false
+        uint32_t texture_flags  = texture->GetFlags();
+        texture_flags          |= FreeImage_IsTransparent(bitmap) ? RHI_Texture_Transparent : 0;
+        texture_flags          |= (FreeImage_GetColorType(bitmap) == FREE_IMAGE_COLOR_TYPE::FIC_MINISBLACK) ? RHI_Texture_Greyscale : 0;
+        texture_flags          |= get_is_srgb(bitmap) ? RHI_Texture_Srgb : 0;
+        texture->SetFlags(texture_flags);
 
         // perform some corrections
         bitmap = apply_bitmap_corrections(bitmap);
@@ -379,45 +407,24 @@ namespace Spartan
             return false;
         }
 
-        // deduce image properties
-        const uint32_t bits_per_channel   = get_bits_per_channel(bitmap);
-        const uint32_t channel_count      = get_channel_count(bitmap);
-        const RHI_Format image_format     = get_rhi_format(bits_per_channel, channel_count);
+        // scale if needed
         const bool user_define_dimensions = (texture->GetWidth() != 0 && texture->GetHeight() != 0);
         const bool dimension_mismatch     = (FreeImage_GetWidth(bitmap) != texture->GetWidth() && FreeImage_GetHeight(bitmap) != texture->GetHeight());
         const bool scale                  = user_define_dimensions && dimension_mismatch;
         bitmap                            = scale ? rescale(bitmap, texture->GetWidth(), texture->GetHeight()) : bitmap;
-        const unsigned int width          = FreeImage_GetWidth(bitmap);
-        const unsigned int height         = FreeImage_GetHeight(bitmap);
 
-        // fill RGBA vector with the data from the FIBITMAP
+        // set properties
+        texture->SetBitsPerChannel(get_bits_per_channel(bitmap));
+        texture->SetWidth(FreeImage_GetWidth(bitmap));
+        texture->SetHeight(FreeImage_GetHeight(bitmap));
+        texture->SetChannelCount(get_channel_count(bitmap));
+        texture->SetFormat(get_rhi_format(texture->GetBitsPerChannel(), texture->GetChannelCount()));
+
+        // copy data over to the RHI_Texture
         RHI_Texture_Mip& mip = texture->CreateMip(slice_index);
-        get_bits_from_bitmap(&mip, bitmap, width, height, channel_count, bits_per_channel);
-
-        // free memory 
+        BYTE* bytes = FreeImage_GetBits(bitmap);
+        memcpy(&mip.bytes[0], bytes, mip.bytes.size());
         FreeImage_Unload(bitmap);
-
-        // fill RHI_Texture with image properties
-        {
-            SP_ASSERT(bits_per_channel != 0);
-            SP_ASSERT(channel_count != 0);
-            SP_ASSERT(width != 0);
-            SP_ASSERT(height != 0);
-
-            texture->SetBitsPerChannel(bits_per_channel);
-            texture->SetWidth(width);
-            texture->SetHeight(height);
-            texture->SetChannelCount(channel_count);
-            texture->SetFormat(image_format);
-
-            uint32_t flags = texture->GetFlags();
-
-            flags |= is_transparent ? RHI_Texture_Transparent : 0;
-            flags |= is_greyscale   ? RHI_Texture_Greyscale   : 0;
-            flags |= is_srgb        ? RHI_Texture_Srgb        : 0;
-
-            texture->SetFlags(flags);
-        }
 
         return true;
     }

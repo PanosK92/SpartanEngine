@@ -49,6 +49,6 @@ namespace Spartan
     // hardware capability viewer: https://vulkan.gpuinfo.org/
 #endif
 
-   // api agnostic
+    // api agnostic
     string RHI_Context::api_version_str;
 }

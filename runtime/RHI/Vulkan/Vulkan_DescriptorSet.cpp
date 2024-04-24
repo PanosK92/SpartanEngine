@@ -90,7 +90,11 @@ namespace Spartan
                 uint32_t mip_start       = mip_specified ? descriptor.mip : 0;
 
                 // get texture, if unable to do so, fallback to a checkerboard texture, so we can spot it by eye
-                void* srv_fallback = Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard)->GetRhiSrv();
+                void* srv_fallback = nullptr;
+                if (shared_ptr<RHI_Texture> texture = Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard))
+                { 
+                    void* srv_fallback = texture->GetRhiSrv();
+                }
 
                 if (!descriptor.as_array)
                 {

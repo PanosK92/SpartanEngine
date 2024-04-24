@@ -96,6 +96,8 @@ namespace Spartan
         // misc
         std::shared_ptr<RHI_Texture> GetSharedPtr() { return shared_from_this(); }
         void SaveAsImage(const std::string& file_path);
+        static bool IsCompressedFormat(const RHI_Format format);
+        static size_t CalculateMipSize(uint32_t width, uint32_t height, RHI_Format format, uint32_t bits_per_channel, uint32_t channel_count);
 
         // data
         uint32_t GetArrayLength()                          const { return m_array_length; }
