@@ -80,7 +80,7 @@ namespace Spartan
             if (format == RHI_Format::ASTC)
                 return CMP_FORMAT::CMP_FORMAT_ASTC;
 
-            if (format == RHI_Format::BC7)
+            if (format == RHI_Format::BC7_Unorm)
                 return CMP_FORMAT::CMP_FORMAT_BC7;
 
             SP_ASSERT_MSG(false, "No equivalent format");
@@ -363,13 +363,11 @@ namespace Spartan
             }
         }
 
-        m_mip_count = (m_flags & RHI_Texture_Mips) ? static_cast<uint32_t>(log2(Math::Helper::Min<uint32_t>(m_width, m_height))) : 1;
-
-        // add appropriate flags
-        if (m_mip_count > 1)
+        if (m_flags & RHI_Texture_Mips)
         {
             // ensure the texture has the appropriate flags so that it can be used to generate mips on the GPU
             // once the mips have been generated, those flags and the resources associated with them, will be removed
+            m_mip_count = static_cast<uint32_t>(log2(Math::Helper::Min<uint32_t>(m_width, m_height)));
             m_flags |= RHI_Texture_PerMipViews;
             m_flags |= RHI_Texture_Uav;
         }
@@ -399,30 +397,29 @@ namespace Spartan
 
     RHI_Texture_Mip& RHI_Texture::CreateMip(const uint32_t array_index)
     {
-        // grow data if needed
+        // ensure there's room for the new array index
         while (array_index >= m_slices.size())
         {
             m_slices.emplace_back();
         }
 
-        // create mip
+        // create the mip in the specified slice
         RHI_Texture_Mip& mip = m_slices[array_index].mips.emplace_back();
 
-        // allocate memory even if there are no initial data.
-        // this is to prevent APIs from failing to create a texture with mips that don't point to any mip memory.
-        // this memory will be either overwritten from initial data or cleared after the mips are generated on the GPU.
-        uint32_t mip_index      = m_slices[array_index].GetMipCount() - 1;
-        uint32_t width          = m_width >> mip_index;
-        uint32_t height         = m_height >> mip_index;
-        const size_t size_bytes = static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(m_channel_count) * static_cast<size_t>(m_bits_per_channel / 8);
-        mip.bytes.resize(size_bytes);
-        mip.bytes.reserve(mip.bytes.size());
+        uint32_t mip_index = static_cast<uint32_t>(m_slices[array_index].mips.size()) - 1;
+        uint32_t width     = m_width  >> mip_index;
+        uint32_t height    = m_height >> mip_index;
 
-        // update array index and mip count
+        // calculate the size
+        size_t size_bytes = CalculateMipSize(width, height, m_format, m_bits_per_channel, m_channel_count);
+        mip.bytes.resize(size_bytes);
+        mip.bytes.reserve(size_bytes);
+
+        // update texture properties
         if (!m_slices.empty())
         {
             m_array_length = static_cast<uint32_t>(m_slices.size());
-            m_mip_count    = m_slices[0].GetMipCount();
+            m_mip_count    = static_cast<uint32_t>(m_slices[0].mips.size());
         }
 
         return mip;
@@ -532,5 +529,49 @@ namespace Spartan
         SP_ASSERT_MSG(m_mapped_data != nullptr, "The texture needs to be mappable");
         ImageImporterExporter::Save(file_path, m_width, m_height, m_channel_count, m_bits_per_channel, m_mapped_data);
         SP_LOG_INFO("Screenshot has been saved");
+    }
+
+    bool RHI_Texture::IsCompressedFormat(const RHI_Format format)
+    {
+        return
+            format == RHI_Format::BC1_Unorm ||
+            format == RHI_Format::BC3_Unorm ||
+            format == RHI_Format::BC5_Unorm ||
+            format == RHI_Format::BC7_Unorm;
+    }
+
+    size_t RHI_Texture::CalculateMipSize(uint32_t width, uint32_t height, RHI_Format format, uint32_t bits_per_channel, uint32_t channel_count)
+    {
+        SP_ASSERT(width > 0);
+        SP_ASSERT(height > 0);
+
+        if (IsCompressedFormat(format))
+        {
+            uint32_t block_size;
+            switch (format)
+            {
+            case RHI_Format::BC1_Unorm:
+                block_size = 8; // 8 bytes per block
+                break;
+            case RHI_Format::BC3_Unorm:
+            case RHI_Format::BC7_Unorm:
+            case RHI_Format::BC5_Unorm:
+                block_size = 16; // 16 bytes per block
+                break;
+            default:
+                return 0;
+            }
+
+            uint32_t num_blocks_wide = (width + 3) / 4;
+            uint32_t num_blocks_high = (height + 3) / 4;
+            return num_blocks_wide * num_blocks_high * block_size;
+        }
+        else
+        {
+            SP_ASSERT(channel_count > 0);
+            SP_ASSERT(bits_per_channel > 0);
+
+            return static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(channel_count) * static_cast<size_t>(bits_per_channel / 8);
+        }
     }
 }

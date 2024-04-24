@@ -152,11 +152,11 @@ namespace Spartan
             flags |= texture->IsDsv() ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
             flags |= texture->IsRtv() ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT         : 0;
 
-            // If the texture has data, it will be staged, so it needs transfer bits.
-            // If the texture participates in clear or blit operations, it needs transfer bits.
+            // If the texture has data, it will be staged, so it needs transfer bits
+            // If the texture participates in clear or blit operations, it needs transfer bits
             if (texture->HasData() || (texture->GetFlags() & RHI_Texture_ClearBlit) != 0)
             {
-                flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT; // source of a transfer command.
+                flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT; // source of a transfer command
                 flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; // destination of a transfer command
             }
 
@@ -1101,17 +1101,18 @@ namespace Spartan
                 vkGetPhysicalDeviceProperties2(static_cast<VkPhysicalDevice>(RHI_Context::device_physical), &properties_device);
 
                 // save some properties
-                m_timestamp_period                    = properties_device.properties.limits.timestampPeriod;
-                m_min_uniform_buffer_offset_alignment = properties_device.properties.limits.minUniformBufferOffsetAlignment;
-                m_min_storage_buffer_offset_alignment = properties_device.properties.limits.minStorageBufferOffsetAlignment;
-                m_max_texture_1d_dimension            = properties_device.properties.limits.maxImageDimension1D;
-                m_max_texture_2d_dimension            = properties_device.properties.limits.maxImageDimension2D;
-                m_max_texture_3d_dimension            = properties_device.properties.limits.maxImageDimension3D;
-                m_max_texture_cube_dimension          = properties_device.properties.limits.maxImageDimensionCube;
-                m_max_texture_array_layers            = properties_device.properties.limits.maxImageArrayLayers;
-                m_max_push_constant_size              = properties_device.properties.limits.maxPushConstantsSize;
-                m_max_shading_rate_texel_size_x       = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.width;
-                m_max_shading_rate_texel_size_y       = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.height;
+                m_timestamp_period                     = properties_device.properties.limits.timestampPeriod;
+                m_min_uniform_buffer_offset_alignment  = properties_device.properties.limits.minUniformBufferOffsetAlignment;
+                m_min_storage_buffer_offset_alignment  = properties_device.properties.limits.minStorageBufferOffsetAlignment;
+                m_max_texture_1d_dimension             = properties_device.properties.limits.maxImageDimension1D;
+                m_max_texture_2d_dimension             = properties_device.properties.limits.maxImageDimension2D;
+                m_max_texture_3d_dimension             = properties_device.properties.limits.maxImageDimension3D;
+                m_max_texture_cube_dimension           = properties_device.properties.limits.maxImageDimensionCube;
+                m_max_texture_array_layers             = properties_device.properties.limits.maxImageArrayLayers;
+                m_max_push_constant_size               = properties_device.properties.limits.maxPushConstantsSize;
+                m_max_shading_rate_texel_size_x        = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.width;
+                m_max_shading_rate_texel_size_y        = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.height;
+                m_optimal_buffer_copy_offset_alignment = properties_device.properties.limits.optimalBufferCopyOffsetAlignment;
 
                 // disable profiler if timestamps are not supported
                 if (Profiler::IsGpuTimingEnabled())

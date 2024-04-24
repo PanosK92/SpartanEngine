@@ -96,6 +96,7 @@ namespace Spartan
         static uint32_t PropertyGetMaxPushConstantSize()              { return m_max_push_constant_size; }
         static uint32_t PropertyGetMaxShadingRateTexelSizeX()         { return m_max_shading_rate_texel_size_x; }
         static uint32_t PropertyGetMaxShadingRateTexelSizeY()         { return m_max_shading_rate_texel_size_y; }
+        static uint64_t PropertyGetOptimalBufferCopyOffsetAlignment() { return m_optimal_buffer_copy_offset_alignment; }
         static bool PropertyIsShadingRateSupported()                  { return m_is_shading_rate_supported; }
 
         // markers
@@ -130,6 +131,7 @@ namespace Spartan
         static uint32_t m_max_push_constant_size;
         static uint32_t m_max_shading_rate_texel_size_x;
         static uint32_t m_max_shading_rate_texel_size_y;
+        static uint64_t m_optimal_buffer_copy_offset_alignment;
         static bool m_is_shading_rate_supported;
 
         // misc

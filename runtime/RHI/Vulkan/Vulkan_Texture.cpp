@@ -146,35 +146,34 @@ namespace Spartan
             }
         }
 
-        bool copy_to_staging_buffer(RHI_Texture* texture, vector<VkBufferImageCopy>& regions, void*& staging_buffer)
+        void copy_to_staging_buffer(RHI_Texture* texture, vector<VkBufferImageCopy>& regions, void*& staging_buffer)
         {
-            if (!texture->HasData())
-            {
-                SP_LOG_WARNING("No data to stage");
-                return true;
-            }
+            SP_ASSERT_MSG(texture->HasData(), "No data to stage");
 
-            const uint32_t width           = texture->GetWidth();
-            const uint32_t height          = texture->GetHeight();
-            const uint32_t array_length    = texture->GetArrayLength();
-            const uint32_t mip_count       = texture->GetMipCount();
-            const uint32_t bytes_per_pixel = texture->GetBytesPerPixel();
+            const uint32_t width        = texture->GetWidth();
+            const uint32_t height       = texture->GetHeight();
+            const uint32_t array_length = texture->GetArrayLength();
+            const uint32_t mip_count    = texture->GetMipCount();
 
             const uint32_t region_count = array_length * mip_count;
             regions.resize(region_count);
             regions.reserve(region_count);
 
-            // fill out VkBufferImageCopy structs describing the array and the mip levels
-            VkDeviceSize buffer_offset = 0;
+            VkDeviceSize buffer_offset   = 0;
+            VkDeviceSize buffer_alignment = RHI_Device::PropertyGetOptimalBufferCopyOffsetAlignment();
+
             for (uint32_t array_index = 0; array_index < array_length; array_index++)
             {
                 for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
                 {
-                    uint32_t region_index   = mip_index + array_index * mip_count;
-                    uint32_t mip_width      = width >> mip_index;
-                    uint32_t mip_height     = height >> mip_index;
+                    uint32_t region_index = mip_index + array_index * mip_count;
+                    uint32_t mip_width    = width >> mip_index;
+                    uint32_t mip_height   = height >> mip_index;
 
                     SP_ASSERT(mip_width != 0 && mip_height != 0);
+
+                    // align buffer offset
+                    buffer_offset = (buffer_offset + buffer_alignment - 1) & ~(buffer_alignment - 1);
 
                     regions[region_index].bufferOffset                    = buffer_offset;
                     regions[region_index].bufferRowLength                 = 0;
@@ -186,15 +185,13 @@ namespace Spartan
                     regions[region_index].imageOffset                     = { 0, 0, 0 };
                     regions[region_index].imageExtent                     = { mip_width, mip_height, 1 };
 
-                    // update staging buffer memory requirement (in bytes)
-                    buffer_offset += static_cast<uint64_t>(mip_width) * static_cast<uint64_t>(mip_height) * static_cast<uint64_t>(bytes_per_pixel);
+                    buffer_offset += RHI_Texture::CalculateMipSize(mip_width, mip_height, texture->GetFormat(), texture->GetBitsPerChannel(), texture->GetChannelCount());
                 }
             }
 
-            // create staging buffer
+            // create staging buffer with aligned size
             RHI_Device::MemoryBufferCreate(staging_buffer, buffer_offset, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr, "staging_buffer_texture");
 
-            // copy array and mip level data to the staging buffer
             void* mapped_data = nullptr;
             buffer_offset = 0;
             RHI_Device::MemoryMap(staging_buffer, mapped_data);
@@ -203,30 +200,27 @@ namespace Spartan
                 {
                     for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
                     {
-                        uint64_t buffer_size = static_cast<uint64_t>(width >> mip_index) * static_cast<uint64_t>(height >> mip_index) * static_cast<uint64_t>(bytes_per_pixel);
+                        size_t size = RHI_Texture::CalculateMipSize(width >> mip_index, height >> mip_index, texture->GetFormat(), texture->GetBitsPerChannel(), texture->GetChannelCount());
 
                         if (texture->GetMip(array_index, mip_index).bytes.size() != 0)
                         {
-                            memcpy(static_cast<std::byte*>(mapped_data) + buffer_offset, texture->GetMip(array_index, mip_index).bytes.data(), buffer_size);
+                            memcpy(static_cast<std::byte*>(mapped_data) + buffer_offset, texture->GetMip(array_index, mip_index).bytes.data(), size);
                         }
 
-                        buffer_offset += buffer_size;
+                        buffer_offset += size;
                     }
                 }
 
                 RHI_Device::MemoryUnmap(staging_buffer);
             }
-
-            return true;
         }
 
-        bool stage(RHI_Texture* texture)
+        void stage(RHI_Texture* texture)
         {
             // copy the texture's data to a staging buffer
             void* staging_buffer = nullptr;
             vector<VkBufferImageCopy> regions;
-            if (!copy_to_staging_buffer(texture, regions, staging_buffer))
-                return false;
+            copy_to_staging_buffer(texture, regions, staging_buffer);
 
             // copy the staging buffer into the image
             if (RHI_CommandList* cmd_list = RHI_Device::CmdImmediateBegin(RHI_Queue_Type::Graphics))
@@ -256,8 +250,6 @@ namespace Spartan
                 // update texture layout
                 texture->SetLayout(layout, nullptr);
             }
-
-            return true;
         }
 
         RHI_Image_Layout GetAppropriateLayout(RHI_Texture* texture)
@@ -298,7 +290,8 @@ namespace Spartan
         // if the texture has any data, stage it
         if (HasData())
         {
-            SP_ASSERT_MSG(stage(this), "Failed to stage");
+            stage(this);
+            m_slices.clear();
         }
 
         // transition to target layout
