@@ -224,26 +224,26 @@ namespace Spartan
             const aiTextureType texture_type_assimp_legacy
         )
         {
-            // Determine if this is a pbr material or not
+            // determine if this is a pbr material or not
             aiTextureType type_assimp = aiTextureType_NONE;
             type_assimp = material_assimp->GetTextureCount(texture_type_assimp_pbr) > 0 ? texture_type_assimp_pbr : type_assimp;
             type_assimp = (type_assimp == aiTextureType_NONE) ? (material_assimp->GetTextureCount(texture_type_assimp_legacy) > 0 ? texture_type_assimp_legacy : type_assimp) : type_assimp;
 
-            // Check if the material has any textures
+            // check if the material has any textures
             if (material_assimp->GetTextureCount(type_assimp) == 0)
                 return true;
 
-            // Try to get the texture path
+            // try to get the texture path
             aiString texture_path;
             if (material_assimp->GetTexture(type_assimp, 0, &texture_path) != AI_SUCCESS)
                 return false;
 
-            // See if the texture type is supported by the engine
+            // see if the texture type is supported by the engine
             const string deduced_path = texture_validate_path(texture_path.data, file_path);
             if (!FileSystem::IsSupportedImageFile(deduced_path))
                 return false;
 
-            // Add the texture to the model
+            // add the texture to the model
             mesh->AddTexture(material, texture_type, texture_validate_path(texture_path.data, file_path), is_gltf);
 
             // FIX: materials that have a diffuse texture should not be tinted black/gray
@@ -255,7 +255,7 @@ namespace Spartan
                 material->SetProperty(MaterialProperty::ColorA, 1.0f);
             }
 
-            // FIX: Some models pass a normal map as a height map and vice versa, we correct that.
+            // FIX: Some models pass a normal map as a height map and vice versa, we correct that
             if (texture_type == MaterialTexture::Normal || texture_type == MaterialTexture::Height)
             {
                 if (shared_ptr<RHI_Texture> texture = material->GetTexture_PtrShared(texture_type))
@@ -278,21 +278,29 @@ namespace Spartan
         shared_ptr<Material> load_material(Mesh* mesh, const string& file_path, const bool is_gltf, const aiMaterial* material_assimp)
         {
             SP_ASSERT(material_assimp != nullptr);
-
             shared_ptr<Material> material = make_shared<Material>();
 
-            // NAME
+            // name
             aiString name;
             aiGetMaterialString(material_assimp, AI_MATKEY_NAME, &name);
-
-            // Set a resource file path so it can be used by the resource cache
+            // set a resource file path so it can be used by the resource cache
             material->SetResourceFilePath(FileSystem::RemoveIllegalCharacters(FileSystem::GetDirectoryFromFilePath(file_path) + string(name.C_Str()) + EXTENSION_MATERIAL));
 
-            // COLOR
+            // color
             aiColor4D color_diffuse(1.0f, 1.0f, 1.0f, 1.0f);
             aiGetMaterialColor(material_assimp, AI_MATKEY_COLOR_DIFFUSE, &color_diffuse);
 
-            // OPACITY
+            // two-sided
+            int no_culling;
+            if (AI_SUCCESS == aiGetMaterialInteger(material_assimp, AI_MATKEY_TWOSIDED, &no_culling))
+            {
+                if (no_culling != 0)
+                { 
+                    material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                }
+            }
+
+            // opacity
             aiColor4D opacity(1.0f, 1.0f, 1.0f, 1.0f);
             aiGetMaterialColor(material_assimp, AI_MATKEY_OPACITY, &opacity);
 
@@ -304,8 +312,8 @@ namespace Spartan
 
             //                                                                         Texture type,                Texture type Assimp (PBR),       Texture type Assimp (Legacy/fallback)
             load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Color,      aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
-            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Roughness,  aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS); // Use specular as fallback
-            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Metalness,  aiTextureType_METALNESS,         aiTextureType_AMBIENT);   // Use ambient as fallback
+            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Roughness,  aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS); // use specular as fallback
+            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Metalness,  aiTextureType_METALNESS,         aiTextureType_AMBIENT);   // use ambient as fallback
             load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Normal,     aiTextureType_NORMAL_CAMERA,     aiTextureType_NORMALS);
             load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Occlusion,  aiTextureType_AMBIENT_OCCLUSION, aiTextureType_LIGHTMAP);
             load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Emission,   aiTextureType_EMISSION_COLOR,    aiTextureType_EMISSIVE);
@@ -313,6 +321,36 @@ namespace Spartan
             load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::AlphaMask,  aiTextureType_OPACITY,           aiTextureType_NONE);
 
             material->SetProperty(MaterialProperty::SingleTextureRoughnessMetalness, static_cast<float>(is_gltf));
+
+            // if there is not metalness texture, scan the material name, if it contains "metal", set metalness to 1
+            if (!material->HasTexture(MaterialTexture::Metalness))
+            {
+                // check for the name containing "metal", case insensitive
+                string name_str = name.C_Str();
+                transform(name_str.begin(), name_str.end(), name_str.begin(), ::tolower); // convert name to lowercase for case insensitive comparison
+                if (name_str.find("metal") != string::npos)
+                {
+                    material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                }
+            }
+
+            // if the is no roughness texture, try to get an overall roughness from the shininess value
+            if (!material->HasTexture(MaterialTexture::Roughness))
+            {
+                float shininess;
+                if (AI_SUCCESS == aiGetMaterialFloat(material_assimp, AI_MATKEY_SHININESS, &shininess))
+                {
+                    float roughness = clamp(1.0f - shininess / 100.0f, 0.0f, 1.0f);
+
+                    // if it's metallic, it's most likely no fully rough
+                    if (material->GetProperty(MaterialProperty::Metalness) != 0)
+                    {
+                        roughness *= 0.5f;
+                    }
+
+                    material->SetProperty(MaterialProperty::Roughness, roughness);
+                }
+            }
 
             return material;
         }
