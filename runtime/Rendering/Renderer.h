@@ -107,7 +107,7 @@ namespace Spartan
 
         //= RESOURCES ==========================================================================================================
         static RHI_Texture* GetFrameTexture();
-        static std::shared_ptr<Camera>& GetCamera();
+        static std::shared_ptr<Camera> GetCamera();
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
 
         // get all
@@ -211,7 +211,6 @@ namespace Spartan
         static uint32_t m_lines_index_depth_off;
         static uint32_t m_lines_index_depth_on;
         static RHI_CommandPool* m_cmd_pool;
-        static std::shared_ptr<Camera> m_camera;
         static uint32_t m_resource_index;
         static std::atomic<bool> m_resources_created;
         static std::atomic<uint32_t> m_environment_mips_to_filter_count;

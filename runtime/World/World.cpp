@@ -220,10 +220,13 @@ namespace Spartan
             }
         }
 
-        // notify Renderer
+        // notify renderer
         if (m_resolve)
         {
-            SP_FIRE_EVENT_DATA(EventType::WorldResolved, m_entities);
+            if (!ProgressTracker::IsLoading()) // only when nothing is loading
+            {
+                SP_FIRE_EVENT_DATA(EventType::WorldResolved, m_entities);
+            }
             m_resolve = false;
         }
 

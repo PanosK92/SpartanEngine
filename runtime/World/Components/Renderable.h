@@ -106,8 +106,7 @@ namespace Spartan
         uint32_t GetIndexCount() const   { return m_geometry_index_count; }
         uint32_t GetVertexOffset() const { return m_geometry_vertex_offset; }
         uint32_t GetVertexCount() const  { return m_geometry_vertex_count; }
-        bool ReadyToRender() const;
-        bool IsVisible() const { return !(m_flags & RenderableFlags::OccludedCpu) && !(m_flags & RenderableFlags::OccludedGpu); }
+        bool IsVisible() const           { return !(m_flags & RenderableFlags::OccludedCpu) && !(m_flags & RenderableFlags::OccludedGpu); }
 
         // flags
         bool HasFlag(const RenderableFlags flag) { return m_flags & flag; }
