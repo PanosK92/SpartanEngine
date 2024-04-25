@@ -305,23 +305,6 @@ namespace Spartan
         m_bounding_box_dirty = true;
     }
 
-	bool Renderable::ReadyToRender() const
-	{
-        if (!m_mesh)
-            return false;
-
-        if (!m_mesh->GetVertexBuffer())
-            return false;
-
-        if (!m_mesh->GetIndexBuffer())
-            return false;
-
-        if (!m_material)
-            return false;
-
-        return true;
-    }
-    
     void Renderable::SetFlag(const RenderableFlags flag, const bool enable /*= true*/)
     {
         bool enabled      = false;

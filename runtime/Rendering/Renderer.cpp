@@ -61,8 +61,7 @@ namespace Spartan
     uint32_t Renderer::m_lines_index_depth_on;
 
     // misc
-    RHI_CommandPool* Renderer::m_cmd_pool                         = nullptr;
-    shared_ptr<Camera> Renderer::m_camera                         = nullptr;
+    RHI_CommandPool* Renderer::m_cmd_pool                         = nullptr;;
     uint32_t Renderer::m_resource_index                           = 0;
     atomic<bool> Renderer::m_resources_created                    = false;
     atomic<uint32_t> Renderer::m_environment_mips_to_filter_count = 0;
@@ -381,17 +380,17 @@ namespace Spartan
     {
         // matrices
         {
-            if (m_camera)
+            if (shared_ptr<Camera> camera = GetCamera())
             {
-                if (near_plane != m_camera->GetNearPlane() || far_plane != m_camera->GetFarPlane())
+                if (near_plane != camera->GetNearPlane() || far_plane != camera->GetFarPlane())
                 {
-                    near_plane                    = m_camera->GetNearPlane();
-                    far_plane                     = m_camera->GetFarPlane();
+                    near_plane                    = camera->GetNearPlane();
+                    far_plane                     = camera->GetFarPlane();
                     dirty_orthographic_projection = true;
                 }
 
-                m_cb_frame_cpu.view       = m_camera->GetViewMatrix();
-                m_cb_frame_cpu.projection = m_camera->GetProjectionMatrix();
+                m_cb_frame_cpu.view       = camera->GetViewMatrix();
+                m_cb_frame_cpu.projection = camera->GetProjectionMatrix();
             }
 
             if (dirty_orthographic_projection)
@@ -419,14 +418,14 @@ namespace Spartan
         m_cb_frame_cpu.view_projection_previous = m_cb_frame_cpu.view_projection;
         m_cb_frame_cpu.view_projection          = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
         m_cb_frame_cpu.view_projection_inv      = Matrix::Invert(m_cb_frame_cpu.view_projection);
-        if (m_camera)
+        if (shared_ptr<Camera> camera = GetCamera())
         {
-            m_cb_frame_cpu.view_projection_unjittered = m_cb_frame_cpu.view * m_camera->GetProjectionMatrix();
-            m_cb_frame_cpu.camera_near                = m_camera->GetNearPlane();
-            m_cb_frame_cpu.camera_far                 = m_camera->GetFarPlane();
+            m_cb_frame_cpu.view_projection_unjittered = m_cb_frame_cpu.view * camera->GetProjectionMatrix();
+            m_cb_frame_cpu.camera_near                = camera->GetNearPlane();
+            m_cb_frame_cpu.camera_far                 = camera->GetFarPlane();
             m_cb_frame_cpu.camera_position_previous   = m_cb_frame_cpu.camera_position;
-            m_cb_frame_cpu.camera_position            = m_camera->GetEntity()->GetPosition();
-            m_cb_frame_cpu.camera_direction           = m_camera->GetEntity()->GetForward();
+            m_cb_frame_cpu.camera_position            = camera->GetEntity()->GetPosition();
+            m_cb_frame_cpu.camera_direction           = camera->GetEntity()->GetForward();
             m_cb_frame_cpu.camera_last_movement_time  = (m_cb_frame_cpu.camera_position - m_cb_frame_cpu.camera_position_previous).LengthSquared() != 0.0f
                 ? static_cast<float>(Timer::GetTimeSec()) : m_cb_frame_cpu.camera_last_movement_time;
         }
@@ -459,7 +458,6 @@ namespace Spartan
 
         // clear previous state
         m_renderables.clear();
-        m_camera = nullptr;
 
         vector<shared_ptr<Entity>> entities = get<vector<shared_ptr<Entity>>>(data);
         for (shared_ptr<Entity>& entity : entities)
@@ -474,8 +472,13 @@ namespace Spartan
                 if (Material* material = renderable->GetMaterial())
                 {
                     if (material->IsVisible())
-                    { 
-                        m_renderables[Renderer_Entity::Mesh].emplace_back(entity);
+                    {
+                        // a mesh can be uninitialized if it's currently loading in a different thread
+                        // but we don't keep anything uninitialized in what the renderer is processing
+                        if (renderable->GetVertexBuffer() && renderable->GetIndexBuffer())
+                        { 
+                            m_renderables[Renderer_Entity::Mesh].emplace_back(entity);
+                        }
                     }
                 }
             }
@@ -488,7 +491,6 @@ namespace Spartan
             if (shared_ptr<Camera> camera = entity->GetComponent<Camera>())
             {
                 m_renderables[Renderer_Entity::Camera].emplace_back(entity);
-                m_camera = camera;
             }
 
             if (shared_ptr<AudioSource> audio_source = entity->GetComponent<AudioSource>())
@@ -815,9 +817,12 @@ namespace Spartan
         return frame_num;
     }
 
-    shared_ptr<Camera>& Renderer::GetCamera()
+    shared_ptr<Camera> Renderer::GetCamera()
     {
-        return m_camera;
+        if (m_renderables[Renderer_Entity::Camera].empty())
+            return nullptr;
+
+        return m_renderables[Renderer_Entity::Camera].front()->GetComponent<Camera>();
     }
 
     unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& Renderer::GetEntities()

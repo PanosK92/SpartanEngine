@@ -161,7 +161,7 @@ namespace Spartan
                 for (shared_ptr<Entity>& entity : renderables)
                 {
                     shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                    if (!renderable || !renderable->ReadyToRender() || renderable->HasFlag(RenderableFlags::OccludedCpu))
+                    if (!renderable || renderable->HasFlag(RenderableFlags::OccludedCpu))
                         continue;
 
                     // compute screen space rectangle
@@ -568,7 +568,7 @@ namespace Spartan
 
                     shared_ptr<Entity>& entity        = m_renderables[Renderer_Entity::Mesh][i];
                     shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                    if (!renderable || !renderable->ReadyToRender() || !light->IsInViewFrustum(renderable.get(), array_index) || !renderable->HasFlag(RenderableFlags::CastsShadows))
+                    if (!renderable || !light->IsInViewFrustum(renderable.get(), array_index) || !renderable->HasFlag(RenderableFlags::CastsShadows))
                         continue;
 
                     cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
@@ -681,7 +681,7 @@ namespace Spartan
 
                 shared_ptr<Entity>& entity        = m_renderables[Renderer_Entity::Mesh][i];
                 shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                if (!renderable || !renderable->ReadyToRender() || renderable->HasFlag(RenderableFlags::OccludedCpu))
+                if (!renderable || renderable->HasFlag(RenderableFlags::OccludedCpu))
                     continue;
 
                 // toggles
@@ -858,7 +858,7 @@ namespace Spartan
 
             shared_ptr<Entity>& entity        = m_renderables[Renderer_Entity::Mesh][i];
             shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-            if (!renderable || !renderable->ReadyToRender() || !renderable->IsVisible())
+            if (!renderable || !renderable->IsVisible())
                 continue;
 
             // toggles
@@ -1043,7 +1043,7 @@ namespace Spartan
 
                     float near = 1.0f;
                     float far  = 0.0f;
-                    Math::Matrix view_projection = m_camera->GetViewProjectionMatrix();
+                    Math::Matrix view_projection = GetCamera()->GetViewProjectionMatrix();
                     Vector4 p = {};
                     if (light->GetLightType() == LightType::Directional)
                     {
@@ -1619,7 +1619,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
-        m_pcb_pass_cpu.set_f3_value(m_camera->GetAperture(), 0.0f, 0.0f);
+        m_pcb_pass_cpu.set_f3_value(GetCamera()->GetAperture(), 0.0f, 0.0f);
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
         // set textures
@@ -1649,7 +1649,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
-        m_pcb_pass_cpu.set_f3_value(m_camera->GetShutterSpeed(), 0.0f, 0.0f);
+        m_pcb_pass_cpu.set_f3_value(GetCamera()->GetShutterSpeed(), 0.0f, 0.0f);
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
         // set textures
@@ -1678,7 +1678,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
-        m_pcb_pass_cpu.set_f3_value(m_camera->GetAperture(), 0.0f, 0.0f);
+        m_pcb_pass_cpu.set_f3_value(GetCamera()->GetAperture(), 0.0f, 0.0f);
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
         // set textures
@@ -1708,7 +1708,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
-        m_pcb_pass_cpu.set_f3_value(m_camera->GetIso(), 0.0f, 0.0f);
+        m_pcb_pass_cpu.set_f3_value(GetCamera()->GetIso(), 0.0f, 0.0f);
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
         // set textures
@@ -1975,7 +1975,7 @@ namespace Spartan
         {
             // follow camera in world unit increments so that the grid appears stationary in relation to the camera
             const float grid_spacing       = 1.0f;
-            const Vector3& camera_position = m_camera->GetEntity()->GetPosition();
+            const Vector3& camera_position = GetCamera()->GetEntity()->GetPosition();
             const Vector3 translation      = Vector3(
                 floor(camera_position.x / grid_spacing) * grid_spacing,
                 0.0f,

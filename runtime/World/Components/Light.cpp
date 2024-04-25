@@ -129,7 +129,7 @@ namespace Spartan
     {
         // if the light or the camera moves...
         bool update = GetEntity()->HasTransformChanged();
-        if (shared_ptr<Camera>& camera = Renderer::GetCamera())
+        if (shared_ptr<Camera> camera = Renderer::GetCamera())
         {
             if (camera->GetEntity()->HasTransformChanged())
             {
@@ -389,7 +389,7 @@ namespace Spartan
         if (m_light_type == LightType::Directional)
         {
             Vector3 target = Vector3::Zero;
-            if (shared_ptr<Camera>& camera = Renderer::GetCamera())
+            if (shared_ptr<Camera> camera = Renderer::GetCamera())
             {
                 target = camera->GetEntity()->GetPosition();
             }
