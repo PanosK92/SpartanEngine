@@ -17,7 +17,7 @@ RUN cd /deps &&\
     git clone --recursive --depth=1 https://github.com/GPUOpen-Tools/Compressonator.git; cd Compressonator &&\
     cd scripts/; python3 fetch_dependencies.py; cd .. &&\
     cmake -DOPTION_ENABLE_ALL_APPS=OFF -DOPTION_BUILD_CMP_SDK=ON -DOPTION_CMP_OPENGL=OFF -DOPTION_CMP_QT=OFF -DOPTION_CMP_OPENCV=OFF &&\
-    make; \
+    make -j $(nproc); \
     mkdir /usr/lib/Compressonator; cp cmp_compressonatorlib/compressonator.h /usr/include/compressonator.h &&\
     cp lib/*.a /usr/lib
 
@@ -36,7 +36,7 @@ RUN cd /deps &&\
     unzip FreeImage3180 &&\
     cd FreeImage/ &&\
     git apply ../freeimage.patch &&\
-    make -f Makefile.gnu libfreeimage-3.18.0.so &&\
+    make -f Makefile.gnu libfreeimage-3.18.0.so -j $(nproc) &&\
     cp libfreeimage-3.18.0.so /usr/lib/libFreeImageLib.so &&\
     mkdir /usr/include/FreeImage cp Source/FreeImage.h Source/Utilities.h /usr/include/FreeImage
 
