@@ -322,12 +322,13 @@ namespace Spartan
 
             material->SetProperty(MaterialProperty::SingleTextureRoughnessMetalness, static_cast<float>(is_gltf));
 
+            string name_str = name.C_Str();
+            transform(name_str.begin(), name_str.end(), name_str.begin(), ::tolower); // convert name to lowercase for case insensitive comparison
+
             // if there is not metalness texture, scan the material name, if it contains "metal", set metalness to 1
             if (!material->HasTexture(MaterialTexture::Metalness))
             {
                 // check for the name containing "metal", case insensitive
-                string name_str = name.C_Str();
-                transform(name_str.begin(), name_str.end(), name_str.begin(), ::tolower); // convert name to lowercase for case insensitive comparison
                 bool is_metal = name_str.find("metal") != string::npos;
                 if (is_metal)
                 {
@@ -339,6 +340,18 @@ namespace Spartan
                 {
                     material->SetProperty(MaterialProperty::Roughness, 0.5f);
                 }
+            }
+
+            bool needs_subsurface_scattering =
+                name_str.find("foliage") != string::npos ||
+                name_str.find("leaf")    != string::npos ||
+                name_str.find("leaves")  != string::npos ||
+                name_str.find("flowers") != string::npos ||
+                name_str.find("plant")   != string::npos;
+
+            if (needs_subsurface_scattering)
+            {
+                material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
             }
 
             return material;
