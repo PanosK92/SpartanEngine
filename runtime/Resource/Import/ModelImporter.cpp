@@ -328,22 +328,17 @@ namespace Spartan
                 // check for the name containing "metal", case insensitive
                 string name_str = name.C_Str();
                 transform(name_str.begin(), name_str.end(), name_str.begin(), ::tolower); // convert name to lowercase for case insensitive comparison
-                if (name_str.find("metal") != string::npos)
+                bool is_metal = name_str.find("metal") != string::npos;
+                if (is_metal)
                 {
                     material->SetProperty(MaterialProperty::Metalness, 1.0f);
                 }
-            }
 
-            // if the is no roughness texture, try to determine one
-            if (!material->HasTexture(MaterialTexture::Roughness))
-            {
-                float roughness = 0.8f;
-                if (material->GetProperty(MaterialProperty::Metalness) != 0)
+                // if there is also no roughness texture make the metal a bit shiny
+                if (is_metal && !material->HasTexture(MaterialTexture::Roughness))
                 {
-                    roughness = 0.5f;
+                    material->SetProperty(MaterialProperty::Roughness, 0.5f);
                 }
-
-                material->SetProperty(MaterialProperty::Roughness, roughness);
             }
 
             return material;
