@@ -42,7 +42,7 @@ float2 hammersley(uint i, uint n)
 
 float3 importance_sample_ggx(float2 Xi, float3 N, float roughness)
 {
-    float a = roughness*roughness;
+    float a = roughness * roughness;
     
     float phi      = 2.0 * PI * Xi.x;
     float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y));
@@ -122,6 +122,7 @@ float2 integrate_brdf(float n_dot_v, float roughness)
     
     A /= float(sample_count);
     B /= float(sample_count);
+    
     return float2(A, B);
 }
 
@@ -155,11 +156,11 @@ float3 prefilter_environment(float2 uv)
         float n_dot_l = saturate(dot(N, L));
         if (n_dot_l > 0.0)
         {
-            float phi_shifted = atan2(L.z, L.x) + PI;
-            float theta       = acos(L.y);
-            float u           = (phi_shifted / (2.0 * PI)) + 0.5; // shifting UV by half the texture width
-            u                 = fmod(u, 1.0); // wrap manually if u goes out of bounds
-            float v           = 1.0 - (theta / PI);
+            phi     = atan2(L.z, L.x) + PI;
+            theta   = acos(L.y);
+            float u = (phi / (2.0 * PI)) + 0.5; // shifting UV by half the texture width
+            u       = fmod(u, 1.0); // wrap manually if u goes out of bounds
+            float v = 1.0 - (theta / PI);
 
             color        += tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], float2(u, v), 0).rgb * n_dot_l;
             total_weight += n_dot_l;

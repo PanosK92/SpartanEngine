@@ -44,7 +44,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= resolution_out))
         return;
 
-    // construct surface
+    // surface
     Surface surface;
     surface.Build(thread_id.xy, resolution_out, true, false);
 
@@ -54,33 +54,33 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (early_exit_1 || early_exit_2 || early_exit_3)
         return;
 
-    // compute specular energy
+    // specular energy
     const float n_dot_v          = saturate(dot(-surface.camera_to_pixel, surface.normal));
     const float3 F               = F_Schlick_Roughness(surface.F0, n_dot_v, surface.roughness);
     const float2 envBRDF         = tex_lut_ibl.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, surface.roughness), 0.0f).xy;
     const float3 specular_energy = F * envBRDF.x + envBRDF.y;
 
-    // ibl - diffuse
+    // diffuse
     float mip_count_environment = pass_get_f3_value().x;
     float3 diffuse_energy       = compute_diffuse_energy(specular_energy, surface.metallic); // used to town down diffuse such as that only non metals have it
     float3 ibl_diffuse          = sample_environment(direction_sphere_uv(surface.normal), mip_count_environment) * surface.albedo.rgb * diffuse_energy;
 
-    // ibl - specular
+    // specular
     const float3 reflection            = reflect(surface.camera_to_pixel, surface.normal);
     float3 dominant_specular_direction = get_dominant_specular_direction(surface.normal, reflection, surface.roughness);
     float mip_level                    = lerp(0, mip_count_environment - 1, surface.roughness);
-    float3 ibl_specular_environment    = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level);
+    float3 ibl_specular                = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level);
     
-    // blend between ssr and the envirnoment
-    float mip_count_ssr     = pass_get_f3_value().y;
-    mip_level               = lerp(0, mip_count_ssr - 1, surface.roughness);
-    const float4 ssr_sample = is_ssr_enabled() ? tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level) : 0.0f;
-    float3 ibl_specular     = lerp(ibl_specular_environment, ssr_sample.rgb, ssr_sample.a);
+    // ssr
+    float mip_count_ssr = pass_get_f3_value().y;
+    mip_level           = lerp(0, mip_count_ssr - 1, surface.roughness);
+    float4 ssr_sample   = tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level) * float(is_ssr_enabled());
+    ibl_specular        = lerp(ibl_specular, ssr_sample.rgb, ssr_sample.a) * specular_energy;
 
-    float3 ibl  = ibl_diffuse + (ibl_specular * specular_energy);
+    // combine
+    float3 ibl  = ibl_diffuse + ibl_specular;
     ibl        *= surface.occlusion;
     ibl        *= surface.alpha;
 
-    // perfection achieved
-    tex_uav[thread_id.xy]  += float4(saturate_16(ibl), 0.0f);
+    tex_uav[thread_id.xy] += float4(saturate_16(ibl), 0.0f);
 }
