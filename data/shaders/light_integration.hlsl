@@ -155,12 +155,13 @@ float3 prefilter_environment(float2 uv)
         float n_dot_l = saturate(dot(N, L));
         if (n_dot_l > 0.0)
         {
-            float phi    = atan2(L.z, L.x) + PI;
-            float theta  = acos(L.y);
-            float u      = (phi + PI) / (2.0 * PI);
-            float v      = 1.0 - (theta / PI);
+            float phi_shifted = atan2(L.z, L.x) + PI;
+            float theta       = acos(L.y);
+            float u           = (phi_shifted / (2.0 * PI)) + 0.5; // shifting UV by half the texture width
+            u                 = fmod(u, 1.0); // wrap manually if u goes out of bounds
+            float v           = 1.0 - (theta / PI);
 
-            color        += tex_environment.SampleLevel(samplers[sampler_bilinear_wrap], float2(u, v), 0).rgb * n_dot_l;
+            color        += tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], float2(u, v), 0).rgb * n_dot_l;
             total_weight += n_dot_l;
         }
     }
