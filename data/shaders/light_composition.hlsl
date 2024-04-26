@@ -45,7 +45,7 @@ struct translucency
         
         static float3 get_color(Surface surface)
         {
-            const float scale = 0.08f; // that's what looks decent in the bistro world
+            const float scale = 0.07f; // that's what looks decent in the bistro world
             
             // compute refraction vector
             float3 normal_vector        = world_to_view(surface.normal, false);
@@ -65,8 +65,8 @@ struct translucency
             // get base color
             float frame_mip_count   = pass_get_f3_value().x;
             float mip_level         = lerp(0, frame_mip_count, surface.roughness_alpha);
-            float3 color            = tex_frame.SampleLevel(samplers[sampler_anisotropic_wrap], surface.uv, mip_level).rgb;
-            float3 color_refraction = tex_frame.SampleLevel(samplers[sampler_anisotropic_wrap], refracted_uv, mip_level).rgb;
+            float3 color            = tex_frame.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), surface.uv, mip_level).rgb;
+            float3 color_refraction = tex_frame.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), refracted_uv, mip_level).rgb;
         
             // screen fade
             float fade_factor = compute_fade_factor(refracted_uv);

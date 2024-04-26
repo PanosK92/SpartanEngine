@@ -1223,8 +1223,9 @@ namespace Spartan
 
     void Renderer::Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass)
     {
-        // acquire shaders
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::light_composition_c).get();
+        // acquire resources
+        RHI_Shader* shader_c        = GetShader(Renderer_Shader::light_composition_c).get();
+        RHI_Texture* tex_refraction = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -1237,7 +1238,7 @@ namespace Spartan
 
         // push pass constants
         m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
-        m_pcb_pass_cpu.set_f3_value(static_cast<float>(GetRenderTarget(Renderer_RenderTarget::frame_render)->GetMipCount()), GetOption<float>(Renderer_Option::Fog), 0.0f);
+        m_pcb_pass_cpu.set_f3_value(static_cast<float>(tex_refraction->GetMipCount()), GetOption<float>(Renderer_Option::Fog), 0.0f);
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
         // set textures
@@ -1248,7 +1249,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,    is_transparent_pass ? GetRenderTarget(Renderer_RenderTarget::light_diffuse_transparent).get()  : GetRenderTarget(Renderer_RenderTarget::light_diffuse).get());
         cmd_list->SetTexture(Renderer_BindingsSrv::light_specular,   is_transparent_pass ? GetRenderTarget(Renderer_RenderTarget::light_specular_transparent).get() : GetRenderTarget(Renderer_RenderTarget::light_specular).get());
         cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric, GetRenderTarget(Renderer_RenderTarget::light_volumetric));
-        cmd_list->SetTexture(Renderer_BindingsSrv::frame,            GetRenderTarget(Renderer_RenderTarget::frame_render_opaque)); // refraction
+        cmd_list->SetTexture(Renderer_BindingsSrv::frame,            tex_refraction);
         cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,             GetRenderTarget(Renderer_RenderTarget::ssgi));
         cmd_list->SetTexture(Renderer_BindingsSrv::environment,      GetRenderTarget(Renderer_RenderTarget::skysphere));
 
