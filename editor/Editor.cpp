@@ -176,11 +176,11 @@ Editor::Editor(const std::vector<std::string>& args)
     config.GlyphOffset.y = -2.0f;
 
     const string dir_fonts = Spartan::ResourceCache::GetResourceDirectory(Spartan::ResourceDirectory::Fonts) + "/";
-    font_normal = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Medium.ttf").c_str(), k_font_size * Spartan::Window::GetDpiScale());
-    font_bold   = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Bold.ttf").c_str(), k_font_size * Spartan::Window::GetDpiScale(), &config);
-    io.FontGlobalScale = k_font_scale;
+    font_normal            = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Medium.ttf").c_str(), k_font_size * Spartan::Window::GetDpiScale());
+    font_bold              = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Bold.ttf").c_str(), k_font_size * Spartan::Window::GetDpiScale(), &config);
+    io.FontGlobalScale     = k_font_scale;
 
-    // initialise ImGui backends
+    // initialise imgui backends
     SP_ASSERT_MSG(ImGui_ImplSDL2_Init(), "Failed to initialize ImGui's SDL backend");
     ImGui::RHI::Initialize();
 
@@ -192,7 +192,7 @@ Editor::Editor(const std::vector<std::string>& args)
     IconLoader::Initialize();
     EditorHelper::Initialize(this);
 
-    // create all ImGui widgets
+    // create all imgui widgets
     m_widgets.emplace_back(make_shared<ProgressDialog>(this));
     m_widgets.emplace_back(make_shared<Console>(this));
     m_widgets.emplace_back(make_shared<Profiler>(this));
@@ -208,11 +208,11 @@ Editor::Editor(const std::vector<std::string>& args)
     m_widgets.emplace_back(make_shared<TitleBar>(this));
     widget_menu_bar = static_cast<TitleBar*>(m_widgets.back().get());
 
-    // allow ImGui to get event's from the engine's event processing loop
+    // allow imgui to get event's from the engine's event processing loop
     SP_SUBSCRIBE_TO_EVENT(Spartan::EventType::Sdl, SP_EVENT_HANDLER_VARIANT_STATIC(process_event));
 
-    // register ImGui as a third party library (will show up in the about window)
-    Spartan::Settings::RegisterThirdPartyLib("Dear ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
+    // register imgui as a third party library (will show up in the about window)
+    Spartan::Settings::RegisterThirdPartyLib("ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
 }
 
 Editor::~Editor()

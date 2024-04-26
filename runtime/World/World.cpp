@@ -1246,7 +1246,7 @@ namespace Spartan
             shared_ptr<Entity> entity = m_default_model->GetRootEntity().lock();
             entity->SetObjectName("bistro_interior");
             entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
-            entity->SetScale(Vector3(1.7f, 1.7f, 1.7f)); // interior has a different scale (for some reason)
+            entity->SetScale(Vector3(1.6f, 1.6f, 1.6f)); // interior has a different scale (for some reason)
 
             // move doors out of the way
             //entity->GetDescendantByName("Bistro_Research_Exterior_Paris_Building_01_paris_building_01_bottom_4825")->SetPosition(Vector3(0.0, -1000.0f, 0.0f));
