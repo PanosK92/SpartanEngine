@@ -132,16 +132,16 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 light_specular = tex_light_specular[thread_id.xy].rgb;
 
         // transparent
-        float3 light_transparent = 0.0f;
+        float3 light_refracted_background = 0.0f;
         if (surface.is_transparent())
         {
             // refraction
-            light_transparent = translucency::refraction::get_color(surface);
+            light_refracted_background = translucency::refraction::get_color(surface);
 
             // water
             if (surface.is_water())
             {
-                light_transparent.rgb *= translucency::water::get_color(surface, color.a);
+                light_refracted_background *= translucency::water::get_color(surface, color.a);
 
                 // override g-buffer albedo alpha, for the IBL pass, right after
                 tex_uav2[thread_id.xy]  = float4(surface.albedo, color.a);
@@ -150,7 +150,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         
         // compose
         float3 light  = (light_diffuse + surface.gi) * surface.albedo + light_specular;
-        color.rgb    += lerp(light, light_transparent, 1.0f - color.a);
+        color.rgb    += lerp(light_refracted_background, light, color.a);
     }
 
     // fog
