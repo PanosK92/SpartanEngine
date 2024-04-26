@@ -156,6 +156,8 @@ struct Light
     float3 radiance;
     float  n_dot_l;
     float  attenuation;
+    float2 resolution;
+    float2 texel_size;
     matrix view_projection[6];
     
     // easy access to flags
@@ -186,6 +188,27 @@ struct Light
         float cd           = dot(to_pixel, forward);
         float attenuation  = saturate(cd * scale + offset);
         return attenuation * attenuation;
+    }
+
+    float2 compute_resolution()
+    {
+        float2 resolution;
+        
+        if (is_directional())
+        {
+            uint layer_count;
+            tex_light_directional_depth.GetDimensions(resolution.x, resolution.y, layer_count);
+        }
+        else if (is_point())
+        {
+            tex_light_point_depth.GetDimensions(resolution.x, resolution.y);
+        }
+        else if (is_spot())
+        {
+            tex_light_spot_depth.GetDimensions(resolution.x, resolution.y);
+        }
+
+        return resolution;
     }
 
     float compute_attenuation(const float3 surface_position)
@@ -222,42 +245,6 @@ struct Light
         }
 
         return direction;
-    }
-
-    void Build(float3 surface_position, float3 surface_normal, float occlusion)
-    {
-        Light_ light = buffer_lights[(uint)pass_get_f3_value2().y];
-
-        flags             = light.flags;
-        view_projection   = light.view_projection;
-        color             = light.color.rgb;
-        position          = light.position.xyz;
-        intensity         = light.intensity;
-        far               = light.range;
-        angle             = light.angle;
-        bias              = light.bias;
-        forward           = light.direction.xyz;
-        normal_bias       = light.normal_bias;
-        near              = 0.1f;
-        distance_to_pixel = length(surface_position - position);
-        to_pixel          = compute_direction(position, surface_position);
-        n_dot_l           = saturate(dot(surface_normal, -to_pixel));
-        attenuation       = compute_attenuation(surface_position);
-
-        // apply occlusion
-        float occlusion_factor = is_ssgi_enabled() ? occlusion : 1.0;
-        radiance               = color * intensity * attenuation * n_dot_l * occlusion_factor;
-    }
-
-    void Build(Surface surface)
-    {
-        Build(surface.position, surface.normal, surface.occlusion);
-    }
-
-    void Build()
-    {
-        Surface surface;
-        Build(surface.position, surface.normal, surface.occlusion);
     }
 
     float compare_depth(float3 uv, float compare)
@@ -309,6 +296,44 @@ struct Light
             return tex_light_spot_color.SampleLevel(samplers[sampler_bilinear_clamp_border], uv.xy, 0).rgb;
         
         return 0.0f;
+    }
+
+    void Build(float3 surface_position, float3 surface_normal, float occlusion)
+    {
+        Light_ light = buffer_lights[(uint)pass_get_f3_value2().y];
+
+        flags             = light.flags;
+        view_projection   = light.view_projection;
+        color             = light.color.rgb;
+        position          = light.position.xyz;
+        intensity         = light.intensity;
+        far               = light.range;
+        angle             = light.angle;
+        bias              = light.bias;
+        forward           = light.direction.xyz;
+        normal_bias       = light.normal_bias;
+        near              = 0.1f;
+        distance_to_pixel = length(surface_position - position);
+        to_pixel          = compute_direction(position, surface_position);
+        n_dot_l           = saturate(dot(surface_normal, -to_pixel));
+        attenuation       = compute_attenuation(surface_position);
+        resolution        = compute_resolution();
+        texel_size        = 1.0f / resolution;
+
+        // apply occlusion
+        float occlusion_factor = is_ssgi_enabled() ? occlusion : 1.0;
+        radiance               = color * intensity * attenuation * n_dot_l * occlusion_factor;
+    }
+
+    void Build(Surface surface)
+    {
+        Build(surface.position, surface.normal, surface.occlusion);
+    }
+
+    void Build()
+    {
+        Surface surface;
+        Build(surface.position, surface.normal, surface.occlusion);
     }
 };
 

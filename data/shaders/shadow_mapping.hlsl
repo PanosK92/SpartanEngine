@@ -25,29 +25,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // technique
 #define SampleShadowMap Technique_Vogel
 
-// technique - all
+// base shadow
 static const uint   g_shadow_samples                 = 3;
-static const float  g_shadow_filter_size             = 3.5f;
+static const float  g_shadow_filter_size             = 2.5f;
 static const float  g_shadow_cascade_blend_threshold = 0.7f; // above that, you start to see the cascade line
-// technique - vogel                       
+// penumbra shadow
 static const uint   g_penumbra_samples     = 8;
 static const float  g_penumbra_filter_size = 128.0f;
-// technique - pre-calculated
+// ignore - pre-calculated
 static const float g_pcf_filter_size    = (sqrt((float)g_shadow_samples) - 1.0f) / 2.0f;
 static const float g_shadow_samples_rpc = 1.0f / (float) g_shadow_samples;
 
-/*------------------------------------------------------------------------------
-    SHADER VARIABLES
-------------------------------------------------------------------------------*/
-float get_shadow_resolution()
-{
-    return pass_get_f3_value().y;
-}
-
-float get_shadow_texel_size()
-{
-    return (1.0f / get_shadow_resolution());
-}
 
 /*------------------------------------------------------------------------------
     PENUMBRA
@@ -71,7 +59,7 @@ float compute_penumbra(Light light, float vogel_angle, float3 uv, float compare)
 
     for(uint i = 0; i < g_penumbra_samples; i ++)
     {
-        float2 offset = vogel_disk_sample(i, g_penumbra_samples, vogel_angle) * get_shadow_texel_size() * g_penumbra_filter_size;
+        float2 offset = vogel_disk_sample(i, g_penumbra_samples, vogel_angle) * light.texel_size * g_penumbra_filter_size;
         float depth   = light.sample_depth(uv + float3(offset, 0.0f));
 
         if(depth > compare)
@@ -91,7 +79,7 @@ float compute_penumbra(Light light, float vogel_angle, float3 uv, float compare)
         penumbra *= 10.0f;
     }
     
-    return saturate_16(penumbra);
+    return clamp(penumbra, 1.0f, 1024.0f);
 }
 
 /*------------------------------------------------------------------------------
@@ -100,16 +88,15 @@ float compute_penumbra(Light light, float vogel_angle, float3 uv, float compare)
 float Technique_Vogel(Light light, Surface surface, float3 uv, float compare)
 {
     float shadow          = 0.0f;
-    float temporal_offset = get_noise_interleaved_gradient(surface.pos, true, true);
+    float temporal_offset = get_noise_interleaved_gradient(surface.pos, true, true) * 0.5f;
     float temporal_angle  = temporal_offset * PI2;
     float penumbra        = light.is_directional() ? 1.0f : compute_penumbra(light, temporal_angle, uv, compare);
 
-    // todo: in the case of the point light, the uv is the direction, filtering works ok but I could improved it.
-
     for (uint i = 0; i < g_shadow_samples; i++)
     {
-        float2 offset = vogel_disk_sample(i, g_shadow_samples, temporal_angle) * get_shadow_texel_size() * g_shadow_filter_size * penumbra;
-        shadow        += light.compare_depth(uv + float3(offset, 0.0f), compare);
+        float2 filter_size = light.texel_size * g_shadow_filter_size * penumbra;
+        float2 offset      = vogel_disk_sample(i, g_shadow_samples, temporal_angle) * filter_size;
+        shadow             += light.compare_depth(uv + float3(offset, 0.0f), compare);
     } 
 
     return shadow * g_shadow_samples_rpc;
@@ -120,12 +107,11 @@ float3 Technique_Vogel_Color(Light light, Surface surface, float3 uv)
     float3 shadow     = 0.0f;
     float vogel_angle = get_noise_interleaved_gradient(surface.pos, true, false) * PI2;
 
-    // todo: in the case of the point light, the uv is the direction, filtering works ok but I could improved it.
-    
     for (uint i = 0; i < g_shadow_samples; i++)
     {
-        float2 offset  = vogel_disk_sample(i, g_shadow_samples, vogel_angle) * get_shadow_texel_size() * g_shadow_filter_size;
-        shadow        += light.sample_color(uv + float3(offset, 0.0f));
+        float2 filter_size  = light.texel_size * g_shadow_filter_size;
+        float2 offset       = vogel_disk_sample(i, g_shadow_samples, vogel_angle) * filter_size;
+        shadow             += light.sample_color(uv + float3(offset, 0.0f));
     } 
 
     return shadow * g_shadow_samples_rpc;
@@ -205,12 +191,12 @@ static const float2 poisson_disk[64] =
 float Technique_Poisson(Light light, Surface surface, float3 uv, float compare)
 {
     float shadow          = 0.0f;
-    float temporal_offset = get_noise_interleaved_gradient(uv.xy * get_shadow_resolution(), true, false); // helps with noise if TAA is active
+    float temporal_offset = get_noise_interleaved_gradient(uv.xy * light.resolution, true, false); // helps with noise if TAA is active
 
     for (uint i = 0; i < g_shadow_samples; i++)
     {
         uint index     = uint(g_shadow_samples * get_random(uv.xy * i)) % g_shadow_samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
-        float2 offset  = (poisson_disk[index] + temporal_offset) * get_shadow_texel_size() * g_shadow_filter_size;
+        float2 offset  = (poisson_disk[index] + temporal_offset) * light.texel_size * g_shadow_filter_size;
         shadow        += light.compare_depth(uv + float3(offset, 0.0f), compare);
     }   
 
@@ -229,7 +215,7 @@ float Technique_Pcf(Light light, Surface surface, float3 uv, float compare)
     {
         for (int x = -g_pcf_filter_size; x <= g_pcf_filter_size; x++)
         {
-            float2 offset = float2(x, y) * get_shadow_texel_size();
+            float2 offset = float2(x, y) * light.texel_size;
             shadow += light.compare_depth(uv + float3(offset, 0.0f), compare);
         }
     }
@@ -248,7 +234,7 @@ float4 Shadow_Map(Surface surface, Light light)
     if (light.distance_to_pixel <= light.far)
     {
         // compute world position with normal offset bias to reduce shadow acne
-        float3 normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * light.normal_bias * get_shadow_texel_size();
+        float3 normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * light.normal_bias * light.texel_size.x;
         float3 position_world     = surface.position + normal_offset_bias;
 
         // project to light space
@@ -287,4 +273,3 @@ float4 Shadow_Map(Surface surface, Light light)
 
     return shadow;
 }
-
