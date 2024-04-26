@@ -345,8 +345,10 @@ namespace Spartan
             // if there is not metalness texture, scan the material name, if it contains "metal", set metalness to 1
             if (!material->HasTexture(MaterialTexture::Metalness))
             {
-                // check for the name containing "metal", case insensitive
-                bool is_metal = name.find("metal") != string::npos;
+                bool is_metal =
+                    name.find("metal")  != string::npos ||
+                    name.find("chrome") != string::npos;
+
                 if (is_metal)
                 {
                     material->SetProperty(MaterialProperty::Metalness, 1.0f);
@@ -355,7 +357,7 @@ namespace Spartan
                 // if there is also no roughness texture make the metal a bit shiny
                 if (is_metal && !material->HasTexture(MaterialTexture::Roughness))
                 {
-                    material->SetProperty(MaterialProperty::Roughness, 0.5f);
+                    material->SetProperty(MaterialProperty::Roughness, 0.3f);
                 }
             }
 
