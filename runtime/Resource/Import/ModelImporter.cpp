@@ -343,35 +343,53 @@ namespace Spartan
                 material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
             }
 
-            // if there is not metalness texture, scan the material name, if it contains "metal", set metalness to 1
-            if (!material->HasTexture(MaterialTexture::Metalness))
+            // if metalness and/or roughness are not provided, try to deduce some sensible values
             {
-                bool is_metal =
-                    name.find("metal")  != string::npos ||
-                    name.find("chrome") != string::npos;
+                bool is_vegetation =
+                    name.find("foliage") != string::npos ||
+                    name.find("leaf")    != string::npos ||
+                    name.find("leaves")  != string::npos ||
+                    name.find("flowers") != string::npos ||
+                    name.find("plant")   != string::npos;
 
-                if (is_metal)
+                bool is_metal =
+                    name.find("metal")    != string::npos ||
+                    name.find("iron")     != string::npos ||
+                    name.find("radiator") != string::npos ||
+                    name.find("chrome")   != string::npos;
+
+                bool is_smooth  = name.find("ceramic") != string::npos; // plate
+                bool is_plaster = name.find("plaster") != string::npos; // wall
+                bool is_tile    = name.find("tile")    != string::npos; // floor
+
+                // metalness
+                if (!material->HasTexture(MaterialTexture::Metalness) && is_metal)
                 {
                     material->SetProperty(MaterialProperty::Metalness, 1.0f);
                 }
 
-                // if there is also no roughness texture make the metal a bit shiny
-                if (is_metal && !material->HasTexture(MaterialTexture::Roughness))
+                // roughness
+                if (!material->HasTexture(MaterialTexture::Roughness))
                 {
-                    material->SetProperty(MaterialProperty::Roughness, 0.3f);
+                    if (is_smooth || is_metal || is_vegetation)
+                    {
+                        material->SetProperty(MaterialProperty::Roughness, 0.3f);
+                    }
+                    else if (is_tile)
+                    {
+                        material->SetProperty(MaterialProperty::Roughness, 0.5f);
+                    }
+                    else if (is_plaster)
+                    {
+                        material->SetProperty(MaterialProperty::Roughness, 0.65f);
+                    }
                 }
-            }
 
-            bool needs_subsurface_scattering =
-                name.find("foliage") != string::npos ||
-                name.find("leaf")    != string::npos ||
-                name.find("leaves")  != string::npos ||
-                name.find("flowers") != string::npos ||
-                name.find("plant")   != string::npos;
-
-            if (needs_subsurface_scattering)
-            {
-                material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                // subsurface scattering
+                if (is_vegetation)
+                {
+                    material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                }
             }
 
             return material;
