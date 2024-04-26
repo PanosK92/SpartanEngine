@@ -170,8 +170,8 @@ namespace Spartan
             }
 
             // accumulate elapsed time
-            float frameTime  = static_cast<float>(Timer::GetDeltaTimeSec());
-            accumulator     += frameTime;
+            float freme_time  = static_cast<float>(Timer::GetDeltaTimeSec());
+            accumulator      += freme_time;
             // update physics as many times as needed to consume the accumulator at 200 Hz rate
             while (accumulator >= internal_time_step)
             {

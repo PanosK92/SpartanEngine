@@ -45,7 +45,7 @@ struct translucency
         
         static float3 get_color(Surface surface)
         {
-            const float scale = 0.07f; // that's what looks decent in the bistro world
+            const float scale = 0.05f; // that's what looks decent in the bistro world
             
             // compute refraction vector
             float3 normal_vector        = world_to_view(surface.normal, false);
@@ -159,4 +159,5 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = saturate_16(color);
 }
+
 
