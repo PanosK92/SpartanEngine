@@ -86,8 +86,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
         float4 albedo_sample = sampling::smart(surface, vertex, material_albedo);
 
         // read albedo's alpha channel as an alpha mask as well
-        alpha_mask      = min(alpha_mask, albedo_sample.a);
-        albedo_sample.a = 1.0f;
+        alpha_mask = min(alpha_mask, albedo_sample.a);
         
         albedo_sample.rgb  = srgb_to_linear(albedo_sample.rgb);
         albedo            *= albedo_sample;
