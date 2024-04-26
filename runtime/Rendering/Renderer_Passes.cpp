@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_FidelityFX.h"
+#include "ProgressTracker.h"
 //======================================
 
 //= NAMESPACES ===============
@@ -500,6 +501,10 @@ namespace Spartan
         RHI_Shader* shader_v = GetShader(Renderer_Shader::depth_light_v).get();
         RHI_Shader* shader_p = GetShader(Renderer_Shader::depth_light_p).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
+            return;
+
+        // temp: dirty bistro fix
+        if (ProgressTracker::IsLoading())
             return;
 
         lock_guard lock(m_mutex_renderables);

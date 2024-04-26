@@ -1213,9 +1213,9 @@ namespace Spartan
 
     void World::CreateDefaultWorldBistro()
     {
-        Vector3 camera_position = Vector3(-18.5f, 2.9248f, -5.28f);
-        Vector3 camera_rotation = Vector3(2.3365f, 102.5297f, 0.0f);
-        create_default_world_common(camera_position, camera_rotation);
+        Vector3 camera_position = Vector3(5.2739f, 1.6343f, 8.2956f);
+        Vector3 camera_rotation = Vector3(0.0f, -180.0f, 0.0f);
+        create_default_world_common(camera_position, camera_rotation, LightIntensity::bulb_150_watt, "project\\music\\jake_chudnow_shona.mp3", false);
 
         if (m_default_model = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroExterior.fbx"))
         {
@@ -1243,6 +1243,14 @@ namespace Spartan
 
         if (m_default_model = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroInterior.fbx"))
         {
+            shared_ptr<Entity> light = World::CreateEntity();
+            light->SetObjectName("light_point");
+            light->SetPositionLocal(Vector3(2.2039f, 3.9965f, 3.2015f));
+            light->AddComponent<Light>()->SetFlag(LightFlags::ShadowsTransparent, false);
+            light->AddComponent<Light>()->SetFlag(LightFlags::Volumetric, false);
+            light->GetComponent<Light>()->SetLightType(LightType::Point);
+            light->GetComponent<Light>()->SetRange(20.0f);
+
             shared_ptr<Entity> entity = m_default_model->GetRootEntity().lock();
             entity->SetObjectName("bistro_interior");
             entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
