@@ -281,30 +281,41 @@ namespace Spartan
             shared_ptr<Material> material = make_shared<Material>();
 
             // name
-            aiString name;
-            aiGetMaterialString(material_assimp, AI_MATKEY_NAME, &name);
-            // set a resource file path so it can be used by the resource cache
-            material->SetResourceFilePath(FileSystem::RemoveIllegalCharacters(FileSystem::GetDirectoryFromFilePath(file_path) + string(name.C_Str()) + EXTENSION_MATERIAL));
+            aiString name_assimp;
+            aiGetMaterialString(material_assimp, AI_MATKEY_NAME, &name_assimp);
+            string name = name_assimp.C_Str();
+            // set a material file path, this allows for the material to be cached (also means that if already cached, the engine will not save it as a duplicate)
+            material->SetResourceFilePath(FileSystem::RemoveIllegalCharacters(FileSystem::GetDirectoryFromFilePath(file_path) + name + EXTENSION_MATERIAL));
 
             // color
             aiColor4D color_diffuse(1.0f, 1.0f, 1.0f, 1.0f);
             aiGetMaterialColor(material_assimp, AI_MATKEY_COLOR_DIFFUSE, &color_diffuse);
 
-            // two-sided
-            int no_culling;
-            if (AI_SUCCESS == aiGetMaterialInteger(material_assimp, AI_MATKEY_TWOSIDED, &no_culling))
+            // opacity
+            aiColor4D opacity(1.0f, 1.0f, 1.0f, 1.0f);
             {
-                if (no_culling != 0)
-                { 
-                    material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                aiGetMaterialColor(material_assimp, AI_MATKEY_OPACITY, &opacity);
+
+                // convert name to lowercase for case insensitive comparisons below
+                transform(name.begin(), name.end(), name.begin(), ::tolower);
+
+                // if the material is fully opaque but the name contains keywords
+                // which indicate transparency, set the opacity to 0.5
+                if (opacity.r == 1.0f)
+                {
+                    bool is_transparent =
+                        name.find("glass")       != string::npos ||
+                        name.find("transparent") != string::npos ||
+                        name.find("bottle")      != string::npos;
+
+                    if (is_transparent)
+                    { 
+                        opacity.r = 0.5f;
+                    }
                 }
             }
 
-            // opacity
-            aiColor4D opacity(1.0f, 1.0f, 1.0f, 1.0f);
-            aiGetMaterialColor(material_assimp, AI_MATKEY_OPACITY, &opacity);
-
-            // Set color and opacity
+            // set color and opacity
             material->SetProperty(MaterialProperty::ColorR, color_diffuse.r);
             material->SetProperty(MaterialProperty::ColorG, color_diffuse.g);
             material->SetProperty(MaterialProperty::ColorB, color_diffuse.b);
@@ -322,14 +333,19 @@ namespace Spartan
 
             material->SetProperty(MaterialProperty::SingleTextureRoughnessMetalness, static_cast<float>(is_gltf));
 
-            string name_str = name.C_Str();
-            transform(name_str.begin(), name_str.end(), name_str.begin(), ::tolower); // convert name to lowercase for case insensitive comparison
+            // two-sided
+            int no_culling = opacity.r != 1.0f; // if transparent, default to no culling
+            aiGetMaterialInteger(material_assimp, AI_MATKEY_TWOSIDED, &no_culling);
+            if (no_culling != 0)
+            {
+                material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+            }
 
             // if there is not metalness texture, scan the material name, if it contains "metal", set metalness to 1
             if (!material->HasTexture(MaterialTexture::Metalness))
             {
                 // check for the name containing "metal", case insensitive
-                bool is_metal = name_str.find("metal") != string::npos;
+                bool is_metal = name.find("metal") != string::npos;
                 if (is_metal)
                 {
                     material->SetProperty(MaterialProperty::Metalness, 1.0f);
@@ -343,11 +359,11 @@ namespace Spartan
             }
 
             bool needs_subsurface_scattering =
-                name_str.find("foliage") != string::npos ||
-                name_str.find("leaf")    != string::npos ||
-                name_str.find("leaves")  != string::npos ||
-                name_str.find("flowers") != string::npos ||
-                name_str.find("plant")   != string::npos;
+                name.find("foliage") != string::npos ||
+                name.find("leaf")    != string::npos ||
+                name.find("leaves")  != string::npos ||
+                name.find("flowers") != string::npos ||
+                name.find("plant")   != string::npos;
 
             if (needs_subsurface_scattering)
             {

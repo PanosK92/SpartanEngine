@@ -217,9 +217,9 @@ namespace Spartan
         }
 
         return BoundingBox::Undefined;
-	}
-
-	shared_ptr<Material> Renderable::SetMaterial(const shared_ptr<Material>& material)
+    }
+    
+    shared_ptr<Material> Renderable::SetMaterial(const shared_ptr<Material>& material)
     {
         SP_ASSERT(material != nullptr);
 

@@ -933,8 +933,6 @@ namespace Spartan
             }
         };
 
-        // avoid updating when the engine is loading anything as
-        // it can manifest flickering materials (due to them being updated)
         if (ProgressTracker::IsLoading())
             return;
 
@@ -966,8 +964,10 @@ namespace Spartan
     {
         static array<Sb_Light, rhi_max_array_size_lights> properties;
 
-        lock_guard lock(m_mutex_renderables);
+        if (ProgressTracker::IsLoading())
+            return;
 
+        lock_guard lock(m_mutex_renderables);
         uint32_t index = 0;
 
         // cpu
