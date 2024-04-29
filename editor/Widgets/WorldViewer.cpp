@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Properties.h"
 #include "TitleBar.h"
 #include "Viewport.h"
-#include "../ImGui/Source/imgui_stdlib.h"
 #include "World/Entity.h"
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
@@ -34,6 +33,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Terrain.h"
 #include "Commands/CommandStack.h"
 #include "../ImGui/ImGuiExtension.h"
+SP_WARNINGS_OFF
+#include "../ImGui/Source/imgui_stdlib.h"
+SP_WARNINGS_ON
 //=========================================
 
 //= NAMESPACES =====
@@ -50,7 +52,6 @@ namespace
 
     void load_default_world_prompt(Editor* editor)
     {
-        // Load default world window
         static bool is_default_world_window_visible = true;
         if (is_default_world_window_visible)
         {
@@ -73,8 +74,9 @@ namespace
                     "8. Minecraft",
                     "9. Living Room"
                 };
-                static int item_index = 2;
                 static int item_count = IM_ARRAYSIZE(items);
+                static int item_index = 2;
+
                 ImGui::PushItemWidth(500.0f * Spartan::Window::GetDpiScale());
                 ImGui::ListBox("##list_box", &item_index, items, item_count, item_count);
                 ImGui::PopItemWidth();
@@ -82,14 +84,11 @@ namespace
                 // button
                 if (ImGuiSp::button_centered_on_line("Ok"))
                 {
-                    Spartan::ThreadPool::AddTask([]()
+                    if (item_index > 0)
                     {
-                        if (item_index > 0)
-                        { 
-                            Spartan::World::LoadDefaultWorld(static_cast<Spartan::DefaultWorld>(item_index - 1));
-                        }
-                    });
-    
+                        Spartan::World::LoadDefaultWorld(static_cast<Spartan::DefaultWorld>(item_index - 1));
+                    }
+
                     is_default_world_window_visible = false;
                 }
             }

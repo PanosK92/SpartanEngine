@@ -31,9 +31,13 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static std::array<Progress, 4> m_progresses;
-    static std::mutex m_mutex_progress_access;
-    static std::mutex m_mutex_jobs;
+    namespace
+    { 
+        array<Progress, 4> m_progresses;
+        mutex m_mutex_progress_access;
+        mutex m_mutex_jobs;
+        bool is_loading_global = false;
+    }
 
     void Progress::Start(const uint32_t job_count, const std::string& text)
     {
@@ -87,6 +91,9 @@ namespace Spartan
 
     bool ProgressTracker::IsLoading()
     {
+        if (is_loading_global)
+            return true;
+
         lock_guard lock(m_mutex_progress_access);
 
         for (const Progress& progress : m_progresses)
@@ -96,5 +103,10 @@ namespace Spartan
         }
 
         return false;
+    }
+
+    void ProgressTracker::SetLoadingStateGlobal(const bool is_loading)
+    {
+        is_loading_global = is_loading;
     }
 }

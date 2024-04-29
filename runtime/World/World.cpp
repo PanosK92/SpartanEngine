@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "World.h"
 #include "Entity.h"
+#include "ThreadPool.h"
 #include "Components/Camera.h"
 #include "Components/Light.h"
 #include "Components/AudioListener.h"
@@ -350,18 +351,25 @@ namespace Spartan
 
     void World::LoadDefaultWorld(DefaultWorld default_world)
     {
-        switch (default_world)
+        ThreadPool::AddTask([default_world]()
         {
-            case DefaultWorld::Objects:    CreateDefaultWorldObjects();    break;
-            case DefaultWorld::Car:        CreateDefaultWorldCar();        break;
-            case DefaultWorld::Forest:     CreateDefaultWorldForest();     break;
-            case DefaultWorld::Sponza:     CreateDefaultWorldSponza();     break;
-            case DefaultWorld::Doom:       CreateDefaultWorldDoom();       break;
-            case DefaultWorld::Bistro:     CreateDefaultWorldBistro();     break;
-            case DefaultWorld::Minecraft:  CreateDefaultWorldMinecraft();  break;
-            case DefaultWorld::LivingRoom: CreateDefaultWorldLivingRoom(); break;
-            default: break;
-        }  
+            ProgressTracker::SetLoadingStateGlobal(true);
+
+            switch (default_world)
+            {
+                case DefaultWorld::Objects:    CreateDefaultWorldObjects();    break;
+                case DefaultWorld::Car:        CreateDefaultWorldCar();        break;
+                case DefaultWorld::Forest:     CreateDefaultWorldForest();     break;
+                case DefaultWorld::Sponza:     CreateDefaultWorldSponza();     break;
+                case DefaultWorld::Doom:       CreateDefaultWorldDoom();       break;
+                case DefaultWorld::Bistro:     CreateDefaultWorldBistro();     break;
+                case DefaultWorld::Minecraft:  CreateDefaultWorldMinecraft();  break;
+                case DefaultWorld::LivingRoom: CreateDefaultWorldLivingRoom(); break;
+                default: SP_ASSERT_MSG(false, "Unhandled default world");      break;
+            }
+
+            ProgressTracker::SetLoadingStateGlobal(false);
+        });
     }
 
     void World::Resolve()
