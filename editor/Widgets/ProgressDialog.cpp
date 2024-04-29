@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====================
 #include "ProgressDialog.h"
 #include "Core/ProgressTracker.h"
-#include <array>
 //===============================
 
 //= NAMESPACES ===============
@@ -33,7 +32,18 @@ using namespace Spartan::Math;
 
 namespace
 {
-    static array<Progress*, 5> progresses;
+    void show_progress_bar(const float fraction, const char* text, const bool top_seperator)
+    {
+        if (top_seperator)
+        {
+            ImGui::Separator();
+        }
+
+        ImGui::BeginGroup();
+        ImGui::ProgressBar(fraction, ImVec2(0.0f, 0.0f));
+        ImGui::Text(text);
+        ImGui::EndGroup();
+    }
 }
 
 ProgressDialog::ProgressDialog(Editor* editor) : Widget(editor)
@@ -46,35 +56,28 @@ ProgressDialog::ProgressDialog(Editor* editor) : Widget(editor)
 
 void ProgressDialog::OnTick()
 {
-    progresses[static_cast<uint32_t>(ProgressType::ModelImporter)] = &ProgressTracker::GetProgress(ProgressType::ModelImporter);
-    progresses[static_cast<uint32_t>(ProgressType::World)]         = &ProgressTracker::GetProgress(ProgressType::World);
-    progresses[static_cast<uint32_t>(ProgressType::Resource)]      = &ProgressTracker::GetProgress(ProgressType::Resource);
-    progresses[static_cast<uint32_t>(ProgressType::Terrain)]       = &ProgressTracker::GetProgress(ProgressType::Terrain);
-
-    // show only if an operation is in progress
-    bool visible = ProgressTracker::IsLoading();
-    SetVisible(visible);
+    SetVisible(ProgressTracker::IsLoading());
 }
 
 void ProgressDialog::OnTickVisible()
 {
     ImGui::SetWindowFocus();
 
-    bool first = true;
-    for (Progress* progress : progresses)
+    bool at_least_one_progress = false;
+    for (uint32_t i = 0; i < static_cast<uint32_t>(ProgressType::Max); i++)
     {
-        if (progress && progress->IsProgressing())
+        if (Progress* progress = &ProgressTracker::GetProgress(static_cast<ProgressType>(i)))
         {
-            if (!first)
+            if (progress->IsProgressing())
             {
-                ImGui::Separator();
+                show_progress_bar(progress->GetFraction(), progress->GetText().c_str(), at_least_one_progress);
+                at_least_one_progress = true;
             }
-
-            ImGui::BeginGroup();
-            ImGui::ProgressBar(progress->GetFraction(), ImVec2(0.0f, 0.0f));
-            ImGui::Text(progress->GetText().c_str());
-            ImGui::EndGroup();
-            first = false;
         }
+    }
+
+    if (!at_least_one_progress)
+    {
+        show_progress_bar(0.5f, "...", at_least_one_progress);
     }
 }

@@ -34,7 +34,7 @@ namespace Spartan
         World,
         Resource,
         Terrain,
-        undefined
+        Max
     };
 
     class SP_CLASS Progress
@@ -61,5 +61,6 @@ namespace Spartan
     public:
         static Progress& GetProgress(const ProgressType progress_type);
         static bool IsLoading();
+        static void SetLoadingStateGlobal(const bool is_loading);
     };
 }

@@ -53,7 +53,6 @@ namespace Spartan
         static bool SaveToFile(const std::string& filePath);
         static bool LoadFromFile(const std::string& file_path);
 
-
         // entities
         static std::shared_ptr<Entity> CreateEntity();
         static bool EntityExists(Entity* entity);
