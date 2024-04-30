@@ -4,7 +4,7 @@
  *
  *   User-selectable configuration macros (specification only).
  *
- * Copyright (C) 1996-2021 by
+ * Copyright (C) 1996-2023 by
  * David Turner, Robert Wilhelm, and Werner Lemberg.
  *
  * This file is part of the FreeType project, and may only be used,
@@ -219,6 +219,10 @@ FT_BEGIN_HEADER
    *   If you use a build system like cmake or the `configure` script,
    *   options set by those programs have precedence, overwriting the value
    *   here with the configured one.
+   *
+   *   If you use the GNU make build system directly (that is, without the
+   *   `configure` script) and you define this macro, you also have to pass
+   *   `SYSTEM_ZLIB=yes` as an argument to make.
    */
 /* #define FT_CONFIG_OPTION_SYSTEM_ZLIB */
 
@@ -457,9 +461,9 @@ FT_BEGIN_HEADER
    *   while compiling in 'release' mode):
    *
    *   ```
-   *     _af_debug_disable_horz_hints
-   *     _af_debug_disable_vert_hints
-   *     _af_debug_disable_blue_hints
+   *     af_debug_disable_horz_hints_
+   *     af_debug_disable_vert_hints_
+   *     af_debug_disable_blue_hints_
    *   ```
    *
    *   Additionally, the following functions provide dumps of various
@@ -476,7 +480,7 @@ FT_BEGIN_HEADER
    *   As an argument, they use another global variable:
    *
    *   ```
-   *     _af_debug_hints
+   *     af_debug_hints_
    *   ```
    *
    *   Please have a look at the `ftgrid` demo program to see how those
@@ -525,6 +529,20 @@ FT_BEGIN_HEADER
 
   /**************************************************************************
    *
+   * OpenType SVG Glyph Support
+   *
+   *   Setting this macro enables support for OpenType SVG glyphs.  By
+   *   default, FreeType can only fetch SVG documents.  However, it can also
+   *   render them if external rendering hook functions are plugged in at
+   *   runtime.
+   *
+   *   More details on the hooks can be found in file `otsvg.h`.
+   */
+#define FT_CONFIG_OPTION_SVG
+
+
+  /**************************************************************************
+   *
    * Error Strings
    *
    *   If this macro is set, `FT_Error_String` will return meaningful
@@ -533,7 +551,7 @@ FT_BEGIN_HEADER
    *
    *   More details can be found in the file `fterrors.h`.
    */
-/* #define FT_CONFIG_OPTION_ERROR_STRINGS */
+#define FT_CONFIG_OPTION_ERROR_STRINGS
 
 
   /*************************************************************************/
@@ -566,12 +584,12 @@ FT_BEGIN_HEADER
   /**************************************************************************
    *
    * Define `TT_CONFIG_OPTION_POSTSCRIPT_NAMES` if you want to be able to
-   * load and enumerate the glyph Postscript names in a TrueType or OpenType
+   * load and enumerate Postscript names of glyphs in a TrueType or OpenType
    * file.
    *
-   * Note that when you do not compile the 'psnames' module by undefining the
-   * above `FT_CONFIG_OPTION_POSTSCRIPT_NAMES`, the 'sfnt' module will
-   * contain additional code used to read the PS Names table from a font.
+   * Note that if you do not compile the 'psnames' module by undefining the
+   * above `FT_CONFIG_OPTION_POSTSCRIPT_NAMES` macro, the 'sfnt' module will
+   * contain additional code to read the PostScript name table from a font.
    *
    * (By default, the module uses 'psnames' to extract glyph names.)
    */
@@ -643,36 +661,12 @@ FT_BEGIN_HEADER
    * not) instructions in a certain way so that all TrueType fonts look like
    * they do in a Windows ClearType (DirectWrite) environment.  See [1] for a
    * technical overview on what this means.  See `ttinterp.h` for more
-   * details on the LEAN option.
+   * details on this option.
    *
-   * There are three possible values.
-   *
-   * Value 1:
-   *   This value is associated with the 'Infinality' moniker, contributed by
-   *   an individual nicknamed Infinality with the goal of making TrueType
-   *   fonts render better than on Windows.  A high amount of configurability
-   *   and flexibility, down to rules for single glyphs in fonts, but also
-   *   very slow.  Its experimental and slow nature and the original
-   *   developer losing interest meant that this option was never enabled in
-   *   default builds.
-   *
-   *   The corresponding interpreter version is v38.
-   *
-   * Value 2:
-   *   The new default mode for the TrueType driver.  The Infinality code
-   *   base was stripped to the bare minimum and all configurability removed
-   *   in the name of speed and simplicity.  The configurability was mainly
-   *   aimed at legacy fonts like 'Arial', 'Times New Roman', or 'Courier'.
-   *   Legacy fonts are fonts that modify vertical stems to achieve clean
-   *   black-and-white bitmaps.  The new mode focuses on applying a minimal
-   *   set of rules to all fonts indiscriminately so that modern and web
-   *   fonts render well while legacy fonts render okay.
-   *
-   *   The corresponding interpreter version is v40.
-   *
-   * Value 3:
-   *   Compile both, making both v38 and v40 available (the latter is the
-   *   default).
+   * The new default mode focuses on applying a minimal set of rules to all
+   * fonts indiscriminately so that modern and web fonts render well while
+   * legacy fonts render okay.  The corresponding interpreter version is v40.
+   * The so-called Infinality mode (v38) is no longer available in FreeType.
    *
    * By undefining these, you get rendering behavior like on Windows without
    * ClearType, i.e., Windows XP without ClearType enabled and Win9x
@@ -687,9 +681,7 @@ FT_BEGIN_HEADER
    * [1]
    * https://www.microsoft.com/typography/cleartype/truetypecleartype.aspx
    */
-/* #define TT_CONFIG_OPTION_SUBPIXEL_HINTING  1         */
-#define TT_CONFIG_OPTION_SUBPIXEL_HINTING  2
-/* #define TT_CONFIG_OPTION_SUBPIXEL_HINTING  ( 1 | 2 ) */
+#define TT_CONFIG_OPTION_SUBPIXEL_HINTING
 
 
   /**************************************************************************
@@ -719,6 +711,24 @@ FT_BEGIN_HEADER
    * also.  This has many similarities to Type~1 Multiple Masters support.
    */
 #define TT_CONFIG_OPTION_GX_VAR_SUPPORT
+
+
+  /**************************************************************************
+   *
+   * Define `TT_CONFIG_OPTION_NO_BORING_EXPANSION` if you want to exclude
+   * support for 'boring' OpenType specification expansions.
+   *
+   *   https://github.com/harfbuzz/boring-expansion-spec
+   *
+   * Right now, the following features are covered:
+   *
+   *   - 'avar' version 2.0
+   *
+   * Most likely, this is a temporary configuration option to be removed in
+   * the near future, since it is assumed that eventually those features are
+   * added to the OpenType standard.
+   */
+/* #define TT_CONFIG_OPTION_NO_BORING_EXPANSION */
 
 
   /**************************************************************************
@@ -941,20 +951,13 @@ FT_BEGIN_HEADER
 
 
   /*
-   * The next three macros are defined if native TrueType hinting is
+   * The next two macros are defined if native TrueType hinting is
    * requested by the definitions above.  Don't change this.
    */
 #ifdef TT_CONFIG_OPTION_BYTECODE_INTERPRETER
 #define  TT_USE_BYTECODE_INTERPRETER
-
 #ifdef TT_CONFIG_OPTION_SUBPIXEL_HINTING
-#if TT_CONFIG_OPTION_SUBPIXEL_HINTING & 1
-#define  TT_SUPPORT_SUBPIXEL_HINTING_INFINALITY
-#endif
-
-#if TT_CONFIG_OPTION_SUBPIXEL_HINTING & 2
 #define  TT_SUPPORT_SUBPIXEL_HINTING_MINIMAL
-#endif
 #endif
 #endif
 
@@ -1002,8 +1005,8 @@ FT_BEGIN_HEADER
 #error "Invalid CFF darkening parameters!"
 #endif
 
-FT_END_HEADER
 
+FT_END_HEADER
 
 #endif /* FTOPTION_H_ */
 
