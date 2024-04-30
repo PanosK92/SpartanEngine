@@ -45,14 +45,12 @@ namespace Spartan
         void SetObjectId(const uint64_t id) { m_object_id = id; }
         static uint64_t GenerateObjectId();
 
-        // cpu & gpu sizes
-        const uint64_t GetObjectSizeCpu() const { return m_object_size_cpu; }
-        const uint64_t GetObjectSizeGpu() const { return m_object_size_gpu; }
+        // sizes
+        const uint64_t GetObjectSize() const { return m_object_size; }
 
     protected:
         std::string m_object_name;
-        uint64_t m_object_id       = 0;
-        uint64_t m_object_size_cpu = 0;
-        uint64_t m_object_size_gpu = 0;
+        uint64_t m_object_id   = 0;
+        uint64_t m_object_size = 0;
     };
 }

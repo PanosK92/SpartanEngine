@@ -59,6 +59,20 @@ namespace Spartan
             return FMOD_OK;
         }
 
+        unsigned int estimate_memory_usage(FMOD::Sound* sound)
+        {
+            SP_ASSERT(sound != nullptr);
+
+            unsigned int length = 0;
+            sound->getLength(&length, FMOD_TIMEUNIT_PCM);
+
+            FMOD_SOUND_FORMAT format = FMOD_SOUND_FORMAT_NONE;
+            int channels             = 0;
+            int bits                 = 0;
+            sound->getFormat(nullptr, &format, &channels, &bits);
+
+            return length * channels * (bits / 8);
+        }
     }
 
     AudioClip::AudioClip() : IResource(ResourceType::Audio)
@@ -80,6 +94,8 @@ namespace Spartan
 
     bool AudioClip::LoadFromFile(const string& file_path)
     {
+        bool loaded = false;
+
         #if defined(_MSC_VER)
 
         // native
@@ -99,11 +115,13 @@ namespace Spartan
             SetResourceFilePath(file_path);
         }
 
-        return (m_playMode == PlayMode::Memory) ? CreateSound(GetResourceFilePath()) : CreateStream(GetResourceFilePath());
+        // load
+        loaded        = (m_playMode == PlayMode::Memory) ? CreateSound(GetResourceFilePath()) : CreateStream(GetResourceFilePath());
+        m_object_size = estimate_memory_usage(static_cast<FMOD::Sound*>(m_fmod_sound));
 
-        #else
-        return 0;
         #endif
+
+        return loaded;
     }
 
     bool AudioClip::SaveToFile(const string& file_path)

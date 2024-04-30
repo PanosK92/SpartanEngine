@@ -42,9 +42,9 @@ namespace Spartan
         template<typename T>
         void Create(const std::vector<T>& vertices)
         {
-            m_stride          = static_cast<uint32_t>(sizeof(T));
-            m_vertex_count    = static_cast<uint32_t>(vertices.size());
-            m_object_size_gpu = static_cast<uint64_t>(m_stride * m_vertex_count);
+            m_stride = static_cast<uint32_t>(sizeof(T));
+            m_vertex_count = static_cast<uint32_t>(vertices.size());
+            m_object_size  = static_cast<uint64_t>(m_stride * m_vertex_count);
 
             _create(static_cast<const void*>(vertices.data()));
         }
@@ -52,9 +52,9 @@ namespace Spartan
         template<typename T>
         void Create(const T* vertices, const uint32_t vertex_count)
         {
-            m_stride          = static_cast<uint32_t>(sizeof(T));
-            m_vertex_count    = vertex_count;
-            m_object_size_gpu = static_cast<uint64_t>(m_stride * m_vertex_count);
+            m_stride       = static_cast<uint32_t>(sizeof(T));
+            m_vertex_count = vertex_count;
+            m_object_size  = static_cast<uint64_t>(m_stride * m_vertex_count);
 
             _create(static_cast<const void*>(vertices));
         }
@@ -62,9 +62,9 @@ namespace Spartan
         template<typename T>
         void CreateDynamic(const uint32_t vertex_count)
         {
-            m_stride          = static_cast<uint32_t>(sizeof(T));
-            m_vertex_count    = vertex_count;
-            m_object_size_gpu = static_cast<uint64_t>(m_stride * m_vertex_count);
+            m_stride       = static_cast<uint32_t>(sizeof(T));
+            m_vertex_count = vertex_count;
+            m_object_size  = static_cast<uint64_t>(m_stride * m_vertex_count);
 
             _create(nullptr);
         }

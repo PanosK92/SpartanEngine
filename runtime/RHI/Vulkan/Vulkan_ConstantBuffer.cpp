@@ -61,13 +61,13 @@ namespace Spartan
         {
             m_stride = static_cast<uint32_t>(static_cast<uint64_t>((m_stride + min_alignment - 1) & ~(min_alignment - 1)));
         }
-        m_object_size_gpu = m_stride * m_element_count;
+        m_object_size = m_stride * m_element_count;
 
         // define memory properties
         VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
 
         // create buffer
-        RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags, nullptr, m_object_name.c_str());
+        RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags, nullptr, m_object_name.c_str());
 
         // get mapped data pointer
         m_mapped_data = RHI_Device::MemoryGetMappedDataFromBuffer(m_rhi_resource);
@@ -78,9 +78,9 @@ namespace Spartan
 
     void RHI_ConstantBuffer::Update(void* data_cpu)
     {
-        SP_ASSERT_MSG(data_cpu != nullptr,                      "Invalid update data");
-        SP_ASSERT_MSG(m_mapped_data != nullptr,                 "Invalid mapped data");
-        SP_ASSERT_MSG(m_offset + m_stride <= m_object_size_gpu, "Out of memory");
+        SP_ASSERT_MSG(data_cpu != nullptr,                  "Invalid update data");
+        SP_ASSERT_MSG(m_mapped_data != nullptr,             "Invalid mapped data");
+        SP_ASSERT_MSG(m_offset + m_stride <= m_object_size, "Out of memory");
 
         // advance offset
         if (m_has_updated)

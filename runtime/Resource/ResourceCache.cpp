@@ -128,7 +128,7 @@ namespace Spartan
         return resources;
     }
 
-    uint64_t ResourceCache::GetMemoryUsageCpu(ResourceType type /*= Resource_Unknown*/)
+    uint64_t ResourceCache::GetMemoryUsage(ResourceType type /*= Resource_Unknown*/)
     {
         lock_guard<mutex> guard(m_mutex);
 
@@ -139,26 +139,7 @@ namespace Spartan
             {
                 if (SpObject* object = dynamic_cast<SpObject*>(resource.get()))
                 {
-                    size += object->GetObjectSizeCpu();
-                }
-            }
-        }
-
-        return size;
-    }
-
-    uint64_t ResourceCache::GetMemoryUsageGpu(ResourceType type /*= Resource_Unknown*/)
-    {
-        lock_guard<mutex> guard(m_mutex);
-
-        uint64_t size = 0;
-        for (shared_ptr<IResource>& resource : m_resources)
-        {
-            if (resource->GetResourceType() == type || type == ResourceType::Unknown)
-            {
-                if (SpObject* object = dynamic_cast<SpObject*>(resource.get()))
-                {
-                    size += object->GetObjectSizeGpu();
+                    size += object->GetObjectSize();
                 }
             }
         }

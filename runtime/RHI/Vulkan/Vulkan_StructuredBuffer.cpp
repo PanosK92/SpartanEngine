@@ -34,10 +34,10 @@ namespace Spartan
 {
     RHI_StructuredBuffer::RHI_StructuredBuffer(const uint32_t stride, const uint32_t element_count, const char* name)
     {
-        m_object_name     = name;
-        m_stride          = stride;
-        m_element_count   = element_count;
-        m_object_size_gpu = stride * element_count;
+        m_object_name   = name;
+        m_stride        = stride;
+        m_element_count = element_count;
+        m_object_size   = stride * element_count;
 
         // calculate required alignment based on minimum device offset alignment
         size_t min_alignment = RHI_Device::PropertyGetMinStorageBufferOffsetAllignment();
@@ -45,11 +45,11 @@ namespace Spartan
         {
             m_stride = static_cast<uint32_t>(static_cast<uint64_t>((m_stride + min_alignment - 1) & ~(min_alignment - 1)));
         }
-        m_object_size_gpu = m_stride * m_element_count;
+        m_object_size = m_stride * m_element_count;
 
         // create buffer
         VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
-        RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, flags, nullptr, name);
+        RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, flags, nullptr, name);
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::Buffer, name); // name the resource
 
         // get mapped data pointer
@@ -64,9 +64,9 @@ namespace Spartan
 
     void RHI_StructuredBuffer::Update(void* data_cpu, const uint32_t update_size)
     {
-        SP_ASSERT_MSG(data_cpu != nullptr,                      "Invalid update data");
-        SP_ASSERT_MSG(m_mapped_data != nullptr,                 "Invalid mapped data");
-        SP_ASSERT_MSG(m_offset + m_stride <= m_object_size_gpu, "Out of memory");
+        SP_ASSERT_MSG(data_cpu != nullptr,                  "Invalid update data");
+        SP_ASSERT_MSG(m_mapped_data != nullptr,             "Invalid mapped data");
+        SP_ASSERT_MSG(m_offset + m_stride <= m_object_size, "Out of memory");
 
         // advance offset
         if (first_update)

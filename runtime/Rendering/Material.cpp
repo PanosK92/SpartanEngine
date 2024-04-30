@@ -144,7 +144,7 @@ namespace Spartan
             SetTexture(tex_type, texture);
         }
 
-        m_object_size_cpu = sizeof(*this);
+        m_object_size = sizeof(*this);
 
         return true;
     }

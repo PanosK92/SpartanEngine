@@ -101,14 +101,10 @@ namespace Spartan
 
         // compute memory usage
         {
-            // cpu
-            m_object_size_cpu = GetMemoryUsage();
-
-            // gpu
             if (m_vertex_buffer && m_index_buffer)
             {
-                m_object_size_gpu = m_vertex_buffer->GetObjectSizeGpu();
-                m_object_size_gpu += m_index_buffer->GetObjectSizeGpu();
+                m_object_size = m_vertex_buffer->GetObjectSize();
+                m_object_size += m_index_buffer->GetObjectSize();
             }
         }
 
