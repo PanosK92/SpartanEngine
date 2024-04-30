@@ -41,7 +41,8 @@ namespace Spartan
     namespace compressonator
     {
         bool registered = false;
-        CMP_FORMAT rhi_format_to_compressonator_format(const RHI_Format format)
+
+        CMP_FORMAT to_cmp_format(const RHI_Format format)
         {
             if (format == RHI_Format::R8_Unorm)
                 return CMP_FORMAT::CMP_FORMAT_R_8;
@@ -98,7 +99,7 @@ namespace Spartan
             return CMP_FORMAT::CMP_FORMAT_Unknown;
         }
 
-        void compress(RHI_Texture* texture)
+        void convert(RHI_Texture* texture)
         {
             SP_ASSERT(texture);
             SP_ASSERT(texture->HasData());
@@ -112,7 +113,7 @@ namespace Spartan
             source_texture.dwSize      = sizeof(CMP_Texture);
             source_texture.dwWidth     = texture->GetWidth();
             source_texture.dwHeight    = texture->GetHeight();
-            source_texture.format      = rhi_format_to_compressonator_format(texture->GetFormat());
+            source_texture.format      = to_cmp_format(texture->GetFormat());
             source_texture.dwDataSize  = static_cast<uint32_t>(texture->GetMip(0, 0).bytes.size());
             source_texture.pData       = reinterpret_cast<uint8_t*>(texture->GetMip(0, 0).bytes.data());
 
@@ -121,7 +122,7 @@ namespace Spartan
             destination_texture.dwSize      = sizeof(CMP_Texture);
             destination_texture.dwWidth     = source_texture.dwWidth;
             destination_texture.dwHeight    = source_texture.dwHeight;
-            destination_texture.format      = rhi_format_to_compressonator_format(compression_format);
+            destination_texture.format      = to_cmp_format(compression_format);
             destination_texture.dwDataSize  = CMP_CalculateBufferSize(&destination_texture);
             vector<std::byte> destination_data(destination_texture.dwDataSize);
             destination_texture.pData       = reinterpret_cast<uint8_t*>(destination_data.data());
@@ -130,7 +131,7 @@ namespace Spartan
             {
                 CMP_CompressOptions options = {};
                 options.dwSize              = sizeof(CMP_CompressOptions);
-                options.fquality            = 0.05f; // set for lower quality, faster compression
+                options.fquality            = 0.05f;                            // set for lower quality, faster compression
                 options.dwnumThreads        = ThreadPool::GetIdleThreadCount(); // use multiple threads
 
                 CMP_ERROR result = CMP_ConvertTexture(&source_texture, &destination_texture, &options, nullptr);
@@ -252,6 +253,8 @@ namespace Spartan
         m_slices.clear();
         m_slices.shrink_to_fit();
 
+        bool keep_data = (m_flags & RHI_texture_KeepData) != 0;
+
         // load from drive
         {
             if (FileSystem::IsEngineTextureFile(file_path))
@@ -322,13 +325,10 @@ namespace Spartan
                 // set resource file path so it can be used by the resource cache.
                 SetResourceFilePath(file_path);
 
-                // compress texture
-                if (m_flags & RHI_Texture_Compressed)
+                // compress texture (if not alraedy compressed)
+                if (!IsCompressedFormat(m_format) && !keep_data)
                 {
-                    if (!IsCompressedFormat(m_format))
-                    { 
-                        compressonator::compress(this);
-                    }
+                    compressonator::convert(this);
                 }
             }
         }
@@ -337,10 +337,9 @@ namespace Spartan
         SP_ASSERT_MSG(RHI_CreateResource(), "Failed to create GPU resource");
         m_is_ready_for_use = true;
 
-        // if this was a native texture (means the data is already saved) and the GPU resource
-        // has been created, then clear the data as we don't need it anymore
-        if (FileSystem::IsEngineTextureFile(file_path))
-        {
+        // clear data
+        if (!keep_data)
+        { 
             m_slices.clear();
             m_slices.shrink_to_fit();
         }
