@@ -87,7 +87,7 @@ namespace Spartan
                 m_input_layout->Create(m_vertex_type, nullptr);
             }
 
-            m_object_size_cpu = shader_buffer->GetBufferSize();
+            m_object_size = shader_buffer->GetBufferSize();
 
             return static_cast<void*>(shader_buffer->GetBufferPointer());
         }
