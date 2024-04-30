@@ -165,8 +165,7 @@ namespace Spartan
         }
 
         // memory
-        static uint64_t GetMemoryUsageCpu(ResourceType type = ResourceType::Unknown);
-        static uint64_t GetMemoryUsageGpu(ResourceType type = ResourceType::Unknown);
+        static uint64_t GetMemoryUsage(ResourceType type = ResourceType::Unknown);
         static uint32_t GetResourceCount(ResourceType type = ResourceType::Unknown);
 
         // directories

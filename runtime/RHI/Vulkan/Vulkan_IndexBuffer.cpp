@@ -60,7 +60,7 @@ namespace Spartan
             VkMemoryPropertyFlags flags  = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
 
             // create
-            RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, flags, nullptr, m_object_name.c_str());
+            RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, flags, nullptr, m_object_name.c_str());
 
             // get mapped data pointer
             m_mapped_data = RHI_Device::MemoryGetMappedDataFromBuffer(m_rhi_resource);
@@ -69,10 +69,10 @@ namespace Spartan
         {
             // create staging/source buffer and copy the indices to it
             void* staging_buffer = nullptr;
-            RHI_Device::MemoryBufferCreate(staging_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indices, m_object_name.c_str());
+            RHI_Device::MemoryBufferCreate(staging_buffer, m_object_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indices, m_object_name.c_str());
 
             // create destination buffer
-            RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, m_object_name.c_str());
+            RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, m_object_name.c_str());
 
             // copy staging buffer to destination buffer
             {
@@ -84,7 +84,7 @@ namespace Spartan
 
                 // copy
                 VkBufferCopy copy_region = {};
-                copy_region.size = m_object_size_gpu;
+                copy_region.size         = m_object_size;
                 vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), *buffer_staging_vk, *buffer_vk, 1, &copy_region);
 
                 // flush and free command buffer
