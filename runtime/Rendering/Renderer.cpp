@@ -193,7 +193,6 @@ namespace Spartan
         // events
         {
             // subscribe
-            SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,           SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,              SP_EVENT_HANDLER_STATIC(OnClear));
             SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
             SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_STATIC(BindlessUpdateMaterials));
@@ -452,18 +451,15 @@ namespace Spartan
         buffer->Update(&m_cb_frame_cpu);
     }
 
-    void Renderer::OnWorldResolved(sp_variant data)
+    void Renderer::SetEntities(vector<shared_ptr<Entity>>& entities)
     {
         m_mutex_renderables.lock();
 
         // clear previous state
         m_renderables.clear();
 
-        vector<shared_ptr<Entity>> entities = get<vector<shared_ptr<Entity>>>(data);
         for (shared_ptr<Entity>& entity : entities)
         {
-            SP_ASSERT_MSG(entity != nullptr, "Entity is null");
-
             if (!entity->IsActive())
                 continue;
 
@@ -505,7 +501,7 @@ namespace Spartan
         BindlessUpdateMaterials();
         BindlessUpdateLights();
     }
- 
+
     void Renderer::OnClear()
     {
         m_renderables.clear();

@@ -158,10 +158,7 @@ namespace Spartan
 
     void World::Initialize()
     {
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolve, SP_EVENT_HANDLER_EXPRESSION_STATIC
-        (
-            m_resolve = true;
-        ));
+
     }
 
     void World::Shutdown()
@@ -222,12 +219,9 @@ namespace Spartan
         }
 
         // notify renderer
-        if (m_resolve)
+        if (m_resolve && !ProgressTracker::IsLoading())
         {
-            if (!ProgressTracker::IsLoading()) // only when nothing is loading
-            {
-                SP_FIRE_EVENT_DATA(EventType::WorldResolved, m_entities);
-            }
+            Renderer::SetEntities(m_entities);
             m_resolve = false;
         }
 
@@ -826,29 +820,29 @@ namespace Spartan
             rigid_body->SetShapeType(PhysicsShape::Mesh);
         }
 
-        // remove all the wheels since they have weird rotations, we will add our own
+        // disable all the wheels since they have weird rotations, we will add our own
         {
             auto entity_car = m_default_model_car->GetRootEntity().lock();
 
-            World::RemoveEntity(entity_car->GetDescendantByName("FL_Wheel_RimMaterial_0"));
-            World::RemoveEntity(entity_car->GetDescendantByName("FL_Wheel_Brake Disc_0"));
-            World::RemoveEntity(entity_car->GetDescendantByName("FL_Wheel_TireMaterial_0"));
-            World::RemoveEntity(entity_car->GetDescendantByName("FL_Caliper_BrakeCaliper_0"));
+            entity_car->GetDescendantByName("FL_Wheel_RimMaterial_0")->SetActive(false);
+            entity_car->GetDescendantByName("FL_Wheel_Brake Disc_0")->SetActive(false);
+            entity_car->GetDescendantByName("FL_Wheel_TireMaterial_0")->SetActive(false);
+            entity_car->GetDescendantByName("FL_Caliper_BrakeCaliper_0")->SetActive(false);
 
-            World::RemoveEntity(entity_car->GetDescendantByName("FR_Wheel_RimMaterial_0"));
-            World::RemoveEntity(entity_car->GetDescendantByName("FR_Wheel_Brake Disc_0"));
-            World::RemoveEntity(entity_car->GetDescendantByName("FR_Wheel_TireMaterial_0"));
-            World::RemoveEntity(entity_car->GetDescendantByName("FR_Caliper_BrakeCaliper_0"));
+            entity_car->GetDescendantByName("FR_Wheel_RimMaterial_0")->SetActive(false);
+            entity_car->GetDescendantByName("FR_Wheel_Brake Disc_0")->SetActive(false);
+            entity_car->GetDescendantByName("FR_Wheel_TireMaterial_0")->SetActive(false);
+            entity_car->GetDescendantByName("FR_Caliper_BrakeCaliper_0")->SetActive(false);
 
-            World::RemoveEntity(entity_car->GetDescendantByName("RL_Wheel_RimMaterial_0"));
-            World::RemoveEntity(entity_car->GetDescendantByName("RL_Wheel_Brake Disc_0"));
-            World::RemoveEntity(entity_car->GetDescendantByName("RL_Wheel_TireMaterial_0"));
-            World::RemoveEntity(entity_car->GetDescendantByName("RL_Caliper_BrakeCaliper_0"));
+            entity_car->GetDescendantByName("RL_Wheel_RimMaterial_0")->SetActive(false);
+            entity_car->GetDescendantByName("RL_Wheel_Brake Disc_0")->SetActive(false);
+            entity_car->GetDescendantByName("RL_Wheel_TireMaterial_0")->SetActive(false);
+            entity_car->GetDescendantByName("RL_Caliper_BrakeCaliper_0")->SetActive(false);
 
-            World::RemoveEntity(entity_car->GetDescendantByName("RR_Wheel_RimMaterial_0"));
-            World::RemoveEntity(entity_car->GetDescendantByName("RR_Wheel_Brake Disc_0"));
-            World::RemoveEntity(entity_car->GetDescendantByName("RR_Wheel_TireMaterial_0"));
-            World::RemoveEntity(entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0"));
+            entity_car->GetDescendantByName("RR_Wheel_RimMaterial_0")->SetActive(false);
+            entity_car->GetDescendantByName("RR_Wheel_Brake Disc_0")->SetActive(false);
+            entity_car->GetDescendantByName("RR_Wheel_TireMaterial_0")->SetActive(false);
+            entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0")->SetActive(false);
         }
     }
 
@@ -1131,12 +1125,18 @@ namespace Spartan
                 renderable->SetFlag(RenderableFlags::CastsShadows, false);
             }
 
+            // disable dirt decals since they look bad
+            // they are hovering over the surfaces, to avoid z-fighting, and they also cast shadows underneath them
+            entity->GetDescendantByName("decals_1st_floor")->SetActive(false);
+            entity->GetDescendantByName("decals_2nd_floor")->SetActive(false);
+            entity->GetDescendantByName("decals_3rd_floor")->SetActive(false);
+
             // enable physics for all meshes
             vector<Entity*> entities;
             entity->GetDescendants(&entities);
             for (Entity* entity : entities)
             {
-                if (entity->GetComponent<Renderable>() != nullptr)
+                if (entity->IsActive() && entity->GetComponent<Renderable>() != nullptr)
                 {
                     PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
                     physics_body->SetShapeType(PhysicsShape::Mesh);
@@ -1173,15 +1173,6 @@ namespace Spartan
                     material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                 }
             }
-        }
-
-        // delete dirt decals since they look bad
-        // they are hovering over the surfaces, to avoid z-fighting, and they also cast shadows underneath them
-        {
-            shared_ptr<Entity> entity = m_default_model->GetRootEntity().lock();
-            RemoveEntity(entity->GetDescendantByName("decals_1st_floor"));
-            RemoveEntity(entity->GetDescendantByName("decals_2nd_floor"));
-            RemoveEntity(entity->GetDescendantByName("decals_3rd_floor"));
         }
 
         // start simulating (for the physics and the music to work)
@@ -1232,15 +1223,16 @@ namespace Spartan
             entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
             entity->SetScale(Vector3(1.0f, 1.0f, 1.0f));
 
-            // move door out of the way
-            entity->GetDescendantByName("dOORS_2")->SetPosition(Vector3(0.0, -10.0f, 0.0f));
+            // disable door (so we can go through)
+            entity->GetDescendantByName("dOORS_2")->SetActive(false);
+            entity->GetDescendantByName("Bistro_Research_Exterior_Paris_Building_01_paris_building_01_bottom_4825")->SetActive(false);
 
             // enable physics for all meshes
             vector<Entity*> entities;
             entity->GetDescendants(&entities);
             for (Entity* entity : entities)
             {
-                if (entity->GetComponent<Renderable>() != nullptr)
+                if (entity->IsActive() && entity->GetComponent<Renderable>() != nullptr)
                 {
                     PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
                     physics_body->SetShapeType(PhysicsShape::Mesh);
@@ -1264,16 +1256,15 @@ namespace Spartan
             entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
             entity->SetScale(Vector3(1.6f, 1.6f, 1.6f)); // interior has a different scale (for some reason)
 
-            // move doors out of the way
-            //entity->GetDescendantByName("Bistro_Research_Exterior_Paris_Building_01_paris_building_01_bottom_4825")->SetPosition(Vector3(0.0, -1000.0f, 0.0f));
-            entity->GetDescendantByName("Bistro_Research_Exterior_Paris_Building_01_paris_building_01_bottom_121")->SetPosition(Vector3(0.0, -1000.0f, 0.0f));
+            // disable door (so we can go through)
+            entity->GetDescendantByName("Bistro_Research_Exterior_Paris_Building_01_paris_building_01_bottom_121")->SetActive(false);
 
             // enable physics for all meshes
             vector<Entity*> entities;
             entity->GetDescendants(&entities);
             for (Entity* entity : entities)
             {
-                if (entity->GetComponent<Renderable>() != nullptr)
+                if (entity->IsActive() && entity->GetComponent<Renderable>() != nullptr)
                 {
                     PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
                     physics_body->SetShapeType(PhysicsShape::Mesh);
@@ -1380,10 +1371,10 @@ namespace Spartan
                 }
             }
 
-            // remove window blinds
-            World::RemoveEntity(entity->GetDescendantByName("Default_1"));
-            World::RemoveEntity(entity->GetDescendantByName("Default_2"));
-            World::RemoveEntity(entity->GetDescendantByName("Default_3"));
+            // disable window blinds
+           entity->GetDescendantByName("Default_1")->SetActive(false);
+           entity->GetDescendantByName("Default_2")->SetActive(false);
+           entity->GetDescendantByName("Default_3")->SetActive(false);
 
             // make the same come in through the window
             m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(30.0f, 180.0f, 0.0f));

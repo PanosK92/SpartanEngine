@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Matrix.h"
 #include <mutex>
 #include "Event.h"
+#include "World.h"
 //===============================
 
 namespace Spartan
@@ -81,8 +82,7 @@ namespace Spartan
             component->SetType(type);
             component->OnInitialize();
 
-            // make the scene resolve
-            SP_FIRE_EVENT(EventType::WorldResolve);
+            World::Resolve();
 
             return component;
         }
@@ -105,7 +105,7 @@ namespace Spartan
             const ComponentType component_type = Component::TypeToEnum<T>();
             m_components[static_cast<uint32_t>(component_type)] = nullptr;
 
-            SP_FIRE_EVENT(EventType::WorldResolve);
+            World::Resolve();
         }
 
         void RemoveComponentById(uint64_t id);
