@@ -44,7 +44,6 @@ namespace Spartan
 {
     namespace
     {
-        mutex mutex_generate_mips;
         bool light_integration_brdf_speculat_lut_completed = false;
         int64_t mesh_index_transparent                         = 0;
         int64_t mesh_index_non_instanced_opaque                = 0;
@@ -2295,38 +2294,5 @@ namespace Spartan
             }
         }
         cmd_list->EndTimeblock();
-    }
-
-    void Renderer::Pass_GenerateMips(RHI_CommandList* cmd_list, RHI_Texture* texture)
-    {
-        SP_ASSERT(texture != nullptr);
-        SP_ASSERT(texture->GetRhiSrv() != nullptr);
-        SP_ASSERT(texture->HasMips());        // ensure the texture has mips (of course, they are empty at this point)
-        SP_ASSERT(texture->HasPerMipViews()); // ensure that the texture has per mip views since they are required for GPU downsampling.
-        SP_ASSERT(texture->IsReadyForUse());  // ensure that any loading and resource creation has finished
-
-        lock_guard<mutex> lock(mutex_generate_mips);
-
-        // downsample
-        Pass_Ffx_Spd(cmd_list, texture, Renderer_DownsampleFilter::Average);
-
-        // set all generated mips to read only optimal
-        texture->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list, 0, texture->GetMipCount());
-
-        // destroy per mip resource views since they are no longer needed
-        {
-            // remove unnecessary flags from texture (were only needed for the downsampling)
-            uint32_t flags = texture->GetFlags();
-            flags &= ~RHI_Texture_PerMipViews;
-            flags &= ~RHI_Texture_Uav;
-            texture->SetFlags(flags);
-
-            // destroy the resources associated with those flags
-            {
-                const bool destroy_main     = false;
-                const bool destroy_per_view = true;
-                texture->RHI_DestroyResource(destroy_main, destroy_per_view);
-            }
-        }
     }
 }

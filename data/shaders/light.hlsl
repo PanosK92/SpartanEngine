@@ -62,7 +62,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     surface.Build(thread_id.xy, resolution_out, true, true);
 
     // early exit cases
-    bool early_exit_1 = pass_is_opaque()      && surface.is_transparent() && !surface.is_sky(); // do shade sky pixels during the opaque pass (volumetric lighting)
+    bool early_exit_1 = pass_is_opaque()      && surface.is_transparent() && !surface.is_sky(); // shade sky pixels during the opaque pass (volumetric lighting)
     bool early_exit_2 = pass_is_transparent() && surface.is_opaque();
     if (early_exit_1 || early_exit_2)
         return;

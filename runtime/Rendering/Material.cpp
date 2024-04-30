@@ -233,7 +233,7 @@ namespace Spartan
 
     void Material::SetTexture(const MaterialTexture texture_type, const string& file_path)
     {
-        SetTexture(texture_type, ResourceCache::Load<RHI_Texture2D>(file_path, RHI_Texture_Srv | RHI_Texture_Mips | RHI_Texture_Compressed));
+        SetTexture(texture_type, ResourceCache::Load<RHI_Texture2D>(file_path, RHI_Texture_Srv | RHI_Texture_Compressed));
     }
  
     bool Material::HasTexture(const string& path) const
