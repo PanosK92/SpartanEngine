@@ -39,6 +39,7 @@ namespace Spartan
 {
     namespace amd_compressonator
     {
+        bool registered = false;
         CMP_FORMAT rhi_format_to_compressonator_format(const RHI_Format format)
         {
             if (format == RHI_Format::R8_Unorm)
@@ -191,6 +192,13 @@ namespace Spartan
         m_rhi_rtv.fill(nullptr);
         m_rhi_dsv.fill(nullptr);
         m_rhi_dsv_read_only.fill(nullptr);
+
+        if (!amd_compressonator::registered)
+        {
+            string version = to_string(AMD_COMPRESS_VERSION_MAJOR) + "." + to_string(AMD_COMPRESS_VERSION_MINOR);
+            Settings::RegisterThirdPartyLib("Compressonator", version, "https://github.com/GPUOpen-Tools/compressonator");
+            amd_compressonator::registered = true;
+        }
     }
 
     RHI_Texture::~RHI_Texture()

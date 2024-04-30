@@ -1163,11 +1163,11 @@ namespace Spartan
 
         CreateDescriptorPool();
 
-        // detect and log version
+        // register vulkan version
         {
-            string version_major = to_string(VK_VERSION_MAJOR(app_info.apiVersion));
-            string version_minor = to_string(VK_VERSION_MINOR(app_info.apiVersion));
-            string version_patch = to_string(VK_VERSION_PATCH(app_info.apiVersion));
+            string version_major = to_string(VK_VERSION_MAJOR(VK_HEADER_VERSION_COMPLETE));
+            string version_minor = to_string(VK_VERSION_MINOR(VK_HEADER_VERSION_COMPLETE));
+            string version_patch = to_string(VK_VERSION_PATCH(VK_HEADER_VERSION_COMPLETE));
             string version       = version_major + "." + version_minor + "." + version_patch;
 
             SP_LOG_INFO("Vulkan %s", version.c_str());
