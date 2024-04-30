@@ -41,7 +41,8 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 #### Rendering
 - Cutting edge Vulkan renderer.
 - 128-byte push constant buffer for lightning fast CPU to GPU data transfer.
-- On the fly GPU-based mip generation - with only one dispatch.
+- On the fly single dispatch GPU-based mip generation for render targets.
+- On the fly compression and mip generation for material textures.
 - Fully bindless design (materials, lights, even the samplers).
 - Vulkan (main) and DirectX 12 (wip) backends with universal HLSL shaders.
 - Unified deferred rendering with transparency (BSDF with same render path).
@@ -82,7 +83,7 @@ Questions can also be answered by my AI replica, [Panos](https://chat.openai.com
 # Interesting facts
 - It's one of the most complete, oldest, yet still active, one man game engines out there.
 - It's one of the most rewarding projects in terms of the perks you receive should you become a contributor, more [here](https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor).
-- This engine started as a way to enrich my portfolio while I was a university student, circa 2015.
+- This engine started as a way to enrich my portfolio while I was a university student, circa 2014.
 
 # Use cases
 Are you utilizing any components from the Spartan Engine, or has it inspired aspects of your work? If yes, then reach out to me, I'd love to showcase your project.

@@ -382,11 +382,6 @@ namespace Spartan
                 memcpy(&mip.bytes[0], data->m_mem, mip.bytes.size());
             }
 
-            // DDS already comes with compressed mips
-            texture_flags &= ~RHI_Texture_Mips;
-            texture_flags &= ~RHI_Texture_Compressed;
-            texture->SetFlags(texture_flags);
-
             return true;
         }
 

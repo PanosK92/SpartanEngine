@@ -77,10 +77,6 @@ namespace Spartan
         static RHI_SwapChain* GetSwapChain();
         static void BlitToBackBuffer(RHI_CommandList* cmd_list, RHI_Texture* texture);
 
-        // mip generation
-        static void AddTextureForMipGeneration(RHI_Texture* texture);
-        static void Pass_GenerateMips(RHI_CommandList* cmd_list, RHI_Texture* texture);
-
         // misc
         static void SetStandardResources(RHI_CommandList* cmd_list);
         static uint64_t GetFrameNum();

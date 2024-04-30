@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "RHI_Texture.h"
 #include "RHI_Device.h"
+#include "ThreadPool.h"
 #include "../IO/FileStream.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/Import/ImageImporterExporter.h"
@@ -81,6 +82,15 @@ namespace Spartan
             if (format == RHI_Format::ASTC)
                 return CMP_FORMAT::CMP_FORMAT_ASTC;
 
+            if (format == RHI_Format::BC1_Unorm)
+                return CMP_FORMAT::CMP_FORMAT_BC1;
+
+            if (format == RHI_Format::BC3_Unorm)
+                return CMP_FORMAT::CMP_FORMAT_BC3;
+
+            if (format == RHI_Format::BC5_Unorm)
+                return CMP_FORMAT::CMP_FORMAT_BC5;
+
             if (format == RHI_Format::BC7_Unorm)
                 return CMP_FORMAT::CMP_FORMAT_BC7;
 
@@ -88,52 +98,47 @@ namespace Spartan
             return CMP_FORMAT::CMP_FORMAT_Unknown;
         }
 
-        void setup_cmp_texture(CMP_Texture* texture, uint32_t width, uint32_t height, CMP_FORMAT format, vector<std::byte>& data)
-        {
-            texture->dwSize   = sizeof(CMP_Texture);
-            texture->dwWidth  = width;
-            texture->dwHeight = height;
-            texture->format   = format;
-            texture->pData    = reinterpret_cast<uint8_t*>(data.data());
-        }
-
         void compress(RHI_Texture* texture)
         {
             SP_ASSERT(texture);
             SP_ASSERT(texture->HasData());
+            SP_ASSERT(texture->GetWidth() > 0);
+            SP_ASSERT(texture->GetHeight() > 0);
 
-            uint32_t width       = texture->GetWidth();
-            uint32_t height      = texture->GetHeight();
-            CMP_FORMAT srcFormat = rhi_format_to_compressonator_format(texture->GetFormat());
+            const RHI_Format compression_format = RHI_Format::BC3_Unorm;
 
-            // source texture setup
-            auto& source_data = texture->GetMip(0, 0).bytes;
-            CMP_Texture source_texture;
-            setup_cmp_texture(&source_texture, width, height, srcFormat, source_data);
+            // source texture
+            CMP_Texture source_texture = {};
+            source_texture.dwSize      = sizeof(CMP_Texture);
+            source_texture.dwWidth     = texture->GetWidth();
+            source_texture.dwHeight    = texture->GetHeight();
+            source_texture.format      = rhi_format_to_compressonator_format(texture->GetFormat());
+            source_texture.dwDataSize  = static_cast<uint32_t>(texture->GetMip(0, 0).bytes.size());
+            source_texture.pData       = reinterpret_cast<uint8_t*>(texture->GetMip(0, 0).bytes.data());
 
-            // determine the size of the buffer needed for the destination texture
-            CMP_Texture destination_texture;
-            destination_texture.dwSize   = sizeof(CMP_Texture);
-            destination_texture.dwWidth  = width;
-            destination_texture.dwHeight = height;
-            destination_texture.format   = CMP_FORMAT_BC1;
+            // destination texture
+            CMP_Texture destination_texture = {};
+            destination_texture.dwSize      = sizeof(CMP_Texture);
+            destination_texture.dwWidth     = source_texture.dwWidth;
+            destination_texture.dwHeight    = source_texture.dwHeight;
+            destination_texture.format      = rhi_format_to_compressonator_format(compression_format);
+            destination_texture.dwDataSize  = CMP_CalculateBufferSize(&destination_texture);
+            vector<std::byte> destination_data(destination_texture.dwDataSize);
+            destination_texture.pData       = reinterpret_cast<uint8_t*>(destination_data.data());
 
-            // calculate buffer size using the destination texture setup
-            CMP_DWORD buffer_size = CMP_CalculateBufferSize(&destination_texture);
-            vector<std::byte> destination_data(buffer_size);
+            // compress texture
+            {
+                CMP_CompressOptions options = {};
+                options.dwSize              = sizeof(CMP_CompressOptions);
+                options.fquality            = 0.05f; // set for lower quality, faster compression
+                options.dwnumThreads        = ThreadPool::GetIdleThreadCount(); // use multiple threads
 
-            // setup destination texture with the empty buffer
-            setup_cmp_texture(&destination_texture, width, height, destination_texture.format, destination_data);
+                CMP_ERROR result = CMP_ConvertTexture(&source_texture, &destination_texture, &options, nullptr);
+                SP_ASSERT(result == CMP_OK);
+            }
 
-            CMP_CompressOptions options = {};
-            options.dwSize              = sizeof(CMP_CompressOptions);
-            options.fquality            = 0.05f; // set for lower quality, faster compression
-            options.dwnumThreads        = 1;     // use multiple threads
-
-            // compress
-            SP_ASSERT(CMP_ConvertTexture(&source_texture, &destination_texture, &options, nullptr) == CMP_OK);
-
-            // update the texture with the compressed data
+            // update texture
+            texture->SetFormat(compression_format);
             texture->GetMip(0, 0).bytes = destination_data;
         }
     }
@@ -242,7 +247,7 @@ namespace Spartan
         {
             SP_LOG_ERROR("Invalid file path \"%s\".", file_path.c_str());
             return false;
-         }
+        }
 
         m_slices.clear();
         m_slices.shrink_to_fit();
@@ -320,29 +325,17 @@ namespace Spartan
                 // compress texture
                 if (m_flags & RHI_Texture_Compressed)
                 {
-                    //compressonator::compress(this);
+                    if (!IsCompressedFormat(m_format))
+                    { 
+                        compressonator::compress(this);
+                    }
                 }
             }
-        }
-
-        if (m_flags & RHI_Texture_Mips)
-        {
-            // ensure the texture has the appropriate flags so that it can be used to generate mips on the GPU
-            // once the mips have been generated, those flags and the resources associated with them, will be removed
-            m_mip_count = static_cast<uint32_t>(log2(Math::Helper::Min<uint32_t>(m_width, m_height)));
-            m_flags |= RHI_Texture_PerMipViews;
-            m_flags |= RHI_Texture_Uav;
         }
 
         // create gpu resource
         SP_ASSERT_MSG(RHI_CreateResource(), "Failed to create GPU resource");
         m_is_ready_for_use = true;
-
-        // gpu based mip generation
-        if (m_flags & RHI_Texture_Mips)
-        {
-            Renderer::AddTextureForMipGeneration(this);
-        }
 
         // if this was a native texture (means the data is already saved) and the GPU resource
         // has been created, then clear the data as we don't need it anymore

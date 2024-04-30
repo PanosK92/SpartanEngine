@@ -80,10 +80,6 @@ namespace Spartan
         const uint8_t swap_chain_buffer_count = 2;
         RHI_CommandList* cmd_current          = nullptr;
 
-        // mip generation
-        mutex mutex_mip_generation;
-        vector<RHI_Texture*> textures_mip_generation;
-
         // bindless
         static array<RHI_Texture*, rhi_max_array_size> bindless_textures;
         bool bindless_materials_dirty = true;
@@ -570,16 +566,6 @@ namespace Spartan
         UpdateConstantBufferFrame(cmd_current);
         AddLinesToBeRendered();
 
-        // generate mips - if any
-        {
-            lock_guard lock(mutex_mip_generation);
-            for (RHI_Texture* texture : textures_mip_generation)
-            {
-                Pass_GenerateMips(cmd_list, texture);
-            }
-            textures_mip_generation.clear();
-        }
-
         // filter environment on directional light change
         {
             static Quaternion rotation;
@@ -785,12 +771,6 @@ namespace Spartan
         cmd_list->BeginMarker("blit_to_back_buffer");
         cmd_list->Blit(texture, swap_chain.get());
         cmd_list->EndMarker();
-    }
-
-    void Renderer::AddTextureForMipGeneration(RHI_Texture* texture)
-    {
-        lock_guard<mutex> guard(mutex_mip_generation);
-        textures_mip_generation.push_back(texture);
     }
 
     RHI_CommandList* Renderer::GetCmdList()

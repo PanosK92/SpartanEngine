@@ -42,10 +42,9 @@ namespace Spartan
         RHI_Texture_Greyscale    = 1U << 6,
         RHI_Texture_Transparent  = 1U << 7,
         RHI_Texture_Srgb         = 1U << 8,
-        RHI_Texture_Mips         = 1U << 9,
-        RHI_Texture_Compressed   = 1U << 10,
-        RHI_Texture_Mappable     = 1U << 11,
-        RHI_texture_KeepData     = 1U << 12
+        RHI_Texture_Compressed   = 1U << 9,
+        RHI_Texture_Mappable     = 1U << 10,
+        RHI_texture_KeepData     = 1U << 11
     };
 
     enum RHI_Shader_View_Type : uint8_t
@@ -110,16 +109,15 @@ namespace Spartan
         RHI_Texture_Slice& GetSlice(const uint32_t array_index);
 
         // flags
-        bool IsSrv()           const { return m_flags & RHI_Texture_Srv; }
-        bool IsUav()           const { return m_flags & RHI_Texture_Uav; }
-        bool IsVrs()           const { return m_flags & RHI_Texture_Vrs; }
-        bool IsRt()            const { return m_flags & RHI_Texture_Rtv; }
-        bool IsDsv()           const { return IsRt() && IsDepthStencilFormat(); }
-        bool IsRtv()           const { return IsRt() && IsColorFormat(); }
-        bool HasPerMipViews()  const { return m_flags & RHI_Texture_PerMipViews; }
-        bool HasMips()         const { return m_flags & RHI_Texture_Mips; }
-        bool IsGrayscale()     const { return m_flags & RHI_Texture_Greyscale; }
-        bool IsTransparent()   const { return m_flags & RHI_Texture_Transparent; }
+        bool IsSrv()          const { return m_flags & RHI_Texture_Srv; }
+        bool IsUav()          const { return m_flags & RHI_Texture_Uav; }
+        bool IsVrs()          const { return m_flags & RHI_Texture_Vrs; }
+        bool IsRt()           const { return m_flags & RHI_Texture_Rtv; }
+        bool IsDsv()          const { return IsRt() && IsDepthStencilFormat(); }
+        bool IsRtv()          const { return IsRt() && IsColorFormat(); }
+        bool HasPerMipViews() const { return m_flags & RHI_Texture_PerMipViews; }
+        bool IsGrayscale()    const { return m_flags & RHI_Texture_Greyscale; }
+        bool IsTransparent()  const { return m_flags & RHI_Texture_Transparent; }
 
         // format type
         bool IsDepthFormat()        const { return m_format == RHI_Format::D16_Unorm || m_format == RHI_Format::D32_Float || m_format == RHI_Format::D32_Float_S8X24_Uint; }
