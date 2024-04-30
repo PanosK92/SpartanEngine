@@ -4,7 +4,7 @@
  *
  *   FreeType's glyph color management (specification).
  *
- * Copyright (C) 2018-2021 by
+ * Copyright (C) 2018-2023 by
  * David Turner, Robert Wilhelm, and Werner Lemberg.
  *
  * This file is part of the FreeType project, and may only be used,
@@ -456,6 +456,9 @@ FT_BEGIN_HEADER
    *                                           &iterator ) );
    *     }
    *   ```
+   *
+   * @since:
+   *   2.10
    */
   FT_EXPORT( FT_Bool )
   FT_Get_Color_Glyph_Layer( FT_Face            face,
@@ -475,7 +478,7 @@ FT_BEGIN_HEADER
    *   extensions to the 'COLR' table, see
    *   'https://github.com/googlefonts/colr-gradients-spec'.
    *
-   *   The enumeration values losely correspond with the format numbers of
+   *   The enumeration values loosely correspond with the format numbers of
    *   the specification: FreeType always returns a fully specified 'Paint'
    *   structure for the 'Transform', 'Translate', 'Scale', 'Rotate', and
    *   'Skew' table types even though the specification has different formats
@@ -489,9 +492,7 @@ FT_BEGIN_HEADER
    *   structures.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef enum  FT_PaintFormat_
   {
@@ -521,26 +522,29 @@ FT_BEGIN_HEADER
    *
    * @description:
    *   This iterator object is needed for @FT_Get_Colorline_Stops.  It keeps
-   *   state while iterating over the stops of an @FT_ColorLine,
-   *   representing the `ColorLine` struct of the v1 extensions to 'COLR',
-   *   see 'https://github.com/googlefonts/colr-gradients-spec'.
+   *   state while iterating over the stops of an @FT_ColorLine, representing
+   *   the `ColorLine` struct of the v1 extensions to 'COLR', see
+   *   'https://github.com/googlefonts/colr-gradients-spec'.  Do not manually
+   *   modify fields of this iterator.
    *
    * @fields:
    *   num_color_stops ::
    *     The number of color stops for the requested glyph index.  Set by
-   *     @FT_Get_Colorline_Stops.
+   *     @FT_Get_Paint.
    *
    *   current_color_stop ::
    *     The current color stop.  Set by @FT_Get_Colorline_Stops.
    *
    *   p ::
-   *     An opaque pointer into 'COLR' table data.  The caller must set this
-   *     to `NULL` before the first call of @FT_Get_Colorline_Stops.
+   *     An opaque pointer into 'COLR' table data.  Set by @FT_Get_Paint.
+   *     Updated by @FT_Get_Colorline_Stops.
+   *
+   *   read_variable ::
+   *     A boolean keeping track of whether variable color lines are to be
+   *     read.  Set by @FT_Get_Paint.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef struct  FT_ColorStopIterator_
   {
@@ -548,6 +552,8 @@ FT_BEGIN_HEADER
     FT_UInt  current_color_stop;
 
     FT_Byte*  p;
+
+    FT_Bool  read_variable;
 
   } FT_ColorStopIterator;
 
@@ -569,9 +575,7 @@ FT_BEGIN_HEADER
    *     Alpha transparency value multiplied with the value from 'CPAL'.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef struct  FT_ColorIndex_
   {
@@ -592,19 +596,18 @@ FT_BEGIN_HEADER
    *
    * @fields:
    *   stop_offset ::
-   *     The stop offset between 0 and 1 along the gradient.
+   *     The stop offset along the gradient, expressed as a 16.16 fixed-point
+   *     coordinate.
    *
    *   color ::
    *     The color information for this stop, see @FT_ColorIndex.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef struct  FT_ColorStop_
   {
-    FT_F2Dot14     stop_offset;
+    FT_Fixed       stop_offset;
     FT_ColorIndex  color;
 
   } FT_ColorStop;
@@ -621,9 +624,7 @@ FT_BEGIN_HEADER
    *   It describes how the gradient fill continues at the other boundaries.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef enum  FT_PaintExtend_
   {
@@ -653,9 +654,7 @@ FT_BEGIN_HEADER
    *     actual @FT_ColorStop's.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef struct  FT_ColorLine_
   {
@@ -699,9 +698,7 @@ FT_BEGIN_HEADER
    *     y translation.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef struct  FT_Affine_23_
   {
@@ -722,9 +719,7 @@ FT_BEGIN_HEADER
    *   'https://www.w3.org/TR/compositing-1/#porterduffcompositingoperators'.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef enum  FT_Composite_Mode_
   {
@@ -740,22 +735,23 @@ FT_BEGIN_HEADER
     FT_COLR_COMPOSITE_SRC_ATOP       = 9,
     FT_COLR_COMPOSITE_DEST_ATOP      = 10,
     FT_COLR_COMPOSITE_XOR            = 11,
-    FT_COLR_COMPOSITE_SCREEN         = 12,
-    FT_COLR_COMPOSITE_OVERLAY        = 13,
-    FT_COLR_COMPOSITE_DARKEN         = 14,
-    FT_COLR_COMPOSITE_LIGHTEN        = 15,
-    FT_COLR_COMPOSITE_COLOR_DODGE    = 16,
-    FT_COLR_COMPOSITE_COLOR_BURN     = 17,
-    FT_COLR_COMPOSITE_HARD_LIGHT     = 18,
-    FT_COLR_COMPOSITE_SOFT_LIGHT     = 19,
-    FT_COLR_COMPOSITE_DIFFERENCE     = 20,
-    FT_COLR_COMPOSITE_EXCLUSION      = 21,
-    FT_COLR_COMPOSITE_MULTIPLY       = 22,
-    FT_COLR_COMPOSITE_HSL_HUE        = 23,
-    FT_COLR_COMPOSITE_HSL_SATURATION = 24,
-    FT_COLR_COMPOSITE_HSL_COLOR      = 25,
-    FT_COLR_COMPOSITE_HSL_LUMINOSITY = 26,
-    FT_COLR_COMPOSITE_MAX            = 27
+    FT_COLR_COMPOSITE_PLUS           = 12,
+    FT_COLR_COMPOSITE_SCREEN         = 13,
+    FT_COLR_COMPOSITE_OVERLAY        = 14,
+    FT_COLR_COMPOSITE_DARKEN         = 15,
+    FT_COLR_COMPOSITE_LIGHTEN        = 16,
+    FT_COLR_COMPOSITE_COLOR_DODGE    = 17,
+    FT_COLR_COMPOSITE_COLOR_BURN     = 18,
+    FT_COLR_COMPOSITE_HARD_LIGHT     = 19,
+    FT_COLR_COMPOSITE_SOFT_LIGHT     = 20,
+    FT_COLR_COMPOSITE_DIFFERENCE     = 21,
+    FT_COLR_COMPOSITE_EXCLUSION      = 22,
+    FT_COLR_COMPOSITE_MULTIPLY       = 23,
+    FT_COLR_COMPOSITE_HSL_HUE        = 24,
+    FT_COLR_COMPOSITE_HSL_SATURATION = 25,
+    FT_COLR_COMPOSITE_HSL_COLOR      = 26,
+    FT_COLR_COMPOSITE_HSL_LUMINOSITY = 27,
+    FT_COLR_COMPOSITE_MAX            = 28
 
   } FT_Composite_Mode;
 
@@ -785,9 +781,7 @@ FT_BEGIN_HEADER
    *     to be provided.  Do not set this value.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef struct  FT_Opaque_Paint_
   {
@@ -814,9 +808,7 @@ FT_BEGIN_HEADER
    *     The layer iterator that describes the layers of this paint.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef struct  FT_PaintColrLayers_
   {
@@ -841,9 +833,7 @@ FT_BEGIN_HEADER
    *     The color information for this solid paint, see @FT_ColorIndex.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef struct  FT_PaintSolid_
   {
@@ -869,19 +859,20 @@ FT_BEGIN_HEADER
    *     color stops along the gradient.
    *
    *   p0 ::
-   *     The starting point of the gradient definition (in font units).
+   *     The starting point of the gradient definition in font units
+   *     represented as a 16.16 fixed-point `FT_Vector`.
    *
    *   p1 ::
-   *     The end point of the gradient definition (in font units).
+   *     The end point of the gradient definition in font units
+   *     represented as a 16.16 fixed-point `FT_Vector`.
    *
    *   p2 ::
-   *     Optional point~p2 to rotate the gradient (in font units).
+   *     Optional point~p2 to rotate the gradient in font units
+   *     represented as a 16.16 fixed-point `FT_Vector`.
    *     Otherwise equal to~p0.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef struct  FT_PaintLinearGradient_
   {
@@ -904,8 +895,7 @@ FT_BEGIN_HEADER
    *   A structure representing a `PaintRadialGradient` value of the 'COLR'
    *   v1 extensions, see
    *   'https://github.com/googlefonts/colr-gradients-spec'.  The glyph
-   *   layer filled with this paint is drawn filled filled with a radial
-   *   gradient.
+   *   layer filled with this paint is drawn filled with a radial gradient.
    *
    * @fields:
    *   colorline ::
@@ -913,33 +903,32 @@ FT_BEGIN_HEADER
    *     color stops along the gradient.
    *
    *   c0 ::
-   *     The center of the starting point of the radial gradient (in font
-   *     units).
+   *     The center of the starting point of the radial gradient in font
+   *     units represented as a 16.16 fixed-point `FT_Vector`.
    *
    *   r0 ::
-   *     The radius of the starting circle of the radial gradient (in font
-   *     units).
+   *     The radius of the starting circle of the radial gradient in font
+   *     units represented as a 16.16 fixed-point value.
    *
    *   c1 ::
-   *     The center of the end point of the radial gradient (in font units).
+   *     The center of the end point of the radial gradient in font units
+   *     represented as a 16.16 fixed-point `FT_Vector`.
    *
    *   r1 ::
-   *     The radius of the end circle of the radial gradient (in font
-   *     units).
+   *     The radius of the end circle of the radial gradient in font
+   *     units represented as a 16.16 fixed-point value.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef struct  FT_PaintRadialGradient_
   {
     FT_ColorLine  colorline;
 
     FT_Vector  c0;
-    FT_UShort  r0;
+    FT_Pos     r0;
     FT_Vector  c1;
-    FT_UShort  r1;
+    FT_Pos     r1;
 
   } FT_PaintRadialGradient;
 
@@ -962,22 +951,23 @@ FT_BEGIN_HEADER
    *     color stops along the gradient.
    *
    *   center ::
-   *     The center of the sweep gradient (in font units).
+   *     The center of the sweep gradient in font units represented as a
+   *     vector of 16.16 fixed-point values.
    *
    *   start_angle ::
-   *     The start angle of the sweep gradient, in 16.16 fixed point format
-   *     specifying degrees.  Values are given counter-clockwise, starting
-   *     from the (positive) y~axis.
+   *     The start angle of the sweep gradient in 16.16 fixed-point
+   *     format specifying degrees divided by 180.0 (as in the
+   *     spec).  Multiply by 180.0f to receive degrees value.  Values are
+   *     given counter-clockwise, starting from the (positive) y~axis.
    *
    *   end_angle ::
-   *     The end angle of the sweep gradient, in 16.16 fixed point format
-   *     specifying degrees.  Values are given counter-clockwise, starting
-   *     from the (positive) y~axis.
+   *     The end angle of the sweep gradient in 16.16 fixed-point
+   *     format specifying degrees divided by 180.0 (as in the
+   *     spec).  Multiply by 180.0f to receive degrees value.  Values are
+   *     given counter-clockwise, starting from the (positive) y~axis.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef struct  FT_PaintSweepGradient_
   {
@@ -1008,9 +998,7 @@ FT_BEGIN_HEADER
    *     information that is filled with paint.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef struct  FT_PaintGlyph_
   {
@@ -1034,9 +1022,7 @@ FT_BEGIN_HEADER
    *     this paint.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef struct  FT_PaintColrGlyph_
   {
@@ -1058,12 +1044,11 @@ FT_BEGIN_HEADER
    *     An opaque paint that is subject to being transformed.
    *
    *   affine ::
-   *     A 2x3 transformation matrix in @FT_Affine23 format.
+   *     A 2x3 transformation matrix in @FT_Affine23 format containing
+   *     16.16 fixed-point values.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef struct  FT_PaintTransform_
   {
@@ -1088,15 +1073,15 @@ FT_BEGIN_HEADER
    *     rotated.
    *
    *   dx ::
-   *     Translation in x~direction (in font units).
+   *     Translation in x~direction in font units represented as a
+   *     16.16 fixed-point value.
    *
    *   dy ::
-   *     Translation in y~direction (in font units).
+   *     Translation in y~direction in font units represented as a
+   *     16.16 fixed-point value.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef struct  FT_PaintTranslate_
   {
@@ -1129,21 +1114,23 @@ FT_BEGIN_HEADER
    *     scaled.
    *
    *   scale_x ::
-   *     Scale factor in x~direction.
+   *     Scale factor in x~direction represented as a
+   *     16.16 fixed-point value.
    *
    *   scale_y ::
-   *     Scale factor in y~direction.
+   *     Scale factor in y~direction represented as a
+   *     16.16 fixed-point value.
    *
    *   center_x ::
-   *     x~coordinate of center point to scale from.
+   *     x~coordinate of center point to scale from represented as a
+   *     16.16 fixed-point value.
    *
    *   center_y ::
-   *     y~coordinate of center point to scale from.
+   *     y~coordinate of center point to scale from represented as a
+   *     16.16 fixed-point value.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward-compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef struct  FT_PaintScale_
   {
@@ -1173,20 +1160,20 @@ FT_BEGIN_HEADER
    *     rotated.
    *
    *   angle ::
-   *     The rotation angle that is to be applied.
+   *     The rotation angle that is to be applied in degrees divided by
+   *     180.0 (as in the spec) represented as a 16.16 fixed-point
+   *     value.  Multiply by 180.0f to receive degrees value.
    *
    *   center_x ::
-   *     The x~coordinate of the pivot point of the rotation (in font
-   *     units).
+   *     The x~coordinate of the pivot point of the rotation in font
+   *     units represented as a 16.16 fixed-point value.
    *
    *   center_y ::
-   *     The y~coordinate of the pivot point of the rotation (in font
-   *     units).
+   *     The y~coordinate of the pivot point of the rotation in font
+   *     units represented as a 16.16 fixed-point value.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
 
   typedef struct  FT_PaintRotate_
@@ -1217,21 +1204,25 @@ FT_BEGIN_HEADER
    *     skewed.
    *
    *   x_skew_angle ::
-   *     The skewing angle in x~direction.
+   *     The skewing angle in x~direction in degrees divided by 180.0
+   *     (as in the spec) represented as a 16.16 fixed-point
+   *     value. Multiply by 180.0f to receive degrees.
    *
    *   y_skew_angle ::
-   *     The skewing angle in y~direction.
+   *     The skewing angle in y~direction in degrees divided by 180.0
+   *     (as in the spec) represented as a 16.16 fixed-point
+   *     value.  Multiply by 180.0f to receive degrees.
    *
    *   center_x ::
-   *     The x~coordinate of the pivot point of the skew (in font units).
+   *     The x~coordinate of the pivot point of the skew in font units
+   *     represented as a 16.16 fixed-point value.
    *
    *   center_y ::
-   *     The y~coordinate of the pivot point of the skew (in font units).
+   *     The y~coordinate of the pivot point of the skew in font units
+   *     represented as a 16.16 fixed-point value.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef struct  FT_PaintSkew_
   {
@@ -1252,9 +1243,8 @@ FT_BEGIN_HEADER
    *   FT_PaintComposite
    *
    * @description:
-   *   A structure representing a 'COLR'v1 `PaintComposite` paint table.
-   *   Used for compositing two paints in a 'COLR' v1 directed acycling
-   *   graph.
+   *   A structure representing a 'COLR' v1 `PaintComposite` paint table.
+   *   Used for compositing two paints in a 'COLR' v1 directed acyclic graph.
    *
    * @fields:
    *   source_paint ::
@@ -1270,9 +1260,7 @@ FT_BEGIN_HEADER
    *     `source_paint` is composited onto.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef struct  FT_PaintComposite_
   {
@@ -1316,9 +1304,7 @@ FT_BEGIN_HEADER
    *       * @FT_PaintColrGlyph
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef struct  FT_COLR_Paint_
   {
@@ -1363,9 +1349,7 @@ FT_BEGIN_HEADER
    *     Do not output an initial root transform.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   typedef enum  FT_Color_Root_Transform_
   {
@@ -1375,6 +1359,47 @@ FT_BEGIN_HEADER
     FT_COLOR_ROOT_TRANSFORM_MAX
 
   } FT_Color_Root_Transform;
+
+
+  /**************************************************************************
+   *
+   * @struct:
+   *   FT_ClipBox
+   *
+   * @description:
+   *   A structure representing a 'COLR' v1 'ClipBox' table.  'COLR' v1
+   *   glyphs may optionally define a clip box for aiding allocation or
+   *   defining a maximum drawable region.  Use @FT_Get_Color_Glyph_ClipBox
+   *   to retrieve it.
+   *
+   * @fields:
+   *   bottom_left ::
+   *     The bottom left corner of the clip box as an @FT_Vector with
+   *     fixed-point coordinates in 26.6 format.
+   *
+   *   top_left ::
+   *     The top left corner of the clip box as an @FT_Vector with
+   *     fixed-point coordinates in 26.6 format.
+   *
+   *   top_right ::
+   *     The top right corner of the clip box as an @FT_Vector with
+   *     fixed-point coordinates in 26.6 format.
+   *
+   *   bottom_right ::
+   *     The bottom right corner of the clip box as an @FT_Vector with
+   *     fixed-point coordinates in 26.6 format.
+   *
+   * @since:
+   *   2.13
+   */
+  typedef struct  FT_ClipBox_
+  {
+    FT_Vector  bottom_left;
+    FT_Vector  top_left;
+    FT_Vector  top_right;
+    FT_Vector  bottom_right;
+
+  } FT_ClipBox;
 
 
   /**************************************************************************
@@ -1458,15 +1483,54 @@ FT_BEGIN_HEADER
    *   error, value~0 is returned also.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   FT_EXPORT( FT_Bool )
   FT_Get_Color_Glyph_Paint( FT_Face                  face,
                             FT_UInt                  base_glyph,
                             FT_Color_Root_Transform  root_transform,
                             FT_OpaquePaint*          paint );
+
+
+  /**************************************************************************
+   *
+   * @function:
+   *   FT_Get_Color_Glyph_ClipBox
+   *
+   * @description:
+   *   Search for a 'COLR' v1 clip box for the specified `base_glyph` and
+   *   fill the `clip_box` parameter with the 'COLR' v1 'ClipBox' information
+   *   if one is found.
+   *
+   * @input:
+   *   face ::
+   *     A handle to the parent face object.
+   *
+   *   base_glyph ::
+   *     The glyph index for which to retrieve the clip box.
+   *
+   * @output:
+   *   clip_box ::
+   *     The clip box for the requested `base_glyph` if one is found.  The
+   *     clip box is computed taking scale and transformations configured on
+   *     the @FT_Face into account.  @FT_ClipBox contains @FT_Vector values
+   *     in 26.6 format.
+   *
+   * @return:
+   *   Value~1 if a clip box is found.  If no clip box is found or an error
+   *   occured, value~0 is returned.
+   *
+   * @note:
+   *   To retrieve the clip box in font units, reset scale to units-per-em
+   *   and remove transforms configured using @FT_Set_Transform.
+   *
+   * @since:
+   *   2.13
+   */
+  FT_EXPORT( FT_Bool )
+  FT_Get_Color_Glyph_ClipBox( FT_Face      face,
+                              FT_UInt      base_glyph,
+                              FT_ClipBox*  clip_box );
 
 
   /**************************************************************************
@@ -1508,9 +1572,7 @@ FT_BEGIN_HEADER
    *   object can not be retrieved or any other error occurs.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   FT_EXPORT( FT_Bool )
   FT_Get_Paint_Layers( FT_Face            face,
@@ -1551,9 +1613,7 @@ FT_BEGIN_HEADER
    *   also.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   FT_EXPORT( FT_Bool )
   FT_Get_Colorline_Stops( FT_Face                face,
@@ -1589,9 +1649,7 @@ FT_BEGIN_HEADER
    *   this paint or any other error occured.
    *
    * @since:
-   *   2.11 -- **currently experimental only!**  There might be changes
-   *   without retaining backward compatibility of both the API and ABI.
-   *
+   *   2.13
    */
   FT_EXPORT( FT_Bool )
   FT_Get_Paint( FT_Face         face,

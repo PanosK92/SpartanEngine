@@ -134,7 +134,7 @@ def generate_project_files():
     subprocess.Popen(cmd, shell=True).communicate()
 
 def main():
-    library_url = 'https://www.dropbox.com/scl/fi/j6anhygpafhxsa95gj4zj/libraries.7z?rlkey=ekbi65zkc3szmxkvolkljpku7&st=hdr38p7r&dl=1'
+    library_url = 'https://www.dropbox.com/scl/fi/mnxzjpfriciia3ikt05ow/libraries.7z?rlkey=6vez2e2ess60ncllnjiegg6mw&st=735nstzd&dl=1'
     library_destination = 'third_party/libraries/libraries.7z'
     assets_url = 'https://www.dropbox.com/scl/fi/xtlrgio6l21dwus7vhf1v/assets.7z?rlkey=dw3y5e1iwnz8hm9odrg5z5pf8&st=uwfgsm43&dl=1'
     assets_destination = 'assets/assets.7z'
