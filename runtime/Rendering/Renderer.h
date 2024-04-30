@@ -86,6 +86,7 @@ namespace Spartan
         static uint64_t GetFrameNum();
         static RHI_Api_Type GetRhiApiType();
         static void Screenshot(const std::string& file_path);
+        static void SetEntities(std::vector<std::shared_ptr<Entity>>& entities);
 
         //= RESOLUTION/SIZE =============================================================================
         // viewport
@@ -187,7 +188,6 @@ namespace Spartan
         static void Pass_Ffx_Fsr2(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
 
         // event handlers
-        static void OnWorldResolved(sp_variant data);
         static void OnClear();
         static void OnFullScreenToggled();
         static void OnSyncPoint(RHI_CommandList* cmd_list);

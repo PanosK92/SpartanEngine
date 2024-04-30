@@ -294,8 +294,7 @@ namespace Spartan
             AcquireChildren();
         }
 
-        // resolve the world so that systems like the renderer become aware of it
-        SP_FIRE_EVENT(EventType::WorldResolve);
+        World::Resolve();
     }
 
     bool Entity::IsActive() const
@@ -345,7 +344,7 @@ namespace Spartan
             }
         }
 
-        SP_FIRE_EVENT(EventType::WorldResolve);
+        World::Resolve();
     }
 
     void Entity::UpdateTransform()

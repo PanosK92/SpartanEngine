@@ -69,8 +69,6 @@ namespace Spartan
         WorldLoadStart,                // The world is about to be loaded from a file
         WorldLoadEnd,                  // The world finished loading from file
         WorldClear,                    // The world is about to clear everything
-        WorldResolve,                  // The world is resolving
-        WorldResolved,                 // The world has finished resolving
         // SDL                         
         Sdl,                           // An SDL event
         // Window                      
@@ -89,7 +87,6 @@ namespace Spartan
         int,
         void*,
         std::vector<std::shared_ptr<Entity>>
-
     >;
     using subscriber = std::function<void(const sp_variant&)>;
 

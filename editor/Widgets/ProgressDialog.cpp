@@ -78,6 +78,6 @@ void ProgressDialog::OnTickVisible()
 
     if (!at_least_one_progress)
     {
-        show_progress_bar(0.5f, "...", at_least_one_progress);
+        show_progress_bar(0.0f, "...", at_least_one_progress);
     }
 }
