@@ -253,7 +253,7 @@ namespace Spartan
         D3D12_VERTEX_BUFFER_VIEW vertex_buffer_view = {};
         vertex_buffer_view.BufferLocation           = 0;
         vertex_buffer_view.StrideInBytes            = static_cast<UINT>(buffer->GetStride());
-        vertex_buffer_view.SizeInBytes              = static_cast<UINT>(buffer->GetObjectSizeGpu());
+        vertex_buffer_view.SizeInBytes              = static_cast<UINT>(buffer->GetObjectSize());
 
         static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->IASetVertexBuffers(
             0,                  // StartSlot
@@ -277,7 +277,7 @@ namespace Spartan
 
         D3D12_INDEX_BUFFER_VIEW index_buffer_view = {};
         index_buffer_view.BufferLocation          = 0;
-        index_buffer_view.SizeInBytes             = static_cast<UINT>(buffer->GetObjectSizeGpu());
+        index_buffer_view.SizeInBytes             = static_cast<UINT>(buffer->GetObjectSize());
         index_buffer_view.Format                  = buffer->Is16Bit() ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
 
         static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->IASetIndexBuffer(

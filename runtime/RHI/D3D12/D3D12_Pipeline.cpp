@@ -46,7 +46,7 @@ namespace Spartan
             // Pipeline description
             D3D12_COMPUTE_PIPELINE_STATE_DESC desc  = {};
             //desc.pRootSignature                     = 0;
-            desc.CS                                 = { m_state.shader_compute->GetRhiResource(), m_state.shader_compute->GetObjectSizeCpu() };
+            desc.CS                                 = { m_state.shader_compute->GetRhiResource(), m_state.shader_compute->GetObjectSize() };
             //desc.NodeMask                           = 0;
             //desc.CachedPSO                          = 0;
             //desc.Flags                              = 0;
@@ -128,8 +128,8 @@ namespace Spartan
             D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
             desc.InputLayout                        = desc_input_layout;
             //desc.pRootSignature                     = m_rootSignature.Get();
-            desc.VS                                 = { m_state.shader_vertex->GetRhiResource(), m_state.shader_vertex->GetObjectSizeCpu() };
-            desc.PS                                 = { m_state.shader_pixel->GetRhiResource(),  m_state.shader_pixel->GetObjectSizeCpu() };
+            desc.VS                                 = { m_state.shader_vertex->GetRhiResource(), m_state.shader_vertex->GetObjectSize() };
+            desc.PS                                 = { m_state.shader_pixel->GetRhiResource(),  m_state.shader_pixel->GetObjectSize() };
             desc.RasterizerState                    = desc_rasterizer;
             desc.BlendState                         = desc_blend_state;
             desc.DepthStencilState                  = desc_depth_stencil_state;
