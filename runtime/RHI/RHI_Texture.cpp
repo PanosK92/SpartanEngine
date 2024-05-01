@@ -99,30 +99,24 @@ namespace Spartan
             return CMP_FORMAT::CMP_FORMAT_Unknown;
         }
 
-        void convert(RHI_Texture* texture)
+        void compress(RHI_Texture* texture, const uint32_t mip_index, const RHI_Format destination_format)
         {
-            SP_ASSERT(texture);
-            SP_ASSERT(texture->HasData());
-            SP_ASSERT(texture->GetWidth() > 0);
-            SP_ASSERT(texture->GetHeight() > 0);
-
-            const RHI_Format compression_format = RHI_Format::BC3_Unorm;
-
             // source texture
             CMP_Texture source_texture = {};
-            source_texture.dwSize      = sizeof(CMP_Texture);
-            source_texture.dwWidth     = texture->GetWidth();
-            source_texture.dwHeight    = texture->GetHeight();
             source_texture.format      = to_cmp_format(texture->GetFormat());
-            source_texture.dwDataSize  = static_cast<uint32_t>(texture->GetMip(0, 0).bytes.size());
-            source_texture.pData       = reinterpret_cast<uint8_t*>(texture->GetMip(0, 0).bytes.data());
+            source_texture.dwSize      = sizeof(CMP_Texture);
+            source_texture.dwWidth     = texture->GetWidth() >> mip_index;
+            source_texture.dwHeight    = texture->GetHeight() >> mip_index;
+            source_texture.dwPitch     = source_texture.dwWidth * texture->GetBytesPerPixel();
+            source_texture.dwDataSize  = static_cast<uint32_t>(texture->GetMip(0, mip_index).bytes.size());
+            source_texture.pData       = reinterpret_cast<uint8_t*>(texture->GetMip(0, mip_index).bytes.data());
 
             // destination texture
             CMP_Texture destination_texture = {};
+            destination_texture.format      = to_cmp_format(destination_format);
             destination_texture.dwSize      = sizeof(CMP_Texture);
             destination_texture.dwWidth     = source_texture.dwWidth;
             destination_texture.dwHeight    = source_texture.dwHeight;
-            destination_texture.format      = to_cmp_format(compression_format);
             destination_texture.dwDataSize  = CMP_CalculateBufferSize(&destination_texture);
             vector<std::byte> destination_data(destination_texture.dwDataSize);
             destination_texture.pData       = reinterpret_cast<uint8_t*>(destination_data.data());
@@ -132,15 +126,90 @@ namespace Spartan
                 CMP_CompressOptions options = {};
                 options.dwSize              = sizeof(CMP_CompressOptions);
                 options.fquality            = 0.05f;                            // set for lower quality, faster compression
-                options.dwnumThreads        = ThreadPool::GetIdleThreadCount(); // use multiple threads
+                options.dwnumThreads        = ThreadPool::GetIdleThreadCount(); // use all free threads
 
                 CMP_ERROR result = CMP_ConvertTexture(&source_texture, &destination_texture, &options, nullptr);
                 SP_ASSERT(result == CMP_OK);
             }
 
-            // update texture
-            texture->SetFormat(compression_format);
-            texture->GetMip(0, 0).bytes = destination_data;
+            // update texture with compressed data
+            texture->GetMip(0, mip_index).bytes = destination_data;
+        }
+
+        void downsample(const vector<std::byte>& source_data, uint32_t source_width, uint32_t source_height, vector<std::byte>& destination_data)
+        {
+            SP_ASSERT(source_width >= 2);
+            SP_ASSERT(source_height >= 2);
+
+            uint32_t dest_width = source_width / 2;
+            uint32_t dest_height = source_height / 2;
+            destination_data.resize(dest_width * dest_height * 4); // 4 bytes per pixel for RGBA
+
+            for (uint32_t y = 0; y < dest_height; ++y)
+            {
+                for (uint32_t x = 0; x < dest_width; ++x)
+                {
+                    // calculate base index of the top-left pixel of the 2x2 block
+                    uint32_t base_index = ((y * 2 * source_width) + (x * 2)) * 4;
+
+                    for (int channel = 0; channel < 4; ++channel) // process each channel (R, G, B, A)
+                    {
+                        float total = 0.0f;
+                        for (int dy = 0; dy < 2; dy++)
+                        {
+                            for (int dx = 0; dx < 2; dx++)
+                            {
+                                uint32_t index = base_index + (dy * source_width * 4) + (dx * 4) + channel;
+                                if (index < source_data.size()) {
+                                    total += static_cast<float>(source_data[index]);
+                                }
+                            }
+                        }
+
+                        // compute the average for the current channel
+                        float average = total / 4.0f; // always averaging over 4, since it's a 2x2 block
+
+                        // store the result in the destination data array
+                        destination_data[(y * dest_width + x) * 4 + channel] = static_cast<std::byte>(std::floor(average));
+                    }
+                }
+            }
+        }
+
+        void compress(RHI_Texture* texture)
+        {
+            SP_ASSERT(texture != nullptr);
+            SP_ASSERT(texture->GetBytesPerPixel() == 4); // downsample assumes this, so assert and expand the code as needed
+
+            RHI_Format destination_format = RHI_Format::BC3_Unorm;
+            uint32_t mip_count            = 0;
+            uint32_t width                = texture->GetWidth();
+            uint32_t height               = texture->GetHeight();
+            while (width > 1 && height > 1)
+            {
+                width  >>= 1;
+                height >>= 1;
+                mip_count++;
+            }
+
+            for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
+            {
+                // we have to generate all mips but the first (which is the original texture)
+                if (mip_index > 0)
+                {
+                    texture->CreateMip(0, false);
+                    auto& prev_bytes     = texture->GetMip(0, mip_index - 1).bytes;
+                    uint32_t prev_width  = texture->GetWidth() >> (mip_index - 1);
+                    uint32_t prev_height = texture->GetHeight() >> (mip_index - 1);
+                    vector<std::byte> new_bytes;
+                    downsample(prev_bytes, prev_width, prev_height, new_bytes);
+                    texture->GetMip(0, mip_index).bytes = new_bytes;
+                }
+
+                compress(texture, mip_index, destination_format);
+            }
+
+            texture->SetFormat(destination_format);
         }
     }
 
@@ -328,7 +397,7 @@ namespace Spartan
                 // compress texture (if not alraedy compressed)
                 if (!IsCompressedFormat(m_format) && !keep_data)
                 {
-                    compressonator::convert(this);
+                    compressonator::compress(this);
                 }
             }
         }
@@ -349,7 +418,7 @@ namespace Spartan
         return true;
     }
 
-    RHI_Texture_Mip& RHI_Texture::CreateMip(const uint32_t array_index)
+    RHI_Texture_Mip& RHI_Texture::CreateMip(const uint32_t array_index, const bool allocate_memory)
     {
         // ensure there's room for the new array index
         while (array_index >= m_slices.size())
@@ -357,23 +426,21 @@ namespace Spartan
             m_slices.emplace_back();
         }
 
-        // create the mip in the specified slice
+        // add the mip
         RHI_Texture_Mip& mip = m_slices[array_index].mips.emplace_back();
+        m_array_length       = static_cast<uint32_t>(m_slices.size());
+        m_mip_count          = static_cast<uint32_t>(m_slices[0].mips.size());
 
-        uint32_t mip_index = static_cast<uint32_t>(m_slices[array_index].mips.size()) - 1;
-        uint32_t width     = m_width  >> mip_index;
-        uint32_t height    = m_height >> mip_index;
-
-        // calculate the size
-        size_t size_bytes = CalculateMipSize(width, height, m_format, m_bits_per_channel, m_channel_count);
-        mip.bytes.resize(size_bytes);
-        mip.bytes.reserve(size_bytes);
-
-        // update texture properties
-        if (!m_slices.empty())
+        // allocate memory if requested
+        if (allocate_memory)
         {
-            m_array_length = static_cast<uint32_t>(m_slices.size());
-            m_mip_count    = static_cast<uint32_t>(m_slices[0].mips.size());
+            uint32_t mip_index = static_cast<uint32_t>(m_slices[array_index].mips.size()) - 1;
+            uint32_t width     = m_width >> mip_index;
+            uint32_t height    = m_height >> mip_index;
+            size_t size_bytes  = CalculateMipSize(width, height, m_format, m_bits_per_channel, m_channel_count);
+
+            mip.bytes.resize(size_bytes);
+            mip.bytes.reserve(size_bytes);
         }
 
         return mip;
