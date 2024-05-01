@@ -222,7 +222,7 @@ static const VkFormat vulkan_format[] =
     VK_FORMAT_BC3_UNORM_BLOCK,
     VK_FORMAT_BC5_UNORM_BLOCK,
     VK_FORMAT_BC7_UNORM_BLOCK,
-    VK_FORMAT_UNDEFINED,
+    VK_FORMAT_ASTC_4x4_UNORM_BLOCK,
     // Surface
     VK_FORMAT_B8G8R8A8_UNORM,
     // Unknown

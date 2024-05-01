@@ -44,53 +44,16 @@ namespace Spartan
 
         CMP_FORMAT to_cmp_format(const RHI_Format format)
         {
-            if (format == RHI_Format::R8_Unorm)
-                return CMP_FORMAT::CMP_FORMAT_R_8;
-
-            if (format == RHI_Format::R16_Unorm)
-                return CMP_FORMAT::CMP_FORMAT_R_16;
-
-            if (format == RHI_Format::R16_Float)
-                return CMP_FORMAT::CMP_FORMAT_R_16F;
-
-            if (format == RHI_Format::R32_Float)
-                return CMP_FORMAT::CMP_FORMAT_R_32F;
-
-            if (format == RHI_Format::R8G8_Unorm)
-                return CMP_FORMAT::CMP_FORMAT_RG_8;
-
-            if (format == RHI_Format::R16G16_Float)
-                return CMP_FORMAT::CMP_FORMAT_RG_16F;
-
-            if (format == RHI_Format::R32G32_Float)
-                return CMP_FORMAT::CMP_FORMAT_RG_32F;
-
-            if (format == RHI_Format::R32G32B32_Float)
-                return CMP_FORMAT::CMP_FORMAT_RGB_32F;
-
+            // input
             if (format == RHI_Format::R8G8B8A8_Unorm)
                 return CMP_FORMAT::CMP_FORMAT_RGBA_8888;
 
-            if (format == RHI_Format::R16G16B16A16_Unorm)
-                return CMP_FORMAT::CMP_FORMAT_RGBA_16;
-
-            if (format == RHI_Format::R16G16B16A16_Float)
-                return CMP_FORMAT::CMP_FORMAT_RGBA_16F;
-
-            if (format == RHI_Format::R32G32B32A32_Float)
-                return CMP_FORMAT::CMP_FORMAT_RGBA_32F;
-
+            // output
             if (format == RHI_Format::ASTC)
-                return CMP_FORMAT::CMP_FORMAT_ASTC;
-
-            if (format == RHI_Format::BC1_Unorm)
-                return CMP_FORMAT::CMP_FORMAT_BC1;
+                return CMP_FORMAT::CMP_FORMAT_ASTC; // that's a build option in the compressonator
 
             if (format == RHI_Format::BC3_Unorm)
                 return CMP_FORMAT::CMP_FORMAT_BC3;
-
-            if (format == RHI_Format::BC5_Unorm)
-                return CMP_FORMAT::CMP_FORMAT_BC5;
 
             if (format == RHI_Format::BC7_Unorm)
                 return CMP_FORMAT::CMP_FORMAT_BC7;
@@ -139,7 +102,6 @@ namespace Spartan
         void compress(RHI_Texture* texture)
         {
             SP_ASSERT(texture != nullptr);
-            SP_ASSERT(texture->GetBytesPerPixel() == 4); // downsample assumes this, so assert and expand the code as needed
 
             RHI_Format destination_format = RHI_Format::BC3_Unorm;
 
@@ -489,7 +451,8 @@ namespace Spartan
             format == RHI_Format::BC1_Unorm ||
             format == RHI_Format::BC3_Unorm ||
             format == RHI_Format::BC5_Unorm ||
-            format == RHI_Format::BC7_Unorm;
+            format == RHI_Format::BC7_Unorm ||
+            format == RHI_Format::ASTC;
     }
 
     size_t RHI_Texture::CalculateMipSize(uint32_t width, uint32_t height, RHI_Format format, uint32_t bits_per_channel, uint32_t channel_count)
@@ -500,22 +463,31 @@ namespace Spartan
         if (IsCompressedFormat(format))
         {
             uint32_t block_size;
+            uint32_t block_width  = 4; // default block width  for BC formats
+            uint32_t block_height = 4; // default block height for BC formats
+
             switch (format)
             {
             case RHI_Format::BC1_Unorm:
-                block_size = 8; // 8 bytes per block
+                block_size = 8;
                 break;
             case RHI_Format::BC3_Unorm:
             case RHI_Format::BC7_Unorm:
             case RHI_Format::BC5_Unorm:
-                block_size = 16; // 16 bytes per block
+                block_size = 16;
+                break;
+            case RHI_Format::ASTC: // VK_FORMAT_ASTC_4x4_UNORM_BLOCK
+                block_width  = 4;
+                block_height = 4;
+                block_size   = 16;
                 break;
             default:
+                SP_ASSERT(false);
                 return 0;
             }
 
-            uint32_t num_blocks_wide = (width + 3) / 4;
-            uint32_t num_blocks_high = (height + 3) / 4;
+            uint32_t num_blocks_wide = (width + block_width - 1) / block_width;
+            uint32_t num_blocks_high = (height + block_height - 1) / block_height;
             return num_blocks_wide * num_blocks_high * block_size;
         }
         else
