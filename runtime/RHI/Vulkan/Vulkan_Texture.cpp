@@ -291,7 +291,7 @@ namespace Spartan
         if (HasData())
         {
             stage(this);
-            if ((m_flags & RHI_texture_KeepData) == 0)
+            if ((m_flags & RHI_Texture_KeepData) == 0)
             { 
                 m_slices.clear();
             }

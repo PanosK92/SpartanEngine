@@ -261,7 +261,8 @@ namespace Spartan
         m_slices.clear();
         m_slices.shrink_to_fit();
 
-        bool keep_data = (m_flags & RHI_texture_KeepData) != 0;
+        bool keep_data = (m_flags & RHI_Texture_KeepData) != 0;
+        bool compress  = (m_flags & RHI_Texture_DontCompress) == 0;
 
         // load from drive
         {
@@ -334,7 +335,7 @@ namespace Spartan
                 SetResourceFilePath(file_path);
 
                 // compress texture (if not alraedy compressed)
-                if (!IsCompressedFormat(m_format) && !keep_data)
+                if (compress && !IsCompressedFormat(m_format))
                 {
                     compressonator::compress(this);
                 }
