@@ -43,7 +43,8 @@ namespace Spartan
         RHI_Texture_Transparent  = 1U << 7,
         RHI_Texture_Srgb         = 1U << 8,
         RHI_Texture_Mappable     = 1U << 9,
-        RHI_texture_KeepData     = 1U << 10
+        RHI_Texture_KeepData     = 1U << 10,
+        RHI_Texture_DontCompress = 1U << 11
     };
 
     enum RHI_Shader_View_Type : uint8_t
