@@ -103,7 +103,7 @@ namespace Spartan
         uint32_t GetMipCount()                             const { return m_mip_count; }
         bool HasData()                                     const { return !m_slices.empty() && !m_slices[0].mips.empty() && !m_slices[0].mips[0].bytes.empty(); };
         std::vector<RHI_Texture_Slice>& GetData()                { return m_slices; }
-        RHI_Texture_Mip& CreateMip(const uint32_t array_index, const bool allocate_memory);
+        RHI_Texture_Mip& CreateMip(const uint32_t array_index);
         RHI_Texture_Mip& GetMip(const uint32_t array_index, const uint32_t mip_index);
         RHI_Texture_Slice& GetSlice(const uint32_t array_index);
 

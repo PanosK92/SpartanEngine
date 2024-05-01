@@ -377,7 +377,7 @@ namespace Spartan
             // set data
             for (uint32_t mip_index = 0; mip_index < dds_file.GetMipCount(); mip_index++)
             {
-                RHI_Texture_Mip& mip = texture->CreateMip(0, true);
+                RHI_Texture_Mip& mip = texture->CreateMip(0);
                 const auto& data     = dds_file.GetImageData(mip_index, 0);
                 memcpy(&mip.bytes[0], data->m_mem, mip.bytes.size());
             }
@@ -395,9 +395,9 @@ namespace Spartan
         
         // deduce certain properties
         // done before ApplyBitmapCorrections(), as after that, results for grayscale seem to be always false
-        texture_flags          |= FreeImage_IsTransparent(bitmap) ? RHI_Texture_Transparent : 0;
-        texture_flags          |= (FreeImage_GetColorType(bitmap) == FREE_IMAGE_COLOR_TYPE::FIC_MINISBLACK) ? RHI_Texture_Greyscale : 0;
-        texture_flags          |= get_is_srgb(bitmap) ? RHI_Texture_Srgb : 0;
+        texture_flags |= FreeImage_IsTransparent(bitmap) ? RHI_Texture_Transparent : 0;
+        texture_flags |= (FreeImage_GetColorType(bitmap) == FREE_IMAGE_COLOR_TYPE::FIC_MINISBLACK) ? RHI_Texture_Greyscale : 0;
+        texture_flags |= get_is_srgb(bitmap) ? RHI_Texture_Srgb : 0;
         texture->SetFlags(texture_flags);
 
         // perform some corrections
@@ -421,11 +421,38 @@ namespace Spartan
         texture->SetChannelCount(get_channel_count(bitmap));
         texture->SetFormat(get_rhi_format(texture->GetBitsPerChannel(), texture->GetChannelCount()));
 
-        // copy data over to the RHI_Texture
-        RHI_Texture_Mip& mip = texture->CreateMip(slice_index, true);
-        BYTE* bytes = FreeImage_GetBits(bitmap);
-        memcpy(&mip.bytes[0], bytes, mip.bytes.size());
-        FreeImage_Unload(bitmap);
+        // fill in all the mips
+        uint32_t mip_count       = static_cast<uint32_t>(std::floor(std::log2(std::max(texture->GetWidth(), texture->GetHeight())))) + 1;
+        FIBITMAP* current_bitmap = bitmap;
+        for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
+        {
+            if (mip_index != 0) // rescale bitmap for next mip levels
+            {
+                FIBITMAP* resized_bitmap = FreeImage_Rescale(current_bitmap, texture->GetWidth() >> mip_index, texture->GetHeight() >> mip_index, FILTER_BICUBIC);
+                if (!resized_bitmap)
+                {
+                    SP_LOG_ERROR("Failed to resize image for mip level %d", mip_index);
+                    FreeImage_Unload(bitmap);
+                    return false;
+                }
+
+                if (mip_index > 1)
+                {
+                    FreeImage_Unload(current_bitmap);
+                }
+
+                current_bitmap = resized_bitmap;
+            }
+
+            // copy data over to the texture
+            RHI_Texture_Mip& mip = texture->CreateMip(slice_index);
+            BYTE* bytes          = FreeImage_GetBits(current_bitmap);
+            size_t bytes_size    = FreeImage_GetPitch(current_bitmap) * FreeImage_GetHeight(current_bitmap);
+            mip.bytes.resize(bytes_size);
+            memcpy(&mip.bytes[0], bytes, bytes_size);
+        }
+
+        FreeImage_Unload(current_bitmap);
 
         return true;
     }

@@ -136,76 +136,15 @@ namespace Spartan
             texture->GetMip(0, mip_index).bytes = destination_data;
         }
 
-        void downsample(const vector<std::byte>& source_data, uint32_t source_width, uint32_t source_height, vector<std::byte>& destination_data)
-        {
-            SP_ASSERT(source_width >= 2);
-            SP_ASSERT(source_height >= 2);
-
-            uint32_t dest_width = source_width / 2;
-            uint32_t dest_height = source_height / 2;
-            destination_data.resize(dest_width * dest_height * 4); // 4 bytes per pixel for RGBA
-
-            for (uint32_t y = 0; y < dest_height; ++y)
-            {
-                for (uint32_t x = 0; x < dest_width; ++x)
-                {
-                    // calculate base index of the top-left pixel of the 2x2 block
-                    uint32_t base_index = ((y * 2 * source_width) + (x * 2)) * 4;
-
-                    for (int channel = 0; channel < 4; ++channel) // process each channel (R, G, B, A)
-                    {
-                        float total = 0.0f;
-                        for (int dy = 0; dy < 2; dy++)
-                        {
-                            for (int dx = 0; dx < 2; dx++)
-                            {
-                                uint32_t index = base_index + (dy * source_width * 4) + (dx * 4) + channel;
-                                if (index < source_data.size()) {
-                                    total += static_cast<float>(source_data[index]);
-                                }
-                            }
-                        }
-
-                        // compute the average for the current channel
-                        float average = total / 4.0f; // always averaging over 4, since it's a 2x2 block
-
-                        // store the result in the destination data array
-                        destination_data[(y * dest_width + x) * 4 + channel] = static_cast<std::byte>(std::floor(average));
-                    }
-                }
-            }
-        }
-
         void compress(RHI_Texture* texture)
         {
             SP_ASSERT(texture != nullptr);
             SP_ASSERT(texture->GetBytesPerPixel() == 4); // downsample assumes this, so assert and expand the code as needed
 
             RHI_Format destination_format = RHI_Format::BC3_Unorm;
-            uint32_t mip_count            = 0;
-            uint32_t width                = texture->GetWidth();
-            uint32_t height               = texture->GetHeight();
-            while (width > 1 && height > 1)
-            {
-                width  >>= 1;
-                height >>= 1;
-                mip_count++;
-            }
 
-            for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
+            for (uint32_t mip_index = 0; mip_index < texture->GetMipCount(); mip_index++)
             {
-                // we have to generate all mips but the first (which is the original texture)
-                if (mip_index > 0)
-                {
-                    texture->CreateMip(0, false);
-                    auto& prev_bytes     = texture->GetMip(0, mip_index - 1).bytes;
-                    uint32_t prev_width  = texture->GetWidth() >> (mip_index - 1);
-                    uint32_t prev_height = texture->GetHeight() >> (mip_index - 1);
-                    vector<std::byte> new_bytes;
-                    downsample(prev_bytes, prev_width, prev_height, new_bytes);
-                    texture->GetMip(0, mip_index).bytes = new_bytes;
-                }
-
                 compress(texture, mip_index, destination_format);
             }
 
@@ -418,7 +357,7 @@ namespace Spartan
         return true;
     }
 
-    RHI_Texture_Mip& RHI_Texture::CreateMip(const uint32_t array_index, const bool allocate_memory)
+    RHI_Texture_Mip& RHI_Texture::CreateMip(const uint32_t array_index)
     {
         // ensure there's room for the new array index
         while (array_index >= m_slices.size())
@@ -432,7 +371,6 @@ namespace Spartan
         m_mip_count          = static_cast<uint32_t>(m_slices[0].mips.size());
 
         // allocate memory if requested
-        if (allocate_memory)
         {
             uint32_t mip_index = static_cast<uint32_t>(m_slices[array_index].mips.size()) - 1;
             uint32_t width     = m_width >> mip_index;
