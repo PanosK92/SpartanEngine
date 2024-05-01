@@ -294,6 +294,21 @@ namespace Spartan
 
             SP_LOG_ERROR("%s, Format: %s", text, format);
         };
+
+        uint32_t calculate_mip_count(uint32_t width, uint32_t height)
+        {
+            uint32_t mip_count = 0;
+            while (width > 1 || height > 1)
+            {
+                width  >>= 1;
+                height >>= 1;
+                if (width > 0 && height > 0)
+                {
+                    mip_count++;
+                }
+            }
+            return mip_count;
+        }
     }
 
     void ImageImporterExporter::Initialize()
@@ -422,13 +437,15 @@ namespace Spartan
         texture->SetFormat(get_rhi_format(texture->GetBitsPerChannel(), texture->GetChannelCount()));
 
         // fill in all the mips
-        uint32_t mip_count       = static_cast<uint32_t>(std::floor(std::log2(std::max(texture->GetWidth(), texture->GetHeight())))) + 1;
+        uint32_t mip_count       = calculate_mip_count(texture->GetWidth(), texture->GetHeight());
         FIBITMAP* current_bitmap = bitmap;
         for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
         {
             if (mip_index != 0) // rescale bitmap for next mip levels
             {
-                FIBITMAP* resized_bitmap = FreeImage_Rescale(current_bitmap, texture->GetWidth() >> mip_index, texture->GetHeight() >> mip_index, FILTER_BICUBIC);
+                uint32_t width           = texture->GetWidth() >> mip_index;
+                uint32_t height          = texture->GetHeight() >> mip_index;
+                FIBITMAP* resized_bitmap = FreeImage_Rescale(current_bitmap, width, height, FILTER_BICUBIC);
                 if (!resized_bitmap)
                 {
                     SP_LOG_ERROR("Failed to resize image for mip level %d", mip_index);

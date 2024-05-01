@@ -280,9 +280,6 @@ namespace Spartan
     {
         Noise_normal,
         Noise_blue,
-        White,
-        Black,
-        Transparent,
         Checkerboard,
         Gizmo_light_directional,
         Gizmo_light_point,

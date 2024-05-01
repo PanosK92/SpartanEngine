@@ -593,15 +593,6 @@ namespace Spartan
 
         // color
         {
-            standard_texture(Renderer_StandardTexture::White) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_white");
-            standard_texture(Renderer_StandardTexture::White)->LoadFromFile(dir_texture + "white.png");
-
-            standard_texture(Renderer_StandardTexture::Black) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_black");
-            standard_texture(Renderer_StandardTexture::Black)->LoadFromFile(dir_texture + "black.png");
-
-            standard_texture(Renderer_StandardTexture::Transparent) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_transparent");
-            standard_texture(Renderer_StandardTexture::Transparent)->LoadFromFile(dir_texture + "transparent.png");
-
             standard_texture(Renderer_StandardTexture::Checkerboard) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_transparent");
             standard_texture(Renderer_StandardTexture::Checkerboard)->LoadFromFile(dir_texture + "no_texture.png");
         }
