@@ -377,7 +377,7 @@ namespace Spartan
             // set data
             for (uint32_t mip_index = 0; mip_index < dds_file.GetMipCount(); mip_index++)
             {
-                RHI_Texture_Mip& mip = texture->CreateMip(0);
+                RHI_Texture_Mip& mip = texture->CreateMip(0, true);
                 const auto& data     = dds_file.GetImageData(mip_index, 0);
                 memcpy(&mip.bytes[0], data->m_mem, mip.bytes.size());
             }
@@ -422,7 +422,7 @@ namespace Spartan
         texture->SetFormat(get_rhi_format(texture->GetBitsPerChannel(), texture->GetChannelCount()));
 
         // copy data over to the RHI_Texture
-        RHI_Texture_Mip& mip = texture->CreateMip(slice_index);
+        RHI_Texture_Mip& mip = texture->CreateMip(slice_index, true);
         BYTE* bytes = FreeImage_GetBits(bitmap);
         memcpy(&mip.bytes[0], bytes, mip.bytes.size());
         FreeImage_Unload(bitmap);
