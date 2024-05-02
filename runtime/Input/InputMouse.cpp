@@ -66,14 +66,11 @@ namespace Spartan
         GetKeys()[m_start_index_mouse + 2] = (keys_states & SDL_BUTTON(SDL_BUTTON_RIGHT))  != 0; // Right button pressed
     }
 
-    void Input::OnEventMouse(void* event_mouse)
+    void Input::OnEventMouse(void* event)
     {
-        // validate event
-        SP_ASSERT(event_mouse != nullptr);
-        SDL_Event* sdl_event = static_cast<SDL_Event*>(event_mouse);
-        Uint32 event_type = sdl_event->type;
+        SDL_Event* sdl_event = static_cast<SDL_Event*>(event);
+        uint32_t event_type  = sdl_event->type;
 
-        // wheel
         if (event_type == SDL_MOUSEWHEEL)
         {
             if (sdl_event->wheel.x > 0) m_mouse_wheel_delta.x += 1;

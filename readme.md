@@ -59,12 +59,12 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - Temporal anti-aliasing.
 - HDR10 output.
 - Post-process effects like fxaa, bloom, motion-blur, depth of field, chromatic aberration etc.
-- AMD FidelityFX features like FSR 2, SPD, etc.
+- AMD FidelityFX features like FSR 2, SPD, CAS, Compressonator etc.
 - Comprehensive debug rendering options.
 
 #### General
 - One-click project generation for easy setup.
-- Universal input support, including mouse, keyboard, and controllers (tested with a PS5 controller).
+- Universal input support, keyboard & mouse, controllers (tested a PS5 controller) and steering wheels.
 - Comprehensive physics features.
 - CPU & GPU profiling.
 - XML support for data handling.
