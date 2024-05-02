@@ -83,6 +83,22 @@ namespace Spartan
         Touchpad, // ps4/Pps5 touchpad button
     };
 
+    enum class ControllerType
+    {
+        Gamepad,
+        SteeringWheel,
+        Max
+    };
+
+    struct Controller
+    {
+        void* sdl_pointer   = nullptr;
+        bool is_connected   = false;
+        std::string name    = "";
+        uint32_t index      = 0;
+        ControllerType type = ControllerType::Max;
+    };
+
     class SP_CLASS Input
     {
     public:
@@ -93,12 +109,14 @@ namespace Spartan
         // polling driven input
         static void PollMouse();
         static void PollKeyboard();
-        static void PollController();
+        static void PollGamepad();
+        static void PollSteeringWheel();
 
         // event driven input
         static void OnEvent(sp_variant data);
-        static void OnEventMouse(void* event_mouse);
-        static void OnEventController(void* event_controller);
+        static void OnEventMouse(void* event);
+        static void OnEventGamepad(void* event);
+        static void OnEventSteeringWheel(void* event);
 
         // returns true while a button is held down
         static bool GetKey(const KeyCode key);
@@ -138,6 +156,7 @@ namespace Spartan
         static std::array<bool, 107>& GetKeys();
         static uint32_t GetKeyIndexMouse();
         static uint32_t GetKeyIndexController();
+        static void CheckControllerState(uint32_t event_type, Controller* controller, ControllerType type_to_detect);
 
         // keys
         static std::array<bool, 107> m_keys;

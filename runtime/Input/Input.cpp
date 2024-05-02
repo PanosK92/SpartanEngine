@@ -19,18 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======
+//= INCLUDES =====
 #include "pch.h"
 #include "Input.h"
 #include <SDL.h>
-//==================
+//================
 
 //= NAMESPACES ===============
 using namespace std;
 using namespace Spartan::Math;
 //============================
 
-// These need to be included on Windows or SDL will throw a bunch of linking errors.
+// these need to be included on windows or sdl will throw a bunch of linking errors
 #ifdef _MSC_VER
 #pragma comment(lib, "winmm.lib")
 #pragma comment(lib, "version.lib")
@@ -46,7 +46,7 @@ namespace Spartan
 
     void Input::Initialize()
     {
-        // Initialise events subsystem (if needed)
+        // initialise events subsystem (if needed)
         if (SDL_WasInit(SDL_INIT_EVENTS) != 1)
         {
             if (SDL_InitSubSystem(SDL_INIT_EVENTS) != 0)
@@ -56,7 +56,7 @@ namespace Spartan
             }
         }
 
-        // Initialise controller subsystem (if needed)
+        // initialise controller subsystem (if needed)
         if (SDL_WasInit(SDL_INIT_GAMECONTROLLER) != 1)
         {
             if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) != 0)
@@ -69,7 +69,7 @@ namespace Spartan
         m_keys.fill(false);
         m_keys_previous_frame.fill(false);
 
-        // Get events from the main Window's event processing loop
+        // get events from the main Window's event processing loop
         SP_SUBSCRIBE_TO_EVENT(EventType::Sdl, SP_EVENT_HANDLER_VARIANT_STATIC(OnEvent));
     }
 
@@ -79,32 +79,17 @@ namespace Spartan
 
         PollMouse();
         PollKeyboard();
-        PollController();
+        PollGamepad();
+        PollSteeringWheel();
     }
 
     void Input::OnEvent(sp_variant data)
     {
         SDL_Event* event_sdl = static_cast<SDL_Event*>(get<void*>(data));
-        Uint32 event_type    = event_sdl->type;
 
-        if (event_type == SDL_MOUSEWHEEL)
-        {
-            OnEventMouse(event_sdl);
-        }
-
-        if (event_type == SDL_CONTROLLERAXISMOTION ||
-            event_type == SDL_CONTROLLERBUTTONDOWN ||
-            event_type == SDL_CONTROLLERBUTTONUP ||
-            event_type == SDL_CONTROLLERDEVICEADDED ||
-            event_type == SDL_CONTROLLERDEVICEREMOVED ||
-            event_type == SDL_CONTROLLERDEVICEREMAPPED ||
-            event_type == SDL_CONTROLLERTOUCHPADDOWN ||
-            event_type == SDL_CONTROLLERTOUCHPADMOTION ||
-            event_type == SDL_CONTROLLERTOUCHPADUP ||
-            event_type == SDL_CONTROLLERSENSORUPDATE)
-        {
-            OnEventController(event_sdl);
-        }
+        OnEventMouse(event_sdl);
+        OnEventGamepad(event_sdl);
+        OnEventSteeringWheel(event_sdl);
     }
 
     bool Input::GetKey(const KeyCode key)
@@ -136,4 +121,51 @@ namespace Spartan
     {
         return m_start_index_controller;
     }
+
+    void Input::CheckControllerState(uint32_t event_type, Controller* controller, ControllerType type_to_detect)
+    {
+        // connected
+        if (event_type == SDL_CONTROLLERDEVICEADDED)
+        {
+            for (int i = 0; i < SDL_NumJoysticks(); i++)
+            {
+                if (SDL_IsGameController(i))
+                {
+                    SDL_GameController* controller_candidate = SDL_GameControllerOpen(i);
+                    if (SDL_GameControllerGetAttached(controller_candidate) == SDL_TRUE)
+                    {
+                        string controller_name = SDL_GameControllerNameForIndex(i);
+                        if (type_to_detect == ControllerType::SteeringWheel && controller_name.find("wheel") == string::npos)
+                            continue;
+
+                        controller->sdl_pointer  = controller_candidate;
+                        controller->index        = i;
+                        controller->is_connected = true;
+                        controller->name         = SDL_GameControllerNameForIndex(i);
+
+                        SP_LOG_INFO("Controller connected \"%s\".", controller->name.c_str());
+                        break;
+                    }
+                    else
+                    {
+                        SP_LOG_ERROR("Failed to get controller: %s.", SDL_GetError());
+                    }
+                }
+            }
+
+            SDL_GameControllerEventState(SDL_ENABLE);
+        }
+
+        // disconnected
+        if (event_type == SDL_CONTROLLERDEVICEREMOVED)
+        {
+            controller->sdl_pointer  = nullptr;
+            controller->index        = 0;
+            controller->is_connected = false;
+            controller->name         = "";
+
+            SP_LOG_INFO("Controller disconnected \"%s\".", controller->name.c_str());
+        }
+    }
+
 }
