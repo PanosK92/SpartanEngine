@@ -125,7 +125,7 @@ namespace Spartan
     void Input::CheckControllerState(uint32_t event_type, Controller* controller, ControllerType type_to_detect)
     {
         // connected
-        if (event_type == SDL_CONTROLLERDEVICEADDED)
+        if (!controller->is_connected && event_type == SDL_CONTROLLERDEVICEADDED)
         {
             for (int i = 0; i < SDL_NumJoysticks(); i++)
             {
@@ -157,14 +157,14 @@ namespace Spartan
         }
 
         // disconnected
-        if (event_type == SDL_CONTROLLERDEVICEREMOVED)
+        if (controller->is_connected && event_type == SDL_CONTROLLERDEVICEREMOVED)
         {
+            SP_LOG_INFO("Controller disconnected \"%s\".", controller->name.c_str());
+
             controller->sdl_pointer  = nullptr;
             controller->index        = 0;
             controller->is_connected = false;
             controller->name         = "";
-
-            SP_LOG_INFO("Controller disconnected \"%s\".", controller->name.c_str());
         }
     }
 
