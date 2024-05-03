@@ -134,8 +134,14 @@ namespace Spartan
                     SDL_GameController* controller_candidate = SDL_GameControllerOpen(i);
                     if (SDL_GameControllerGetAttached(controller_candidate) == SDL_TRUE)
                     {
-                        string controller_name = SDL_GameControllerNameForIndex(i);
-                        if (type_to_detect == ControllerType::SteeringWheel && controller_name.find("wheel") == string::npos)
+                        string name = SDL_GameControllerNameForIndex(i);
+                        transform(name.begin(), name.end(), name.begin(), ::tolower);
+
+                        bool is_wheel = name.find("wheel") != string::npos;
+                        if (type_to_detect == ControllerType::Gamepad && is_wheel)
+                            continue;
+
+                        if (type_to_detect == ControllerType::SteeringWheel && !is_wheel)
                             continue;
 
                         controller->sdl_pointer  = controller_candidate;
@@ -168,4 +174,27 @@ namespace Spartan
         }
     }
 
+    float Input::GetNormalizedAxisValue(void* controller, const uint32_t axis)
+    {
+        int16_t value = SDL_GameControllerGetAxis(static_cast<SDL_GameController*>(controller), static_cast<SDL_GameControllerAxis>(axis));
+
+        // account for deadzone
+        static const uint16_t deadzone = 8000; // a good default as per SDL_GameController.h
+        if ((abs(value) - deadzone) < 0)
+        {
+            value = 0;
+        }
+        else
+        {
+            value -= value > 0 ? deadzone : -deadzone;
+        }
+
+        // compute range
+        const float range_negative = 32768.0f;
+        const float range_positive = 32767.0f;
+        float range = value < 0 ? range_negative : range_positive;
+
+        // normalize
+        return static_cast<float>(value) / (range - deadzone);
+    }
 }

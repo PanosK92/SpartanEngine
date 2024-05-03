@@ -35,6 +35,9 @@ namespace Spartan
     namespace
     {
         Controller steering_wheel;
+        float steering    = 0.0f;
+        float accelerator = 0.0f;
+        float brake       = 0.0f;
     }
 
     void Input::PollSteeringWheel()
@@ -42,9 +45,11 @@ namespace Spartan
         if (!steering_wheel.sdl_pointer)
             return;
 
-        int steering    = SDL_GameControllerGetAxis(static_cast<SDL_GameController*>(steering_wheel.sdl_pointer), SDL_CONTROLLER_AXIS_LEFTX);
-        int accelerator = SDL_GameControllerGetAxis(static_cast<SDL_GameController*>(steering_wheel.sdl_pointer), SDL_CONTROLLER_AXIS_TRIGGERLEFT);
-        int brake       = SDL_GameControllerGetAxis(static_cast<SDL_GameController*>(steering_wheel.sdl_pointer), SDL_CONTROLLER_AXIS_TRIGGERRIGHT);
+        steering    = GetNormalizedAxisValue(steering_wheel.sdl_pointer, SDL_CONTROLLER_AXIS_LEFTX);
+        accelerator = GetNormalizedAxisValue(steering_wheel.sdl_pointer, SDL_CONTROLLER_AXIS_TRIGGERLEFT);
+        brake       = GetNormalizedAxisValue(steering_wheel.sdl_pointer, SDL_CONTROLLER_AXIS_TRIGGERRIGHT);
+
+        SP_LOG_INFO("Steering: %f, Accelerator: %f, Brake: %f", steering, accelerator, brake);
     }
 
     void Input::OnEventSteeringWheel(void* event)
@@ -52,5 +57,20 @@ namespace Spartan
         SDL_Event* sdl_event = static_cast<SDL_Event*>(event);
         uint32_t event_type  = sdl_event->type;
         CheckControllerState(event_type, &steering_wheel, ControllerType::SteeringWheel);
+    }
+
+    float Input::GetSteeringWheelSteering()
+    {
+        return steering;
+    }
+
+    float Input::GetSteeringWheelAccelerator()
+    {
+        return accelerator;
+    }
+
+    float Input::GetSteeringWheelBrake()
+    {
+        return brake;
     }
 }

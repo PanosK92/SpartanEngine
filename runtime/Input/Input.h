@@ -138,18 +138,23 @@ namespace Spartan
         static const Math::Vector2 GetMousePositionRelativeToWindow();
         static const Math::Vector2 GetMousePositionRelativeToEditorViewport();
 
-        // controller
-        static bool IsControllerConnected();
-        static const Math::Vector2& GetControllerThumbStickLeft();
-        static const Math::Vector2& GetControllerThumbStickRight();
-        static float GetControllerTriggerLeft();
-        static float GetControllerTriggerRight();
+        // gamepad
+        static bool IsGamepadConnected();
+        static const Math::Vector2& GetGamepadThumbStickLeft();
+        static const Math::Vector2& GetGamepadThumbStickRight();
+        static float GetGamepadTriggerLeft();
+        static float GetGamepadTriggerRight();
 
-        // vibrate the gamepad.
-        // motor speed range is from 0.0 to 1.0f.
-        // the left motor is the low-frequency rumble motor.
-        // the right motor is the high-frequency rumble motor. 
-        // the two motors are not the same, and they create different vibration effects.
+        // steering wheel
+        static float GetSteeringWheelSteering();
+        static float GetSteeringWheelAccelerator();
+        static float GetSteeringWheelBrake();
+
+        // vibrate the gamepad
+        // motor speed range is from 0.0 to 1.0f
+        // the left motor is the low-frequency rumble motor
+        // the right motor is the high-frequency rumble motor
+        // the two motors are not the same, and they create different vibration effects
         static bool GamepadVibrate(const float left_motor_speed, const float right_motor_speed);
 
     private:
@@ -157,6 +162,7 @@ namespace Spartan
         static uint32_t GetKeyIndexMouse();
         static uint32_t GetKeyIndexController();
         static void CheckControllerState(uint32_t event_type, Controller* controller, ControllerType type_to_detect);
+        static float GetNormalizedAxisValue(void* controller, const uint32_t axis);
 
         // keys
         static std::array<bool, 107> m_keys;
