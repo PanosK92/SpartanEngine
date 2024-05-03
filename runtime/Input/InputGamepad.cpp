@@ -39,43 +39,19 @@ namespace Spartan
         Math::Vector2 controller_thumb_right = Math::Vector2::Zero;
         float controller_trigger_left        = 0.0f;
         float controller_trigger_right       = 0.0f;
-
-        float get_normalized_axis_value(void* controller, const SDL_GameControllerAxis axis)
-        {
-            int16_t value = SDL_GameControllerGetAxis(static_cast<SDL_GameController*>(controller), axis);
-
-            // account for deadzone
-            static const uint16_t deadzone = 8000; // a good default as per SDL_GameController.h
-            if ((abs(value) - deadzone) < 0)
-            {
-                value = 0;
-            }
-            else
-            {
-                value -= value > 0 ? deadzone : -deadzone;
-            }
-
-            // compute range
-            static const float range_negative = 32768.0f;
-            static const float range_positive = 32767.0f;
-            float range                       = value < 0 ? range_negative : range_positive;
-
-            // normalize
-            return static_cast<float>(value) / (range - deadzone);
-        }
     }
 
     void Input::PollGamepad()
     {
-        if (!gamepad.sdl_pointer)
+        if (!gamepad.is_connected)
             return;
 
-        controller_trigger_left  = get_normalized_axis_value(gamepad.sdl_pointer, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_TRIGGERLEFT);  // L2
-        controller_trigger_right = get_normalized_axis_value(gamepad.sdl_pointer, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_TRIGGERRIGHT); // R2
-        controller_thumb_left.x  = get_normalized_axis_value(gamepad.sdl_pointer, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_LEFTX);        // LEFT THUMBSTICK
-        controller_thumb_left.y  = get_normalized_axis_value(gamepad.sdl_pointer, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_LEFTY);        // LEFT THUMBSTICK
-        controller_thumb_right.x = get_normalized_axis_value(gamepad.sdl_pointer, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_RIGHTX);       // RIGHT THUMBSTICK
-        controller_thumb_right.y = get_normalized_axis_value(gamepad.sdl_pointer, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_RIGHTY);       // RIGHT THUMBSTICK
+        controller_trigger_left  = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_TRIGGERLEFT);  // L2
+        controller_trigger_right = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_TRIGGERRIGHT); // R2
+        controller_thumb_left.x  = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_LEFTX);        // LEFT THUMBSTICK
+        controller_thumb_left.y  = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_LEFTY);        // LEFT THUMBSTICK
+        controller_thumb_right.x = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_RIGHTX);       // RIGHT THUMBSTICK
+        controller_thumb_right.y = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_RIGHTY);       // RIGHT THUMBSTICK
     }
 
     void Input::OnEventGamepad(void* event)
@@ -83,6 +59,9 @@ namespace Spartan
         SDL_Event* sdl_event = static_cast<SDL_Event*>(event);
         uint32_t event_type  = sdl_event->type;
         CheckControllerState(event_type, &gamepad, ControllerType::Gamepad);
+
+        if (!gamepad.is_connected)
+            return;
 
         // keys
         if (event_type == SDL_CONTROLLERBUTTONDOWN)
@@ -138,27 +117,27 @@ namespace Spartan
         return true;
     }
 
-    bool Input::IsControllerConnected()
+    bool Input::IsGamepadConnected()
     {
         return gamepad.is_connected;
     }
 
-    const Vector2& Input::GetControllerThumbStickLeft()
+    const Vector2& Input::GetGamepadThumbStickLeft()
     {
         return controller_thumb_left;
     }
 
-    const Vector2& Input::GetControllerThumbStickRight()
+    const Vector2& Input::GetGamepadThumbStickRight()
     {
         return controller_thumb_right;
     }
 
-    float Input::GetControllerTriggerLeft()
+    float Input::GetGamepadTriggerLeft()
     {
         return controller_trigger_left;
     }
 
-    float Input::GetControllerTriggerRight()
+    float Input::GetGamepadTriggerRight()
     {
         return controller_trigger_right;
     }

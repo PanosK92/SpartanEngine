@@ -672,7 +672,7 @@ namespace Spartan
                 m_parameters.break_until_opposite_torque = false;
             }
 
-            if (Input::GetKey(KeyCode::Arrow_Up) || Input::GetControllerTriggerRight() != 0.0f)
+            if (Input::GetKey(KeyCode::Arrow_Up) || Input::GetGamepadTriggerRight() != 0.0f)
             {
                 if (m_parameters.movement_direction == CarMovementState::Backward)
                 {
@@ -683,7 +683,7 @@ namespace Spartan
                     m_parameters.throttle = 1.0f;
                 }
             }
-            else if (Input::GetKey(KeyCode::Arrow_Down) || Input::GetControllerTriggerLeft() != 0.0f)
+            else if (Input::GetKey(KeyCode::Arrow_Down) || Input::GetGamepadTriggerLeft() != 0.0f)
             {
                 if (m_parameters.movement_direction == CarMovementState::Forward)
                 {
@@ -707,11 +707,11 @@ namespace Spartan
         {
             float steering_angle_target = 0.0f;
 
-            if (Input::GetKey(KeyCode::Arrow_Left) || Input::GetControllerThumbStickLeft().x < 0.0f)
+            if (Input::GetKey(KeyCode::Arrow_Left) || Input::GetGamepadThumbStickLeft().x < 0.0f)
             {
                 steering_angle_target = -tuning::steering_angle_max;
             }
-            else if (Input::GetKey(KeyCode::Arrow_Right) || Input::GetControllerThumbStickLeft().x > 0.0f)
+            else if (Input::GetKey(KeyCode::Arrow_Right) || Input::GetGamepadThumbStickLeft().x > 0.0f)
             {
                 steering_angle_target = tuning::steering_angle_max;
             }
