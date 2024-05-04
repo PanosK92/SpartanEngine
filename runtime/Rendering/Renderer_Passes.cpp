@@ -2028,6 +2028,8 @@ namespace Spartan
         const bool draw_lines_depth_on  = m_lines_index_depth_on > ((m_line_vertices.size() / 2) - 1);
         if (draw_lines_depth_off || draw_lines_depth_on)
         {
+            cmd_list->SetCullMode(RHI_CullMode::None);
+
             // grow vertex buffer (if needed)
             uint32_t vertex_count = static_cast<uint32_t>(m_line_vertices.size());
             if (vertex_count > m_vertex_buffer_lines->GetVertexCount())
@@ -2050,7 +2052,7 @@ namespace Spartan
                     pso.blend_state         = GetBlendState(Renderer_BlendState::Off).get();
                     pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
                     cmd_list->SetPipelineState(pso);
-
+                 
                     cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
                     cmd_list->Draw(m_lines_index_depth_off + 1);
 
@@ -2183,12 +2185,10 @@ namespace Spartan
         pso.name                            = "Pass_Text";
         cmd_list->SetPipelineState(pso);
 
-        cmd_list->SetCullMode(RHI_CullMode::Back);
-
-        // set vertex and index buffer
         font->UpdateVertexAndIndexBuffers();
         cmd_list->SetBufferVertex(font->GetVertexBuffer());
         cmd_list->SetBufferIndex(font->GetIndexBuffer());
+        cmd_list->SetCullMode(RHI_CullMode::Back);
 
         // outline
         cmd_list->BeginTimeblock("text_outline");
