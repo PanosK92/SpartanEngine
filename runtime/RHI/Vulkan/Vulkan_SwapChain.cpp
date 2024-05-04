@@ -455,10 +455,11 @@ namespace Spartan
                 // the editor supports multiple windows, so we can be dealing with multiple swapchains
                 if (m_object_id == cmd_pool->GetSwapchainId())
                 {
-                    RHI_Semaphore* rendering_complete_semaphore = cmd_pool->GetCurrentCommandList()->GetRenderingCompleteSemaphore();
-                    if (rendering_complete_semaphore->GetStateCpu() == RHI_Sync_State::Submitted)
+                    RHI_CommandList* cmd_list = cmd_pool->GetCurrentCommandList();
+                    RHI_Semaphore* semaphore  = cmd_list->GetRenderingCompleteSemaphore();
+                    if (semaphore->GetStateCpu() == RHI_Sync_State::Submitted)
                     {
-                        m_wait_semaphores.emplace_back(rendering_complete_semaphore);
+                        m_wait_semaphores.emplace_back(semaphore);
                     }
                 }
             }

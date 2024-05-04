@@ -83,7 +83,7 @@ namespace Spartan
                 // will complain so we add a generic access mask that's harmless for VK_IMAGE_LAYOUT_UNDEFINED transitions
                 if (!is_destination_mask)
                 {
-                    access_mask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+                    access_mask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
                 }
                 else
                 {
@@ -93,42 +93,46 @@ namespace Spartan
 
             case VK_IMAGE_LAYOUT_PREINITIALIZED:
                 SP_ASSERT(!is_destination_mask && "The new layout used in a transition must not be VK_IMAGE_LAYOUT_PREINITIALIZED.");
-                access_mask = VK_ACCESS_HOST_WRITE_BIT;
+                access_mask = VK_ACCESS_2_HOST_WRITE_BIT;
                 break;
 
+            // When transitioning the image to VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR or VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            // there is no need to delay subsequent processing, or perform any visibility operations (as vkQueuePresentKHR
+            // performs automatic visibility operations). To achieve this, the dstAccessMask member of the VkImageMemoryBarrier
+            // should be set to 0, and the dstStageMask parameter should be set to VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT.
             case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
                 access_mask = VK_ACCESS_2_NONE;
                 break;
 
                 // transfer
             case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
-                access_mask = VK_ACCESS_TRANSFER_READ_BIT;
+                access_mask = VK_ACCESS_2_TRANSFER_READ_BIT;
                 break;
 
             case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
-                access_mask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                access_mask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
                 break;
 
                 // attachments
             case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-                access_mask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                access_mask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
                 break;
 
                 // attachments - depth/stencil
             case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL:
-                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                access_mask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
                 break;
 
             case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                access_mask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
                 break;
 
             case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL:
-                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                access_mask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
                 break;
 
             case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:
-                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                access_mask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
                 break;
 
              // attachments
@@ -136,7 +140,6 @@ namespace Spartan
                 if (is_depth)
                 {
                     access_mask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT_KHR | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT_KHR;
-                    
                 }
                 else
                 { 
@@ -145,24 +148,24 @@ namespace Spartan
                 break;
 
             case VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR:
-                access_mask = VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
+                access_mask = VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
                 break;
 
                 // shader reads
             case VK_IMAGE_LAYOUT_GENERAL:
-                access_mask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+                access_mask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
                 break;
 
             case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-                access_mask = VK_ACCESS_SHADER_READ_BIT;
+                access_mask = VK_ACCESS_2_SHADER_READ_BIT;
                 break;
 
             case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL:
-                access_mask = VK_ACCESS_SHADER_READ_BIT;
+                access_mask = VK_ACCESS_2_SHADER_READ_BIT;
                 break;
 
             case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
-                access_mask = VK_ACCESS_SHADER_READ_BIT;
+                access_mask = VK_ACCESS_2_SHADER_READ_BIT;
                 break;
 
             default:
@@ -177,7 +180,7 @@ namespace Spartan
         {
             if (is_swapchain)
             {
-                return VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+                return VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
             }
 
             VkPipelineStageFlags2 stages      = 0;
@@ -191,83 +194,83 @@ namespace Spartan
 
                 switch (access_flag)
                 {
-                case VK_ACCESS_INDIRECT_COMMAND_READ_BIT:
-                    stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+                case VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
                     break;
 
-                case VK_ACCESS_INDEX_READ_BIT:
-                    stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+                case VK_ACCESS_2_INDEX_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
                     break;
 
-                case VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT:
-                    stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+                case VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
                     break;
 
-                case VK_ACCESS_UNIFORM_READ_BIT:
-                    stages |= enabled_graphics_stages | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+                case VK_ACCESS_2_UNIFORM_READ_BIT:
+                    stages |= enabled_graphics_stages | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
                     break;
 
-                case VK_ACCESS_INPUT_ATTACHMENT_READ_BIT:
-                    stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+                case VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
                     break;
 
                     // shader
-                case VK_ACCESS_SHADER_READ_BIT:
-                    stages |= enabled_graphics_stages | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+                case VK_ACCESS_2_SHADER_READ_BIT:
+                    stages |= enabled_graphics_stages | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
                     break;
 
-                case VK_ACCESS_SHADER_WRITE_BIT:
-                    stages |= enabled_graphics_stages | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+                case VK_ACCESS_2_SHADER_WRITE_BIT:
+                    stages |= enabled_graphics_stages | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
                     break;
 
                     // attachments - color
-                case VK_ACCESS_COLOR_ATTACHMENT_READ_BIT:
-                    stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+                case VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
                     break;
 
-                case VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT:
-                    stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+                case VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT:
+                    stages |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
                     break;
 
                     // attachments - depth/stencil
-                case VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT:
-                    stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+                case VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
                     break;
 
                     // attachments - shading rate
-                case VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR:
-                    stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+                case VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR:
+                    stages |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
                     break;
 
-                case VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT:
-                    stages |= VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+                case VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT:
+                    stages |= VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
                     break;
 
                     // transfer
-                case VK_ACCESS_TRANSFER_READ_BIT:
-                    stages |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+                case VK_ACCESS_2_TRANSFER_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
                     break;
 
-                case VK_ACCESS_TRANSFER_WRITE_BIT:
-                    stages |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+                case VK_ACCESS_2_TRANSFER_WRITE_BIT:
+                    stages |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
                     break;
 
                     // host
-                case VK_ACCESS_HOST_READ_BIT:
-                    stages |= VK_PIPELINE_STAGE_HOST_BIT;
+                case VK_ACCESS_2_HOST_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_2_HOST_BIT;
                     break;
 
-                case VK_ACCESS_HOST_WRITE_BIT:
-                    stages |= VK_PIPELINE_STAGE_HOST_BIT;
+                case VK_ACCESS_2_HOST_WRITE_BIT:
+                    stages |= VK_PIPELINE_STAGE_2_HOST_BIT;
                     break;
 
                     // misc
-                case VK_ACCESS_MEMORY_READ_BIT:
-                    stages |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+                case VK_ACCESS_2_MEMORY_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
                     break;
 
-                case VK_ACCESS_MEMORY_WRITE_BIT:
-                    stages |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+                case VK_ACCESS_2_MEMORY_WRITE_BIT:
+                    stages |= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
                     break;
 
                 default:

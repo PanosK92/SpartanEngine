@@ -50,7 +50,7 @@ namespace
     vector<string> display_modes_string;
 
     // helper functions
-    bool option(const char* title, bool default_open = true)
+    bool option(const char* title, bool default_open = false)
     {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
@@ -379,7 +379,7 @@ void RenderOptions::OnTickVisible()
             option_int("Shadow resolution", resolution_shadow);
         }
 
-        if (option("Misc", false))
+        if (option("Misc"))
         {
             option_value("Fog",      Renderer_Option::Fog, "Controls the density of the fog", 0.1f);
             option_value("Exposure", Renderer_Option::Exposure);

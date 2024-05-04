@@ -365,7 +365,7 @@ namespace Spartan
                 }
 
                 if (p_callback_data->messageIdNumber == 0xe17ab4ae) // validation error - SYNC-HAZARD-PRESENT-AFTER-WRITE
-                    return VK_FALSE;
+                  return VK_FALSE;
 
                 if (p_callback_data->messageIdNumber == 0x42f2f4ed) // validation error - depth_ouput
                     return VK_FALSE;
