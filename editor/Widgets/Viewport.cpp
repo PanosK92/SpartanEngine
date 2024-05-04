@@ -35,6 +35,13 @@ using namespace Spartan;
 using namespace Math;
 //======================
 
+namespace
+{
+    bool first_frame         = true;
+    uint32_t width_previous  = 0;
+    uint32_t height_previous = 0;
+}
+
 Viewport::Viewport(Editor* editor) : Widget(editor)
 {
     m_title         = "Viewport";
@@ -50,10 +57,7 @@ void Viewport::OnTickVisible()
     uint32_t height = static_cast<uint32_t>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
 
     // update engine's viewport
-    static bool first_frame         = true;
-    static bool resolutions_set     = Settings::HasLoadedUserSettingsFromFile();
-    static uint32_t width_previous  = 0;
-    static uint32_t height_previous = 0;
+    static bool resolution_set = Settings::HasLoadedUserSettingsFromFile();
     if (!first_frame) // during the first frame the viewport is not yet initialized (it's size will be something weird)
     {
         if (width_previous != width || height_previous != height)
@@ -62,13 +66,13 @@ void Viewport::OnTickVisible()
             {
                 Renderer::SetViewport(static_cast<float>(width), static_cast<float>(height)); 
                 
-                if (!resolutions_set)
+                if (!resolution_set)
                 {
                     // only set the render and output resolutions once
                     // they are expensive operations and we don't want to do it frequently
                     Renderer::SetResolutionOutput(width, height);
 
-                    resolutions_set = true;
+                    resolution_set = true;
                 }
 
                 width_previous  = width;

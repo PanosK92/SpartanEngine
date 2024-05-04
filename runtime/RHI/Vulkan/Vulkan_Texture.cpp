@@ -359,7 +359,7 @@ namespace Spartan
 
     void RHI_Texture::RHI_DestroyResource(const bool destroy_main, const bool destroy_per_view)
     {
-        // De-allocate everything
+        // de-allocate everything
         if (destroy_main)
         {
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::TextureView, m_rhi_srv);

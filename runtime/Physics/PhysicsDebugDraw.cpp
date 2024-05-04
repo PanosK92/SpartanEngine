@@ -49,9 +49,11 @@ namespace Spartan
 
     void PhysicsDebugDraw::drawLine(const btVector3& from, const btVector3& to, const btVector3& color_from, const btVector3& color_to)
     {
+        // a bit dangerous to reinterpret these parameters but this is a performance critical path
+        // a better way would be to use a custom physics debug draw since the one from Bullet is a cpu hog
         Renderer::DrawLine(
-            reinterpret_cast<const Math::Vector3&>(from), // performance critical
-            reinterpret_cast<const Math::Vector3&>(to),   // performance critical
+            reinterpret_cast<const Math::Vector3&>(from),
+            reinterpret_cast<const Math::Vector3&>(to),
             reinterpret_cast<const Color&>(color_from),
             reinterpret_cast<const Color&>(color_to),
             0.0f,
