@@ -520,9 +520,12 @@ void WorldViewer::HandleKeyShortcuts()
     // Delete
     if (Spartan::Input::GetKey(Spartan::KeyCode::Delete))
     {
-        if (shared_ptr<Spartan::Entity> selected_entity = Spartan::Renderer::GetCamera()->GetSelectedEntity())
-        {
-            ActionEntityDelete(selected_entity);
+        if (shared_ptr<Spartan::Camera> camera = Spartan::Renderer::GetCamera())
+        { 
+            if (shared_ptr<Spartan::Entity> selected_entity = camera->GetSelectedEntity())
+            {
+                ActionEntityDelete(selected_entity);
+            }
         }
     }
 
@@ -547,7 +550,7 @@ void WorldViewer::HandleKeyShortcuts()
         m_editor->GetWidget<TitleBar>()->ShowWorldLoadDialog();
     }
 
-    // Undo and Redo: Ctrl + Z, Ctrl+Shift+Z
+    // Undo and Redo: Ctrl + Z, Ctrl + Shift + Z
     if (Spartan::Input::GetKey(Spartan::KeyCode::Ctrl_Left) && Spartan::Input::GetKeyDown(Spartan::KeyCode::Z))
     {
         if (Spartan::Input::GetKey(Spartan::KeyCode::Shift_Left))

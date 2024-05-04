@@ -35,11 +35,6 @@ namespace Spartan
     namespace
     {
         uint32_t debug_mode = 0;
-
-        Color to_color(const btVector3& vector)
-        {
-            return Color(vector.getX(), vector.getY(), vector.getZ(), 1.0f);
-        }
     }
 
     PhysicsDebugDraw::PhysicsDebugDraw()
@@ -54,7 +49,14 @@ namespace Spartan
 
     void PhysicsDebugDraw::drawLine(const btVector3& from, const btVector3& to, const btVector3& color_from, const btVector3& color_to)
     {
-        Renderer::DrawLine(ToVector3(from), ToVector3(to), to_color(color_from), to_color(color_to), 0.0f, true);
+        Renderer::DrawLine(
+            reinterpret_cast<const Math::Vector3&>(from), // performance critical
+            reinterpret_cast<const Math::Vector3&>(to),   // performance critical
+            reinterpret_cast<const Color&>(color_from),
+            reinterpret_cast<const Color&>(color_to),
+            0.0f,
+            true
+        );
     }
 
     void PhysicsDebugDraw::drawContactPoint(const btVector3& PointOnB, const btVector3& normalOnB, btScalar distance, int lifeTime, const btVector3& color)

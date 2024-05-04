@@ -72,12 +72,26 @@ namespace Spartan
         // write lines
         {
             index++;
-            m_line_vertices[index]  = RHI_Vertex_PosCol(from, color_from);
-            m_lines_duration[index] = duration;
+            RHI_Vertex_PosCol& line_start = m_line_vertices[index];
+            line_start.pos[0]             = from.x;
+            line_start.pos[1]             = from.y;
+            line_start.pos[2]             = from.z;
+            line_start.col[0]             = color_from.r;
+            line_start.col[1]             = color_from.g;
+            line_start.col[2]             = color_from.b;
+            line_start.col[3]             = 1.0f;
+            m_lines_duration[index]       = duration;
 
             index++;
-            m_line_vertices[index]  = RHI_Vertex_PosCol(to, color_to);
-            m_lines_duration[index] = duration;
+            RHI_Vertex_PosCol& line_end = m_line_vertices[index];
+            line_end.pos[0]             = to.x;
+            line_end.pos[1]             = to.y;
+            line_end.pos[2]             = to.z;
+            line_end.col[0]             = color_to.r;
+            line_end.col[1]             = color_to.g;
+            line_end.col[2]             = color_to.b;
+            line_end.col[3]             = 1.0f;
+            m_lines_duration[index]     = duration;
         }
     }
 
