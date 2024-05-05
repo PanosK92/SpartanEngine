@@ -45,7 +45,6 @@ namespace Spartan
     {
     public:
         static void Initialize();
-        static void PostInitialize();
         static void Shutdown();
         static void RegisterThirdPartyLib(const std::string& name, const std::string& version, const std::string& url);
         static const std::vector<third_party_lib>& GetThirdPartyLibs();
