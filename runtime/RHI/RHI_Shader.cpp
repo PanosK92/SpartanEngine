@@ -38,8 +38,7 @@ namespace Spartan
             const RHI_Shader_Stage shader_stage,
             const unordered_map<string, string>& defines,
             const RHI_ShaderCompilationState compilation_state,
-            const string& object_name,
-            const Stopwatch& stopwatch
+            const string& object_name
         )
         {
             string type_str = "unknown";
@@ -58,20 +57,8 @@ namespace Spartan
                 defines_str += define.first + " = " + define.second;
             }
 
-            // success
-            if (compilation_state == RHI_ShaderCompilationState::Succeeded)
-            {
-                if (defines_str.empty())
-                {
-                    SP_LOG_INFO("Successfully compiled %s shader \"%s\" in %.2f ms.", type_str.c_str(), object_name.c_str(), stopwatch.GetElapsedTimeMs());
-                }
-                else
-                {
-                    SP_LOG_INFO("Successfully compiled %s shader \"%s\" with definitions \"%s\" in %.2f ms.", type_str.c_str(), object_name.c_str(), defines_str.c_str(), stopwatch.GetElapsedTimeMs());
-                }
-            }
-            // failure
-            else
+            // log failure
+            if (compilation_state != RHI_ShaderCompilationState::Succeeded)
             {
                 if (defines_str.empty())
                 {
@@ -116,7 +103,7 @@ namespace Spartan
         {
             m_compilation_state = RHI_ShaderCompilationState::Idle;
 
-            if (!async)
+            auto compile = [this, shader_type, async]()
             {
                 // time compilation
                 const Stopwatch timer;
@@ -126,24 +113,36 @@ namespace Spartan
                 m_rhi_resource      = RHI_Compile();
                 m_compilation_state = m_rhi_resource ? RHI_ShaderCompilationState::Succeeded : RHI_ShaderCompilationState::Failed;
 
-                // log compilation result
-                log_compilation_result(shader_type, m_defines, m_compilation_state, m_object_name, timer);
+                // log failure
+                if (m_compilation_state != RHI_ShaderCompilationState::Succeeded)
+                {
+                    string defines_str;
+                    for (const auto& define : m_defines)
+                    {
+                        if (!defines_str.empty())
+                            defines_str += ", ";
+
+                        defines_str += define.first + " = " + define.second;
+                    }
+              
+                    if (defines_str.empty())
+                    {
+                        SP_LOG_ERROR("Failed to compile shader \"%s\".", m_object_name.c_str());
+                    }
+                    else
+                    {
+                        SP_LOG_ERROR("Failed to compile shader \"%s\" with definitions \"%s\".", m_object_name.c_str(), defines_str.c_str());
+                    }
+                }
+            };
+
+            if (async)
+            {
+                ThreadPool::AddTask(compile);
             }
             else
             {
-                ThreadPool::AddTask([this, shader_type]()
-                {
-                    // time compilation
-                    const Stopwatch timer;
-
-                    // compile
-                    m_compilation_state = RHI_ShaderCompilationState::Compiling;
-                    m_rhi_resource      = RHI_Compile();
-                    m_compilation_state = m_rhi_resource ? RHI_ShaderCompilationState::Succeeded : RHI_ShaderCompilationState::Failed;
-
-                    // log compilation result
-                    log_compilation_result(shader_type, m_defines, m_compilation_state, m_object_name, timer);
-                });
+                compile();
             }
         }
     }

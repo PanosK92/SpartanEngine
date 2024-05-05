@@ -45,9 +45,11 @@ namespace Spartan
     namespace
     {
         bool light_integration_brdf_speculat_lut_completed = false;
-        int64_t mesh_index_transparent                         = 0;
-        int64_t mesh_index_non_instanced_opaque                = 0;
-        int64_t mesh_index_non_instanced_transparent           = 0;
+        int64_t mesh_index_transparent                     = 0;
+        int64_t mesh_index_non_instanced_opaque            = 0;
+        int64_t mesh_index_non_instanced_transparent       = 0;
+
+        // The code below is work in progress, that's why its here
 
         namespace visibility
         {
@@ -256,7 +258,6 @@ namespace Spartan
             }
         }
 
-        // called by: Pass_ShadowMaps(), Pass_Depth_Prepass(), Pass_GBuffer()
         void draw_renderable(RHI_CommandList* cmd_list, RHI_PipelineState& pso, Camera* camera, Renderable* renderable, Light* light = nullptr, uint32_t array_index = 0)
         {
             uint32_t instance_start_index = 0;
@@ -492,22 +493,28 @@ namespace Spartan
 
     void Renderer::Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
-        // all entities are rendered from the lights point of view
-        // opaque entities write their depth information to a depth buffer, using just a vertex shader
-        // transparent objects read the opaque depth but don't write their own, instead, they write their color information using a pixel shader
-
         // acquire resources
         RHI_Shader* shader_v = GetShader(Renderer_Shader::depth_light_v).get();
         RHI_Shader* shader_p = GetShader(Renderer_Shader::depth_light_p).get();
+        auto& lights         = m_renderables[Renderer_Entity::Light];
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
-            return;
-
-        // temp: dirty bistro fix
-        if (ProgressTracker::IsLoading())
             return;
 
         lock_guard lock(m_mutex_renderables);
         cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_color" : "shadow_maps_depth");
+
+        // clear here and not via the render pass, which can dynamically start and end based on various toggles
+        for (shared_ptr<Entity>& light_entity : lights)
+        {
+            shared_ptr<Light> light = light_entity->GetComponent<Light>();
+            if (!light)
+                continue;
+
+            if (RHI_Texture* render_target = is_transparent_pass ? light->GetColorTexture() : light->GetDepthTexture())
+            {
+                cmd_list->ClearRenderTarget(render_target, Color::standard_white, 0.0f);
+            }
+        }
 
         // define shared pso
         static RHI_PipelineState pso;
@@ -518,11 +525,9 @@ namespace Spartan
         pso.name                = "shadow_maps";
 
         // iterate over lights
-        auto& lights = m_renderables[Renderer_Entity::Light];
         for (shared_ptr<Entity>& light_entity : lights)
         {
             shared_ptr<Light> light = light_entity->GetComponent<Light>();
-
             if (!light)
                 continue;
 
@@ -549,18 +554,11 @@ namespace Spartan
                 }
             }
 
-            // clear here and not via the render pass, which can dynamically start and end based on various toggles
-            {
-                if (pso.render_target_color_textures[0])
-                { 
-                    cmd_list->ClearRenderTarget(pso.render_target_color_textures[0], Color::standard_white);
-                }
-                cmd_list->ClearRenderTarget(pso.render_target_depth_texture, rhi_color_dont_care, 0.0f);
-            }
-
             // iterate over light cascade/faces
             for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetArrayLength(); array_index++)
             {
+                pso.render_target_array_index = array_index;
+
                 // iterate over entities
                 int64_t index_start = !is_transparent_pass ? 0 : mesh_index_transparent;
                 int64_t index_end   = !is_transparent_pass ? mesh_index_transparent : static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size());
@@ -577,10 +575,9 @@ namespace Spartan
 
                     cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
 
-                    // define and set dynamic pso
+                    // set instancing
                     {
-                        pso.instancing                = renderable->HasInstancing();
-                        pso.render_target_array_index = array_index;
+                        pso.instancing = renderable->HasInstancing();
                         cmd_list->SetPipelineState(pso);
                     }
 
@@ -598,7 +595,7 @@ namespace Spartan
                     // set pass constants
                     {
                         // for the vertex shader
-                        m_pcb_pass_cpu.set_f3_value2(static_cast<float>(array_index), static_cast<float>(light->GetIndex()), 0.0f);
+                        m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), static_cast<float>(array_index), 0.0f);
                         m_pcb_pass_cpu.transform = entity->GetMatrix();
 
                         // for the pixel shader
@@ -654,11 +651,15 @@ namespace Spartan
         lock_guard lock(m_mutex_renderables);
         cmd_list->BeginTimeblock(!is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent");
 
+        // deduce rasterizer state
+        bool is_wireframe                     = GetOption<bool>(Renderer_Option::Wireframe);
+        RHI_RasterizerState* rasterizer_state = is_wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe).get() : GetRasterizerState(Renderer_RasterizerState::Solid).get();
+
         // define pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex               = shader_v;
         pso.shader_pixel                = shader_p;
-        pso.rasterizer_state            = GetRasterizerState(Renderer_RasterizerState::Solid).get();
+        pso.rasterizer_state            = rasterizer_state;
         pso.blend_state                 = GetBlendState(Renderer_BlendState::Off).get();
         pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite).get();
         pso.vrs_input_texture           = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
@@ -673,7 +674,7 @@ namespace Spartan
             cmd_list->ClearRenderTarget(tex_depth_backface, Color::standard_black, 0.0f);
         }
 
-        auto pass = [cmd_list, shader_h, shader_d, shader_p](bool is_transparent_pass, bool is_back_face_pass)
+        auto pass = [cmd_list, shader_h, shader_d, shader_p, is_wireframe](bool is_transparent_pass, bool is_back_face_pass)
         {
             int64_t index_start = !is_transparent_pass ? 0 : mesh_index_transparent;
             int64_t index_end   = !is_transparent_pass ? mesh_index_transparent : static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size());
@@ -708,6 +709,7 @@ namespace Spartan
                             continue;
 
                         RHI_CullMode cull_mode = (is_back_face_pass && has_sss) ? RHI_CullMode::Front : static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
+                        cull_mode              = is_wireframe ? RHI_CullMode::None : cull_mode;
                         cmd_list->SetCullMode(cull_mode);
 
                         bool is_tessellated = material->IsTessellated();
@@ -820,9 +822,9 @@ namespace Spartan
         lock_guard lock(m_mutex_renderables);
         cmd_list->BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
 
-        // deduce certain states
-        RHI_RasterizerState* rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid).get();
-        rasterizer_state                      = GetOption<bool>(Renderer_Option::Wireframe) ? GetRasterizerState(Renderer_RasterizerState::Wireframe).get() : rasterizer_state;
+        // deduce rasterizer state
+        bool is_wireframe                     = GetOption<bool>(Renderer_Option::Wireframe);
+        RHI_RasterizerState* rasterizer_state = is_wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe).get() : GetRasterizerState(Renderer_RasterizerState::Solid).get();
 
         // define pipeline state
         static RHI_PipelineState pso;
@@ -879,7 +881,9 @@ namespace Spartan
                 // tessellation & culling
                 if (Material* material = renderable->GetMaterial())
                 {
-                    cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
+                    RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
+                    cull_mode              = is_wireframe ? RHI_CullMode::None : cull_mode;
+                    cmd_list->SetCullMode(cull_mode);
 
                     bool is_tessellated = material->IsTessellated();
                     if ((is_tessellated && !pso.shader_hull) || (!is_tessellated && pso.shader_hull))
@@ -1094,30 +1098,30 @@ namespace Spartan
 
     void Renderer::Pass_Skysphere(RHI_CommandList* cmd_list)
     {
-        // acquire shaders
+        // acquire shader
         RHI_Shader* shader_c = GetShader(Renderer_Shader::skysphere_c).get();
         if (!shader_c->IsCompiled())
             return;
 
         // get directional light
-        shared_ptr<Light> light_directional = nullptr;
+        shared_ptr<Light> light = nullptr;
         {
             const vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Light];
             for (size_t i = 0; i < entities.size(); ++i)
             {
-                if (shared_ptr<Light> light = entities[i]->GetComponent<Light>())
+                if (shared_ptr<Light> light_ = entities[i]->GetComponent<Light>())
                 {
-                    if (light->GetLightType() == LightType::Directional)
+                    if (light_->GetLightType() == LightType::Directional)
                     {
-                        light_directional = light;
+                        light = light_;
                         break;
                     }
                 }
             }
-        }
 
-        if (!light_directional)
-            return;
+            if (!light)
+                return;
+        }
 
         cmd_list->BeginTimeblock("skysphere");
         {
@@ -1130,7 +1134,7 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // set pass constants
-            m_pcb_pass_cpu.set_f3_value2(0.0f, static_cast<float>(light_directional->GetIndex()), 0.0f);
+            m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), 0.0f, 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
@@ -1143,43 +1147,52 @@ namespace Spartan
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // acquire resources
-        RHI_Shader* shader_c                       = GetShader(Renderer_Shader::light_c).get();
-        const vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Light];
-        if (entities.empty() || !shader_c->IsCompiled())
+        RHI_Shader* shader_c        = GetShader(Renderer_Shader::light_c).get();
+        RHI_Texture* tex_diffuse    = is_transparent_pass ? GetRenderTarget(Renderer_RenderTarget::light_diffuse_transparent).get() : GetRenderTarget(Renderer_RenderTarget::light_diffuse).get();
+        RHI_Texture* tex_specular   = is_transparent_pass ? GetRenderTarget(Renderer_RenderTarget::light_specular_transparent).get() : GetRenderTarget(Renderer_RenderTarget::light_specular).get();
+        RHI_Texture* tex_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric).get();
+        auto& entities              = m_renderables[Renderer_Entity::Light];
+        if (!shader_c->IsCompiled())
             return;
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_transparent" : "light");
-
-        // acquire render targets
-        RHI_Texture* tex_diffuse    = is_transparent_pass ? GetRenderTarget(Renderer_RenderTarget::light_diffuse_transparent).get()  : GetRenderTarget(Renderer_RenderTarget::light_diffuse).get();
-        RHI_Texture* tex_specular   = is_transparent_pass ? GetRenderTarget(Renderer_RenderTarget::light_specular_transparent).get() : GetRenderTarget(Renderer_RenderTarget::light_specular).get();
-        RHI_Texture* tex_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric).get();
 
         // clear render targets
         cmd_list->ClearRenderTarget(tex_diffuse,    Color::standard_black);
         cmd_list->ClearRenderTarget(tex_specular,   Color::standard_black);
         cmd_list->ClearRenderTarget(tex_volumetric, Color::standard_black);
 
+        uint32_t light_count = static_cast<uint32_t>(entities.size());
+        if (light_count == 0)
+        {
+            cmd_list->EndTimeblock();
+            return;
+        }
+
         // set pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
         cmd_list->SetPipelineState(pso);
+   
+        SetGbufferTextures(cmd_list);
 
         // iterate through all the lights
-        static float array_slice_index = 0.0f;
-        for (uint32_t light_index = 0; light_index < static_cast<uint32_t>(entities.size()); light_index++)
+        for (uint32_t light_index = 0; light_index < light_count; light_index++)
         {
+            // read from these
+            SetGbufferTextures(cmd_list);
+            cmd_list->SetTexture(Renderer_BindingsSrv::ssgi, GetRenderTarget(Renderer_RenderTarget::ssgi));
+
+            // write to these
+            cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_diffuse);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_specular);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex3, tex_volumetric);
+
             if (shared_ptr<Light> light = entities[light_index]->GetComponent<Light>())
             {
-                // note: do lighting even at zero intensity as there can be emissive materials
+                if (light->GetIntensityWatt() == 0.0f)
+                    continue;
 
-                SetGbufferTextures(cmd_list);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex,     tex_diffuse);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex2,    tex_specular);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex3,    tex_volumetric);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTarget::sss).get());
-                cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,    GetRenderTarget(Renderer_RenderTarget::ssgi));
-   
                 // set shadow maps
                 {
                     RHI_Texture* tex_depth = light->IsFlagSet(LightFlags::Shadows)            ? light->GetDepthTexture() : nullptr;
@@ -1201,20 +1214,17 @@ namespace Spartan
                         cmd_list->SetTexture(Renderer_BindingsSrv::light_spot_color, tex_color);
                     }
 
-                    // light index reads from the texture array index (sss)
-                    m_pcb_pass_cpu.set_f3_value2(array_slice_index++, static_cast<float>(light->GetIndex()), 0.0f);
                     cmd_list->SetTexture(Renderer_BindingsSrv::sss, GetRenderTarget(Renderer_RenderTarget::sss));
                 }
 
                 // push pass constants
                 m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
+                m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), 0.0f, 0.0f);
                 m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Fog), GetOption<float>(Renderer_Option::ShadowResolution), 0.0f);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
                 
                 cmd_list->Dispatch(tex_diffuse);
             }
-
-            array_slice_index = 0;
         }
 
         cmd_list->EndTimeblock();

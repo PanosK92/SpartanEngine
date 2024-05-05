@@ -52,6 +52,7 @@ namespace Spartan
     class SP_CLASS Renderer
     {
     public:
+        // core
         static void Initialize();
         static void Shutdown();
         static void Tick();
@@ -78,6 +79,7 @@ namespace Spartan
         static void BlitToBackBuffer(RHI_CommandList* cmd_list, RHI_Texture* texture);
 
         // misc
+        static RHI_CommandList* GetCmdList();
         static void SetStandardResources(RHI_CommandList* cmd_list);
         static uint64_t GetFrameNum();
         static RHI_Api_Type GetRhiApiType();
@@ -98,10 +100,6 @@ namespace Spartan
         static void SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources = true);
         //===============================================================================================
   
-        //= RHI RESOURCES====================
-        static RHI_CommandList* GetCmdList();
-        //===================================
-
         //= RESOURCES ==========================================================================================================
         static RHI_Texture* GetFrameTexture();
         static std::shared_ptr<Camera> GetCamera();
