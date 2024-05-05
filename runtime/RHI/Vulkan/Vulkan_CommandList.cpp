@@ -176,13 +176,8 @@ namespace Spartan
             return access_mask;
         }
 
-        VkPipelineStageFlags2 access_mask_to_pipeline_stage_mask(VkAccessFlags2 access_flags, bool is_swapchain)
+        VkPipelineStageFlags2 access_mask_to_pipeline_stage_mask(VkAccessFlags2 access_flags)
         {
-            if (is_swapchain)
-            {
-                return VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-            }
-
             VkPipelineStageFlags2 stages      = 0;
             uint32_t enabled_graphics_stages = RHI_Device::GetEnabledGraphicsStages();
 
@@ -1645,8 +1640,6 @@ namespace Spartan
         SP_ASSERT(image != nullptr);
         RenderPassEnd();
 
-        bool is_swapchain = layout_old == RHI_Image_Layout::Present_Source || layout_new == RHI_Image_Layout::Present_Source;
-
         VkImageMemoryBarrier2 image_barrier           = {};
         image_barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR;
         image_barrier.pNext                           = nullptr;
@@ -1660,10 +1653,10 @@ namespace Spartan
         image_barrier.subresourceRange.levelCount     = mip_range;
         image_barrier.subresourceRange.baseArrayLayer = 0;
         image_barrier.subresourceRange.layerCount     = array_length;
-        image_barrier.srcAccessMask                   = layout_to_access_mask(image_barrier.oldLayout, false, is_depth);               // operations that must complete before the barrier
-        image_barrier.srcStageMask                    = access_mask_to_pipeline_stage_mask(image_barrier.srcAccessMask, is_swapchain); // stage at which the barrier applies, on the source side
-        image_barrier.dstAccessMask                   = layout_to_access_mask(image_barrier.newLayout, true, is_depth);                // operations that must wait for the barrier, on the new layout
-        image_barrier.dstStageMask                    = access_mask_to_pipeline_stage_mask(image_barrier.dstAccessMask, is_swapchain); // stage at which the barrier applies, on the destination side
+        image_barrier.srcAccessMask                   = layout_to_access_mask(image_barrier.oldLayout, false, is_depth); // operations that must complete before the barrier
+        image_barrier.srcStageMask                    = access_mask_to_pipeline_stage_mask(image_barrier.srcAccessMask); // stage at which the barrier applies, on the source side
+        image_barrier.dstAccessMask                   = layout_to_access_mask(image_barrier.newLayout, true, is_depth);  // operations that must wait for the barrier, on the new layout
+        image_barrier.dstStageMask                    = access_mask_to_pipeline_stage_mask(image_barrier.dstAccessMask); // stage at which the barrier applies, on the destination side
 
         VkDependencyInfo dependency_info        = {};
         dependency_info.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
