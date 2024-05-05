@@ -112,6 +112,7 @@ namespace Spartan
         void SetColor(const Color& color);
         bool IsTransparent() const { return GetProperty(MaterialProperty::ColorA) < 1.0f; }
         bool IsVisible()     const { return GetProperty(MaterialProperty::ColorA) > 0.0f; }
+        bool IsAlphaTested();
 
         bool IsTessellated() const
         {

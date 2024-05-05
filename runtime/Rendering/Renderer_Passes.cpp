@@ -519,7 +519,6 @@ namespace Spartan
         // define shared pso
         static RHI_PipelineState pso;
         pso.shader_vertex       = shader_v;
-        pso.shader_pixel        = shader_p;
         pso.blend_state         = is_transparent_pass ? GetBlendState(Renderer_BlendState::Alpha).get() : GetBlendState(Renderer_BlendState::Off).get();
         pso.depth_stencil_state = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Read).get() : GetDepthStencilState(Renderer_DepthStencilState::ReadWrite).get();
         pso.name                = "shadow_maps";
@@ -575,9 +574,16 @@ namespace Spartan
 
                     cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
 
-                    // set instancing
+                    // set pipeline
                     {
+                        pso.shader_pixel = nullptr;
+                        if (Material* material = renderable->GetMaterial())
+                        {
+                            pso.shader_pixel = material->IsAlphaTested() ? shader_p : nullptr;
+                        }
+
                         pso.instancing = renderable->HasInstancing();
+
                         cmd_list->SetPipelineState(pso);
                     }
 
@@ -607,6 +613,8 @@ namespace Spartan
                             );
 
                             m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
+
+
                         }
 
                         cmd_list->PushConstants(m_pcb_pass_cpu);
