@@ -352,4 +352,15 @@ namespace Spartan
         SetProperty(MaterialProperty::ColorB, color.b);
         SetProperty(MaterialProperty::ColorA, color.a);
     }
+
+    bool Material::IsAlphaTested()
+    {
+        bool albedo_mask = false;
+        if (RHI_Texture* texture = GetTexture(MaterialTexture::Color))
+        {
+            albedo_mask = texture->IsSemiTransparent();
+        }
+
+        return HasTexture(MaterialTexture::AlphaMask) || albedo_mask;
+    }
 }

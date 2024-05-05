@@ -309,6 +309,26 @@ namespace Spartan
             }
             return mip_count;
         }
+
+        bool has_transparent_pixels(FIBITMAP* bitmap)
+        {
+            SP_ASSERT(FreeImage_GetBPP(bitmap) == 32);
+
+            for (unsigned y = 0; y < FreeImage_GetHeight(bitmap); ++y)
+            {
+                BYTE* bits = FreeImage_GetScanLine(bitmap, y);
+                for (unsigned x = 0; x < FreeImage_GetWidth(bitmap); ++x)
+                {
+                    BYTE alpha = bits[FI_RGBA_ALPHA];
+                    if (alpha != 255)
+                        return true;
+
+                    bits += 4; // move to the next pixel (assuming 4 bytes per pixel)
+                }
+            }
+
+            return false;
+        }
     }
 
     void ImageImporterExporter::Initialize()
@@ -410,7 +430,6 @@ namespace Spartan
         
         // deduce certain properties
         // done before ApplyBitmapCorrections(), as after that, results for grayscale seem to be always false
-        texture_flags |= FreeImage_IsTransparent(bitmap) ? RHI_Texture_Transparent : 0;
         texture_flags |= (FreeImage_GetColorType(bitmap) == FREE_IMAGE_COLOR_TYPE::FIC_MINISBLACK) ? RHI_Texture_Greyscale : 0;
         texture_flags |= get_is_srgb(bitmap) ? RHI_Texture_Srgb : 0;
         texture->SetFlags(texture_flags);
@@ -459,6 +478,11 @@ namespace Spartan
                 }
 
                 current_bitmap = resized_bitmap;
+            }
+
+            if (mip_index == 2)
+            {
+                texture->SetFlag(RHI_Texture_Transparent, has_transparent_pixels(current_bitmap));
             }
 
             // copy data over to the texture
