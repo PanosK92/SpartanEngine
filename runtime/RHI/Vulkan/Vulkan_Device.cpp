@@ -198,6 +198,11 @@ namespace Spartan
 
             return tiling;
         }
+
+        string version_to_string(uint32_t version)
+        {
+            return to_string(VK_VERSION_MAJOR(version)) + "." + to_string(VK_VERSION_MINOR(version)) + "." + to_string(VK_VERSION_PATCH(version));
+        }
     }
 
     namespace command_pools
@@ -1145,6 +1150,7 @@ namespace Spartan
 
             // create
             SP_ASSERT_MSG(vkCreateDevice(RHI_Context::device_physical, &create_info, nullptr, &RHI_Context::device) == VK_SUCCESS, "Failed to create device");
+            SP_LOG_INFO("Vulkan %s", version_to_string(app_info.apiVersion).c_str());
         }
 
         // get queues
@@ -1164,16 +1170,7 @@ namespace Spartan
         CreateDescriptorPool();
 
         // register vulkan version
-        {
-            string version_major = to_string(VK_VERSION_MAJOR(VK_HEADER_VERSION_COMPLETE));
-            string version_minor = to_string(VK_VERSION_MINOR(VK_HEADER_VERSION_COMPLETE));
-            string version_patch = to_string(VK_VERSION_PATCH(VK_HEADER_VERSION_COMPLETE));
-            string version       = version_major + "." + version_minor + "." + version_patch;
-
-            SP_LOG_INFO("Vulkan %s", version.c_str());
-
-            Settings::RegisterThirdPartyLib("Vulkan", version_major + "." + version_minor + "." + version_patch, "https://vulkan.lunarg.com/");
-        }
+        Settings::RegisterThirdPartyLib("Vulkan", version_to_string(VK_HEADER_VERSION_COMPLETE), "https://vulkan.lunarg.com/");
     }
 
     void RHI_Device::Tick(const uint64_t frame_count)

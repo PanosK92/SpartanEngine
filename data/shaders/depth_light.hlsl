@@ -37,12 +37,13 @@ vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
     vertex output;
     output.uv = input.uv;
 
-    uint index_light = (uint)pass_get_f3_value2().y;
-    uint index_array = (uint)pass_get_f3_value2().x;
-    Light_ light     = buffer_lights[index_light];
+    float3 f3_value_2 = pass_get_f3_value2();
+    uint index_light  = (uint)f3_value_2.x;
+    uint index_array  = (uint)f3_value_2.y;
+    Light_ light      = buffer_lights[index_light];
 
     gbuffer_vertex vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);
-    output.position = mul(float4(vertex.position, 1.0f), light.view_projection[index_array]);
+    output.position       = mul(float4(vertex.position, 1.0f), light.view_projection[index_array]);
     
     return output;
 }

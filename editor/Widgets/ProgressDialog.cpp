@@ -34,24 +34,33 @@ namespace
 {
     void show_progress_bar(const float fraction, const char* text, const bool top_seperator)
     {
+        ImGui::Text("Hold on...");
+
         if (top_seperator)
         {
             ImGui::Separator();
         }
 
         ImGui::BeginGroup();
-        ImGui::ProgressBar(fraction, ImVec2(0.0f, 0.0f));
-        ImGui::Text(text);
+        {
+            ImGui::ProgressBar(fraction, ImVec2(0.0f, 0.0f));
+            ImGui::Text(text);
+        }
         ImGui::EndGroup();
     }
 }
 
 ProgressDialog::ProgressDialog(Editor* editor) : Widget(editor)
 {
-    m_title         = "Hold on...";
     m_visible       = false;
     m_size_initial  = Vector2(500.0f, 83.0f);
-    m_flags        |= ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize;
+    m_flags        |=
+        ImGuiWindowFlags_NoMove           |
+        ImGuiWindowFlags_NoCollapse       |
+        ImGuiWindowFlags_NoScrollbar      |
+        ImGuiWindowFlags_NoDocking        |
+        ImGuiWindowFlags_NoTitleBar       |
+        ImGuiWindowFlags_AlwaysAutoResize;
 }
 
 void ProgressDialog::OnTick()

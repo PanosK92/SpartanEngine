@@ -299,163 +299,163 @@ namespace Spartan
 
             return aspect_mask;
         }
+    }
 
-        namespace descriptor_sets
+    namespace descriptor_sets
+    {
+        bool bind_dynamic = false;
+
+        void set_dynamic(const RHI_PipelineState pso, void* resource, void* pipeline_layout, RHI_DescriptorSetLayout* layout)
         {
-            bool bind_dynamic = false;
-
-            void set_dynamic(const RHI_PipelineState pso, void* resource, void* pipeline_layout, RHI_DescriptorSetLayout* layout)
+            array<void*, 1> resources =
             {
-                array<void*, 1> resources =
+                layout->GetDescriptorSet()->GetResource()
+            };
+
+            // get dynamic offsets
+            array<uint32_t, 10> dynamic_offsets;
+            uint32_t dynamic_offset_count = 0;
+            layout->GetDynamicOffsets(&dynamic_offsets, &dynamic_offset_count);
+
+            VkPipelineBindPoint bind_point = pso.IsCompute() ? VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE : VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
+            vkCmdBindDescriptorSets
+            (
+                static_cast<VkCommandBuffer>(resource),               // commandBuffer
+                bind_point,                                           // pipelineBindPoint
+                static_cast<VkPipelineLayout>(pipeline_layout),       // layout
+                0,                                                    // firstSet
+                static_cast<uint32_t>(resources.size()),              // descriptorSetCount
+                reinterpret_cast<VkDescriptorSet*>(resources.data()), // pDescriptorSets
+                dynamic_offset_count,                                 // dynamicOffsetCount
+                dynamic_offsets.data()                                // pDynamicOffsets
+            );
+
+            bind_dynamic = false;
+            Profiler::m_rhi_bindings_descriptor_set++;
+        }
+
+        void set_bindless(const RHI_PipelineState pso, void* resource, void* pipeline_layout)
+        {
+            array<void*, 3> resources =
+            {
+                RHI_Device::GetDescriptorSet(RHI_Device_Resource::textures_material),
+                RHI_Device::GetDescriptorSet(RHI_Device_Resource::sampler_comparison),
+                RHI_Device::GetDescriptorSet(RHI_Device_Resource::sampler_regular)
+            };
+
+            VkPipelineBindPoint bind_point = pso.IsCompute() ? VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE : VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
+            vkCmdBindDescriptorSets
+            (
+                static_cast<VkCommandBuffer>(resource),               // commandBuffer
+                bind_point,                                           // pipelineBindPoint
+                static_cast<VkPipelineLayout>(pipeline_layout),       // layout
+                1,                                                    // firstSet
+                static_cast<uint32_t>(resources.size()),              // descriptorSetCount
+                reinterpret_cast<VkDescriptorSet*>(resources.data()), // pDescriptorSets
+                0,                                                    // dynamicOffsetCount
+                nullptr                                               // pDynamicOffsets
+            );
+
+            Profiler::m_rhi_bindings_descriptor_set++;
+        }
+    }
+
+    namespace queries
+    {
+        namespace timestamp
+        {
+            array<uint64_t, rhi_max_queries_timestamps> data;
+
+            void update(void* query_pool, const uint32_t query_count)
+            {
+                if (Profiler::IsGpuTimingEnabled())
                 {
-                    layout->GetDescriptorSet()->GetResource()
-                };
-
-                // get dynamic offsets
-                array<uint32_t, 10> dynamic_offsets;
-                uint32_t dynamic_offset_count = 0;
-                layout->GetDynamicOffsets(&dynamic_offsets, &dynamic_offset_count);
-
-                VkPipelineBindPoint bind_point = pso.IsCompute() ? VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE : VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
-                vkCmdBindDescriptorSets
-                (
-                    static_cast<VkCommandBuffer>(resource),               // commandBuffer
-                    bind_point,                                           // pipelineBindPoint
-                    static_cast<VkPipelineLayout>(pipeline_layout),       // layout
-                    0,                                                    // firstSet
-                    static_cast<uint32_t>(resources.size()),              // descriptorSetCount
-                    reinterpret_cast<VkDescriptorSet*>(resources.data()), // pDescriptorSets
-                    dynamic_offset_count,                                 // dynamicOffsetCount
-                    dynamic_offsets.data()                                // pDynamicOffsets
-                );
-
-                bind_dynamic = false;
-                Profiler::m_rhi_bindings_descriptor_set++;
+                    vkGetQueryPoolResults(
+                        RHI_Context::device,                  // device
+                        static_cast<VkQueryPool>(query_pool), // queryPool
+                        0,                                    // firstQuery
+                        query_count,                          // queryCount
+                        query_count * sizeof(uint64_t),       // dataSize
+                        queries::timestamp::data.data(),      // pData
+                        sizeof(uint64_t),                     // stride
+                        VK_QUERY_RESULT_64_BIT                // flags
+                    );
+                }
             }
 
-            void set_bindless(const RHI_PipelineState pso, void* resource, void* pipeline_layout)
+            void reset(void* cmd_list, void*& query_pool)
             {
-                array<void*, 3> resources =
-                {
-                    RHI_Device::GetDescriptorSet(RHI_Device_Resource::textures_material),
-                    RHI_Device::GetDescriptorSet(RHI_Device_Resource::sampler_comparison),
-                    RHI_Device::GetDescriptorSet(RHI_Device_Resource::sampler_regular)
-                };
-
-                VkPipelineBindPoint bind_point = pso.IsCompute() ? VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE : VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
-                vkCmdBindDescriptorSets
-                (
-                    static_cast<VkCommandBuffer>(resource),               // commandBuffer
-                    bind_point,                                           // pipelineBindPoint
-                    static_cast<VkPipelineLayout>(pipeline_layout),       // layout
-                    1,                                                    // firstSet
-                    static_cast<uint32_t>(resources.size()),              // descriptorSetCount
-                    reinterpret_cast<VkDescriptorSet*>(resources.data()), // pDescriptorSets
-                    0,                                                    // dynamicOffsetCount
-                    nullptr                                               // pDynamicOffsets
-                );
-
-                Profiler::m_rhi_bindings_descriptor_set++;
+                vkCmdResetQueryPool(static_cast<VkCommandBuffer>(cmd_list), static_cast<VkQueryPool>(query_pool), 0, rhi_max_queries_timestamps);
             }
         }
 
-        namespace queries
+        namespace occlusion
         {
-            namespace timestamp
+            array<uint64_t, rhi_max_queries_occlusion> data;
+            unordered_map<uint64_t, uint32_t> id_to_index;
+            uint32_t index              = 0;
+            uint32_t index_active       = 0;
+            bool occlusion_query_active = false;
+
+            void update(void* query_pool, const uint32_t query_count)
             {
-                array<uint64_t, rhi_max_queries_timestamps> data;
-
-                void update(void* query_pool, const uint32_t query_count)
-                {
-                    if (Profiler::IsGpuTimingEnabled())
-                    {
-                        vkGetQueryPoolResults(
-                            RHI_Context::device,                  // device
-                            static_cast<VkQueryPool>(query_pool), // queryPool
-                            0,                                    // firstQuery
-                            query_count,                          // queryCount
-                            query_count * sizeof(uint64_t),       // dataSize
-                            queries::timestamp::data.data(),      // pData
-                            sizeof(uint64_t),                     // stride
-                            VK_QUERY_RESULT_64_BIT                // flags
-                        );
-                    }
-                }
-
-                void reset(void* cmd_list, void*& query_pool)
-                {
-                    vkCmdResetQueryPool(static_cast<VkCommandBuffer>(cmd_list), static_cast<VkQueryPool>(query_pool), 0, rhi_max_queries_timestamps);
-                }
+                vkGetQueryPoolResults(
+                    RHI_Context::device,                                 // device
+                    static_cast<VkQueryPool>(query_pool),                // queryPool
+                    0,                                                   // firstQuery
+                    query_count,                                         // queryCount
+                    query_count * sizeof(uint64_t),                      // dataSize
+                    queries::occlusion::data.data(),                     // pData
+                    sizeof(uint64_t),                                    // stride
+                    VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_PARTIAL_BIT // flags
+                );
             }
 
-            namespace occlusion
+            void reset(void* cmd_list, void*& query_pool)
             {
-                array<uint64_t, rhi_max_queries_occlusion> data;
-                unordered_map<uint64_t, uint32_t> id_to_index;
-                uint32_t index              = 0;
-                uint32_t index_active       = 0;
-                bool occlusion_query_active = false;
+                vkCmdResetQueryPool(static_cast<VkCommandBuffer>(cmd_list), static_cast<VkQueryPool>(query_pool), 0, rhi_max_queries_occlusion);
+            }
+        }
 
-                void update(void* query_pool, const uint32_t query_count)
-                {
-                    vkGetQueryPoolResults(
-                        RHI_Context::device,                                 // device
-                        static_cast<VkQueryPool>(query_pool),                // queryPool
-                        0,                                                   // firstQuery
-                        query_count,                                         // queryCount
-                        query_count * sizeof(uint64_t),                      // dataSize
-                        queries::occlusion::data.data(),                     // pData
-                        sizeof(uint64_t),                                    // stride
-                        VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_PARTIAL_BIT // flags
-                    );
-                }
+        void initialize(void*& pool_timestamp, void*& pool_occlusion)
+        {
+            // timestamps
+            if (Profiler::IsGpuTimingEnabled())
+            {
+                VkQueryPoolCreateInfo query_pool_info = {};
+                query_pool_info.sType                 = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+                query_pool_info.queryType             = VK_QUERY_TYPE_TIMESTAMP;
+                query_pool_info.queryCount            = rhi_max_queries_timestamps;
 
-                void reset(void* cmd_list, void*& query_pool)
-                {
-                    vkCmdResetQueryPool(static_cast<VkCommandBuffer>(cmd_list), static_cast<VkQueryPool>(query_pool), 0, rhi_max_queries_occlusion);
-                }
+                auto query_pool = reinterpret_cast<VkQueryPool*>(&pool_timestamp);
+                SP_VK_ASSERT_MSG(vkCreateQueryPool(RHI_Context::device, &query_pool_info, nullptr, query_pool),
+                    "Failed to created timestamp query pool");
+
+                RHI_Device::SetResourceName(pool_timestamp, RHI_Resource_Type::QueryPool, "query_pool_timestamp");
             }
 
-            void initialize(void*& pool_timestamp, void*& pool_occlusion)
+            // occlusion
             {
-                // timestamps
-                if (Profiler::IsGpuTimingEnabled())
-                {
-                    VkQueryPoolCreateInfo query_pool_info = {};
-                    query_pool_info.sType                 = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
-                    query_pool_info.queryType             = VK_QUERY_TYPE_TIMESTAMP;
-                    query_pool_info.queryCount            = rhi_max_queries_timestamps;
+                VkQueryPoolCreateInfo query_pool_info = {};
+                query_pool_info.sType                 = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+                query_pool_info.queryType             = VK_QUERY_TYPE_OCCLUSION;
+                query_pool_info.queryCount            = rhi_max_queries_occlusion;
 
-                    auto query_pool = reinterpret_cast<VkQueryPool*>(&pool_timestamp);
-                    SP_VK_ASSERT_MSG(vkCreateQueryPool(RHI_Context::device, &query_pool_info, nullptr, query_pool),
-                        "Failed to created timestamp query pool");
+                auto query_pool = reinterpret_cast<VkQueryPool*>(&pool_occlusion);
+                SP_VK_ASSERT_MSG(vkCreateQueryPool(RHI_Context::device, &query_pool_info, nullptr, query_pool),
+                    "Failed to created occlusion query pool");
 
-                    RHI_Device::SetResourceName(pool_timestamp, RHI_Resource_Type::QueryPool, "query_pool_timestamp");
-                }
-
-                // occlusion
-                {
-                    VkQueryPoolCreateInfo query_pool_info = {};
-                    query_pool_info.sType                 = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
-                    query_pool_info.queryType             = VK_QUERY_TYPE_OCCLUSION;
-                    query_pool_info.queryCount            = rhi_max_queries_occlusion;
-
-                    auto query_pool = reinterpret_cast<VkQueryPool*>(&pool_occlusion);
-                    SP_VK_ASSERT_MSG(vkCreateQueryPool(RHI_Context::device, &query_pool_info, nullptr, query_pool),
-                        "Failed to created occlusion query pool");
-
-                    RHI_Device::SetResourceName(pool_occlusion, RHI_Resource_Type::QueryPool, "query_pool_occlusion");
-                }
-
-                timestamp::data.fill(0);
-                occlusion::data.fill(0);
+                RHI_Device::SetResourceName(pool_occlusion, RHI_Resource_Type::QueryPool, "query_pool_occlusion");
             }
 
-            void shutdown(void*& pool_timestamp, void*& pool_occlusion)
-            {
-                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::QueryPool, pool_timestamp);
-                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::QueryPool, pool_occlusion);
-            }
+            timestamp::data.fill(0);
+            occlusion::data.fill(0);
+        }
+
+        void shutdown(void*& pool_timestamp, void*& pool_occlusion)
+        {
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::QueryPool, pool_timestamp);
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::QueryPool, pool_occlusion);
         }
     }
 
@@ -588,21 +588,10 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        // determine if the pipeline is dirty
+        // early exit if the pipeline state hasn't changed
         pso.Prepare();
         if (m_pso.GetHash() == pso.GetHash())
-        {
-            // if the index of the render target array has changed, we need to begin a new render pass
-            if (m_pso.render_target_array_index   != pso.render_target_array_index ||
-                m_pso.render_target_depth_texture != pso.render_target_depth_texture)
-            {
-                m_pso.render_target_array_index   = pso.render_target_array_index;
-                m_pso.render_target_depth_texture = pso.render_target_depth_texture;
-                RenderPassBegin();
-            }
-
             return;
-        }
 
         // get (or create) a pipeline which matches the requested pipeline state
         m_pso = pso;
@@ -906,7 +895,13 @@ namespace Spartan
                 image_subresource_range.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
             }
 
-            vkCmdClearDepthStencilImage(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkImage>(texture->GetRhiResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_depth_stencil, 1, &image_subresource_range);
+            vkCmdClearDepthStencilImage(
+                static_cast<VkCommandBuffer>(m_rhi_resource),
+                static_cast<VkImage>(texture->GetRhiResource()),
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                &clear_depth_stencil,
+                1,
+                &image_subresource_range);
         }
     }
 

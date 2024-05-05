@@ -160,7 +160,6 @@ struct Light
     float2 texel_size;
     matrix view_projection[6];
     
-    // easy access to flags
     bool is_directional()           { return flags & uint(1U << 0); }
     bool is_point()                 { return flags & uint(1U << 1); }
     bool is_spot()                  { return flags & uint(1U << 2); }
@@ -168,6 +167,7 @@ struct Light
     bool has_shadows_transparent()  { return flags & uint(1U << 4); }
     bool has_shadows_screen_space() { return flags & uint(1U << 5); }
     bool is_volumetric()            { return flags & uint(1U << 6); }
+    uint get_array_index()          { return (uint)pass_get_f3_value2().y; }
 
     // attenuation over distance
     float compute_attenuation_distance(const float3 surface_position)
@@ -184,9 +184,9 @@ struct Light
         float cos_outer_squared = cos_outer * cos_outer;
         float scale             = 1.0f / max(0.001f, cos_inner - cos_outer);
         float offset            = -cos_outer * scale;
-
-        float cd           = dot(to_pixel, forward);
-        float attenuation  = saturate(cd * scale + offset);
+        float cd                = dot(to_pixel, forward);
+        float attenuation       = saturate(cd * scale + offset);
+        
         return attenuation * attenuation;
     }
 
@@ -300,7 +300,7 @@ struct Light
 
     void Build(float3 surface_position, float3 surface_normal, float occlusion)
     {
-        Light_ light = buffer_lights[(uint)pass_get_f3_value2().y];
+        Light_ light = buffer_lights[(uint)pass_get_f3_value2().x];
 
         flags             = light.flags;
         view_projection   = light.view_projection;

@@ -60,15 +60,15 @@ namespace Spartan
         std::array<RHI_Texture*, rhi_max_render_target_count> render_target_color_textures;
         RHI_Texture* render_target_depth_texture = nullptr;
         RHI_Texture* vrs_input_texture           = nullptr;
+        uint32_t render_target_array_index       = 0;
         //=================================================================================
 
         //= DYNAMIC - will not cause pso generation ==================
         bool resolution_scale                      = false;
-        uint32_t render_target_array_index         = 0;
         float clear_depth                          = rhi_depth_load;
         uint32_t clear_stencil                     = rhi_stencil_load;
         std::array<Color, rhi_max_render_target_count> clear_color;
-        std::string name;
+        std::string name; // used by the validation layer
         //============================================================
 
     private:

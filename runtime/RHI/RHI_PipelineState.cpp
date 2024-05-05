@@ -121,21 +121,23 @@ namespace Spartan
                 {
                     if (RHI_Texture* texture = pso.render_target_color_textures[i])
                     {
-                        hash = rhi_hash_combine(hash, static_cast<uint64_t>(texture->GetFormat()));
+                        hash = rhi_hash_combine(hash, texture->GetObjectId());
                     }
                 }
 
                 // depth
                 if (pso.render_target_depth_texture)
                 {
-                    hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.render_target_depth_texture->GetFormat()));
+                    hash = rhi_hash_combine(hash, pso.render_target_depth_texture->GetObjectId());
                 }
 
                 // variable rate shading
                 if (pso.vrs_input_texture)
                 {
-                    hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.vrs_input_texture->GetFormat()));
+                    hash = rhi_hash_combine(hash, pso.vrs_input_texture->GetObjectId());
                 }
+
+                hash = rhi_hash_combine(hash, pso.render_target_array_index);
             }
 
             return hash;

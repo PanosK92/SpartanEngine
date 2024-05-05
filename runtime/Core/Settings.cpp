@@ -42,6 +42,7 @@ namespace Spartan
         bool m_has_loaded_user_settings = false;
         string file_path                = "spartan.xml";
         vector<third_party_lib> m_third_party_libs;
+        mutex mutex_register;
 
         const char* renderer_option_to_string(const Renderer_Option option)
         {
@@ -168,8 +169,9 @@ namespace Spartan
         save();
     }
 
-    void Settings::RegisterThirdPartyLib(const std::string& name, const std::string& version, const std::string& url)
+    void Settings::RegisterThirdPartyLib(const string& name, const string& version, const string& url)
     {
+        lock_guard<mutex> lock(mutex_register);
         m_third_party_libs.emplace_back(name, version, url);
     }
 
