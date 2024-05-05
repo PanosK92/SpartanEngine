@@ -39,12 +39,8 @@ namespace Spartan
 {
     namespace
     { 
-        bool m_is_fullscreen            = false;
-        bool m_is_mouse_visible         = false;
-        float fps_limit                 = 0.0f;
         bool m_has_loaded_user_settings = false;
         string file_path                = "spartan.xml";
-        unordered_map<Renderer_Option, float> m_render_options;
         vector<third_party_lib> m_third_party_libs;
 
         const char* renderer_option_to_string(const Renderer_Option option)
@@ -91,22 +87,21 @@ namespace Spartan
             }
         }
 
-        static void save()
+        void save()
         {
             pugi::xml_document doc;
 
             // write settings
             pugi::xml_node root = doc.append_child("Settings");
             {
-                root.append_child("FullScreen").text().set(m_is_fullscreen);
-                root.append_child("IsMouseVisible").text().set(m_is_mouse_visible);
+                root.append_child("FullScreen").text().set(Window::IsFullScreen());
+                root.append_child("IsMouseVisible").text().set(Input::GetMouseCursorVisible());
                 root.append_child("ResolutionOutputWidth").text().set(Renderer::GetResolutionOutput().x);
                 root.append_child("ResolutionOutputHeight").text().set(Renderer::GetResolutionOutput().y);
                 root.append_child("ResolutionRenderWidth").text().set(Renderer::GetResolutionRender().x);
                 root.append_child("ResolutionRenderHeight").text().set(Renderer::GetResolutionRender().y);
-                root.append_child("FPSLimit").text().set(fps_limit);
-
-                for (auto& [option, value] : m_render_options)
+                root.append_child("FPSLimit").text().set(Timer::GetFpsLimit());
+                for (auto& [option, value] : Renderer::GetOptions())
                 {
                     root.append_child(renderer_option_to_string(option)).text().set(value);
                 }
@@ -117,7 +112,7 @@ namespace Spartan
             doc.save_file(file_path.c_str());
         }
 
-        static void load()
+        void load()
         {
             // attempt to load file
             pugi::xml_document doc;
@@ -131,48 +126,30 @@ namespace Spartan
 
             // load settings
             {
-                m_is_fullscreen    = root.child("FullScreen").text().as_bool();
-                m_is_mouse_visible = root.child("IsMouseVisible").text().as_bool();
-                fps_limit          = root.child("FPSLimit").text().as_float();
+                if ((root.child("FullScreen").text().as_bool()))
+                {
+                    Window::FullScreen();
+                }
+
+                Input::SetMouseCursorVisible(root.child("IsMouseVisible").text().as_bool());
+                Timer::SetFpsLimit(root.child("FPSLimit").text().as_float());
 
                 Renderer::SetResolutionRender(root.child("ResolutionRenderWidth").text().as_int(), root.child("ResolutionRenderHeight").text().as_int());
                 Renderer::SetResolutionOutput(root.child("ResolutionOutputWidth").text().as_int(), root.child("ResolutionOutputHeight").text().as_int());
 
-                m_render_options.clear();
+                unordered_map<Renderer_Option, float> m_render_options;
                 for (uint32_t i = 0; i < static_cast<uint32_t>(Renderer_Option::Max); i++)
                 {
                     Renderer_Option option = static_cast<Renderer_Option>(i);
                     m_render_options[option] = root.child(renderer_option_to_string(option)).text().as_float();
                 }
+                Renderer::SetOptions(m_render_options);
 
                 // this setting can be mapped directly to the resource cache (no need to wait for it to initialize)
                 ResourceCache::SetUseRootShaderDirectory(root.child("UseRootShaderDirectory").text().as_bool());
             }
 
             m_has_loaded_user_settings = true;
-        }
-
-        static void map()
-        {
-            if (!m_has_loaded_user_settings)
-                return;
-
-            Timer::SetFpsLimit(fps_limit);
-            Input::SetMouseCursorVisible(m_is_mouse_visible);
-            Renderer::SetOptions(m_render_options);
-
-            if (m_is_fullscreen)
-            {
-                Window::FullScreen();
-            }
-        }
-
-        static void reflect()
-        {
-            fps_limit          = Timer::GetFpsLimit();
-            m_is_fullscreen    = Window::IsFullScreen();
-            m_is_mouse_visible = Input::GetMouseCursorVisible();
-            m_render_options   = Renderer::GetOptions();
         }
     }
 
@@ -186,14 +163,8 @@ namespace Spartan
         }
     }
     
-    void Settings::PostInitialize()
-    {
-        map();
-    }
-
     void Settings::Shutdown()
     {
-        reflect();
         save();
     }
 

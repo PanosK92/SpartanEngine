@@ -128,6 +128,9 @@ namespace Spartan
 
         // resolution
         {
+            // note #1: settings can override default resolutions based on loaded XML configurations
+            // note #2: if settings are absent, the editor will set the render/viewport resolutions to it's viewport size
+
             uint32_t width  = Window::GetWidth();
             uint32_t height = Window::GetHeight();
 
@@ -140,17 +143,14 @@ namespace Spartan
 
             // the resolution/size of the editor's viewport. This is overridden by the editor based on the actual viewport size
             SetViewport(static_cast<float>(width), static_cast<float>(height));
-
-            // note #1: if the editor is active, it will set the render and viewport resolution to what the actual viewport is
-            // note #2: settings can override the render and output resolution (if an xml file was loaded)
         }
 
         // swap chain
         swap_chain = make_shared<RHI_SwapChain>
         (
             Window::GetHandleSDL(),
-            static_cast<uint32_t>(m_resolution_output.x),
-            static_cast<uint32_t>(m_resolution_output.y),
+            Window::GetWidth(),
+            Window::GetHeight(),
             // present mode: for v-sync, we could mailbox for lower latency, but fifo is always supported, so we'll assume that
             GetOption<bool>(Renderer_Option::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
             swap_chain_buffer_count,
@@ -315,13 +315,6 @@ namespace Spartan
         if (!RHI_Device::IsValidResolution(width, height))
         {
             SP_LOG_WARNING("Can't set %dx% as it's an invalid resolution", width, height);
-            return;
-        }
-
-        if (width > m_resolution_output.x || height > m_resolution_output.y)
-        {
-            SP_LOG_WARNING("Can't set %dx%d as it's larger then the output resolution %dx%d",
-                width, height, static_cast<uint32_t>(m_resolution_output.x), static_cast<uint32_t>(m_resolution_output.y));
             return;
         }
 

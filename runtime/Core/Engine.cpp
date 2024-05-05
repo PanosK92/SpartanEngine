@@ -73,7 +73,6 @@ namespace Spartan
         Stopwatch timer_initialize;
         {
             Log::Initialize();
-            Settings::Initialize();
             FontImporter::Initialize();
             ImageImporterExporter::Initialize();
             ModelImporter::Initialize();
@@ -87,13 +86,10 @@ namespace Spartan
             Physics::Initialize();
             Renderer::Initialize();
             World::Initialize();
-
-            // post
-            Settings::PostInitialize();
+            Settings::Initialize();
         }
 
         SP_LOG_INFO("Initialization took %.1f ms", timer_initialize.GetElapsedTimeMs());
-
         SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnFirstFrameCompleted, SP_EVENT_HANDLER_EXPRESSION_STATIC(write_ci_test_file(0);));
     }
 
