@@ -130,7 +130,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // get light samples
         float3 light_diffuse  = tex_light_diffuse[thread_id.xy].rgb;
         float3 light_specular = tex_light_specular[thread_id.xy].rgb;
-
+        float3 emissive       = surface.emissive * surface.albedo * 10.0f;
+        
         // transparent
         float3 light_refracted_background = 0.0f;
         if (surface.is_transparent())
@@ -149,7 +150,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         }
         
         // compose
-        float3 light  = (light_diffuse + surface.gi) * surface.albedo + light_specular;
+        float3 light  = (light_diffuse + surface.gi) * surface.albedo + light_specular + emissive;
         color.rgb    += lerp(light_refracted_background, light, color.a);
     }
 
@@ -159,5 +160,3 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = saturate_16(color);
 }
-
-

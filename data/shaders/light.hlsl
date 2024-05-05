@@ -76,7 +76,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 light_specular   = 0.0f;
     float3 volumetric_fog   = 0.0f;
     float3 light_subsurface = 0.0f;
-    float3 emissive         = 0.0f;
 
     if (!surface.is_sky())
     {
@@ -147,8 +146,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             // energy conservation - only non metals have diffuse
             light_diffuse *= surface.diffuse_energy;
         }
-
-        emissive = surface.emissive * surface.albedo;
     }
     
     // volumetric
@@ -157,7 +154,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         volumetric_fog = compute_volumetric_fog(surface, light, thread_id.xy);
     }
     
-    /* diffuse  */   tex_uav[thread_id.xy]  += float4(saturate_11(light_diffuse  * light.radiance + emissive + light_subsurface), 1.0f);
+    /* diffuse  */   tex_uav[thread_id.xy]  += float4(saturate_11(light_diffuse  * light.radiance + light_subsurface), 1.0f);
     /* specular */   tex_uav2[thread_id.xy] += float4(saturate_11(light_specular * light.radiance), 1.0f);
     /* volumetric */ tex_uav3[thread_id.xy] += float4(saturate_11(volumetric_fog), 1.0f);
 }
