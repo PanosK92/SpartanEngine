@@ -123,6 +123,8 @@ namespace Spartan
         {
             SetFlag(LightFlags::Volumetric);
         }
+
+        m_entity_ptr->SetRotation(Quaternion::FromEulerAngles(35.0f, 0.0f, 0.0f));
     }
 
     void Light::OnTick()
