@@ -871,9 +871,9 @@ namespace Spartan
 
                 for (uint32_t type = 0; type < material_texture_type_count; type++)
                 {
-                    for (uint32_t variation = 0; variation < material_texture_count_per_type; variation++)
+                    for (uint32_t variation = 0; variation < material_texture_slots_per_type; variation++)
                     {
-                        uint32_t texture_index                   = type * material_texture_count_per_type + variation;
+                        uint32_t texture_index                   = type * material_texture_slots_per_type + variation;
                         MaterialTexture textureType              = static_cast<MaterialTexture>(texture_index);
                         bindless_textures[index + texture_index] = material->GetTexture(static_cast<MaterialTexture>(texture_index));
                     }
@@ -882,7 +882,7 @@ namespace Spartan
             }
 
             material->SetIndex(index);
-            index += material_texture_count_support;
+            index += static_cast<uint32_t>(MaterialTexture::Max);
         };
 
         auto update_entities = [update_material](vector<shared_ptr<Entity>>& entities)
