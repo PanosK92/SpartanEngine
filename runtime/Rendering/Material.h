@@ -1,4 +1,4 @@
-/*
+#/*
 Copyright(c) 2016-2024 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -80,6 +80,17 @@ namespace Spartan
         Max                              // total number of properties, used to size arrays
     };
 
+    enum class MaterialIor
+    {
+        Air,
+        Water,
+        Eyes,
+        Glass,
+        Sapphire,
+        Diamond,
+        Max
+    };
+
     class SP_CLASS Material : public IResource
     {
     public:
@@ -103,6 +114,10 @@ namespace Spartan
         RHI_Texture* GetTexture(const MaterialTexture texture_type);
         std::shared_ptr<RHI_Texture>& GetTexture_PtrShared(const MaterialTexture texturtexture_type);
         uint32_t GetArraySize();
+
+        // index of refraction
+        static float EnumToIor(const MaterialIor ior);
+        static MaterialIor IorToEnum(const float ior);
 
         // properties
         float GetProperty(const MaterialProperty property_type) const { return m_properties[static_cast<uint32_t>(property_type)]; }

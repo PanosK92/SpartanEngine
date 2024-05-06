@@ -990,7 +990,7 @@ namespace Spartan
                         material->SetObjectName("material_water");
                         material->SetColor(Color(0.0f, 60.0f / 255.0f, 120.0f / 255.0f, 250.0f / 255.0f));
                         material->SetTexture(MaterialTexture::Normal,               "project\\terrain\\water_normal.jpeg");
-                        material->SetProperty(MaterialProperty::Ior,                1.333f); // water
+                        material->SetProperty(MaterialProperty::Ior,                Material::EnumToIor(MaterialIor::Water)); // water
                         material->SetProperty(MaterialProperty::Roughness,          0.0f);
                         material->SetProperty(MaterialProperty::Normal,             0.1f);
                         material->SetProperty(MaterialProperty::TextureTilingX,     200.0f);

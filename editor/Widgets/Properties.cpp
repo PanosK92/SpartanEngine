@@ -787,15 +787,34 @@ void Properties::ShowMaterial(Material* material) const
                 show_property("Occlusion",            "Amount of light loss, can be complementary to SSAO",                                MaterialTexture::Occlusion, MaterialProperty::Max);
                 show_property("Emission",             "Light emission from the surface, works nice with bloom",                            MaterialTexture::Emission,  MaterialProperty::Max);
                 show_property("Alpha mask",           "Discards pixels",                                                                   MaterialTexture::AlphaMask, MaterialProperty::Max);
-                // properties with only a multiplier
-                show_property("Clearcoat",            "Extra white specular layer on top of others",                                       MaterialTexture::Max, MaterialProperty::Clearcoat);
-                show_property("Clearcoat roughness",  "Roughness of clearcoat specular",                                                   MaterialTexture::Max, MaterialProperty::Clearcoat_Roughness);
-                show_property("Anisotropic",          "Amount of anisotropy for specular reflection",                                      MaterialTexture::Max, MaterialProperty::Anisotropic);
-                show_property("Anisotropic rotation", "Rotates the direction of anisotropy, with 1.0 going full circle",                   MaterialTexture::Max, MaterialProperty::AnisotropicRotation);
-                show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTexture::Max, MaterialProperty::Sheen);
-                show_property("Sheen tint",           "Mix between white and using base color for sheen reflection",                       MaterialTexture::Max, MaterialProperty::SheenTint);
-                show_property("Subsurface scattering","Amount of translucency",                                                            MaterialTexture::Max, MaterialProperty::SubsurfaceScattering);
-                show_property("IOR",                  "Index of refraction, color must be transparent for this have any effect",           MaterialTexture::Max, MaterialProperty::Ior);
+                show_property("Clearcoat",            "Extra white specular layer on top of others",                                       MaterialTexture::Max,       MaterialProperty::Clearcoat);
+                show_property("Clearcoat roughness",  "Roughness of clearcoat specular",                                                   MaterialTexture::Max,       MaterialProperty::Clearcoat_Roughness);
+                show_property("Anisotropic",          "Amount of anisotropy for specular reflection",                                      MaterialTexture::Max,       MaterialProperty::Anisotropic);
+                show_property("Anisotropic rotation", "Rotates the direction of anisotropy, with 1.0 going full circle",                   MaterialTexture::Max,       MaterialProperty::AnisotropicRotation);
+                show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTexture::Max,       MaterialProperty::Sheen);
+                show_property("Sheen tint",           "Mix between white and using base color for sheen reflection",                       MaterialTexture::Max,       MaterialProperty::SheenTint);
+                show_property("Subsurface scattering","Amount of translucency",                                                            MaterialTexture::Max,       MaterialProperty::SubsurfaceScattering);
+            }
+
+            // index of refraction
+            {
+                static vector<string> ior_types =
+                {
+                    "Air",
+                    "Water",
+                    "Eyes",
+                    "Glass",
+                    "Sapphire",
+                    "Diamond"
+                };
+
+                ImGui::Text("IOR");
+                ImGui::SameLine(column_pos_x);
+                uint32_t ior_index = static_cast<uint32_t>(Material::IorToEnum(material->GetProperty(MaterialProperty::Ior)));
+                if (ImGuiSp::combo_box("##material_ior", ior_types, &ior_index))
+                {
+                    material->SetProperty(MaterialProperty::Ior, static_cast<float>(Material::EnumToIor(static_cast<MaterialIor>(ior_index))));
+                }
             }
 
             // uv
