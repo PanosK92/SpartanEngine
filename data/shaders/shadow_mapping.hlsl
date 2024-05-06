@@ -26,8 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SampleShadowMap Technique_Vogel
 
 // base shadow
-static const uint   g_shadow_samples                 = 3;
-static const float  g_shadow_filter_size             = 2.5f;
+static const uint   g_shadow_samples                 = 4;
+static const float  g_shadow_filter_size             = 6.0f;
 static const float  g_shadow_cascade_blend_threshold = 0.7f; // above that, you start to see the cascade line
 // penumbra shadow
 static const uint   g_penumbra_samples     = 8;
