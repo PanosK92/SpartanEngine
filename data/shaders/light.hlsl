@@ -144,7 +144,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             light_diffuse += BRDF_Diffuse(surface, angular_info);
 
             // energy conservation - only non metals have diffuse
-            light_diffuse *= surface.diffuse_energy;
+            light_diffuse *= surface.diffuse_energy * surface.alpha;
         }
     }
     
