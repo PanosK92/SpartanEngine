@@ -80,7 +80,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // combine
     float3 ibl  = ibl_diffuse + ibl_specular;
     ibl        *= surface.occlusion;
-    ibl        *= surface.alpha;
 
     tex_uav[thread_id.xy] += float4(saturate_16(ibl), 0.0f);
 }
