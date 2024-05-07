@@ -184,7 +184,10 @@ namespace Spartan
             }
         }
 
-        m_car->Tick();
+        if (m_body_type == PhysicsBodyType::Vehicle)
+        {
+            m_car->Tick();
+        }
     }
 
     void PhysicsBody::Serialize(FileStream* stream)

@@ -363,6 +363,9 @@ namespace Spartan
             }
 
             ProgressTracker::SetLoadingStateGlobal(false);
+
+            // simulate physics and play music
+            Engine::SetFlag(EngineMode::Game, true);
         });
     }
 
@@ -565,9 +568,6 @@ namespace Spartan
                 physics_body->SetMass(8.0f);
             }
         }
-
-        // start simulating (for the music to play)
-        Engine::SetFlag(EngineMode::Game, true);
     }
 
     void World::CreateDefaultWorldCar()
@@ -796,8 +796,6 @@ namespace Spartan
                         light->SetAngle(145.0f * Math::Helper::DEG_TO_RAD);
                     }
                 }
-
-                Engine::SetFlag(EngineMode::Game, true);
             }
         }
 
@@ -967,7 +965,9 @@ namespace Spartan
             
             // generate a height field
             terrain->SetHeightMap("project\\terrain\\height_map.png");
-            terrain->GenerateAsync([terrain, camera_position]()
+            terrain->Generate();
+
+            // add water and vegetation
             {
                 // add physics so we can walk on it
                 PhysicsBody* rigid_body = m_default_terrain->AddComponent<PhysicsBody>().get();
@@ -1078,13 +1078,7 @@ namespace Spartan
                         renderable->SetInstances(instances);
                     }
                 }
-
-                // because this is loading in a different thread, we need to resolve the world after we enable instancing
-                World::Resolve();
-
-                // start simulating (for the music to play)
-                Engine::SetFlag(EngineMode::Game, true);
-            });
+            }
         }
     }
 
@@ -1174,9 +1168,6 @@ namespace Spartan
                 }
             }
         }
-
-        // start simulating (for the physics and the music to work)
-        Engine::SetFlag(EngineMode::Game, true);
     }
 
     void World::CreateDefaultWorldDoom()
@@ -1205,9 +1196,6 @@ namespace Spartan
                 }
             }
         }
-
-        // start simulating (for the physics and the music to work)
-        Engine::SetFlag(EngineMode::Game, true);
     }
 
     void World::CreateDefaultWorldBistro()
@@ -1272,9 +1260,6 @@ namespace Spartan
                 }
             }
         }
-
-        // start simulating (for the physics and the music to work)
-        Engine::SetFlag(EngineMode::Game, true);
     }
 
     void World::CreateDefaultWorldMinecraft()
@@ -1303,9 +1288,6 @@ namespace Spartan
                 }
             }
         }
-
-        // start simulating (for the physics and the music to work)
-        Engine::SetFlag(EngineMode::Game, true);
     }
 
     void World::CreateDefaultWorldLivingRoom()
@@ -1398,9 +1380,6 @@ namespace Spartan
                 }
             }
         }
-
-        // start simulating (for the physics and the music to work)
-        Engine::SetFlag(EngineMode::Game, true);
     }
 
     void World::TickDefaultWorlds()

@@ -134,7 +134,7 @@ namespace Spartan
         }
     }
 
-	void Entity::Tick()
+    void Entity::Tick()
     {
         if (!m_is_active)
             return;

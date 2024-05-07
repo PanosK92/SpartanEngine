@@ -947,7 +947,10 @@ void Properties::ShowTerrain(shared_ptr<Terrain> terrain) const
 
             if (ImGuiSp::button("Generate", ImVec2(82.0f * Spartan::Window::GetDpiScale(), 0)))
             {
-                terrain->GenerateAsync();
+                Spartan::ThreadPool::AddTask([terrain]()
+                {
+                    terrain->Generate();
+                });
             }
         }
         ImGui::EndGroup();
