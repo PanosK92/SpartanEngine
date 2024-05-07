@@ -77,17 +77,17 @@ struct vertex_processing
 
         static float3 apply_wind(uint instance_id, float3 position_vertex, float3 animation_pivot, float time)
         {
-            const float3 base_wind_direction = float3(1, 0, 0);
+            const float3 base_wind_direction    = float3(1, 0, 0);
             const float wind_vertex_sway_extent = 0.4f; // oscillation amplitude
-            const float wind_vertex_sway_speed = 4.0f; // oscillation frequency
+            const float wind_vertex_sway_speed  = 4.0f; // oscillation frequency
         
             // base oscillation, a combination of two sine waves with a phase difference
             float phase_offset = float(instance_id) * PI_HALF;
-            float phase1 = (time * wind_vertex_sway_speed) + position_vertex.x + phase_offset;
+            float phase1       = (time * wind_vertex_sway_speed) + position_vertex.x + phase_offset;
             
             // phase difference to ensure continuous motion
             float phase_diff = PI / 3.0f; // choosing a non-half-multiples of PI to avoid total cancellation
-            float phase2 = phase1 + phase_diff;
+            float phase2     = phase1 + phase_diff;
             float base_wave1 = sin(phase1);
             float base_wave2 = sin(phase2);
             
@@ -155,12 +155,12 @@ struct vertex_processing
             for (int i = 0; i < 4; i++)
             {
                 // modulate base wave parameters based on index
-                float wave_height = base_wave_height * (0.75f + i * 0.1f);
+                float wave_height    = base_wave_height * (0.75f + i * 0.1f);
                 float wave_frequency = base_wave_frequency * (0.9f + i * 0.05f);
-                float wave_speed = base_wave_speed * (0.9f + i * 0.05f);
+                float wave_speed     = base_wave_speed * (0.9f + i * 0.05f);
     
                 // dynamically calculate wave direction based on index
-                float angle = 2.0f * 3.14159f * i / 4.0f;
+                float angle           = 2.0f * 3.14159f * i / 4.0f;
                 float2 wave_direction = float2(cos(angle), sin(angle));
     
                 // gerstner wave equation
@@ -169,8 +169,8 @@ struct vertex_processing
     
                 // phase and amplitude
                 float phase = dot(wave_direction, position_vertex.xz) * k + time * w;
-                float c = cos(phase);
-                float s = sin(phase);
+                float c     = cos(phase);
+                float s     = sin(phase);
     
                 // calculate new position for this wave and add to the offset
                 offset.x += wave_height * wave_direction.x * c;
@@ -204,7 +204,7 @@ struct vertex_processing
                 float ripple_phase = ripple_frequency * (time * ripple_speed - distance);
 
                 // adjust the ripple height based on time since last movement
-                float decay_factor = max(1.0f - (time_since_last_movement / ripple_decay_after_movement), 0.0f);
+                float decay_factor  = max(1.0f - (time_since_last_movement / ripple_decay_after_movement), 0.0f);
                 float ripple_height = ripple_max_height * sin(ripple_phase) * exp(-ripple_decay_rate * distance) * decay_factor;
 
                 position_vertex.y += ripple_height;
@@ -451,7 +451,6 @@ struct HsConstantDataOutput
 HsConstantDataOutput patch_constant_function(InputPatch<gbuffer_vertex, MAX_POINTS> input_patch)
 {
     HsConstantDataOutput output;
-
     float subdivisions = 1.0f;
 
     // calculate camera to the patch center vector
@@ -508,33 +507,17 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
 {
     gbuffer_vertex vertex;
 
-    // interpolate position using barycentric coordinates
-    vertex.position = patch[0].position * bary_coords.x +
-                      patch[1].position * bary_coords.y +
-                      patch[2].position * bary_coords.z;
+    // interpolate vertex using barycentric coordinates
+    vertex.position          = patch[0].position * bary_coords.x + patch[1].position * bary_coords.y + patch[2].position * bary_coords.z;
+    vertex.position_previous = patch[0].position_previous * bary_coords.x + patch[1].position_previous * bary_coords.y + patch[2].position_previous * bary_coords.z;
+    vertex.normal            = normalize(patch[0].normal * bary_coords.x + patch[1].normal * bary_coords.y + patch[2].normal * bary_coords.z);
+    vertex.tangent           = normalize(patch[0].tangent * bary_coords.x + patch[1].tangent * bary_coords.y + patch[2].tangent * bary_coords.z);
+    vertex.uv                = patch[0].uv * bary_coords.x + patch[1].uv * bary_coords.y + patch[2].uv * bary_coords.z;
 
-    // interpolate position using barycentric coordinates
-    vertex.position_previous = patch[0].position_previous * bary_coords.x +
-                               patch[1].position_previous * bary_coords.y +
-                               patch[2].position_previous * bary_coords.z;
-
-    // interpolate normal using barycentric coordinates
-    vertex.normal = normalize(patch[0].normal * bary_coords.x +
-                              patch[1].normal * bary_coords.y +
-                              patch[2].normal * bary_coords.z);
-
-    // interpolate tangent using barycentric coordinates
-    vertex.tangent = normalize(patch[0].tangent * bary_coords.x +
-                               patch[1].tangent * bary_coords.y +
-                               patch[2].tangent * bary_coords.z);
-
-    // interpolate texture coordinates using barycentric coordinates
-    vertex.uv = patch[0].uv * bary_coords.x +
-                patch[1].uv * bary_coords.y +
-                patch[2].uv * bary_coords.z;
-
-    // apply displacement - if tessellation actually happened
-    if (input.edges[0] > 1.0f)
+    // displacement - if tessellation actually happened and there is a height map
+    Material material = GetMaterial();
+    Surface surface; surface.flags = material.flags;
+    if (input.edges[0] > 1.0f && surface.has_texture_height())
     {
         float height              = 1.0f - GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv, 0.0f).r;
         float strength            = GetMaterial().height * 0.1f;
@@ -545,6 +528,6 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
         vertex.position          += displacement;
         vertex.position_previous += displacement;
     }
-    
+
     return transform_to_clip_space(vertex);
 }
