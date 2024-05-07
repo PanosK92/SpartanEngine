@@ -309,21 +309,22 @@ namespace Spartan
                 // convert name to lowercase for case insensitive comparisons below
                 transform(name.begin(), name.end(), name.begin(), ::tolower);
 
-                // if the material is fully opaque but the name contains keywords
-                // which indicate transparency, set the opacity to 0.5
-                if (opacity.r == 1.0f)
+                // detect transparency
+                bool is_transparent = opacity.r < 1.0f;
+                if (!is_transparent)
                 {
-                    bool is_transparent =
+                    is_transparent =
                         name.find("glass")       != string::npos ||
                         name.find("transparent") != string::npos ||
                         name.find("bottle")      != string::npos;
+                }
 
-                    if (is_transparent)
-                    { 
-                        opacity.r = 0.5f;
-                        material->SetProperty(MaterialProperty::Roughness, 0.0f);
-                        material->SetProperty(MaterialProperty::Ior, Material::EnumToIor(MaterialIor::Glass));
-                    }
+                // set appropriate properties for transparents
+                if (is_transparent)
+                {
+                    opacity.r = 0.5f;
+                    material->SetProperty(MaterialProperty::Roughness, 0.0f);
+                    material->SetProperty(MaterialProperty::Ior, Material::EnumToIor(MaterialIor::Glass));
                 }
             }
 
