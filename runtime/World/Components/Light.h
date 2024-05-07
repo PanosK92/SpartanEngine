@@ -106,10 +106,8 @@ namespace Spartan
         float GetIntensityWatt() const;
 
         // bias
-        static float GetBias()            { return -0.0005f; } // small values to avoid disconnected shadows
-        static float GetBiasSlopeScaled() { return -2.0f; }
-        void SetNormalBias(float value)   { m_bias_normal = value; }
-        auto GetNormalBias() const        { return m_bias_normal; }
+        static float GetBias()            { return -0.002f; }
+        static float GetBiasSlopeScaled() { return -2.5f; }
 
         // range
         void SetRange(float range);
@@ -146,7 +144,6 @@ namespace Spartan
         float m_intensity_lumens   = 2600.0f;
 
         // shadows
-        float m_bias_normal = 0.0f;
         std::shared_ptr<RHI_Texture> m_texture_color;
         std::shared_ptr<RHI_Texture> m_texture_depth;
         std::array<Math::Frustum, 6> m_frustums;

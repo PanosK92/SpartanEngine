@@ -213,18 +213,17 @@ namespace Spartan
     {
         Math::Matrix view_projection[6];
 
-        float intensity;
-        float range;
-        float angle;
-        float bias;
-
         Color color;
 
         Math::Vector3 position;
-        float normal_bias;
+        float intensity;
 
         Math::Vector3 direction;
+        float range;
+
+        float angle;
         uint32_t flags;
+        Math::Vector2 padding;
 
         bool operator==(const Sb_Light& rhs)
         {
@@ -238,8 +237,6 @@ namespace Spartan
                 intensity          == rhs.intensity          &&
                 range              == rhs.range              &&
                 angle              == rhs.angle              &&
-                bias               == rhs.bias               &&
-                normal_bias        == rhs.normal_bias        &&
                 color              == rhs.color              &&
                 position           == rhs.position           &&
                 direction          == rhs.direction          &&

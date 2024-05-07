@@ -115,18 +115,17 @@ struct Light_
 {
     matrix view_projection[6];
     
-    float intensity;
-    float range;
-    float angle;
-    float bias;
-
     float4 color;
-    
+
     float3 position;
-    float normal_bias;
-    
+    float intensity;
+
     float3 direction;
+    float range;
+    
+    float angle;
     uint flags;
+    float2 padding;
 };
 
 RWStructuredBuffer<Light_> buffer_lights : register(u1);

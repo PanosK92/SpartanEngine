@@ -962,9 +962,7 @@ namespace Spartan
                     properties[index].intensity    = light->GetIntensityWatt();
                     properties[index].range        = light->GetRange();
                     properties[index].angle        = light->GetAngle();
-                    properties[index].bias         = light->GetBias();
                     properties[index].color        = light->GetColor();
-                    properties[index].normal_bias  = light->GetNormalBias();
                     properties[index].position     = light->GetEntity()->GetPosition();
                     properties[index].direction    = light->GetEntity()->GetForward();
                     properties[index].flags        = 0;

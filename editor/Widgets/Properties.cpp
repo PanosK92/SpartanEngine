@@ -240,7 +240,6 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         bool shadows_transparent    = light->IsFlagSet(Spartan::LightFlags::ShadowsTransparent);
         bool shadows_screen_space   = light->IsFlagSet(Spartan::LightFlags::ShadowsScreenSpace);
         bool volumetric             = light->IsFlagSet(Spartan::LightFlags::Volumetric);
-        float normal_bias           = light->GetNormalBias();
         float range                 = light->GetRange();
         m_colorPicker_light->SetColor(light->GetColor());
         //======================================================================================
@@ -328,11 +327,6 @@ void Properties::ShowLight(shared_ptr<Light> light) const
             }
         }
 
-        // Normal Bias
-        ImGui::Text("Normal Bias");
-        ImGui::SameLine(column_pos_x);
-        ImGui::InputFloat("##lightNormalBias", &normal_bias, 1.0f, 1.0f, "%.0f");
-
         // Range
         if (light->GetLightType() != LightType::Directional)
         {
@@ -351,7 +345,6 @@ void Properties::ShowLight(shared_ptr<Light> light) const
 
         //= MAP ===================================================================================================================
         if (intensity != light->GetIntensityLumens())                     light->SetIntensityLumens(intensity);
-        if (normal_bias != light->GetNormalBias())                        light->SetNormalBias(normal_bias);
         if (angle != light->GetAngle() * Math::Helper::RAD_TO_DEG * 0.5f) light->SetAngle(angle * Math::Helper::DEG_TO_RAD * 0.5f);
         if (range != light->GetRange())                                   light->SetRange(range);
         if (m_colorPicker_light->GetColor() != light->GetColor())         light->SetColor(m_colorPicker_light->GetColor());
