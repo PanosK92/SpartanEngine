@@ -307,7 +307,7 @@ namespace Spartan
         return max<uint32_t>(*max_element(begin(max_index), end(max_index)), 1);
     }
 
-	void Material::SetProperty(const MaterialProperty property_type, float value)
+    void Material::SetProperty(const MaterialProperty property_type, float value)
     {
         if (m_properties[static_cast<uint32_t>(property_type)] == value)
             return;
