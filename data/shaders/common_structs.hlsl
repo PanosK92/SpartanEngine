@@ -72,11 +72,11 @@ struct Surface
     bool vertex_animate_wind()                    { return flags & uint(1U << 10); }
     bool vertex_animate_water()                   { return flags & uint(1U << 11); }
     bool is_tessellated()                         { return flags & uint(1U << 12); }
-    bool is_water()                               { return ior == 1.333f; }
-    bool is_glass()                               { return ior == 1.6f; }
+    bool is_water()                               { return ior == 1.33f; }
+    bool is_glass()                               { return ior == 1.52f; }
     bool is_sky()                                 { return alpha == 0.0f; }
     bool is_opaque()                              { return alpha == 1.0f; }
-    bool is_transparent()                         { return alpha > 0.0f && alpha < 1.0f; }
+    bool is_transparent()                         { return alpha > 0.0f && alpha < 1.0f && ior != 1.0f; } // the ior is to avoid treating alpha tested objects as transparent
     
     void Build(uint2 position_screen, float2 resolution_out, bool use_albedo, bool replace_color_with_one)
     {

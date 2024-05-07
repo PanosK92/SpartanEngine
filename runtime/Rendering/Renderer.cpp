@@ -959,20 +959,20 @@ namespace Spartan
                             properties[index].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
                         }
                     }
-                    properties[index].intensity    = light->GetIntensityWatt();
-                    properties[index].range        = light->GetRange();
-                    properties[index].angle        = light->GetAngle();
-                    properties[index].color        = light->GetColor();
-                    properties[index].position     = light->GetEntity()->GetPosition();
-                    properties[index].direction    = light->GetEntity()->GetForward();
-                    properties[index].flags        = 0;
-                    properties[index].flags       |= light->GetLightType() == LightType::Directional  ? (1 << 0) : 0;
-                    properties[index].flags       |= light->GetLightType() == LightType::Point        ? (1 << 1) : 0;
-                    properties[index].flags       |= light->GetLightType() == LightType::Spot         ? (1 << 2) : 0;
-                    properties[index].flags       |= light->IsFlagSet(LightFlags::Shadows)            ? (1 << 3) : 0;
-                    properties[index].flags       |= light->IsFlagSet(LightFlags::ShadowsTransparent) ? (1 << 4) : 0;
-                    properties[index].flags       |= (light->IsFlagSet(LightFlags::ShadowsScreenSpace) && GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
-                    properties[index].flags       |= (light->IsFlagSet(LightFlags::Volumetric) && GetOption<bool>(Renderer_Option::FogVolumetric)) ? (1 << 6) : 0;
+                    properties[index].intensity  = light->GetIntensityWatt();
+                    properties[index].range      = light->GetRange();
+                    properties[index].angle      = light->GetAngle();
+                    properties[index].color      = light->GetColor();
+                    properties[index].position   = light->GetEntity()->GetPosition();
+                    properties[index].direction  = light->GetEntity()->GetForward();
+                    properties[index].flags      = 0;
+                    properties[index].flags     |= light->GetLightType() == LightType::Directional  ? (1 << 0) : 0;
+                    properties[index].flags     |= light->GetLightType() == LightType::Point        ? (1 << 1) : 0;
+                    properties[index].flags     |= light->GetLightType() == LightType::Spot         ? (1 << 2) : 0;
+                    properties[index].flags     |= light->IsFlagSet(LightFlags::Shadows)            ? (1 << 3) : 0;
+                    properties[index].flags     |= light->IsFlagSet(LightFlags::ShadowsTransparent) ? (1 << 4) : 0;
+                    properties[index].flags     |= (light->IsFlagSet(LightFlags::ShadowsScreenSpace) && GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
+                    properties[index].flags     |= (light->IsFlagSet(LightFlags::Volumetric) && GetOption<bool>(Renderer_Option::FogVolumetric)) ? (1 << 6) : 0;
                     // when changing the bit flags, ensure that you also update the Light struct in common_structs.hlsl, so that it reads those flags as expected
 
                     index++;
