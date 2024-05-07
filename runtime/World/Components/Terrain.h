@@ -64,15 +64,15 @@ namespace Spartan
         float GetMaxY() const     { return m_max_y; }
         void SetMaxY(float max_z) { m_max_y = max_z; }
 
+        void Generate();
         void GenerateTransforms(std::vector<Math::Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop);
-        void GenerateAsync(std::function<void()> on_complete = nullptr);
-        
+
         uint32_t GetVertexCount() const         { return m_vertex_count; }
         uint32_t GetIndexCount() const          { return m_index_count; }
         uint64_t GetHeightSampleCount() const   { return m_height_samples; }
         float* GetHeightData()                  { return !m_height_data.empty() ? &m_height_data[0] : nullptr; }
         std::shared_ptr<Material> GetMaterial() { return m_material; }
-
+ 
     private:
         void UpdateMesh(const uint32_t tile_index);
         void Clear();
