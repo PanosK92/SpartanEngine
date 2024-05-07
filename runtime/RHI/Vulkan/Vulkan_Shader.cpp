@@ -138,7 +138,7 @@ namespace Spartan
             {
                 arguments.emplace_back("-Od");           // disable optimizations
                 arguments.emplace_back("-Zi");           // enable debug information
-                arguments.emplace_back("-Qembed_debug"); // embed PDB in shader container (must be used with -Zi)
+                arguments.emplace_back("-Qembed_debug"); // embed pdb in shader container (must be used with -Zi)
             }
 
             // misc

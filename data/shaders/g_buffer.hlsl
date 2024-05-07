@@ -106,7 +106,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
         if (surface.has_texture_normal())
         {
             // get tangent space normal and apply the user defined intensity, then transform it to world space
-            float3 normal_sample = sampling::smart(surface, vertex, material_normal).xyz;
+            float3 normal_sample  = sampling::smart(surface, vertex, material_normal).xyz;
             float3 tangent_normal = normalize(unpack(normal_sample));
         
             // reconstruct z-component as this can be a BC5 two channel normal map
