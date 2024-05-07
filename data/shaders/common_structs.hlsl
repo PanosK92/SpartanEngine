@@ -149,8 +149,6 @@ struct Light
     float3 forward;
     float  distance_to_pixel;
     float  angle;
-    float  bias;
-    float  normal_bias;
     float  near;
     float  far;
     float3 radiance;
@@ -159,7 +157,7 @@ struct Light
     float2 resolution;
     float2 texel_size;
     matrix view_projection[6];
-    
+ 
     bool is_directional()           { return flags & uint(1U << 0); }
     bool is_point()                 { return flags & uint(1U << 1); }
     bool is_spot()                  { return flags & uint(1U << 2); }
@@ -309,9 +307,7 @@ struct Light
         intensity         = light.intensity;
         far               = light.range;
         angle             = light.angle;
-        bias              = light.bias;
         forward           = light.direction.xyz;
-        normal_bias       = light.normal_bias;
         near              = 0.1f;
         distance_to_pixel = length(surface_position - position);
         to_pixel          = compute_direction(position, surface_position);

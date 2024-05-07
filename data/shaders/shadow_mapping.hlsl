@@ -234,7 +234,7 @@ float4 Shadow_Map(Surface surface, Light light)
     if (light.distance_to_pixel <= light.far)
     {
         // compute world position with normal offset bias to reduce shadow acne
-        float3 normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * light.normal_bias * light.texel_size.x;
+        float3 normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * light.texel_size.x * 200.0f;
         float3 position_world     = surface.position + normal_offset_bias;
 
         // project to light space
@@ -255,7 +255,7 @@ float4 Shadow_Map(Surface surface, Light light)
                 shadow.rgb = Technique_Vogel_Color(light, surface, sample_coords);
             }
         }
-        
+
         // blend with the far cascade for the directional lights
         float cascade_fade = saturate((max(abs(pos_ndc.x), abs(pos_ndc.y)) - g_shadow_cascade_blend_threshold) * 4.0f);
         if (light.is_directional() && cascade_fade > 0.0f)

@@ -507,17 +507,21 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
 {
     gbuffer_vertex vertex;
 
-    // interpolate vertex using barycentric coordinates
-    vertex.position          = patch[0].position * bary_coords.x + patch[1].position * bary_coords.y + patch[2].position * bary_coords.z;
-    vertex.position_previous = patch[0].position_previous * bary_coords.x + patch[1].position_previous * bary_coords.y + patch[2].position_previous * bary_coords.z;
-    vertex.normal            = normalize(patch[0].normal * bary_coords.x + patch[1].normal * bary_coords.y + patch[2].normal * bary_coords.z);
-    vertex.tangent           = normalize(patch[0].tangent * bary_coords.x + patch[1].tangent * bary_coords.y + patch[2].tangent * bary_coords.z);
-    vertex.uv                = patch[0].uv * bary_coords.x + patch[1].uv * bary_coords.y + patch[2].uv * bary_coords.z;
+    // interpolate
+    {
+        vertex.position          = patch[0].position          * bary_coords.x + patch[1].position          * bary_coords.y + patch[2].position          * bary_coords.z;
+        vertex.position_previous = patch[0].position_previous * bary_coords.x + patch[1].position_previous * bary_coords.y + patch[2].position_previous * bary_coords.z;
+        
+        vertex.normal            = normalize(patch[0].normal  * bary_coords.x + patch[1].normal  * bary_coords.y + patch[2].normal * bary_coords.z);
+        vertex.tangent           = normalize(patch[0].tangent * bary_coords.x + patch[1].tangent * bary_coords.y + patch[2].tangent  * bary_coords.z);
+        
+        vertex.uv                = patch[0].uv * bary_coords.x + patch[1].uv * bary_coords.y + patch[2].uv * bary_coords.z;
+    }
 
-    // displacement - if tessellation actually happened and there is a height map
-    Material material = GetMaterial();
-    Surface surface; surface.flags = material.flags;
-    if (input.edges[0] > 1.0f && surface.has_texture_height())
+    // displace
+    Material material = GetMaterial(); Surface surface; surface.flags = material.flags;
+    bool tessellated  = input.edges[0] > 1.0f || input.edges[1] > 1.0f || input.edges[2] > 1.0f || input.inside > 1.0f;
+    if (surface.has_texture_height() && tessellated)
     {
         float height              = 1.0f - GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv, 0.0f).r;
         float strength            = GetMaterial().height * 0.1f;

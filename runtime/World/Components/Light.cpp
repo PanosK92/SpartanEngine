@@ -107,7 +107,6 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_intensity_lumens, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_angle_rad, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_color_rgb, Color);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bias_normal, float);
         SP_REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
 
         m_matrix_view.fill(Matrix::Identity);
@@ -154,7 +153,6 @@ namespace Spartan
         stream->Write(m_range);
         stream->Write(m_intensity_lumens);
         stream->Write(m_angle_rad);
-        stream->Write(m_bias_normal);
     }
 
     void Light::Deserialize(FileStream* stream)
@@ -165,7 +163,6 @@ namespace Spartan
         stream->Read(&m_range);
         stream->Read(&m_intensity_lumens);
         stream->Read(&m_angle_rad);
-        stream->Read(&m_bias_normal);
     }
 
     void Light::SetFlag(const LightFlags flag, const bool enable)
