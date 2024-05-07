@@ -452,14 +452,38 @@ HsConstantDataOutput patch_constant_function(InputPatch<gbuffer_vertex, MAX_POIN
 {
     HsConstantDataOutput output;
 
-    float3 patch_center       = (input_patch[0].position + input_patch[1].position + input_patch[2].position) / 3.0f;
-    float3 camera_to_patch    = patch_center - buffer_frame.camera_position;
-    float distance_squared    = dot(camera_to_patch, camera_to_patch);
-    float normalized_distance = min(distance_squared / (TESS_END_DISTANCE * TESS_END_DISTANCE), 1.0f); // normalize
-    float drop_off_factor     = pow(2, -normalized_distance * 10);
-    float subdivisions        = MAX_TESS_FACTOR * drop_off_factor;
-    subdivisions              = max(subdivisions, 1.0f);
+    float subdivisions = 1.0f;
 
+    // calculate camera to the patch center vector
+    float3 patch_center    = (input_patch[0].position + input_patch[1].position + input_patch[2].position) / 3.0f;
+    float3 camera_to_patch = patch_center - buffer_frame.camera_position;
+
+    // determine face visibility
+    float visibility = 0.0f;
+    {
+        // calculate the normal of the patch
+        float3 tangent1    = input_patch[1].position - input_patch[0].position;
+        float3 tangent2    = input_patch[2].position - input_patch[0].position;
+        float3 face_normal = cross(tangent1, tangent2);
+
+        // check if the patch is back-facing
+        visibility = dot(normalize(face_normal), normalize(camera_to_patch));
+    }
+
+    if (visibility > 0) // no tessellation
+    {
+        subdivisions = 1.0f;
+    }
+    else // distance based tessellation
+    {
+        float distance_squared    = dot(camera_to_patch, camera_to_patch);
+        float normalized_distance = min(distance_squared / (TESS_END_DISTANCE * TESS_END_DISTANCE), 1.0f);
+        float drop_off_factor     = pow(2, -normalized_distance * 10);
+        subdivisions              = MAX_TESS_FACTOR * drop_off_factor;
+        subdivisions              = max(subdivisions, 1.0f);
+    }
+
+    // set uniform tessellation across all edges and inside
     output.edges[0] = subdivisions;
     output.edges[1] = subdivisions;
     output.edges[2] = subdivisions;
