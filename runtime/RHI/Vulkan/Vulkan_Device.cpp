@@ -838,9 +838,8 @@ namespace Spartan
                 *is_shading_rate_supported = shading_rate_support.attachmentFragmentShadingRate == VK_TRUE;
                 if (*is_shading_rate_supported)
                 {
-                    // conditionally enable this as a lot of people have an NV 1080
-                    // however NV didn't support this until the 1650 and later
-                    // https://vulkan.gpuinfo.org/listdevicescoverage.php?platform=windows&extension=VK_KHR_fragment_shading_rate
+                    // Enable this feature conditionally (no assert) as older GPUs like NV 1080 and Radeon RX Vega do not support it.
+                    // Support details: https://vulkan.gpuinfo.org/listdevicescoverage.php?platform=windows&extension=VK_KHR_fragment_shading_rate
                     shading_rate.attachmentFragmentShadingRate = VK_TRUE;
                 }
 

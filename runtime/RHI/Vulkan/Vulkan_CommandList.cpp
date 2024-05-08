@@ -995,9 +995,6 @@ namespace Spartan
             destination_blit_size.y           = destination->GetHeight() >> mip_index;
             destination_blit_size.z           = 1;
 
-            SP_ASSERT_MSG(source_blit_size.x <= destination_blit_size.x && source_blit_size.y <= destination_blit_size.y,
-                "The source texture dimension(s) are larger than the those of the destination texture");
-
             VkImageBlit& blit_region                  = blit_regions[mip_index];
             blit_region.srcSubresource.mipLevel       = mip_index;
             blit_region.srcSubresource.baseArrayLayer = 0;

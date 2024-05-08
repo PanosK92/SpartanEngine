@@ -45,7 +45,7 @@ struct translucency
         
         static float3 get_color(Surface surface)
         {
-            const float scale = 0.05f; // that's what looks decent in the bistro world
+            const float scale = 0.05f;
             
             // compute refraction vector
             float3 normal_vector        = world_to_view(surface.normal, false);
