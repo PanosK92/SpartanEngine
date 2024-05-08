@@ -136,8 +136,8 @@ struct sp_info
 //================================================================================
 
 //= ASSERT =====================================================================
-// On debug mode, the assert will have the default behaviour.
-// On release mode, the assert will write the error to a file and then break.
+// on debug mode, the assert will have the default behaviour
+// on release mode, the assert will write the error to a file and then break
 #ifdef DEBUG
 #include <cassert>
 #define SP_ASSERT(expression) assert(expression)
