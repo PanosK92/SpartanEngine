@@ -1247,6 +1247,11 @@ namespace Spartan
             // disable door (so we can go through)
             entity->GetDescendantByName("Bistro_Research_Exterior_Paris_Building_01_paris_building_01_bottom_121")->SetActive(false);
 
+            // remove color and normal textures from the tablecloth material as they are empty/corrupted
+            Material* material = entity->GetDescendantByName("Bistro_Research_Interior_Cotton_Placemat_1276")->GetComponent<Renderable>()->GetMaterial();
+            material->SetTexture(MaterialTexture::Color, nullptr);
+            material->SetTexture(MaterialTexture::Normal, nullptr);
+
             // enable physics for all meshes
             vector<Entity*> entities;
             entity->GetDescendants(&entities);
