@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Definitions.h"
 #include "../Rendering/Renderer.h"
 #include "../Logging/Log.h"
-#if defined(_MSC_VER) // Windows
+#if defined(_MSC_VER) // windows
 #include "renderdoc/app/renderdoc_app.h"
 #include <windows.h>
 #else
@@ -44,13 +44,13 @@ namespace Spartan
     static RENDERDOC_API_1_5_0* rdc_api = nullptr;
     static void* rdc_module             = nullptr;
 
-#if defined(_MSC_VER) // Windows
+#if defined(_MSC_VER) // windows
     static vector<wstring> get_renderdoc_dll_paths()
     {
         vector<wstring> dll_paths;
         static const wchar_t* installer_folders_path = TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Installer\\Folders");
 
-        // Open installer folders key
+        // open installer folders key
         HKEY hkey;
         if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, installer_folders_path, 0, KEY_READ, &hkey) != ERROR_SUCCESS) 
             return dll_paths;
@@ -66,7 +66,7 @@ namespace Spartan
         DWORD    cbSecurityDescriptor;          // size of security descriptor
         FILETIME ftLastWriteTime;               // last write time
 
-        // Get the class name and the value count.
+        // get the class name and the value count
         DWORD query_result = RegQueryInfoKey(
             hkey,                  // keyPath handle
             achClass,              // buffer for class name
@@ -87,7 +87,6 @@ namespace Spartan
 
         if (c_values)
         {
-            //printf("\nNumber of values: %d\n", cValues);
             for (DWORD i = 0, retCode = ERROR_SUCCESS; i < c_values; i++)
             {
                 DWORD cchValue = MAX_VALUE_NAME;
@@ -97,8 +96,8 @@ namespace Spartan
                 memset(enum_value, '\0', MAX_VALUE_NAME);
 
                 // MSDN:  https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regenumvaluea
-                // If the data has the REG_SZ, REG_MULTI_SZ or REG_EXPAND_SZ type, the string may not have been stored with 
-                // the proper null-terminating characters. Therefore, even if the function returns ERROR_SUCCESS, the application 
+                // If the data has the REG_SZ, REG_MULTI_SZ or REG_EXPAND_SZ type, the string may not have been stored with
+                // the proper null-terminating characters. Therefore, even if the function returns ERROR_SUCCESS, the application
                 // should ensure that the string is properly terminated before using it; otherwise, it may overwrite a buffer.
                 retCode = RegEnumValue(hkey, i,
                     ach_value,
@@ -112,18 +111,18 @@ namespace Spartan
                     continue;
 
                 retCode = RegQueryInfoKey(
-                    hkey,                  // keyPath handle 
-                    achClass,              // buffer for class name 
-                    &cchClassName,         // size of class string 
-                    nullptr,               // reserved 
-                    &cSubKeys,             // number of subkeys 
-                    &cbMaxSubKey,          // longest subkey size 
-                    &cchMaxClass,          // longest class string 
-                    &c_values,              // number of values for this keyPath 
-                    &cchMaxValue,          // longest value name 
-                    &cbMaxValueData,       // longest value data 
-                    &cbSecurityDescriptor, // security descriptor 
-                    &ftLastWriteTime);     // last write time 
+                    hkey,                  // keyPath handle
+                    achClass,              // buffer for class name
+                    &cchClassName,         // size of class string
+                    nullptr,               // reserved
+                    &cSubKeys,             // number of subkeys
+                    &cbMaxSubKey,          // longest subkey size
+                    &cchMaxClass,          // longest class string
+                    &c_values,              // number of values for this keyPath
+                    &cchMaxValue,          // longest value name
+                    &cbMaxValueData,       // longest value data
+                    &cbSecurityDescriptor, // security descriptor
+                    &ftLastWriteTime);     // last write time
 
                 wstring path(ach_value);
                 if (path.find(L"RenderDoc") != wstring::npos)
@@ -154,15 +153,15 @@ namespace Spartan
 
     void RenderDoc::OnPreDeviceCreation()
     {
-         // Load RenderDoc module and get a pointer to it's API
+         // load renderdoc module and get a pointer to it's api
         if (rdc_api == nullptr)
         {
             pRENDERDOC_GetAPI rdc_get_api = nullptr;
-#if defined(_MSC_VER) // Windows
-            // If RenderDoc is already injected into the engine, use the existing module
+#if defined(_MSC_VER) // windows
+            // if renderdoc is already injected into the engine, use the existing module
             rdc_module = ::GetModuleHandleA("renderdoc.dll");
 
-            // If RenderDoc is not injected, load the module now
+            // if renderdoc is not injected, load the module now
             if (rdc_module == nullptr)
             {
                 vector<wstring> RDocDllPaths = get_renderdoc_dll_paths();
@@ -173,9 +172,9 @@ namespace Spartan
 
             SP_ASSERT_MSG(rdc_module != nullptr, "Failed to get RenderDoc module");
 
-            // Get the address of RENDERDOC_GetAPI
+            // get the address of RENDERDOC_GetAPI
             rdc_get_api = (pRENDERDOC_GetAPI)::GetProcAddress(static_cast<HMODULE>(rdc_module), "RENDERDOC_GetAPI");
-#else // Linux
+#else // linux
             SP_ASSERT_MSG(false, "Not implemented");
 #endif
             SP_ASSERT_MSG(rdc_get_api != nullptr, "Failed to RENDERDOC_GetAPI function address from renderdoc.dll");
@@ -184,10 +183,12 @@ namespace Spartan
 
         SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc API has not been initialised");
 
-        // Disable muting of validation/debug layer messages
+        // disable muting of validation/debug layer messages
+        rdc_api->SetCaptureOptionU32(eRENDERDOC_Option_APIValidation, 1);
         rdc_api->SetCaptureOptionU32(eRENDERDOC_Option_DebugOutputMute, 0);
+        rdc_api->SetCaptureOptionU32(eRENDERDOC_Option_VerifyBufferAccess, 1);
 
-        // Disable overlay
+        // disable overlay
         rdc_api->MaskOverlayBits(eRENDERDOC_Overlay_None, eRENDERDOC_Overlay_None);
     }
 
@@ -195,9 +196,9 @@ namespace Spartan
     {
         if (rdc_module != nullptr)
         {
-#if defined(_MSC_VER) // Windows
+#if defined(_MSC_VER) // windows
             ::FreeLibrary(static_cast<HMODULE>(rdc_module));
-#else // Linux
+#else
             SP_ASSERT_MSG(false, "Not implemented");
 #endif
         }
@@ -205,24 +206,25 @@ namespace Spartan
 
     void RenderDoc::FrameCapture()
     {
-        SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc is not initialized, ensure that RenderDoc is set to true in RHI_Context");
+        SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc is not initialized");
 
-        // Trigger a capture, this will make RenderDoc capture the entire next frame
-        rdc_api->TriggerCapture();
+        // capture the next frame
+        //rdc_api->TriggerCapture();
+        rdc_api->TriggerMultiFrameCapture(2);
 
         LaunchRenderDocUi();
     }
 
     void RenderDoc::StartCapture()
     {
-        SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc is not initialized, ensure that RenderDoc is set to true in RHI_Context");
+        SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc is not initialized");
 
         rdc_api->StartFrameCapture(nullptr, nullptr);
     }
 
     void RenderDoc::EndCapture()
     {
-        SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc is not initialized, ensure that RenderDoc is set to true in RHI_Context");
+        SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc is not initialized");
 
         rdc_api->EndFrameCapture(nullptr, nullptr);
 
@@ -231,13 +233,13 @@ namespace Spartan
 
     void RenderDoc::LaunchRenderDocUi()
     {
-        // If the RenderDoc UI is already running, make sure it's visible.
+        // if the renderdoc ui is already running, make sure it's visible
         if (rdc_api->IsTargetControlConnected())
         {
             SP_LOG_INFO("Bringing RenderDoc to foreground...");
             rdc_api->ShowReplayUI();
         }
-        // If the RenderDoc UI is not running, launch it and connect.
+        // if the renderdoc ui is not running, launch it and connect
         else
         {
             SP_LOG_INFO("Launching RenderDoc...");

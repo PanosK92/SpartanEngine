@@ -275,8 +275,8 @@ struct sampling
         const float speed_1      = 0.2;
         const float speed_2      = 0.15;
         
-        uv_1 = uv + buffer_frame.time * speed_1 * direction_1;
-        uv_2 = uv + buffer_frame.time * speed_2 * direction_2;
+        uv_1 = uv + (float)buffer_frame.time * speed_1 * direction_1;
+        uv_2 = uv + (float)buffer_frame.time * speed_2 * direction_2;
     }
 
     static float apply_snow_level_variation(float3 position_world, float base_snow_level)
@@ -422,9 +422,9 @@ gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex)
     Surface surface; surface.flags = material.flags;
     
      // apply ambient animation - done here so it can benefit from potentially tessellated surfaces
-    vertex.position          = vertex_processing::ambient_animation(surface, vertex.position, extract_position(vertex.transform), vertex.instance_id, buffer_frame.time);
+    vertex.position          = vertex_processing::ambient_animation(surface, vertex.position, extract_position(vertex.transform), vertex.instance_id, (float)buffer_frame.time);
 #ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
-    vertex.position_previous = vertex_processing::ambient_animation(surface, vertex.position_previous, extract_position(vertex.transform_previous), vertex.instance_id, buffer_frame.time - buffer_frame.delta_time);
+    vertex.position_previous = vertex_processing::ambient_animation(surface, vertex.position_previous, extract_position(vertex.transform_previous), vertex.instance_id, (float)buffer_frame.time - buffer_frame.delta_time);
 #endif
     
     vertex.position_clip          = mul(float4(vertex.position, 1.0f), buffer_frame.view_projection);
