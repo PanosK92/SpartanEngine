@@ -47,7 +47,7 @@ namespace Spartan
         Math::Vector2 taa_jitter_current;
         Math::Vector2 taa_jitter_previous;
 
-        float time;
+        float directional_light_intensity;
         float delta_time;
         uint32_t frame;
         uint32_t options;
@@ -66,8 +66,8 @@ namespace Spartan
         Math::Vector3 camera_position_previous;
         float resolution_scale;
 
-        float directional_light_intensity;
-        Math::Vector3 padding;
+        double time;
+        Math::Vector2 padding;
 
         void set_bit(const bool set, const uint32_t bit)
         {

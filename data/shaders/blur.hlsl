@@ -31,16 +31,19 @@ float compute_gaussian_weight(int sample_distance, const float sigma2)
 
 float3 gaussian_blur(const uint2 pos, float2 resolution_in, float2 resolution_out, const float2 uv, const float radius, const float sigma2, const float2 direction)
 {
+    const float2 texel_size      = 1.0f / resolution_in;
+    const float2 direction_texel = direction * texel_size;
+
     #if PASS_BLUR_GAUSSIAN_BILATERAL
     const float center_depth   = get_linear_depth(pos);
     const float3 center_normal = get_normal(pos);
     #endif
-    
+
     float3 color  = 0.0f;
     float weights = 0.0f;
     for (int i = -radius; i < radius; i++)
     {
-        float2 sample_uv     = uv + (i * direction);
+        float2 sample_uv     = uv + (i * direction_texel);
         float sample_depth   = get_linear_depth(sample_uv);
         float3 sample_normal = get_normal(sample_uv);
 
@@ -54,9 +57,9 @@ float3 gaussian_blur(const uint2 pos, float2 resolution_in, float2 resolution_ou
         float weight  = compute_gaussian_weight(i, sigma2) * depth_awareness;
         // during the vertical pass, the input texture is secondary scratch texture which belongs to the blur pass
         // it's at least as big as the original input texture (to be blurred), so we have to adapt the sample uv
-        sample_uv     = lerp(sample_uv, (trunc(sample_uv * resolution_in) + 0.5f) / resolution_out, direction.y != 0.0f);
-        color        += tex.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv, 0).rgb * weight;
-        weights      += weight;
+        sample_uv  = lerp(sample_uv, (trunc(sample_uv * resolution_in) + 0.5f) / resolution_out, direction.y != 0.0f);
+        color     += tex.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv, 0).rgb * weight;
+        weights   += weight;
     }
 
     return color / (weights + FLT_MIN);
@@ -67,11 +70,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     const float3 f3_value  = pass_get_f3_value();
     const float2 direction = f3_value.y == 1.0f ? float2(0.0f, 1.0f) : float2(1.0f, 0.0f);
-    
+
     float2 resolution_in;
-    float2 resolution_out;
-   
     tex.GetDimensions(resolution_in.x, resolution_in.y);
+    float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
 
     if (direction.y == 1.0f)
@@ -80,7 +82,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         resolution_in  = resolution_out;
         resolution_out = temp;
     }
-    
+
     if (any(int2(thread_id.xy) >= resolution_out))
         return;
 
@@ -88,18 +90,18 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
  
     // deduce a couple of things
     #if RADIUS_FROM_TEXTURE 
-    const float radius      = clamp(tex_uav2[thread_id.xy].r, 0.0f, 10.0f);
-    #else
-    const float radius      = f3_value.x;
-    #endif
-    const float sigma       = radius / 3.0f;
-    const float2 uv         = (thread_id.xy + 0.5f) / resolution_in;
-    const float2 texel_size = 1.0f / resolution_in;
+    const float radius = clamp(tex_uav2[thread_id.xy].r, 0.0f, 10.0f);
+    #else              
+    const float radius = f3_value.x;
+    #endif             
+    const float sigma  = radius / 3.0f;
+    const float2 uv    = (thread_id.xy + 0.5f) / resolution_in;
 
-    #if RADIUS_FROM_TEXTURE 
+    #if RADIUS_FROM_TEXTURE
     if (radius >= 1.0f)
     #endif 
-    color.rgb = gaussian_blur(thread_id.xy, resolution_in, resolution_out, uv, radius, sigma * sigma, direction * texel_size);
-    
+    color.rgb = gaussian_blur(thread_id.xy, resolution_in, resolution_out, uv, radius, sigma * sigma, direction);
+
     tex_uav[thread_id.xy] = color;
 }
+

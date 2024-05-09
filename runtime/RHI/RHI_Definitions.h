@@ -134,8 +134,8 @@ namespace Spartan
     {
         Wrap,
         Mirror,
-        ClampToEdge,
-        ClampToBorder,
+        Clamp,
+        ClampToZero,
         MirrorOnce,
     };
 

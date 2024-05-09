@@ -421,7 +421,7 @@ namespace Spartan
         m_cb_frame_cpu.resolution_render           = m_resolution_render;
         m_cb_frame_cpu.taa_jitter_previous         = m_cb_frame_cpu.taa_jitter_current;
         m_cb_frame_cpu.taa_jitter_current          = jitter_offset;
-        m_cb_frame_cpu.time                        = static_cast<float>(Timer::GetTimeSec());
+        m_cb_frame_cpu.time                        = Timer::GetTimeSec();
         m_cb_frame_cpu.delta_time                  = static_cast<float>(Timer::GetDeltaTimeSec());
         m_cb_frame_cpu.frame                       = static_cast<uint32_t>(frame_num);
         m_cb_frame_cpu.resolution_scale            = GetOption<float>(Renderer_Option::ResolutionScale);

@@ -156,13 +156,18 @@ float3 prefilter_environment(float2 uv)
         float n_dot_l = saturate(dot(N, L));
         if (n_dot_l > 0.0)
         {
+            // compute uv
             phi     = atan2(L.z, L.x) + PI;
             theta   = acos(L.y);
             float u = (phi / (2.0 * PI)) + 0.5; // shifting UV by half the texture width
-            u       = fmod(u, 1.0); // wrap manually if u goes out of bounds
+            u       = fmod(u, 1.0);             // wrap manually if u goes out of bounds
             float v = 1.0 - (theta / PI);
 
-            color        += tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], float2(u, v), 0).rgb * n_dot_l;
+            // sample
+            float mip_level_previous = mip_level - 1;
+            color += tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], float2(u, v), mip_level_previous).rgb * n_dot_l;
+
+            // accumulate weight
             total_weight += n_dot_l;
         }
     }
@@ -191,3 +196,4 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = color;
 }
+

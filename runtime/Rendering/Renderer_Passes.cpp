@@ -2284,8 +2284,7 @@ namespace Spartan
             uint32_t mip_level = mip_count - m_environment_mips_to_filter_count;
             SP_ASSERT(mip_level != 0);
 
-            // read from the previous mip (not the top) - this helps accumulate filtering without doing a lot of samples
-            cmd_list->SetTexture(Renderer_BindingsSrv::environment, tex_environment, mip_level - 1, 1);
+            cmd_list->SetTexture(Renderer_BindingsSrv::environment, tex_environment);
 
             // do one mip at a time, splitting the cost over a couple of frames
             Vector2 resolution = Vector2(tex_environment->GetWidth() >> mip_level, tex_environment->GetHeight() >> mip_level);
@@ -2304,11 +2303,12 @@ namespace Spartan
 
             m_environment_mips_to_filter_count--;
 
-            // the first two filtered mips have obvious sample patterns, so blur them
+            // the first 3 mips have obvious sample patterns, so blur them
             if (m_environment_mips_to_filter_count == 0)
             {
                 Pass_Blur_Gaussian(cmd_list, tex_environment, nullptr, Renderer_Shader::blur_gaussian_c, 32.0f, 1);
                 Pass_Blur_Gaussian(cmd_list, tex_environment, nullptr, Renderer_Shader::blur_gaussian_c, 32.0f, 2);
+                Pass_Blur_Gaussian(cmd_list, tex_environment, nullptr, Renderer_Shader::blur_gaussian_c, 16.0f, 3);
             }
         }
         cmd_list->EndTimeblock();

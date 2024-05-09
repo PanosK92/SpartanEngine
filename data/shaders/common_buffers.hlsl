@@ -39,7 +39,7 @@ struct FrameBufferData
     float2 taa_jitter_current;
     float2 taa_jitter_previous;
     
-    float time;
+    float directional_light_intensity;
     float delta_time;
     uint frame;
     uint options;
@@ -58,8 +58,8 @@ struct FrameBufferData
     float3 camera_position_previous;
     float resolution_scale;
     
-    float directional_light_intensity;
-    float3 padding;
+    double time;
+    float2 padding;
 };
 
 // 128 byte push constant buffer used by everything in the engine

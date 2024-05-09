@@ -37,7 +37,7 @@ namespace Spartan
             const RHI_Filter filter_mag                         = RHI_Filter::Nearest,
             const RHI_Filter filter_mipmap                      = RHI_Filter::Nearest,
             const RHI_Sampler_Address_Mode sampler_address_mode = RHI_Sampler_Address_Mode::Wrap,
-            const RHI_Comparison_Function comparison_function   = RHI_Comparison_Function::Always,
+            const RHI_Comparison_Function comparison_function   = RHI_Comparison_Function::Never,
             const float anisotropy                              = 0.0f,
             const bool comparison_enabled                       = false,
             const float mip_bias                                = 0.0f
@@ -65,7 +65,7 @@ namespace Spartan
         bool m_comparison_enabled                       = false;
         float m_mip_lod_bias                            = 0.0f;
 
-        // RHI Resource
+        // rhi
         void* m_rhi_resource = nullptr;
     };
 }

@@ -173,7 +173,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // compute individual factors that contribute to what we see when we look up there
     float3 color  = atmosphere::compute_color(view_direction, light.forward, buffer_frame.camera_position) * light.intensity * 0.03f;
     color        += sun::compute_color(view_direction, light.forward) * light.color.rgb * light.intensity;
-    color        += space::compute_color(uv, color, buffer_frame.time);
+    color        += space::compute_color(uv, color, (float)buffer_frame.time);
       
     tex_uav[thread_id.xy] = float4(color, 1.0f);
 }
