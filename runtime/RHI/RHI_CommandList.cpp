@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============
 #include "pch.h"
 #include "RHI_CommandList.h"
-#include "RHI_Fence.h"
 #include "RHI_Texture.h"
+#include "RHI_Semaphore.h"
 //==========================
 
 //= NAMESPACES =====
@@ -36,26 +36,8 @@ namespace Spartan
     {
         SP_ASSERT_MSG(m_state == RHI_CommandListState::Submitted, "The command list hasn't been submitted, can't wait for it.");
 
-        // wait for execution to finish
-        if (IsExecuting())
-        {
-            SP_ASSERT_MSG(m_rendering_complete_fence->Wait(), "Timed out while waiting for the fence");
-        }
-
-        // reset fence
-        if (m_rendering_complete_fence->GetStateCpu() == RHI_Sync_State::Submitted)
-        {
-            m_rendering_complete_fence->Reset();
-        }
-
+        m_rendering_complete_semaphore_timeline->Wait(m_rendering_complete_semaphore_timeline->GetValueSignal());
         m_state = RHI_CommandListState::Idle;
-    }
-
-    bool RHI_CommandList::IsExecuting()
-    {
-        return
-            m_state == RHI_CommandListState::Submitted && // it has been submitted
-            !m_rendering_complete_fence->IsSignaled();            // and the fence is not signaled yet
     }
 
     void RHI_CommandList::Dispatch(RHI_Texture* texture)

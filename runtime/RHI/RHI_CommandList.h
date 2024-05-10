@@ -139,10 +139,6 @@ namespace Spartan
         void BeginTimeblock(const char* name, const bool gpu_marker = true, const bool gpu_timing = true);
         void EndTimeblock();
 
-        // state
-        const RHI_CommandListState GetState() const { return m_state; }
-        bool IsExecuting();
-
         // memory barriers
         void InsertBarrierTexture(void* image, const uint32_t aspect_mask, const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new, const bool is_depth);
         void InsertBarrierTexture(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new);
@@ -150,15 +146,16 @@ namespace Spartan
 
         // misc
         RHI_Semaphore* GetRenderingCompleteSemaphore() { return m_rendering_complete_semaphore.get(); }
-        void* GetRhiResource() const { return m_rhi_resource; }
+        void* GetRhiResource() const                   { return m_rhi_resource; }
+        const RHI_CommandListState GetState() const    { return m_state; }
 
     private:
         void RenderPassBegin();
         void RenderPassEnd();
 
         // sync
-        std::shared_ptr<RHI_Fence> m_rendering_complete_fence;
         std::shared_ptr<RHI_Semaphore> m_rendering_complete_semaphore;
+        std::shared_ptr<RHI_Semaphore> m_rendering_complete_semaphore_timeline;
 
         // variables to minimise state changes
         uint64_t m_vertex_buffer_id = 0;

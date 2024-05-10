@@ -507,7 +507,7 @@ namespace Spartan
     {
         mutex descriptor_pipeline_mutex;
         uint32_t allocated_descriptor_sets = 0;
-        VkDescriptorPool descriptor_pool = nullptr;
+        VkDescriptorPool descriptor_pool   = nullptr;
 
         // cache
         unordered_map<uint64_t, RHI_DescriptorSet> sets;
@@ -1379,11 +1379,9 @@ namespace Spartan
 
     void RHI_Device::QueuePresent(void* swapchain, const uint32_t image_index, vector<RHI_Semaphore*>& wait_semaphores)
     {
-        lock_guard<mutex> lock(queues::mutex_queue);
-
         array<VkSemaphore, 3> vk_wait_semaphores = { nullptr, nullptr, nullptr };
 
-        // Get semaphore Vulkan resource
+        // get semaphore vulkan resources
         uint32_t semaphore_count = static_cast<uint32_t>(wait_semaphores.size());
         for (uint32_t i = 0; i < semaphore_count; i++)
         {
@@ -1399,41 +1397,33 @@ namespace Spartan
         present_info.pSwapchains        = reinterpret_cast<VkSwapchainKHR*>(&swapchain);
         present_info.pImageIndices      = &image_index;
 
+        lock_guard<mutex> lock(queues::mutex_queue);
         SP_VK_ASSERT_MSG(vkQueuePresentKHR(static_cast<VkQueue>(queues::graphics), &present_info), "Failed to present");
 
-        // Update semaphore state
+        // update semaphore states
         for (uint32_t i = 0; i < semaphore_count; i++)
         {
             wait_semaphores[i]->SetStateCpu(RHI_Sync_State::Idle);
         }
     }
 
-    void RHI_Device::QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/)
+    void RHI_Device::QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* semaphore, RHI_Semaphore* semaphore_timeline)
     {
-        lock_guard<mutex> lock(queues::mutex_queue);
+        // validate
+        SP_ASSERT(cmd_buffer != nullptr);
+        SP_ASSERT(semaphore->GetStateCpu() != RHI_Sync_State::Submitted);
 
-        SP_ASSERT_MSG(cmd_buffer != nullptr, "Invalid command buffer");
-
-        if (wait_semaphore)   SP_ASSERT_MSG(wait_semaphore->GetStateCpu()   != RHI_Sync_State::Idle, "Wait semaphore is in an idle state and will never be signaled");
-        if (signal_semaphore) SP_ASSERT_MSG(signal_semaphore->GetStateCpu() != RHI_Sync_State::Submitted, "Signal semaphore is already in a signaled state.");
-        if (signal_fence)     SP_ASSERT_MSG(signal_fence->GetStateCpu()     != RHI_Sync_State::Submitted, "Signal fence is already in a signaled state.");
-
-        VkSemaphoreSubmitInfoKHR wait_semaphore_info = {};
-        if (wait_semaphore)
-        {
-            wait_semaphore_info.sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
-            wait_semaphore_info.semaphore = static_cast<VkSemaphore>(wait_semaphore->GetRhiResource());
-            wait_semaphore_info.stageMask = wait_flags; // the pipeline stage the semaphore waits at
-            wait_semaphore_info.value     = 0;          // timeline semaphore value to wait for (ignored for binary semaphores)
-        }
-
+        // semaphore binary
         VkSemaphoreSubmitInfoKHR signal_semaphore_info = {};
-        if (signal_semaphore)
-        {
-            signal_semaphore_info.sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
-            signal_semaphore_info.semaphore = static_cast<VkSemaphore>(signal_semaphore->GetRhiResource());
-            signal_semaphore_info.value     = 0; // timeline semaphore value to signal (ignored for binary semaphores)
-        }
+        signal_semaphore_info.sType                    = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
+        signal_semaphore_info.semaphore                = static_cast<VkSemaphore>(semaphore->GetRhiResource());
+        signal_semaphore_info.value                    = 0; // ignored for binary semaphores
+
+        // semaphore timeline
+        VkSemaphoreSubmitInfoKHR timeline_semaphore_info = {};
+        timeline_semaphore_info.sType                    = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
+        timeline_semaphore_info.semaphore                = static_cast<VkSemaphore>(semaphore_timeline->GetRhiResource());
+        timeline_semaphore_info.value                    = semaphore_timeline->GenerateSignalValue();
 
         VkCommandBufferSubmitInfoKHR cmd_buffer_info = {};
         cmd_buffer_info.sType                        = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO_KHR;
@@ -1441,23 +1431,20 @@ namespace Spartan
 
         VkSubmitInfo2 submit_info            = {};
         submit_info.sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-        submit_info.waitSemaphoreInfoCount   = wait_semaphore ? 1 : 0;
-        submit_info.pWaitSemaphoreInfos      = &wait_semaphore_info;
-        submit_info.signalSemaphoreInfoCount = signal_semaphore ? 1 : 0;
-        submit_info.pSignalSemaphoreInfos    = &signal_semaphore_info;
-        submit_info.commandBufferInfoCount   = 1;
-        submit_info.pCommandBufferInfos      = &cmd_buffer_info;
+        submit_info.waitSemaphoreInfoCount   = 0;
+        submit_info.pWaitSemaphoreInfos      = nullptr;
+        submit_info.signalSemaphoreInfoCount = 2; // both semaphores are always present
+
+        VkSemaphoreSubmitInfoKHR semaphore_infos[] = { signal_semaphore_info, timeline_semaphore_info };
+        submit_info.pSignalSemaphoreInfos          = semaphore_infos;
+        submit_info.commandBufferInfoCount         = 1;
+        submit_info.pCommandBufferInfos            = &cmd_buffer_info;
 
         // submit
-        VkFence vk_signal_fence = static_cast<VkFence>(signal_fence ? signal_fence->GetRhiResource() : nullptr);
-        SP_VK_ASSERT_MSG(vkQueueSubmit2(static_cast<VkQueue>(QueueGet(type)), 1, &submit_info, vk_signal_fence), "Failed to submit");
-
-        // update semaphore states
-        if (wait_semaphore)   wait_semaphore->SetStateCpu(RHI_Sync_State::Idle);
-        if (signal_semaphore) signal_semaphore->SetStateCpu(RHI_Sync_State::Submitted);
-        if (signal_fence)     signal_fence->SetStateCpu(RHI_Sync_State::Submitted);
+        lock_guard<mutex> lock(queues::mutex_queue);
+        SP_VK_ASSERT_MSG(vkQueueSubmit2(static_cast<VkQueue>(QueueGet(type)), 1, &submit_info, nullptr), "Failed to submit");
+        semaphore->SetStateCpu(RHI_Sync_State::Submitted);
     }
-
 
     void RHI_Device::QueueWait(const RHI_Queue_Type type)
     {

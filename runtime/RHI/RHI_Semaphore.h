@@ -36,12 +36,16 @@ namespace Spartan
 
         // sync
         void Wait(const uint64_t value, const uint64_t timeout = std::numeric_limits<uint64_t>::max());
-        void Signal(const uint64_t value);
+        void Signal(const uint64_t value) const;
 
         // value
-        uint64_t GetValue();
-        uint64_t GetValuePrevious() const           { return m_value_previous; }
-        void SetValuePrevious(const uint64_t value) { m_value_previous = value; }
+        uint64_t GetValue() const;
+        uint64_t GetValueSignal() const { return m_value_signal; }
+        uint64_t GenerateSignalValue()
+        {
+            m_value_signal = GetValue() + 1;
+            return m_value_signal;
+        }
 
         // state
         RHI_Sync_State GetStateCpu()const            { return m_state_cpu; }
@@ -51,9 +55,9 @@ namespace Spartan
         void* GetRhiResource() { return m_rhi_resource; }
 
     private:
-        void* m_rhi_resource       = nullptr;
-        bool m_is_timeline         = false;
-        uint64_t m_value_previous  = 0;
+        void* m_rhi_resource    = nullptr;
+        bool m_is_timeline      = false;
+        uint64_t m_value_signal = 0;
         RHI_Sync_State m_state_cpu = RHI_Sync_State::Idle;
     };
 }
