@@ -74,7 +74,7 @@ namespace Spartan
         m_rhi_resource = nullptr;
     }
 
-    void RHI_Semaphore::Wait(const uint64_t value, const uint64_t timeout /*= std::numeric_limits<uint64_t>::max()*/)
+    void RHI_Semaphore::Wait(const uint64_t value, const uint64_t timeout /*= std::numeric_limits<uint64_t>::max()*/) 
     {
         SP_ASSERT(m_is_timeline);
 
@@ -89,7 +89,7 @@ namespace Spartan
         SP_VK_ASSERT_MSG(vkWaitSemaphores(RHI_Context::device, &semaphore_wait_info, timeout), "Failed to wait for semaphore");
     }
 
-    void RHI_Semaphore::Signal(const uint64_t value)
+    void RHI_Semaphore::Signal(const uint64_t value) const
     {
         SP_ASSERT(m_is_timeline);
 
@@ -103,7 +103,7 @@ namespace Spartan
             "Failed to signal semaphore");
     }
 
-    uint64_t RHI_Semaphore::GetValue()
+    uint64_t RHI_Semaphore::GetValue() const
     {
         SP_ASSERT(m_is_timeline);
 

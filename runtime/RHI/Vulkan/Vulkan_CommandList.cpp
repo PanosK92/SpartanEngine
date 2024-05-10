@@ -481,24 +481,15 @@ namespace Spartan
             RHI_Device::SetResourceName(static_cast<void*>(m_rhi_resource), RHI_Resource_Type::CommandList, name);
         }
 
-        // sync objects
-        m_rendering_complete_fence = make_shared<RHI_Fence>(name);
-
-        // semaphore
-        bool presents_to_swapchain = swapchain_id != 0;
-        if (presents_to_swapchain)
-        {
-            m_rendering_complete_semaphore = make_shared<RHI_Semaphore>(false, name);
-        }
+        // semaphores
+        m_rendering_complete_semaphore          = make_shared<RHI_Semaphore>(false, name);
+        m_rendering_complete_semaphore_timeline = make_shared<RHI_Semaphore>(true, name);
 
         queries::initialize(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion);
     }
 
     RHI_CommandList::~RHI_CommandList()
     {
-        m_rendering_complete_fence     = nullptr;
-        m_rendering_complete_semaphore = nullptr;
-
         queries::shutdown(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion);
     }
 
@@ -568,7 +559,6 @@ namespace Spartan
         // it's okay to reset it manually here but ideally, we should find out why this happens
         if (m_rendering_complete_semaphore && m_rendering_complete_semaphore->GetStateCpu() == RHI_Sync_State::Submitted)
         {
-            m_rendering_complete_fence     = make_shared<RHI_Fence>(m_object_name.c_str());
             m_rendering_complete_semaphore = make_shared<RHI_Semaphore>(false, m_object_name.c_str());
         }
 
@@ -576,9 +566,8 @@ namespace Spartan
             m_queue_type,                                 // queue
             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,            // wait flags
             static_cast<VkCommandBuffer>(m_rhi_resource), // cmd buffer
-            nullptr,                                      // wait semaphore
             m_rendering_complete_semaphore.get(),         // signal semaphore
-            m_rendering_complete_fence.get()              // signal fence
+            m_rendering_complete_semaphore_timeline.get() // signal semaphore
         );
 
         m_state = RHI_CommandListState::Submitted;
