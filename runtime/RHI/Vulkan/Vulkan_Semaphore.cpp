@@ -74,7 +74,7 @@ namespace Spartan
         m_rhi_resource = nullptr;
     }
 
-    void RHI_Semaphore::Wait(const uint64_t value, uint64_t timeout /*= std::numeric_limits<uint64_t>::max()*/)
+    void RHI_Semaphore::Wait(const uint64_t value, const uint64_t timeout /*= std::numeric_limits<uint64_t>::max()*/)
     {
         SP_ASSERT(m_is_timeline);
 
