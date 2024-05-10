@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES ================
 #include "../Core/SpObject.h"
 #include "RHI_Definitions.h"
-//============================
+//===========================
 
 namespace Spartan
 {
@@ -34,20 +34,26 @@ namespace Spartan
         RHI_Semaphore(bool is_timeline = false, const char* name = nullptr);
         ~RHI_Semaphore();
 
-        // Timeline
-        bool IsTimelineSemaphore() const { return m_is_timeline; }
+        // sync
         void Wait(const uint64_t value, const uint64_t timeout = std::numeric_limits<uint64_t>::max());
         void Signal(const uint64_t value);
+
+        // value
         uint64_t GetValue();
+        uint64_t GetValuePrevious() const           { return m_value_previous; }
+        void SetValuePrevious(const uint64_t value) { m_value_previous = value; }
+
+        // state
+        RHI_Sync_State GetStateCpu()const            { return m_state_cpu; }
+        void SetStateCpu(const RHI_Sync_State state) { m_state_cpu = state; }
+
+        // rhi
         void* GetRhiResource() { return m_rhi_resource; }
 
-        // State
-        RHI_Sync_State GetStateCpu()                 const { return m_state_cpu; }
-        void SetStateCpu(const RHI_Sync_State state)       { m_state_cpu = state; }
-
     private:
-        void* m_rhi_resource           = nullptr;
+        void* m_rhi_resource       = nullptr;
         bool m_is_timeline         = false;
+        uint64_t m_value_previous  = 0;
         RHI_Sync_State m_state_cpu = RHI_Sync_State::Idle;
     };
 }

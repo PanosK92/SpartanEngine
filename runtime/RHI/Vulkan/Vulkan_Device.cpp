@@ -864,8 +864,13 @@ namespace Spartan
                 pNext.features.imageCubeArray = VK_TRUE;
 
                 // timeline semaphores
-                SP_ASSERT(features_1_2_support.timelineSemaphore == VK_TRUE);
-                features_1_2.timelineSemaphore = VK_TRUE;
+                {
+                    SP_ASSERT(features_1_2_support.timelineSemaphore == VK_TRUE);
+                    features_1_2.timelineSemaphore = VK_TRUE;
+
+                    SP_ASSERT(features_support.features.shaderFloat64 == VK_TRUE);
+                    pNext.features.shaderFloat64 = VK_TRUE;
+                }
 
                 // descriptors
                 {
