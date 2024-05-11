@@ -52,7 +52,7 @@ namespace
         ImGui::Text("%s - %.2f ms", name, duration);
     }
 
-    int mode_duration = 0; // 0: gpu, 1: cpu
+    int mode_hardware = 0; // 0: gpu, 1: cpu
     int mode_sort     = 0; // 0: alphabetically, 1: by duration
 }
 
@@ -67,22 +67,22 @@ Profiler::Profiler(Editor* editor) : Widget(editor)
 
 void Profiler::OnTickVisible()
 {
-    int previous_item_type = mode_duration;
+    int previous_item_type = mode_hardware;
 
     // controls
     {
-        ImGui::Text("Duration: ");
+        ImGui::Text("Hardware: ");
         ImGui::SameLine();
-        if (ImGui::BeginCombo("##mode_duration", mode_duration == 0 ? "GPU" : "CPU"))
+        if (ImGui::BeginCombo("##mode_hardware", mode_hardware == 0 ? "GPU" : "CPU"))
         {
-            if (ImGui::Selectable("GPU", mode_duration == 0))
+            if (ImGui::Selectable("GPU", mode_hardware == 0))
             {
-                mode_duration = 0;
+                mode_hardware = 0;
             }
 
-            if (ImGui::Selectable("CPU", mode_duration == 1))
+            if (ImGui::Selectable("CPU", mode_hardware == 1))
             {
-                mode_duration = 1;
+                mode_hardware = 1;
             }
 
             ImGui::EndCombo();
@@ -114,7 +114,7 @@ void Profiler::OnTickVisible()
         ImGui::Separator();
     }
 
-    Spartan::TimeBlockType type            = mode_duration == 0 ? Spartan::TimeBlockType::Gpu : Spartan::TimeBlockType::Cpu;
+    Spartan::TimeBlockType type            = mode_hardware == 0 ? Spartan::TimeBlockType::Gpu : Spartan::TimeBlockType::Cpu;
     vector<Spartan::TimeBlock> time_blocks = Spartan::Profiler::GetTimeBlocks();
     uint32_t time_block_count              = static_cast<uint32_t>(time_blocks.size());
     float time_last                        = type == Spartan::TimeBlockType::Cpu ? Spartan::Profiler::GetTimeCpuLast() : Spartan::Profiler::GetTimeGpuLast();
@@ -150,7 +150,7 @@ void Profiler::OnTickVisible()
     ImGui::Separator();
     {
         // clear plot on change from cpu to gpu and vice versa
-        if (previous_item_type != mode_duration)
+        if (previous_item_type != mode_hardware)
         {
             m_plot.fill(0.0f);
             m_timings.Clear();
