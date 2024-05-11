@@ -206,7 +206,7 @@ namespace Spartan
             unsigned int path_revision = SPV_VERSION & 0xff;         // extract patch version
             unsigned int revision      = SPV_REVISION;               // get revision
 
-            std::ostringstream version;
+            ostringstream version;
             version << major << "." << minor << "." << path_revision << "." << revision;
 
             Settings::RegisterThirdPartyLib("SPIRV-Cross", version.str(), "https://github.com/KhronosGroup/SPIRV-Cross");
