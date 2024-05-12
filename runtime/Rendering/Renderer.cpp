@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Display/Display.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_SwapChain.h"
-#include "../RHI/RHI_CommandPool.h"
+#include "../RHI/RHI_Queue.h"
 #include "../RHI/RHI_ConstantBuffer.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_FidelityFX.h"
@@ -61,7 +61,7 @@ namespace Spartan
     uint32_t Renderer::m_lines_index_depth_on;
 
     // misc
-    RHI_CommandPool* Renderer::m_cmd_pool                         = nullptr;;
+    RHI_Queue* Renderer::m_queue                         = nullptr;;
     uint32_t Renderer::m_resource_index                           = 0;
     atomic<bool> Renderer::m_resources_created                    = false;
     atomic<uint32_t> Renderer::m_environment_mips_to_filter_count = 0;
@@ -116,7 +116,7 @@ namespace Spartan
     {
         Display::DetectDisplayModes();
 
-        // rhi initialization
+        // rhi
         {
             if (Profiler::IsRenderdocEnabled())
             {
@@ -158,8 +158,8 @@ namespace Spartan
             "renderer"
         );
 
-        // command pool
-        m_cmd_pool = RHI_Device::CommandPoolAllocate("renderer", swap_chain->GetObjectId(), RHI_Queue_Type::Graphics);
+        // queue
+        m_queue = RHI_Device::AllocateQueue("renderer", swap_chain->GetObjectId(), RHI_Queue_Type::Graphics);
 
         // fidelityfx suite
         RHI_FidelityFX::Initialize();
@@ -260,8 +260,8 @@ namespace Spartan
         RHI_Device::Tick(frame_num);
 
         // begin command list
-        m_cmd_pool->Tick();
-        cmd_current = m_cmd_pool->GetCurrentCommandList();
+        m_queue->Tick();
+        cmd_current = m_queue->GetCurrentCommandList();
         cmd_current->Begin();
 
         OnSyncPoint(cmd_current);

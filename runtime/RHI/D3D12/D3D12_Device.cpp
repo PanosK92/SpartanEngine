@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Shader.h"
 #include "../RHI_InputLayout.h"
 #include <wrl/client.h>
-#include "../RHI_CommandPool.h"
+#include "../RHI_Queue.h"
 #include "../Profiling/Profiler.h"
 //=================================
 
@@ -46,7 +46,7 @@ namespace Spartan
         void* m_queue_compute  = nullptr;
         void* m_queue_copy     = nullptr;
 
-        vector<shared_ptr<RHI_CommandPool>> cmd_pools;
+        vector<shared_ptr<RHI_Queue>> queues;
     }
 
     void RHI_Device::Initialize()
@@ -269,37 +269,19 @@ namespace Spartan
 
     }
 
-    void* RHI_Device::QueueGet(const RHI_Queue_Type type)
+    RHI_Queue* RHI_Device::AllocateQueue(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type)
     {
-        if (type == RHI_Queue_Type::Graphics)
-        {
-            return m_queue_graphics;
-        }
-        else if (type == RHI_Queue_Type::Copy)
-        {
-            return m_queue_copy;
-        }
-        else if (type == RHI_Queue_Type::Compute)
-        {
-            return m_queue_compute;
-        }
-
-        return nullptr;
+        return queues.emplace_back(make_shared<RHI_Queue>(name, swap_chain_id, queue_type)).get();
     }
 
-    RHI_CommandPool* RHI_Device::CommandPoolAllocate(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type)
+    void RHI_Device::QueueDestroy(RHI_Queue* cmd_pool)
     {
-        return cmd_pools.emplace_back(make_shared<RHI_CommandPool>(name, swap_chain_id, queue_type)).get();
-    }
-
-    void RHI_Device::CommandPoolDestroy(RHI_CommandPool* cmd_pool)
-    {
-        vector<shared_ptr<RHI_CommandPool>>::iterator it;
-        for (it = cmd_pools.begin(); it != cmd_pools.end();)
+        vector<shared_ptr<RHI_Queue>>::iterator it;
+        for (it = queues.begin(); it != queues.end();)
         {
             if (cmd_pool->GetObjectId() == (*it)->GetObjectId())
             {
-                it = cmd_pools.erase(it);
+                it = queues.erase(it);
                 return;
             }
             it++;

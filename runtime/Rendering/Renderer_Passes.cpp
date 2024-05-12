@@ -49,7 +49,7 @@ namespace Spartan
         int64_t mesh_index_non_instanced_opaque            = 0;
         int64_t mesh_index_non_instanced_transparent       = 0;
 
-        // The code below is work in progress, that's why its here
+        // The code below is a work in progress, that's why its here
 
         namespace visibility
         {
@@ -370,7 +370,6 @@ namespace Spartan
         RHI_Texture* rt_output   = GetRenderTarget(Renderer_RenderTarget::frame_output).get();
 
         dynamic_resolution();
-
         Pass_VariableRateShading(cmd_list);
         Pass_Skysphere(cmd_list);
 
@@ -976,14 +975,12 @@ namespace Spartan
         if (!GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
             return;
 
-        // acquire shaders
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::ssr_c).get();
-        if (!shader_c->IsCompiled())
-            return;
-
-        // acquire render targets
+        // acquire resources
         RHI_Texture* tex_ssr           = GetRenderTarget(Renderer_RenderTarget::ssr).get();
         RHI_Texture* tex_ssr_roughness = GetRenderTarget(Renderer_RenderTarget::ssr_roughness).get();
+        RHI_Shader* shader_c           = GetShader(Renderer_Shader::ssr_c).get();
+        if (!shader_c->IsCompiled())
+            return;
 
         cmd_list->BeginTimeblock(!is_transparent_pass ? "ssr" : "ssr_transparent");
 

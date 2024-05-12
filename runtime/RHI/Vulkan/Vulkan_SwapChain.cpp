@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_Fence.h"
 #include "../RHI_Semaphore.h"
-#include "../RHI_CommandPool.h"
+#include "../RHI_Queue.h"
 #include "../Display/Display.h"
 #include "../Rendering/Renderer.h"
 SP_WARNINGS_OFF
@@ -446,15 +446,15 @@ namespace Spartan
         m_wait_semaphores.clear();
         {
             // semaphores which are signaled when command lists have finished executing
-            for (const shared_ptr<RHI_CommandPool>& cmd_pool : RHI_Device::GetCommandPools())
+            for (const shared_ptr<RHI_Queue>& queue : RHI_Device::GetQueues())
             {
                 // the editor supports multiple windows, so we can be dealing with multiple swapchains
-                if (m_object_id == cmd_pool->GetSwapchainId())
+                if (m_object_id == queue->GetSwapchainId())
                 {
-                    RHI_CommandList* cmd_list = cmd_pool->GetCurrentCommandList();
-                    RHI_Semaphore* semaphore  = cmd_list->GetRenderingCompleteSemaphore();
+                    RHI_CommandList* cmd_list = queue->GetCurrentCommandList();
                     if (cmd_list->GetState() == RHI_CommandListState::Submitted)
                     {
+                        RHI_Semaphore* semaphore = cmd_list->GetRenderingCompleteSemaphore();
                         if (semaphore->IsSignaled())
                         {
                             semaphore->SetSignaled(false);

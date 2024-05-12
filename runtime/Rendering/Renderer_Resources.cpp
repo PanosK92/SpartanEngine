@@ -39,7 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_FidelityFX.h"
 #include "../RHI/RHI_Device.h"
-#include "../RHI/RHI_CommandPool.h"
+#include "../RHI/RHI_Queue.h"
 //=======================================
 
 //= NAMESPACES ===============

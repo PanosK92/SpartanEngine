@@ -204,7 +204,7 @@ namespace Spartan
         static std::vector<float> m_lines_duration;
         static uint32_t m_lines_index_depth_off;
         static uint32_t m_lines_index_depth_on;
-        static RHI_CommandPool* m_cmd_pool;
+        static RHI_Queue* m_queue;
         static uint32_t m_resource_index;
         static std::atomic<bool> m_resources_created;
         static std::atomic<uint32_t> m_environment_mips_to_filter_count;

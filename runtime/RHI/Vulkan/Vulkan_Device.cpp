@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Semaphore.h"
-#include "../RHI_CommandPool.h"
+#include "../RHI_Queue.h"
 #include "../RHI_DescriptorSet.h"
 #include "../RHI_Sampler.h"
 #include "../RHI_Fence.h"
@@ -205,15 +205,6 @@ namespace Spartan
         }
     }
 
-    namespace command_pools
-    {
-        vector<shared_ptr<RHI_CommandPool>> regular;
-        array<shared_ptr<RHI_CommandPool>, 3> immediate;
-        mutex mutex_immediate_execution;
-        condition_variable condition_variable_immediate_execution;
-        bool is_immediate_executing = false;
-    }
-
     namespace queues
     {
         mutex mutex_queue;
@@ -283,6 +274,30 @@ namespace Spartan
             index_compute  = get_queue_family_index(queue_families, VK_QUEUE_COMPUTE_BIT);
             index_copy     = get_queue_family_index(queue_families, VK_QUEUE_TRANSFER_BIT);
         }
+
+        void* get_from_enum(const RHI_Queue_Type type)
+        {
+            if (type == RHI_Queue_Type::Graphics)
+            {
+                return queues::graphics;
+            }
+            else if (type == RHI_Queue_Type::Copy)
+            {
+                return queues::copy;
+            }
+            else if (type == RHI_Queue_Type::Compute)
+            {
+                return queues::compute;
+            }
+
+            return nullptr;
+        }
+
+        vector<shared_ptr<RHI_Queue>> regular;
+        array<shared_ptr<RHI_Queue>, 3> immediate;
+        mutex mutex_immediate_execution;
+        condition_variable condition_variable_immediate_execution;
+        bool is_immediate_executing = false;
     }
 
     namespace functions
@@ -348,7 +363,7 @@ namespace Spartan
         {
             // filter out certain things
             {
-                // this does't belong to us, it's fidelityfx sdk 
+                // this doesn't belong to us, it's fidelityfx sdk 
                 if (p_callback_data->messageIdNumber == 0xdc18ad6b)
                 {
                     // [ UNASSIGNED-BestPractices-vkAllocateMemory-small-allocation ] | MessageID = 0xdc18ad6b | vkAllocateMemory():
@@ -1198,9 +1213,9 @@ namespace Spartan
 
         QueueWaitAll();
 
-        // destroy command pools
-        command_pools::regular.clear();
-        command_pools::immediate.fill(nullptr);
+        // destroy command queues
+        queues::regular.clear();
+        queues::immediate.fill(nullptr);
 
         // descriptor pool
         vkDestroyDescriptorPool(RHI_Context::device, descriptors::descriptor_pool, nullptr);
@@ -1445,7 +1460,7 @@ namespace Spartan
             submit_info.pCommandBufferInfos           = &cmd_buffer_info;
 
             lock_guard<mutex> lock(queues::mutex_queue);
-            SP_VK_ASSERT_MSG(vkQueueSubmit2(static_cast<VkQueue>(QueueGet(type)), 1, &submit_info, nullptr), "Failed to submit");
+            SP_VK_ASSERT_MSG(vkQueueSubmit2(static_cast<VkQueue>(queues::get_from_enum(type)), 1, &submit_info, nullptr), "Failed to submit");
             semaphore->SetSignaled(true);
         }
     }
@@ -1454,25 +1469,7 @@ namespace Spartan
     {
         lock_guard<mutex> lock(queues::mutex_queue);
 
-        SP_VK_ASSERT_MSG(vkQueueWaitIdle(static_cast<VkQueue>(QueueGet(type))), "Failed to wait for queue");
-    }
-
-    void* RHI_Device::QueueGet(const RHI_Queue_Type type)
-    {
-        if (type == RHI_Queue_Type::Graphics)
-        {
-            return queues::graphics;
-        }
-        else if (type == RHI_Queue_Type::Copy)
-        {
-            return queues::copy;
-        }
-        else if (type == RHI_Queue_Type::Compute)
-        {
-            return queues::compute;
-        }
-
-        return nullptr;
+        SP_VK_ASSERT_MSG(vkQueueWaitIdle(static_cast<VkQueue>(queues::get_from_enum(type))), "Failed to wait for queue");
     }
 
     uint32_t RHI_Device::QueueGetIndex(const RHI_Queue_Type type)
@@ -2029,19 +2026,19 @@ namespace Spartan
     RHI_CommandList* RHI_Device::CmdImmediateBegin(const RHI_Queue_Type queue_type)
     {
         // wait until it's safe to proceed
-        unique_lock<mutex> lock(command_pools::mutex_immediate_execution);
-        command_pools::condition_variable_immediate_execution.wait(lock, [] { return !command_pools::is_immediate_executing; });
-        command_pools::is_immediate_executing = true;
+        unique_lock<mutex> lock(queues::mutex_immediate_execution);
+        queues::condition_variable_immediate_execution.wait(lock, [] { return !queues::is_immediate_executing; });
+        queues::is_immediate_executing = true;
 
         // Create command pool for the given queue type, if needed.
         uint32_t queue_index = static_cast<uint32_t>(queue_type);
-        if (!command_pools::immediate[queue_index])
+        if (!queues::immediate[queue_index])
         {
-            command_pools::immediate[queue_index] = make_shared<RHI_CommandPool>("cmd_immediate_execution", 0, queue_type);
+            queues::immediate[queue_index] = make_shared<RHI_Queue>("cmd_immediate_execution", 0, queue_type);
         }
 
         // get command pool
-        RHI_CommandPool* cmd_pool = command_pools::immediate[queue_index].get();
+        RHI_Queue* cmd_pool = queues::immediate[queue_index].get();
 
         cmd_pool->Tick();
         cmd_pool->GetCurrentCommandList()->Begin();
@@ -2056,34 +2053,34 @@ namespace Spartan
         cmd_list->WaitForExecution();
 
         // signal that it's safe to proceed with the next ImmediateBegin()
-        command_pools::is_immediate_executing = false;
-        command_pools::condition_variable_immediate_execution.notify_one();
+        queues::is_immediate_executing = false;
+        queues::condition_variable_immediate_execution.notify_one();
     }
 
     // command pools
 
-    RHI_CommandPool* RHI_Device::CommandPoolAllocate(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type)
+    RHI_Queue* RHI_Device::AllocateQueue(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type)
     {
-        return command_pools::regular.emplace_back(make_shared<RHI_CommandPool>(name, swap_chain_id, queue_type)).get();
+        return queues::regular.emplace_back(make_shared<RHI_Queue>(name, swap_chain_id, queue_type)).get();
     }
 
-    void RHI_Device::CommandPoolDestroy(RHI_CommandPool* cmd_pool)
+    void RHI_Device::QueueDestroy(RHI_Queue* cmd_pool)
     {
-        vector<shared_ptr<RHI_CommandPool>>::iterator it;
-        for (it = command_pools::regular.begin(); it != command_pools::regular.end();)
+        vector<shared_ptr<RHI_Queue>>::iterator it;
+        for (it = queues::regular.begin(); it != queues::regular.end();)
         {
             if (cmd_pool->GetObjectId() == (*it)->GetObjectId())
             {
-                it = command_pools::regular.erase(it);
+                it = queues::regular.erase(it);
                 return;
             }
             it++;
         }
     }
 
-    const vector<shared_ptr<RHI_CommandPool>>& RHI_Device::GetCommandPools()
+    const vector<shared_ptr<RHI_Queue>>& RHI_Device::GetQueues()
     {
-        return command_pools::regular;
+        return queues::regular;
     }
 
     // markers

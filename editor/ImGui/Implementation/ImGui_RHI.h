@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_Texture2D.h"
 #include "RHI/RHI_SwapChain.h"
 #include "RHI/RHI_BlendState.h"
-#include "RHI/RHI_CommandPool.h"
+#include "RHI/RHI_Queue.h"
 #include "RHI/RHI_CommandList.h"
 #include "RHI/RHI_IndexBuffer.h"
 #include "RHI/RHI_VertexBuffer.h"
@@ -60,7 +60,7 @@ namespace ImGui::RHI
 
         struct ViewportRhiResources
         {
-            RHI_CommandPool* cmd_pool = nullptr;
+            RHI_Queue* queue = nullptr;
             array<unique_ptr<RHI_IndexBuffer>, buffer_count> index_buffers;
             array<unique_ptr<RHI_VertexBuffer>, buffer_count> vertex_buffers;
             Pcb_Pass push_constant_buffer_pass;
@@ -70,7 +70,7 @@ namespace ImGui::RHI
             ViewportRhiResources(const char* name, RHI_SwapChain* swapchain)
             {
                 // allocate command pool
-                cmd_pool = RHI_Device::CommandPoolAllocate(name, swapchain->GetObjectId(), RHI_Queue_Type::Graphics);
+                queue = RHI_Device::AllocateQueue(name, swapchain->GetObjectId(), RHI_Queue_Type::Graphics);
 
                 // allocate buffers
                 for (uint32_t i = 0; i < buffer_count; i++)
@@ -204,7 +204,7 @@ namespace ImGui::RHI
         bool is_child_window                = window_data != nullptr;
         ViewportRhiResources* rhi_resources = is_child_window ? window_data->viewport_rhi_resources.get() : &g_viewport_data;
 
-        rhi_resources->cmd_pool->Tick();
+        rhi_resources->queue->Tick();
 
         // get buffer index
         uint32_t buffer_index       = rhi_resources->buffer_index;
@@ -213,7 +213,7 @@ namespace ImGui::RHI
         // get rhi resources for this command buffer
         RHI_VertexBuffer* vertex_buffer = rhi_resources->vertex_buffers[buffer_index].get();
         RHI_IndexBuffer* index_buffer   = rhi_resources->index_buffers[buffer_index].get();
-        RHI_CommandList* cmd_list       = rhi_resources->cmd_pool->GetCurrentCommandList();
+        RHI_CommandList* cmd_list       = rhi_resources->queue->GetCurrentCommandList();
 
         // update vertex and index buffers
         {
@@ -426,7 +426,7 @@ namespace ImGui::RHI
     {
         if (WindowData* window = static_cast<WindowData*>(viewport->RendererUserData))
         {
-            RHI_Device::CommandPoolDestroy(window->viewport_rhi_resources->cmd_pool);
+            RHI_Device::QueueDestroy(window->viewport_rhi_resources->queue);
             delete window;
         }
 
@@ -447,7 +447,7 @@ namespace ImGui::RHI
     void window_present(ImGuiViewport* viewport, void*)
     {
         WindowData* window = static_cast<WindowData*>(viewport->RendererUserData);
-        SP_ASSERT(window->viewport_rhi_resources->cmd_pool->GetCurrentCommandList()->GetState() == Spartan::RHI_CommandListState::Submitted);
+        SP_ASSERT(window->viewport_rhi_resources->queue->GetCurrentCommandList()->GetState() == Spartan::RHI_CommandListState::Submitted);
         window->swapchain->Present();
     }
 

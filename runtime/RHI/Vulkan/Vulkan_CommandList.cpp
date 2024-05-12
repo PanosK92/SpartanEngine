@@ -555,8 +555,8 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Ended);
 
-        // this can happen when the window is minimized or for some reason the swapchain is not presenting
-        // this means that there was no reason for this semaphore to be waited on, so reset it
+        // when minimized, or when entering/exiting fullscreen mode, the swapchain
+        // won't present, and won't wait for this semaphore, so we need to reset it
         if (m_rendering_complete_semaphore->IsSignaled())
         {
             m_rendering_complete_semaphore = make_shared<RHI_Semaphore>(false, m_object_name.c_str());
