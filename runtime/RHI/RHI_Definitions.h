@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
     class RHI_Context;
-    class RHI_CommandPool;
+    class RHI_Queue;
     class RHI_CommandList;
     class RHI_PipelineState;
     class RHI_Pipeline;

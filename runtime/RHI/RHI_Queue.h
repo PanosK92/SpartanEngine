@@ -32,11 +32,11 @@ namespace Spartan
 {
     const uint32_t cmd_lists_per_pool = 3;
 
-    class RHI_CommandPool : public SpObject
+    class RHI_Queue : public SpObject
     {
     public:
-        RHI_CommandPool(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type);
-        ~RHI_CommandPool();
+        RHI_Queue(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type);
+        ~RHI_Queue();
 
         bool Tick();
 

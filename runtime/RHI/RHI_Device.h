@@ -43,10 +43,12 @@ namespace Spartan
         static void QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* semaphore = nullptr, RHI_Semaphore* semaphore_timeline = nullptr);
         static void QueueWait(const RHI_Queue_Type type);
         static void QueueWaitAll();
-        static void* QueueGet(const RHI_Queue_Type type);
         static uint32_t QueueGetIndex(const RHI_Queue_Type type);
         static void QueueSetIndex(const RHI_Queue_Type type, const uint32_t index);
-        
+        static RHI_Queue* AllocateQueue(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type);
+        static void QueueDestroy(RHI_Queue* cmd_pool);
+        static const std::vector<std::shared_ptr<RHI_Queue>>& GetQueues();
+
         // descriptors
         static void CreateDescriptorPool();
         static void AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const std::vector<RHI_Descriptor>& descriptors);
@@ -58,11 +60,6 @@ namespace Spartan
         // pipelines
         static void GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout);
         static uint32_t GetPipelineCount();
-
-        // command pools
-        static RHI_CommandPool* CommandPoolAllocate(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type);
-        static void CommandPoolDestroy(RHI_CommandPool* cmd_pool);
-        static const std::vector<std::shared_ptr<RHI_CommandPool>>& GetCommandPools();
 
         // deletion queue
         static void DeletionQueueAdd(const RHI_Resource_Type resource_type, void* resource);

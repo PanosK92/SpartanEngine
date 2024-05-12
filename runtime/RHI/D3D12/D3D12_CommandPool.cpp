@@ -19,11 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES =============
 #include "pch.h"
-#include "../RHI_CommandPool.h"
+#include "../RHI_Queue.h"
 #include "../RHI_Device.h"
-//=============================
+//========================
 
 //= NAMESPACES =====
 using namespace std;
@@ -31,25 +31,24 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_CommandPool::RHI_CommandPool(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type) : SpObject()
+    RHI_Queue::RHI_Queue(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type) : SpObject()
     {
         m_object_name   = name;
         m_swap_chain_id = swap_chain_id;
         m_queue_type    = queue_type;
 
-        // Create command pool 
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_rhi_resources.size()); i++)
         {
             SP_ASSERT_MSG(false, "Function not implmented");
         }
     }
 
-    RHI_CommandPool::~RHI_CommandPool()
+    RHI_Queue::~RHI_Queue()
     {
 
     }
 
-    bool RHI_CommandPool::Tick()
+    bool RHI_Queue::Tick()
     {
         return false;
     }

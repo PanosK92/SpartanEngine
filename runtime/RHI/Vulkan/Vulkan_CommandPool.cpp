@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
-#include "../RHI_CommandPool.h"
+#include "../RHI_Queue.h"
 //================================
 
 //= NAMESPACES =====
@@ -32,7 +32,7 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_CommandPool::RHI_CommandPool(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type) : SpObject()
+    RHI_Queue::RHI_Queue(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type) : SpObject()
     {
         m_object_name   = name;
         m_swap_chain_id = swap_chain_id;
@@ -69,7 +69,7 @@ namespace Spartan
         }
     }
 
-    RHI_CommandPool::~RHI_CommandPool()
+    RHI_Queue::~RHI_Queue()
     {
         // wait for GPU
         RHI_Device::QueueWait(m_queue_type);
@@ -99,7 +99,7 @@ namespace Spartan
         vkDestroyCommandPool(RHI_Context::device, static_cast<VkCommandPool>(m_rhi_resources[1]), nullptr);
     }
 
-    bool RHI_CommandPool::Tick()
+    bool RHI_Queue::Tick()
     {
         bool has_been_reset = false;
 
