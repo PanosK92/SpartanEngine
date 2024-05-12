@@ -40,24 +40,20 @@ namespace Spartan
 
         // value
         uint64_t GetValue() const;
-        uint64_t GetValueSignal() const { return m_value_signal; }
-        uint64_t GenerateSignalValue()
-        {
-            m_value_signal = GetValue() + 1;
-            return m_value_signal;
-        }
+        uint64_t GetWaitValue() const           { return m_value_wait; }
+        void SetWaitValue(const uint64_t value) { m_value_wait = value; }
 
-        // state
-        RHI_Sync_State GetStateCpu()const            { return m_state_cpu; }
-        void SetStateCpu(const RHI_Sync_State state) { m_state_cpu = state; }
+        // misc
+        bool IsSignaled() const               { return m_signaled; }
+        void SetSignaled(const bool signaled) { m_signaled = signaled; }
 
         // rhi
         void* GetRhiResource() { return m_rhi_resource; }
 
     private:
-        void* m_rhi_resource    = nullptr;
-        bool m_is_timeline      = false;
-        uint64_t m_value_signal = 0;
-        RHI_Sync_State m_state_cpu = RHI_Sync_State::Idle;
+        void* m_rhi_resource  = nullptr;
+        bool m_is_timeline    = false;
+        uint64_t m_value_wait = 0;
+        bool m_signaled       = false;
     };
 }

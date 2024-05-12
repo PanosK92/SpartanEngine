@@ -421,7 +421,6 @@ namespace Spartan
         m_sync_index                    = (m_sync_index + 1) % m_buffer_count;
         RHI_Semaphore* signal_semaphore = m_image_acquired_semaphore[m_sync_index].get();
         RHI_Fence* signal_fence         = m_image_acquired_fence[m_sync_index].get();
-        SP_ASSERT_MSG(signal_semaphore->GetStateCpu() != RHI_Sync_State::Submitted, "The semaphore is already signaled");
 
         // acquire next image
         SP_VK_ASSERT_MSG(vkAcquireNextImageKHR(
@@ -432,9 +431,6 @@ namespace Spartan
             static_cast<VkFence>(signal_fence->GetRhiResource()),         // signal fence
             &m_image_index                                                // pImageIndex
         ), "Failed to acquire next image");
-
-        // update sync state
-        signal_semaphore->SetStateCpu(RHI_Sync_State::Submitted);
     }
 
     void RHI_SwapChain::Present()
@@ -457,8 +453,13 @@ namespace Spartan
                 {
                     RHI_CommandList* cmd_list = cmd_pool->GetCurrentCommandList();
                     RHI_Semaphore* semaphore  = cmd_list->GetRenderingCompleteSemaphore();
-                    if (semaphore->GetStateCpu() == RHI_Sync_State::Submitted)
+                    if (cmd_list->GetState() == RHI_CommandListState::Submitted)
                     {
+                        if (semaphore->IsSignaled())
+                        {
+                            semaphore->SetSignaled(false);
+                        }
+
                         m_wait_semaphores.emplace_back(semaphore);
                     }
                 }
@@ -467,7 +468,6 @@ namespace Spartan
 
             // semaphore that's signaled when the image is acquired
             RHI_Semaphore* image_acquired_semaphore = m_image_acquired_semaphore[m_sync_index].get();
-            SP_ASSERT(image_acquired_semaphore->GetStateCpu() == RHI_Sync_State::Submitted);
             m_wait_semaphores.emplace_back(image_acquired_semaphore);
         }
 

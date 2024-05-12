@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_Semaphore.h"
 #include "../RHI_Implementation.h"
-#include "../Rendering/Renderer.h"
 //================================
 
 namespace Spartan
@@ -44,7 +43,6 @@ namespace Spartan
         semaphore_create_info.pNext                 = is_timeline ? &semaphore_type_create_info : nullptr;
         semaphore_create_info.flags                 = 0;
 
-        // Create
         SP_ASSERT_MSG(
             vkCreateSemaphore(device, &semaphore_create_info, nullptr, reinterpret_cast<VkSemaphore*>(&resource)) == VK_SUCCESS,
             "Failed to create semaphore"
@@ -57,7 +55,6 @@ namespace Spartan
 
         create_semaphore(RHI_Context::device, m_is_timeline, m_rhi_resource);
 
-        // Name
         if (name)
         {
             m_object_name = name;

@@ -507,7 +507,7 @@ namespace Spartan
         begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         SP_ASSERT_MSG(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource), &begin_info) == VK_SUCCESS, "Failed to begin command buffer");
 
-        // update states
+        // set states
         m_state     = RHI_CommandListState::Recording;
         m_pso       = RHI_PipelineState();
         m_cull_mode = RHI_CullMode::Max;
@@ -555,9 +555,9 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Ended);
 
-        // we can reach this code path and have a submitted semaphore when exiting full screen
-        // it's okay to reset it manually here but ideally, we should find out why this happens
-        if (m_rendering_complete_semaphore && m_rendering_complete_semaphore->GetStateCpu() == RHI_Sync_State::Submitted)
+        // this can happen when the window is minimized or for some reason the swapchain is not presenting
+        // this means that there was no reason for this semaphore to be waited on, so reset it
+        if (m_rendering_complete_semaphore->IsSignaled())
         {
             m_rendering_complete_semaphore = make_shared<RHI_Semaphore>(false, m_object_name.c_str());
         }

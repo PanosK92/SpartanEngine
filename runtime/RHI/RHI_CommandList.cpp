@@ -36,7 +36,7 @@ namespace Spartan
     {
         SP_ASSERT_MSG(m_state == RHI_CommandListState::Submitted, "The command list hasn't been submitted, can't wait for it.");
 
-        m_rendering_complete_semaphore_timeline->Wait(m_rendering_complete_semaphore_timeline->GetValueSignal());
+        m_rendering_complete_semaphore_timeline->Wait(m_rendering_complete_semaphore_timeline->GetWaitValue());
         m_state = RHI_CommandListState::Idle;
     }
 
