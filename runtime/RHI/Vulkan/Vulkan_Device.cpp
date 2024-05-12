@@ -1385,7 +1385,6 @@ namespace Spartan
         uint32_t semaphore_count = static_cast<uint32_t>(wait_semaphores.size());
         for (uint32_t i = 0; i < semaphore_count; i++)
         {
-            SP_ASSERT_MSG(wait_semaphores[i]->GetStateCpu() == RHI_Sync_State::Submitted, "The wait semaphore hasn't been signaled");
             vk_wait_semaphores[i] = static_cast<VkSemaphore>(wait_semaphores[i]->GetRhiResource());
         }
 
@@ -1399,19 +1398,14 @@ namespace Spartan
 
         lock_guard<mutex> lock(queues::mutex_queue);
         SP_VK_ASSERT_MSG(vkQueuePresentKHR(static_cast<VkQueue>(queues::graphics), &present_info), "Failed to present");
-
-        // update semaphore states
-        for (uint32_t i = 0; i < semaphore_count; i++)
-        {
-            wait_semaphores[i]->SetStateCpu(RHI_Sync_State::Idle);
-        }
     }
 
     void RHI_Device::QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* semaphore, RHI_Semaphore* semaphore_timeline)
     {
         // validate
         SP_ASSERT(cmd_buffer != nullptr);
-        SP_ASSERT(semaphore->GetStateCpu() != RHI_Sync_State::Submitted);
+        SP_ASSERT(semaphore != nullptr);
+        SP_ASSERT(semaphore_timeline != nullptr);
 
         // semaphore binary
         VkSemaphoreSubmitInfoKHR signal_semaphore_info = {};
@@ -1423,27 +1417,29 @@ namespace Spartan
         VkSemaphoreSubmitInfoKHR timeline_semaphore_info = {};
         timeline_semaphore_info.sType                    = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
         timeline_semaphore_info.semaphore                = static_cast<VkSemaphore>(semaphore_timeline->GetRhiResource());
-        timeline_semaphore_info.value                    = semaphore_timeline->GenerateSignalValue();
-
-        VkCommandBufferSubmitInfoKHR cmd_buffer_info = {};
-        cmd_buffer_info.sType                        = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO_KHR;
-        cmd_buffer_info.commandBuffer                = *reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
-
-        VkSubmitInfo2 submit_info            = {};
-        submit_info.sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-        submit_info.waitSemaphoreInfoCount   = 0;
-        submit_info.pWaitSemaphoreInfos      = nullptr;
-        submit_info.signalSemaphoreInfoCount = 2; // both semaphores are always present
-
-        VkSemaphoreSubmitInfoKHR semaphore_infos[] = { signal_semaphore_info, timeline_semaphore_info };
-        submit_info.pSignalSemaphoreInfos          = semaphore_infos;
-        submit_info.commandBufferInfoCount         = 1;
-        submit_info.pCommandBufferInfos            = &cmd_buffer_info;
+        static uint64_t timeline_value                   = 0;
+        timeline_semaphore_info.value                    = ++timeline_value;
+        semaphore_timeline->SetWaitValue(timeline_semaphore_info.value);
 
         // submit
-        lock_guard<mutex> lock(queues::mutex_queue);
-        SP_VK_ASSERT_MSG(vkQueueSubmit2(static_cast<VkQueue>(QueueGet(type)), 1, &submit_info, nullptr), "Failed to submit");
-        semaphore->SetStateCpu(RHI_Sync_State::Submitted);
+        {
+            VkSubmitInfo2 submit_info                    = {};
+            submit_info.sType                            = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+            submit_info.waitSemaphoreInfoCount           = 0;
+            submit_info.pWaitSemaphoreInfos              = nullptr;
+            submit_info.signalSemaphoreInfoCount         = 2;
+            VkSemaphoreSubmitInfoKHR semaphore_infos[]   = { signal_semaphore_info, timeline_semaphore_info };
+            submit_info.pSignalSemaphoreInfos            = semaphore_infos;
+            submit_info.commandBufferInfoCount           = 1;
+            VkCommandBufferSubmitInfoKHR cmd_buffer_info = {};
+            cmd_buffer_info.sType                        = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO_KHR;
+            cmd_buffer_info.commandBuffer                = *reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
+            submit_info.pCommandBufferInfos              = &cmd_buffer_info;
+
+            lock_guard<mutex> lock(queues::mutex_queue);
+            SP_VK_ASSERT_MSG(vkQueueSubmit2(static_cast<VkQueue>(QueueGet(type)), 1, &submit_info, nullptr), "Failed to submit");
+            semaphore->SetSignaled(true);
+        }
     }
 
     void RHI_Device::QueueWait(const RHI_Queue_Type type)
@@ -2024,7 +2020,7 @@ namespace Spartan
 
     RHI_CommandList* RHI_Device::CmdImmediateBegin(const RHI_Queue_Type queue_type)
     {
-        // Wait until it's safe to proceed
+        // wait until it's safe to proceed
         unique_lock<mutex> lock(command_pools::mutex_immediate_execution);
         command_pools::condition_variable_immediate_execution.wait(lock, [] { return !command_pools::is_immediate_executing; });
         command_pools::is_immediate_executing = true;
@@ -2036,7 +2032,7 @@ namespace Spartan
             command_pools::immediate[queue_index] = make_shared<RHI_CommandPool>("cmd_immediate_execution", 0, queue_type);
         }
 
-        //  Get command pool
+        // get command pool
         RHI_CommandPool* cmd_pool = command_pools::immediate[queue_index].get();
 
         cmd_pool->Tick();
@@ -2051,7 +2047,7 @@ namespace Spartan
         cmd_list->Submit();
         cmd_list->WaitForExecution();
 
-        // Signal that it's safe to proceed with the next ImmediateBegin()
+        // signal that it's safe to proceed with the next ImmediateBegin()
         command_pools::is_immediate_executing = false;
         command_pools::condition_variable_immediate_execution.notify_one();
     }
