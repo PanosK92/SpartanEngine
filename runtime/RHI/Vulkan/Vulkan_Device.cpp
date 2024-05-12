@@ -369,6 +369,12 @@ namespace Spartan
                     }
                 }
 
+                // false positive due to the validation layer issue
+                // check fix progress here: https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/7600
+                if (p_callback_data->messageIdNumber == 0x29910a35)
+                    return VK_FALSE;
+
+                //= LEGIT ISSES THAT HAVE TO BE FIXED ===================================================================
                 if (p_callback_data->messageIdNumber == 0xe17ab4ae) // validation error - SYNC-HAZARD-PRESENT-AFTER-WRITE
                   return VK_FALSE;
 
@@ -380,6 +386,7 @@ namespace Spartan
 
                 if (p_callback_data->messageIdNumber == 0x5c0ec5d6) // validation error - depth_light
                     return VK_FALSE;
+                //=======================================================================================================
             }
 
             string msg = "Vulkan: " + string(p_callback_data->pMessage);
@@ -1408,33 +1415,34 @@ namespace Spartan
         SP_ASSERT(semaphore_timeline != nullptr);
 
         // semaphore binary
-        VkSemaphoreSubmitInfoKHR signal_semaphore_info = {};
-        signal_semaphore_info.sType                    = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
-        signal_semaphore_info.semaphore                = static_cast<VkSemaphore>(semaphore->GetRhiResource());
-        signal_semaphore_info.value                    = 0; // ignored for binary semaphores
+        VkSemaphoreSubmitInfo signal_semaphore_info = {};
+        signal_semaphore_info.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
+        signal_semaphore_info.semaphore             = static_cast<VkSemaphore>(semaphore->GetRhiResource());
+        signal_semaphore_info.value                 = 0; // ignored for binary semaphores
 
         // semaphore timeline
-        VkSemaphoreSubmitInfoKHR timeline_semaphore_info = {};
-        timeline_semaphore_info.sType                    = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
-        timeline_semaphore_info.semaphore                = static_cast<VkSemaphore>(semaphore_timeline->GetRhiResource());
-        static uint64_t timeline_value                   = 0;
-        timeline_semaphore_info.value                    = ++timeline_value;
+        VkSemaphoreSubmitInfo timeline_semaphore_info = {};
+        timeline_semaphore_info.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
+        timeline_semaphore_info.semaphore             = static_cast<VkSemaphore>(semaphore_timeline->GetRhiResource());
+        timeline_semaphore_info.stageMask             = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR; // todo: adjust based on the queue
+        static uint64_t timeline_value                = 0;
+        timeline_semaphore_info.value                 = ++timeline_value;
         semaphore_timeline->SetWaitValue(timeline_semaphore_info.value);
 
         // submit
         {
-            VkSubmitInfo2 submit_info                    = {};
-            submit_info.sType                            = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-            submit_info.waitSemaphoreInfoCount           = 0;
-            submit_info.pWaitSemaphoreInfos              = nullptr;
-            submit_info.signalSemaphoreInfoCount         = 2;
-            VkSemaphoreSubmitInfoKHR semaphore_infos[]   = { signal_semaphore_info, timeline_semaphore_info };
-            submit_info.pSignalSemaphoreInfos            = semaphore_infos;
-            submit_info.commandBufferInfoCount           = 1;
-            VkCommandBufferSubmitInfoKHR cmd_buffer_info = {};
-            cmd_buffer_info.sType                        = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO_KHR;
-            cmd_buffer_info.commandBuffer                = *reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
-            submit_info.pCommandBufferInfos              = &cmd_buffer_info;
+            VkSubmitInfo2 submit_info                 = {};
+            submit_info.sType                         = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+            submit_info.waitSemaphoreInfoCount        = 0;
+            submit_info.pWaitSemaphoreInfos           = nullptr;
+            submit_info.signalSemaphoreInfoCount      = 2;
+            VkSemaphoreSubmitInfo semaphore_infos[]   = { signal_semaphore_info, timeline_semaphore_info };
+            submit_info.pSignalSemaphoreInfos         = semaphore_infos;
+            submit_info.commandBufferInfoCount        = 1;
+            VkCommandBufferSubmitInfo cmd_buffer_info = {};
+            cmd_buffer_info.sType                     = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO_KHR;
+            cmd_buffer_info.commandBuffer             = *reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
+            submit_info.pCommandBufferInfos           = &cmd_buffer_info;
 
             lock_guard<mutex> lock(queues::mutex_queue);
             SP_VK_ASSERT_MSG(vkQueueSubmit2(static_cast<VkQueue>(QueueGet(type)), 1, &submit_info, nullptr), "Failed to submit");
