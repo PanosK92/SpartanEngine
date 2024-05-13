@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    const uint32_t cmd_lists_per_pool = 3;
+    const uint32_t cmd_lists_per_pool = 4;
 
     class RHI_Queue : public SpObject
     {
@@ -45,8 +45,10 @@ namespace Spartan
         void Present(void* swapchain, const uint32_t image_index, std::vector<RHI_Semaphore*>& wait_semaphores);
 
         // misc
-        RHI_CommandList* GetCurrentCommandList() { return m_using_pool_a ? m_cmd_lists_0[m_index].get() : m_cmd_lists_1[m_index].get(); }
-        RHI_Queue_Type GetType() const           { return m_type; }
+        auto& GetCmdListPool()         { return m_using_pool_a ? m_cmd_lists_0 : m_cmd_lists_1; }
+        RHI_CommandList* GetCmdList()  { return GetCmdListPool()[m_index].get(); }
+        RHI_Queue_Type GetType() const { return m_type; }
+        RHI_CommandList* GetCmdListIlde();
 
     private:
         std::array<std::shared_ptr<RHI_CommandList>, cmd_lists_per_pool> m_cmd_lists_0;

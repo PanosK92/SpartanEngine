@@ -204,7 +204,8 @@ namespace ImGui::RHI
         rhi_resources->buffer_index         = (rhi_resources->buffer_index + 1) % buffer_count;
         RHI_VertexBuffer* vertex_buffer     = rhi_resources->vertex_buffers[buffer_index].get();
         RHI_IndexBuffer* index_buffer       = rhi_resources->index_buffers[buffer_index].get();
-        RHI_CommandList* cmd_list           = RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->GetCurrentCommandList();
+        RHI_Queue* queue                    = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
+        RHI_CommandList* cmd_list           = queue->GetCmdList();
 
         // update vertex and index buffers
         {
@@ -264,6 +265,10 @@ namespace ImGui::RHI
         pso.clear_color[0]           = clear ? Color::standard_black : rhi_color_dont_care;
 
         // begin
+        if (!is_main_window)
+        {
+            cmd_list->Begin(queue);
+        }
         const char* name = is_main_window ? "imgui_window_main" : "imgui_window_child";
         bool gpu_timing  = is_main_window; // profiler requires more work when windows enter the main window and their command pool is destroyed
         cmd_list->BeginTimeblock(name, true, Spartan::Profiler::IsGpuTimingEnabled() && gpu_timing);
@@ -380,11 +385,18 @@ namespace ImGui::RHI
         }
 
         cmd_list->EndTimeblock();
+
+        if (!is_main_window)
+        {
+            cmd_list->End();
+            cmd_list->Submit(queue, swapchain->GetObjectId());
+        }
     }
 
     void window_create(ImGuiViewport* viewport)
     {
-        // platformHandle is SDL_Window, PlatformHandleRaw is HWND
+        // note: platformHandle is SDL_Window, PlatformHandleRaw is HWND
+
         SP_ASSERT_MSG(viewport->PlatformHandle != nullptr, "Platform handle is invalid");
 
         WindowData* window = new WindowData();
@@ -407,10 +419,9 @@ namespace ImGui::RHI
     {
         if (WindowData* window = static_cast<WindowData*>(viewport->RendererUserData))
         {
+            viewport->RendererUserData = nullptr;
             delete window;
         }
-
-        viewport->RendererUserData = nullptr;
     }
 
     void window_resize(ImGuiViewport* viewport, const ImVec2 size)
