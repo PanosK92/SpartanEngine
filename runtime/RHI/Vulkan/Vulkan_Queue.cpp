@@ -106,7 +106,7 @@ namespace Spartan
         vkDestroyCommandPool(RHI_Context::device, static_cast<VkCommandPool>(m_rhi_resources[1]), nullptr);
     }
 
-    bool RHI_Queue::Tick()
+    bool RHI_Queue::NextCommandList()
     {
         bool has_been_reset = false;
 

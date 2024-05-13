@@ -1290,7 +1290,7 @@ namespace Spartan
         // queues
         for (uint32_t i = 0; i < static_cast<uint32_t>(queues::regular.size()); i++)
         {
-            queues::regular[i]->Tick();
+            queues::regular[i]->NextCommandList();
         }
     }
 
@@ -1973,7 +1973,7 @@ namespace Spartan
 
         // get command pool
         queues::queue = queues::immediate[static_cast<uint32_t>(queue_type)].get();
-        queues::queue->Tick();
+        queues::queue->NextCommandList();
         queues::queue->GetCmdList()->Begin(queues::queue);
 
         return queues::queue->GetCmdList();
