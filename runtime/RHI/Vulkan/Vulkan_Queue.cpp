@@ -106,14 +106,11 @@ namespace Spartan
         vkDestroyCommandPool(RHI_Context::device, static_cast<VkCommandPool>(m_rhi_resources[1]), nullptr);
     }
 
-    bool RHI_Queue::NextCommandList()
+    void RHI_Queue::NextCommandList()
     {
-        bool has_been_reset = false;
-
         if (m_first_tick)
         {
             m_first_tick = false;
-            return has_been_reset;
         }
 
         m_index++;
@@ -140,10 +137,7 @@ namespace Spartan
 
             // reset
             SP_VK_ASSERT_MSG(vkResetCommandPool(RHI_Context::device, pool, 0), "Failed to reset command pool");
-            has_been_reset = true;
         }
-
-        return has_been_reset;
     }
 
     void RHI_Queue::Wait()
