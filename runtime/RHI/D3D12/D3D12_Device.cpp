@@ -244,6 +244,16 @@ namespace Spartan
         PhysicalDeviceSetPrimary(0);
     }
 
+    void RHI_Device::QueueWaitAll()
+    {
+
+    }
+
+    RHI_Queue* RHI_Device::GetQueue(const RHI_Queue_Type type)
+    {
+        return nullptr;
+    }
+
     void RHI_Device::DeletionQueueAdd(const RHI_Resource_Type resource_type, void* resource)
     {
 
@@ -257,35 +267,6 @@ namespace Spartan
     bool RHI_Device::DeletionQueueNeedsToParse()
     {
         return false;
-    }
-
-    void RHI_Device::QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* semaphore /*= nullptr*/, RHI_Semaphore* semaphore_timeline /*= nullptr*/)
-    {
-
-    }
-
-    void RHI_Device::QueueWait(const RHI_Queue_Type type)
-    {
-
-    }
-
-    RHI_Queue* RHI_Device::AllocateQueue(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type)
-    {
-        return queues.emplace_back(make_shared<RHI_Queue>(name, swap_chain_id, queue_type)).get();
-    }
-
-    void RHI_Device::QueueDestroy(RHI_Queue* cmd_pool)
-    {
-        vector<shared_ptr<RHI_Queue>>::iterator it;
-        for (it = queues.begin(); it != queues.end();)
-        {
-            if (cmd_pool->GetObjectId() == (*it)->GetObjectId())
-            {
-                it = queues.erase(it);
-                return;
-            }
-            it++;
-        }
     }
 
     void RHI_Device::UpdateBindlessResources(const array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers, array<RHI_Texture*, rhi_max_array_size>* textures)

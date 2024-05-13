@@ -31,11 +31,10 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_Queue::RHI_Queue(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type) : SpObject()
+    RHI_Queue::RHI_Queue(const RHI_Queue_Type queue_type, const char* name) : SpObject()
     {
-        m_object_name   = name;
-        m_swap_chain_id = swap_chain_id;
-        m_queue_type    = queue_type;
+        m_object_name = name;
+        m_type        = queue_type;
 
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_rhi_resources.size()); i++)
         {
@@ -48,8 +47,8 @@ namespace Spartan
 
     }
 
-    bool RHI_Queue::Tick()
+    void RHI_Queue::NextCommandList()
     {
-        return false;
+
     }
 }

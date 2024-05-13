@@ -1974,9 +1974,9 @@ namespace Spartan
         // get command pool
         queues::queue = queues::immediate[static_cast<uint32_t>(queue_type)].get();
         queues::queue->NextCommandList();
-        queues::queue->GetCmdList()->Begin(queues::queue);
+        queues::queue->GetCommandList()->Begin(queues::queue);
 
-        return queues::queue->GetCmdList();
+        return queues::queue->GetCommandList();
     }
 
     void RHI_Device::CmdImmediateSubmit(RHI_CommandList* cmd_list)
