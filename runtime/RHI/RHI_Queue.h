@@ -38,11 +38,12 @@ namespace Spartan
         RHI_Queue(const RHI_Queue_Type queue_type, const char* name);
         ~RHI_Queue();
 
+        // core
         bool Tick();
         void Wait();
         void Submit(void* cmd_buffer, const uint32_t wait_flags, RHI_Semaphore* semaphore, RHI_Semaphore* semaphore_timeline);
         void Present(void* swapchain, const uint32_t image_index, std::vector<RHI_Semaphore*>& wait_semaphores);
-            
+
         // misc
         RHI_CommandList* GetCurrentCommandList() { return m_using_pool_a ? m_cmd_lists_0[m_index].get() : m_cmd_lists_1[m_index].get(); }
         RHI_Queue_Type GetType() const           { return m_type; }
@@ -56,6 +57,5 @@ namespace Spartan
         bool m_using_pool_a   = true;
         bool m_first_tick     = true;
         RHI_Queue_Type m_type = RHI_Queue_Type::Max;
-        std::mutex m_mutex;
     };
 }
