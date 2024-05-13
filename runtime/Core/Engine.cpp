@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================================
 #include "pch.h"
-#include "Event.h"
 #include "Window.h"
 #include "ThreadPool.h"
 #include "../Audio/Audio.h"
