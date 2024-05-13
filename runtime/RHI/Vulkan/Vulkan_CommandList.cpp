@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==========================
 #include "pch.h"
 #include "../RHI_Device.h"
+#include "../RHI_Queue.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_Pipeline.h"
@@ -459,9 +460,8 @@ namespace Spartan
         }
     }
 
-    RHI_CommandList::RHI_CommandList(const RHI_Queue_Type queue_type, void* cmd_pool, const char* name) : SpObject()
+    RHI_CommandList::RHI_CommandList(void* cmd_pool, const char* name) : SpObject()
     {
-        m_queue_type  = queue_type;
         m_object_name = name;
 
         // command buffer
@@ -493,11 +493,11 @@ namespace Spartan
         queries::shutdown(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion);
     }
 
-    void RHI_CommandList::Begin(const uint64_t swapchain_id)
+    void RHI_CommandList::Begin(const RHI_Queue* queue, const uint64_t swapchain_id)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
-        if (m_queue_type != RHI_Queue_Type::Copy && m_timestamp_index != 0)
+        if (queue->GetType() != RHI_Queue_Type::Copy && m_timestamp_index != 0)
         {
             queries::timestamp::update(m_rhi_query_pool_timestamps, m_timestamp_index);
         }
@@ -514,7 +514,7 @@ namespace Spartan
         m_cull_mode    = RHI_CullMode::Max;
 
         // set dynamic states
-        if (m_queue_type == RHI_Queue_Type::Graphics)
+        if (queue->GetType() == RHI_Queue_Type::Graphics)
         {
             // cull mode
             SetCullMode(RHI_CullMode::Back);
@@ -529,7 +529,7 @@ namespace Spartan
         }
 
         // queries
-        if (m_queue_type != RHI_Queue_Type::Copy)
+        if (queue->GetType() != RHI_Queue_Type::Copy)
         {
             // queries need to be reset before they are first used and they
             // also need to be reset after every use, so we just reset them always
@@ -552,7 +552,7 @@ namespace Spartan
         m_state = RHI_CommandListState::Ended;
     }
 
-    void RHI_CommandList::Submit()
+    void RHI_CommandList::Submit(RHI_Queue* queue)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Ended);
 
@@ -563,10 +563,9 @@ namespace Spartan
             m_rendering_complete_semaphore = make_shared<RHI_Semaphore>(false, m_object_name.c_str());
         }
 
-        RHI_Device::QueueSubmit(
-            m_queue_type,                                 // queue
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,            // wait flags
+        queue->Submit(
             static_cast<VkCommandBuffer>(m_rhi_resource), // cmd buffer
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,            // wait flags
             m_rendering_complete_semaphore.get(),         // signal semaphore
             m_rendering_complete_semaphore_timeline.get() // signal semaphore
         );

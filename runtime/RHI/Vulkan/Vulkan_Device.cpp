@@ -208,6 +208,7 @@ namespace Spartan
     namespace queues
     {
         mutex mutex_queue;
+
         void* graphics = nullptr;
         void* compute  = nullptr;
         void* copy     = nullptr;
@@ -217,9 +218,10 @@ namespace Spartan
         uint32_t index_compute  = invalid_index;
         uint32_t index_copy     = invalid_index;
 
-        array<shared_ptr<RHI_Queue>, 2> regular;   // graphics and compute
+        array<shared_ptr<RHI_Queue>, 3> regular;   // graphics, compute, and copy
         array<shared_ptr<RHI_Queue>, 3> immediate; // graphics, compute, and copy
 
+        RHI_Queue* queue = nullptr;
         mutex mutex_immediate_execution;
         condition_variable condition_variable_immediate_execution;
         bool is_immediate_executing = false;
@@ -282,29 +284,97 @@ namespace Spartan
             index_copy     = get_queue_family_index(queue_families, VK_QUEUE_TRANSFER_BIT);
         }
 
-        void* get_from_enum(const RHI_Queue_Type type)
-        {
-            if (type == RHI_Queue_Type::Graphics)
-            {
-                return queues::graphics;
-            }
-            else if (type == RHI_Queue_Type::Copy)
-            {
-                return queues::copy;
-            }
-            else if (type == RHI_Queue_Type::Compute)
-            {
-                return queues::compute;
-            }
-
-            return nullptr;
-        }
-
         void destroy()
         {
             regular.fill(nullptr);
             immediate.fill(nullptr);
         }
+
+        bool get_queue_family_index(VkQueueFlagBits queue_flags, const vector<VkQueueFamilyProperties>& queue_family_properties, uint32_t* index)
+        {
+            // try to find a queue that only supports compute (dedicated)
+            if (queue_flags & VK_QUEUE_COMPUTE_BIT)
+            {
+                for (uint32_t i = 0; i < static_cast<uint32_t>(queue_family_properties.size()); i++)
+                {
+                    if ((queue_family_properties[i].queueFlags & queue_flags) && ((queue_family_properties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0))
+                    {
+                        *index = i;
+                        return true;
+                    }
+                }
+            }
+
+            // try to find a queue that only supports copy (dedicated)
+            if (queue_flags & VK_QUEUE_TRANSFER_BIT)
+            {
+                for (uint32_t i = 0; i < static_cast<uint32_t>(queue_family_properties.size()); i++)
+                {
+                    if ((queue_family_properties[i].queueFlags & queue_flags) && ((queue_family_properties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) && ((queue_family_properties[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
+                    {
+                        *index = i;
+                        return true;
+                    }
+                }
+            }
+
+            // for graphics, just find any queue that supports graphics
+            for (uint32_t i = 0; i < static_cast<uint32_t>(queue_family_properties.size()); i++)
+            {
+                if (queue_family_properties[i].queueFlags & queue_flags)
+                {
+                    *index = i;
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        bool get_queue_family_indices(const VkPhysicalDevice& physical_device)
+        {
+            uint32_t queue_family_count = 0;
+            vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nullptr);
+        
+            vector<VkQueueFamilyProperties> queue_families_properties(queue_family_count);
+            vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families_properties.data());
+        
+            // graphics
+            uint32_t index = 0;
+            if (get_queue_family_index(VK_QUEUE_GRAPHICS_BIT, queue_families_properties, &index))
+            {
+                queues::index_graphics = index;
+            }
+            else
+            {
+                SP_LOG_ERROR("Graphics queue not suported.");
+                return false;
+            }
+        
+            // compute
+            if (get_queue_family_index(VK_QUEUE_COMPUTE_BIT, queue_families_properties, &index))
+            {
+                queues::index_compute = index;
+            }
+            else
+            {
+                SP_LOG_ERROR("Compute queue not supported.");
+                return false;
+            }
+        
+            // copy
+            if (get_queue_family_index(VK_QUEUE_TRANSFER_BIT, queue_families_properties, &index))
+            {
+                queues::index_copy = index;
+            }
+            else
+            {
+                SP_LOG_ERROR("Copy queue not supported.");
+                return false;
+            }
+        
+            return true;
+        };
     }
 
     namespace functions
@@ -1198,7 +1268,12 @@ namespace Spartan
             SetResourceName(queues::copy, RHI_Resource_Type::Queue, "copy");
 
             queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Graphics)] = make_shared<RHI_Queue>(RHI_Queue_Type::Graphics, "graphics");
-            queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Compute)]  = make_shared<RHI_Queue>(RHI_Queue_Type::Compute, "compute");
+            queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Compute)]  = make_shared<RHI_Queue>(RHI_Queue_Type::Compute,  "compute");
+            queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Copy)]     = make_shared<RHI_Queue>(RHI_Queue_Type::Copy,     "copy");
+
+            queues::immediate[static_cast<uint32_t>(RHI_Queue_Type::Graphics)] = make_shared<RHI_Queue>(RHI_Queue_Type::Graphics, "graphics");
+            queues::immediate[static_cast<uint32_t>(RHI_Queue_Type::Compute)]  = make_shared<RHI_Queue>(RHI_Queue_Type::Compute,  "compute");
+            queues::immediate[static_cast<uint32_t>(RHI_Queue_Type::Copy)]     = make_shared<RHI_Queue>(RHI_Queue_Type::Copy,     "copy");
         }
 
         vulkan_memory_allocator::initialize(app_info.apiVersion);
@@ -1308,101 +1383,13 @@ namespace Spartan
 
     void RHI_Device::PhysicalDeviceSelectPrimary()
     {
-        auto get_queue_family_index = [](VkQueueFlagBits queue_flags, const vector<VkQueueFamilyProperties>& queue_family_properties, uint32_t* index)
-        {
-            // Dedicated queue for compute
-            // Try to find a queue family index that supports compute but not graphics
-            if (queue_flags & VK_QUEUE_COMPUTE_BIT)
-            {
-                for (uint32_t i = 0; i < static_cast<uint32_t>(queue_family_properties.size()); i++)
-                {
-                    if ((queue_family_properties[i].queueFlags & queue_flags) && ((queue_family_properties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0))
-                    {
-                        *index = i;
-                        return true;
-                    }
-                }
-            }
-
-            // Dedicated queue for transfer
-            // Try to find a queue family index that supports transfer but not graphics and compute
-            if (queue_flags & VK_QUEUE_TRANSFER_BIT)
-            {
-                for (uint32_t i = 0; i < static_cast<uint32_t>(queue_family_properties.size()); i++)
-                {
-                    if ((queue_family_properties[i].queueFlags & queue_flags) && ((queue_family_properties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) && ((queue_family_properties[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
-                    {
-                        *index = i;
-                        return true;
-                    }
-                }
-            }
-
-            // For other queue types or if no separate compute queue is present, return the first one to support the requested flags
-            for (uint32_t i = 0; i < static_cast<uint32_t>(queue_family_properties.size()); i++)
-            {
-                if (queue_family_properties[i].queueFlags & queue_flags)
-                {
-                    *index = i;
-                    return true;
-                }
-            }
-
-            return false;
-        };
-
-        auto get_queue_family_indices = [&get_queue_family_index](const VkPhysicalDevice& physical_device)
-        {
-            uint32_t queue_family_count = 0;
-            vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nullptr);
-
-            vector<VkQueueFamilyProperties> queue_families_properties(queue_family_count);
-            vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families_properties.data());
-
-            // graphics
-            uint32_t index = 0;
-            if (get_queue_family_index(VK_QUEUE_GRAPHICS_BIT, queue_families_properties, &index))
-            {
-                queues::index_graphics = index;
-            }
-            else
-            {
-                SP_LOG_ERROR("Graphics queue not suported.");
-                return false;
-            }
-
-            // compute
-            if (get_queue_family_index(VK_QUEUE_COMPUTE_BIT, queue_families_properties, &index))
-            {
-                queues::index_compute = index;
-            }
-            else
-            {
-                SP_LOG_ERROR("Compute queue not supported.");
-                return false;
-            }
-
-            // copy
-            if (get_queue_family_index(VK_QUEUE_TRANSFER_BIT, queue_families_properties, &index))
-            {
-                queues::index_copy = index;
-            }
-            else
-            {
-                SP_LOG_ERROR("Copy queue not supported.");
-                return false;
-            }
-
-            return true;
-        };
-
-        // Go through all the devices (sorted from best to worst based on their properties)
+        // go through all the devices (sorted from best to worst based on their properties)
         for (uint32_t device_index = 0; device_index < PhysicalDeviceGet().size(); device_index++)
         {
             VkPhysicalDevice device = static_cast<VkPhysicalDevice>(PhysicalDeviceGet()[device_index].GetData());
 
-            // Get the first device that has a graphics, a compute and a transfer queue
-            if (get_queue_family_indices(device))
+            // get the first device which supports graphics, compute and transfer queues
+            if (queues::get_queue_family_indices(device))
             {
                 PhysicalDeviceSetPrimary(device_index);
                 RHI_Context::device_physical = device;
@@ -1412,78 +1399,6 @@ namespace Spartan
     }
 
     // queues
-
-    void RHI_Device::QueuePresent(void* swapchain, const uint32_t image_index, vector<RHI_Semaphore*>& wait_semaphores)
-    {
-        array<VkSemaphore, 3> vk_wait_semaphores = { nullptr, nullptr, nullptr };
-
-        // get semaphore vulkan resources
-        uint32_t semaphore_count = static_cast<uint32_t>(wait_semaphores.size());
-        for (uint32_t i = 0; i < semaphore_count; i++)
-        {
-            vk_wait_semaphores[i] = static_cast<VkSemaphore>(wait_semaphores[i]->GetRhiResource());
-        }
-
-        VkPresentInfoKHR present_info   = {};
-        present_info.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        present_info.waitSemaphoreCount = semaphore_count;
-        present_info.pWaitSemaphores    = vk_wait_semaphores.data();
-        present_info.swapchainCount     = 1;
-        present_info.pSwapchains        = reinterpret_cast<VkSwapchainKHR*>(&swapchain);
-        present_info.pImageIndices      = &image_index;
-
-        lock_guard<mutex> lock(queues::mutex_queue);
-        SP_VK_ASSERT_MSG(vkQueuePresentKHR(static_cast<VkQueue>(queues::graphics), &present_info), "Failed to present");
-    }
-
-    void RHI_Device::QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* semaphore, RHI_Semaphore* semaphore_timeline)
-    {
-        // validate
-        SP_ASSERT(cmd_buffer != nullptr);
-        SP_ASSERT(semaphore != nullptr);
-        SP_ASSERT(semaphore_timeline != nullptr);
-
-        // semaphore binary
-        VkSemaphoreSubmitInfo signal_semaphore_info = {};
-        signal_semaphore_info.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
-        signal_semaphore_info.semaphore             = static_cast<VkSemaphore>(semaphore->GetRhiResource());
-        signal_semaphore_info.value                 = 0; // ignored for binary semaphores
-
-        // semaphore timeline
-        VkSemaphoreSubmitInfo timeline_semaphore_info = {};
-        timeline_semaphore_info.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
-        timeline_semaphore_info.semaphore             = static_cast<VkSemaphore>(semaphore_timeline->GetRhiResource());
-        timeline_semaphore_info.stageMask             = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR; // todo: adjust based on the queue
-        static uint64_t timeline_value                = 0;
-        timeline_semaphore_info.value                 = ++timeline_value;
-        semaphore_timeline->SetWaitValue(timeline_semaphore_info.value);
-
-        // submit
-        {
-            VkSubmitInfo2 submit_info                 = {};
-            submit_info.sType                         = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-            submit_info.waitSemaphoreInfoCount        = 0;
-            submit_info.pWaitSemaphoreInfos           = nullptr;
-            submit_info.signalSemaphoreInfoCount      = 2;
-            VkSemaphoreSubmitInfo semaphore_infos[]   = { signal_semaphore_info, timeline_semaphore_info };
-            submit_info.pSignalSemaphoreInfos         = semaphore_infos;
-            submit_info.commandBufferInfoCount        = 1;
-            VkCommandBufferSubmitInfo cmd_buffer_info = {};
-            cmd_buffer_info.sType                     = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO_KHR;
-            cmd_buffer_info.commandBuffer             = *reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
-            submit_info.pCommandBufferInfos           = &cmd_buffer_info;
-
-            lock_guard<mutex> lock(queues::mutex_queue);
-            SP_VK_ASSERT_MSG(vkQueueSubmit2(static_cast<VkQueue>(queues::get_from_enum(type)), 1, &submit_info, nullptr), "Failed to submit");
-            semaphore->SetSignaled(true);
-        }
-    }
-
-    void RHI_Device::QueueWait(const RHI_Queue_Type type)
-    {
-        lock_guard<mutex> lock(queues::mutex_queue);
-        SP_VK_ASSERT_MSG(vkQueueWaitIdle(static_cast<VkQueue>(queues::get_from_enum(type))), "Failed to wait for queue");
-    }
 
     uint32_t RHI_Device::QueueGetIndex(const RHI_Queue_Type type)
     {
@@ -1512,6 +1427,28 @@ namespace Spartan
             return queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Compute)].get();
 
         return nullptr;
+    }
+
+    void* RHI_Device::GetQueueRhiResource(const RHI_Queue_Type type)
+    {
+        if (type == RHI_Queue_Type::Graphics)
+            return queues::graphics;
+
+        if (type == RHI_Queue_Type::Copy)
+            return queues::copy;
+
+        if (type == RHI_Queue_Type::Compute)
+            return queues::compute;
+
+        return nullptr;
+    }
+
+    void RHI_Device::QueueWaitAll()
+    {
+        for (uint32_t i = 0; i < 2; i++)
+        {
+            queues::regular[i]->Wait();
+        }
     }
 
     // deletion queue
@@ -2038,25 +1975,18 @@ namespace Spartan
         queues::condition_variable_immediate_execution.wait(lock, [] { return !queues::is_immediate_executing; });
         queues::is_immediate_executing = true;
 
-        // Create command pool for the given queue type, if needed.
-        uint32_t queue_index = static_cast<uint32_t>(queue_type);
-        if (!queues::immediate[queue_index])
-        {
-            queues::immediate[queue_index] = make_shared<RHI_Queue>(queue_type, "cmd_immediate_execution");
-        }
-
         // get command pool
-        RHI_Queue* queue = queues::immediate[queue_index].get();
-        queue->Tick();
-        queue->GetCurrentCommandList()->Begin(0);
+        queues::queue = queues::immediate[static_cast<uint32_t>(queue_type)].get();
+        queues::queue->Tick();
+        queues::queue->GetCurrentCommandList()->Begin(queues::queue, 0);
 
-        return queue->GetCurrentCommandList();
+        return queues::queue->GetCurrentCommandList();
     }
 
     void RHI_Device::CmdImmediateSubmit(RHI_CommandList* cmd_list)
     {
         cmd_list->End();
-        cmd_list->Submit();
+        cmd_list->Submit(queues::queue);
         cmd_list->WaitForExecution();
 
         // signal that it's safe to proceed with the next ImmediateBegin()

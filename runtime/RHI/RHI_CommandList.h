@@ -47,12 +47,12 @@ namespace Spartan
     class SP_CLASS RHI_CommandList : public SpObject
     {
     public:
-        RHI_CommandList(const RHI_Queue_Type queue_type,  void* cmd_pool_resource, const char* name);
+        RHI_CommandList(void* cmd_pool, const char* name);
         ~RHI_CommandList();
 
-        void Begin(const uint64_t swapchain_id);
+        void Begin(const RHI_Queue* queue, const uint64_t swapchain_id);
         void End();
-        void Submit();
+        void Submit(RHI_Queue* queue);
         void WaitForExecution();
         void SetPipelineState(RHI_PipelineState& pso);
 
@@ -169,7 +169,6 @@ namespace Spartan
         bool m_render_pass_active                            = false;
         RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
         std::atomic<RHI_CommandListState> m_state            = RHI_CommandListState::Idle;
-        RHI_Queue_Type m_queue_type                          = RHI_Queue_Type::Max;
         RHI_CullMode m_cull_mode                             = RHI_CullMode::Back;
         const char* m_timeblock_active                       = nullptr;
         static bool m_memory_query_support;
