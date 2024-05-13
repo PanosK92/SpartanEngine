@@ -25,15 +25,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Profiling/Profiler.h"
 #include "../RHI_Device.h"
 #include "../RHI_Implementation.h"
-#include "../RHI_Semaphore.h"
 #include "../RHI_Queue.h"
 #include "../RHI_DescriptorSet.h"
 #include "../RHI_Sampler.h"
-#include "../RHI_Fence.h"
 #include "../RHI_Shader.h"
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Pipeline.h"
-#include "../RHI_Texture.h"
 SP_WARNINGS_OFF
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -207,24 +204,29 @@ namespace Spartan
 
     namespace queues
     {
-        mutex mutex_queue;
-
         void* graphics = nullptr;
         void* compute  = nullptr;
         void* copy     = nullptr;
 
-        #define invalid_index numeric_limits<uint32_t>::max()
-        uint32_t index_graphics = invalid_index;
-        uint32_t index_compute  = invalid_index;
-        uint32_t index_copy     = invalid_index;
+        uint32_t index_graphics = numeric_limits<uint32_t>::max();
+        uint32_t index_compute  = numeric_limits<uint32_t>::max();
+        uint32_t index_copy     = numeric_limits<uint32_t>::max();
 
-        array<shared_ptr<RHI_Queue>, 3> regular;   // graphics, compute, and copy
-        array<shared_ptr<RHI_Queue>, 3> immediate; // graphics, compute, and copy
+        array<shared_ptr<RHI_Queue>, static_cast<uint32_t>(RHI_Queue_Type::Max)> regular;   // graphics, compute, and copy
+        array<shared_ptr<RHI_Queue>, static_cast<uint32_t>(RHI_Queue_Type::Max)> immediate; // graphics, compute, and copy
 
-        RHI_Queue* queue = nullptr;
+        // sync for immediate execution
+        mutex mutex_queue;
         mutex mutex_immediate_execution;
         condition_variable condition_variable_immediate_execution;
         bool is_immediate_executing = false;
+        RHI_Queue* queue            = nullptr;
+
+        void destroy()
+        {
+            regular.fill(nullptr);
+            immediate.fill(nullptr);
+        }
 
         uint32_t get_queue_family_index(const vector<VkQueueFamilyProperties>& queue_families, VkQueueFlags queue_flags)
         {
@@ -268,7 +270,7 @@ namespace Spartan
             }
 
             SP_ASSERT_MSG(false, "Could not find a matching queue family index");
-            return invalid_index;
+            return numeric_limits<uint32_t>::max();
         }
 
         void detect_queue_family_indices(VkPhysicalDevice device_physical)
@@ -282,12 +284,6 @@ namespace Spartan
             index_graphics = get_queue_family_index(queue_families, VK_QUEUE_GRAPHICS_BIT);
             index_compute  = get_queue_family_index(queue_families, VK_QUEUE_COMPUTE_BIT);
             index_copy     = get_queue_family_index(queue_families, VK_QUEUE_TRANSFER_BIT);
-        }
-
-        void destroy()
-        {
-            regular.fill(nullptr);
-            immediate.fill(nullptr);
         }
 
         bool get_queue_family_index(VkQueueFlagBits queue_flags, const vector<VkQueueFamilyProperties>& queue_family_properties, uint32_t* index)

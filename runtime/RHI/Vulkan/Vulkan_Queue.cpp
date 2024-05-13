@@ -35,7 +35,7 @@ namespace Spartan
 {
     namespace
     {
-        static array<mutex, 3> mutexes;
+        array<mutex, 3> mutexes;
 
         mutex& get_mutex(RHI_Queue* queue)
         {
