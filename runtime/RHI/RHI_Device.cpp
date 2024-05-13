@@ -98,11 +98,4 @@ namespace Spartan
         return width  > 4 && width  <= m_max_texture_2d_dimension &&
                height > 4 && height <= m_max_texture_2d_dimension;
     }
-
-    void RHI_Device::QueueWaitAll()
-    {
-        QueueWait(RHI_Queue_Type::Graphics);
-        QueueWait(RHI_Queue_Type::Copy);
-        QueueWait(RHI_Queue_Type::Compute);
-    }
 }

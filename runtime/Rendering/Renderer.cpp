@@ -256,8 +256,9 @@ namespace Spartan
         RHI_Device::Tick(frame_num);
 
         // begin command list
-        cmd_current = RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->GetCurrentCommandList();
-        cmd_current->Begin(swap_chain->GetObjectId());
+        RHI_Queue* queue = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
+        cmd_current      = queue->GetCurrentCommandList();
+        cmd_current->Begin(queue, swap_chain->GetObjectId());
 
         OnSyncPoint(cmd_current);
         ProduceFrame(cmd_current);
@@ -766,11 +767,12 @@ namespace Spartan
     void Renderer::Present()
     {
         // submit
-        RHI_CommandList* cmd_list = RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->GetCurrentCommandList();
+        RHI_Queue* queue          = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
+        RHI_CommandList* cmd_list = queue->GetCurrentCommandList();
         if (cmd_list->GetState() == RHI_CommandListState::Recording)
         { 
             cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->Submit(queue);
         }
 
         // present

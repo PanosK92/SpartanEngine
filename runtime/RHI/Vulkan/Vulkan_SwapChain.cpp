@@ -441,23 +441,22 @@ namespace Spartan
         if (m_layouts[m_image_index] != RHI_Image_Layout::Present_Source)
             return;
 
-        // semaphores from command lists
         m_wait_semaphores.clear();
-        if (RHI_Queue* queue = RHI_Device::GetQueue(RHI_Queue_Type::Graphics))
-        {
-            RHI_CommandList* cmd_list       = queue->GetCurrentCommandList();
-            bool presents_to_this_swapchain = cmd_list->GetSwapchainId() == m_object_id;
-            bool has_work_to_present        = cmd_list->GetState() == RHI_CommandListState::Submitted;
-            if (presents_to_this_swapchain && has_work_to_present)
-            {
-                RHI_Semaphore* semaphore = cmd_list->GetRenderingCompleteSemaphore();
-                if (semaphore->IsSignaled())
-                {
-                    semaphore->SetSignaled(false);
-                }
+        RHI_Queue* queue = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
 
-                m_wait_semaphores.emplace_back(semaphore);
+        // semaphores from command lists
+        RHI_CommandList* cmd_list       = queue->GetCurrentCommandList();
+        bool presents_to_this_swapchain = cmd_list->GetSwapchainId() == m_object_id;
+        bool has_work_to_present        = cmd_list->GetState() == RHI_CommandListState::Submitted;
+        if (presents_to_this_swapchain && has_work_to_present)
+        {
+            RHI_Semaphore* semaphore = cmd_list->GetRenderingCompleteSemaphore();
+            if (semaphore->IsSignaled())
+            {
+                semaphore->SetSignaled(false);
             }
+
+            m_wait_semaphores.emplace_back(semaphore);
         }
 
         // semaphore from vkAcquireNextImageKHR
@@ -465,7 +464,7 @@ namespace Spartan
         m_wait_semaphores.emplace_back(image_acquired_semaphore);
 
         // present
-        RHI_Device::QueuePresent(m_rhi_swapchain, m_image_index, m_wait_semaphores);
+        queue->Present(m_rhi_swapchain, m_image_index, m_wait_semaphores);
         AcquireNextImage();
     }
 

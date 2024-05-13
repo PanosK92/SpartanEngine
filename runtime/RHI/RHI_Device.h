@@ -34,17 +34,16 @@ namespace Spartan
     class SP_CLASS RHI_Device
     {
     public:
+        // core
         static void Initialize();
         static void Tick(const uint64_t frame_count);
         static void Destroy();
 
         // queues
-        static void QueuePresent(void* swapchain_view, const uint32_t image_index, std::vector<RHI_Semaphore*>& wait_semaphores);
-        static void QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* semaphore = nullptr, RHI_Semaphore* semaphore_timeline = nullptr);
-        static void QueueWait(const RHI_Queue_Type type);
         static void QueueWaitAll();
         static uint32_t QueueGetIndex(const RHI_Queue_Type type);
         static RHI_Queue* GetQueue(const RHI_Queue_Type type);
+        static void* GetQueueRhiResource(const RHI_Queue_Type type);
 
         // descriptors
         static void CreateDescriptorPool();
