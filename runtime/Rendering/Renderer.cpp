@@ -257,7 +257,7 @@ namespace Spartan
 
         // begin command list
         RHI_Queue* queue = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
-        cmd_current      = queue->GetCmdList();
+        cmd_current      = queue->GetCommandList();
         cmd_current->Begin(queue);
 
         OnSyncPoint(cmd_current);
@@ -485,7 +485,7 @@ namespace Spartan
 
     bool Renderer::CanUseCmdList()
     {
-        RHI_CommandList* cmd_list = RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->GetCmdList();
+        RHI_CommandList* cmd_list = RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->GetCommandList();
         return cmd_list->GetState() == RHI_CommandListState::Recording;
     }
 
@@ -768,7 +768,7 @@ namespace Spartan
     {
         // submit
         RHI_Queue* queue          = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
-        RHI_CommandList* cmd_list = queue->GetCmdList();
+        RHI_CommandList* cmd_list = queue->GetCommandList();
         if (cmd_list->GetState() == RHI_CommandListState::Recording)
         { 
             cmd_list->End();

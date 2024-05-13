@@ -159,8 +159,6 @@ namespace Spartan
         SP_ASSERT(semaphore != nullptr);
         SP_ASSERT(semaphore_timeline != nullptr);
 
-        lock_guard<mutex> lock(get_mutex(this));
-
         // semaphore binary
         VkSemaphoreSubmitInfo signal_semaphore_info = {};
         signal_semaphore_info.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
@@ -174,6 +172,8 @@ namespace Spartan
         timeline_semaphore_info.stageMask             = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR; // todo: adjust based on the queue
         static uint64_t timeline_value                = 0;
         timeline_semaphore_info.value                 = ++timeline_value;
+
+        lock_guard<mutex> lock(get_mutex(this));
         semaphore_timeline->SetWaitValue(timeline_semaphore_info.value);
 
         // submit

@@ -39,15 +39,15 @@ namespace Spartan
         ~RHI_Queue();
 
         // core
-        bool NextCommandList();
+        void NextCommandList();
         void Wait();
         void Submit(void* cmd_buffer, const uint32_t wait_flags, RHI_Semaphore* semaphore, RHI_Semaphore* semaphore_timeline);
         void Present(void* swapchain, const uint32_t image_index, std::vector<RHI_Semaphore*>& wait_semaphores);
 
         // misc
-        auto& GetCmdListPool()         { return m_using_pool_a ? m_cmd_lists_0 : m_cmd_lists_1; }
-        RHI_CommandList* GetCmdList()  { return GetCmdListPool()[m_index].get(); }
-        RHI_Queue_Type GetType() const { return m_type; }
+        auto& GetCommandListPool()        { return m_using_pool_a ? m_cmd_lists_0 : m_cmd_lists_1; }
+        RHI_CommandList* GetCommandList() { return GetCommandListPool()[m_index].get(); }
+        RHI_Queue_Type GetType() const    { return m_type; }
 
     private:
         std::array<std::shared_ptr<RHI_CommandList>, cmd_lists_per_pool> m_cmd_lists_0;

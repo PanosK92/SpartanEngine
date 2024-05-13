@@ -214,7 +214,7 @@ namespace ImGui::RHI
             queue->NextCommandList();
         }
 
-        RHI_CommandList* cmd_list = queue->GetCmdList();
+        RHI_CommandList* cmd_list = queue->GetCommandList();
 
         // update vertex and index buffers
         {
