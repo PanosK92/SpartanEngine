@@ -205,7 +205,16 @@ namespace ImGui::RHI
         RHI_VertexBuffer* vertex_buffer     = rhi_resources->vertex_buffers[buffer_index].get();
         RHI_IndexBuffer* index_buffer       = rhi_resources->index_buffers[buffer_index].get();
         RHI_Queue* queue                    = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
-        RHI_CommandList* cmd_list           = queue->GetCmdList();
+
+        // get command list
+        if (!is_main_window)
+        {
+            // for independent windows, we another command list
+            // this is because it needs to begin/end independently from the main window
+            queue->NextCommandList();
+        }
+
+        RHI_CommandList* cmd_list = queue->GetCmdList();
 
         // update vertex and index buffers
         {

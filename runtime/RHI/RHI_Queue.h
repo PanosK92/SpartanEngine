@@ -39,7 +39,7 @@ namespace Spartan
         ~RHI_Queue();
 
         // core
-        bool Tick();
+        bool NextCommandList();
         void Wait();
         void Submit(void* cmd_buffer, const uint32_t wait_flags, RHI_Semaphore* semaphore, RHI_Semaphore* semaphore_timeline);
         void Present(void* swapchain, const uint32_t image_index, std::vector<RHI_Semaphore*>& wait_semaphores);
