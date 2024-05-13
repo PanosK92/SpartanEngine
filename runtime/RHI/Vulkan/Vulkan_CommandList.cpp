@@ -493,7 +493,7 @@ namespace Spartan
         queries::shutdown(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion);
     }
 
-    void RHI_CommandList::Begin(const RHI_Queue* queue, const uint64_t swapchain_id)
+    void RHI_CommandList::Begin(const RHI_Queue* queue)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
@@ -508,7 +508,6 @@ namespace Spartan
         SP_ASSERT_MSG(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource), &begin_info) == VK_SUCCESS, "Failed to begin command buffer");
 
         // set states
-        m_swapchain_id = swapchain_id;
         m_state        = RHI_CommandListState::Recording;
         m_pso          = RHI_PipelineState();
         m_cull_mode    = RHI_CullMode::Max;
@@ -552,7 +551,7 @@ namespace Spartan
         m_state = RHI_CommandListState::Ended;
     }
 
-    void RHI_CommandList::Submit(RHI_Queue* queue)
+    void RHI_CommandList::Submit(RHI_Queue* queue, const uint64_t swapchain_id)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Ended);
 
@@ -570,7 +569,8 @@ namespace Spartan
             m_rendering_complete_semaphore_timeline.get() // signal semaphore
         );
 
-        m_state = RHI_CommandListState::Submitted;
+        m_swapchain_id = swapchain_id;
+        m_state        = RHI_CommandListState::Submitted;
     }
 
     void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)

@@ -445,7 +445,7 @@ namespace Spartan
         RHI_Queue* queue = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
 
         // semaphores from command lists
-        RHI_CommandList* cmd_list       = queue->GetCurrentCommandList();
+        RHI_CommandList* cmd_list       = queue->GetCmdList();
         bool presents_to_this_swapchain = cmd_list->GetSwapchainId() == m_object_id;
         bool has_work_to_present        = cmd_list->GetState() == RHI_CommandListState::Submitted;
         if (presents_to_this_swapchain && has_work_to_present)
