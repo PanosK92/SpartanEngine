@@ -171,7 +171,7 @@ function runtime_project_configuration()
         -- Includes
         if os.target() == "windows" then
             includedirs { "../third_party" }
-            includedirs { "../third_party/sdl" }
+            includedirs { "../third_party/sdl/sdl" }
             includedirs { "../third_party/assimp" }
             includedirs { "../third_party/bullet" }
             includedirs { "../third_party/fmod" }
@@ -276,7 +276,7 @@ function editor_project_configuration()
         includedirs { RUNTIME_DIR .. "/Core" }     -- This is here because the runtime uses it
         if os.target() == "windows" then
             includedirs { "../third_party/free_type" } -- Used to rasterise the ImGui font atlas
-            includedirs { "../third_party/sdl" }  	   -- SDL, used by ImGui to create windows
+            includedirs { "../third_party/sdl/sdl" }  	   -- SDL, used by ImGui to create windows
         else
             includedirs { "/usr/include/SDL2" }
             includedirs { "/usr/include/freetype2" }
