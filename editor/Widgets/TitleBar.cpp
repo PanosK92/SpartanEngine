@@ -461,12 +461,12 @@ namespace
             Spartan::Math::Vector2 icon_size = Spartan::Math::Vector2(24.0f, 24.0f);
             if (ImGuiSp::image_button(0, nullptr, IconType::Window_Minimize, icon_size, false))
             {
-                Spartan::Window::Minimise();
+                Spartan::Window::Minimize();
             }
 
             if (ImGuiSp::image_button(1, nullptr, IconType::Window_Maximize, icon_size, false))
             {
-                Spartan::Window::Maximise();
+                Spartan::Window::Maximize();
             }
 
             if (ImGuiSp::image_button(2, nullptr, IconType::Window_Close, icon_size, false))

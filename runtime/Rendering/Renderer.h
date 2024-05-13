@@ -77,6 +77,7 @@ namespace Spartan
         // swapchain
         static RHI_SwapChain* GetSwapChain();
         static void BlitToBackBuffer(RHI_CommandList* cmd_list, RHI_Texture* texture);
+        static void Present();
 
         // misc
         static RHI_CommandList* GetCmdList();
@@ -85,6 +86,7 @@ namespace Spartan
         static RHI_Api_Type GetRhiApiType();
         static void Screenshot(const std::string& file_path);
         static void SetEntities(std::vector<std::shared_ptr<Entity>>& entities);
+        static bool CanUseCmdList();
 
         //= RESOLUTION/SIZE =============================================================================
         // viewport
@@ -204,7 +206,6 @@ namespace Spartan
         static std::vector<float> m_lines_duration;
         static uint32_t m_lines_index_depth_off;
         static uint32_t m_lines_index_depth_on;
-        static RHI_Queue* m_queue;
         static uint32_t m_resource_index;
         static std::atomic<bool> m_resources_created;
         static std::atomic<uint32_t> m_environment_mips_to_filter_count;

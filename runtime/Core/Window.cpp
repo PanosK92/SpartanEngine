@@ -312,14 +312,14 @@ namespace Spartan
         SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
     }
 
-    void Window::Minimise()
+    void Window::Minimize()
     {
         SP_ASSERT(window != nullptr);
 
         SDL_MinimizeWindow(window);
     }
 
-    void Window::Maximise()
+    void Window::Maximize()
     {
         SP_ASSERT(window != nullptr);
 
@@ -392,7 +392,7 @@ namespace Spartan
         wants_to_close = true;
     }
 
-    bool Window::IsMinimised()
+    bool Window::IsMinimized()
     {
         return SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED;
     }

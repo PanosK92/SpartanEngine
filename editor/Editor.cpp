@@ -229,48 +229,51 @@ Editor::~Editor()
 
 void Editor::Tick()
 {
-    // this is the main editor/engine loop
+    // main loop
     while (!Spartan::Window::WantsToClose())
     {
         bool render_editor = Spartan::Engine::IsFlagSet(Spartan::EngineMode::Editor);
 
-        // imgui tick
-        if (render_editor)
+        // logic
         {
-            ImGui_ImplSDL2_NewFrame();
-            ImGui::NewFrame();
-        }
-
-        // engine tick
-        Spartan::Engine::Tick();
-
-        // editor
-        {
-            // window
+            // imgui
             if (render_editor)
             {
-                // begin window
+                ImGui_ImplSDL2_NewFrame();
+                ImGui::NewFrame();
+            }
+
+            // engine
+            Spartan::Engine::Tick();
+
+            // editor
+            if (render_editor)
+            {
                 BeginWindow();
 
-                // tick widgets
                 for (shared_ptr<Widget>& widget : m_widgets)
                 {
                     widget->Tick();
                 }
 
-                // end window
-                if (m_editor_begun)
-                {
-                    ImGui::End();
-                }
+                ImGui::End();
+            }
+        }
 
-                // render
-                ImGui::Render();
+        // render
+        if (render_editor)
+        {
+            ImGui::Render();
+
+            if (Spartan::Renderer::CanUseCmdList())
+            {
+                // main window
                 ImGui::RHI::render(ImGui::GetDrawData());
+                Spartan::Renderer::Present();
             }
 
             // child windows
-            if (render_editor && ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+            if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
             {
                 ImGui::UpdatePlatformWindows();
                 ImGui::RenderPlatformWindowsDefault();
@@ -311,11 +314,11 @@ void Editor::BeginWindow()
     // begin window
     std::string name = "##main_window";
     bool open = true;
-    m_editor_begun = ImGui::Begin(name.c_str(), &open, window_flags);
+    ImGui::Begin(name.c_str(), &open, window_flags);
     ImGui::PopStyleVar(3);
 
     // begin dock space
-    if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable && m_editor_begun)
+    if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
     {
         // dock space
         const auto window_id = ImGui::GetID(name.c_str());

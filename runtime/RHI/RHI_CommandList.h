@@ -47,10 +47,10 @@ namespace Spartan
     class SP_CLASS RHI_CommandList : public SpObject
     {
     public:
-        RHI_CommandList(const RHI_Queue_Type queue_type, const uint64_t swapchain_id, void* cmd_pool_resource, const char* name);
+        RHI_CommandList(const RHI_Queue_Type queue_type,  void* cmd_pool_resource, const char* name);
         ~RHI_CommandList();
 
-        void Begin();
+        void Begin(const uint64_t swapchain_id);
         void End();
         void Submit();
         void WaitForExecution();
@@ -148,6 +148,7 @@ namespace Spartan
         RHI_Semaphore* GetRenderingCompleteSemaphore() { return m_rendering_complete_semaphore.get(); }
         void* GetRhiResource() const                   { return m_rhi_resource; }
         const RHI_CommandListState GetState() const    { return m_state; }
+        uint64_t GetSwapchainId() const                { return m_swapchain_id; }
 
     private:
         void RenderPassBegin();
@@ -162,6 +163,7 @@ namespace Spartan
         uint64_t m_index_buffer_id  = 0;
 
         // misc
+        uint64_t m_swapchain_id                              = 0;
         uint32_t m_timestamp_index                           = 0;
         RHI_Pipeline* m_pipeline                             = nullptr;
         bool m_render_pass_active                            = false;

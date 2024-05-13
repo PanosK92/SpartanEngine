@@ -42,8 +42,8 @@ namespace Spartan
         static void Windowed();
         static void ToggleFullScreen();
         static void FullScreenBorderless();
-        static void Minimise();
-        static void Maximise();
+        static void Minimize();
+        static void Maximize();
 
         // size
         static void SetSize(const uint32_t width, const uint32_t height);
@@ -55,7 +55,7 @@ namespace Spartan
         static void* GetHandleSDL();
         static void* GetHandleRaw();
         static void Close();
-        static bool IsMinimised();
+        static bool IsMinimized();
         static bool IsFullScreen();
         static bool WantsToClose();
 

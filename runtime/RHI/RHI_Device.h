@@ -44,10 +44,7 @@ namespace Spartan
         static void QueueWait(const RHI_Queue_Type type);
         static void QueueWaitAll();
         static uint32_t QueueGetIndex(const RHI_Queue_Type type);
-        static void QueueSetIndex(const RHI_Queue_Type type, const uint32_t index);
-        static RHI_Queue* AllocateQueue(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type);
-        static void QueueDestroy(RHI_Queue* cmd_pool);
-        static const std::vector<std::shared_ptr<RHI_Queue>>& GetQueues();
+        static RHI_Queue* GetQueue(const RHI_Queue_Type type);
 
         // descriptors
         static void CreateDescriptorPool();
