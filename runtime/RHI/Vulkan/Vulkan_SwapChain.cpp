@@ -435,42 +435,36 @@ namespace Spartan
 
     void RHI_SwapChain::Present()
     {
-        if (Window::IsMinimised())
+        if (Window::IsMinimized())
             return;
 
-        SP_ASSERT_MSG(!(SDL_GetWindowFlags(static_cast<SDL_Window*>(m_sdl_window)) & SDL_WINDOW_MINIMIZED), "Present should not be called for a minimized window");
-        SP_ASSERT_MSG(m_rhi_swapchain != nullptr,                                                           "Invalid swapchain");
-        SP_ASSERT_MSG(m_layouts[m_image_index] == RHI_Image_Layout::Present_Source,                         "Invalid layout");
+        if (m_layouts[m_image_index] != RHI_Image_Layout::Present_Source)
+            return;
 
-        // get the semaphores that present should wait for
+        // semaphores from command lists
         m_wait_semaphores.clear();
+        if (RHI_Queue* queue = RHI_Device::GetQueue(RHI_Queue_Type::Graphics))
         {
-            // semaphores which are signaled when command lists have finished executing
-            for (const shared_ptr<RHI_Queue>& queue : RHI_Device::GetQueues())
+            RHI_CommandList* cmd_list       = queue->GetCurrentCommandList();
+            bool presents_to_this_swapchain = cmd_list->GetSwapchainId() == m_object_id;
+            bool has_work_to_present        = cmd_list->GetState() == RHI_CommandListState::Submitted;
+            if (presents_to_this_swapchain && has_work_to_present)
             {
-                // the editor supports multiple windows, so we can be dealing with multiple swapchains
-                if (m_object_id == queue->GetSwapchainId())
+                RHI_Semaphore* semaphore = cmd_list->GetRenderingCompleteSemaphore();
+                if (semaphore->IsSignaled())
                 {
-                    RHI_CommandList* cmd_list = queue->GetCurrentCommandList();
-                    if (cmd_list->GetState() == RHI_CommandListState::Submitted)
-                    {
-                        RHI_Semaphore* semaphore = cmd_list->GetRenderingCompleteSemaphore();
-                        if (semaphore->IsSignaled())
-                        {
-                            semaphore->SetSignaled(false);
-                        }
-
-                        m_wait_semaphores.emplace_back(semaphore);
-                    }
+                    semaphore->SetSignaled(false);
                 }
-            }
-            SP_ASSERT_MSG(!m_wait_semaphores.empty(), "Present() present should not be called if no work is to be presented");
 
-            // semaphore that's signaled when the image is acquired
-            RHI_Semaphore* image_acquired_semaphore = m_image_acquired_semaphore[m_sync_index].get();
-            m_wait_semaphores.emplace_back(image_acquired_semaphore);
+                m_wait_semaphores.emplace_back(semaphore);
+            }
         }
 
+        // semaphore from vkAcquireNextImageKHR
+        RHI_Semaphore* image_acquired_semaphore = m_image_acquired_semaphore[m_sync_index].get();
+        m_wait_semaphores.emplace_back(image_acquired_semaphore);
+
+        // present
         RHI_Device::QueuePresent(m_rhi_swapchain, m_image_index, m_wait_semaphores);
         AcquireNextImage();
     }

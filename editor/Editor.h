@@ -56,6 +56,5 @@ public:
 private:
     void BeginWindow();
 
-    bool m_editor_begun = false;
     std::vector<std::shared_ptr<Widget>> m_widgets;
 };

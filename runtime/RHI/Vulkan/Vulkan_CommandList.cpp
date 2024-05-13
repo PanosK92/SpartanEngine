@@ -459,7 +459,7 @@ namespace Spartan
         }
     }
 
-    RHI_CommandList::RHI_CommandList(const RHI_Queue_Type queue_type, const uint64_t swapchain_id, void* cmd_pool, const char* name) : SpObject()
+    RHI_CommandList::RHI_CommandList(const RHI_Queue_Type queue_type, void* cmd_pool, const char* name) : SpObject()
     {
         m_queue_type  = queue_type;
         m_object_name = name;
@@ -493,7 +493,7 @@ namespace Spartan
         queries::shutdown(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion);
     }
 
-    void RHI_CommandList::Begin()
+    void RHI_CommandList::Begin(const uint64_t swapchain_id)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
@@ -508,9 +508,10 @@ namespace Spartan
         SP_ASSERT_MSG(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource), &begin_info) == VK_SUCCESS, "Failed to begin command buffer");
 
         // set states
-        m_state     = RHI_CommandListState::Recording;
-        m_pso       = RHI_PipelineState();
-        m_cull_mode = RHI_CullMode::Max;
+        m_swapchain_id = swapchain_id;
+        m_state        = RHI_CommandListState::Recording;
+        m_pso          = RHI_PipelineState();
+        m_cull_mode    = RHI_CullMode::Max;
 
         // set dynamic states
         if (m_queue_type == RHI_Queue_Type::Graphics)

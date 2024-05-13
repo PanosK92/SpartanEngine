@@ -61,7 +61,6 @@ namespace Spartan
     uint32_t Renderer::m_lines_index_depth_on;
 
     // misc
-    RHI_Queue* Renderer::m_queue                         = nullptr;;
     uint32_t Renderer::m_resource_index                           = 0;
     atomic<bool> Renderer::m_resources_created                    = false;
     atomic<uint32_t> Renderer::m_environment_mips_to_filter_count = 0;
@@ -158,9 +157,6 @@ namespace Spartan
             "renderer"
         );
 
-        // queue
-        m_queue = RHI_Device::AllocateQueue("renderer", swap_chain->GetObjectId(), RHI_Queue_Type::Graphics);
-
         // fidelityfx suite
         RHI_FidelityFX::Initialize();
 
@@ -249,7 +245,7 @@ namespace Spartan
     void Renderer::Tick()
     {
         // don't waste cpu/gpu time if nothing can be seen
-        if (Window::IsMinimised() || !m_resources_created)
+        if (Window::IsMinimized() || !m_resources_created)
             return;
 
         if (frame_num == 1)
@@ -260,9 +256,8 @@ namespace Spartan
         RHI_Device::Tick(frame_num);
 
         // begin command list
-        m_queue->Tick();
-        cmd_current = m_queue->GetCurrentCommandList();
-        cmd_current->Begin();
+        cmd_current = RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->GetCurrentCommandList();
+        cmd_current->Begin(swap_chain->GetObjectId());
 
         OnSyncPoint(cmd_current);
         ProduceFrame(cmd_current);
@@ -273,10 +268,6 @@ namespace Spartan
         {
             BlitToBackBuffer(cmd_current, GetRenderTarget(Renderer_RenderTarget::frame_output).get());
         }
-
-        // submit render work
-        cmd_current->End();
-        cmd_current->Submit();
 
         // present
         if (is_standalone)
@@ -489,6 +480,12 @@ namespace Spartan
         // update bindless resources
         BindlessUpdateMaterials();
         BindlessUpdateLights();
+    }
+
+    bool Renderer::CanUseCmdList()
+    {
+        RHI_CommandList* cmd_list = RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->GetCurrentCommandList();
+        return cmd_list->GetState() == RHI_CommandListState::Recording;
     }
 
     void Renderer::OnClear()
@@ -764,6 +761,20 @@ namespace Spartan
         cmd_list->BeginMarker("blit_to_back_buffer");
         cmd_list->Blit(texture, swap_chain.get());
         cmd_list->EndMarker();
+    }
+
+    void Renderer::Present()
+    {
+        // submit
+        RHI_CommandList* cmd_list = RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->GetCurrentCommandList();
+        if (cmd_list->GetState() == RHI_CommandListState::Recording)
+        { 
+            cmd_list->End();
+            cmd_list->Submit();
+        }
+
+        // present
+        swap_chain->Present();
     }
 
     RHI_CommandList* Renderer::GetCmdList()

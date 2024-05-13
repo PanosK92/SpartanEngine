@@ -60,7 +60,6 @@ namespace ImGui::RHI
 
         struct ViewportRhiResources
         {
-            RHI_Queue* queue = nullptr;
             array<unique_ptr<RHI_IndexBuffer>, buffer_count> index_buffers;
             array<unique_ptr<RHI_VertexBuffer>, buffer_count> vertex_buffers;
             Pcb_Pass push_constant_buffer_pass;
@@ -69,9 +68,6 @@ namespace ImGui::RHI
             ViewportRhiResources() = default;
             ViewportRhiResources(const char* name, RHI_SwapChain* swapchain)
             {
-                // allocate command pool
-                queue = RHI_Device::AllocateQueue(name, swapchain->GetObjectId(), RHI_Queue_Type::Graphics);
-
                 // allocate buffers
                 for (uint32_t i = 0; i < buffer_count; i++)
                 {
@@ -200,20 +196,15 @@ namespace ImGui::RHI
 
     void render(ImDrawData* draw_data, WindowData* window_data = nullptr, const bool clear = true)
     {
-        // get the viewport resources
-        bool is_child_window                = window_data != nullptr;
-        ViewportRhiResources* rhi_resources = is_child_window ? window_data->viewport_rhi_resources.get() : &g_viewport_data;
-
-        rhi_resources->queue->Tick();
-
-        // get buffer index
-        uint32_t buffer_index       = rhi_resources->buffer_index;
-        rhi_resources->buffer_index = (rhi_resources->buffer_index + 1) % buffer_count;
-
-        // get rhi resources for this command buffer
-        RHI_VertexBuffer* vertex_buffer = rhi_resources->vertex_buffers[buffer_index].get();
-        RHI_IndexBuffer* index_buffer   = rhi_resources->index_buffers[buffer_index].get();
-        RHI_CommandList* cmd_list       = rhi_resources->queue->GetCurrentCommandList();
+        // get resources
+        bool is_main_window                 = window_data == nullptr;
+        ViewportRhiResources* rhi_resources = is_main_window ? &g_viewport_data : window_data->viewport_rhi_resources.get();
+        RHI_SwapChain* swapchain            = is_main_window ? Renderer::GetSwapChain() : window_data->swapchain.get();
+        uint32_t buffer_index               = rhi_resources->buffer_index;
+        rhi_resources->buffer_index         = (rhi_resources->buffer_index + 1) % buffer_count;
+        RHI_VertexBuffer* vertex_buffer     = rhi_resources->vertex_buffers[buffer_index].get();
+        RHI_IndexBuffer* index_buffer       = rhi_resources->index_buffers[buffer_index].get();
+        RHI_CommandList* cmd_list           = RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->GetCurrentCommandList();
 
         // update vertex and index buffers
         {
@@ -261,7 +252,7 @@ namespace ImGui::RHI
             }
         }
 
-        // define pipeline state
+        // set pipeline state
         static RHI_PipelineState pso = {};
         pso.name                     = "imgui";
         pso.shader_vertex            = g_shader_vertex.get();
@@ -269,14 +260,12 @@ namespace ImGui::RHI
         pso.rasterizer_state         = g_rasterizer_state.get();
         pso.blend_state              = g_blend_state.get();
         pso.depth_stencil_state      = g_depth_stencil_state.get();
-        pso.render_target_swapchain  = is_child_window ? window_data->swapchain.get() : Renderer::GetSwapChain();
+        pso.render_target_swapchain  = swapchain;
         pso.clear_color[0]           = clear ? Color::standard_black : rhi_color_dont_care;
 
         // begin
-        const char* name = is_child_window ? "imgui_window_child" : "imgui_window_main";
-        bool gpu_timing  = !is_child_window; // profiler requires more work when windows enter the main window and their command pool is destroyed
-
-        cmd_list->Begin();
+        const char* name = is_main_window ? "imgui_window_main" : "imgui_window_child";
+        bool gpu_timing  = is_main_window; // profiler requires more work when windows enter the main window and their command pool is destroyed
         cmd_list->BeginTimeblock(name, true, Spartan::Profiler::IsGpuTimingEnabled() && gpu_timing);
         cmd_list->SetPipelineState(pso);
         cmd_list->SetBufferVertex(vertex_buffer);
@@ -390,15 +379,7 @@ namespace ImGui::RHI
             }
         }
 
-        // submit
         cmd_list->EndTimeblock();
-        cmd_list->End();
-        cmd_list->Submit();
-
-        if (!is_child_window)
-        {
-            Spartan::Renderer::GetSwapChain()->Present();
-        }
     }
 
     void window_create(ImGuiViewport* viewport)
@@ -426,7 +407,6 @@ namespace ImGui::RHI
     {
         if (WindowData* window = static_cast<WindowData*>(viewport->RendererUserData))
         {
-            RHI_Device::QueueDestroy(window->viewport_rhi_resources->queue);
             delete window;
         }
 
@@ -447,7 +427,6 @@ namespace ImGui::RHI
     void window_present(ImGuiViewport* viewport, void*)
     {
         WindowData* window = static_cast<WindowData*>(viewport->RendererUserData);
-        SP_ASSERT(window->viewport_rhi_resources->queue->GetCurrentCommandList()->GetState() == Spartan::RHI_CommandListState::Submitted);
         window->swapchain->Present();
     }
 

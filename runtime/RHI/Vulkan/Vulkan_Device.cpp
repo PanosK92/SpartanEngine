@@ -217,6 +217,13 @@ namespace Spartan
         uint32_t index_compute  = invalid_index;
         uint32_t index_copy     = invalid_index;
 
+        shared_ptr<RHI_Queue> graphics_;
+        shared_ptr<RHI_Queue> compute_;
+        array<shared_ptr<RHI_Queue>, 3> immediate;
+        mutex mutex_immediate_execution;
+        condition_variable condition_variable_immediate_execution;
+        bool is_immediate_executing = false;
+
         uint32_t get_queue_family_index(const vector<VkQueueFamilyProperties>& queue_families, VkQueueFlags queue_flags)
         {
             // compute only queue family index
@@ -293,11 +300,12 @@ namespace Spartan
             return nullptr;
         }
 
-        vector<shared_ptr<RHI_Queue>> regular;
-        array<shared_ptr<RHI_Queue>, 3> immediate;
-        mutex mutex_immediate_execution;
-        condition_variable condition_variable_immediate_execution;
-        bool is_immediate_executing = false;
+        void destroy()
+        {
+            graphics = nullptr;
+            compute  = nullptr;
+            immediate.fill(nullptr);
+        }
     }
 
     namespace functions
@@ -1189,6 +1197,9 @@ namespace Spartan
 
             vkGetDeviceQueue(RHI_Context::device, queues::index_copy, 0, reinterpret_cast<VkQueue*>(&queues::copy));
             SetResourceName(queues::copy, RHI_Resource_Type::Queue, "copy");
+
+            queues::graphics_ = make_shared<RHI_Queue>(RHI_Queue_Type::Graphics, "graphics");
+            queues::compute_  = make_shared<RHI_Queue>(RHI_Queue_Type::Compute,  "compute");
         }
 
         vulkan_memory_allocator::initialize(app_info.apiVersion);
@@ -1205,17 +1216,19 @@ namespace Spartan
         // Make sure to call vmaSetCurrentFrameIndex() every frame.
         // Budget is queried from Vulkan inside of it to avoid overhead of querying it with every allocation.
         vmaSetCurrentFrameIndex(vulkan_memory_allocator::allocator, static_cast<uint32_t>(frame_count));
+
+        /// queues
+        queues::graphics_->Tick();
+        queues::compute_->Tick();
     }
 
     void RHI_Device::Destroy()
     {
         SP_ASSERT(queues::graphics != nullptr);
 
+        // destroy queues
         QueueWaitAll();
-
-        // destroy command queues
-        queues::regular.clear();
-        queues::immediate.fill(nullptr);
+        queues::destroy();
 
         // descriptor pool
         vkDestroyDescriptorPool(RHI_Context::device, descriptors::descriptor_pool, nullptr);
@@ -1345,11 +1358,11 @@ namespace Spartan
             vector<VkQueueFamilyProperties> queue_families_properties(queue_family_count);
             vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families_properties.data());
 
-            // Graphics
+            // graphics
             uint32_t index = 0;
             if (get_queue_family_index(VK_QUEUE_GRAPHICS_BIT, queue_families_properties, &index))
             {
-                QueueSetIndex(RHI_Queue_Type::Graphics, index);
+                queues::index_graphics = index;
             }
             else
             {
@@ -1357,10 +1370,10 @@ namespace Spartan
                 return false;
             }
 
-            // Compute
+            // compute
             if (get_queue_family_index(VK_QUEUE_COMPUTE_BIT, queue_families_properties, &index))
             {
-                QueueSetIndex(RHI_Queue_Type::Compute, index);
+                queues::index_compute = index;
             }
             else
             {
@@ -1368,10 +1381,10 @@ namespace Spartan
                 return false;
             }
 
-            // Copy
+            // copy
             if (get_queue_family_index(VK_QUEUE_TRANSFER_BIT, queue_families_properties, &index))
             {
-                QueueSetIndex(RHI_Queue_Type::Copy, index);
+                queues::index_copy = index;
             }
             else
             {
@@ -1468,7 +1481,6 @@ namespace Spartan
     void RHI_Device::QueueWait(const RHI_Queue_Type type)
     {
         lock_guard<mutex> lock(queues::mutex_queue);
-
         SP_VK_ASSERT_MSG(vkQueueWaitIdle(static_cast<VkQueue>(queues::get_from_enum(type))), "Failed to wait for queue");
     }
 
@@ -1490,20 +1502,15 @@ namespace Spartan
         return 0;
     }
 
-    void RHI_Device::QueueSetIndex(const RHI_Queue_Type type, const uint32_t index)
+    RHI_Queue* RHI_Device::GetQueue(const RHI_Queue_Type type)
     {
         if (type == RHI_Queue_Type::Graphics)
-        {
-            queues::index_graphics = index;
-        }
-        else if (type == RHI_Queue_Type::Copy)
-        {
-            queues::index_copy = index;
-        }
-        else if (type == RHI_Queue_Type::Compute)
-        {
-            queues::index_compute = index;
-        }
+            return queues::graphics_.get();
+
+        if (type == RHI_Queue_Type::Compute)
+            return queues::graphics_.get();
+
+        return nullptr;
     }
 
     // deletion queue
@@ -2034,16 +2041,15 @@ namespace Spartan
         uint32_t queue_index = static_cast<uint32_t>(queue_type);
         if (!queues::immediate[queue_index])
         {
-            queues::immediate[queue_index] = make_shared<RHI_Queue>("cmd_immediate_execution", 0, queue_type);
+            queues::immediate[queue_index] = make_shared<RHI_Queue>(queue_type, "cmd_immediate_execution");
         }
 
         // get command pool
-        RHI_Queue* cmd_pool = queues::immediate[queue_index].get();
+        RHI_Queue* queue = queues::immediate[queue_index].get();
+        queue->Tick();
+        queue->GetCurrentCommandList()->Begin(0);
 
-        cmd_pool->Tick();
-        cmd_pool->GetCurrentCommandList()->Begin();
-
-        return cmd_pool->GetCurrentCommandList();
+        return queue->GetCurrentCommandList();
     }
 
     void RHI_Device::CmdImmediateSubmit(RHI_CommandList* cmd_list)
@@ -2055,32 +2061,6 @@ namespace Spartan
         // signal that it's safe to proceed with the next ImmediateBegin()
         queues::is_immediate_executing = false;
         queues::condition_variable_immediate_execution.notify_one();
-    }
-
-    // command pools
-
-    RHI_Queue* RHI_Device::AllocateQueue(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type)
-    {
-        return queues::regular.emplace_back(make_shared<RHI_Queue>(name, swap_chain_id, queue_type)).get();
-    }
-
-    void RHI_Device::QueueDestroy(RHI_Queue* cmd_pool)
-    {
-        vector<shared_ptr<RHI_Queue>>::iterator it;
-        for (it = queues::regular.begin(); it != queues::regular.end();)
-        {
-            if (cmd_pool->GetObjectId() == (*it)->GetObjectId())
-            {
-                it = queues::regular.erase(it);
-                return;
-            }
-            it++;
-        }
-    }
-
-    const vector<shared_ptr<RHI_Queue>>& RHI_Device::GetQueues()
-    {
-        return queues::regular;
     }
 
     // markers

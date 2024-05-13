@@ -32,11 +32,10 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_Queue::RHI_Queue(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type) : SpObject()
+    RHI_Queue::RHI_Queue(const RHI_Queue_Type queue_type, const char* name) : SpObject()
     {
-        m_object_name   = name;
-        m_swap_chain_id = swap_chain_id;
-        m_queue_type    = queue_type;
+        m_object_name = name;
+        m_queue_type  = queue_type;
 
         // create command pools
         {
@@ -62,19 +61,15 @@ namespace Spartan
         for (uint32_t i = 0; i < cmd_lists_per_pool; i++)
         {
             string name = m_object_name + "_cmd_pool_0_" + to_string(0);
-            m_cmd_lists_0[i] = make_shared<RHI_CommandList>(queue_type, m_swap_chain_id, m_rhi_resources[0], name.c_str());
+            m_cmd_lists_0[i] = make_shared<RHI_CommandList>(queue_type, m_rhi_resources[0], name.c_str());
 
             name = m_object_name + "_cmd_pool_1_" + to_string(0);
-            m_cmd_lists_1[i] = make_shared<RHI_CommandList>(queue_type, m_swap_chain_id, m_rhi_resources[1], name.c_str());
+            m_cmd_lists_1[i] = make_shared<RHI_CommandList>(queue_type, m_rhi_resources[1], name.c_str());
         }
     }
 
     RHI_Queue::~RHI_Queue()
     {
-        // wait for GPU
-        RHI_Device::QueueWait(m_queue_type);
-
-        // free command lists
         for (uint32_t i = 0; i < cmd_lists_per_pool; i++)
         {
             VkCommandBuffer vk_cmd_buffer = reinterpret_cast<VkCommandBuffer>(m_cmd_lists_0[i]->GetRhiResource());
