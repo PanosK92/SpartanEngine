@@ -217,9 +217,9 @@ namespace Spartan
         uint32_t index_compute  = invalid_index;
         uint32_t index_copy     = invalid_index;
 
-        shared_ptr<RHI_Queue> graphics_;
-        shared_ptr<RHI_Queue> compute_;
-        array<shared_ptr<RHI_Queue>, 3> immediate;
+        array<shared_ptr<RHI_Queue>, 2> regular;   // graphics and compute
+        array<shared_ptr<RHI_Queue>, 3> immediate; // graphics, compute, and copy
+
         mutex mutex_immediate_execution;
         condition_variable condition_variable_immediate_execution;
         bool is_immediate_executing = false;
@@ -302,8 +302,7 @@ namespace Spartan
 
         void destroy()
         {
-            graphics = nullptr;
-            compute  = nullptr;
+            regular.fill(nullptr);
             immediate.fill(nullptr);
         }
     }
@@ -1187,7 +1186,7 @@ namespace Spartan
             SP_LOG_INFO("Vulkan %s", version_to_string(app_info.apiVersion).c_str());
         }
 
-        // get queues
+        // create queues
         {
             vkGetDeviceQueue(RHI_Context::device, queues::index_graphics, 0, reinterpret_cast<VkQueue*>(&queues::graphics));
             SetResourceName(queues::graphics, RHI_Resource_Type::Queue, "graphics");
@@ -1198,8 +1197,8 @@ namespace Spartan
             vkGetDeviceQueue(RHI_Context::device, queues::index_copy, 0, reinterpret_cast<VkQueue*>(&queues::copy));
             SetResourceName(queues::copy, RHI_Resource_Type::Queue, "copy");
 
-            queues::graphics_ = make_shared<RHI_Queue>(RHI_Queue_Type::Graphics, "graphics");
-            queues::compute_  = make_shared<RHI_Queue>(RHI_Queue_Type::Compute,  "compute");
+            queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Graphics)] = make_shared<RHI_Queue>(RHI_Queue_Type::Graphics, "graphics");
+            queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Compute)]  = make_shared<RHI_Queue>(RHI_Queue_Type::Compute, "compute");
         }
 
         vulkan_memory_allocator::initialize(app_info.apiVersion);
@@ -1217,9 +1216,11 @@ namespace Spartan
         // Budget is queried from Vulkan inside of it to avoid overhead of querying it with every allocation.
         vmaSetCurrentFrameIndex(vulkan_memory_allocator::allocator, static_cast<uint32_t>(frame_count));
 
-        /// queues
-        queues::graphics_->Tick();
-        queues::compute_->Tick();
+        // queues
+        for (uint32_t i = 0; i < static_cast<uint32_t>(queues::regular.size()); i++)
+        {
+            queues::regular[i]->Tick();
+        }
     }
 
     void RHI_Device::Destroy()
@@ -1505,10 +1506,10 @@ namespace Spartan
     RHI_Queue* RHI_Device::GetQueue(const RHI_Queue_Type type)
     {
         if (type == RHI_Queue_Type::Graphics)
-            return queues::graphics_.get();
+            return queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Graphics)].get();
 
         if (type == RHI_Queue_Type::Compute)
-            return queues::graphics_.get();
+            return queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Compute)].get();
 
         return nullptr;
     }
