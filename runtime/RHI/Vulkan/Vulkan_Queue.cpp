@@ -33,6 +33,16 @@ using namespace std;
 
 namespace Spartan
 {
+    namespace
+    {
+        static array<mutex, 3> mutexes;
+
+        mutex& get_mutex(RHI_Queue* queue)
+        {
+            return mutexes[static_cast<uint32_t>(queue->GetType())];
+        }
+    }
+
     RHI_Queue::RHI_Queue(const RHI_Queue_Type queue_type, const char* name) : SpObject()
     {
         m_object_name = name;
@@ -138,7 +148,7 @@ namespace Spartan
 
     void RHI_Queue::Wait()
     {
-        //lock_guard<mutex> lock(m_mutex);
+        lock_guard<mutex> lock(get_mutex(this));
         SP_VK_ASSERT_MSG(vkQueueWaitIdle(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type))), "Failed to wait for queue");
     }
 
@@ -149,7 +159,7 @@ namespace Spartan
         SP_ASSERT(semaphore != nullptr);
         SP_ASSERT(semaphore_timeline != nullptr);
 
-        lock_guard<mutex> lock(m_mutex);
+        lock_guard<mutex> lock(get_mutex(this));
 
         // semaphore binary
         VkSemaphoreSubmitInfo signal_semaphore_info = {};
@@ -206,7 +216,7 @@ namespace Spartan
         present_info.pSwapchains        = reinterpret_cast<VkSwapchainKHR*>(&swapchain);
         present_info.pImageIndices      = &image_index;
 
-        lock_guard<mutex> lock(m_mutex);
+        lock_guard<mutex> lock(get_mutex(this));
         void* queue = RHI_Device::GetQueueRhiResource(m_type);
         SP_VK_ASSERT_MSG(vkQueuePresentKHR(static_cast<VkQueue>(queue), &present_info), "Failed to present");
     }
