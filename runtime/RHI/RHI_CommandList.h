@@ -40,7 +40,6 @@ namespace Spartan
     {
         Idle,
         Recording,
-        Ended,
         Submitted
     };
 
@@ -51,7 +50,6 @@ namespace Spartan
         ~RHI_CommandList();
 
         void Begin(const RHI_Queue* queue);
-        void End();
         void Submit(RHI_Queue* queue, const uint64_t swapchain_id);
         void WaitForExecution();
         void SetPipelineState(RHI_PipelineState& pso);

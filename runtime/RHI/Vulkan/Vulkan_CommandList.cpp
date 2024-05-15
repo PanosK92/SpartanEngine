@@ -536,22 +536,14 @@ namespace Spartan
         }
     }
 
-    void RHI_CommandList::End()
-    {
-        SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        RenderPassEnd();
-
-        SP_ASSERT_MSG(
-            vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource)) == VK_SUCCESS,
-            "Failed to end command buffer"
-        );
-
-        m_state = RHI_CommandListState::Ended;
-    }
 
     void RHI_CommandList::Submit(RHI_Queue* queue, const uint64_t swapchain_id)
     {
-        SP_ASSERT(m_state == RHI_CommandListState::Ended);
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        // end
+        RenderPassEnd(); // only happens if needed
+        SP_VK_ASSERT_MSG(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource)), "Failed to end command buffer");
 
         // when minimized, or when entering/exiting fullscreen mode, the swapchain
         // won't present, and won't wait for this semaphore, so we need to reset it

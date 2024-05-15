@@ -435,11 +435,7 @@ namespace Spartan
 
     void RHI_SwapChain::Present()
     {
-        if (Window::IsMinimized())
-            return;
-
-        if (m_layouts[m_image_index] != RHI_Image_Layout::Present_Source)
-            return;
+        SP_ASSERT(m_layouts[m_image_index] == RHI_Image_Layout::Present_Source);
 
         m_wait_semaphores.clear();
         RHI_Queue* queue = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);

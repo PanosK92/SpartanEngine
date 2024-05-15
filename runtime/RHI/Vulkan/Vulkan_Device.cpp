@@ -1981,7 +1981,6 @@ namespace Spartan
 
     void RHI_Device::CmdImmediateSubmit(RHI_CommandList* cmd_list)
     {
-        cmd_list->End();
         cmd_list->Submit(queues::queue, 0);
         cmd_list->WaitForExecution();
 

@@ -771,7 +771,6 @@ namespace Spartan
         RHI_CommandList* cmd_list = queue->GetCommandList();
         if (cmd_list->GetState() == RHI_CommandListState::Recording)
         { 
-            cmd_list->End();
             cmd_list->Submit(queue, swap_chain->GetObjectId());
         }
 
