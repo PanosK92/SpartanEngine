@@ -21,15 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES =====================
 #include <memory>
 #include "RHI_Definitions.h"
-#include "../Core/SpObject.h"
-//============================
+#include "../Core/SpartanObject.h"
+//================================
 
 namespace Spartan
 {
-    class SP_CLASS RHI_RasterizerState : public SpObject
+    class SP_CLASS RHI_RasterizerState : public SpartanObject
     {
     public:
         RHI_RasterizerState() = default;

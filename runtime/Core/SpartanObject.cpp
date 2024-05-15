@@ -19,38 +19,46 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+//= INCLUDES =============
+#include "pch.h"
+#include "SpartanObject.h"
+//========================
 
-//= INCLUDES ===========
-#include <string>
-#include "Definitions.h"
-//======================
+//= NAMESPACES =====
+using namespace std;
+//==================
 
 namespace Spartan
 {
-    // globals
-    extern uint64_t g_id;
+    uint64_t g_id = 0;
 
-    class SP_CLASS SpObject
+    SpartanObject::SpartanObject()
     {
-    public:
-        SpObject();
-        
-        // name
-        const std::string& GetObjectName() const    { return m_object_name; }
-        void SetObjectName(const std::string& name) { m_object_name = name; }
+        m_object_id = GenerateObjectId();
+    }
 
-        // id
-        const uint64_t GetObjectId() const  { return m_object_id; }
-        void SetObjectId(const uint64_t id) { m_object_id = id; }
-        static uint64_t GenerateObjectId();
+    uint64_t SpartanObject::GenerateObjectId()
+    {
+        static mt19937_64 eng{ random_device{}() };
 
-        // sizes
-        const uint64_t GetObjectSize() const { return m_object_size; }
+        auto time_now     = chrono::high_resolution_clock::now().time_since_epoch().count();
+        auto thread_id    = hash<thread::id>()(this_thread::get_id());
+        auto random_value = eng();
 
-    protected:
-        std::string m_object_name;
-        uint64_t m_object_id   = 0;
-        uint64_t m_object_size = 0;
-    };
+        uint64_t a = static_cast<uint64_t>(time_now);
+        uint64_t b = static_cast<uint64_t>(thread_id);
+        uint64_t c = random_value;
+
+        // mix function based on Knuth's multiplicative method
+        // https://gist.github.com/badboy/6267743
+        a *= 2654435761u;
+        b *= 2654435761u;
+        c *= 2654435761u;
+
+        a ^= (a >> 16);
+        b ^= (b >> 16);
+        c ^= (c >> 16);
+
+        return a + b + c;
+    }
 }

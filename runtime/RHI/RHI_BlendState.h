@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES =====================
 #include "RHI_Definitions.h"
-#include "../Core/SpObject.h"
-//============================
+#include "../Core/SpartanObject.h"
+//================================
 
 namespace Spartan
 {
-    class SP_CLASS RHI_BlendState : public SpObject
+    class SP_CLASS RHI_BlendState : public SpartanObject
     {
     public:
         RHI_BlendState(

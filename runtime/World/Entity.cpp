@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "pch.h"
 #include "Entity.h"
-#include "World.h"
 #include "Components/Camera.h"
 #include "Components/Constraint.h"
 #include "Components/Light.h"
@@ -48,7 +47,7 @@ namespace Spartan
         {
             // clone basic properties
             shared_ptr<Entity> clone = World::CreateEntity();
-            clone->SetObjectId(SpObject::GenerateObjectId());
+            clone->SetObjectId(SpartanObject::GenerateObjectId());
             clone->SetObjectName(entity->GetObjectName());
             clone->SetActive(entity->IsActive());
             clone->SetHierarchyVisibility(entity->IsVisibleInHierarchy());

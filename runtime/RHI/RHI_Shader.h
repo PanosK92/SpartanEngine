@@ -21,15 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES =====================
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "../Core/SpObject.h"
+#include "../Core/SpartanObject.h"
 #include "RHI_Vertex.h"
 #include "RHI_Descriptor.h"
-//============================
+//================================
 
 namespace Spartan
 {
@@ -41,7 +41,7 @@ namespace Spartan
         Failed
     };
 
-    class SP_CLASS RHI_Shader : public SpObject
+    class SP_CLASS RHI_Shader : public SpartanObject
     {
     public:
         RHI_Shader();
