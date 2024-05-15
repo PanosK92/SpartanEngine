@@ -491,8 +491,11 @@ namespace Spartan
 
     void RHI_CommandList::Begin(const RHI_Queue* queue)
     {
-        SP_ASSERT(m_state == RHI_CommandListState::Idle);
-
+        if (m_state == RHI_CommandListState::Recording)
+        {
+            SP_LOG_WARNING("Discarding all previously recorded commands as the command list is already in recording state...");
+        }
+ 
         if (queue->GetType() != RHI_Queue_Type::Copy && m_timestamp_index != 0)
         {
             queries::timestamp::update(m_rhi_query_pool_timestamps, m_timestamp_index);
@@ -533,7 +536,6 @@ namespace Spartan
             queries::occlusion::reset(m_rhi_resource, m_rhi_query_pool_occlusion);
         }
     }
-
 
     void RHI_CommandList::Submit(RHI_Queue* queue, const uint64_t swapchain_id)
     {
