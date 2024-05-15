@@ -137,7 +137,7 @@ namespace Spartan
         {
             if (resource->GetResourceType() == type || type == ResourceType::Unknown)
             {
-                if (SpObject* object = dynamic_cast<SpObject*>(resource.get()))
+                if (SpartanObject* object = dynamic_cast<SpartanObject*>(resource.get()))
                 {
                     size += object->GetObjectSize();
                 }

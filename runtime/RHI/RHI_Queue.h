@@ -21,18 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
-#include "../Core/SpObject.h"
+//= INCLUDES =====================
+#include "../Core/SpartanObject.h"
 #include "RHI_Definitions.h"
 #include "RHI_CommandList.h"
 #include <array>
-//============================
+//================================
 
 namespace Spartan
 {
     const uint32_t cmd_lists_per_pool = 8;
 
-    class RHI_Queue : public SpObject
+    class RHI_Queue : public SpartanObject
     {
     public:
         RHI_Queue(const RHI_Queue_Type queue_type, const char* name);

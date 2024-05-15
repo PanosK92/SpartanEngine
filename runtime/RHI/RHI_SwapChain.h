@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES =====================
 #include <memory>
 #include <vector>
 #include <array>
 #include "RHI_Definitions.h"
-#include "../Core/SpObject.h"
-//============================
+#include "../Core/SpartanObject.h"
+//================================
 
 namespace Spartan
 {
@@ -35,7 +35,7 @@ namespace Spartan
     static const RHI_Format format_sdr    = RHI_Format::R8G8B8A8_Unorm;
     static const RHI_Format format_hdr    = RHI_Format::R10G10B10A2_Unorm;
 
-    class SP_CLASS RHI_SwapChain : public SpObject
+    class SP_CLASS RHI_SwapChain : public SpartanObject
     {
     public:
         RHI_SwapChain() = default;

@@ -54,7 +54,7 @@ public:
     {
         m_path        = path;
         m_icon        = icon;
-        m_id          = Spartan::SpObject::GenerateObjectId();
+        m_id          = Spartan::SpartanObject::GenerateObjectId();
         m_isDirectory = Spartan::FileSystem::IsDirectory(path);
         m_label       = Spartan::FileSystem::GetFileNameFromFilePath(path);
     }

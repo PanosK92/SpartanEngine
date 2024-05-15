@@ -36,7 +36,7 @@ namespace Spartan
     class FileStream;
     class Renderable;
     
-    class SP_CLASS Entity : public SpObject, public std::enable_shared_from_this<Entity>
+    class SP_CLASS Entity : public SpartanObject, public std::enable_shared_from_this<Entity>
     {
     public:
         Entity();

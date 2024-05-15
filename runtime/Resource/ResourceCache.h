@@ -158,7 +158,7 @@ namespace Spartan
                 (
                     GetResources().begin(),
                     GetResources().end(),
-                    [](std::shared_ptr<IResource> resource) { return dynamic_cast<SpObject*>(resource.get())->GetObjectId() == resource->GetObjectId(); }
+                    [](std::shared_ptr<IResource> resource) { return dynamic_cast<SpartanObject*>(resource.get())->GetObjectId() == resource->GetObjectId(); }
                 ),
                 GetResources().end()
             );

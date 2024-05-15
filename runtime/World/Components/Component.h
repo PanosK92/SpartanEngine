@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES ========================
 #include <memory>
 #include <string>
 #include <any>
 #include <vector>
 #include <functional>
-#include "../../Core/SpObject.h"
-//===============================
+#include "../../Core/SpartanObject.h"
+//===================================
 
 namespace Spartan
 {
@@ -55,7 +55,7 @@ namespace Spartan
         std::function<void(std::any)> setter;
     };
 
-    class SP_CLASS Component : public SpObject
+    class SP_CLASS Component : public SpartanObject
     {
     public:
         Component(std::weak_ptr<Entity> entity);

@@ -72,7 +72,7 @@ namespace Spartan
         }
     }
 
-    RHI_Shader::RHI_Shader() : SpObject()
+    RHI_Shader::RHI_Shader() : SpartanObject()
     {
 
     }

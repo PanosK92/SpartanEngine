@@ -43,7 +43,7 @@ namespace Spartan
         }
     }
 
-    RHI_Queue::RHI_Queue(const RHI_Queue_Type queue_type, const char* name) : SpObject()
+    RHI_Queue::RHI_Queue(const RHI_Queue_Type queue_type, const char* name) : SpartanObject()
     {
         m_object_name = name;
         m_type        = queue_type;

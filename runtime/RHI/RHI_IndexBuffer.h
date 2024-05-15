@@ -22,12 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =================
-#include "../Core/SpObject.h"
+#include "../Core/SpartanObject.h"
 //============================
 
 namespace Spartan
 {
-    class RHI_IndexBuffer : public SpObject
+    class RHI_IndexBuffer : public SpartanObject
     {
     public:
         RHI_IndexBuffer() = default;

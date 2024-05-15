@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
-#include "../Core/SpObject.h"
+//= INCLUDES =====================
+#include "../Core/SpartanObject.h"
 #include <vector>
 #include "RHI_Descriptor.h"
-//============================
+//================================
 
 // A descriptor set layout is created by individual descriptors.
 // The descriptors come from shader reflection and contain no resource pointers.
@@ -37,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  
 namespace Spartan
 {
-    class SP_CLASS RHI_DescriptorSetLayout : public SpObject
+    class SP_CLASS RHI_DescriptorSetLayout : public SpartanObject
     {
     public:
         RHI_DescriptorSetLayout() = default;
