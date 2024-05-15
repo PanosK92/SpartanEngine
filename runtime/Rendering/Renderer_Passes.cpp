@@ -502,20 +502,7 @@ namespace Spartan
         lock_guard lock(m_mutex_renderables);
         cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_color" : "shadow_maps_depth");
 
-        // clear here and not via the render pass, which can dynamically start and end based on various toggles
-        for (shared_ptr<Entity>& light_entity : lights)
-        {
-            shared_ptr<Light> light = light_entity->GetComponent<Light>();
-            if (!light)
-                continue;
-
-            if (RHI_Texture* render_target = is_transparent_pass ? light->GetColorTexture() : light->GetDepthTexture())
-            {
-                cmd_list->ClearRenderTarget(render_target, Color::standard_white, 0.0f);
-            }
-        }
-
-        // define shared pso
+        // set pso
         static RHI_PipelineState pso;
         pso.shader_vertex       = shader_v;
         pso.blend_state         = is_transparent_pass ? GetBlendState(Renderer_BlendState::Alpha).get() : GetBlendState(Renderer_BlendState::Off).get();
@@ -537,7 +524,7 @@ namespace Spartan
             if (is_transparent_pass && !light->IsFlagSet(LightFlags::ShadowsTransparent))
                 continue;
 
-            // define light pso
+            // set light pso
             {
                 pso.render_target_color_textures[0] = light->GetColorTexture();
                 pso.render_target_depth_texture     = light->GetDepthTexture();
@@ -556,6 +543,8 @@ namespace Spartan
             for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetArrayLength(); array_index++)
             {
                 pso.render_target_array_index = array_index;
+                pso.clear_depth               = 0.0f;
+                pso.clear_color[0]            = Color::standard_white;
 
                 // iterate over entities
                 int64_t index_start = !is_transparent_pass ? 0 : mesh_index_transparent;
