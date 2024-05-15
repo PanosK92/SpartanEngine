@@ -127,8 +127,6 @@ namespace Spartan
             // wait
             for (shared_ptr<RHI_CommandList> cmd_list : cmd_lists)
             {
-                SP_ASSERT(cmd_list->GetState() != RHI_CommandListState::Recording);
-
                 if (cmd_list->GetState() == RHI_CommandListState::Submitted)
                 {
                     cmd_list->WaitForExecution();

@@ -98,7 +98,7 @@ namespace Spartan
         m_state = RHI_CommandListState::Recording;
     }
 
-    void RHI_CommandList::End()
+    void RHI_CommandList::Submit(RHI_Queue* queue, const uint64_t swapchain_id)
     {
         // verify a few things
         SP_ASSERT(m_rhi_resource != nullptr);
@@ -107,11 +107,6 @@ namespace Spartan
         SP_ASSERT_MSG(SUCCEEDED(static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->Close()), "Failed to end command list");
 
         m_state = RHI_CommandListState::Ended;
-    }
-
-    void RHI_CommandList::Submit(RHI_Queue* queue, const uint64_t swapchain_id)
-    {
-
     }
 
     void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)

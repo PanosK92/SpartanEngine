@@ -209,8 +209,8 @@ namespace ImGui::RHI
         // get command list
         if (!is_main_window)
         {
-            // for independent windows, we another command list
-            // this is because it needs to begin/end independently from the main window
+            // for independent windows, we use another command list
+            // this is because it needs to begin, end and present independently
             queue->NextCommandList();
         }
 
@@ -397,7 +397,6 @@ namespace ImGui::RHI
 
         if (!is_main_window)
         {
-            cmd_list->End();
             cmd_list->Submit(queue, swapchain->GetObjectId());
         }
     }
@@ -424,7 +423,7 @@ namespace ImGui::RHI
         viewport->RendererUserData     = window;
     }
 
-   void window_destroy(ImGuiViewport* viewport)
+    void window_destroy(ImGuiViewport* viewport)
     {
         if (WindowData* window = static_cast<WindowData*>(viewport->RendererUserData))
         {
