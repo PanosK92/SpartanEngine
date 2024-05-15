@@ -458,10 +458,8 @@ namespace Spartan
         }
     }
 
-    RHI_CommandList::RHI_CommandList(void* cmd_pool, const char* name) : SpObject()
+    RHI_CommandList::RHI_CommandList(void* cmd_pool, const char* name)
     {
-        m_object_name = name;
-
         // command buffer
         {
             // define
@@ -549,7 +547,7 @@ namespace Spartan
         // won't present, and won't wait for this semaphore, so we need to reset it
         if (m_rendering_complete_semaphore->IsSignaled())
         {
-            m_rendering_complete_semaphore = make_shared<RHI_Semaphore>(false, m_object_name.c_str());
+            m_rendering_complete_semaphore = make_shared<RHI_Semaphore>(false, m_rendering_complete_semaphore_timeline->GetObjectName().c_str());
         }
 
         queue->Submit(

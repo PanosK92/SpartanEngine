@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Definitions.h"
 #include "RHI_PipelineState.h"
 #include "RHI_Descriptor.h"
-#include "../Core/SpObject.h"
 #include "../Rendering/Renderer_Definitions.h"
 //============================================
 
@@ -43,7 +42,7 @@ namespace Spartan
         Submitted
     };
 
-    class SP_CLASS RHI_CommandList : public SpObject
+    class SP_CLASS RHI_CommandList
     {
     public:
         RHI_CommandList(void* cmd_pool, const char* name);
