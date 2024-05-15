@@ -759,6 +759,12 @@ namespace Spartan
         }
 
         m_render_pass_active = true;
+
+        // remove clear values after starting the render pass to allow subsequent
+        // render passes to change state without clearing previous content
+        m_pso.clear_depth   = rhi_depth_load;
+        m_pso.clear_stencil = rhi_stencil_load;
+        m_pso.clear_color.fill(rhi_color_load);
     }
 
     void RHI_CommandList::RenderPassEnd()
