@@ -58,14 +58,16 @@ namespace
     { 
         vector<string> contributors =
         {
-            // name,              country,     button text, button url,                                               contribution,                   steam key
-            "Apostolos Bouzalas,  Greece,         LinkedIn, https://www.linkedin.com/in/apostolos-bouzalas,           Bug fixes,                      N/A",
-            "Iker Galardi,        Basque Country, LinkedIn, https://www.linkedin.com/in/iker-galardi/,                Linux port (WIP),               N/A",
-            "Jesse Guerrero,      US,             LinkedIn, https://www.linkedin.com/in/jguer,                        UX improvements,                N/A",
-            "Konstantinos Benos,  Greece,         Twitter,  https://twitter.com/deg3x,                                Editor theme & bug fixes,       N/A",
-            "Nick Polyderopoulos, Greece,         LinkedIn, https://www.linkedin.com/in/nick-polyderopoulos-21742397, UX improvements,                N/A",
-            "Panos Kolyvakis,     Greece,         LinkedIn, https://www.linkedin.com/in/panos-kolyvakis-66863421a/,   Improved water buoyancy,        N/A",
-            "Tri Tran,            Belgium,        LinkedIn, https://www.linkedin.com/in/mtrantr/,                     Days Gone screen space Shadows, Starfield"
+            // role,  name,                country,     button text,   button url,                                               contribution,                      steam key
+            "Spartan, Iker Galardi,        Basque Country, LinkedIn,   https://www.linkedin.com/in/iker-galardi/,                Linux port (WIP),                  N/A",
+            "Spartan, Jesse Guerrero,      US,             LinkedIn,   https://www.linkedin.com/in/jguer,                        UX improvements,                   N/A",
+            "Spartan, Konstantinos Benos,  Greece,         Twitter,    https://twitter.com/deg3x,                                Editor theme & bug fixes,          N/A",
+            "Spartan, Nick Polyderopoulos, Greece,         LinkedIn,   https://www.linkedin.com/in/nick-polyderopoulos-21742397, UX improvements,                   N/A",
+            "Spartan, Panos Kolyvakis,     Greece,         LinkedIn,   https://www.linkedin.com/in/panos-kolyvakis-66863421a/,   Improved water buoyancy,           N/A",
+            "Spartan, Tri Tran,            Belgium,        LinkedIn,   https://www.linkedin.com/in/mtrantr/,                     Days Gone screen space Shadows,    Starfield",
+
+            "Hoplite, Apostolos Bouzalas,  Greece,         LinkedIn,   https://www.linkedin.com/in/apostolos-bouzalas,           Bug fixes, N/A",
+            "Hoplite, Sandro Mtchedlidze,  Georgia,        Artstation, https://www.artstation.com/sandromch,                     Identified performance bottleneck, N/A",
         };
 
         vector<string> comma_seperate_contributors(const vector<string>& contributors)
@@ -122,9 +124,10 @@ namespace
                                                ImGuiTableFlags_RowBg          |
                                                ImGuiTableFlags_SizingFixedFit;
 
-                if (ImGui::BeginTable("##contributors_table", 5, flags, ImVec2(-1.0f)))
+                if (ImGui::BeginTable("##contributors_table", 6, flags, ImVec2(-1.0f)))
                 {
                     // headers
+                    ImGui::TableSetupColumn("Role");
                     ImGui::TableSetupColumn("Name");
                     ImGui::TableSetupColumn("Country");
                     ImGui::TableSetupColumn("URL");
@@ -141,18 +144,23 @@ namespace
                         // shift text down so that it's on the same line with the button
                         static const float y_shift = 6.0f;
 
-                        // name
+                        // role
                         ImGui::TableSetColumnIndex(0);
                         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
                         ImGui::Text(comma_seperated_contributors[index++].c_str());
 
-                        // country
+                        // name
                         ImGui::TableSetColumnIndex(1);
                         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
                         ImGui::Text(comma_seperated_contributors[index++].c_str());
 
-                        // button (URL)
+                        // country
                         ImGui::TableSetColumnIndex(2);
+                        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
+                        ImGui::Text(comma_seperated_contributors[index++].c_str());
+
+                        // button (url)
+                        ImGui::TableSetColumnIndex(3);
                         string& button_text = comma_seperated_contributors[index++];
                         string& button_url  = comma_seperated_contributors[index++];
                         ImGui::PushID(static_cast<uint32_t>(ImGui::GetCursorScreenPos().y));
@@ -163,12 +171,12 @@ namespace
                         ImGui::PopID();
 
                         // contribution
-                        ImGui::TableSetColumnIndex(3);
+                        ImGui::TableSetColumnIndex(4);
                         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
                         ImGui::Text(comma_seperated_contributors[index++].c_str());
 
                         // steam key award
-                        ImGui::TableSetColumnIndex(4);
+                        ImGui::TableSetColumnIndex(5);
                         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
                         ImGui::Text(comma_seperated_contributors[index++].c_str());
                     }
