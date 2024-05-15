@@ -64,6 +64,7 @@ namespace Spartan
         VariableRateShading,
         ResolutionScale,
         DynamicResolution,
+        OcclusionCulling,
         Max
     };
 

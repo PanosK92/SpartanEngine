@@ -625,7 +625,11 @@ namespace Spartan
 
         visibility::clear();
         visibility::frustum_cull_and_sort(m_renderables[Renderer_Entity::Mesh]);
-        visibility::determine_occluders(m_renderables[Renderer_Entity::Mesh]);
+
+        if (GetOption<bool>(Renderer_Option::OcclusionCulling))
+        {
+            visibility::determine_occluders(m_renderables[Renderer_Entity::Mesh]);
+        }
 
         cmd_list->EndTimeblock();
     }
