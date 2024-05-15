@@ -66,7 +66,7 @@ namespace
             "Spartan, Panos Kolyvakis,     Greece,         LinkedIn,   https://www.linkedin.com/in/panos-kolyvakis-66863421a/,   Improved water buoyancy,           N/A",
             "Spartan, Tri Tran,            Belgium,        LinkedIn,   https://www.linkedin.com/in/mtrantr/,                     Days Gone screen space Shadows,    Starfield",
 
-            "Hoplite, Apostolos Bouzalas,  Greece,         LinkedIn,   https://www.linkedin.com/in/apostolos-bouzalas,           Bug fixes, N/A",
+            "Hoplite, Apostolos Bouzalas,  Greece,         LinkedIn,   https://www.linkedin.com/in/apostolos-bouzalas,           Tested stability and performance,  N/A",
             "Hoplite, Sandro Mtchedlidze,  Georgia,        Artstation, https://www.artstation.com/sandromch,                     Identified performance bottleneck, N/A",
         };
 
