@@ -52,7 +52,6 @@ namespace Spartan
     {
         SP_ASSERT(cmd_pool != nullptr);
 
-        m_object_name           = name;
         m_rhi_cmd_pool_resource = cmd_pool;
 
         // create command list
@@ -90,7 +89,6 @@ namespace Spartan
         SP_ASSERT(m_rhi_resource != nullptr);
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
-        // unlike Vulkan, D3D12 wraps both begin and reset under Reset().
         SP_ASSERT_MSG(d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->Reset(
             static_cast<ID3D12CommandAllocator*>(m_rhi_cmd_pool_resource), nullptr)),
             "Failed to reset command list");
@@ -105,8 +103,6 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         SP_ASSERT_MSG(SUCCEEDED(static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->Close()), "Failed to end command list");
-
-        m_state = RHI_CommandListState::Ended;
     }
 
     void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)
