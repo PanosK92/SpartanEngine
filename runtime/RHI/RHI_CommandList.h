@@ -142,10 +142,11 @@ namespace Spartan
         void InsertBarrierTextureReadWrite(RHI_Texture* texture);
 
         // misc
-        RHI_Semaphore* GetRenderingCompleteSemaphore() { return m_rendering_complete_semaphore.get(); }
-        void* GetRhiResource() const                   { return m_rhi_resource; }
-        const RHI_CommandListState GetState() const    { return m_state; }
-        uint64_t GetSwapchainId() const                { return m_swapchain_id; }
+        void SetIgnoreClearValues(const bool ignore_clear_values) { m_ignore_clear_values = ignore_clear_values; }
+        RHI_Semaphore* GetRenderingCompleteSemaphore()            { return m_rendering_complete_semaphore.get(); }
+        void* GetRhiResource() const                              { return m_rhi_resource; }
+        const RHI_CommandListState GetState() const               { return m_state; }
+        uint64_t GetSwapchainId() const                           { return m_swapchain_id; }
 
     private:
         void RenderPassBegin();
@@ -160,6 +161,7 @@ namespace Spartan
         uint64_t m_index_buffer_id  = 0;
 
         // misc
+        bool m_ignore_clear_values                           = false;
         uint64_t m_swapchain_id                              = 0;
         uint32_t m_timestamp_index                           = 0;
         RHI_Pipeline* m_pipeline                             = nullptr;
