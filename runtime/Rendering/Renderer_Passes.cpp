@@ -315,6 +315,8 @@ namespace Spartan
                     renderable->GetVertexOffset()
                 );
             }
+
+            cmd_list->SetIgnoreClearValues(true);
         }
 
         void dynamic_resolution()
@@ -510,6 +512,7 @@ namespace Spartan
         pso.name                = is_transparent_pass ? "shadow_maps_color" : "shadow_maps_depth";
         pso.clear_depth         = 0.0f;
         pso.clear_color[0]      = Color::standard_white;
+        cmd_list->SetIgnoreClearValues(false);
 
         // iterate over lights
         for (shared_ptr<Entity>& light_entity : lights)
@@ -608,11 +611,10 @@ namespace Spartan
                     }
 
                     draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get(), light.get(), array_index);
-                    cmd_list->SetIgnoreClearValues(true);
                 }
             }
         }
-        cmd_list->SetIgnoreClearValues(false);
+
         cmd_list->EndTimeblock();
     }
 
@@ -655,7 +657,7 @@ namespace Spartan
         bool is_wireframe                     = GetOption<bool>(Renderer_Option::Wireframe);
         RHI_RasterizerState* rasterizer_state = is_wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe).get() : GetRasterizerState(Renderer_RasterizerState::Solid).get();
 
-        // define pipeline state
+        // set pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex               = shader_v;
         pso.shader_pixel                = shader_p;
@@ -665,17 +667,11 @@ namespace Spartan
         pso.vrs_input_texture           = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
         pso.render_target_depth_texture = tex_depth;
         pso.resolution_scale            = true;
-
-        // clear here as clearing from the render pass too complicated
-        // as they can dynamically start and end based on various toggles
-        if (!is_transparent_pass)
-        { 
-            cmd_list->ClearRenderTarget(tex_depth, Color::standard_black, 0.0f);
-            cmd_list->ClearRenderTarget(tex_depth_backface, Color::standard_black, 0.0f);
-        }
+        pso.clear_depth                 = !is_transparent_pass ? 0.0f : rhi_depth_load;
 
         auto pass = [cmd_list, shader_h, shader_d, shader_p, is_wireframe](bool is_transparent_pass, bool is_back_face_pass)
         {
+            bool set_pipeline = true;
             int64_t index_start = !is_transparent_pass ? 0 : mesh_index_transparent;
             int64_t index_end   = !is_transparent_pass ? mesh_index_transparent : static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size());
             for (int64_t i = index_start; i < index_end; i++)
@@ -691,14 +687,12 @@ namespace Spartan
 
                 // toggles
                 {
-                    bool toggled = false;
-
                     // instancing
                     if (pso.instancing != renderable->HasInstancing())
                     {
                         pso.instancing   = renderable->HasInstancing();
                         pso.shader_pixel = pso.instancing ? shader_p : nullptr; // vegetation is instanced and uses alpha testing (not ideal way to handle this)
-                        toggled          = true;
+                        set_pipeline     = true;
                     }
 
                     // tessellation & culling
@@ -717,13 +711,14 @@ namespace Spartan
                         {
                             pso.shader_hull   = is_tessellated ? shader_h : nullptr;
                             pso.shader_domain = is_tessellated ? shader_d : nullptr;
-                            toggled           = true;
+                            set_pipeline       = true;
                         }
                     }
 
-                    if (toggled)
+                    if (set_pipeline)
                     {
                         cmd_list->SetPipelineState(pso);
+                        set_pipeline = false;
                     }
                 }
 
@@ -772,23 +767,20 @@ namespace Spartan
 
         if (!is_transparent_pass) // opaque
         {
-            cmd_list->SetPipelineState(pso);
-
+            cmd_list->SetIgnoreClearValues(false);
             pass(false, false);
-
             visibility::get_gpu_occlusion_query_results(cmd_list, m_renderables);
             cmd_list->Blit(tex_depth, tex_depth_opaque, false);
         }
         else // transparent
         {
-            cmd_list->SetPipelineState(pso);
             pass(true ,false);
         }
 
         // back face
         {
             pso.render_target_depth_texture = tex_depth_backface;
-            cmd_list->SetPipelineState(pso);
+            cmd_list->SetIgnoreClearValues(false);
             pass(false, true);
         }
 
@@ -826,7 +818,7 @@ namespace Spartan
         bool is_wireframe                     = GetOption<bool>(Renderer_Option::Wireframe);
         RHI_RasterizerState* rasterizer_state = is_wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe).get() : GetRasterizerState(Renderer_RasterizerState::Solid).get();
 
-        // define pipeline state
+        // set pipeline state
         static RHI_PipelineState pso;
         pso.name                            = is_transparent_pass ? "g_buffer_transparent" : "g_buffer";
         pso.shader_vertex                   = shader_v;
@@ -841,17 +833,11 @@ namespace Spartan
         pso.render_target_color_textures[2] = tex_material;
         pso.render_target_color_textures[3] = tex_velocity;
         pso.render_target_depth_texture     = tex_depth;
-
-        // clear here as clearing from the render pass too complicated
-        // as they can dynamically start and end based on various toggles
-        if (!is_transparent_pass)
-        {
-            cmd_list->ClearRenderTarget(pso.render_target_color_textures[0], Color::standard_transparent, 0.0f);
-            cmd_list->ClearRenderTarget(pso.render_target_color_textures[1], Color::standard_transparent, 0.0f);
-            cmd_list->ClearRenderTarget(pso.render_target_color_textures[2], Color::standard_transparent, 0.0f);
-            cmd_list->ClearRenderTarget(pso.render_target_color_textures[3], Color::standard_transparent, 0.0f);
-        }
-
+        pso.clear_color[0]                  = !is_transparent_pass ? Color::standard_transparent : rhi_color_load;
+        pso.clear_color[1]                  = !is_transparent_pass ? Color::standard_transparent : rhi_color_load;
+        pso.clear_color[2]                  = !is_transparent_pass ? Color::standard_transparent : rhi_color_load;
+        pso.clear_color[3]                  = !is_transparent_pass ? Color::standard_transparent : rhi_color_load;
+        cmd_list->SetIgnoreClearValues(false);
         cmd_list->SetPipelineState(pso);
 
         int64_t index_start = !is_transparent_pass ? 0 : mesh_index_transparent;
