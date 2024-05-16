@@ -113,7 +113,8 @@ namespace
 
             vector<string> comma_seperated_contributors = comma_seperate_contributors(contributors);
 
-            string window_title = "Spartan " + to_string(sp_info::version_major) + "." + to_string(sp_info::version_minor) + "." + to_string(sp_info::version_revision);
+            static const string window_title  = "Spartan " + to_string(sp_info::version_major) + "." + to_string(sp_info::version_minor) + "." + to_string(sp_info::version_revision);
+            const ImGuiTableFlags table_flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit;
 
             ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
             ImGui::SetNextWindowFocus();
@@ -121,21 +122,28 @@ namespace
             {
                 ImGui::BeginGroup();
                 {
+                    // shift text that the buttons and the text align
+                    static const float y_shift = 6.0f;
+
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
                     ImGui::Text("Creator");
 
                     ImGui::SameLine();
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - y_shift);
                     if (ImGuiSp::button("Panos Karabelas"))
                     {
                         Spartan::FileSystem::OpenUrl("https://panoskarabelas.com/");
                     }
 
                     ImGui::SameLine();
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - y_shift);
                     if (ImGuiSp::button("GitHub"))
                     {
                         Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine");
                     }
 
                     ImGui::SameLine();
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - y_shift);
                     if (ImGuiSp::button("X"))
                     {
                         Spartan::FileSystem::OpenUrl("https://twitter.com/panoskarabelas1");
@@ -172,61 +180,15 @@ namespace
                 }
                 ImGui::EndGroup();
 
-                // group: third party libraries
                 ImGui::Separator();
-                ImGui::BeginGroup();
-                {
-                    ImGui::Text("Third party libraries");
-
-                    const ImGuiTableFlags flags = ImGuiTableFlags_Borders |
-                                                  ImGuiTableFlags_RowBg   |
-                                                  ImGuiTableFlags_SizingStretchProp;
-
-                    if (ImGui::BeginTable("##third_party_libs_table", 3, flags, ImVec2(ImGui::GetContentRegionAvail().x * 0.46f, 0.0f)))
-                    {
-                        ImGui::TableSetupColumn("Name");
-                        ImGui::TableSetupColumn("Version");
-                        ImGui::TableSetupColumn("URL");
-                        ImGui::TableHeadersRow();
-
-                        for (const Spartan::third_party_lib& lib : Spartan::Settings::GetThirdPartyLibs())
-                        {
-                            // switch row
-                            ImGui::TableNextRow();
-
-                            // name
-                            ImGui::TableSetColumnIndex(0);
-                            ImGui::Text(lib.name.c_str());
-
-                            // version
-                            ImGui::TableSetColumnIndex(1);
-                            ImGui::Text(lib.version.c_str());
-
-                            // url
-                            ImGui::TableSetColumnIndex(2);
-                            ImGui::PushID(lib.url.c_str());
-                            if (ImGuiSp::button(lib.url.c_str()))
-                            {
-                                Spartan::FileSystem::OpenUrl(lib.url);
-                            }
-                            ImGui::PopID();
-                        }
-                        ImGui::EndTable();
-                    }
-                }
-                ImGui::EndGroup();
+                ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
                 // group: contributors
                 ImGui::SameLine();
                 ImGui::BeginGroup();
                 {
                     ImGui::Text("Contributors");
-
-                    const ImGuiTableFlags flags = ImGuiTableFlags_Borders |
-                        ImGuiTableFlags_RowBg |
-                        ImGuiTableFlags_SizingFixedFit;
-
-                    if (ImGui::BeginTable("##contributors_table", 6, flags))
+                    if (ImGui::BeginTable("##contributors_table", 6, table_flags, ImVec2(ImGui::GetContentRegionAvail().x * 0.55f, 0.0f)))
                     {
                         ImGui::TableSetupColumn("Role");
                         ImGui::TableSetupColumn("Name");
@@ -263,7 +225,7 @@ namespace
                             // button (url)
                             ImGui::TableSetColumnIndex(3);
                             string& button_text = comma_seperated_contributors[index++];
-                            string& button_url = comma_seperated_contributors[index++];
+                            string& button_url  = comma_seperated_contributors[index++];
                             ImGui::PushID(static_cast<uint32_t>(ImGui::GetCursorScreenPos().y));
                             if (ImGui::Button(button_text.c_str()))
                             {
@@ -283,6 +245,54 @@ namespace
                         }
                     }
                     ImGui::EndTable();
+
+                    // group: role explanations
+                    ImGui::BeginGroup();
+                    {
+                        ImGui::Text("Role explanations");
+                        ImGui::Text("Spartan: Made code contributions that fixed or added significant new functionality.");
+                        ImGui::Text("Hoplite: Provided valuable insights, suggestions, or other non-code contributions that improved the project.");
+                    }
+                    ImGui::EndGroup();
+                }
+                ImGui::EndGroup();
+
+                // group: third party libraries
+                ImGui::SameLine();
+                ImGui::BeginGroup();
+                {
+                    ImGui::Text("Third party libraries");
+                    if (ImGui::BeginTable("##third_party_libs_table", 3, table_flags))
+                    {
+                        ImGui::TableSetupColumn("Name");
+                        ImGui::TableSetupColumn("Version");
+                        ImGui::TableSetupColumn("URL");
+                        ImGui::TableHeadersRow();
+
+                        for (const Spartan::third_party_lib& lib : Spartan::Settings::GetThirdPartyLibs())
+                        {
+                            // switch row
+                            ImGui::TableNextRow();
+
+                            // name
+                            ImGui::TableSetColumnIndex(0);
+                            ImGui::Text(lib.name.c_str());
+
+                            // version
+                            ImGui::TableSetColumnIndex(1);
+                            ImGui::Text(lib.version.c_str());
+
+                            // url
+                            ImGui::TableSetColumnIndex(2);
+                            ImGui::PushID(lib.url.c_str());
+                            if (ImGuiSp::button(lib.url.c_str()))
+                            {
+                                Spartan::FileSystem::OpenUrl(lib.url);
+                            }
+                            ImGui::PopID();
+                        }
+                        ImGui::EndTable();
+                    }
                 }
                 ImGui::EndGroup();
             }
