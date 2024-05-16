@@ -507,7 +507,9 @@ namespace Spartan
         pso.shader_vertex       = shader_v;
         pso.blend_state         = is_transparent_pass ? GetBlendState(Renderer_BlendState::Alpha).get() : GetBlendState(Renderer_BlendState::Off).get();
         pso.depth_stencil_state = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Read).get() : GetDepthStencilState(Renderer_DepthStencilState::ReadWrite).get();
-        pso.name                = "shadow_maps";
+        pso.name                = is_transparent_pass ? "shadow_maps_color" : "shadow_maps_depth";
+        pso.clear_depth         = 0.0f;
+        pso.clear_color[0]      = Color::standard_white;
 
         // iterate over lights
         for (shared_ptr<Entity>& light_entity : lights)
@@ -543,8 +545,7 @@ namespace Spartan
             for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetArrayLength(); array_index++)
             {
                 pso.render_target_array_index = array_index;
-                pso.clear_depth               = 0.0f;
-                pso.clear_color[0]            = Color::standard_white;
+                cmd_list->SetIgnoreClearValues(false);
 
                 // iterate over entities
                 int64_t index_start = !is_transparent_pass ? 0 : mesh_index_transparent;
@@ -601,18 +602,17 @@ namespace Spartan
                             );
 
                             m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
-
-
                         }
 
                         cmd_list->PushConstants(m_pcb_pass_cpu);
                     }
 
                     draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get(), light.get(), array_index);
+                    cmd_list->SetIgnoreClearValues(true);
                 }
             }
         }
-
+        cmd_list->SetIgnoreClearValues(false);
         cmd_list->EndTimeblock();
     }
 
