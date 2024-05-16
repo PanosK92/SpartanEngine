@@ -16,7 +16,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.9'  # Specify your required Python version
+          python-version: '3.9'
 
       - name: Install Python dependencies
         run: python -m pip install requests tqdm
@@ -34,47 +34,32 @@ jobs:
       - name: Build
         shell: cmd
         run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m spartan.sln'
-        
-      #- name: Run engine
-      #  if: matrix.api != 'd3d12'
-      #  shell: cmd
-      #  run: build_scripts\ci_test.bat ${{ matrix.api }}
-      #
-      #- name: Check run results
-      #  if: matrix.api != 'd3d12'
-      #  shell: pwsh
-      #  run: |
-      #    $file = "binaries/ci_test.txt"
-      #    if (Test-Path $file) {
-      #        $content = Get-Content $file
-      #        if ($content -eq "0") {
-      #            Write-Output "Engine boot-up successful."
-      #        } else {
-      #            Write-Error "Engine boot-up indicated a failure."
-      #            exit 1
-      #        }
-      #    } else {
-      #        Write-Error "ci_test.txt not found. Engine boot-up failed."
-      #        exit 1
-      #    }
 
-      - name: Create artifact
+      - name: Create artifacts
         if: github.event_name != 'pull_request' && matrix.api != 'd3d12'
         shell: cmd
-        run: build_scripts\package_artifact.bat ${{ matrix.api }}
-      
-      - name: Upload artifact
+        run: |
+          build_scripts\package_artifact.bat ${{ matrix.api }}
+          build_scripts\7z.exe a binaries_only_${{ matrix.api }}.7z .\binaries\dxcompiler.dll .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
+
+      - name: Upload full artifact
         if: github.event_name != 'pull_request' && matrix.api != 'd3d12'
         uses: actions/upload-artifact@v4
         with:
           name: build_${{ matrix.api }}
           path: build_${{ matrix.api }}.7z
 
+      - name: Upload binaries-only artifact
+        if: github.event_name != 'pull_request' && matrix.api != 'd3d12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries_only_${{ matrix.api }}
+          path: binaries_only_${{ matrix.api }}.7z
+
   release:
     if: github.event_name != 'pull_request'
     runs-on: "ubuntu-latest"
-    needs:
-      - build
+    needs: build
     permissions:
       contents: write
     steps:
@@ -86,6 +71,12 @@ jobs:
         with:
           name: build_vulkan
           path: build_vulkan.7z
+
+      - name: Download vulkan binaries-only build
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries_only_vulkan
+          path: binaries_only_vulkan.7z
       
       - name: Publish release
         uses: "marvinpinto/action-automatic-releases@latest"
@@ -94,4 +85,6 @@ jobs:
           automatic_release_tag: "latest"
           prerelease: true
           title: "Development Build"
-          files: build_vulkan.7z
+          files: |
+            build_vulkan.7z
+            binaries_only_vulkan.7z
