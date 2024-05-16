@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_FidelityFX.h"
+#include "../RHI/RHI_RasterizerState.h"
 #include "ProgressTracker.h"
 //======================================
 
@@ -650,26 +651,7 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_h->IsCompiled() || !shader_d->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        lock_guard lock(m_mutex_renderables);
-        cmd_list->BeginTimeblock(!is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent");
-
-        // deduce rasterizer state
-        bool is_wireframe                     = GetOption<bool>(Renderer_Option::Wireframe);
-        RHI_RasterizerState* rasterizer_state = is_wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe).get() : GetRasterizerState(Renderer_RasterizerState::Solid).get();
-
-        // set pipeline state
-        static RHI_PipelineState pso;
-        pso.shader_vertex               = shader_v;
-        pso.shader_pixel                = shader_p;
-        pso.rasterizer_state            = rasterizer_state;
-        pso.blend_state                 = GetBlendState(Renderer_BlendState::Off).get();
-        pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite).get();
-        pso.vrs_input_texture           = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
-        pso.render_target_depth_texture = tex_depth;
-        pso.resolution_scale            = true;
-        pso.clear_depth                 = !is_transparent_pass ? 0.0f : rhi_depth_load;
-
-        auto pass = [cmd_list, shader_h, shader_d, shader_p, is_wireframe](bool is_transparent_pass, bool is_back_face_pass)
+        auto pass = [cmd_list, shader_h, shader_d, shader_p](RHI_PipelineState& pso, bool is_transparent_pass, bool is_back_face_pass)
         {
             bool set_pipeline = true;
             int64_t index_start = !is_transparent_pass ? 0 : mesh_index_transparent;
@@ -703,7 +685,7 @@ namespace Spartan
                             continue;
 
                         RHI_CullMode cull_mode = (is_back_face_pass && has_sss) ? RHI_CullMode::Front : static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
-                        cull_mode              = is_wireframe ? RHI_CullMode::None : cull_mode;
+                        cull_mode              = (pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe) ? RHI_CullMode::None : cull_mode;
                         cmd_list->SetCullMode(cull_mode);
 
                         bool is_tessellated = material->IsTessellated();
@@ -765,23 +747,44 @@ namespace Spartan
             }
         };
 
+        cmd_list->BeginTimeblock(!is_transparent_pass ? "depth_prepass" : "depth_prepass_transparent");
+
+        // deduce rasterizer state
+        bool is_wireframe                     = GetOption<bool>(Renderer_Option::Wireframe);
+        RHI_RasterizerState* rasterizer_state = is_wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe).get() : GetRasterizerState(Renderer_RasterizerState::Solid).get();
+
+        // set pipeline state
+        static RHI_PipelineState pso;
+        pso.shader_vertex               = shader_v;
+        pso.shader_pixel                = shader_p;
+        pso.rasterizer_state            = rasterizer_state;
+        pso.blend_state                 = GetBlendState(Renderer_BlendState::Off).get();
+        pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite).get();
+        pso.vrs_input_texture           = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
+        pso.render_target_depth_texture = tex_depth;
+        pso.resolution_scale            = true;
+        pso.clear_depth                 = !is_transparent_pass ? 0.0f : rhi_depth_load;
+
+
+        lock_guard lock(m_mutex_renderables);
+
         if (!is_transparent_pass) // opaque
         {
             cmd_list->SetIgnoreClearValues(false);
-            pass(false, false);
+            pass(pso, false, false);
             visibility::get_gpu_occlusion_query_results(cmd_list, m_renderables);
             cmd_list->Blit(tex_depth, tex_depth_opaque, false);
         }
         else // transparent
         {
-            pass(true ,false);
+            pass(pso, true ,false);
         }
 
         // back face
         {
             pso.render_target_depth_texture = tex_depth_backface;
             cmd_list->SetIgnoreClearValues(false);
-            pass(false, true);
+            pass(pso, false, true);
         }
 
         // blit to an output resolution texture
@@ -811,7 +814,6 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_h->IsCompiled() || !shader_d->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        lock_guard lock(m_mutex_renderables);
         cmd_list->BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
 
         // deduce rasterizer state
@@ -840,6 +842,7 @@ namespace Spartan
         cmd_list->SetIgnoreClearValues(false);
         cmd_list->SetPipelineState(pso);
 
+        lock_guard lock(m_mutex_renderables);
         int64_t index_start = !is_transparent_pass ? 0 : mesh_index_transparent;
         int64_t index_end   = !is_transparent_pass ? mesh_index_transparent : static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size());
         for (int64_t i = index_start; i < index_end; i++)
