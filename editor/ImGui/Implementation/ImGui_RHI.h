@@ -415,7 +415,7 @@ namespace ImGui::RHI
             static_cast<uint32_t>(viewport->Size.y),
             RHI_Present_Mode::Immediate,
             2,
-            false,
+            Spartan::Display::GetHdr(),
             (string("swapchain_child_") + string(to_string(viewport->ID))).c_str()
         );
 
