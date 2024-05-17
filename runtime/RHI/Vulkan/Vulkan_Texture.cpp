@@ -271,11 +271,6 @@ namespace Spartan
         }
     }
 
-    void RHI_Texture::RHI_SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const uint32_t mip_start, const uint32_t mip_range)
-    {
-        cmd_list->InsertBarrierTexture(this, mip_start, mip_range, m_array_length, m_layout[mip_start], new_layout);
-    }
-
     bool RHI_Texture::RHI_CreateResource()
     {
         SP_ASSERT_MSG(m_width  != 0, "Width can't be zero");
