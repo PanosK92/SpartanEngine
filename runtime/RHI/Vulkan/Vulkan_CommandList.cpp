@@ -71,9 +71,9 @@ namespace Spartan
             return VK_ATTACHMENT_LOAD_OP_CLEAR;
         };
 
-        VkPipelineStageFlags2 layout_to_access_mask(const VkImageLayout layout, const bool is_destination_mask, const bool is_depth)
+        VkAccessFlags2 layout_to_access_mask(const VkImageLayout layout, const bool is_destination_mask, const bool is_depth)
         {
-            VkPipelineStageFlags2 access_mask = 0;
+            VkAccessFlags2 access_mask = 0;
 
             switch (layout)
             {
