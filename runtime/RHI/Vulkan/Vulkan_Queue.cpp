@@ -35,6 +35,7 @@ namespace Spartan
 {
     namespace
     {
+        uint64_t timeline_value = 0;
         array<mutex, 3> mutexes;
 
         mutex& get_mutex(RHI_Queue* queue)
@@ -151,37 +152,37 @@ namespace Spartan
         SP_ASSERT(semaphore != nullptr);
         SP_ASSERT(semaphore_timeline != nullptr);
 
+        lock_guard<mutex> lock(get_mutex(this));
+        VkSemaphoreSubmitInfo semaphores[2] = {};
+
         // semaphore binary
-        VkSemaphoreSubmitInfo signal_semaphore_info = {};
-        signal_semaphore_info.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
-        signal_semaphore_info.semaphore             = static_cast<VkSemaphore>(semaphore->GetRhiResource());
-        signal_semaphore_info.value                 = 0; // ignored for binary semaphores
+        semaphores[0].sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
+        semaphores[0].semaphore = static_cast<VkSemaphore>(semaphore->GetRhiResource());
+        semaphores[1].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR; // todo: adjust based on the queue
+        semaphores[0].value     = 0; // ignored for binary semaphores
 
         // semaphore timeline
-        VkSemaphoreSubmitInfo timeline_semaphore_info = {};
-        timeline_semaphore_info.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
-        timeline_semaphore_info.semaphore             = static_cast<VkSemaphore>(semaphore_timeline->GetRhiResource());
-        timeline_semaphore_info.stageMask             = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR; // todo: adjust based on the queue
-        static uint64_t timeline_value                = 0;
-        timeline_semaphore_info.value                 = ++timeline_value;
+        semaphores[1].sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
+        semaphores[1].semaphore = static_cast<VkSemaphore>(semaphore_timeline->GetRhiResource());
+        semaphores[1].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR; // todo: adjust based on the queue
+        semaphores[1].value     = ++timeline_value; // signal
+        semaphore_timeline->SetWaitValue(semaphores[1].value);
 
-        lock_guard<mutex> lock(get_mutex(this));
-        semaphore_timeline->SetWaitValue(timeline_semaphore_info.value);
-
+        // command buffer
+        VkCommandBufferSubmitInfo cmd_buffer_info = {};
+        cmd_buffer_info.sType                     = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO_KHR;
+        cmd_buffer_info.commandBuffer             = *reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
+  
         // submit
         {
-            VkSubmitInfo2 submit_info                 = {};
-            submit_info.sType                         = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-            submit_info.waitSemaphoreInfoCount        = 0;
-            submit_info.pWaitSemaphoreInfos           = nullptr;
-            submit_info.signalSemaphoreInfoCount      = 2;
-            VkSemaphoreSubmitInfo semaphore_infos[]   = { signal_semaphore_info, timeline_semaphore_info };
-            submit_info.pSignalSemaphoreInfos         = semaphore_infos;
-            submit_info.commandBufferInfoCount        = 1;
-            VkCommandBufferSubmitInfo cmd_buffer_info = {};
-            cmd_buffer_info.sType                     = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO_KHR;
-            cmd_buffer_info.commandBuffer             = *reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
-            submit_info.pCommandBufferInfos           = &cmd_buffer_info;
+            VkSubmitInfo2 submit_info            = {};
+            submit_info.sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+            submit_info.waitSemaphoreInfoCount   = 0;
+            submit_info.pWaitSemaphoreInfos      = nullptr;
+            submit_info.signalSemaphoreInfoCount = 2;
+            submit_info.pSignalSemaphoreInfos    = semaphores;
+            submit_info.commandBufferInfoCount   = 1;
+            submit_info.pCommandBufferInfos      = &cmd_buffer_info;
 
             void* queue = RHI_Device::GetQueueRhiResource(m_type);
             SP_ASSERT_VK_MSG(vkQueueSubmit2(static_cast<VkQueue>(queue), 1, &submit_info, nullptr), "Failed to submit");
