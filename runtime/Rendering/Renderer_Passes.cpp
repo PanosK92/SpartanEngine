@@ -653,7 +653,7 @@ namespace Spartan
 
         auto pass = [cmd_list, shader_h, shader_d, shader_p](RHI_PipelineState& pso, bool is_transparent_pass, bool is_back_face_pass)
         {
-            bool set_pipeline = true;
+            bool set_pipeline   = true;
             int64_t index_start = !is_transparent_pass ? 0 : mesh_index_transparent;
             int64_t index_end   = !is_transparent_pass ? mesh_index_transparent : static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size());
             for (int64_t i = index_start; i < index_end; i++)
@@ -733,14 +733,14 @@ namespace Spartan
                     cmd_list->PushConstants(m_pcb_pass_cpu);
                 }
 
-                if (!is_transparent_pass)
+                if (GetOption<bool>(Renderer_Option::OcclusionCulling) && !is_transparent_pass)
                 {
                     cmd_list->BeginOcclusionQuery(entity->GetObjectId());
                 }
 
                 draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
 
-                if (!is_transparent_pass)
+                if (GetOption<bool>(Renderer_Option::OcclusionCulling) && !is_transparent_pass)
                 {
                     cmd_list->EndOcclusionQuery();
                 }
