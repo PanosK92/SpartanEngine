@@ -141,10 +141,6 @@ namespace Spartan
                 access_mask = VK_ACCESS_2_SHADER_READ_BIT;
                 break;
 
-            case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
-                access_mask = VK_ACCESS_2_SHADER_READ_BIT;
-                break;
-
             default:
                 SP_ASSERT_MSG(false, "Unhandled layout");
                 break;
@@ -1364,7 +1360,7 @@ namespace Spartan
             else
             {
                 SP_ASSERT(texture->IsSrv());
-                target_layout = RHI_Image_Layout::Shader_Read;
+                target_layout = texture->IsColorFormat() ? RHI_Image_Layout::Shader_Read : RHI_Image_Layout::Shader_Read_Depth;
             }
 
             // verify that an appropriate layout has been deduced
@@ -1588,7 +1584,7 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(image != nullptr);
-        RenderPassEnd();
+        RenderPassEnd(); // you can't have a barrier inside a render pass
 
         VkImageMemoryBarrier2 image_barrier           = {};
         image_barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR;

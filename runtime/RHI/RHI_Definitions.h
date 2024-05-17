@@ -284,6 +284,7 @@ namespace Spartan
         Attachment,
         Shading_Rate_Attachment,
         Shader_Read,
+        Shader_Read_Depth,
         Transfer_Source,
         Transfer_Destination,
         Present_Source,
