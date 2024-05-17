@@ -209,8 +209,8 @@ namespace Spartan
         SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc is not initialized");
 
         // capture the next frame
-        //rdc_api->TriggerCapture();
-        rdc_api->TriggerMultiFrameCapture(2);
+        rdc_api->TriggerCapture();
+        //rdc_api->TriggerMultiFrameCapture(2);
 
         LaunchRenderDocUi();
     }
