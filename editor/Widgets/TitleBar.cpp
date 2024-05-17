@@ -188,7 +188,7 @@ namespace
                 ImGui::BeginGroup();
                 {
                     ImGui::Text("Contributors");
-                    if (ImGui::BeginTable("##contributors_table", 6, table_flags, ImVec2(ImGui::GetContentRegionAvail().x * 0.55f, 0.0f)))
+                    if (ImGui::BeginTable("##contributors_table", 6, table_flags, ImVec2(ImGui::GetContentRegionAvail().x * 0.7f, 0.0f)))
                     {
                         ImGui::TableSetupColumn("Role");
                         ImGui::TableSetupColumn("Name");
@@ -205,7 +205,7 @@ namespace
                             ImGui::TableNextRow();
 
                             // shift text down so that it's on the same line with the button
-                            static const float y_shift = 6.0f;
+                            static const float y_shift = 8.0f;
 
                             // role
                             ImGui::TableSetColumnIndex(0);
@@ -226,6 +226,12 @@ namespace
                             ImGui::TableSetColumnIndex(3);
                             string& button_text = comma_seperated_contributors[index++];
                             string& button_url  = comma_seperated_contributors[index++];
+                            // calculate center position for the button
+                            float cell_width    = ImGui::GetColumnWidth();
+                            float button_width  = ImGui::CalcTextSize(button_text.c_str()).x + ImGui::GetStyle().FramePadding.x * 2.0f;
+                            float button_offset = (cell_width - button_width) * 0.5f;
+                            // set cursor position to center the button
+                            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + button_offset);
                             ImGui::PushID(static_cast<uint32_t>(ImGui::GetCursorScreenPos().y));
                             if (ImGui::Button(button_text.c_str()))
                             {
@@ -235,12 +241,10 @@ namespace
 
                             // contribution
                             ImGui::TableSetColumnIndex(4);
-                            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
                             ImGui::Text(comma_seperated_contributors[index++].c_str());
 
                             // steam key award
                             ImGui::TableSetColumnIndex(5);
-                            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
                             ImGui::Text(comma_seperated_contributors[index++].c_str());
                         }
                     }
@@ -274,18 +278,23 @@ namespace
                             // switch row
                             ImGui::TableNextRow();
 
+                            // shift text down so that it's on the same line with the button
+                            static const float y_shift = 8.0f;
+
                             // name
                             ImGui::TableSetColumnIndex(0);
+                            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
                             ImGui::Text(lib.name.c_str());
 
                             // version
                             ImGui::TableSetColumnIndex(1);
+                            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
                             ImGui::Text(lib.version.c_str());
 
                             // url
                             ImGui::TableSetColumnIndex(2);
                             ImGui::PushID(lib.url.c_str());
-                            if (ImGuiSp::button(lib.url.c_str()))
+                            if (ImGuiSp::button("URL"))
                             {
                                 Spartan::FileSystem::OpenUrl(lib.url);
                             }
