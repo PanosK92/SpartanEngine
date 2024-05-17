@@ -538,7 +538,25 @@ namespace Spartan
             allocator_info.vulkanApiVersion       = api_version;
             allocator_info.flags                  = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
 
-            SP_ASSERT_MSG(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator) == VK_SUCCESS, "Failed to create memory allocator");
+            SP_ASSERT_VK_MSG(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator), "Failed to create memory allocator");
+
+            // register version
+            {
+                auto version_to_string = [](uint32_t version) -> std::string
+                {
+                     uint32_t major = version / 1000000;
+                     uint32_t minor = (version / 1000) % 1000;
+                     uint32_t patch = version % 1000;
+
+                     // for some reason the version in the code is different that the version
+                     // reported in the github releases, everything is reversed
+                     ostringstream oss;
+                     oss << minor << "." << patch << "." << major;
+                     return oss.str();
+                };
+
+                Settings::RegisterThirdPartyLib("Vulkan Memory Allocator", version_to_string(VMA_VULKAN_VERSION), "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator");
+            }
         }
 
         void destroy()
@@ -756,7 +774,7 @@ namespace Spartan
                   layout_info.pNext                           = &layout_binding_flags;
 
                   VkDescriptorSetLayout* layout = &layouts[static_cast<uint32_t>(resource_type)];
-                  SP_VK_ASSERT_MSG(vkCreateDescriptorSetLayout(RHI_Context::device, &layout_info, nullptr, layout), "Failed to create descriptor set layout");
+                  SP_ASSERT_VK_MSG(vkCreateDescriptorSetLayout(RHI_Context::device, &layout_info, nullptr, layout), "Failed to create descriptor set layout");
                   RHI_Device::SetResourceName(static_cast<void*>(*layout), RHI_Resource_Type::DescriptorSetLayout, debug_name);
             }
 
@@ -778,7 +796,7 @@ namespace Spartan
 
                 // create
                 VkDescriptorSet* descriptor_set = &sets[static_cast<uint32_t>(resource_type)];
-                SP_VK_ASSERT_MSG(vkAllocateDescriptorSets(RHI_Context::device, &allocation_info, descriptor_set), "Failed to allocate descriptor set");
+                SP_ASSERT_VK_MSG(vkAllocateDescriptorSets(RHI_Context::device, &allocation_info, descriptor_set), "Failed to allocate descriptor set");
                 RHI_Device::SetResourceName(static_cast<void*>(*descriptor_set), RHI_Resource_Type::DescriptorSet, debug_name);
             }
 
@@ -1532,7 +1550,7 @@ namespace Spartan
 
         // create
         SP_ASSERT(descriptors::descriptor_pool == nullptr);
-        SP_VK_ASSERT_MSG(vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, &descriptors::descriptor_pool), "Failed to create descriptor pool");
+        SP_ASSERT_VK_MSG(vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, &descriptors::descriptor_pool), "Failed to create descriptor pool");
 
         Profiler::m_descriptor_set_count = 0;
     }
@@ -1589,7 +1607,7 @@ namespace Spartan
 
         // allocate
         SP_ASSERT(resource == nullptr);
-        SP_VK_ASSERT_MSG(vkAllocateDescriptorSets(RHI_Context::device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&resource)), "Failed to allocate descriptor set");
+        SP_ASSERT_VK_MSG(vkAllocateDescriptorSets(RHI_Context::device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&resource)), "Failed to allocate descriptor set");
 
         // track allocations
         descriptors::allocated_descriptor_sets++;
@@ -1773,7 +1791,7 @@ namespace Spartan
         // create the buffer
         VmaAllocation allocation = nullptr;
         VmaAllocationInfo allocation_info;
-        SP_VK_ASSERT_MSG(vmaCreateBuffer(
+        SP_ASSERT_VK_MSG(vmaCreateBuffer(
             vulkan_memory_allocator::allocator,
                 &buffer_create_info,
                 &allocation_create_info,
@@ -1793,9 +1811,9 @@ namespace Spartan
             // it. Map/unmap operations don't do that automatically.
 
             void* mapped_data = nullptr;
-            SP_VK_ASSERT_MSG(vmaMapMemory(vulkan_memory_allocator::allocator, allocation, &mapped_data), "Failed to map allocation");
+            SP_ASSERT_VK_MSG(vmaMapMemory(vulkan_memory_allocator::allocator, allocation, &mapped_data), "Failed to map allocation");
             memcpy(mapped_data, data_initial, size);
-            SP_VK_ASSERT_MSG(vmaFlushAllocation(vulkan_memory_allocator::allocator, allocation, 0, size), "Failed to flush allocation");
+            SP_ASSERT_VK_MSG(vmaFlushAllocation(vulkan_memory_allocator::allocator, allocation, 0, size), "Failed to flush allocation");
             vmaUnmapMemory(vulkan_memory_allocator::allocator, allocation);
         }
 
@@ -1862,7 +1880,7 @@ namespace Spartan
         VmaAllocationInfo allocation_info;
         VmaAllocation allocation;
         void*& resource = texture->GetRhiResource();
-        SP_VK_ASSERT_MSG(vmaCreateImage(
+        SP_ASSERT_VK_MSG(vmaCreateImage(
             vulkan_memory_allocator::allocator,
             &create_info_image,
             &create_info_allocation,
@@ -1898,7 +1916,7 @@ namespace Spartan
     {
         if (VmaAllocation allocation = static_cast<VmaAllocation>(vulkan_memory_allocator::get_allocation_from_resource(resource)))
         {
-            SP_VK_ASSERT_MSG(vmaMapMemory(vulkan_memory_allocator::allocator, allocation, reinterpret_cast<void**>(&mapped_data)), "Failed to map memory");
+            SP_ASSERT_VK_MSG(vmaMapMemory(vulkan_memory_allocator::allocator, allocation, reinterpret_cast<void**>(&mapped_data)), "Failed to map memory");
         }
     }
 

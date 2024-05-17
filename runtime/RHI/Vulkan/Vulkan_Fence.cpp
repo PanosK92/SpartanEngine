@@ -66,7 +66,7 @@ namespace Spartan
 
     void RHI_Fence::Reset()
     {
-        SP_VK_ASSERT_MSG(vkResetFences(RHI_Context::device, 1, reinterpret_cast<VkFence*>(&m_rhi_resource)), "Failed to reset fence");
+        SP_ASSERT_VK_MSG(vkResetFences(RHI_Context::device, 1, reinterpret_cast<VkFence*>(&m_rhi_resource)), "Failed to reset fence");
         n_state_cpu = RHI_Sync_State::Idle;
     }
 }

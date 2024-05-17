@@ -382,7 +382,7 @@ static const char* vkresult_to_string(const VkResult result)
     return "Unknown error code";
 }
 
-#define SP_VK_ASSERT_MSG(vk_result, text_message)          \
+#define SP_ASSERT_VK_MSG(vk_result, text_message)          \
     if (vk_result != VK_SUCCESS)                           \
     {                                                      \
         Log::SetLogToFile(true);                           \
