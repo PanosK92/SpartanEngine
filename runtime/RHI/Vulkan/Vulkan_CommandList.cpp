@@ -401,7 +401,7 @@ namespace Spartan
                 query_pool_info.queryCount            = rhi_max_queries_timestamps;
 
                 auto query_pool = reinterpret_cast<VkQueryPool*>(&pool_timestamp);
-                SP_VK_ASSERT_MSG(vkCreateQueryPool(RHI_Context::device, &query_pool_info, nullptr, query_pool),
+                SP_ASSERT_VK_MSG(vkCreateQueryPool(RHI_Context::device, &query_pool_info, nullptr, query_pool),
                     "Failed to created timestamp query pool");
 
                 RHI_Device::SetResourceName(pool_timestamp, RHI_Resource_Type::QueryPool, "query_pool_timestamp");
@@ -415,7 +415,7 @@ namespace Spartan
                 query_pool_info.queryCount            = rhi_max_queries_occlusion;
 
                 auto query_pool = reinterpret_cast<VkQueryPool*>(&pool_occlusion);
-                SP_VK_ASSERT_MSG(vkCreateQueryPool(RHI_Context::device, &query_pool_info, nullptr, query_pool),
+                SP_ASSERT_VK_MSG(vkCreateQueryPool(RHI_Context::device, &query_pool_info, nullptr, query_pool),
                     "Failed to created occlusion query pool");
 
                 RHI_Device::SetResourceName(pool_occlusion, RHI_Resource_Type::QueryPool, "query_pool_occlusion");
@@ -444,7 +444,7 @@ namespace Spartan
             allocate_info.commandBufferCount          = 1;
 
             // allocate
-            SP_VK_ASSERT_MSG(vkAllocateCommandBuffers(RHI_Context::device, &allocate_info, reinterpret_cast<VkCommandBuffer*>(&m_rhi_resource)),
+            SP_ASSERT_VK_MSG(vkAllocateCommandBuffers(RHI_Context::device, &allocate_info, reinterpret_cast<VkCommandBuffer*>(&m_rhi_resource)),
                 "Failed to allocate command buffer");
 
             // name
@@ -517,7 +517,7 @@ namespace Spartan
 
         // end
         RenderPassEnd(); // only happens if needed
-        SP_VK_ASSERT_MSG(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource)), "Failed to end command buffer");
+        SP_ASSERT_VK_MSG(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource)), "Failed to end command buffer");
 
         // when minimized, or when entering/exiting fullscreen mode, the swapchain
         // won't present, and won't wait for this semaphore, so we need to reset it

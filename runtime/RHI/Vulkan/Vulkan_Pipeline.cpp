@@ -93,7 +93,7 @@ namespace Spartan
             pipeline_layout_info.pPushConstantRanges        = push_constant_ranges.data();
 
             // create
-            SP_VK_ASSERT_MSG(vkCreatePipelineLayout(RHI_Context::device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_resource_pipeline_layout)),
+            SP_ASSERT_VK_MSG(vkCreatePipelineLayout(RHI_Context::device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_resource_pipeline_layout)),
                 "Failed to create pipeline layout");
 
             // name
@@ -475,7 +475,7 @@ namespace Spartan
                 pipeline_info.flags                        = m_state.vrs_input_texture ? VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR : 0;
         
                 // create
-                SP_VK_ASSERT_MSG(vkCreateGraphicsPipelines(RHI_Context::device, nullptr, 1, &pipeline_info, nullptr, pipeline),
+                SP_ASSERT_VK_MSG(vkCreateGraphicsPipelines(RHI_Context::device, nullptr, 1, &pipeline_info, nullptr, pipeline),
                     "Failed to create graphics pipeline");
 
                 // disable naming until I can come up with a more meaningful name
@@ -490,7 +490,7 @@ namespace Spartan
                 pipeline_info.stage                       = shader_stages[0];
 
                 // create
-                SP_VK_ASSERT_MSG(vkCreateComputePipelines(RHI_Context::device, nullptr, 1, &pipeline_info, nullptr, pipeline),
+                SP_ASSERT_VK_MSG(vkCreateComputePipelines(RHI_Context::device, nullptr, 1, &pipeline_info, nullptr, pipeline),
                     "Failed to create compute pipeline");
 
                 // name
