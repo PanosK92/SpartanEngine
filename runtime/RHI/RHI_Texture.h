@@ -133,7 +133,7 @@ namespace Spartan
         // viewport
         const auto& GetViewport() const { return m_viewport; }
 
-        // gpu resources
+        // rhi
         void*& GetRhiResource()                             { return m_rhi_resource; }
         void* GetRhiSrv()                             const { return m_rhi_srv; }
         void* GetRhiUav()                             const { return m_rhi_uav; }
@@ -147,7 +147,6 @@ namespace Spartan
 
     protected:
         bool RHI_CreateResource();
-        void RHI_SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const uint32_t mip_index, const uint32_t mip_range);
 
         uint32_t m_bits_per_channel = 0;
         uint32_t m_width            = 0;

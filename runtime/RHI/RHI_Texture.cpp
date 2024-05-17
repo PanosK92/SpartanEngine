@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Texture.h"
 #include "RHI_Device.h"
 #include "ThreadPool.h"
+#include "RHI_CommandList.h"
 #include "../IO/FileStream.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/Import/ImageImporterExporter.h"
@@ -428,7 +429,7 @@ namespace Spartan
             }
 
             // transition
-            RHI_SetLayout(new_layout, cmd_list, mip_index, mip_range);
+            cmd_list->InsertBarrierTexture(this, mip_index, mip_range, m_array_length, m_layout[mip_index], new_layout);
         }
 
         // update layout
