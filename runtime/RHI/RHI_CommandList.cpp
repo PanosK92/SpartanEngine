@@ -26,18 +26,40 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Semaphore.h"
 //==========================
 
-//= NAMESPACES =====
+//= NAMESPACES ========
 using namespace std;
-//==================
+using namespace chrono;
+//=====================
 
 namespace Spartan
 {
+    namespace
+    {
+        bool log_wait_time = false;
+        time_point<high_resolution_clock> start_time;
+    }
+
     void RHI_CommandList::WaitForExecution()
     {
-        SP_ASSERT_MSG(m_state == RHI_CommandListState::Submitted, "The command list hasn't been submitted, can't wait for it.");
+        SP_ASSERT_MSG(m_state == RHI_CommandListState::Submitted, "the command list hasn't been submitted, can't wait for it.");
 
-        m_rendering_complete_semaphore_timeline->Wait(m_rendering_complete_semaphore_timeline->GetWaitValue());
+        if (log_wait_time)
+        { 
+            start_time = high_resolution_clock::now();
+        }
+
+        // wait
+        uint64_t value      = m_rendering_complete_semaphore_timeline->GetValue();
+        uint64_t wait_value = m_rendering_complete_semaphore_timeline->GetWaitValue();
+        m_rendering_complete_semaphore_timeline->Wait(wait_value);
         m_state = RHI_CommandListState::Idle;
+
+        if (log_wait_time)
+        {
+            auto end_time = high_resolution_clock::now();
+            auto duration = duration_cast<microseconds>(end_time - start_time).count();
+            SP_LOG_INFO("wait time: %lld microseconds\n", duration);
+        }
     }
 
     void RHI_CommandList::Dispatch(RHI_Texture* texture)
