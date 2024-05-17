@@ -24,6 +24,7 @@ extern "C" {
 
 enum VKU_FORMAT_NUMERICAL_TYPE {
     VKU_FORMAT_NUMERICAL_TYPE_NONE = 0,
+    VKU_FORMAT_NUMERICAL_TYPE_SFIXED5,
     VKU_FORMAT_NUMERICAL_TYPE_SFLOAT,
     VKU_FORMAT_NUMERICAL_TYPE_SINT,
     VKU_FORMAT_NUMERICAL_TYPE_SNORM,
@@ -127,6 +128,10 @@ enum VKU_FORMAT_COMPATIBILITY_CLASS {
 //     VK_IMAGE_ASPECT_PLANE_2_BIT -> 2
 //     <any other value> -> VKU_FORMAT_INVALID_INDEX
 inline uint32_t vkuGetPlaneIndex(VkImageAspectFlagBits aspect);
+
+// Returns whether a VkFormat is of the numerical format SFIXED5
+// Format must only contain one numerical format, so formats like D16_UNORM_S8_UINT always return false
+inline bool vkuFormatIsSFIXED5(VkFormat format);
 
 // Returns whether a VkFormat is of the numerical format SFLOAT
 // Format must only contain one numerical format, so formats like D16_UNORM_S8_UINT always return false
@@ -1096,7 +1101,7 @@ inline const struct VKU_FORMAT_INFO vkuGetFormatInfo(VkFormat format) {
         case VK_FORMAT_A4B4G4R4_UNORM_PACK16: {
             struct VKU_FORMAT_INFO out = {VKU_FORMAT_COMPATIBILITY_CLASS_16BIT, 2, 1, {1, 1, 1}, 4, {{VKU_FORMAT_COMPONENT_TYPE_A, 4}, {VKU_FORMAT_COMPONENT_TYPE_B, 4}, {VKU_FORMAT_COMPONENT_TYPE_G, 4}, {VKU_FORMAT_COMPONENT_TYPE_R, 4}}};
             return out; }
-        case VK_FORMAT_R16G16_S10_5_NV: {
+        case VK_FORMAT_R16G16_SFIXED5_NV: {
             struct VKU_FORMAT_INFO out = {VKU_FORMAT_COMPATIBILITY_CLASS_32BIT, 4, 1, {1, 1, 1}, 2, {{VKU_FORMAT_COMPONENT_TYPE_R, 16}, {VKU_FORMAT_COMPONENT_TYPE_G, 16}}};
             return out; }
 
@@ -1200,6 +1205,16 @@ inline const struct VKU_FORMAT_MULTIPLANE_COMPATIBILITY vkuGetFormatCompatibilit
     };
 }
 
+// Return true if all components in a format are an SFIXED5
+bool vkuFormatIsSFIXED5(VkFormat format) {
+    switch (format) {
+        case VK_FORMAT_R16G16_SFIXED5_NV:
+            return true;
+        default:
+            return false;
+    }
+}
+
 // Return true if all components in a format are an SFLOAT
 bool vkuFormatIsSFLOAT(VkFormat format) {
     switch (format) {
@@ -1261,7 +1276,6 @@ bool vkuFormatIsSINT(VkFormat format) {
         case VK_FORMAT_R64G64_SINT:
         case VK_FORMAT_R64G64B64_SINT:
         case VK_FORMAT_R64G64B64A64_SINT:
-        case VK_FORMAT_R16G16_S10_5_NV:
             return true;
         default:
             return false;
@@ -2169,7 +2183,7 @@ inline bool vkuFormatIs16bit(VkFormat format) {
         case VK_FORMAT_G16_B16R16_2PLANE_422_UNORM:
         case VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM:
         case VK_FORMAT_G16_B16R16_2PLANE_444_UNORM:
-        case VK_FORMAT_R16G16_S10_5_NV:
+        case VK_FORMAT_R16G16_SFIXED5_NV:
             return true;
         default:
             return false;
