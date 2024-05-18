@@ -295,11 +295,11 @@ namespace Spartan
             // check and add VK_KHR_portability_subset if present
             // this extension is needed for portability across different platforms and
             // must be enabled if the physical device supports it
-            const char* portability_extension = "VK_KHR_portability_subset";
-            if (is_present_device(portability_extension, RHI_Context::device_physical))
-            {
-                extensions_supported.emplace_back(portability_extension);
-            }
+            //const char* portability_extension = "VK_KHR_portability_subset";
+            //if (is_present_device(portability_extension, RHI_Context::device_physical))
+            //{
+            //    extensions_supported.emplace_back(portability_extension);
+            //}
 
             return extensions_supported;
         }
@@ -407,31 +407,76 @@ namespace Spartan
             {
                 // filter out certain things
                 {
-                    // this doesn't belong to us, it's fidelityfx sdk 
-                    if (p_callback_data->messageIdNumber == 0xdc18ad6b)
+                    // trivial
                     {
-                        // [ UNASSIGNED-BestPractices-vkAllocateMemory-small-allocation ] | MessageID = 0xdc18ad6b | vkAllocateMemory():
+                        // this doesn't belong to us, it's fidelityfx sdk 
+                        if (p_callback_data->messageIdNumber == 0xdc18ad6b)
+                        {
+                            // [ UNASSIGNED-BestPractices-vkAllocateMemory-small-allocation ] | MessageID = 0xdc18ad6b | vkAllocateMemory():
                         // Allocating a VkDeviceMemory of size 256. This is a very small allocation (current threshold is 262144 bytes).
                         // You should make large allocations and sub-allocate from one large VkDeviceMemory.
-                        return VK_FALSE;
-                    }
+                            return VK_FALSE;
+                        }
 
-                    // occlusion queries
-                    {
-                        if (p_callback_data->messageIdNumber == 0xd39be754)
+                        // occlusion queries
                         {
-                            // Validation Warning:
+                            if (p_callback_data->messageIdNumber == 0xd39be754)
+                            {
+                                // Validation Warning:
                             // [BestPractices - QueryPool - Unavailable] Object 0 :
                             // handle = 0x980b0000000002e, name = query_pool_occlusion, type = VK_OBJECT_TYPE_QUERY_POOL; | MessageID = 0xd39be754 | vkGetQueryPoolResults() :
                             // QueryPool VkQueryPool 0x980b0000000002e[query_pool_occlusion] and query 0 : vkCmdBeginQuery() was never called.
-                            return VK_FALSE;
+                                return VK_FALSE;
+                            }
                         }
+
+                        // silence false positive synchronization error due to validation layer issue
+                        // check fix progress here: https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/7600
+                        if (p_callback_data->messageIdNumber == 0x29910a35)
+                            return VK_FALSE;
                     }
 
-                    // silence false positive synchronization error due to validation layer issue
-                    // check fix progress here: https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/7600
-                    if (p_callback_data->messageIdNumber == 0x29910a35)
-                        return VK_FALSE;
+                    // legit
+                    {
+                        //[SYNC - HAZARD - WRITE - AFTER - PRESENT] Object 0 : handle = 0x1f21db42430, name = graphics, type = VK_OBJECT_TYPE_QUEUE;
+                        // | MessageID = 0x42f2f4ed | vkQueueSubmit2() : Hazard WRITE_AFTER_PRESENT for entry 0, VkCommandBuffer 0x1f20bc383b0[graphics_cmd_pool_0_0],
+                        // Submitted access info(submitted_usage : SYNC_IMAGE_LAYOUT_TRANSITION, command : vkCmdPipelineBarrier2, seq_no : 9,
+                        // VkImage 0x7409630000000192[swapchain_image_1], reset_no : 39, debug_region : imgui_window_main).Access info(prior_usage :
+                        // SYNC_PRESENT_ENGINE_SYNCVAL_PRESENT_PRESENTED_SYNCVAL, write_barriers : 0, queue : VkQueue 0x1f21db42430[graphics], submit :
+                        // 754, batch : 0, batch_tag : 18219, vkQueuePresentKHR present_tag : 18219, pSwapchains[0] : VkSwapchainKHR 0x7d60e10000000190[],
+                        // image_index : 1image : VkImage 0x7409630000000192[swapchain_image_1]).
+                        if (p_callback_data->messageIdNumber == 0x42f2f4ed)
+                            return VK_FALSE;
+
+                        // [20:10:38]: Vulkan: Validation Error: [ SYNC-HAZARD-PRESENT-AFTER-WRITE ] Object 0: handle = 0x1b880f2ab30, name = graphics,
+                        // type = VK_OBJECT_TYPE_QUEUE; | MessageID = 0xe17ab4ae | vkQueuePresentKHR():  Hazard PRESENT_AFTER_WRITE for present pSwapchains[0] ,
+                        // swapchain VkSwapchainKHR 0x7d60e10000000190[], image index 1 VkImage 0x7409630000000192[swapchain_image_1], Access info (usage:
+                        // SYNC_PRESENT_ENGINE_SYNCVAL_PRESENT_PRESENTED_SYNCVAL, prior_usage: SYNC_IMAGE_LAYOUT_TRANSITION, write_barriers: 0, queue: VkQueue
+                        // 0x1b880f2ab30[graphics], submit: 1017, batch: 0, batch_tag: 25819, command: vkCmdPipelineBarrier2, command_buffer: VkCommandBuffer
+                        // 0x1b880f62020[graphics_cmd_pool_1_0], seq_no: 55, VkImage 0x7409630000000192[swapchain_image_1], reset_no: 56).
+                        if (p_callback_data->messageIdNumber == 0xe17ab4ae)
+                            return VK_FALSE;
+
+                        // [20:11:59]: Vulkan: Validation Error: [ SYNC-HAZARD-READ-AFTER-WRITE ] Object 0: handle = 0x1b920db2110, name =
+                        // graphics_cmd_pool_1_0, type = VK_OBJECT_TYPE_COMMAND_BUFFER; Object 1: handle = 0xe3a8500000001d3, type = VK_OBJECT_TYPE_IMAGE_VIEW; |
+                        // MessageID = 0xe4d96472 | vkCmdBeginRendering(): pDepthAttachment->imageView (VkImageView 0xe3a8500000001d3[]), with loadOp
+                        // VK_ATTACHMENT_LOAD_OP_LOAD. Access info (usage: SYNC_EARLY_FRAGMENT_TESTS_DEPTH_STENCIL_ATTACHMENT_READ, prior_usage: SYNC_IMAGE_LAYOUT_TRANSITION,
+                        //  write_barriers: SYNC_FRAGMENT_SHADER_DEPTH_STENCIL_ATTACHMENT_READ|SYNC_LATE_FRAGMENT_TESTS_DEPTH_STENCIL_ATTACHMENT_READ|SYNC_LATE_FRAGMENT_TESTS_DEPTH_STENCIL_ATTACHMENT_WRITE,
+                        // command: vkCmdPipelineBarrier2, seq_no: 213, VkImage 0xe7250000000001cf[gbuffer_depth], reset_no: 542, debug_region: depth_prepass_transparent).
+                        if (p_callback_data->messageIdNumber == 0xe4d96472)
+                            return VK_FALSE;
+
+                        // [20:14:01]: Vulkan: Validation Error: [ SYNC-HAZARD-WRITE-AFTER-WRITE ] Object 0: handle = 0x29ebcca37c0, name =
+                        // graphics_cmd_pool_0_0, type = VK_OBJECT_TYPE_COMMAND_BUFFER; Object 1: handle = 0x44f0800000006987, type =
+                        // VK_OBJECT_TYPE_IMAGE_VIEW; | MessageID = 0x5c0ec5d6 | vkCmdBeginRendering(): pDepthAttachment->imageView
+                        // (VkImageView 0x44f0800000006987[]), with loadOp VK_ATTACHMENT_LOAD_OP_CLEAR. Access info (usage:
+                        // SYNC_EARLY_FRAGMENT_TESTS_DEPTH_STENCIL_ATTACHMENT_WRITE, prior_usage: SYNC_IMAGE_LAYOUT_TRANSITION,
+                        // write_barriers: SYNC_FRAGMENT_SHADER_DEPTH_STENCIL_ATTACHMENT_READ|SYNC_LATE_FRAGMENT_TESTS_DEPTH_STENCIL_ATTACHMENT_READ|
+                        // SYNC_LATE_FRAGMENT_TESTS_DEPTH_STENCIL_ATTACHMENT_WRITE, command: vkCmdPipelineBarrier2, seq_no: 3,
+                        // VkImage 0x71640c0000006983[light_directional_depth], reset_no: 371, debug_region: shadow_maps_depth).
+                        if (p_callback_data->messageIdNumber == 0x5c0ec5d6)
+                            return VK_FALSE;
+                    }
                 }
 
                 string msg = "Vulkan: " + string(p_callback_data->pMessage);
