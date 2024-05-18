@@ -50,95 +50,6 @@ namespace Spartan
         mutex mutex_deletion_queue;
         unordered_map<RHI_Resource_Type, vector<void*>> deletion_queue;
 
-        bool is_present_instance_layer(const char* layer_name)
-        {
-            uint32_t layer_count;
-            vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
-
-            vector<VkLayerProperties> layers(layer_count);
-            vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
-
-            for (const auto& layer : layers)
-            {
-                if (strcmp(layer_name, layer.layerName) == 0)
-                    return true;
-            }
-
-            return false;
-        }
-
-        bool is_present_device_extension(const char* extension_name, VkPhysicalDevice device_physical)
-        {
-            uint32_t extension_count = 0;
-            vkEnumerateDeviceExtensionProperties(device_physical, nullptr, &extension_count, nullptr);
-
-            vector<VkExtensionProperties> extensions(extension_count);
-            vkEnumerateDeviceExtensionProperties(device_physical, nullptr, &extension_count, extensions.data());
-
-            for (const auto& extension : extensions)
-            {
-                if (strcmp(extension_name, extension.extensionName) == 0)
-                    return true;
-            }
-
-            return false;
-        }
-
-        bool is_present_instance(const char* extension_name)
-        {
-            uint32_t extension_count = 0;
-            vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
-
-            vector<VkExtensionProperties> extensions(extension_count);
-            vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extensions.data());
-
-            for (const auto& extension : extensions)
-            {
-                if (strcmp(extension_name, extension.extensionName) == 0)
-                    return true;
-            }
-
-            return false;
-        }
-
-        vector<const char*> get_physical_device_supported_extensions(const vector<const char*>& extensions, VkPhysicalDevice device_physical)
-        {
-            vector<const char*> extensions_supported;
-
-            for (const auto& extension : extensions)
-            {
-                if (is_present_device_extension(extension, device_physical))
-                {
-                    extensions_supported.emplace_back(extension);
-                }
-                else
-                {
-                    SP_LOG_ERROR("Device extension \"%s\" is not supported", extension);
-                }
-            }
-
-            return extensions_supported;
-        }
-
-        vector<const char*> get_supported_extensions(const vector<const char*>& extensions)
-        {
-            vector<const char*> extensions_supported;
-
-            for (const auto& extension : extensions)
-            {
-                if (is_present_instance(extension))
-                {
-                    extensions_supported.emplace_back(extension);
-                }
-                else
-                {
-                    SP_LOG_ERROR("Instance extension \"%s\" is not supported", extension);
-                }
-            }
-
-            return extensions_supported;
-        }
-
         VkImageUsageFlags get_image_usage_flags(const RHI_Texture* texture)
         {
             VkImageUsageFlags flags = 0;
@@ -199,6 +110,137 @@ namespace Spartan
         string version_to_string(uint32_t version)
         {
             return to_string(VK_VERSION_MAJOR(version)) + "." + to_string(VK_VERSION_MINOR(version)) + "." + to_string(VK_VERSION_PATCH(version));
+        }
+    }
+
+    namespace extensions
+    {
+        // hardware capability viewer: https://vulkan.gpuinfo.org/
+
+        vector<const char*> extensions_instance = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_swapchain_colorspace" };
+        vector<const char*> validation_layers   = { "VK_LAYER_KHRONOS_validation" };
+        vector<const char*> extensions_device   = { "VK_KHR_swapchain", "VK_EXT_memory_budget", "VK_KHR_fragment_shading_rate", "VK_EXT_hdr_metadata", "VK_EXT_robustness2" };
+
+        void initialize()
+        {
+            if (Profiler::IsValidationLayerEnabled())
+            {
+                // validation layer messaging/logging
+                extensions_instance.emplace_back("VK_EXT_debug_report");
+
+                if (Profiler::IsGpuMarkingEnabled())
+                {
+                    // object naming (for the validation messages) and gpu markers
+                    extensions_instance.emplace_back("VK_EXT_debug_utils");
+                }
+            }
+        }
+
+        bool is_present_device_extension(const char* extension_name, VkPhysicalDevice device_physical)
+        {
+            uint32_t extension_count = 0;
+            vkEnumerateDeviceExtensionProperties(device_physical, nullptr, &extension_count, nullptr);
+
+            vector<VkExtensionProperties> extensions(extension_count);
+            vkEnumerateDeviceExtensionProperties(device_physical, nullptr, &extension_count, extensions.data());
+
+            for (const auto& extension : extensions)
+            {
+                if (strcmp(extension_name, extension.extensionName) == 0)
+                    return true;
+            }
+
+            return false;
+        }
+
+        bool is_present_instance(const char* extension_name)
+        {
+            uint32_t extension_count = 0;
+            vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
+
+            vector<VkExtensionProperties> extensions(extension_count);
+            vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extensions.data());
+
+            for (const auto& extension : extensions)
+            {
+                if (strcmp(extension_name, extension.extensionName) == 0)
+                    return true;
+            }
+
+            return false;
+        }
+
+        vector<const char*> get_extensions_supported_device()
+        {
+            vector<const char*> extensions_supported;
+            for (const auto& extension : extensions_device)
+            {
+                if (is_present_device_extension(extension, RHI_Context::device_physical))
+                {
+                    extensions_supported.emplace_back(extension);
+                }
+                else
+                {
+                    SP_LOG_ERROR("Device extension \"%s\" is not supported", extension);
+                }
+            }
+
+            return extensions_supported;
+        }
+
+        vector<const char*> get_extensions_supported_instance()
+        {
+            vector<const char*> extensions_supported;
+            for (const auto& extension : extensions_instance)
+            {
+                if (is_present_instance(extension))
+                {
+                    extensions_supported.emplace_back(extension);
+                }
+                else
+                {
+                    SP_LOG_ERROR("Instance extension \"%s\" is not supported", extension);
+                }
+            }
+
+            return extensions_supported;
+        }
+    }
+
+    namespace validation
+    {
+        const char* layer_name = "VK_LAYER_KHRONOS_validation";
+        vector<VkValidationFeatureEnableEXT> features;
+
+        void initialize()
+        {
+            if (Profiler::IsGpuAssistedValidationEnabled())
+            {
+                features.emplace_back(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT);
+            }
+
+            if (Profiler::IsValidationLayerEnabled())
+            {
+                features.emplace_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
+                features.emplace_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
+            }
+        }
+
+        bool is_present_instance_layer()
+        {
+            uint32_t layer_count;
+            vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
+
+            vector<VkLayerProperties> layers(layer_count);
+            vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
+
+            for (const auto& layer : layers)
+            {
+                if (strcmp(layer_name, layer.layerName) == 0)
+                    return true;
+            }
+
+            return false;
         }
     }
 
@@ -1060,28 +1102,8 @@ namespace Spartan
     {
         SP_ASSERT_MSG(RHI_Context::api_type == RHI_Api_Type::Vulkan, "RHI context not initialized");
 
-        // enable extensions
-        {
-            if (Profiler::IsGpuAssistedValidationEnabled())
-            {
-                RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT);
-            }
-
-            if (Profiler::IsValidationLayerEnabled())
-            {
-                RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
-                RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
-
-                // validation layer messaging/logging
-                RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_report");
-            }
-
-            if (Profiler::IsValidationLayerEnabled() || Profiler::IsGpuMarkingEnabled())
-            {
-                // object naming (for the validation messages) and gpu markers
-                RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_utils");
-            }
-        }
+        validation::initialize();
+        extensions::initialize();
 
         // create instance
         VkApplicationInfo app_info = {};
@@ -1134,7 +1156,7 @@ namespace Spartan
             }
 
             // get the supported extensions out of the requested extensions
-            vector<const char*> extensions_supported = get_supported_extensions(RHI_Context::extensions_instance);
+            vector<const char*> extensions_supported = extensions::get_extensions_supported_instance();
 
             VkInstanceCreateInfo create_info    = {};
             create_info.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -1146,17 +1168,17 @@ namespace Spartan
             // validation features
             VkValidationFeaturesEXT validation_features       = {};
             validation_features.sType                         = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
-            validation_features.enabledValidationFeatureCount = static_cast<uint32_t>(RHI_Context::validation_extensions.size());
-            validation_features.pEnabledValidationFeatures    = RHI_Context::validation_extensions.data();
+            validation_features.enabledValidationFeatureCount = static_cast<uint32_t>(validation::features.size());
+            validation_features.pEnabledValidationFeatures    = validation::features.data();
 
             if (Profiler::IsValidationLayerEnabled())
             {
                 // enable validation layer
-                if (is_present_instance_layer(RHI_Context::validation_layers.front()))
+                if (validation::is_present_instance_layer())
                 {
                     // validation layers
-                    create_info.enabledLayerCount   = static_cast<uint32_t>(RHI_Context::validation_layers.size());
-                    create_info.ppEnabledLayerNames = RHI_Context::validation_layers.data();
+                    create_info.enabledLayerCount   = 1;
+                    create_info.ppEnabledLayerNames = &validation::layer_name;
                     create_info.pNext               = &validation_features;
                 }
                 else
@@ -1246,7 +1268,7 @@ namespace Spartan
             device_features::detect(RHI_Context::device_physical, &m_is_shading_rate_supported);
 
             // get the supported extensions out of the requested extensions
-            vector<const char*> extensions_supported = get_physical_device_supported_extensions(RHI_Context::extensions_device, RHI_Context::device_physical);
+            vector<const char*> extensions_supported = extensions::get_extensions_supported_device();
 
             // device create info
             VkDeviceCreateInfo create_info = {};
@@ -1260,8 +1282,8 @@ namespace Spartan
 
                 if (Profiler::IsValidationLayerEnabled())
                 {
-                    create_info.enabledLayerCount   = static_cast<uint32_t>(RHI_Context::validation_layers.size());
-                    create_info.ppEnabledLayerNames = RHI_Context::validation_layers.data();
+                    create_info.enabledLayerCount   = 1;
+                    create_info.ppEnabledLayerNames = &validation::layer_name;
                 }
             }
 
