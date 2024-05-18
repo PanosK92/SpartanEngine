@@ -405,10 +405,6 @@ namespace Spartan
             static VkInstance instance;
             static VkDevice device;
             static VkPhysicalDevice device_physical;
-            static std::vector<VkValidationFeatureEnableEXT> validation_extensions;
-            static std::vector<const char*> extensions_instance;
-            static std::vector<const char*> validation_layers;
-            static std::vector<const char*> extensions_device;
         #endif
 
         // api agnostic
