@@ -173,7 +173,7 @@ namespace Spartan
        RHI_Context::device = nullptr;
     }
 
-    bool RHI_Device::PhysicalDeviceDetect()
+    void RHI_Device::PhysicalDeviceDetect()
     {
         // Create DirectX graphics interface factory
         IDXGIFactory1* factory;
@@ -181,7 +181,7 @@ namespace Spartan
         if (FAILED(result))
         {
             SP_LOG_ERROR("Failed to create a DirectX graphics interface factory, %s.", d3d12_utility::error::dxgi_error_to_string(result));
-            return false;
+            SP_ASSERT(false);
         }
 
         const auto get_available_adapters = [](IDXGIFactory1* factory)
@@ -202,11 +202,7 @@ namespace Spartan
         vector<IDXGIAdapter*> adapters = get_available_adapters(factory);
         factory->Release();
         factory = nullptr;
-        if (adapters.empty())
-        {
-            SP_LOG_ERROR("Couldn't find any adapters");
-            return false;
-        }
+        SP_ASSERT(adapters.size() > 0)
 
         // Save all available adapters
         DXGI_ADAPTER_DESC adapter_desc;
@@ -234,8 +230,6 @@ namespace Spartan
                 static_cast<void*>(display_adapter))                      // data
             );
         }
-
-        return true;
     }
 
     void RHI_Device::PhysicalDeviceSelectPrimary()
