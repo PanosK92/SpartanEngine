@@ -31,6 +31,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Shader.h"
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Pipeline.h"
+#ifdef _WIN32
+#include <stdlib.h>  // for _putenv_s
+#else
+#include <cstdlib>   // for setenv
+#endif
 SP_WARNINGS_OFF
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -358,28 +363,33 @@ namespace Spartan
                 features.emplace_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
             }
 
-            // check layer availability
-            if (Profiler::IsValidationLayerEnabled())
+            // enable application controlled validation
             {
-                uint32_t layer_count;
-                vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
+                // set environment variable
+                //const char* env_var = "VK_LOADER_LAYERS_ENABLE";
+                //string env_str      = string(env_var) + "=" + layer_name;
+                //_putenv(env_str.c_str());
 
-                vector<VkLayerProperties> layers(layer_count);
-                vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
-
-                bool present = false;
-                for (const auto& layer : layers)
+                // check layer availability
+                if (Profiler::IsValidationLayerEnabled())
                 {
-                    if (strcmp(layer_name, layer.layerName) == 0)
-                    { 
-                        present = true;
-                        break;
+                    uint32_t layer_count;
+                    vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
+
+                    vector<VkLayerProperties> layers(layer_count);
+                    vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
+
+                    bool validation_layer_unavailable = true;
+                    for (const auto& layer : layers)
+                    {
+                        if (strcmp(layer_name, layer.layerName) == 0)
+                        { 
+                            validation_layer_unavailable = false;
+                            break;
+                        }
                     }
-                }
 
-                if (!present)
-                {
-                    SP_LOG_ERROR("Validation layer unavailable, install the Vulkan SDK: https://vulkan.lunarg.com/sdk/home");
+                    SP_ASSERT_MSG(!validation_layer_unavailable, "Please install the Vulkan SDK (https://vulkan.lunarg.com/sdk/home) and enable application controlled validation");
                 }
             }
         }
