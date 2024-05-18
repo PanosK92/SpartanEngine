@@ -31,11 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Shader.h"
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Pipeline.h"
-#ifdef _WIN32
-#include <stdlib.h>  // for _putenv_s
-#else
-#include <cstdlib>   // for setenv
-#endif
 SP_WARNINGS_OFF
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -330,7 +325,7 @@ namespace Spartan
         const char* setting_debug_action[]            = { "VK_DBG_LAYER_ACTION_LOG_MSG" };                              // specify action to log messages from validation layers
         const char* setting_report_flags[]            = { "info", "warn", "perf", "error", "debug" };                   // specify types of messages to be reported by validation layers
         const VkBool32 setting_enable_message_limit   = VK_TRUE;                                                        // enable limiting of duplicate validation messages
-        const int32_t setting_duplicate_message_limit = 3;                                                              // set the limit for duplicate validation messages
+        const int32_t setting_duplicate_message_limit = 1;                                                              // set the limit for duplicate validation messages
 
         // settings
         vector<VkLayerSettingEXT> settings =
@@ -339,7 +334,7 @@ namespace Spartan
             { layer_names[0], "validate_sync",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_sync },
             { layer_names[0], "thread_safety",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_thread_safety },
             { layer_names[0], "debug_action",            VK_LAYER_SETTING_TYPE_STRING_EXT, 1, setting_debug_action },
-            { layer_names[0], "report_flags",            VK_LAYER_SETTING_TYPE_STRING_EXT, static_cast<uint32_t>(std::size(setting_report_flags)), setting_report_flags },
+            { layer_names[0], "report_flags",            VK_LAYER_SETTING_TYPE_STRING_EXT, 5, setting_report_flags },
             { layer_names[0], "enable_message_limit",    VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_enable_message_limit },
             { layer_names[0], "duplicate_message_limit", VK_LAYER_SETTING_TYPE_INT32_EXT,  1, &setting_duplicate_message_limit }
         };
@@ -375,7 +370,7 @@ namespace Spartan
                     vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
 
                     bool validation_layer_unavailable = true;
-                    for (const auto& layer : layers)
+                    for (const VkLayerProperties& layer : layers)
                     {
                         if (strcmp(layer_names[0], layer.layerName) == 0)
                         { 
@@ -384,7 +379,7 @@ namespace Spartan
                         }
                     }
 
-                    SP_ASSERT_MSG(!validation_layer_unavailable, "Please install the Vulkan SDK (https://vulkan.lunarg.com/sdk/home) and enable application controlled validation");
+                    SP_ASSERT_MSG(!validation_layer_unavailable, "Please install the Vulkan SDK: https://vulkan.lunarg.com/sdk/home");
                 }
             }
         }
@@ -1287,8 +1282,6 @@ namespace Spartan
                 vector<const char*> extensions_supported = extensions::get_extensions_supported_device();
                 create_info.enabledExtensionCount        = static_cast<uint32_t>(extensions_supported.size());
                 create_info.ppEnabledExtensionNames      = extensions_supported.data();
-                create_info.enabledLayerCount            = Profiler::IsValidationLayerEnabled() ? 1 : 0;
-                create_info.ppEnabledLayerNames          = Profiler::IsValidationLayerEnabled() ? &validation::layer_names[0] : nullptr;
 
                 SP_ASSERT_VK_MSG(vkCreateDevice(RHI_Context::device_physical, &create_info, nullptr, &RHI_Context::device), "Failed to create device");
                 SP_LOG_INFO("Vulkan %s", version::to_string().c_str());
