@@ -292,6 +292,15 @@ namespace Spartan
                 }
             }
 
+            // check and add VK_KHR_portability_subset if present
+            // this extension is needed for portability across different platforms and
+            // must be enabled if the physical device supports it
+            const char* portability_extension = "VK_KHR_portability_subset";
+            if (is_present_device(portability_extension, RHI_Context::device_physical))
+            {
+                extensions_supported.emplace_back(portability_extension);
+            }
+
             return extensions_supported;
         }
 
@@ -325,7 +334,7 @@ namespace Spartan
         const char* setting_debug_action[]            = { "VK_DBG_LAYER_ACTION_LOG_MSG" };                              // specify action to log messages from validation layers
         const char* setting_report_flags[]            = { "info", "warn", "perf", "error", "debug" };                   // specify types of messages to be reported by validation layers
         const VkBool32 setting_enable_message_limit   = VK_TRUE;                                                        // enable limiting of duplicate validation messages
-        const int32_t setting_duplicate_message_limit = 1;                                                              // set the limit for duplicate validation messages
+        const int32_t setting_duplicate_message_limit = 3;                                                              // set the limit for duplicate validation messages
 
         // settings
         vector<VkLayerSettingEXT> settings =
