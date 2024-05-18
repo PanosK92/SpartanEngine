@@ -166,22 +166,21 @@ namespace Spartan
     {
         // hardware capability viewer: https://vulkan.gpuinfo.org/
 
-        vector<const char*> extensions_instance = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_swapchain_colorspace" };
-        vector<const char*> validation_layers   = { "VK_LAYER_KHRONOS_validation" };
+        vector<const char*> extensions_instance = { "VK_KHR_surface",   "VK_KHR_win32_surface", "VK_EXT_swapchain_colorspace" };
         vector<const char*> extensions_device   = { "VK_KHR_swapchain", "VK_EXT_memory_budget", "VK_KHR_fragment_shading_rate", "VK_EXT_hdr_metadata", "VK_EXT_robustness2" };
 
         void initialize()
         {
+            // validation layer messaging/logging
             if (Profiler::IsValidationLayerEnabled())
             {
-                // validation layer messaging/logging
                 extensions_instance.emplace_back("VK_EXT_debug_report");
+            }
 
-                if (Profiler::IsGpuMarkingEnabled())
-                {
-                    // object naming (for the validation messages) and gpu markers
-                    extensions_instance.emplace_back("VK_EXT_debug_utils");
-                }
+            // object naming (for the validation messages) and gpu markers
+            if (Profiler::IsGpuMarkingEnabled())
+            {
+                extensions_instance.emplace_back("VK_EXT_debug_utils");
             }
         }
 
@@ -1197,7 +1196,7 @@ namespace Spartan
         }
 
         // find a physical device
-        SP_ASSERT_MSG(PhysicalDeviceDetect(), "Failed to detect any devices");
+        PhysicalDeviceDetect();
         PhysicalDeviceSelectPrimary();
 
         // device
@@ -1366,7 +1365,7 @@ namespace Spartan
 
     // physical device
 
-    bool RHI_Device::PhysicalDeviceDetect()
+    void RHI_Device::PhysicalDeviceDetect()
     {
         uint32_t device_count = 0;
         if (vkEnumeratePhysicalDevices(RHI_Context::instance, &device_count, nullptr) != VK_SUCCESS)
@@ -1410,8 +1409,6 @@ namespace Spartan
                 static_cast<void*>(device_physical)                                  // data
             ));
         }
-
-        return true;
     }
 
     void RHI_Device::PhysicalDeviceSelectPrimary()

@@ -106,7 +106,7 @@ namespace Spartan
  
     private:
         // physical device
-        static bool PhysicalDeviceDetect();
+        static void PhysicalDeviceDetect();
         static void PhysicalDeviceRegister(const PhysicalDevice& physical_device);
         static void PhysicalDeviceSelectPrimary();
         static void PhysicalDeviceSetPrimary(const uint32_t index);
