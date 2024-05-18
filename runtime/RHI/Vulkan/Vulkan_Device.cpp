@@ -113,6 +113,55 @@ namespace Spartan
         }
     }
 
+    namespace functions
+    {
+        PFN_vkCreateDebugUtilsMessengerEXT  create_messenger = nullptr;
+        PFN_vkDestroyDebugUtilsMessengerEXT destroy_messenger = nullptr;
+        PFN_vkSetDebugUtilsObjectTagEXT     set_object_tag = nullptr;
+        PFN_vkSetDebugUtilsObjectNameEXT    set_object_name = nullptr;
+        PFN_vkCmdBeginDebugUtilsLabelEXT    marker_begin = nullptr;
+        PFN_vkCmdEndDebugUtilsLabelEXT      marker_end = nullptr;
+        PFN_vkCmdSetFragmentShadingRateKHR  set_fragment_shading_rate = nullptr;
+
+        void initialize(bool validation_enabled, bool gpu_markers_enabled)
+        {
+            #define get_func(var, def)\
+            var = reinterpret_cast<PFN_##def>(vkGetInstanceProcAddr(static_cast<VkInstance>(RHI_Context::instance), #def));\
+            if (!var) SP_LOG_ERROR("Failed to get function pointer for %s", #def);\
+
+            /* VK_EXT_debug_utils */
+            {
+                if (validation_enabled)
+                {
+                    get_func(create_messenger, vkCreateDebugUtilsMessengerEXT);
+                    get_func(destroy_messenger, vkDestroyDebugUtilsMessengerEXT);
+
+                    SP_ASSERT(create_messenger && destroy_messenger);
+                }
+
+                if (gpu_markers_enabled)
+                {
+                    get_func(marker_begin, vkCmdBeginDebugUtilsLabelEXT);
+                    get_func(marker_end, vkCmdEndDebugUtilsLabelEXT);
+
+                    SP_ASSERT(marker_begin && marker_end);
+                }
+            }
+
+            /* VK_EXT_debug_marker */
+            if (validation_enabled)
+            {
+                get_func(set_object_tag, vkSetDebugUtilsObjectTagEXT);
+                get_func(set_object_name, vkSetDebugUtilsObjectNameEXT);
+
+                SP_ASSERT(set_object_tag && set_object_name);
+            }
+
+            get_func(set_fragment_shading_rate, vkCmdSetFragmentShadingRateKHR);
+            SP_ASSERT(set_fragment_shading_rate);
+        }
+    }
+
     namespace extensions
     {
         // hardware capability viewer: https://vulkan.gpuinfo.org/
@@ -136,7 +185,7 @@ namespace Spartan
             }
         }
 
-        bool is_present_device_extension(const char* extension_name, VkPhysicalDevice device_physical)
+        bool is_present_device(const char* extension_name, VkPhysicalDevice device_physical)
         {
             uint32_t extension_count = 0;
             vkEnumerateDeviceExtensionProperties(device_physical, nullptr, &extension_count, nullptr);
@@ -175,7 +224,7 @@ namespace Spartan
             vector<const char*> extensions_supported;
             for (const auto& extension : extensions_device)
             {
-                if (is_present_device_extension(extension, RHI_Context::device_physical))
+                if (is_present_device(extension, RHI_Context::device_physical))
                 {
                     extensions_supported.emplace_back(extension);
                 }
@@ -226,7 +275,7 @@ namespace Spartan
             }
         }
 
-        bool is_present_instance_layer()
+        bool is_present()
         {
             uint32_t layer_count;
             vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
@@ -241,6 +290,102 @@ namespace Spartan
             }
 
             return false;
+        }
+
+        namespace logging
+        {
+            VkDebugUtilsMessengerEXT messenger;
+
+            VKAPI_ATTR VkBool32 VKAPI_CALL callback
+            (
+                VkDebugUtilsMessageSeverityFlagBitsEXT msg_severity,
+                VkDebugUtilsMessageTypeFlagsEXT msg_type,
+                const VkDebugUtilsMessengerCallbackDataEXT* p_callback_data,
+                void* p_user_data
+            )
+            {
+                // filter out certain things
+                {
+                    // this doesn't belong to us, it's fidelityfx sdk 
+                    if (p_callback_data->messageIdNumber == 0xdc18ad6b)
+                    {
+                        // [ UNASSIGNED-BestPractices-vkAllocateMemory-small-allocation ] | MessageID = 0xdc18ad6b | vkAllocateMemory():
+                        // Allocating a VkDeviceMemory of size 256. This is a very small allocation (current threshold is 262144 bytes).
+                        // You should make large allocations and sub-allocate from one large VkDeviceMemory.
+                        return VK_FALSE;
+                    }
+
+                    // occlusion queries
+                    {
+                        if (p_callback_data->messageIdNumber == 0xd39be754)
+                        {
+                            // Validation Warning:
+                            // [BestPractices - QueryPool - Unavailable] Object 0 :
+                            // handle = 0x980b0000000002e, name = query_pool_occlusion, type = VK_OBJECT_TYPE_QUERY_POOL; | MessageID = 0xd39be754 | vkGetQueryPoolResults() :
+                            // QueryPool VkQueryPool 0x980b0000000002e[query_pool_occlusion] and query 0 : vkCmdBeginQuery() was never called.
+                            return VK_FALSE;
+                        }
+                    }
+
+                    // silence false positive synchronization error due to validation layer issue
+                    // check fix progress here: https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/7600
+                    if (p_callback_data->messageIdNumber == 0x29910a35)
+                        return VK_FALSE;
+
+                    //= LEGIT ISSES THAT HAVE TO BE FIXED ===================================================================
+                    if (p_callback_data->messageIdNumber == 0xe17ab4ae) // validation error - SYNC-HAZARD-PRESENT-AFTER-WRITE
+                        return VK_FALSE;
+
+                    if (p_callback_data->messageIdNumber == 0x42f2f4ed) // validation error - depth_ouput
+                        return VK_FALSE;
+
+                    if (p_callback_data->messageIdNumber == 0xe4d96472) // validation error - depth_ouput
+                        return VK_FALSE;
+
+                    if (p_callback_data->messageIdNumber == 0x5c0ec5d6) // validation error - depth_light
+                        return VK_FALSE;
+                    //=======================================================================================================
+                }
+
+                string msg = "Vulkan: " + string(p_callback_data->pMessage);
+
+                if (/*(msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) ||*/ (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))
+                {
+                    Log::Write(msg.c_str(), LogType::Info);
+                }
+                else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+                {
+                    Log::Write(msg.c_str(), LogType::Warning);
+                }
+                else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+                {
+                    Log::Write(msg.c_str(), LogType::Error);
+                }
+
+                return VK_FALSE;
+            }
+
+            void initialize(VkInstance instance)
+            {
+                if (functions::create_messenger)
+                {
+                    VkDebugUtilsMessengerCreateInfoEXT create_info = {};
+                    create_info.sType                              = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+                    create_info.messageSeverity                    = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+                    create_info.messageType                        = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+                    create_info.pfnUserCallback                    = callback;
+
+                    functions::create_messenger(instance, &create_info, nullptr, &messenger);
+                }
+            }
+
+            void shutdown(VkInstance instance)
+            {
+                if (!functions::destroy_messenger)
+                    return;
+
+                functions::destroy_messenger(instance, messenger, nullptr);
+            }
         }
     }
 
@@ -413,151 +558,6 @@ namespace Spartan
         
             return true;
         };
-    }
-
-    namespace functions
-    {
-        PFN_vkCreateDebugUtilsMessengerEXT  create_messenger          = nullptr;
-        PFN_vkDestroyDebugUtilsMessengerEXT destroy_messenger         = nullptr;
-        PFN_vkSetDebugUtilsObjectTagEXT     set_object_tag            = nullptr;
-        PFN_vkSetDebugUtilsObjectNameEXT    set_object_name           = nullptr;
-        PFN_vkCmdBeginDebugUtilsLabelEXT    marker_begin              = nullptr;
-        PFN_vkCmdEndDebugUtilsLabelEXT      marker_end                = nullptr;
-        PFN_vkCmdSetFragmentShadingRateKHR  set_fragment_shading_rate = nullptr;
-
-        void initialize(bool validation_enabled, bool gpu_markers_enabled)
-        {
-            #define get_func(var, def)\
-            var = reinterpret_cast<PFN_##def>(vkGetInstanceProcAddr(static_cast<VkInstance>(RHI_Context::instance), #def));\
-            if (!var) SP_LOG_ERROR("Failed to get function pointer for %s", #def);\
-
-            /* VK_EXT_debug_utils */
-            {
-                if (validation_enabled)
-                {
-                    get_func(create_messenger, vkCreateDebugUtilsMessengerEXT);
-                    get_func(destroy_messenger, vkDestroyDebugUtilsMessengerEXT);
-
-                    SP_ASSERT(create_messenger && destroy_messenger);
-                }
-        
-                if (gpu_markers_enabled)
-                {
-                    get_func(marker_begin, vkCmdBeginDebugUtilsLabelEXT);
-                    get_func(marker_end, vkCmdEndDebugUtilsLabelEXT);
-
-                    SP_ASSERT(marker_begin && marker_end);
-                }
-            }
-        
-            /* VK_EXT_debug_marker */
-            if (validation_enabled)
-            {
-                get_func(set_object_tag, vkSetDebugUtilsObjectTagEXT);
-                get_func(set_object_name, vkSetDebugUtilsObjectNameEXT);
-
-                SP_ASSERT(set_object_tag && set_object_name);
-            }
-
-            get_func(set_fragment_shading_rate, vkCmdSetFragmentShadingRateKHR);
-            SP_ASSERT(set_fragment_shading_rate);
-        }
-    }
-
-    namespace validation_layer_logging
-    {
-        VkDebugUtilsMessengerEXT messenger;
-
-        VKAPI_ATTR VkBool32 VKAPI_CALL callback
-        (
-            VkDebugUtilsMessageSeverityFlagBitsEXT msg_severity,
-            VkDebugUtilsMessageTypeFlagsEXT msg_type,
-            const VkDebugUtilsMessengerCallbackDataEXT* p_callback_data,
-            void* p_user_data
-        )
-        {
-            // filter out certain things
-            {
-                // this doesn't belong to us, it's fidelityfx sdk 
-                if (p_callback_data->messageIdNumber == 0xdc18ad6b)
-                {
-                    // [ UNASSIGNED-BestPractices-vkAllocateMemory-small-allocation ] | MessageID = 0xdc18ad6b | vkAllocateMemory():
-                    // Allocating a VkDeviceMemory of size 256. This is a very small allocation (current threshold is 262144 bytes).
-                    // You should make large allocations and sub-allocate from one large VkDeviceMemory.
-                    return VK_FALSE;
-                }
-
-                // occlusion queries
-                {
-                    if (p_callback_data->messageIdNumber == 0xd39be754)
-                    {
-                        // Validation Warning:
-                        // [BestPractices - QueryPool - Unavailable] Object 0 :
-                        // handle = 0x980b0000000002e, name = query_pool_occlusion, type = VK_OBJECT_TYPE_QUERY_POOL; | MessageID = 0xd39be754 | vkGetQueryPoolResults() :
-                        // QueryPool VkQueryPool 0x980b0000000002e[query_pool_occlusion] and query 0 : vkCmdBeginQuery() was never called.
-                        return VK_FALSE;
-                    }
-                }
-
-                // silence false positive synchronization error due to validation layer issue
-                // check fix progress here: https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/7600
-                if (p_callback_data->messageIdNumber == 0x29910a35)
-                    return VK_FALSE;
-
-                //= LEGIT ISSES THAT HAVE TO BE FIXED ===================================================================
-                if (p_callback_data->messageIdNumber == 0xe17ab4ae) // validation error - SYNC-HAZARD-PRESENT-AFTER-WRITE
-                  return VK_FALSE;
-
-                if (p_callback_data->messageIdNumber == 0x42f2f4ed) // validation error - depth_ouput
-                    return VK_FALSE;
-
-                if (p_callback_data->messageIdNumber == 0xe4d96472) // validation error - depth_ouput
-                   return VK_FALSE;
-
-                if (p_callback_data->messageIdNumber == 0x5c0ec5d6) // validation error - depth_light
-                    return VK_FALSE;
-                //=======================================================================================================
-            }
-
-            string msg = "Vulkan: " + string(p_callback_data->pMessage);
-
-            if (/*(msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) ||*/ (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))
-            {
-                Log::Write(msg.c_str(), LogType::Info);
-            }
-            else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-            {
-                Log::Write(msg.c_str(), LogType::Warning);
-            }
-            else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-            {
-                Log::Write(msg.c_str(), LogType::Error);
-            }
-
-            return VK_FALSE;
-        }
-
-        void initialize(VkInstance instance)
-        {
-            if (functions::create_messenger)
-            {
-                VkDebugUtilsMessengerCreateInfoEXT create_info = {};
-                create_info.sType                              = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-                create_info.messageSeverity                    = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-                create_info.messageType                        = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-                create_info.pfnUserCallback                    = callback;
-
-                functions::create_messenger(instance, &create_info, nullptr, &messenger);
-            }
-        }
-
-        void shutdown(VkInstance instance)
-        {
-            if (!functions::destroy_messenger)
-                return;
-
-            functions::destroy_messenger(instance, messenger, nullptr);
-        }
     }
 
     namespace vulkan_memory_allocator
@@ -1155,28 +1155,25 @@ namespace Spartan
                 RHI_Context::api_version_str = to_string(VK_API_VERSION_MAJOR(app_info.apiVersion)) + "." + to_string(VK_API_VERSION_MINOR(app_info.apiVersion)) + "." + to_string(VK_API_VERSION_PATCH(app_info.apiVersion));
             }
 
-            // get the supported extensions out of the requested extensions
-            vector<const char*> extensions_supported = extensions::get_extensions_supported_instance();
+            VkInstanceCreateInfo create_info = {};
+            create_info.sType                = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+            create_info.pApplicationInfo     = &app_info;
 
-            VkInstanceCreateInfo create_info    = {};
-            create_info.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-            create_info.pApplicationInfo        = &app_info;
-            create_info.enabledExtensionCount   = static_cast<uint32_t>(extensions_supported.size());
-            create_info.ppEnabledExtensionNames = extensions_supported.data();
+            // extensions
+            vector<const char*> extensions_instance = extensions::get_extensions_supported_instance();
+            create_info.enabledExtensionCount   = static_cast<uint32_t>(extensions_instance.size());
+            create_info.ppEnabledExtensionNames = extensions_instance.data();
             create_info.enabledLayerCount       = 0;
 
-            // validation features
+            // validation
             VkValidationFeaturesEXT validation_features       = {};
             validation_features.sType                         = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
             validation_features.enabledValidationFeatureCount = static_cast<uint32_t>(validation::features.size());
             validation_features.pEnabledValidationFeatures    = validation::features.data();
-
             if (Profiler::IsValidationLayerEnabled())
             {
-                // enable validation layer
-                if (validation::is_present_instance_layer())
+                if (validation::is_present())
                 {
-                    // validation layers
                     create_info.enabledLayerCount   = 1;
                     create_info.ppEnabledLayerNames = &validation::layer_name;
                     create_info.pNext               = &validation_features;
@@ -1196,7 +1193,7 @@ namespace Spartan
         // validation layer logging
         if (Profiler::IsValidationLayerEnabled())
         {
-            validation_layer_logging::initialize(RHI_Context::instance);
+            validation::logging::initialize(RHI_Context::instance);
         }
 
         // find a physical device
@@ -1349,7 +1346,7 @@ namespace Spartan
         // debug messenger
         if (Profiler::IsValidationLayerEnabled())
         {
-            validation_layer_logging::shutdown(RHI_Context::instance);
+            validation::logging::shutdown(RHI_Context::instance);
         }
 
         // descriptors
