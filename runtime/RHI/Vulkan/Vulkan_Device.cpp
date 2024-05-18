@@ -323,25 +323,25 @@ namespace Spartan
     {
         // layers configuration: https://vulkan.lunarg.com/doc/view/1.3.283.0/windows/layer_configuration.html
 
-        const char* layer_name                        = "VK_LAYER_KHRONOS_validation";
-        const VkBool32 setting_validate_core          = VK_TRUE;
-        const VkBool32 setting_validate_sync          = VK_TRUE;
-        const VkBool32 setting_thread_safety          = VK_TRUE;
-        const char* setting_debug_action[]            = { "VK_DBG_LAYER_ACTION_LOG_MSG" };
-        const char* setting_report_flags[]            = { "info", "warn", "perf", "error", "debug" };
-        const VkBool32 setting_enable_message_limit   = VK_TRUE;
-        const int32_t setting_duplicate_message_limit = 3;
+        array<const char*, 2> layer_names             = { "VK_LAYER_KHRONOS_validation", "VK_LAYER_KHRONOS_profiles" }; // array of layer names to enable for validation
+        const VkBool32 setting_validate_core          = VK_TRUE;                                                        // enable core validation checks
+        const VkBool32 setting_validate_sync          = VK_TRUE;                                                        // enable synchronization validation checks
+        const VkBool32 setting_thread_safety          = VK_TRUE;                                                        // enable thread safety checks
+        const char* setting_debug_action[]            = { "VK_DBG_LAYER_ACTION_LOG_MSG" };                              // specify action to log messages from validation layers
+        const char* setting_report_flags[]            = { "info", "warn", "perf", "error", "debug" };                   // specify types of messages to be reported by validation layers
+        const VkBool32 setting_enable_message_limit   = VK_TRUE;                                                        // enable limiting of duplicate validation messages
+        const int32_t setting_duplicate_message_limit = 3;                                                              // set the limit for duplicate validation messages
 
         // settings
-        vector<VkLayerSettingEXT> settings            =
+        vector<VkLayerSettingEXT> settings =
         {
-            { layer_name, "validate_core",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_core },
-            { layer_name, "validate_sync",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_sync },
-            { layer_name, "thread_safety",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_thread_safety },
-            { layer_name, "debug_action",            VK_LAYER_SETTING_TYPE_STRING_EXT, 1, setting_debug_action },
-            { layer_name, "report_flags",            VK_LAYER_SETTING_TYPE_STRING_EXT, static_cast<uint32_t>(std::size(setting_report_flags)), setting_report_flags },
-            { layer_name, "enable_message_limit",    VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_enable_message_limit },
-            { layer_name, "duplicate_message_limit", VK_LAYER_SETTING_TYPE_INT32_EXT,  1, &setting_duplicate_message_limit }
+            { layer_names[0], "validate_core",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_core },
+            { layer_names[0], "validate_sync",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_sync },
+            { layer_names[0], "thread_safety",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_thread_safety },
+            { layer_names[0], "debug_action",            VK_LAYER_SETTING_TYPE_STRING_EXT, 1, setting_debug_action },
+            { layer_names[0], "report_flags",            VK_LAYER_SETTING_TYPE_STRING_EXT, static_cast<uint32_t>(std::size(setting_report_flags)), setting_report_flags },
+            { layer_names[0], "enable_message_limit",    VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_enable_message_limit },
+            { layer_names[0], "duplicate_message_limit", VK_LAYER_SETTING_TYPE_INT32_EXT,  1, &setting_duplicate_message_limit }
         };
         const VkLayerSettingsCreateInfoEXT layer_settings_create_info =
         {
@@ -365,11 +365,6 @@ namespace Spartan
 
             // enable application controlled validation
             {
-                // set environment variable
-                //const char* env_var = "VK_LOADER_LAYERS_ENABLE";
-                //string env_str      = string(env_var) + "=" + layer_name;
-                //_putenv(env_str.c_str());
-
                 // check layer availability
                 if (Profiler::IsValidationLayerEnabled())
                 {
@@ -382,7 +377,7 @@ namespace Spartan
                     bool validation_layer_unavailable = true;
                     for (const auto& layer : layers)
                     {
-                        if (strcmp(layer_name, layer.layerName) == 0)
+                        if (strcmp(layer_names[0], layer.layerName) == 0)
                         { 
                             validation_layer_unavailable = false;
                             break;
@@ -433,20 +428,6 @@ namespace Spartan
                     // check fix progress here: https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/7600
                     if (p_callback_data->messageIdNumber == 0x29910a35)
                         return VK_FALSE;
-
-                    //= LEGIT ISSES THAT HAVE TO BE FIXED ===================================================================
-                    if (p_callback_data->messageIdNumber == 0xe17ab4ae) // validation error - SYNC-HAZARD-PRESENT-AFTER-WRITE
-                        return VK_FALSE;
-
-                    if (p_callback_data->messageIdNumber == 0x42f2f4ed) // validation error - depth_ouput
-                        return VK_FALSE;
-
-                    if (p_callback_data->messageIdNumber == 0xe4d96472) // validation error - depth_ouput
-                        return VK_FALSE;
-
-                    if (p_callback_data->messageIdNumber == 0x5c0ec5d6) // validation error - depth_light
-                        return VK_FALSE;
-                    //=======================================================================================================
                 }
 
                 string msg = "Vulkan: " + string(p_callback_data->pMessage);
@@ -1218,9 +1199,8 @@ namespace Spartan
             create_info.ppEnabledExtensionNames     = extensions_instance.data();
 
             // validation
-            const char* layers[]            = { validation::layer_name };
-            create_info.enabledLayerCount   = Profiler::IsValidationLayerEnabled() ? static_cast<uint32_t>(std::size(layers)) : 0;
-            create_info.ppEnabledLayerNames = layers;
+            create_info.enabledLayerCount   = Profiler::IsValidationLayerEnabled() ? static_cast<uint32_t>(validation::layer_names.size()) : 0;
+            create_info.ppEnabledLayerNames = validation::layer_names.data();
             create_info.pNext               = &validation::layer_settings_create_info;
 
             SP_ASSERT_VK_MSG(vkCreateInstance(&create_info, nullptr, &RHI_Context::instance), "Failed to create instance");
@@ -1308,7 +1288,7 @@ namespace Spartan
                 create_info.enabledExtensionCount        = static_cast<uint32_t>(extensions_supported.size());
                 create_info.ppEnabledExtensionNames      = extensions_supported.data();
                 create_info.enabledLayerCount            = Profiler::IsValidationLayerEnabled() ? 1 : 0;
-                create_info.ppEnabledLayerNames          = Profiler::IsValidationLayerEnabled() ? &validation::layer_name : nullptr;
+                create_info.ppEnabledLayerNames          = Profiler::IsValidationLayerEnabled() ? &validation::layer_names[0] : nullptr;
 
                 SP_ASSERT_VK_MSG(vkCreateDevice(RHI_Context::device_physical, &create_info, nullptr, &RHI_Context::device), "Failed to create device");
                 SP_LOG_INFO("Vulkan %s", version::to_string().c_str());
