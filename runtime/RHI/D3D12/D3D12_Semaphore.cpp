@@ -44,4 +44,9 @@ namespace Spartan
     {
 
     }
+
+    uint64_t RHI_Semaphore::GetValue() const
+    {
+        return 0;
+    }
 }

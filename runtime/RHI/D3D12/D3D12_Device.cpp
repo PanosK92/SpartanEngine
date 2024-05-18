@@ -61,10 +61,8 @@ namespace Spartan
         m_max_texture_array_layers   = D3D12_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION;
 
         // Find a physical device
-        {
-            SP_ASSERT_MSG(PhysicalDeviceDetect(), "Failed to detect any devices");
-            PhysicalDeviceSelectPrimary();
-        }
+        PhysicalDeviceDetect();
+        PhysicalDeviceSelectPrimary();
 
         // Debug layer
         UINT dxgi_factory_flags = 0;

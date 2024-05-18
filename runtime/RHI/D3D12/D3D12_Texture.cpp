@@ -34,11 +34,6 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    void RHI_Texture::RHI_SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const uint32_t mip_index, const uint32_t mip_range)
-    {
-
-    }
-
     bool RHI_Texture::RHI_CreateResource()
     {
         return false;
