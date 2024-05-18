@@ -44,6 +44,16 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    namespace version
+    {
+        uint32_t used = 0;
+
+        string to_string()
+        {
+            return std::to_string(VK_VERSION_MAJOR(used)) + "." + std::to_string(VK_VERSION_MINOR(used)) + "." + std::to_string(VK_VERSION_PATCH(used));
+        }
+    }
+
     namespace
     {
         mutex mutex_allocation;
@@ -107,24 +117,73 @@ namespace Spartan
             return tiling;
         }
 
-        string version_to_string(uint32_t version)
+        VkApplicationInfo create_application_info()
         {
-            return to_string(VK_VERSION_MAJOR(version)) + "." + to_string(VK_VERSION_MINOR(version)) + "." + to_string(VK_VERSION_PATCH(version));
+            VkApplicationInfo app_info  = {};
+            app_info.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+            app_info.pApplicationName   = sp_info::name;             // for gpu vendors to do game specific driver optimizations
+            app_info.pEngineName        = app_info.pApplicationName; // for gpu vendors to do engine specific driver optimizations
+            app_info.engineVersion      = VK_MAKE_VERSION(sp_info::version_major, sp_info::version_minor, sp_info::version_revision);
+            app_info.applicationVersion = app_info.engineVersion;
+
+            // deduce api version to use based on the SDK and what the driver supports
+            {
+                uint32_t driver_version = 0;
+                {
+                    // per LunarG, if vkEnumerateInstanceVersion is not present, we are running on Vulkan 1.0
+                    // https://www.lunarg.com/wp-content/uploads/2019/02/Vulkan-1.1-Compatibility-Statement_01_19.pdf
+                    auto eiv = reinterpret_cast<PFN_vkEnumerateInstanceVersion>(vkGetInstanceProcAddr(nullptr, "vkEnumerateInstanceVersion"));
+
+                    if (eiv)
+                    {
+                        eiv(&driver_version);
+                    }
+                    else
+                    {
+                        driver_version = VK_API_VERSION_1_0;
+                    }
+                }
+
+                // choose the version which is supported by both the sdk and the driver
+                uint32_t sdk_version = VK_HEADER_VERSION_COMPLETE;
+                app_info.apiVersion  = Helper::Min(sdk_version, driver_version);
+
+                // 1.3 the minimum required version as we are using extensions from 1.3
+                SP_ASSERT_MSG(app_info.apiVersion >= VK_API_VERSION_1_3, "Vulkan 1.3 is not supported");
+
+                // in case the SDK is not supported by the driver, prompt the user to update
+                if (sdk_version > driver_version)
+                {
+                    // detect and log version
+                    string driver_version_str = to_string(VK_API_VERSION_MAJOR(driver_version)) + "." + to_string(VK_API_VERSION_MINOR(driver_version)) + "." + to_string(VK_API_VERSION_PATCH(driver_version));
+                    string sdk_version_str    = to_string(VK_API_VERSION_MAJOR(sdk_version))    + "." + to_string(VK_API_VERSION_MINOR(sdk_version)) + "." + to_string(VK_API_VERSION_PATCH(sdk_version));
+                    SP_LOG_WARNING("Using Vulkan %s, update drivers or wait for GPU vendor to support Vulkan %s, engine may still work", driver_version_str.c_str(), sdk_version_str.c_str());
+                }
+
+                // save the api version we ended up using
+                version::used                = app_info.apiVersion;
+                RHI_Context::api_version_str = version::to_string();
+            }
+
+            return app_info;
         }
     }
 
     namespace functions
     {
-        PFN_vkCreateDebugUtilsMessengerEXT  create_messenger = nullptr;
-        PFN_vkDestroyDebugUtilsMessengerEXT destroy_messenger = nullptr;
-        PFN_vkSetDebugUtilsObjectTagEXT     set_object_tag = nullptr;
-        PFN_vkSetDebugUtilsObjectNameEXT    set_object_name = nullptr;
-        PFN_vkCmdBeginDebugUtilsLabelEXT    marker_begin = nullptr;
-        PFN_vkCmdEndDebugUtilsLabelEXT      marker_end = nullptr;
+        PFN_vkCreateDebugUtilsMessengerEXT  create_messenger          = nullptr;
+        PFN_vkDestroyDebugUtilsMessengerEXT destroy_messenger         = nullptr;
+        PFN_vkSetDebugUtilsObjectTagEXT     set_object_tag            = nullptr;
+        PFN_vkSetDebugUtilsObjectNameEXT    set_object_name           = nullptr;
+        PFN_vkCmdBeginDebugUtilsLabelEXT    marker_begin              = nullptr;
+        PFN_vkCmdEndDebugUtilsLabelEXT      marker_end                = nullptr;
         PFN_vkCmdSetFragmentShadingRateKHR  set_fragment_shading_rate = nullptr;
 
-        void initialize(bool validation_enabled, bool gpu_markers_enabled)
+        void get_pointers()
         {
+            const bool validation_enabled  = Profiler::IsValidationLayerEnabled();
+            const bool gpu_markers_enabled = Profiler::IsGpuMarkingEnabled();
+
             #define get_func(var, def)\
             var = reinterpret_cast<PFN_##def>(vkGetInstanceProcAddr(static_cast<VkInstance>(RHI_Context::instance), #def));\
             if (!var) SP_LOG_ERROR("Failed to get function pointer for %s", #def);\
@@ -257,9 +316,35 @@ namespace Spartan
 
     namespace validation
     {
-        const char* layer_name = "VK_LAYER_KHRONOS_validation";
-        vector<VkValidationFeatureEnableEXT> features;
+        // layers configuration: https://vulkan.lunarg.com/doc/view/1.3.283.0/windows/layer_configuration.html
 
+        const char* layer_name                        = "VK_LAYER_KHRONOS_validation";
+        const VkBool32 setting_validate_core          = VK_TRUE;
+        const VkBool32 setting_validate_sync          = VK_TRUE;
+        const VkBool32 setting_thread_safety          = VK_TRUE;
+        const char* setting_debug_action[]            = { "VK_DBG_LAYER_ACTION_LOG_MSG" };
+        const char* setting_report_flags[]            = { "info", "warn", "perf", "error", "debug" };
+        const VkBool32 setting_enable_message_limit   = VK_TRUE;
+        const int32_t setting_duplicate_message_limit = 3;
+
+        // settings
+        vector<VkLayerSettingEXT> settings            =
+        {
+            { layer_name, "validate_core",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_core },
+            { layer_name, "validate_sync",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_sync },
+            { layer_name, "thread_safety",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_thread_safety },
+            { layer_name, "debug_action",            VK_LAYER_SETTING_TYPE_STRING_EXT, 1, setting_debug_action },
+            { layer_name, "report_flags",            VK_LAYER_SETTING_TYPE_STRING_EXT, static_cast<uint32_t>(std::size(setting_report_flags)), setting_report_flags },
+            { layer_name, "enable_message_limit",    VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_enable_message_limit },
+            { layer_name, "duplicate_message_limit", VK_LAYER_SETTING_TYPE_INT32_EXT,  1, &setting_duplicate_message_limit }
+        };
+        const VkLayerSettingsCreateInfoEXT layer_settings_create_info =
+        {
+            VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT, nullptr, static_cast<uint32_t>(settings.size()), settings.data()
+        };
+
+        // features
+        vector<VkValidationFeatureEnableEXT> features;
         void initialize()
         {
             if (Profiler::IsGpuAssistedValidationEnabled())
@@ -272,23 +357,31 @@ namespace Spartan
                 features.emplace_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
                 features.emplace_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
             }
-        }
 
-        bool is_present()
-        {
-            uint32_t layer_count;
-            vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
-
-            vector<VkLayerProperties> layers(layer_count);
-            vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
-
-            for (const auto& layer : layers)
+            // check layer availability
+            if (Profiler::IsValidationLayerEnabled())
             {
-                if (strcmp(layer_name, layer.layerName) == 0)
-                    return true;
-            }
+                uint32_t layer_count;
+                vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
 
-            return false;
+                vector<VkLayerProperties> layers(layer_count);
+                vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
+
+                bool present = false;
+                for (const auto& layer : layers)
+                {
+                    if (strcmp(layer_name, layer.layerName) == 0)
+                    { 
+                        present = true;
+                        break;
+                    }
+                }
+
+                if (!present)
+                {
+                    SP_LOG_ERROR("Validation layer unavailable, install the Vulkan SDK: https://vulkan.lunarg.com/sdk/home");
+                }
+            }
         }
 
         namespace logging
@@ -364,7 +457,7 @@ namespace Spartan
                 return VK_FALSE;
             }
 
-            void initialize(VkInstance instance)
+            void enable()
             {
                 if (functions::create_messenger)
                 {
@@ -374,7 +467,7 @@ namespace Spartan
                     create_info.messageType                        = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
                     create_info.pfnUserCallback                    = callback;
 
-                    functions::create_messenger(instance, &create_info, nullptr, &messenger);
+                    functions::create_messenger(RHI_Context::instance, &create_info, nullptr, &messenger);
                 }
             }
 
@@ -565,7 +658,7 @@ namespace Spartan
         VmaAllocator allocator;
         unordered_map<uint64_t, VmaAllocation> allocations;
 
-        void initialize(const uint32_t api_version)
+        void initialize()
         {
             // https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/staying_within_budget.html
             // It is recommended to use VK_EXT_memory_budget device extension to obtain information about the budget from Vulkan device.
@@ -576,7 +669,7 @@ namespace Spartan
             allocator_info.physicalDevice         = RHI_Context::device_physical;
             allocator_info.device                 = RHI_Context::device;
             allocator_info.instance               = RHI_Context::instance;
-            allocator_info.vulkanApiVersion       = api_version;
+            allocator_info.vulkanApiVersion       = version::used;
             allocator_info.flags                  = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
 
             SP_ASSERT_VK_MSG(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator), "Failed to create memory allocator");
@@ -1099,108 +1192,39 @@ namespace Spartan
 
     void RHI_Device::Initialize()
     {
-        SP_ASSERT_MSG(RHI_Context::api_type == RHI_Api_Type::Vulkan, "RHI context not initialized");
-
         validation::initialize();
         extensions::initialize();
 
-        // create instance
-        VkApplicationInfo app_info = {};
+        // instance
         {
-            app_info.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-            app_info.pApplicationName   = sp_info::name;
-            app_info.pEngineName        = app_info.pApplicationName;
-            app_info.engineVersion      = VK_MAKE_VERSION(sp_info::version_major, sp_info::version_minor, sp_info::version_revision);
-            app_info.applicationVersion = app_info.engineVersion;
-
-            // deduce API version to use
-            {
-                // get sdk version
-                uint32_t sdk_version = VK_HEADER_VERSION_COMPLETE;
-
-                // get driver version
-                uint32_t driver_version = 0;
-                {
-                    // Per LunarG, if vkEnumerateInstanceVersion is not present, we are running on Vulkan 1.0
-                    // https://www.lunarg.com/wp-content/uploads/2019/02/Vulkan-1.1-Compatibility-Statement_01_19.pdf
-                    auto eiv = reinterpret_cast<PFN_vkEnumerateInstanceVersion>(vkGetInstanceProcAddr(nullptr, "vkEnumerateInstanceVersion"));
-
-                    if (eiv)
-                    {
-                        eiv(&driver_version);
-                    }
-                    else
-                    {
-                        driver_version = VK_API_VERSION_1_0;
-                    }
-                }
-
-                // choose the version which is supported by both the sdk and the driver
-                app_info.apiVersion = Helper::Min(sdk_version, driver_version);
-
-                // 1.3 the minimum required version as we are using extensions from 1.3
-                SP_ASSERT_MSG(app_info.apiVersion >= VK_API_VERSION_1_3, "Vulkan 1.3 is not supported");
-
-                // in case the SDK is not supported by the driver, prompt the user to update
-                if (sdk_version > driver_version)
-                {
-                    // detect and log version
-                    string driver_version_str = to_string(VK_API_VERSION_MAJOR(driver_version)) + "." + to_string(VK_API_VERSION_MINOR(driver_version)) + "." + to_string(VK_API_VERSION_PATCH(driver_version));
-                    string sdk_version_str    = to_string(VK_API_VERSION_MAJOR(sdk_version))    + "." + to_string(VK_API_VERSION_MINOR(sdk_version))    + "." + to_string(VK_API_VERSION_PATCH(sdk_version));
-                    SP_LOG_WARNING("Using Vulkan %s, update drivers or wait for GPU vendor to support Vulkan %s, engine may still work", driver_version_str.c_str(), sdk_version_str.c_str());
-                }
-
-                //  save API version
-                RHI_Context::api_version_str = to_string(VK_API_VERSION_MAJOR(app_info.apiVersion)) + "." + to_string(VK_API_VERSION_MINOR(app_info.apiVersion)) + "." + to_string(VK_API_VERSION_PATCH(app_info.apiVersion));
-            }
-
             VkInstanceCreateInfo create_info = {};
             create_info.sType                = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+            VkApplicationInfo app_info       = create_application_info();
             create_info.pApplicationInfo     = &app_info;
 
             // extensions
             vector<const char*> extensions_instance = extensions::get_extensions_supported_instance();
-            create_info.enabledExtensionCount   = static_cast<uint32_t>(extensions_instance.size());
-            create_info.ppEnabledExtensionNames = extensions_instance.data();
-            create_info.enabledLayerCount       = 0;
+            create_info.enabledExtensionCount       = static_cast<uint32_t>(extensions_instance.size());
+            create_info.ppEnabledExtensionNames     = extensions_instance.data();
 
             // validation
-            VkValidationFeaturesEXT validation_features       = {};
-            validation_features.sType                         = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
-            validation_features.enabledValidationFeatureCount = static_cast<uint32_t>(validation::features.size());
-            validation_features.pEnabledValidationFeatures    = validation::features.data();
-            if (Profiler::IsValidationLayerEnabled())
-            {
-                if (validation::is_present())
-                {
-                    create_info.enabledLayerCount   = 1;
-                    create_info.ppEnabledLayerNames = &validation::layer_name;
-                    create_info.pNext               = &validation_features;
-                }
-                else
-                {
-                    SP_LOG_ERROR("Validation layer unavailable, install Vulkan SDK: https://vulkan.lunarg.com/sdk/home");
-                }
-            }
+            const char* layers[]            = { validation::layer_name };
+            create_info.enabledLayerCount   = Profiler::IsValidationLayerEnabled() ? static_cast<uint32_t>(std::size(layers)) : 0;
+            create_info.ppEnabledLayerNames = layers;
+            create_info.pNext               = &validation::layer_settings_create_info;
 
-            SP_ASSERT_MSG(vkCreateInstance(&create_info, nullptr, &RHI_Context::instance) == VK_SUCCESS, "Failed to create instance");
+            SP_ASSERT_VK_MSG(vkCreateInstance(&create_info, nullptr, &RHI_Context::instance), "Failed to create instance");
+
+            functions::get_pointers();
+            validation::logging::enable();
         }
-
-        // get function pointers (from extensions)
-        functions::initialize(Profiler::IsValidationLayerEnabled(), Profiler::IsGpuMarkingEnabled());
-
-        // validation layer logging
-        if (Profiler::IsValidationLayerEnabled())
-        {
-            validation::logging::initialize(RHI_Context::instance);
-        }
-
-        // find a physical device
-        PhysicalDeviceDetect();
-        PhysicalDeviceSelectPrimary();
 
         // device
         {
+            // detect physical devices amd select the primary one
+            PhysicalDeviceDetect();
+            PhysicalDeviceSelectPrimary();
+
             // queue create info
             vector<VkDeviceQueueCreateInfo> queue_create_infos;
             {
@@ -1263,29 +1287,22 @@ namespace Spartan
   
             device_features::detect(RHI_Context::device_physical, &m_is_shading_rate_supported);
 
-            // get the supported extensions out of the requested extensions
-            vector<const char*> extensions_supported = extensions::get_extensions_supported_device();
-
-            // device create info
-            VkDeviceCreateInfo create_info = {};
-            {
-                create_info.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-                create_info.queueCreateInfoCount    = static_cast<uint32_t>(queue_create_infos.size());
-                create_info.pQueueCreateInfos       = queue_create_infos.data();
-                create_info.pNext                   = &device_features::pNext;
-                create_info.enabledExtensionCount   = static_cast<uint32_t>(extensions_supported.size());
-                create_info.ppEnabledExtensionNames = extensions_supported.data();
-
-                if (Profiler::IsValidationLayerEnabled())
-                {
-                    create_info.enabledLayerCount   = 1;
-                    create_info.ppEnabledLayerNames = &validation::layer_name;
-                }
-            }
-
             // create
-            SP_ASSERT_MSG(vkCreateDevice(RHI_Context::device_physical, &create_info, nullptr, &RHI_Context::device) == VK_SUCCESS, "Failed to create device");
-            SP_LOG_INFO("Vulkan %s", version_to_string(app_info.apiVersion).c_str());
+            {
+                VkDeviceCreateInfo create_info           = {};
+                create_info.sType                        = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+                create_info.queueCreateInfoCount         = static_cast<uint32_t>(queue_create_infos.size());
+                create_info.pQueueCreateInfos            = queue_create_infos.data();
+                create_info.pNext                        = &device_features::pNext;
+                vector<const char*> extensions_supported = extensions::get_extensions_supported_device();
+                create_info.enabledExtensionCount        = static_cast<uint32_t>(extensions_supported.size());
+                create_info.ppEnabledExtensionNames      = extensions_supported.data();
+                create_info.enabledLayerCount            = Profiler::IsValidationLayerEnabled() ? 1 : 0;
+                create_info.ppEnabledLayerNames          = Profiler::IsValidationLayerEnabled() ? &validation::layer_name : nullptr;
+
+                SP_ASSERT_VK_MSG(vkCreateDevice(RHI_Context::device_physical, &create_info, nullptr, &RHI_Context::device), "Failed to create device");
+                SP_LOG_INFO("Vulkan %s", version::to_string().c_str());
+            }
         }
 
         // create queues
@@ -1308,12 +1325,12 @@ namespace Spartan
             queues::immediate[static_cast<uint32_t>(RHI_Queue_Type::Copy)]     = make_shared<RHI_Queue>(RHI_Queue_Type::Copy,     "copy");
         }
 
-        vulkan_memory_allocator::initialize(app_info.apiVersion);
-
+        vulkan_memory_allocator::initialize();
         CreateDescriptorPool();
 
-        // register vulkan version
-        Settings::RegisterThirdPartyLib("Vulkan", version_to_string(VK_HEADER_VERSION_COMPLETE), "https://vulkan.lunarg.com/");
+        // register the vulkan sdk version, which can be higher than the version we are using which is driver dependent
+        string version_Sdlk = to_string(VK_VERSION_MAJOR(VK_HEADER_VERSION_COMPLETE)) + "." + to_string(VK_VERSION_MINOR(VK_HEADER_VERSION_COMPLETE)) + "." + to_string(VK_VERSION_PATCH(VK_HEADER_VERSION_COMPLETE));
+        Settings::RegisterThirdPartyLib("Vulkan", version_Sdlk, "https://vulkan.lunarg.com/");
     }
 
     void RHI_Device::Tick(const uint64_t frame_count)
@@ -1381,10 +1398,9 @@ namespace Spartan
             "Failed to enumerate physical devices"
         );
         
-        // Go through all the devices
+        // register all available physical devices
         for (const VkPhysicalDevice& device_physical : physical_devices)
         {
-            // Get device properties
             VkPhysicalDeviceProperties device_properties = {};
             vkGetPhysicalDeviceProperties(device_physical, &device_properties);
         
@@ -1397,7 +1413,6 @@ namespace Spartan
             if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)    type = RHI_PhysicalDevice_Type::Virtual;
             if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)            type = RHI_PhysicalDevice_Type::Cpu;
 
-            // Let the engine know about it as it will sort all of the devices from best to worst
             PhysicalDeviceRegister(PhysicalDevice
             (
                 device_properties.apiVersion,                                        // api version
