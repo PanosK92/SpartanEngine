@@ -2113,6 +2113,7 @@ namespace Spartan
                             pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
                             pso.render_target_color_textures[0] = tex_outline;
                             pso.clear_color[0]                  = Color::standard_transparent;
+                            cmd_list->SetIgnoreClearValues(false);
                             cmd_list->SetPipelineState(pso);
                         
                             // render
