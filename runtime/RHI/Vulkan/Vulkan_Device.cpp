@@ -325,16 +325,17 @@ namespace Spartan
         // layers configuration: https://vulkan.lunarg.com/doc/view/1.3.283.0/windows/layer_configuration.html
         const char* name = "VK_LAYER_KHRONOS_validation";
 
-        const VkBool32 setting_validate_core          = VK_TRUE;                                           // enable core validation checks
-        const VkBool32 setting_validate_sync          = VK_TRUE;                                           // enable synchronization validation checks
-        const VkBool32 setting_thread_safety          = VK_TRUE;                                           // enable thread safety checks
-        const char* setting_debug_action[]            = { "VK_DBG_LAYER_ACTION_LOG_MSG" };                 // specify action to log messages from validation layers
-        const char* setting_report_flags[]            = { "info", "warn", "perf", "error", "debug" };      // specify types of messages to be reported by validation layers
-        const VkBool32 setting_enable_message_limit   = VK_TRUE;                                           // enable limiting of duplicate validation messages
-        const int32_t setting_duplicate_message_limit = 3;                                                 // set the limit for duplicate validation messages
-        const char* setting_enable_best_practices     = "VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT"; // enable best practices
-        const char* setting_enable_vendor_amd         = "VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_AMD";     // enable AMD-specific best practices
-        const char* setting_enable_vendor_nvidia      = "VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_NVIDIA";  // enable Nvidia-specific best practices
+        const VkBool32 setting_validate_core          = VK_TRUE;                                                       // enable core validation checks
+        const VkBool32 setting_validate_sync          = VK_TRUE;                                                       // enable synchronization validation checks
+        const VkBool32 setting_thread_safety          = VK_TRUE;                                                       // enable thread safety checks
+        const char* setting_debug_action[]            = { "VK_DBG_LAYER_ACTION_LOG_MSG" };                             // specify action to log messages from validation layers
+        const char* setting_report_flags[]            = { "info", "warn", "perf", "error", "debug" };                  // specify types of messages to be reported by validation layers
+        const VkBool32 setting_enable_message_limit   = VK_TRUE;                                                       // enable limiting of duplicate validation messages
+        const int32_t setting_duplicate_message_limit = 1;                                                             // set the limit for duplicate validation messages
+        const char* setting_synchronization           = "VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT"; // enable synchronization validation 
+        const char* setting_best_practices            = "VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT";             // enable best practices
+        const char* setting_vendor_amd                = "VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_AMD";                 // enable AMD-specific best practices
+        const char* setting_vendor_nvidia             = "VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_NVIDIA";              // enable Nvidia-specific best practices
 
         vector<VkLayerSettingEXT> get_settings()
         {
@@ -347,9 +348,10 @@ namespace Spartan
                 { name, "report_flags",            VK_LAYER_SETTING_TYPE_STRING_EXT, 5, setting_report_flags },             // specify types of messages to report
                 { name, "enable_message_limit",    VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_enable_message_limit },    // enable limiting duplicate messages
                 { name, "duplicate_message_limit", VK_LAYER_SETTING_TYPE_INT32_EXT,  1, &setting_duplicate_message_limit }, // set limit for duplicate messages
-                { name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_enable_best_practices },   // enable best practices
-                { name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_enable_vendor_amd },       // enable AMD-specific best practices
-                { name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_enable_vendor_nvidia }     // enable Nvidia-specific best practices
+                { name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_synchronization },         // enable synchronization validation
+                { name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_best_practices },          // enable best practices
+                { name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_vendor_amd },              // enable AMD-specific best practices
+                { name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_vendor_nvidia }            // enable Nvidia-specific best practices
             };
 
             // check layer availability
@@ -403,7 +405,7 @@ namespace Spartan
                 void* p_user_data
             )
             {
-                // filter out certain things
+                // ignore some messages
                 {
                     // false positives and minor
                     {
@@ -422,53 +424,22 @@ namespace Spartan
                             if (p_callback_data->messageIdNumber == 0xd39be754)
                             {
                                 // Validation Warning:
-                            // [BestPractices - QueryPool - Unavailable] Object 0 :
-                            // handle = 0x980b0000000002e, name = query_pool_occlusion, type = VK_OBJECT_TYPE_QUERY_POOL; | MessageID = 0xd39be754 | vkGetQueryPoolResults() :
-                            // QueryPool VkQueryPool 0x980b0000000002e[query_pool_occlusion] and query 0 : vkCmdBeginQuery() was never called.
+                                // [BestPractices - QueryPool - Unavailable] Object 0 :
+                                // handle = 0x980b0000000002e, name = query_pool_occlusion, type = VK_OBJECT_TYPE_QUERY_POOL; | MessageID = 0xd39be754 | vkGetQueryPoolResults() :
+                                // QueryPool VkQueryPool 0x980b0000000002e[query_pool_occlusion] and query 0 : vkCmdBeginQuery() was never called.
                                 return VK_FALSE;
                             }
                         }
                     }
 
-                    // legit
+                    // legit but they spam every frame
                     {
-                        //[SYNC - HAZARD - WRITE - AFTER - PRESENT] Object 0 : handle = 0x1f21db42430, name = graphics, type = VK_OBJECT_TYPE_QUEUE;
-                        // | MessageID = 0x42f2f4ed | vkQueueSubmit2() : Hazard WRITE_AFTER_PRESENT for entry 0, VkCommandBuffer 0x1f20bc383b0[graphics_cmd_pool_0_0],
-                        // Submitted access info(submitted_usage : SYNC_IMAGE_LAYOUT_TRANSITION, command : vkCmdPipelineBarrier2, seq_no : 9,
-                        // VkImage 0x7409630000000192[swapchain_image_1], reset_no : 39, debug_region : imgui_window_main).Access info(prior_usage :
-                        // SYNC_PRESENT_ENGINE_SYNCVAL_PRESENT_PRESENTED_SYNCVAL, write_barriers : 0, queue : VkQueue 0x1f21db42430[graphics], submit :
-                        // 754, batch : 0, batch_tag : 18219, vkQueuePresentKHR present_tag : 18219, pSwapchains[0] : VkSwapchainKHR 0x7d60e10000000190[],
-                        // image_index : 1image : VkImage 0x7409630000000192[swapchain_image_1]).
-                        if (p_callback_data->messageIdNumber == 0x42f2f4ed)
+                        // present related, they happen without the renderer doing anything, imgui presenting is enough
+                        if (p_callback_data->messageIdNumber == 0xe17ab4ae || p_callback_data->messageIdNumber == 0x42f2f4ed)
                             return VK_FALSE;
 
-                        // [20:10:38]: Vulkan: Validation Error: [ SYNC-HAZARD-PRESENT-AFTER-WRITE ] Object 0: handle = 0x1b880f2ab30, name = graphics,
-                        // type = VK_OBJECT_TYPE_QUEUE; | MessageID = 0xe17ab4ae | vkQueuePresentKHR():  Hazard PRESENT_AFTER_WRITE for present pSwapchains[0] ,
-                        // swapchain VkSwapchainKHR 0x7d60e10000000190[], image index 1 VkImage 0x7409630000000192[swapchain_image_1], Access info (usage:
-                        // SYNC_PRESENT_ENGINE_SYNCVAL_PRESENT_PRESENTED_SYNCVAL, prior_usage: SYNC_IMAGE_LAYOUT_TRANSITION, write_barriers: 0, queue: VkQueue
-                        // 0x1b880f2ab30[graphics], submit: 1017, batch: 0, batch_tag: 25819, command: vkCmdPipelineBarrier2, command_buffer: VkCommandBuffer
-                        // 0x1b880f62020[graphics_cmd_pool_1_0], seq_no: 55, VkImage 0x7409630000000192[swapchain_image_1], reset_no: 56).
-                        if (p_callback_data->messageIdNumber == 0xe17ab4ae)
-                            return VK_FALSE;
-
-                        // [20:11:59]: Vulkan: Validation Error: [ SYNC-HAZARD-READ-AFTER-WRITE ] Object 0: handle = 0x1b920db2110, name =
-                        // graphics_cmd_pool_1_0, type = VK_OBJECT_TYPE_COMMAND_BUFFER; Object 1: handle = 0xe3a8500000001d3, type = VK_OBJECT_TYPE_IMAGE_VIEW; |
-                        // MessageID = 0xe4d96472 | vkCmdBeginRendering(): pDepthAttachment->imageView (VkImageView 0xe3a8500000001d3[]), with loadOp
-                        // VK_ATTACHMENT_LOAD_OP_LOAD. Access info (usage: SYNC_EARLY_FRAGMENT_TESTS_DEPTH_STENCIL_ATTACHMENT_READ, prior_usage: SYNC_IMAGE_LAYOUT_TRANSITION,
-                        //  write_barriers: SYNC_FRAGMENT_SHADER_DEPTH_STENCIL_ATTACHMENT_READ|SYNC_LATE_FRAGMENT_TESTS_DEPTH_STENCIL_ATTACHMENT_READ|SYNC_LATE_FRAGMENT_TESTS_DEPTH_STENCIL_ATTACHMENT_WRITE,
-                        // command: vkCmdPipelineBarrier2, seq_no: 213, VkImage 0xe7250000000001cf[gbuffer_depth], reset_no: 542, debug_region: depth_prepass_transparent).
-                        if (p_callback_data->messageIdNumber == 0xe4d96472)
-                            return VK_FALSE;
-
-                        // [20:14:01]: Vulkan: Validation Error: [ SYNC-HAZARD-WRITE-AFTER-WRITE ] Object 0: handle = 0x29ebcca37c0, name =
-                        // graphics_cmd_pool_0_0, type = VK_OBJECT_TYPE_COMMAND_BUFFER; Object 1: handle = 0x44f0800000006987, type =
-                        // VK_OBJECT_TYPE_IMAGE_VIEW; | MessageID = 0x5c0ec5d6 | vkCmdBeginRendering(): pDepthAttachment->imageView
-                        // (VkImageView 0x44f0800000006987[]), with loadOp VK_ATTACHMENT_LOAD_OP_CLEAR. Access info (usage:
-                        // SYNC_EARLY_FRAGMENT_TESTS_DEPTH_STENCIL_ATTACHMENT_WRITE, prior_usage: SYNC_IMAGE_LAYOUT_TRANSITION,
-                        // write_barriers: SYNC_FRAGMENT_SHADER_DEPTH_STENCIL_ATTACHMENT_READ|SYNC_LATE_FRAGMENT_TESTS_DEPTH_STENCIL_ATTACHMENT_READ|
-                        // SYNC_LATE_FRAGMENT_TESTS_DEPTH_STENCIL_ATTACHMENT_WRITE, command: vkCmdPipelineBarrier2, seq_no: 3,
-                        // VkImage 0x71640c0000006983[light_directional_depth], reset_no: 371, debug_region: shadow_maps_depth).
-                        if (p_callback_data->messageIdNumber == 0x5c0ec5d6)
+                        // depth gbuffer - some barrier might be dodgy
+                        if (p_callback_data->messageIdNumber == 0x5c0ec5d6 || p_callback_data->messageIdNumber == 0xe4d96472)
                             return VK_FALSE;
                     }
                 }
