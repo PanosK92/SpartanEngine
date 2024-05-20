@@ -228,21 +228,6 @@ namespace Spartan
         vector<const char*> extensions_instance = { "VK_KHR_surface",   "VK_KHR_win32_surface", "VK_EXT_swapchain_colorspace" };
         vector<const char*> extensions_device   = { "VK_KHR_swapchain", "VK_EXT_memory_budget", "VK_KHR_fragment_shading_rate", "VK_EXT_hdr_metadata", "VK_EXT_robustness2" };
 
-        void initialize()
-        {
-            // validation layer messaging/logging
-            if (Profiler::IsValidationLayerEnabled())
-            {
-                extensions_instance.emplace_back("VK_EXT_debug_report");
-            }
-
-            // object naming (for the validation messages) and gpu markers
-            if (Profiler::IsGpuMarkingEnabled())
-            {
-                extensions_instance.emplace_back("VK_EXT_debug_utils");
-            }
-        }
-
         bool is_present_device(const char* extension_name, VkPhysicalDevice device_physical)
         {
             uint32_t extension_count = 0;
@@ -277,7 +262,7 @@ namespace Spartan
             return false;
         }
 
-        vector<const char*> get_extensions_supported_device()
+        vector<const char*> get_extensions_device()
         {
             vector<const char*> extensions_supported;
             for (const auto& extension : extensions_device)
@@ -304,8 +289,20 @@ namespace Spartan
             return extensions_supported;
         }
 
-        vector<const char*> get_extensions_supported_instance()
+        vector<const char*> get_extensions_instance()
         {
+            // validation layer messaging/logging
+            if (Profiler::IsValidationLayerEnabled())
+            {
+                extensions_instance.emplace_back("VK_EXT_debug_report");
+            }
+
+            // object naming (for the validation messages) and gpu markers
+            if (Profiler::IsGpuMarkingEnabled())
+            {
+                extensions_instance.emplace_back("VK_EXT_debug_utils");
+            }
+
             vector<const char*> extensions_supported;
             for (const auto& extension : extensions_instance)
             {
@@ -323,74 +320,75 @@ namespace Spartan
         }
     }
 
-    namespace validation
+    namespace validation_layer
     {
         // layers configuration: https://vulkan.lunarg.com/doc/view/1.3.283.0/windows/layer_configuration.html
+        const char* name = "VK_LAYER_KHRONOS_validation";
 
-        array<const char*, 2> layer_names             = { "VK_LAYER_KHRONOS_validation", "VK_LAYER_KHRONOS_profiles" }; // array of layer names to enable for validation
-        const VkBool32 setting_validate_core          = VK_TRUE;                                                        // enable core validation checks
-        const VkBool32 setting_validate_sync          = VK_TRUE;                                                        // enable synchronization validation checks
-        const VkBool32 setting_thread_safety          = VK_TRUE;                                                        // enable thread safety checks
-        const char* setting_debug_action[]            = { "VK_DBG_LAYER_ACTION_LOG_MSG" };                              // specify action to log messages from validation layers
-        const char* setting_report_flags[]            = { "info", "warn", "perf", "error", "debug" };                   // specify types of messages to be reported by validation layers
-        const VkBool32 setting_enable_message_limit   = VK_TRUE;                                                        // enable limiting of duplicate validation messages
-        const int32_t setting_duplicate_message_limit = 3;                                                              // set the limit for duplicate validation messages
+        const VkBool32 setting_validate_core          = VK_TRUE;                                           // enable core validation checks
+        const VkBool32 setting_validate_sync          = VK_TRUE;                                           // enable synchronization validation checks
+        const VkBool32 setting_thread_safety          = VK_TRUE;                                           // enable thread safety checks
+        const char* setting_debug_action[]            = { "VK_DBG_LAYER_ACTION_LOG_MSG" };                 // specify action to log messages from validation layers
+        const char* setting_report_flags[]            = { "info", "warn", "perf", "error", "debug" };      // specify types of messages to be reported by validation layers
+        const VkBool32 setting_enable_message_limit   = VK_TRUE;                                           // enable limiting of duplicate validation messages
+        const int32_t setting_duplicate_message_limit = 3;                                                 // set the limit for duplicate validation messages
+        const char* setting_enable_best_practices     = "VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT"; // enable best practices
+        const char* setting_enable_vendor_amd         = "VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_AMD";     // enable AMD-specific best practices
+        const char* setting_enable_vendor_nvidia      = "VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_NVIDIA";  // enable Nvidia-specific best practices
 
-        // settings
-        vector<VkLayerSettingEXT> settings =
+        vector<VkLayerSettingEXT> get_settings()
         {
-            { layer_names[0], "validate_core",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_core },
-            { layer_names[0], "validate_sync",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_sync },
-            { layer_names[0], "thread_safety",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_thread_safety },
-            { layer_names[0], "debug_action",            VK_LAYER_SETTING_TYPE_STRING_EXT, 1, setting_debug_action },
-            { layer_names[0], "report_flags",            VK_LAYER_SETTING_TYPE_STRING_EXT, 5, setting_report_flags },
-            { layer_names[0], "enable_message_limit",    VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_enable_message_limit },
-            { layer_names[0], "duplicate_message_limit", VK_LAYER_SETTING_TYPE_INT32_EXT,  1, &setting_duplicate_message_limit }
-        };
-        const VkLayerSettingsCreateInfoEXT layer_settings_create_info =
-        {
-            VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT, nullptr, static_cast<uint32_t>(settings.size()), settings.data()
-        };
-
-        // features
-        vector<VkValidationFeatureEnableEXT> features;
-        void initialize()
-        {
-            if (Profiler::IsGpuAssistedValidationEnabled())
+            vector<VkLayerSettingEXT> settings =
             {
-                features.emplace_back(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT);
-            }
+                { name, "validate_core",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_core },           // enable core validation checks
+                { name, "validate_sync",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_sync },           // enable synchronization validation checks
+                { name, "thread_safety",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_thread_safety },           // enable thread safety checks
+                { name, "debug_action",            VK_LAYER_SETTING_TYPE_STRING_EXT, 1, setting_debug_action },             // specify action to log messages
+                { name, "report_flags",            VK_LAYER_SETTING_TYPE_STRING_EXT, 5, setting_report_flags },             // specify types of messages to report
+                { name, "enable_message_limit",    VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_enable_message_limit },    // enable limiting duplicate messages
+                { name, "duplicate_message_limit", VK_LAYER_SETTING_TYPE_INT32_EXT,  1, &setting_duplicate_message_limit }, // set limit for duplicate messages
+                { name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_enable_best_practices },   // enable best practices
+                { name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_enable_vendor_amd },       // enable AMD-specific best practices
+                { name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_enable_vendor_nvidia }     // enable Nvidia-specific best practices
+            };
 
+            // check layer availability
             if (Profiler::IsValidationLayerEnabled())
             {
-                features.emplace_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
-                features.emplace_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
-            }
-
-            // enable application controlled validation
-            {
-                // check layer availability
-                if (Profiler::IsValidationLayerEnabled())
+                uint32_t layer_count;
+                vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
+        
+                vector<VkLayerProperties> layers(layer_count);
+                vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
+        
+                bool validation_layer_unavailable = true;
+                for (const VkLayerProperties& layer : layers)
                 {
-                    uint32_t layer_count;
-                    vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
-
-                    vector<VkLayerProperties> layers(layer_count);
-                    vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
-
-                    bool validation_layer_unavailable = true;
-                    for (const VkLayerProperties& layer : layers)
+                    if (strcmp(name, layer.layerName) == 0)
                     {
-                        if (strcmp(layer_names[0], layer.layerName) == 0)
-                        { 
-                            validation_layer_unavailable = false;
-                            break;
-                        }
+                        validation_layer_unavailable = false;
+                        break;
                     }
-
-                    SP_ASSERT_MSG(!validation_layer_unavailable, "Please install the Vulkan SDK: https://vulkan.lunarg.com/sdk/home");
                 }
+        
+                SP_ASSERT_MSG(!validation_layer_unavailable, "Please install the Vulkan SDK: https://vulkan.lunarg.com/sdk/home");
             }
+        
+            // enable GPU-assisted validation
+            if (Profiler::IsGpuAssistedValidationEnabled())
+            {
+                const char* setting_enable_gpu_assisted = "VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT";
+                settings.push_back({ name, "enables", VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_enable_gpu_assisted });
+            }
+        
+            // enable synchronization validation
+            if (Profiler::IsValidationLayerEnabled())
+            {
+                const char* setting_enable_synchronization = "VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT";
+                settings.push_back({ name, "enables", VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_enable_synchronization });
+            }
+
+            return settings;
         }
 
         namespace logging
@@ -407,16 +405,17 @@ namespace Spartan
             {
                 // filter out certain things
                 {
-                    // trivial
+                    // false positives and minor
                     {
-                        // this doesn't belong to us, it's fidelityfx sdk 
-                        if (p_callback_data->messageIdNumber == 0xdc18ad6b)
-                        {
-                            // [ UNASSIGNED-BestPractices-vkAllocateMemory-small-allocation ] | MessageID = 0xdc18ad6b | vkAllocateMemory():
-                        // Allocating a VkDeviceMemory of size 256. This is a very small allocation (current threshold is 262144 bytes).
-                        // You should make large allocations and sub-allocate from one large VkDeviceMemory.
+
+                        // silence false positive synchronization error due to validation layer issue
+                        // check fix progress here: https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/7600
+                        if (p_callback_data->messageIdNumber == 0x29910a35)
                             return VK_FALSE;
-                        }
+
+                        // fidelityfx sdk issues related to best practices and deprecations
+                        if (p_callback_data->messageIdNumber == 0xfd92477a || p_callback_data->messageIdNumber == 0x990cbf9f || p_callback_data->messageIdNumber == 0xd8a870c)
+                            return VK_FALSE;
 
                         // occlusion queries
                         {
@@ -429,11 +428,6 @@ namespace Spartan
                                 return VK_FALSE;
                             }
                         }
-
-                        // silence false positive synchronization error due to validation layer issue
-                        // check fix progress here: https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/7600
-                        if (p_callback_data->messageIdNumber == 0x29910a35)
-                            return VK_FALSE;
                     }
 
                     // legit
@@ -1232,30 +1226,33 @@ namespace Spartan
 
     void RHI_Device::Initialize()
     {
-        validation::initialize();
-        extensions::initialize();
-
         // instance
         {
-            VkInstanceCreateInfo create_info = {};
-            create_info.sType                = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-            VkApplicationInfo app_info       = create_application_info();
-            create_info.pApplicationInfo     = &app_info;
+            VkInstanceCreateInfo info_instance      = {};
+            info_instance.sType                     = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+            VkApplicationInfo app_info              = create_application_info();
+            info_instance.pApplicationInfo          = &app_info;
 
             // extensions
-            vector<const char*> extensions_instance = extensions::get_extensions_supported_instance();
-            create_info.enabledExtensionCount       = static_cast<uint32_t>(extensions_instance.size());
-            create_info.ppEnabledExtensionNames     = extensions_instance.data();
+            vector<const char*> extensions_instance = extensions::get_extensions_instance();
+            info_instance.enabledExtensionCount     = static_cast<uint32_t>(extensions_instance.size());
+            info_instance.ppEnabledExtensionNames   = extensions_instance.data();
+            info_instance.enabledLayerCount         = Profiler::IsValidationLayerEnabled() ? 1 : 0;
+            info_instance.ppEnabledLayerNames       = &validation_layer::name;
 
-            // validation
-            create_info.enabledLayerCount   = Profiler::IsValidationLayerEnabled() ? static_cast<uint32_t>(validation::layer_names.size()) : 0;
-            create_info.ppEnabledLayerNames = validation::layer_names.data();
-            create_info.pNext               = &validation::layer_settings_create_info;
+            // settings
+            VkLayerSettingsCreateInfoEXT info_settings = {};
+            info_settings.sType                        = VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT;
+            info_instance.pNext                        = &info_settings;
+            vector<VkLayerSettingEXT> settings         = validation_layer::get_settings();
+            info_settings.pSettings                    = settings.data();
+            info_settings.settingCount                 = static_cast<uint32_t>(settings.size());
 
-            SP_ASSERT_VK_MSG(vkCreateInstance(&create_info, nullptr, &RHI_Context::instance), "Failed to create instance");
+            // create the Vulkan instance
+            SP_ASSERT_VK_MSG(vkCreateInstance(&info_instance, nullptr, &RHI_Context::instance), "Failed to create instance");
 
             functions::get_pointers();
-            validation::logging::enable();
+            validation_layer::logging::enable();
         }
 
         // device
@@ -1333,7 +1330,7 @@ namespace Spartan
                 create_info.queueCreateInfoCount         = static_cast<uint32_t>(queue_create_infos.size());
                 create_info.pQueueCreateInfos            = queue_create_infos.data();
                 create_info.pNext                        = &device_features::pNext;
-                vector<const char*> extensions_supported = extensions::get_extensions_supported_device();
+                vector<const char*> extensions_supported = extensions::get_extensions_device();
                 create_info.enabledExtensionCount        = static_cast<uint32_t>(extensions_supported.size());
                 create_info.ppEnabledExtensionNames      = extensions_supported.data();
 
@@ -1399,7 +1396,7 @@ namespace Spartan
         // debug messenger
         if (Profiler::IsValidationLayerEnabled())
         {
-            validation::logging::shutdown(RHI_Context::instance);
+            validation_layer::logging::shutdown(RHI_Context::instance);
         }
 
         // descriptors
