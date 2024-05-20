@@ -339,6 +339,30 @@ namespace Spartan
 
         vector<VkLayerSettingEXT> get_settings()
         {
+            SP_ASSERT(Profiler::IsValidationLayerEnabled());
+
+            // check layer availability
+            {
+                uint32_t layer_count;
+                vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
+
+                vector<VkLayerProperties> layers(layer_count);
+                vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
+
+                bool validation_layer_unavailable = true;
+                for (const VkLayerProperties& layer : layers)
+                {
+                    if (strcmp(name, layer.layerName) == 0)
+                    {
+                        validation_layer_unavailable = false;
+                        break;
+                    }
+                }
+
+                SP_ASSERT_MSG(!validation_layer_unavailable, "Please install the Vulkan SDK: https://vulkan.lunarg.com/sdk/home");
+            }
+
+            // create settings
             vector<VkLayerSettingEXT> settings =
             {
                 { name, "validate_core",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_core },           // enable core validation checks
@@ -354,40 +378,11 @@ namespace Spartan
                 { name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_vendor_nvidia }            // enable Nvidia-specific best practices
             };
 
-            // check layer availability
-            if (Profiler::IsValidationLayerEnabled())
-            {
-                uint32_t layer_count;
-                vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
-        
-                vector<VkLayerProperties> layers(layer_count);
-                vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
-        
-                bool validation_layer_unavailable = true;
-                for (const VkLayerProperties& layer : layers)
-                {
-                    if (strcmp(name, layer.layerName) == 0)
-                    {
-                        validation_layer_unavailable = false;
-                        break;
-                    }
-                }
-        
-                SP_ASSERT_MSG(!validation_layer_unavailable, "Please install the Vulkan SDK: https://vulkan.lunarg.com/sdk/home");
-            }
-        
             // enable GPU-assisted validation
             if (Profiler::IsGpuAssistedValidationEnabled())
             {
                 const char* setting_enable_gpu_assisted = "VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT";
                 settings.push_back({ name, "enables", VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_enable_gpu_assisted });
-            }
-        
-            // enable synchronization validation
-            if (Profiler::IsValidationLayerEnabled())
-            {
-                const char* setting_enable_synchronization = "VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT";
-                settings.push_back({ name, "enables", VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_enable_synchronization });
             }
 
             return settings;
@@ -1215,9 +1210,13 @@ namespace Spartan
             VkLayerSettingsCreateInfoEXT info_settings = {};
             info_settings.sType                        = VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT;
             info_instance.pNext                        = &info_settings;
-            vector<VkLayerSettingEXT> settings         = validation_layer::get_settings();
-            info_settings.pSettings                    = settings.data();
-            info_settings.settingCount                 = static_cast<uint32_t>(settings.size());
+            vector<VkLayerSettingEXT> settings;
+            if (Profiler::IsValidationLayerEnabled())
+            { 
+                settings = validation_layer::get_settings();
+            }
+            info_settings.pSettings    = settings.data();
+            info_settings.settingCount = static_cast<uint32_t>(settings.size());
 
             // create the Vulkan instance
             SP_ASSERT_VK_MSG(vkCreateInstance(&info_instance, nullptr, &RHI_Context::instance), "Failed to create instance");
