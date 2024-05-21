@@ -40,6 +40,44 @@ using namespace std;
 
 namespace Spartan
 {
+    namespace
+    {
+        VkPipelineShaderStageCreateInfo create_shader_stage(const RHI_Shader* shader)
+        {
+            VkPipelineShaderStageCreateInfo shader_stage_info = {};
+            shader_stage_info.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            shader_stage_info.module                          = static_cast<VkShaderModule>(shader->GetRhiResource());
+            shader_stage_info.pName                           = shader->GetEntryPoint();
+
+            if (shader->GetShaderStage() == RHI_Shader_Type::Vertex)
+            {
+                shader_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
+            }
+            else if (shader->GetShaderStage() == RHI_Shader_Type::Hull)
+            {
+                shader_stage_info.stage = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+            }
+            else if (shader->GetShaderStage() == RHI_Shader_Type::Domain)
+            {
+                shader_stage_info.stage = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+            }
+            else if (shader->GetShaderStage() == RHI_Shader_Type::Pixel)
+            {
+                shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+            }
+            else if (shader->GetShaderStage() == RHI_Shader_Type::Compute)
+            {
+                shader_stage_info.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+            }
+
+            SP_ASSERT(shader_stage_info.stage  != 0);
+            SP_ASSERT(shader_stage_info.module != nullptr);
+            SP_ASSERT(shader_stage_info.pName  != nullptr);
+
+            return shader_stage_info;
+        }
+    }
+
     RHI_Pipeline::RHI_Pipeline(RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout)
     {
         m_state = pipeline_state;
@@ -70,14 +108,12 @@ namespace Spartan
                     SP_ASSERT(descriptor.struct_size <= RHI_Device::PropertyGetMaxPushConstantSize());
                     
                     VkPushConstantRange push_constant_range  = {};
-                    push_constant_range.offset               = 0;
                     push_constant_range.size                 = descriptor.struct_size;
-                    push_constant_range.stageFlags           = 0;
-                    push_constant_range.stageFlags          |= (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Vertex)  ? VK_SHADER_STAGE_VERTEX_BIT                  : 0;
-                    push_constant_range.stageFlags          |= (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Hull)    ? VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT    : 0;
-                    push_constant_range.stageFlags          |= (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Domain)  ? VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT : 0;
-                    push_constant_range.stageFlags          |= (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Pixel)   ? VK_SHADER_STAGE_FRAGMENT_BIT                : 0;
-                    push_constant_range.stageFlags          |= (descriptor.stage & RHI_Shader_Stage::RHI_Shader_Compute) ? VK_SHADER_STAGE_COMPUTE_BIT                 : 0;
+                    push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Vertex))  ? VK_SHADER_STAGE_VERTEX_BIT                  : 0;
+                    push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Hull))    ? VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT    : 0;
+                    push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Domain))  ? VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT : 0;
+                    push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Pixel))   ? VK_SHADER_STAGE_FRAGMENT_BIT                : 0;
+                    push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Compute)) ? VK_SHADER_STAGE_COMPUTE_BIT                 : 0;
 
                     push_constant_ranges.emplace_back(push_constant_range);
                 }
@@ -107,21 +143,21 @@ namespace Spartan
         VkRect2D scissor                                 = {};
         VkPipelineViewportStateCreateInfo viewport_state = {};
         {
-            // enable dynamic states
-            dynamic_states.push_back(VK_DYNAMIC_STATE_VIEWPORT);
-            if (m_state.IsGraphics())
-            {
-                dynamic_states.push_back(VK_DYNAMIC_STATE_SCISSOR);
-                dynamic_states.push_back(VK_DYNAMIC_STATE_CULL_MODE);
-                dynamic_states.push_back(VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR);
-            }
-
             // dynamic states
-            dynamic_state.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-            dynamic_state.pNext             = nullptr;
-            dynamic_state.flags             = 0;
-            dynamic_state.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
-            dynamic_state.pDynamicStates    = dynamic_states.data();
+            {
+                dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+                dynamic_state.pNext = nullptr;
+                dynamic_state.flags = 0;
+                dynamic_states.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+                if (m_state.IsGraphics())
+                {
+                    dynamic_states.push_back(VK_DYNAMIC_STATE_SCISSOR);
+                    dynamic_states.push_back(VK_DYNAMIC_STATE_CULL_MODE);
+                    dynamic_states.push_back(VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR);
+                }
+                dynamic_state.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
+                dynamic_state.pDynamicStates    = dynamic_states.data();
+            }
 
             // viewport
             vkViewport.x        = 0;
@@ -147,96 +183,24 @@ namespace Spartan
 
         // shader stages
         vector<VkPipelineShaderStageCreateInfo> shader_stages;
-
-        // shader - vertex
-        if (m_state.shader_vertex)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(RHI_Shader_Type::Max); i++)
         {
-            VkPipelineShaderStageCreateInfo shader_stage_info = {};
-            shader_stage_info.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shader_stage_info.stage                           = VK_SHADER_STAGE_VERTEX_BIT;
-            shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_vertex->GetRhiResource());
-            shader_stage_info.pName                           = m_state.shader_vertex->GetEntryPoint();
-
-            // validate shader stage
-            SP_ASSERT(shader_stage_info.module != nullptr);
-            SP_ASSERT(shader_stage_info.pName != nullptr);
-
-            shader_stages.push_back(shader_stage_info);
-        }
-
-        // shader - hull
-        if (m_state.shader_hull)
-        {
-            VkPipelineShaderStageCreateInfo shader_stage_info = {};
-            shader_stage_info.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shader_stage_info.stage                           = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-            shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_hull->GetRhiResource());
-            shader_stage_info.pName                           = m_state.shader_hull->GetEntryPoint();
-
-            // validate shader stage
-            SP_ASSERT(shader_stage_info.module != nullptr);
-            SP_ASSERT(shader_stage_info.pName != nullptr);
-
-            shader_stages.push_back(shader_stage_info);
-        }
-
-        // shader - domain
-        if (m_state.shader_domain)
-        {
-            VkPipelineShaderStageCreateInfo shader_stage_info = {};
-            shader_stage_info.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shader_stage_info.stage                           = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-            shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_domain->GetRhiResource());
-            shader_stage_info.pName                           = m_state.shader_domain->GetEntryPoint();
-
-            // validate shader stage
-            SP_ASSERT(shader_stage_info.module != nullptr);
-            SP_ASSERT(shader_stage_info.pName != nullptr);
-
-            shader_stages.push_back(shader_stage_info);
-        }
-
-        // shader - pixel
-        if (m_state.shader_pixel)
-        {
-            VkPipelineShaderStageCreateInfo shader_stage_info = {};
-            shader_stage_info.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shader_stage_info.stage                           = VK_SHADER_STAGE_FRAGMENT_BIT;
-            shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_pixel->GetRhiResource());
-            shader_stage_info.pName                           = m_state.shader_pixel->GetEntryPoint();
-
-            // validate shader stage
-            SP_ASSERT(shader_stage_info.module != nullptr);
-            SP_ASSERT(shader_stage_info.pName != nullptr);
-
-            shader_stages.push_back(shader_stage_info);
-        }
-
-        // shader - compute
-        if (m_state.shader_compute)
-        {
-            VkPipelineShaderStageCreateInfo shader_stage_info = {};
-            shader_stage_info.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shader_stage_info.stage                           = VK_SHADER_STAGE_COMPUTE_BIT;
-            shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_compute->GetRhiResource());
-            shader_stage_info.pName                           = m_state.shader_compute->GetEntryPoint();
-
-            // validate shader stage
-            SP_ASSERT(shader_stage_info.module != nullptr);
-            SP_ASSERT(shader_stage_info.pName != nullptr);
-
-            shader_stages.push_back(shader_stage_info);
+            if (RHI_Shader* shader = m_state.shaders[i])
+            { 
+                shader_stages.push_back(create_shader_stage(shader));
+            }
         }
 
         // binding and vertex attribute descriptions
         vector<VkVertexInputBindingDescription> vertex_input_binding_descs;
         vector<VkVertexInputAttributeDescription> vertex_attribute_descs;
-        if (m_state.shader_vertex)
+        RHI_Shader* shader_vertex = m_state.shaders[RHI_Shader_Type::Vertex];
+        if (shader_vertex)
         {
             vertex_input_binding_descs.push_back
             ({
                 0,
-                m_state.shader_vertex ? m_state.shader_vertex->GetVertexSize() : 0,
+                shader_vertex ? shader_vertex->GetVertexSize() : 0,
                 VK_VERTEX_INPUT_RATE_VERTEX
             });
 
@@ -250,7 +214,7 @@ namespace Spartan
                 });
             }
 
-            if (RHI_InputLayout* input_layout = m_state.shader_vertex->GetInputLayout().get())
+            if (RHI_InputLayout* input_layout = shader_vertex->GetInputLayout().get())
             {
                 vertex_attribute_descs.reserve(input_layout->GetAttributeDescriptions().size());
                 for (const auto& desc : input_layout->GetAttributeDescriptions())

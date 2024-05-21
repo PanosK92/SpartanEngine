@@ -53,11 +53,11 @@ namespace Spartan
         {
             arguments.emplace_back("-E"); arguments.emplace_back(GetEntryPoint());
             arguments.emplace_back("-T"); arguments.emplace_back(GetTargetProfile());
-            arguments.emplace_back("-flegacy-macro-expansion"); // Expand the operands before performing token-pasting operation (fxc behavior)
-#ifdef DEBUG                                                    
-            arguments.emplace_back("-Od");                      // Disable optimizations
-            arguments.emplace_back("-Zi");                      // Enable debug information
-#endif
+            arguments.emplace_back("-flegacy-macro-expansion"); // expand the operands before performing token-pasting operation (fxc behavior)
+            #ifdef DEBUG                                                    
+            arguments.emplace_back("-Od");                      // disable optimizations
+            arguments.emplace_back("-Zi");                      // enable debug information
+            #endif
         }
 
         // defines
@@ -82,7 +82,7 @@ namespace Spartan
             );
 
             // create input layout
-            if (m_shader_type & RHI_Shader_Vertex)
+            if (m_shader_type == RHI_Shader_Type::Vertex)
             {
                 m_input_layout->Create(m_vertex_type, nullptr);
             }
@@ -95,7 +95,7 @@ namespace Spartan
         return nullptr;
     }
 
-    void RHI_Shader::Reflect(const RHI_Shader_Stage shader_type, const uint32_t* ptr, uint32_t size)
+    void RHI_Shader::Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, uint32_t size)
     {
 
     }

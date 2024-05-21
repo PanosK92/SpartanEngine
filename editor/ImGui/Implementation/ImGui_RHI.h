@@ -147,10 +147,10 @@ namespace ImGui::RHI
                 bool async = false;
 
                 g_shader_vertex = make_shared<RHI_Shader>();
-                g_shader_vertex->Compile(RHI_Shader_Vertex, shader_path, async, RHI_Vertex_Type::Pos2dUvCol8);
+                g_shader_vertex->Compile(RHI_Shader_Type::Vertex, shader_path, async, RHI_Vertex_Type::Pos2dUvCol8);
 
                 g_shader_pixel = make_shared<RHI_Shader>();
-                g_shader_pixel->Compile(RHI_Shader_Pixel, shader_path, async);
+                g_shader_pixel->Compile(RHI_Shader_Type::Pixel, shader_path, async);
             }
         }
 
@@ -263,15 +263,15 @@ namespace ImGui::RHI
         }
 
         // set pipeline state
-        static RHI_PipelineState pso = {};
-        pso.name                     = "imgui";
-        pso.shader_vertex            = g_shader_vertex.get();
-        pso.shader_pixel             = g_shader_pixel.get();
-        pso.rasterizer_state         = g_rasterizer_state.get();
-        pso.blend_state              = g_blend_state.get();
-        pso.depth_stencil_state      = g_depth_stencil_state.get();
-        pso.render_target_swapchain  = swapchain;
-        pso.clear_color[0]           = clear ? Color::standard_black : rhi_color_dont_care;
+        static RHI_PipelineState pso          = {};
+        pso.name                              = "imgui";
+        pso.shaders[RHI_Shader_Type::Vertex] = g_shader_vertex.get();
+        pso.shaders[RHI_Shader_Type::Pixel]  = g_shader_pixel.get();
+        pso.rasterizer_state                  = g_rasterizer_state.get();
+        pso.blend_state                       = g_blend_state.get();
+        pso.depth_stencil_state               = g_depth_stencil_state.get();
+        pso.render_target_swapchain           = swapchain;
+        pso.clear_color[0]                    = clear ? Color::standard_black : rhi_color_dont_care;
 
         // begin
         if (!is_main_window)

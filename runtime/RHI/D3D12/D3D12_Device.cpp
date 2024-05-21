@@ -200,7 +200,7 @@ namespace Spartan
         vector<IDXGIAdapter*> adapters = get_available_adapters(factory);
         factory->Release();
         factory = nullptr;
-        SP_ASSERT(adapters.size() > 0)
+        SP_ASSERT(adapters.size() > 0);
 
         // Save all available adapters
         DXGI_ADAPTER_DESC adapter_desc;

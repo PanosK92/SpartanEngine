@@ -32,19 +32,6 @@ namespace Spartan
     public:
         RHI_Descriptor() = default;
 
-        RHI_Descriptor(const RHI_Descriptor& descriptor)
-        {
-            type         = descriptor.type;
-            layout       = descriptor.layout;
-            slot         = descriptor.slot;
-            stage        = descriptor.stage;
-            name         = descriptor.name;
-            mip          = descriptor.mip;
-            struct_size  = descriptor.struct_size;
-            as_array     = descriptor.as_array;
-            array_length = descriptor.array_length;
-        }
-
         RHI_Descriptor(
             const std::string& name,
             const RHI_Descriptor_Type type,
