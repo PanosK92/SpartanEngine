@@ -1253,27 +1253,27 @@ namespace Spartan
 
         uint32_t stages = 0;
 
-        if (m_pso.shader_compute)
+        if (m_pso.shaders[RHI_Shader_Type::Compute])
         {
             stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT;
         }
 
-        if (m_pso.shader_vertex)
+        if (m_pso.shaders[RHI_Shader_Type::Vertex])
         {
             stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT;
         }
 
-        if (m_pso.shader_hull)
+        if (m_pso.shaders[RHI_Shader_Type::Hull])
         {
             stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
         }
 
-        if (m_pso.shader_domain)
+        if (m_pso.shaders[RHI_Shader_Type::Domain])
         {
             stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
         }
 
-        if (m_pso.shader_pixel)
+        if (m_pso.shaders[RHI_Shader_Type::Pixel])
         {
             stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT;
         }

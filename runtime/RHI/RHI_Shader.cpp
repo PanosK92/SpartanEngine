@@ -32,52 +32,12 @@ using namespace std;
 
 namespace Spartan
 {
-    namespace
-    {
-        static void log_compilation_result(
-            const RHI_Shader_Stage shader_stage,
-            const unordered_map<string, string>& defines,
-            const RHI_ShaderCompilationState compilation_state,
-            const string& object_name
-        )
-        {
-            string type_str = "unknown";
-            type_str = (shader_stage & RHI_Shader_Vertex)  ? "vertex"  : type_str;
-            type_str = (shader_stage & RHI_Shader_Hull)    ? "hull"    : type_str;
-            type_str = (shader_stage & RHI_Shader_Domain)  ? "domain"  : type_str;
-            type_str = (shader_stage & RHI_Shader_Pixel)   ? "pixel"   : type_str;
-            type_str = (shader_stage & RHI_Shader_Compute) ? "compute" : type_str;
-
-            string defines_str;
-            for (const auto& define : defines)
-            {
-                if (!defines_str.empty())
-                    defines_str += ", ";
-
-                defines_str += define.first + " = " + define.second;
-            }
-
-            // log failure
-            if (compilation_state != RHI_ShaderCompilationState::Succeeded)
-            {
-                if (defines_str.empty())
-                {
-                    SP_LOG_ERROR("Failed to compile shader \"%s\".", object_name.c_str());
-                }
-                else
-                {
-                    SP_LOG_ERROR("Failed to compile shader \"%s\" with definitions \"%s\".", object_name.c_str(), defines_str.c_str());
-                }
-            }
-        }
-    }
-
     RHI_Shader::RHI_Shader() : SpartanObject()
     {
 
     }
 
-    void RHI_Shader::Compile(const RHI_Shader_Stage shader_type, const string& file_path, bool async, const RHI_Vertex_Type vertex_type)
+    void RHI_Shader::Compile(const RHI_Shader_Type shader_type, const string& file_path, bool async, const RHI_Vertex_Type vertex_type)
     {
         // clear in case of re-compilation
         m_descriptors.clear();
@@ -85,7 +45,7 @@ namespace Spartan
 
         m_shader_type = shader_type;
         m_vertex_type = vertex_type;
-        if (m_shader_type == RHI_Shader_Vertex)
+        if (m_shader_type == RHI_Shader_Type::Vertex)
         {
             m_input_layout = make_shared<RHI_InputLayout>();
         }
@@ -251,23 +211,28 @@ namespace Spartan
 
     const char* RHI_Shader::GetEntryPoint() const
     {
-        if (m_shader_type == RHI_Shader_Vertex)  return "main_vs";
-        if (m_shader_type == RHI_Shader_Hull)    return "main_hs";
-        if (m_shader_type == RHI_Shader_Domain)  return "main_ds";
-        if (m_shader_type == RHI_Shader_Pixel)   return "main_ps";
-        if (m_shader_type == RHI_Shader_Compute) return "main_cs";
-
-        return nullptr;
+        switch (m_shader_type)
+        {
+            case RHI_Shader_Type::Vertex:  return "main_vs";
+            case RHI_Shader_Type::Hull:    return "main_hs";
+            case RHI_Shader_Type::Domain:  return "main_ds";
+            case RHI_Shader_Type::Pixel:   return "main_ps";
+            case RHI_Shader_Type::Compute: return "main_cs";
+            default:                       return nullptr;
+        }
     }
 
     const char* RHI_Shader::GetTargetProfile() const
     {
-        if (m_shader_type == RHI_Shader_Vertex)  return "vs_6_8";
-        if (m_shader_type == RHI_Shader_Hull)    return "hs_6_8";
-        if (m_shader_type == RHI_Shader_Domain)  return "ds_6_8";
-        if (m_shader_type == RHI_Shader_Pixel)   return "ps_6_8";
-        if (m_shader_type == RHI_Shader_Compute) return "cs_6_8";
-
-        return nullptr;
+        switch (m_shader_type)
+        {
+            case RHI_Shader_Type::Vertex:  return "vs_6_8";
+            case RHI_Shader_Type::Hull:    return "hs_6_8";
+            case RHI_Shader_Type::Domain:  return "ds_6_8";
+            case RHI_Shader_Type::Pixel:   return "ps_6_8";
+            case RHI_Shader_Type::Compute: return "cs_6_8";
+            default:                       return nullptr;
+        }
     }
+
 }

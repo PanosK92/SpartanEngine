@@ -806,30 +806,30 @@ namespace Spartan
 
             if (pipeline_state.IsCompute())
             {
-                SP_ASSERT(pipeline_state.shader_compute->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
-                descriptors = pipeline_state.shader_compute->GetDescriptors();
+                SP_ASSERT(pipeline_state.shaders[RHI_Shader_Type::Compute]->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
+                descriptors = pipeline_state.shaders[RHI_Shader_Type::Compute]->GetDescriptors();
             }
             else if (pipeline_state.IsGraphics())
             {
-                SP_ASSERT(pipeline_state.shader_vertex->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
-                descriptors = pipeline_state.shader_vertex->GetDescriptors();
+                SP_ASSERT(pipeline_state.shaders[RHI_Shader_Type::Vertex]->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
+                descriptors = pipeline_state.shaders[RHI_Shader_Type::Vertex]->GetDescriptors();
 
-                if (pipeline_state.shader_pixel)
+                if (pipeline_state.shaders[RHI_Shader_Type::Pixel])
                 {
-                    SP_ASSERT(pipeline_state.shader_pixel->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
-                    merge_descriptors(descriptors, pipeline_state.shader_pixel->GetDescriptors());
+                    SP_ASSERT(pipeline_state.shaders[RHI_Shader_Type::Pixel]->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
+                    merge_descriptors(descriptors, pipeline_state.shaders[RHI_Shader_Type::Pixel]->GetDescriptors());
                 }
 
-                if (pipeline_state.shader_hull)
+                if (pipeline_state.shaders[RHI_Shader_Type::Hull])
                 {
-                    SP_ASSERT(pipeline_state.shader_hull->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
-                    merge_descriptors(descriptors, pipeline_state.shader_hull->GetDescriptors());
+                    SP_ASSERT(pipeline_state.shaders[RHI_Shader_Type::Hull]->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
+                    merge_descriptors(descriptors, pipeline_state.shaders[RHI_Shader_Type::Hull]->GetDescriptors());
                 }
 
-                if (pipeline_state.shader_domain)
+                if (pipeline_state.shaders[RHI_Shader_Type::Domain])
                 {
-                    SP_ASSERT(pipeline_state.shader_domain->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
-                    merge_descriptors(descriptors, pipeline_state.shader_domain->GetDescriptors());
+                    SP_ASSERT(pipeline_state.shaders[RHI_Shader_Type::Domain]->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
+                    merge_descriptors(descriptors, pipeline_state.shaders[RHI_Shader_Type::Domain]->GetDescriptors());
                 }
             }
 

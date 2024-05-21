@@ -156,7 +156,7 @@ namespace Spartan
         return true;
     }
 
-    bool Audio::CreateSound(const std::string& file_path, int sound_mode, void*& sound)
+    bool Audio::CreateSound(const string& file_path, int sound_mode, void*& sound)
     {
         #if defined(_MSC_VER)
         return Audio::HandleErrorFmod(fmod_system->createSound(file_path.c_str(), sound_mode, nullptr, reinterpret_cast<FMOD::Sound**>(&sound)));
@@ -165,7 +165,7 @@ namespace Spartan
         #endif
     }
 
-    bool Audio::CreateStream(const std::string& file_path, int sound_mode, void*& sound)
+    bool Audio::CreateStream(const string& file_path, int sound_mode, void*& sound)
     {
         #if defined(_MSC_VER)
         return Audio::HandleErrorFmod(fmod_system->createStream(file_path.c_str(), sound_mode, nullptr, reinterpret_cast<FMOD::Sound**>(&sound)));

@@ -128,15 +128,15 @@ void ShaderEditor::ShowShaderList()
             string name = shader->GetObjectName();
     
             // Append stage
-            if (shader->GetShaderStage() == RHI_Shader_Vertex)
+            if (shader->GetShaderStage() == RHI_Shader_Type::Vertex)
             {
                 name += "_Vertex";
             }
-            else if (shader->GetShaderStage() == RHI_Shader_Pixel)
+            else if (shader->GetShaderStage() == RHI_Shader_Type::Pixel)
             {
                 name += "_Pixel";
             }
-            else if (shader->GetShaderStage() == RHI_Shader_Compute)
+            else if (shader->GetShaderStage() == RHI_Shader_Type::Compute)
             {
                 name += "_Compute";
             }

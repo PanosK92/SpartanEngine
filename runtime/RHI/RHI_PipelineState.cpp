@@ -41,9 +41,9 @@ namespace Spartan
     {
         void validate(RHI_PipelineState& pso)
         {
-            bool has_shader_compute  = pso.shader_compute ? pso.shader_compute->IsCompiled() : false;
-            bool has_shader_vertex   = pso.shader_vertex ? pso.shader_vertex->IsCompiled() : false;
-            bool has_shader_pixel    = pso.shader_pixel ? pso.shader_pixel->IsCompiled() : false;
+            bool has_shader_compute  = pso.shaders[RHI_Shader_Type::Compute] ? pso.shaders[RHI_Shader_Type::Compute]->IsCompiled() : false;
+            bool has_shader_vertex   = pso.shaders[RHI_Shader_Type::Vertex]  ? pso.shaders[RHI_Shader_Type::Vertex]->IsCompiled()  : false;
+            bool has_shader_pixel    = pso.shaders[RHI_Shader_Type::Pixel]   ? pso.shaders[RHI_Shader_Type::Pixel]->IsCompiled()   : false;
             bool has_render_target   = pso.render_target_color_textures[0] || pso.render_target_depth_texture; // check that there is at least one render target
             bool has_backbuffer      = pso.render_target_swapchain;                                            // check that no both the swapchain and the color render target are active
             bool has_graphics_states = pso.rasterizer_state && pso.blend_state && pso.depth_stencil_state;
@@ -87,31 +87,12 @@ namespace Spartan
             }
 
             // shaders
+            for (RHI_Shader* shader : pso.shaders)
             {
-                if (pso.shader_vertex)
-                {
-                    hash = rhi_hash_combine(hash, pso.shader_vertex->GetHash());
-                }
+                if (!shader)
+                    continue;
 
-                if (pso.shader_hull)
-                {
-                    hash = rhi_hash_combine(hash, pso.shader_hull->GetHash());
-                }
-
-                if (pso.shader_domain)
-                {
-                    hash = rhi_hash_combine(hash, pso.shader_domain->GetHash());
-                }
-
-                if (pso.shader_pixel)
-                {
-                    hash = rhi_hash_combine(hash, pso.shader_pixel->GetHash());
-                }
-
-                if (pso.shader_compute)
-                {
-                    hash = rhi_hash_combine(hash, pso.shader_compute->GetHash());
-                }
+                hash = rhi_hash_combine(hash, shader->GetHash());
             }
 
             // rt
@@ -208,5 +189,25 @@ namespace Spartan
         }
 
         return false;
+    }
+
+    bool RHI_PipelineState::IsGraphics() const
+    {
+        return (HasShader(RHI_Shader_Type::Vertex) || HasShader(RHI_Shader_Type::Pixel)) && !HasShader(RHI_Shader_Type::Compute);
+    }
+
+    bool RHI_PipelineState::IsCompute() const
+    {
+        return HasShader(RHI_Shader_Type::Compute) && !(HasShader(RHI_Shader_Type::Vertex) || HasShader(RHI_Shader_Type::Pixel));
+    }
+
+    bool RHI_PipelineState::HasTessellation()
+    {
+        return HasShader(RHI_Shader_Type::Hull) && HasShader(RHI_Shader_Type::Domain);
+    }
+
+    bool RHI_PipelineState::HasShader(const RHI_Shader_Type shader_stage) const
+    {
+        return shaders[static_cast<uint32_t>(shader_stage)] != nullptr;
     }
 }

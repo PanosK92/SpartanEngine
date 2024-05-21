@@ -298,15 +298,28 @@ namespace Spartan
         Max,
     };
 
-    enum RHI_Shader_Stage : uint32_t
+    enum RHI_Shader_Type
     {
-        RHI_Shader_Unknown = 0,
-        RHI_Shader_Vertex  = 1 << 0,
-        RHI_Shader_Hull    = 1 << 1,
-        RHI_Shader_Domain  = 1 << 2,
-        RHI_Shader_Pixel   = 1 << 3,
-        RHI_Shader_Compute = 1 << 4,
+        Vertex,
+        Hull,
+        Domain,
+        Pixel,
+        Compute,
+        Max
     };
+
+    static uint32_t rhi_shader_type_to_mask(RHI_Shader_Type type)
+    {
+        switch (type)
+        {
+            case RHI_Shader_Type::Vertex:  return 1 << 0;
+            case RHI_Shader_Type::Hull:    return 1 << 1;
+            case RHI_Shader_Type::Domain:  return 1 << 2;
+            case RHI_Shader_Type::Pixel:   return 1 << 3;
+            case RHI_Shader_Type::Compute: return 1 << 4;
+            default:                       return 0;
+        }
+    }
 
     enum class RHI_Device_Resource
     {
@@ -403,8 +416,8 @@ namespace Spartan
             case RHI_Format::R32G32B32A32_Float:   return "RHI_Format_R32G32B32A32_Float";
             case RHI_Format::D32_Float:            return "RHI_Format_D32_Float";
             case RHI_Format::D32_Float_S8X24_Uint: return "RHI_Format_D32_Float_S8X24_Uint";
-            case RHI_Format::BC7_Unorm:                  return "RHI_Format_BC7";
-            case RHI_Format::Max:            return "RHI_Format_Undefined";
+            case RHI_Format::BC7_Unorm:            return "RHI_Format_BC7";
+            case RHI_Format::Max:                  return "RHI_Format_Undefined";
         }
 
         assert(false && "Unsupported format");

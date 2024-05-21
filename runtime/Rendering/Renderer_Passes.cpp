@@ -480,7 +480,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
+        pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
         // set textures
@@ -507,7 +507,7 @@ namespace Spartan
 
         // set pso
         static RHI_PipelineState pso;
-        pso.shader_vertex       = shader_v;
+        pso.shaders[RHI_Shader_Type::Vertex]       = shader_v;
         pso.blend_state         = is_transparent_pass ? GetBlendState(Renderer_BlendState::Alpha).get() : GetBlendState(Renderer_BlendState::Off).get();
         pso.depth_stencil_state = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Read).get() : GetDepthStencilState(Renderer_DepthStencilState::ReadWrite).get();
         pso.name                = is_transparent_pass ? "shadow_maps_color" : "shadow_maps_depth";
@@ -569,10 +569,10 @@ namespace Spartan
 
                     // set pipeline
                     {
-                        pso.shader_pixel = nullptr;
+                        pso.shaders[RHI_Shader_Type::Pixel] = nullptr;
                         if (Material* material = renderable->GetMaterial())
                         {
-                            pso.shader_pixel = material->IsAlphaTested() ? shader_p : nullptr;
+                            pso.shaders[RHI_Shader_Type::Pixel] = material->IsAlphaTested() ? shader_p : nullptr;
                         }
 
                         pso.instancing = renderable->HasInstancing();
@@ -673,7 +673,7 @@ namespace Spartan
                     if (pso.instancing != renderable->HasInstancing())
                     {
                         pso.instancing   = renderable->HasInstancing();
-                        pso.shader_pixel = pso.instancing ? shader_p : nullptr; // vegetation is instanced and uses alpha testing (not ideal way to handle this)
+                        pso.shaders[RHI_Shader_Type::Pixel] = pso.instancing ? shader_p : nullptr; // vegetation is instanced and uses alpha testing (not ideal way to handle this)
                         set_pipeline     = true;
                     }
 
@@ -689,10 +689,10 @@ namespace Spartan
                         cmd_list->SetCullMode(cull_mode);
 
                         bool is_tessellated = material->IsTessellated();
-                        if ((is_tessellated && !pso.shader_hull) || (!is_tessellated && pso.shader_hull))
+                        if ((is_tessellated && !pso.shaders[RHI_Shader_Type::Hull]) || (!is_tessellated && pso.shaders[RHI_Shader_Type::Hull]))
                         {
-                            pso.shader_hull   = is_tessellated ? shader_h : nullptr;
-                            pso.shader_domain = is_tessellated ? shader_d : nullptr;
+                            pso.shaders[RHI_Shader_Type::Hull]   = is_tessellated ? shader_h : nullptr;
+                            pso.shaders[RHI_Shader_Type::Domain] = is_tessellated ? shader_d : nullptr;
                             set_pipeline       = true;
                         }
                     }
@@ -755,15 +755,15 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.shader_vertex               = shader_v;
-        pso.shader_pixel                = shader_p;
-        pso.rasterizer_state            = rasterizer_state;
-        pso.blend_state                 = GetBlendState(Renderer_BlendState::Off).get();
-        pso.depth_stencil_state         = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite).get();
-        pso.vrs_input_texture           = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
-        pso.render_target_depth_texture = tex_depth;
-        pso.resolution_scale            = true;
-        pso.clear_depth                 = !is_transparent_pass ? 0.0f : rhi_depth_load;
+        pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
+        pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
+        pso.rasterizer_state                  = rasterizer_state;
+        pso.blend_state                       = GetBlendState(Renderer_BlendState::Off).get();
+        pso.depth_stencil_state               = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite).get();
+        pso.vrs_input_texture                 = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
+        pso.render_target_depth_texture       = tex_depth;
+        pso.resolution_scale                  = true;
+        pso.clear_depth                       = !is_transparent_pass ? 0.0f : rhi_depth_load;
 
 
         lock_guard lock(m_mutex_renderables);
@@ -822,23 +822,23 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.name                            = is_transparent_pass ? "g_buffer_transparent" : "g_buffer";
-        pso.shader_vertex                   = shader_v;
-        pso.shader_pixel                    = shader_p;
-        pso.blend_state                     = GetBlendState(Renderer_BlendState::Off).get();
-        pso.rasterizer_state                = rasterizer_state;
-        pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Read).get();
-        pso.vrs_input_texture               = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
-        pso.resolution_scale                = true;
-        pso.render_target_color_textures[0] = tex_color;
-        pso.render_target_color_textures[1] = tex_normal;
-        pso.render_target_color_textures[2] = tex_material;
-        pso.render_target_color_textures[3] = tex_velocity;
-        pso.render_target_depth_texture     = tex_depth;
-        pso.clear_color[0]                  = !is_transparent_pass ? Color::standard_transparent : rhi_color_load;
-        pso.clear_color[1]                  = !is_transparent_pass ? Color::standard_transparent : rhi_color_load;
-        pso.clear_color[2]                  = !is_transparent_pass ? Color::standard_transparent : rhi_color_load;
-        pso.clear_color[3]                  = !is_transparent_pass ? Color::standard_transparent : rhi_color_load;
+        pso.name                              = is_transparent_pass ? "g_buffer_transparent" : "g_buffer";
+        pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
+        pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
+        pso.blend_state                       = GetBlendState(Renderer_BlendState::Off).get();
+        pso.rasterizer_state                  = rasterizer_state;
+        pso.depth_stencil_state               = GetDepthStencilState(Renderer_DepthStencilState::Read).get();
+        pso.vrs_input_texture                 = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
+        pso.resolution_scale                  = true;
+        pso.render_target_color_textures[0]   = tex_color;
+        pso.render_target_color_textures[1]   = tex_normal;
+        pso.render_target_color_textures[2]   = tex_material;
+        pso.render_target_color_textures[3]   = tex_velocity;
+        pso.render_target_depth_texture       = tex_depth;
+        pso.clear_color[0]                    = !is_transparent_pass ? Color::standard_transparent : rhi_color_load;
+        pso.clear_color[1]                    = !is_transparent_pass ? Color::standard_transparent : rhi_color_load;
+        pso.clear_color[2]                    = !is_transparent_pass ? Color::standard_transparent : rhi_color_load;
+        pso.clear_color[3]                    = !is_transparent_pass ? Color::standard_transparent : rhi_color_load;
         cmd_list->SetIgnoreClearValues(false);
         cmd_list->SetPipelineState(pso);
 
@@ -875,10 +875,10 @@ namespace Spartan
                     cmd_list->SetCullMode(cull_mode);
 
                     bool is_tessellated = material->IsTessellated();
-                    if ((is_tessellated && !pso.shader_hull) || (!is_tessellated && pso.shader_hull))
+                    if ((is_tessellated && !pso.shaders[RHI_Shader_Type::Hull]) || (!is_tessellated && pso.shaders[RHI_Shader_Type::Hull]))
                     {
-                        pso.shader_hull   = is_tessellated ? shader_h : nullptr;
-                        pso.shader_domain = is_tessellated ? shader_d : nullptr;
+                        pso.shaders[RHI_Shader_Type::Hull]   = is_tessellated ? shader_h : nullptr;
+                        pso.shaders[RHI_Shader_Type::Domain] = is_tessellated ? shader_d : nullptr;
                         toggled           = true;
                     }
                 }
@@ -931,7 +931,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.shader_compute = shader_ssgi;
+        pso.shaders[Compute] = shader_ssgi;
         cmd_list->SetPipelineState(pso);
 
         // set textures
@@ -968,7 +968,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
+        pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
@@ -1014,7 +1014,7 @@ namespace Spartan
         {
             // set pipeline state
             static RHI_PipelineState pso;
-            pso.shader_compute = shader_c;
+            pso.shaders[Compute] = shader_c;
             cmd_list->SetPipelineState(pso);
 
             // set textures
@@ -1117,7 +1117,7 @@ namespace Spartan
 
             // set pipeline state
             static RHI_PipelineState pso;
-            pso.shader_compute = shader_c;
+            pso.shaders[Compute] = shader_c;
             cmd_list->SetPipelineState(pso);
 
             // set pass constants
@@ -1158,7 +1158,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
+        pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
    
         SetGbufferTextures(cmd_list);
@@ -1229,7 +1229,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
+        pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
         // push pass constants
@@ -1265,7 +1265,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.shader_compute = shader;
+        pso.shaders[Compute] = shader;
         cmd_list->SetPipelineState(pso);
 
         // set textures
@@ -1315,7 +1315,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
+        pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
         // horizontal pass
@@ -1477,7 +1477,7 @@ namespace Spartan
         {
             // define pipeline state
             static RHI_PipelineState pso;
-            pso.shader_compute = shader_luminance;
+            pso.shaders[Compute] = shader_luminance;
 
             // set pipeline state
             cmd_list->SetPipelineState(pso);
@@ -1499,7 +1499,7 @@ namespace Spartan
         {
             // define pipeline state
             static RHI_PipelineState pso;
-            pso.shader_compute = shader_upsampleBlendMip;
+            pso.shaders[Compute] = shader_upsampleBlendMip;
 
             // set pipeline state
             cmd_list->SetPipelineState(pso);
@@ -1530,7 +1530,7 @@ namespace Spartan
         {
             // define pipeline state
             static RHI_PipelineState pso;
-            pso.shader_compute = shader_blendFrame;
+            pso.shaders[Compute] = shader_blendFrame;
 
             // set pipeline state
             cmd_list->SetPipelineState(pso);
@@ -1563,7 +1563,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
+        pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
@@ -1591,7 +1591,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
+        pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
         // set textures
@@ -1615,7 +1615,7 @@ namespace Spartan
 
         // define pipeline state
         static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
+        pso.shaders[Compute] = shader_c;
 
         // set pipeline state
         cmd_list->SetPipelineState(pso);
@@ -1645,7 +1645,7 @@ namespace Spartan
 
         // define pipeline state
         static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
+        pso.shaders[Compute] = shader_c;
 
         // set pipeline state
         cmd_list->SetPipelineState(pso);
@@ -1676,7 +1676,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
+        pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
@@ -1706,7 +1706,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
+        pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
@@ -1736,7 +1736,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
+        pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
         // render
@@ -1762,7 +1762,7 @@ namespace Spartan
         
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
+        pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
         
         // set pass constants
@@ -1816,7 +1816,7 @@ namespace Spartan
             // set pipeline state
             static RHI_PipelineState pso;
             pso.name           = "ffx_spd";
-            pso.shader_compute = shader_c;
+            pso.shaders[Compute] = shader_c;
             cmd_list->SetPipelineState(pso);
 
             // push pass data
@@ -1876,8 +1876,8 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.shader_vertex                   = shader_v;
-        pso.shader_pixel                    = shader_p;
+        pso.shaders[RHI_Shader_Type::Vertex]                   = shader_v;
+        pso.shaders[RHI_Shader_Type::Pixel]                    = shader_p;
         pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid).get();
         pso.blend_state                     = GetBlendState(Renderer_BlendState::Alpha).get();
         pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
@@ -1964,8 +1964,8 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.shader_vertex                   = shader_v;
-        pso.shader_pixel                    = shader_p;
+        pso.shaders[RHI_Shader_Type::Vertex]                   = shader_v;
+        pso.shaders[RHI_Shader_Type::Pixel]                    = shader_p;
         pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid).get();
         pso.blend_state                     = GetBlendState(Renderer_BlendState::Alpha).get();
         pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Read).get();
@@ -2008,13 +2008,13 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.shader_vertex                   = shader_v;
-        pso.shader_pixel                    = shader_p;
-        pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Wireframe).get();
-        pso.render_target_color_textures[0] = tex_out;
-        pso.clear_color[0]                  = rhi_color_load;
-        pso.render_target_depth_texture     = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output).get();
-        pso.primitive_toplogy               = RHI_PrimitiveTopology::LineList;
+        pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
+        pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
+        pso.rasterizer_state                  = GetRasterizerState(Renderer_RasterizerState::Wireframe).get();
+        pso.render_target_color_textures[0]   = tex_out;
+        pso.clear_color[0]                    = rhi_color_load;
+        pso.render_target_depth_texture       = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output).get();
+        pso.primitive_toplogy                 = RHI_PrimitiveTopology::LineList;
 
         // world space rendering
         m_pcb_pass_cpu.transform = Matrix::Identity;
@@ -2106,8 +2106,8 @@ namespace Spartan
                         {
                             // set pipeline state
                             static RHI_PipelineState pso;
-                            pso.shader_vertex                   = shader_v;
-                            pso.shader_pixel                    = shader_p;
+                            pso.shaders[RHI_Shader_Type::Vertex]                   = shader_v;
+                            pso.shaders[RHI_Shader_Type::Pixel]                    = shader_p;
                             pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid).get();
                             pso.blend_state                     = GetBlendState(Renderer_BlendState::Off).get();
                             pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
@@ -2141,7 +2141,7 @@ namespace Spartan
                         {
                             // set pipeline state
                             static RHI_PipelineState pso;
-                            pso.shader_compute = shader_c;
+                            pso.shaders[Compute] = shader_c;
                             cmd_list->SetPipelineState(pso);
                         
                             // set textures
@@ -2173,14 +2173,14 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.shader_vertex                   = shader_v.get();
-        pso.shader_pixel                    = shader_p.get();
-        pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid).get();
-        pso.blend_state                     = GetBlendState(Renderer_BlendState::Alpha).get();
-        pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
-        pso.render_target_color_textures[0] = tex_out;
-        pso.clear_color[0]                  = rhi_color_load;
-        pso.name                            = "Pass_Text";
+        pso.shaders[RHI_Shader_Type::Vertex] = shader_v.get();
+        pso.shaders[RHI_Shader_Type::Pixel]  = shader_p.get();
+        pso.rasterizer_state                  = GetRasterizerState(Renderer_RasterizerState::Solid).get();
+        pso.blend_state                       = GetBlendState(Renderer_BlendState::Alpha).get();
+        pso.depth_stencil_state               = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
+        pso.render_target_color_textures[0]   = tex_out;
+        pso.clear_color[0]                    = rhi_color_load;
+        pso.name                              = "Pass_Text";
         cmd_list->SetPipelineState(pso);
 
         font->UpdateVertexAndIndexBuffers();
@@ -2232,7 +2232,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
+        pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
         // set texture
@@ -2257,7 +2257,7 @@ namespace Spartan
         {
             // set pipeline state
             static RHI_PipelineState pso;
-            pso.shader_compute = shader_c;
+            pso.shaders[Compute] = shader_c;
             cmd_list->SetPipelineState(pso);
 
             uint32_t mip_count = tex_environment->GetMipCount();

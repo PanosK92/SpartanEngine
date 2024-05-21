@@ -297,66 +297,66 @@ namespace Spartan
         {
             // line
             shader(Renderer_Shader::line_v) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::line_v)->Compile(RHI_Shader_Vertex, shader_dir + "line.hlsl", async, RHI_Vertex_Type::PosCol);
+            shader(Renderer_Shader::line_v)->Compile(RHI_Shader_Type::Vertex, shader_dir + "line.hlsl", async, RHI_Vertex_Type::PosCol);
             shader(Renderer_Shader::line_p) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::line_p)->Compile(RHI_Shader_Pixel, shader_dir + "line.hlsl", async);
+            shader(Renderer_Shader::line_p)->Compile(RHI_Shader_Type::Pixel, shader_dir + "line.hlsl", async);
 
             // grid
             {
                 shader(Renderer_Shader::grid_v) = make_shared<RHI_Shader>();
-                shader(Renderer_Shader::grid_v)->Compile(RHI_Shader_Vertex, shader_dir + "grid.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+                shader(Renderer_Shader::grid_v)->Compile(RHI_Shader_Type::Vertex, shader_dir + "grid.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
 
                 shader(Renderer_Shader::grid_p) = make_shared<RHI_Shader>();
-                shader(Renderer_Shader::grid_p)->Compile(RHI_Shader_Pixel, shader_dir + "grid.hlsl", async);
+                shader(Renderer_Shader::grid_p)->Compile(RHI_Shader_Type::Pixel, shader_dir + "grid.hlsl", async);
             }
 
             // outline
             {
                 shader(Renderer_Shader::outline_v) = make_shared<RHI_Shader>();
-                shader(Renderer_Shader::outline_v)->Compile(RHI_Shader_Vertex, shader_dir + "outline.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+                shader(Renderer_Shader::outline_v)->Compile(RHI_Shader_Type::Vertex, shader_dir + "outline.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
 
                 shader(Renderer_Shader::outline_p) = make_shared<RHI_Shader>();
-                shader(Renderer_Shader::outline_p)->Compile(RHI_Shader_Pixel, shader_dir + "outline.hlsl", async);
+                shader(Renderer_Shader::outline_p)->Compile(RHI_Shader_Type::Pixel, shader_dir + "outline.hlsl", async);
 
                 shader(Renderer_Shader::outline_c) = make_shared<RHI_Shader>();
-                shader(Renderer_Shader::outline_c)->Compile(RHI_Shader_Compute, shader_dir + "outline.hlsl", async);
+                shader(Renderer_Shader::outline_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "outline.hlsl", async);
             }
         }
 
         // depth pre-pass
         {
             shader(Renderer_Shader::depth_prepass_v) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::depth_prepass_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_prepass.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+            shader(Renderer_Shader::depth_prepass_v)->Compile(RHI_Shader_Type::Vertex, shader_dir + "depth_prepass.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
 
             shader(Renderer_Shader::depth_prepass_alpha_test_p) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::depth_prepass_alpha_test_p)->Compile(RHI_Shader_Pixel, shader_dir + "depth_prepass.hlsl", async);
+            shader(Renderer_Shader::depth_prepass_alpha_test_p)->Compile(RHI_Shader_Type::Pixel, shader_dir + "depth_prepass.hlsl", async);
         }
 
         // light depth
         {
             shader(Renderer_Shader::depth_light_v) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::depth_light_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_light.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+            shader(Renderer_Shader::depth_light_v)->Compile(RHI_Shader_Type::Vertex, shader_dir + "depth_light.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
 
             shader(Renderer_Shader::depth_light_p) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::depth_light_p)->Compile(RHI_Shader_Pixel, shader_dir + "depth_light.hlsl", async);
+            shader(Renderer_Shader::depth_light_p)->Compile(RHI_Shader_Type::Pixel, shader_dir + "depth_light.hlsl", async);
         }
 
         // g-buffer
         {
             shader(Renderer_Shader::gbuffer_v) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::gbuffer_v)->Compile(RHI_Shader_Vertex, shader_dir + "g_buffer.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+            shader(Renderer_Shader::gbuffer_v)->Compile(RHI_Shader_Type::Vertex, shader_dir + "g_buffer.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
 
             shader(Renderer_Shader::gbuffer_p) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::gbuffer_p)->Compile(RHI_Shader_Pixel, shader_dir + "g_buffer.hlsl", async);
+            shader(Renderer_Shader::gbuffer_p)->Compile(RHI_Shader_Type::Pixel, shader_dir + "g_buffer.hlsl", async);
         }
 
         // tessellation
         {
             shader(Renderer_Shader::tessellation_h) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::tessellation_h)->Compile(RHI_Shader_Hull, shader_dir + "common_vertex_processing.hlsl", async);
+            shader(Renderer_Shader::tessellation_h)->Compile(RHI_Shader_Type::Hull, shader_dir + "common_vertex_processing.hlsl", async);
 
             shader(Renderer_Shader::tessellation_d) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::tessellation_d)->Compile(RHI_Shader_Domain, shader_dir + "common_vertex_processing.hlsl", async);
+            shader(Renderer_Shader::tessellation_d)->Compile(RHI_Shader_Type::Domain, shader_dir + "common_vertex_processing.hlsl", async);
         }
 
         // light
@@ -364,51 +364,51 @@ namespace Spartan
             // brdf specular lut - compile synchronously as it's needed immediately
             shader(Renderer_Shader::light_integration_brdf_specular_lut_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::light_integration_brdf_specular_lut_c)->AddDefine("BRDF_SPECULAR_LUT");
-            shader(Renderer_Shader::light_integration_brdf_specular_lut_c)->Compile(RHI_Shader_Compute, shader_dir + "light_integration.hlsl", false);
+            shader(Renderer_Shader::light_integration_brdf_specular_lut_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "light_integration.hlsl", false);
 
             // environment prefilter - compile synchronously as it's needed immediately
             shader(Renderer_Shader::light_integration_environment_filter_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::light_integration_environment_filter_c)->AddDefine("ENVIRONMENT_FILTER");
-            shader(Renderer_Shader::light_integration_environment_filter_c)->Compile(RHI_Shader_Compute, shader_dir + "light_integration.hlsl", async);
+            shader(Renderer_Shader::light_integration_environment_filter_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "light_integration.hlsl", async);
 
             // light
             shader(Renderer_Shader::light_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::light_c)->Compile(RHI_Shader_Compute, shader_dir + "light.hlsl", async);
+            shader(Renderer_Shader::light_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "light.hlsl", async);
 
             // composition
             shader(Renderer_Shader::light_composition_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::light_composition_c)->Compile(RHI_Shader_Compute, shader_dir + "light_composition.hlsl", async);
+            shader(Renderer_Shader::light_composition_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "light_composition.hlsl", async);
 
             // image based
             shader(Renderer_Shader::light_image_based_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::light_image_based_c)->Compile(RHI_Shader_Compute, shader_dir + "light_image_based.hlsl", async);
+            shader(Renderer_Shader::light_image_based_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "light_image_based.hlsl", async);
         }
 
         // quad
         {
             shader(Renderer_Shader::quad_v) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::quad_v)->Compile(RHI_Shader_Vertex, shader_dir + "quad.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+            shader(Renderer_Shader::quad_v)->Compile(RHI_Shader_Type::Vertex, shader_dir + "quad.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
 
             shader(Renderer_Shader::quad_p) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::quad_p)->Compile(RHI_Shader_Pixel, shader_dir + "quad.hlsl", async);
+            shader(Renderer_Shader::quad_p)->Compile(RHI_Shader_Type::Pixel, shader_dir + "quad.hlsl", async);
         }
 
         // blur
         {
             // gaussian
             shader(Renderer_Shader::blur_gaussian_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::blur_gaussian_c)->Compile(RHI_Shader_Compute, shader_dir + "blur.hlsl", async);
+            shader(Renderer_Shader::blur_gaussian_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "blur.hlsl", async);
 
             // gaussian bilateral - or depth aware
             shader(Renderer_Shader::blur_gaussian_bilaterial_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::blur_gaussian_bilaterial_c)->AddDefine("PASS_BLUR_GAUSSIAN_BILATERAL");
-            shader(Renderer_Shader::blur_gaussian_bilaterial_c)->Compile(RHI_Shader_Compute, shader_dir + "blur.hlsl", async);
+            shader(Renderer_Shader::blur_gaussian_bilaterial_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "blur.hlsl", async);
 
             // gaussian bilateral - where the alpha is used as the blur radius
             shader(Renderer_Shader::blur_gaussian_bilaterial_radius_from_texture_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::blur_gaussian_bilaterial_radius_from_texture_c)->AddDefine("PASS_BLUR_GAUSSIAN_BILATERAL");
             shader(Renderer_Shader::blur_gaussian_bilaterial_radius_from_texture_c)->AddDefine("RADIUS_FROM_TEXTURE");
-            shader(Renderer_Shader::blur_gaussian_bilaterial_radius_from_texture_c)->Compile(RHI_Shader_Compute, shader_dir + "blur.hlsl", async);
+            shader(Renderer_Shader::blur_gaussian_bilaterial_radius_from_texture_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "blur.hlsl", async);
         }
 
         // bloom
@@ -416,94 +416,94 @@ namespace Spartan
             // downsample luminance
             shader(Renderer_Shader::bloom_luminance_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::bloom_luminance_c)->AddDefine("LUMINANCE");
-            shader(Renderer_Shader::bloom_luminance_c)->Compile(RHI_Shader_Compute, shader_dir + "bloom.hlsl", async);
+            shader(Renderer_Shader::bloom_luminance_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "bloom.hlsl", async);
 
             // upsample blend (with previous mip)
             shader(Renderer_Shader::bloom_upsample_blend_mip_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::bloom_upsample_blend_mip_c)->AddDefine("UPSAMPLE_BLEND_MIP");
-            shader(Renderer_Shader::bloom_upsample_blend_mip_c)->Compile(RHI_Shader_Compute, shader_dir + "bloom.hlsl", async);
+            shader(Renderer_Shader::bloom_upsample_blend_mip_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "bloom.hlsl", async);
 
             // upsample blend (with frame)
             shader(Renderer_Shader::bloom_blend_frame_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::bloom_blend_frame_c)->AddDefine("BLEND_FRAME");
-            shader(Renderer_Shader::bloom_blend_frame_c)->Compile(RHI_Shader_Compute, shader_dir + "bloom.hlsl", async);
+            shader(Renderer_Shader::bloom_blend_frame_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "bloom.hlsl", async);
         }
 
         // amd fidelityfx
         {
             // cas - contrast adaptive sharpening
             shader(Renderer_Shader::ffx_cas_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::ffx_cas_c)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\cas.hlsl", async);
+            shader(Renderer_Shader::ffx_cas_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx\\cas.hlsl", async);
 
             // spd - single pass downsample - compile synchronously as they are needed everywhere
             {
                 shader(Renderer_Shader::ffx_spd_average_c) = make_shared<RHI_Shader>();
                 shader(Renderer_Shader::ffx_spd_average_c)->AddDefine("AVERAGE");
-                shader(Renderer_Shader::ffx_spd_average_c)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
+                shader(Renderer_Shader::ffx_spd_average_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
 
                 shader(Renderer_Shader::ffx_spd_highest_c) = make_shared<RHI_Shader>();
                 shader(Renderer_Shader::ffx_spd_highest_c)->AddDefine("HIGHEST");
-                shader(Renderer_Shader::ffx_spd_highest_c)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
+                shader(Renderer_Shader::ffx_spd_highest_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
 
                 shader(Renderer_Shader::ffx_spd_antiflicker_c) = make_shared<RHI_Shader>();
                 shader(Renderer_Shader::ffx_spd_antiflicker_c)->AddDefine("ANTIFLICKER");
-                shader(Renderer_Shader::ffx_spd_antiflicker_c)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
+                shader(Renderer_Shader::ffx_spd_antiflicker_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
             }
         }
 
         // fxaa
         shader(Renderer_Shader::fxaa_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::fxaa_c)->Compile(RHI_Shader_Compute, shader_dir + "fxaa\\fxaa.hlsl", async);
+        shader(Renderer_Shader::fxaa_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "fxaa\\fxaa.hlsl", async);
 
         // skysphere
         shader(Renderer_Shader::skysphere_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::skysphere_c)->Compile(RHI_Shader_Compute, shader_dir + "skysphere.hlsl", async);
+        shader(Renderer_Shader::skysphere_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "skysphere.hlsl", async);
 
         // font
         shader(Renderer_Shader::font_v) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::font_v)->Compile(RHI_Shader_Vertex, shader_dir + "font.hlsl", async, RHI_Vertex_Type::PosUv);
+        shader(Renderer_Shader::font_v)->Compile(RHI_Shader_Type::Vertex, shader_dir + "font.hlsl", async, RHI_Vertex_Type::PosUv);
         shader(Renderer_Shader::font_p) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::font_p)->Compile(RHI_Shader_Pixel, shader_dir + "font.hlsl", async);
+        shader(Renderer_Shader::font_p)->Compile(RHI_Shader_Type::Pixel, shader_dir + "font.hlsl", async);
 
         // film grain
         shader(Renderer_Shader::film_grain_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::film_grain_c)->Compile(RHI_Shader_Compute, shader_dir + "film_grain.hlsl", async);
+        shader(Renderer_Shader::film_grain_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "film_grain.hlsl", async);
 
         // chromatic aberration
         shader(Renderer_Shader::chromatic_aberration_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::chromatic_aberration_c)->Compile(RHI_Shader_Compute, shader_dir + "chromatic_aberration.hlsl", async);
+        shader(Renderer_Shader::chromatic_aberration_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "chromatic_aberration.hlsl", async);
 
         // tone-mapping & gamma correction
         shader(Renderer_Shader::output_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::output_c)->Compile(RHI_Shader_Compute, shader_dir + "output.hlsl", async);
+        shader(Renderer_Shader::output_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "output.hlsl", async);
 
         // motion blur
         shader(Renderer_Shader::motion_blur_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::motion_blur_c)->Compile(RHI_Shader_Compute, shader_dir + "motion_blur.hlsl", async);
+        shader(Renderer_Shader::motion_blur_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "motion_blur.hlsl", async);
 
         // ssgi
         shader(Renderer_Shader::ssgi_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::ssgi_c)->Compile(RHI_Shader_Compute, shader_dir + "ssgi.hlsl", async);
+        shader(Renderer_Shader::ssgi_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ssgi.hlsl", async);
 
         // screen space reflections
         shader(Renderer_Shader::ssr_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::ssr_c)->Compile(RHI_Shader_Compute, shader_dir + "ssr.hlsl", async);
+        shader(Renderer_Shader::ssr_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ssr.hlsl", async);
 
         // screen space shadows
         shader(Renderer_Shader::sss_c_bend) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::sss_c_bend)->Compile(RHI_Shader_Compute, shader_dir + "screen_space_shadows\\bend_sss.hlsl", async);
+        shader(Renderer_Shader::sss_c_bend)->Compile(RHI_Shader_Type::Compute, shader_dir + "screen_space_shadows\\bend_sss.hlsl", async);
 
         // antiflicker
         shader(Renderer_Shader::antiflicker_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::antiflicker_c)->Compile(RHI_Shader_Compute, shader_dir + "antiflicker.hlsl", async);
+        shader(Renderer_Shader::antiflicker_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "antiflicker.hlsl", async);
 
         // depth of field
         shader(Renderer_Shader::depth_of_field_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::depth_of_field_c)->Compile(RHI_Shader_Compute, shader_dir + "depth_of_field.hlsl", async);
+        shader(Renderer_Shader::depth_of_field_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "depth_of_field.hlsl", async);
 
         // variable rate shading
         shader(Renderer_Shader::variable_rate_shading_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::variable_rate_shading_c)->Compile(RHI_Shader_Compute, shader_dir + "variable_rate_shading.hlsl", async);
+        shader(Renderer_Shader::variable_rate_shading_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "variable_rate_shading.hlsl", async);
     }
 
     void Renderer::CreateFonts()

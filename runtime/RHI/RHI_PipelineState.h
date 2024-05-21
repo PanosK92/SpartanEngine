@@ -36,19 +36,15 @@ namespace Spartan
 
         void Prepare();
         bool HasClearValues() const;
-        uint64_t GetHash() const     { return m_hash; }
-        uint32_t GetWidth() const    { return m_width; }
-        uint32_t GetHeight() const   { return m_height; }
-        bool IsGraphics() const      { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
-        bool IsCompute() const       { return shader_compute != nullptr && !IsGraphics(); }
-        bool HasTessellation() const { return shader_domain != nullptr && shader_hull != nullptr; }
+        uint64_t GetHash() const   { return m_hash; }
+        uint32_t GetWidth() const  { return m_width; }
+        uint32_t GetHeight() const { return m_height; }
+        bool IsGraphics() const;
+        bool IsCompute() const;
+        bool HasTessellation();
 
-        //= STATIC - can cause pso generation =============================================
-        RHI_Shader* shader_vertex                  = nullptr;
-        RHI_Shader* shader_hull                    = nullptr;
-        RHI_Shader* shader_domain                  = nullptr;
-        RHI_Shader* shader_pixel                   = nullptr;
-        RHI_Shader* shader_compute                 = nullptr;
+        //= STATE =========================================================================
+        std::array<RHI_Shader*, static_cast<uint32_t>(RHI_Shader_Type::Max)> shaders;
         RHI_RasterizerState* rasterizer_state      = nullptr;
         RHI_BlendState* blend_state                = nullptr;
         RHI_DepthStencilState* depth_stencil_state = nullptr;
@@ -63,15 +59,16 @@ namespace Spartan
         uint32_t render_target_array_index       = 0;
         //=================================================================================
 
-        //= DYNAMIC - will not cause pso generation ==================
-        bool resolution_scale                      = false;
-        float clear_depth                          = rhi_depth_load;
-        uint32_t clear_stencil                     = rhi_stencil_load;
+        // dynamic properties, changing these will not create a new PSO
+        bool resolution_scale  = false;
+        float clear_depth      = rhi_depth_load;
+        uint32_t clear_stencil = rhi_stencil_load;
         std::array<Color, rhi_max_render_target_count> clear_color;
         std::string name; // used by the validation layer
-        //============================================================
 
     private:
+        bool HasShader(const RHI_Shader_Type shader_stage) const;
+
         uint32_t m_width  = 0;
         uint32_t m_height = 0;
         uint64_t m_hash   = 0;

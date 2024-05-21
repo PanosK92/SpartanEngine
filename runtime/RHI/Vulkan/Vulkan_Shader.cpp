@@ -46,7 +46,7 @@ namespace Spartan
             vector<RHI_Descriptor>& descriptors,
             const SmallVector<Resource>& resources,
             const RHI_Descriptor_Type descriptor_type,
-            const RHI_Shader_Stage shader_stage
+            const RHI_Shader_Type shader_stage
         )
         {
             // this only matters for textures
@@ -74,14 +74,14 @@ namespace Spartan
 
                 descriptors.emplace_back
                 (
-                    resource.name,   // name
-                    descriptor_type, // type
-                    layout,          // layout
-                    slot,            // slot
-                    shader_stage,    // stage
-                    size,            // struct size
-                    is_array,        // is array
-                    array_length     // array length
+                    resource.name,                         // name
+                    descriptor_type,                       // type
+                    layout,                                // layout
+                    slot,                                  // slot
+                    rhi_shader_type_to_mask(shader_stage), // stage
+                    size,                                  // struct size
+                    is_array,                              // is array
+                    array_length                           // array length
                 );
             }
         };
@@ -127,7 +127,7 @@ namespace Spartan
                 arguments.emplace_back("-fvk-use-dx-position-w"); // reciprocate SV_Position.w after reading from stage input in PS to accommodate the difference between Vulkan and DirectX
 
                 // Negate SV_Position.y before writing to stage output in VS/DS/GS to accommodate Vulkan's coordinate system
-                if (m_shader_type == RHI_Shader_Vertex || m_shader_type == RHI_Shader_Domain)
+                if (m_shader_type == RHI_Shader_Type::Vertex || m_shader_type == RHI_Shader_Type::Domain)
                 {
                     arguments.emplace_back("-fvk-invert-y");
                 }
@@ -193,7 +193,7 @@ namespace Spartan
         return nullptr;
     }
 
-    void RHI_Shader::Reflect(const RHI_Shader_Stage shader_stage, const uint32_t* ptr, const uint32_t size)
+    void RHI_Shader::Reflect(const RHI_Shader_Type shader_stage, const uint32_t* ptr, const uint32_t size)
     {
         SP_ASSERT(ptr != nullptr);
         SP_ASSERT(size != 0);

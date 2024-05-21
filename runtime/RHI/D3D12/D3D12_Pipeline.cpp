@@ -46,7 +46,7 @@ namespace Spartan
             // Pipeline description
             D3D12_COMPUTE_PIPELINE_STATE_DESC desc  = {};
             //desc.pRootSignature                     = 0;
-            desc.CS                                 = { m_state.shader_compute->GetRhiResource(), m_state.shader_compute->GetObjectSize() };
+            desc.CS                                 = { m_state.shaders[RHI_Shader_Type::Compute]->GetRhiResource(), m_state.shaders[RHI_Shader_Type::Compute]->GetObjectSize()};
             //desc.NodeMask                           = 0;
             //desc.CachedPSO                          = 0;
             //desc.Flags                              = 0;
@@ -99,9 +99,10 @@ namespace Spartan
             // Input layout
             D3D12_INPUT_LAYOUT_DESC desc_input_layout = {};
             vector<D3D12_INPUT_ELEMENT_DESC> vertex_attributes;
-            if (m_state.shader_vertex)
+            RHI_Shader* shader_vertex = m_state.shaders[RHI_Shader_Type::Vertex];
+            if (shader_vertex)
             {
-                if (RHI_InputLayout* input_layout = m_state.shader_vertex->GetInputLayout().get())
+                if (RHI_InputLayout* input_layout = shader_vertex->GetInputLayout().get())
                 {
                     vertex_attributes.reserve(input_layout->GetAttributeDescriptions().size());
 
@@ -128,8 +129,8 @@ namespace Spartan
             D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
             desc.InputLayout                        = desc_input_layout;
             //desc.pRootSignature                     = m_rootSignature.Get();
-            desc.VS                                 = { m_state.shader_vertex->GetRhiResource(), m_state.shader_vertex->GetObjectSize() };
-            desc.PS                                 = { m_state.shader_pixel->GetRhiResource(),  m_state.shader_pixel->GetObjectSize() };
+            desc.VS                                 = { m_state.shaders[RHI_Shader_Type::Vertex]->GetRhiResource(), m_state.shaders[RHI_Shader_Type::Vertex]->GetObjectSize()};
+            desc.PS                                 = { m_state.shaders[RHI_Shader_Type::Pixel]->GetRhiResource(),  m_state.shaders[RHI_Shader_Type::Pixel]->GetObjectSize() };
             desc.RasterizerState                    = desc_rasterizer;
             desc.BlendState                         = desc_blend_state;
             desc.DepthStencilState                  = desc_depth_stencil_state;
