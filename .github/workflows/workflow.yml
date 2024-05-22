@@ -24,11 +24,11 @@ jobs:
       - name: Generate project files
         shell: python
         env:
-          api: ${{ matrix.api }}
+          API: ${{ matrix.api }}
         run: |
           import subprocess
           import os
-          api = os.environ["api"]
+          api = os.environ["API"]
           subprocess.run(f"python generate_vs2022_{api}.py")
 
       - name: Build
@@ -40,8 +40,7 @@ jobs:
         shell: cmd
         run: |
           build_scripts\package_artifact.bat ${{ matrix.api }}
-          build_scripts\7z.exe a build_${{ matrix.api }}.7z .\binaries\dxcompiler.dll .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
-          build_scripts\7z.exe a build_${{ matrix.api }}_binaries_only.7z .\binaries\dxcompiler.dll .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
+          build_scripts\7z.exe a binaries_only_${{ matrix.api }}.7z .\binaries\dxcompiler.dll .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
 
       - name: Upload full artifact
         if: github.event_name != 'pull_request' && matrix.api != 'd3d12'
@@ -54,8 +53,8 @@ jobs:
         if: github.event_name != 'pull_request' && matrix.api != 'd3d12'
         uses: actions/upload-artifact@v4
         with:
-          name: build_${{ matrix.api }}_binaries_only
-          path: build_${{ matrix.api }}_binaries_only.7z
+          name: binaries_only_${{ matrix.api }}
+          path: binaries_only_${{ matrix.api }}.7z
 
   release:
     if: github.event_name != 'pull_request'
@@ -76,8 +75,8 @@ jobs:
       - name: Download vulkan binaries-only build
         uses: actions/download-artifact@v4
         with:
-          name: build_vulkan_binaries_only
-          path: build_vulkan_binaries_only.7z
+          name: binaries_only_vulkan
+          path: binaries_only_vulkan.7z
       
       - name: Publish release
         uses: "marvinpinto/action-automatic-releases@latest"
@@ -88,7 +87,7 @@ jobs:
           title: "Development Build"
           files: |
             build_vulkan.7z
-            build_vulkan_binaries_only.7z
+            binaries_only_vulkan.7z
 
       - name: Set environment file for release
         run: echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
