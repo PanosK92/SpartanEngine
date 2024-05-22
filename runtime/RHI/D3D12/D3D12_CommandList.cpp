@@ -236,8 +236,7 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        // Skip if already set
-        if (m_vertex_buffer_id == buffer->GetObjectId())
+        if (m_buffer_id_vertex == buffer->GetObjectId())
             return;
 
         D3D12_VERTEX_BUFFER_VIEW vertex_buffer_view = {};
@@ -251,18 +250,16 @@ namespace Spartan
             &vertex_buffer_view // pViews
         );
 
-        m_vertex_buffer_id = buffer->GetObjectId();
+        m_buffer_id_vertex = buffer->GetObjectId();
 
         Profiler::m_rhi_bindings_buffer_vertex++;
     }
     
     void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        // Skip if already set
-        if (m_index_buffer_id == buffer->GetObjectId())
+        if (m_buffer_id_index == buffer->GetObjectId())
             return;
 
         D3D12_INDEX_BUFFER_VIEW index_buffer_view = {};
@@ -274,7 +271,7 @@ namespace Spartan
             &index_buffer_view // pView
         );
 
-        m_index_buffer_id = buffer->GetObjectId();
+        m_buffer_id_index = buffer->GetObjectId();
 
         Profiler::m_rhi_bindings_buffer_index++;
     }
