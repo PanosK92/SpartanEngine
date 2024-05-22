@@ -31,7 +31,7 @@ namespace Spartan
     {
     public:
         // display modes
-        static void DetectDisplayModes();
+        static void Initialize();
         static void RegisterDisplayMode(const uint32_t width, const uint32_t height, const uint32_t hz, const uint8_t display_index);
         static const std::vector<DisplayMode>& GetDisplayModes();
 

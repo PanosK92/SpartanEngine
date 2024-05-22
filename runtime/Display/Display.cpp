@@ -164,7 +164,7 @@ namespace Spartan
         });
     }
 
-    void Display::DetectDisplayModes()
+    void Display::Initialize()
     {
         display_modes.clear();
 

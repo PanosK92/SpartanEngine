@@ -1033,158 +1033,163 @@ namespace Spartan
 
     namespace device_features
     {
-        VkPhysicalDeviceFeatures2 pNext                              = {};
-        VkPhysicalDeviceRobustness2FeaturesEXT robustness_features_2 = {};
-        VkPhysicalDeviceVulkan13Features features_1_3                = {};
-        VkPhysicalDeviceVulkan12Features features_1_2                = {};
-        VkPhysicalDeviceFragmentShadingRateFeaturesKHR shading_rate  = {};
+        uint32_t enabled_graphics_shader_stages                     = 0;
+        VkPhysicalDeviceFeatures2 features                          = {};
+        VkPhysicalDeviceRobustness2FeaturesEXT features_robustness  = {};
+        VkPhysicalDeviceVulkan13Features features_1_3               = {};
+        VkPhysicalDeviceVulkan12Features features_1_2               = {};
+        VkPhysicalDeviceFragmentShadingRateFeaturesKHR features_vrs = {};
 
-        uint32_t enabled_graphics_shader_stages;
-
-        void detect(VkPhysicalDevice device_physical, bool* is_shading_rate_supported)
+        void detect(bool* is_shading_rate_supported)
         {
-            // structs which hold which features are enabled
-            robustness_features_2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
-            shading_rate.sType          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
-            robustness_features_2.pNext = &shading_rate;
-            features_1_3.sType          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-            features_1_3.pNext          = &robustness_features_2;
-            features_1_2.sType          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-            features_1_2.pNext          = &features_1_3;
-            pNext.sType                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-            pNext.pNext                 = &features_1_2;
+            // features that will be enabled
+            features_robustness.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
+            features_vrs.sType        = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
+            features_robustness.pNext = &features_vrs;
+            features_1_3.sType        = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+            features_1_3.pNext        = &features_robustness;
+            features_1_2.sType        = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+            features_1_2.pNext        = &features_1_3;
+            features.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+            features.pNext            = &features_1_2;
 
-            // structs which hold which features are supported
-            VkPhysicalDeviceFragmentShadingRateFeaturesKHR shading_rate_support = {};
-            shading_rate_support.sType                                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
-            VkPhysicalDeviceRobustness2FeaturesEXT robustness_2_support         = {};
-            robustness_2_support.sType                                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
-            robustness_2_support.pNext                                          = &shading_rate_support;
-            VkPhysicalDeviceVulkan13Features features_1_3_support               = {};
-            features_1_3_support.sType                                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-            features_1_3_support.pNext                                          = &robustness_2_support;
-            VkPhysicalDeviceVulkan12Features features_1_2_support               = {};
-            features_1_2_support.sType                                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-            features_1_2_support.pNext                                          = &features_1_3_support;
-            VkPhysicalDeviceFeatures2 features_support                          = {};
-            features_support.sType                                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-            features_support.pNext                                              = &features_1_2_support;
-            vkGetPhysicalDeviceFeatures2(device_physical, &features_support);
+            // features which are supported
+            VkPhysicalDeviceFragmentShadingRateFeaturesKHR support_vrs = {};
+            support_vrs.sType                                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
+            VkPhysicalDeviceRobustness2FeaturesEXT support_robustness  = {};
+            support_robustness.sType                                   = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
+            support_robustness.pNext                                   = &support_vrs;
+            VkPhysicalDeviceVulkan13Features support_1_3               = {};
+            support_1_3.sType                                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+            support_1_3.pNext                                          = &support_robustness;
+            VkPhysicalDeviceVulkan12Features support_1_2               = {};
+            support_1_2.sType                                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+            support_1_2.pNext                                          = &support_1_3;
+            VkPhysicalDeviceFeatures2 support                          = {};
+            support.sType                                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+            support.pNext                                              = &support_1_2;
+            vkGetPhysicalDeviceFeatures2(RHI_Context::device_physical, &support);
 
             // check if certain features are supported and enable them
             {
-                // tessellation
-                SP_ASSERT(features_support.features.tessellationShader == VK_TRUE);
-                pNext.features.tessellationShader = VK_TRUE;
-
-                // geometry
-                SP_ASSERT(features_support.features.geometryShader == VK_TRUE);
-                pNext.features.geometryShader = VK_TRUE;
-
                 // variable shading rate
-                *is_shading_rate_supported = shading_rate_support.attachmentFragmentShadingRate == VK_TRUE;
+                *is_shading_rate_supported = support_vrs.attachmentFragmentShadingRate == VK_TRUE;
                 if (*is_shading_rate_supported)
                 {
                     // Enable this feature conditionally (no assert) as older GPUs like NV 1080 and Radeon RX Vega do not support it.
                     // Support details: https://vulkan.gpuinfo.org/listdevicescoverage.php?platform=windows&extension=VK_KHR_fragment_shading_rate
-                    shading_rate.attachmentFragmentShadingRate = VK_TRUE;
+                    features_vrs.attachmentFragmentShadingRate = VK_TRUE;
                 }
 
-                // depth clamp
-                SP_ASSERT(features_support.features.depthClamp == VK_TRUE);
-                pNext.features.depthClamp = VK_TRUE;
-
-                // anisotropic filtering
-                SP_ASSERT(features_support.features.samplerAnisotropy == VK_TRUE);
-                pNext.features.samplerAnisotropy = VK_TRUE;
-
-                // line and point rendering
-                SP_ASSERT(features_support.features.fillModeNonSolid == VK_TRUE);
-                pNext.features.fillModeNonSolid = VK_TRUE;
-
-                // lines with adjustable thickness
-                SP_ASSERT(features_support.features.wideLines == VK_TRUE);
-                pNext.features.wideLines = VK_TRUE;
-
-                // cubemaps
-                SP_ASSERT(features_support.features.imageCubeArray == VK_TRUE);
-                pNext.features.imageCubeArray = VK_TRUE;
-
-                // timeline semaphores
+                // misc
                 {
-                    SP_ASSERT(features_1_2_support.timelineSemaphore == VK_TRUE);
+                    // tessellation
+                    SP_ASSERT(support.features.tessellationShader == VK_TRUE);
+                    features.features.tessellationShader = VK_TRUE;
+
+                    // depth clamp
+                    SP_ASSERT(support.features.depthClamp == VK_TRUE);
+                    features.features.depthClamp = VK_TRUE;
+
+                    // anisotropic filtering
+                    SP_ASSERT(support.features.samplerAnisotropy == VK_TRUE);
+                    features.features.samplerAnisotropy = VK_TRUE;
+
+                    // line and point rendering
+                    SP_ASSERT(support.features.fillModeNonSolid == VK_TRUE);
+                    features.features.fillModeNonSolid = VK_TRUE;
+
+                    // lines with adjustable thickness
+                    SP_ASSERT(support.features.wideLines == VK_TRUE);
+                    features.features.wideLines = VK_TRUE;
+
+                    // cubemaps
+                    SP_ASSERT(support.features.imageCubeArray == VK_TRUE);
+                    features.features.imageCubeArray = VK_TRUE;
+                }
+
+                // quality of life improvements
+                {
+                    // dynamic render passes and no frame buffer objects
+                    SP_ASSERT(support_1_3.dynamicRendering == VK_TRUE);
+                    features_1_3.dynamicRendering = VK_TRUE;
+
+                    // better synchronization
+                    SP_ASSERT(support_1_3.synchronization2 == VK_TRUE);
+                    features_1_3.synchronization2 = VK_TRUE;
+
+                    // timeline semaphores
+                    SP_ASSERT(support_1_2.timelineSemaphore == VK_TRUE);
                     features_1_2.timelineSemaphore = VK_TRUE;
 
-                    SP_ASSERT(features_support.features.shaderFloat64 == VK_TRUE);
-                    pNext.features.shaderFloat64 = VK_TRUE;
+                    // timeline semaphore counter
+                    SP_ASSERT(support.features.shaderFloat64 == VK_TRUE);
+                    features.features.shaderFloat64 = VK_TRUE;
                 }
 
                 // descriptors
                 {
-                    SP_ASSERT(features_1_2_support.descriptorBindingVariableDescriptorCount == VK_TRUE);
+                    SP_ASSERT(support_1_2.descriptorBindingVariableDescriptorCount == VK_TRUE);
                     features_1_2.descriptorBindingVariableDescriptorCount = VK_TRUE;
 
-                    SP_ASSERT(features_1_2_support.descriptorBindingVariableDescriptorCount == VK_TRUE);
+                    SP_ASSERT(support_1_2.descriptorBindingVariableDescriptorCount == VK_TRUE);
                     features_1_2.descriptorBindingVariableDescriptorCount = VK_TRUE;
 
-                    SP_ASSERT(features_1_2_support.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE);
+                    SP_ASSERT(support_1_2.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE);
                     features_1_2.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
 
-                    SP_ASSERT(features_1_2_support.descriptorBindingPartiallyBound == VK_TRUE);
+                    SP_ASSERT(support_1_2.descriptorBindingPartiallyBound == VK_TRUE);
                     features_1_2.descriptorBindingPartiallyBound = VK_TRUE;
 
-                    SP_ASSERT(features_1_2_support.runtimeDescriptorArray == VK_TRUE);
+                    SP_ASSERT(support_1_2.runtimeDescriptorArray == VK_TRUE);
                     features_1_2.runtimeDescriptorArray = VK_TRUE;
 
-                    SP_ASSERT(robustness_2_support.nullDescriptor == VK_TRUE);
-                    robustness_features_2.nullDescriptor = VK_TRUE;
+                    SP_ASSERT(support_robustness.nullDescriptor == VK_TRUE);
+                    features_robustness.nullDescriptor = VK_TRUE;
                 }
 
-                // quality of life improvements to the API
-                {
-                    // rendering without render passes and frame buffer objects
-                    SP_ASSERT(features_1_3_support.dynamicRendering == VK_TRUE);
-                    features_1_3.dynamicRendering = VK_TRUE;
-
-                    SP_ASSERT(features_1_3_support.synchronization2 == VK_TRUE);
-                    features_1_3.synchronization2 = VK_TRUE;
-                }
-
-                // FSR 2
+                // fsr 2
                 {
                     // extended types (int8, int16, int64, etc) - SPD
-                    SP_ASSERT(features_1_2_support.shaderSubgroupExtendedTypes == VK_TRUE);
+                    SP_ASSERT(support_1_2.shaderSubgroupExtendedTypes == VK_TRUE);
                     features_1_2.shaderSubgroupExtendedTypes = VK_TRUE;
 
-                    // float16 - If supported, FSR 2 will opt for it, so don't assert.
-                    if (features_1_2_support.shaderFloat16 == VK_TRUE)
+                    // float16 - If supported, fsr will opt for it, so don't assert.
+                    if (support_1_2.shaderFloat16 == VK_TRUE)
                     {
                         features_1_2.shaderFloat16 = VK_TRUE;
                     }
 
-                    // int16 - If supported, FSR 2 will opt for it, so don't assert.
-                    if (features_support.features.shaderInt16 == VK_TRUE)
+                    // int16 - If supported, fsr will opt for it, so don't assert.
+                    if (support.features.shaderInt16 == VK_TRUE)
                     {
-                        pNext.features.shaderInt16 = VK_TRUE;
+                        features.features.shaderInt16 = VK_TRUE;
                     }
 
                     // wave64
-                    SP_ASSERT(features_1_3_support.shaderDemoteToHelperInvocation == VK_TRUE);
+                    SP_ASSERT(support_1_3.shaderDemoteToHelperInvocation == VK_TRUE);
                     features_1_3.shaderDemoteToHelperInvocation = VK_TRUE;
 
-                    // wave64 - If supported, FSR 2 will opt for it, so don't assert.
-                    if (features_1_3_support.subgroupSizeControl == VK_TRUE)
+                    // wave64 - If supported, fsr will opt for it, so don't assert
+                    if (support_1_3.subgroupSizeControl == VK_TRUE)
                     {
                         features_1_3.subgroupSizeControl = VK_TRUE;
                     }
                 }
 
-                // enable certain graphics shader stages
-                enabled_graphics_shader_stages  = 0;
+                // directx shader compiler spir-v output automatically enables certain capabilities
+                {
+                    // geometry
+                    SP_ASSERT(support.features.geometryShader == VK_TRUE);
+                    features.features.geometryShader = VK_TRUE;
+
+                    enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
+                }
+
+                // enable shader stages
                 enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
                 enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT;
                 enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
-                enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
                 enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
             }
         }
@@ -1291,7 +1296,7 @@ namespace Spartan
                 }
             }
   
-            device_features::detect(RHI_Context::device_physical, &m_is_shading_rate_supported);
+            device_features::detect(&m_is_shading_rate_supported);
 
             // create
             {
@@ -1299,7 +1304,7 @@ namespace Spartan
                 create_info.sType                        = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
                 create_info.queueCreateInfoCount         = static_cast<uint32_t>(queue_create_infos.size());
                 create_info.pQueueCreateInfos            = queue_create_infos.data();
-                create_info.pNext                        = &device_features::pNext;
+                create_info.pNext                        = &device_features::features;
                 vector<const char*> extensions_supported = extensions::get_extensions_device();
                 create_info.enabledExtensionCount        = static_cast<uint32_t>(extensions_supported.size());
                 create_info.ppEnabledExtensionNames      = extensions_supported.data();

@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ThreadPool.h"
 #include "ProgressTracker.h"
 #include "../Profiling/Profiler.h"
-#include "../Profiling/RenderDoc.h"
 #include "../Core/Window.h"
 #include "../Input/Input.h"
 #include "../Display/Display.h"
@@ -113,17 +112,7 @@ namespace Spartan
 
     void Renderer::Initialize()
     {
-        Display::DetectDisplayModes();
-
-        // rhi
-        {
-            if (Profiler::IsRenderdocEnabled())
-            {
-                RenderDoc::OnPreDeviceCreation();
-            }
-
-            RHI_Device::Initialize();
-        }
+        RHI_Device::Initialize();
 
         // resolution
         {
@@ -238,7 +227,6 @@ namespace Spartan
             m_vertex_buffer_lines = nullptr;
         }
 
-        RenderDoc::Shutdown();
         RHI_FidelityFX::Destroy();
         RHI_Device::Destroy();
     }
