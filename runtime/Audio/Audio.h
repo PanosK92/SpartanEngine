@@ -27,8 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    // useful when focus is needed to debug
-    #define MUTE 1
+    #define MUTE 0
 
     //= FWD DECLARATIONS =
     class Entity;
