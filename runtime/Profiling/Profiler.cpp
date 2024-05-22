@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "pch.h"
 #include "Profiler.h"
+#include "RenderDoc.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_SwapChain.h"
@@ -154,11 +155,17 @@ namespace Spartan
         m_time_blocks_read.resize(initial_capacity);
         m_time_blocks_write.reserve(initial_capacity);
         m_time_blocks_write.resize(initial_capacity);
+
+        if (IsRenderdocEnabled())
+        {
+            RenderDoc::OnPreDeviceCreation();
+        }
     }
 
     void Profiler::Shutdown()
     {
         ClearRhiMetrics();
+        RenderDoc::Shutdown();
     }
 
     void Profiler::PreTick()

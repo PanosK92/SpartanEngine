@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Import/FontImporter.h"
 #include "../Resource/Import/ModelImporter.h"
 #include "../Resource/Import/ImageImporterExporter.h"
+#include "../Display/Display.h"
 //===================================================
 
 //= NAMESPACES ===============
@@ -76,6 +77,7 @@ namespace Spartan
             ImageImporterExporter::Initialize();
             ModelImporter::Initialize();
             Window::Initialize();
+            Display::Initialize();
             Timer::Initialize();
             Input::Initialize();
             ThreadPool::Initialize();

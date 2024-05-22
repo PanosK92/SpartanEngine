@@ -581,8 +581,9 @@ namespace Spartan
                 scissor_rect.bottom = static_cast<float>(m_pso.GetHeight());
                 SetScissorRectangle(scissor_rect);
 
-                m_index_buffer_id  = 0;
-                m_vertex_buffer_id = 0;
+                // vertex and index buffer state
+                m_buffer_id_index  = 0;
+                m_buffer_id_vertex = 0;
             }
         }
 
@@ -863,15 +864,7 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (!m_render_pass_active)
-        { 
-            RenderPassBegin();
-        }
-
-        if (descriptor_sets::bind_dynamic)
-        {
-            descriptor_sets::set_dynamic(m_pso, m_rhi_resource, m_pipeline->GetResource_PipelineLayout(), m_descriptor_layout_current);
-        }
+        PreDraw();
 
         vkCmdDraw(
             static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
@@ -880,7 +873,6 @@ namespace Spartan
             vertex_start_index,                           // firstVertex
             0                                             // firstInstance
         );
-
         Profiler::m_rhi_draw++;
     }
 
@@ -888,15 +880,7 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (!m_render_pass_active)
-        {
-            RenderPassBegin();
-        }
-
-        if (descriptor_sets::bind_dynamic)
-        {
-            descriptor_sets::set_dynamic(m_pso, m_rhi_resource, m_pipeline->GetResource_PipelineLayout(), m_descriptor_layout_current);
-        }
+        PreDraw();
 
         vkCmdDrawIndexed(
             static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
@@ -906,7 +890,6 @@ namespace Spartan
             vertex_offset,                                // vertexOffset
             instance_start_index                          // firstInstance
         );
-
         Profiler::m_rhi_draw++;
     }
 
@@ -1208,7 +1191,7 @@ namespace Spartan
         SP_ASSERT(buffer != nullptr);
         SP_ASSERT(buffer->GetRhiResource() != nullptr);
 
-        if (m_vertex_buffer_id == buffer->GetObjectId())
+        if (m_buffer_id_vertex == buffer->GetObjectId())
             return;
 
         VkBuffer vertex_buffers[] = { static_cast<VkBuffer>(buffer->GetRhiResource()) };
@@ -1222,7 +1205,7 @@ namespace Spartan
             offsets                                       // pOffsets
         );
 
-        m_vertex_buffer_id = buffer->GetObjectId();
+        m_buffer_id_vertex = buffer->GetObjectId();
         Profiler::m_rhi_bindings_buffer_vertex++;
     }
 
@@ -1232,7 +1215,7 @@ namespace Spartan
         SP_ASSERT(buffer != nullptr);
         SP_ASSERT(buffer->GetRhiResource() != nullptr);
 
-        if (m_index_buffer_id == buffer->GetObjectId())
+        if (m_buffer_id_index == buffer->GetObjectId())
             return;
 
         vkCmdBindIndexBuffer(
@@ -1242,7 +1225,7 @@ namespace Spartan
             buffer->Is16Bit() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // indexType
         );
 
-        m_index_buffer_id = buffer->GetObjectId();
+        m_buffer_id_index = buffer->GetObjectId();
         Profiler::m_rhi_bindings_buffer_index++;
     }
 
@@ -1623,5 +1606,18 @@ namespace Spartan
     {
         SP_ASSERT(texture != nullptr);
         InsertBarrierTexture(texture->GetRhiResource(), get_aspect_mask(texture), 0, 1, 1, texture->GetLayout(0), texture->GetLayout(0), texture->IsDsv());
+    }
+
+    void RHI_CommandList::PreDraw()
+    {
+        if (!m_render_pass_active)
+        {
+            RenderPassBegin();
+        }
+
+        if (descriptor_sets::bind_dynamic)
+        {
+            descriptor_sets::set_dynamic(m_pso, m_rhi_resource, m_pipeline->GetResource_PipelineLayout(), m_descriptor_layout_current);
+        }
     }
 }

@@ -217,7 +217,7 @@ namespace Spartan
                         break;
                     case SDL_WINDOWEVENT_DISPLAY_CHANGED:
                         SP_LOG_INFO("Display has been changed, detecting new display modes");
-                        Display::DetectDisplayModes();
+                        Display::Initialize();
                         break;
                     default:
                         SP_LOG_ERROR("Unhandled window event");

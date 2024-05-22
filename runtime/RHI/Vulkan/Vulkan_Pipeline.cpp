@@ -268,7 +268,7 @@ namespace Spartan
         VkPipelineTessellationStateCreateInfo tesselation_state = {};
         {
             tesselation_state.sType              = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
-            tesselation_state.patchControlPoints = 3;
+            tesselation_state.patchControlPoints = m_state.HasTessellation() ? 3 : 1;
         }
 
         // rasterizer state
@@ -289,11 +289,11 @@ namespace Spartan
         }
         
         // multisampling
-        VkPipelineMultisampleStateCreateInfo multisampling_state = {};
+        VkPipelineMultisampleStateCreateInfo multisample_state = {};
         {
-            multisampling_state.sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-            multisampling_state.sampleShadingEnable  = VK_FALSE;
-            multisampling_state.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+            multisample_state.sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+            multisample_state.sampleShadingEnable  = VK_FALSE;
+            multisample_state.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
         }
         
         VkPipelineColorBlendStateCreateInfo color_blend_state = {};
@@ -419,45 +419,37 @@ namespace Spartan
                     pipeline_rendering_create_info.stencilAttachmentFormat = attachment_format_stencil;
                 }
 
-                // describe
-                VkGraphicsPipelineCreateInfo pipeline_info = {};
-                pipeline_info.pNext                        = &pipeline_rendering_create_info;
-                pipeline_info.sType                        = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-                pipeline_info.stageCount                   = static_cast<uint32_t>(shader_stages.size());
-                pipeline_info.pStages                      = shader_stages.data();
-                pipeline_info.pVertexInputState            = &vertex_input_state;
-                pipeline_info.pInputAssemblyState          = &input_assembly_state;
-                pipeline_info.pTessellationState           = m_state.HasTessellation() ? &tesselation_state : nullptr;
-                pipeline_info.pDynamicState                = &dynamic_state;
-                pipeline_info.pViewportState               = &viewport_state;
-                pipeline_info.pRasterizationState          = &rasterizer_state;
-                pipeline_info.pMultisampleState            = &multisampling_state;
-                pipeline_info.pColorBlendState             = &color_blend_state;
-                pipeline_info.pDepthStencilState           = &depth_stencil_state;
-                pipeline_info.layout                       = static_cast<VkPipelineLayout>(m_resource_pipeline_layout);
-                pipeline_info.renderPass                   = nullptr;
-                pipeline_info.flags                        = m_state.vrs_input_texture ? VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR : 0;
-        
                 // create
-                SP_ASSERT_VK_MSG(vkCreateGraphicsPipelines(RHI_Context::device, nullptr, 1, &pipeline_info, nullptr, pipeline),
-                    "Failed to create graphics pipeline");
+                {
+                    VkGraphicsPipelineCreateInfo pipeline_info = {};
+                    pipeline_info.pNext                        = &pipeline_rendering_create_info;
+                    pipeline_info.sType                        = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+                    pipeline_info.stageCount                   = static_cast<uint32_t>(shader_stages.size());
+                    pipeline_info.pStages                      = shader_stages.data();
+                    pipeline_info.pVertexInputState            = &vertex_input_state;
+                    pipeline_info.pInputAssemblyState          = &input_assembly_state;
+                    pipeline_info.pTessellationState           = &tesselation_state;
+                    pipeline_info.pDynamicState                = &dynamic_state;
+                    pipeline_info.pViewportState               = &viewport_state;
+                    pipeline_info.pRasterizationState          = &rasterizer_state;
+                    pipeline_info.pMultisampleState            = &multisample_state;
+                    pipeline_info.pColorBlendState             = &color_blend_state;
+                    pipeline_info.pDepthStencilState           = &depth_stencil_state;
+                    pipeline_info.layout                       = static_cast<VkPipelineLayout>(m_resource_pipeline_layout);
+                    pipeline_info.flags                        = m_state.vrs_input_texture ? VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR : 0;
 
-                // disable naming until I can come up with a more meaningful name
-                // vulkan_utility::debug::set_name(*pipeline, m_state.pass_name);
+                    SP_ASSERT_VK_MSG(vkCreateGraphicsPipelines(RHI_Context::device, nullptr, 1, &pipeline_info, nullptr, pipeline), "Failed to create graphics pipeline");
+                    RHI_Device::SetResourceName(static_cast<void*>(*pipeline), RHI_Resource_Type::Pipeline, pipeline_state.name);
+                }
             }
             else if (pipeline_state.IsCompute())
             {
-                // describe
                 VkComputePipelineCreateInfo pipeline_info = {};
                 pipeline_info.sType                       = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
                 pipeline_info.layout                      = static_cast<VkPipelineLayout>(m_resource_pipeline_layout);
                 pipeline_info.stage                       = shader_stages[0];
 
-                // create
-                SP_ASSERT_VK_MSG(vkCreateComputePipelines(RHI_Context::device, nullptr, 1, &pipeline_info, nullptr, pipeline),
-                    "Failed to create compute pipeline");
-
-                // name
+                SP_ASSERT_VK_MSG(vkCreateComputePipelines(RHI_Context::device, nullptr, 1, &pipeline_info, nullptr, pipeline),"Failed to create compute pipeline");
                 RHI_Device::SetResourceName(static_cast<void*>(*pipeline), RHI_Resource_Type::Pipeline, pipeline_state.name);
             }
         }

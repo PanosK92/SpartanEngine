@@ -149,6 +149,7 @@ namespace Spartan
         uint64_t GetSwapchainId() const                           { return m_swapchain_id; }
 
     private:
+        void PreDraw();
         void RenderPassBegin();
         void RenderPassEnd();
 
@@ -156,11 +157,9 @@ namespace Spartan
         std::shared_ptr<RHI_Semaphore> m_rendering_complete_semaphore;
         std::shared_ptr<RHI_Semaphore> m_rendering_complete_semaphore_timeline;
 
-        // variables to minimise state changes
-        uint64_t m_vertex_buffer_id = 0;
-        uint64_t m_index_buffer_id  = 0;
-
         // misc
+        uint64_t m_buffer_id_vertex                          = 0;
+        uint64_t m_buffer_id_index                           = 0;
         bool m_ignore_clear_values                           = false;
         uint64_t m_swapchain_id                              = 0;
         uint32_t m_timestamp_index                           = 0;
