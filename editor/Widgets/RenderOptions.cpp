@@ -35,11 +35,8 @@ using namespace Spartan::Math;
 namespace
 {
     // table
-    static int column_count      = 2;
-    static ImGuiTableFlags flags =
-        ImGuiTableFlags_NoHostExtendX | // make outer width auto-fit to columns, overriding outer_size.x value. Only available when ScrollX/ScrollY are disabled and Stretch columns are not used.
-        ImGuiTableFlags_BordersInnerV | // draw vertical borders between columns.
-        ImGuiTableFlags_SizingFixedFit; // columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching contents width.
+    int column_count      = 2;
+    ImGuiTableFlags flags = ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_Resizable;
 
     // options sizes
     #define width_input_numeric 120.0f * Spartan::Window::GetDpiScale()
@@ -50,7 +47,7 @@ namespace
     vector<string> display_modes_string;
 
     // helper functions
-    bool option(const char* title, bool default_open = false)
+    bool option(const char* title, bool default_open = true)
     {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
@@ -194,10 +191,10 @@ namespace
 
 RenderOptions::RenderOptions(Editor* editor) : Widget(editor)
 {
-    m_title    = "Renderer Options";
-    m_flags    |= ImGuiWindowFlags_AlwaysAutoResize;
-    m_visible  = false;
-    m_alpha    = 1.0f;
+    m_title        = "Renderer Options";
+    m_size_initial = Vector2(720, 1080);
+    m_visible      = false;
+    m_alpha        = 1.0f;
 }
 
 void RenderOptions::OnVisible()
@@ -220,11 +217,7 @@ void RenderOptions::OnVisible()
 
 void RenderOptions::OnTickVisible()
 {
-    // reflect options from engine
-    int resolution_shadow = Renderer::GetOption<int>(Renderer_Option::ShadowResolution);
-
-    // present options (with a table)
-    if (ImGui::BeginTable("##render_options", column_count, flags, ImVec2(0.0f)))
+    if (ImGui::BeginTable("##render_options", column_count, flags))
     {
         ImGui::TableSetupColumn("Option");
         ImGui::TableSetupColumn("Value");
@@ -376,7 +369,9 @@ void RenderOptions::OnTickVisible()
             option_check_box("Screen space shadows", Renderer_Option::ScreenSpaceShadows, "Requires a light with shadows enabled");
 
             // shadow resolution
+            int resolution_shadow = Renderer::GetOption<int>(Renderer_Option::ShadowResolution);
             option_int("Shadow resolution", resolution_shadow);
+            Renderer::SetOption(Renderer_Option::ShadowResolution, static_cast<float>(resolution_shadow));
         }
 
         if (option("Misc"))
@@ -418,7 +413,4 @@ void RenderOptions::OnTickVisible()
 
         ImGui::EndTable();
     }
-
-    // map options to engine
-    Renderer::SetOption(Renderer_Option::ShadowResolution,static_cast<float>(resolution_shadow));
 }
