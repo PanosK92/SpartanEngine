@@ -42,12 +42,13 @@ namespace Spartan
         Camera,
         Constraint,
         Light,
-        Renderable,
         PhysicsBody,
+        Renderable,
         Terrain,
         ReflectionProbe,
-        Undefined
+        Max
     };
+    // after re-ordering the above, ensure .world save/load works
 
     struct Attribute
     {
@@ -126,7 +127,7 @@ namespace Spartan
         }
 
         // the type of the component
-        ComponentType m_type = ComponentType::Undefined;
+        ComponentType m_type = ComponentType::Max;
         // the state of the component
         bool m_enabled       = false;
         // the owner of the component

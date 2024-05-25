@@ -289,18 +289,6 @@ namespace Spartan
         Foam
     };
 
-    enum class Renderer_MeshType
-    {
-        NotAssigned,
-        Cube,
-        Quad,
-        Grid,
-        Sphere,
-        Cylinder,
-        Cone,
-        Custom
-    };
-
     enum class Renderer_RasterizerState
     {
         Solid,

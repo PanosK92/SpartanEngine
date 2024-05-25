@@ -42,6 +42,18 @@ namespace Spartan
         OptimizeOverdraw          = 1 << 6,
     };
 
+    enum class MeshType
+    {
+        Cube,
+        Quad,
+        Grid,
+        Sphere,
+        Cylinder,
+        Cone,
+        Custom,
+        Max
+    };
+
     class Mesh : public IResource
     {
     public:
@@ -89,6 +101,10 @@ namespace Spartan
         std::weak_ptr<Entity> GetRootEntity() { return m_root_entity; }
         void SetRootEntity(std::shared_ptr<Entity>& entity) { m_root_entity = entity; }
 
+        // mesh type
+        MeshType GetType() const          { return m_type; }
+        void SetType(const MeshType type) { m_type = type; }
+
         // misc
         uint32_t GetFlags() const { return m_flags; }
         static uint32_t GetDefaultFlags();
@@ -98,22 +114,23 @@ namespace Spartan
         void AddTexture(std::shared_ptr<Material>& material, MaterialTexture texture_type, const std::string& file_path, bool is_gltf);
 
     private:
-        // Geometry
+        // geometry
         std::vector<RHI_Vertex_PosTexNorTan> m_vertices;
         std::vector<uint32_t> m_indices;
 
-        // GPU buffers
+        // gpu buffers
         std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer;
         std::shared_ptr<RHI_IndexBuffer> m_index_buffer;
 
-        // AABB
+        // aabb
         Math::BoundingBox m_aabb;
 
-        // Sync primitives
+        // sync primitives
         std::mutex m_mutex_indices;
         std::mutex m_mutex_vertices;
 
-        // Misc
+        // misc
         std::weak_ptr<Entity> m_root_entity;
+        MeshType m_type = MeshType::Custom;
     };
 }

@@ -63,7 +63,12 @@ namespace Spartan
         stream->Write(m_geometry_vertex_offset);
         stream->Write(m_geometry_vertex_count);
         stream->Write(m_bounding_box_untransformed);
-        stream->Write(m_mesh ? m_mesh->GetObjectName() : "");
+        MeshType mesh_type = m_mesh ? m_mesh->GetType() : MeshType::Max;
+        stream->Write(static_cast<uint32_t>(mesh_type));
+        if (mesh_type == MeshType::Custom)
+        { 
+            stream->Write(m_mesh ? m_mesh->GetObjectName() : "");
+        }
 
         // material
         stream->Write(m_flags);
@@ -82,9 +87,17 @@ namespace Spartan
         m_geometry_vertex_offset = stream->ReadAs<uint32_t>();
         m_geometry_vertex_count  = stream->ReadAs<uint32_t>();
         stream->Read(&m_bounding_box_untransformed);
-        string model_name;
-        stream->Read(&model_name);
-        m_mesh = ResourceCache::GetByName<Mesh>(model_name).get();
+        MeshType mesh_type = static_cast<MeshType>(stream->ReadAs<uint32_t>());
+        if (mesh_type == MeshType::Custom)
+        {
+            string model_name;
+            stream->Read(&model_name);
+            m_mesh = ResourceCache::GetByName<Mesh>(model_name).get();
+        }
+        else if (mesh_type != MeshType::Max)
+        {
+            SetGeometry(mesh_type);
+        }
 
         // material
         stream->Read(&m_flags);
@@ -115,9 +128,6 @@ namespace Spartan
         m_geometry_vertex_offset     = vertex_offset;
         m_geometry_vertex_count      = vertex_count;
 
-        if (!m_mesh)
-            return;
-
         if (m_geometry_index_count == 0)
         {
             m_geometry_index_count = m_mesh->GetIndexCount();
@@ -138,11 +148,11 @@ namespace Spartan
         SP_ASSERT(m_bounding_box_untransformed != BoundingBox::Undefined);
     }
 
-    void Renderable::SetGeometry(const Renderer_MeshType mesh_type)
+    void Renderable::SetGeometry(const MeshType type)
     {
-        SetGeometry(Renderer::GetStandardMesh(mesh_type).get());
+        SetGeometry(Renderer::GetStandardMesh(type).get());
     }
-    
+
     void Renderable::GetGeometry(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
     {
         SP_ASSERT_MSG(m_mesh != nullptr, "invalid mesh");

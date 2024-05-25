@@ -1917,8 +1917,8 @@ namespace Spartan
 
                 // draw rectangle
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
-                cmd_list->SetBufferVertex(GetStandardMesh(Renderer_MeshType::Quad)->GetVertexBuffer());
-                cmd_list->SetBufferIndex(GetStandardMesh(Renderer_MeshType::Quad)->GetIndexBuffer());
+                cmd_list->SetBufferVertex(GetStandardMesh(MeshType::Quad)->GetVertexBuffer());
+                cmd_list->SetBufferIndex(GetStandardMesh(MeshType::Quad)->GetIndexBuffer());
                 cmd_list->DrawIndexed(6);
             }
         };
@@ -1989,8 +1989,8 @@ namespace Spartan
         }
 
         cmd_list->SetCullMode(RHI_CullMode::Back);
-        cmd_list->SetBufferVertex(GetStandardMesh(Renderer_MeshType::Quad)->GetVertexBuffer());
-        cmd_list->SetBufferIndex(GetStandardMesh(Renderer_MeshType::Quad)->GetIndexBuffer());
+        cmd_list->SetBufferVertex(GetStandardMesh(MeshType::Quad)->GetVertexBuffer());
+        cmd_list->SetBufferIndex(GetStandardMesh(MeshType::Quad)->GetIndexBuffer());
         cmd_list->DrawIndexed(6);
 
         cmd_list->EndTimeblock();
