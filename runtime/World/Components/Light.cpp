@@ -329,9 +329,6 @@ namespace Spartan
 
     float Light::GetIntensityWatt() const
     {
-        Camera* camera = Renderer::GetCamera().get();
-        SP_ASSERT(camera != nullptr);
-
         // this magic values are chosen empirically based on how the lights
         // types in the LightIntensity enum should look in the engine
         const float magic_value_a = 150.0f;
@@ -349,8 +346,11 @@ namespace Spartan
             power_watts *= area;
         }
 
-        // watts can be multiplied by the camera's exposure to get the final intensity
-        return power_watts * camera->GetExposure();
+        // multiply by the camera's exposure to get the final intensity
+        Camera* camera  = Renderer::GetCamera().get();
+        power_watts    *= camera ? camera->GetExposure() : 1.0f;
+
+        return power_watts;
     }
 
     void Light::SetRange(float range)

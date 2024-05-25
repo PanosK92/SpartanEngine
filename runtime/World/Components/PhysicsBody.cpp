@@ -136,8 +136,6 @@ namespace Spartan
         {
             m_shape_type = PhysicsShape::Terrain;
         }
-
-        UpdateShape();
     }
 
     PhysicsBody::~PhysicsBody()
@@ -806,9 +804,9 @@ namespace Spartan
         {
             // get renderable
             renderable = GetEntity()->GetComponent<Renderable>();
-            if (!renderable)
+            if (!renderable || !renderable->HasMesh())
             {
-                SP_LOG_WARNING("For a mesh shape to be constructed, there needs to be a Renderable component");
+                SP_LOG_WARNING("For a mesh shape to be constructed, there needs to be a Renderable component with a mesh");
                 return;
             }
 

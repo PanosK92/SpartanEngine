@@ -27,11 +27,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer_Definitions.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/BoundingBox.h"
+#include "../Rendering/Mesh.h"
 //============================================
 
 namespace Spartan
 {
-    class Mesh;
     class Material;
     class RHI_VertexBuffer;
     class RHI_IndexBuffer;
@@ -69,7 +69,7 @@ namespace Spartan
             uint32_t index_offset  = 0, uint32_t index_count  = 0,
             uint32_t vertex_offset = 0, uint32_t vertex_count = 0
         );
-        void SetGeometry(const Renderer_MeshType mesh_type);
+        void SetGeometry(const MeshType type);
         void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
 
         // bounding box
@@ -107,6 +107,7 @@ namespace Spartan
         uint32_t GetVertexOffset() const { return m_geometry_vertex_offset; }
         uint32_t GetVertexCount() const  { return m_geometry_vertex_count; }
         bool IsVisible() const           { return !(m_flags & RenderableFlags::OccludedCpu) && !(m_flags & RenderableFlags::OccludedGpu); }
+        bool HasMesh() const             { return m_mesh != nullptr; }
 
         // flags
         bool HasFlag(const RenderableFlags flag) { return m_flags & flag; }

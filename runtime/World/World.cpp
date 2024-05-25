@@ -143,7 +143,7 @@ namespace Spartan
 
                 // add a renderable component
                 shared_ptr<Renderable> renderable = m_default_model_floor->AddComponent<Renderable>();
-                renderable->SetGeometry(Renderer::GetStandardMesh(Renderer_MeshType::Quad).get());
+                renderable->SetGeometry(Renderer::GetStandardMesh(MeshType::Quad).get());
                 renderable->SetDefaultMaterial();
                 renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingX, 170.0f);
                 renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingY, 170.0f);
@@ -297,7 +297,7 @@ namespace Spartan
             return false;
         }
 
-        // Open file
+        // open file
         unique_ptr<FileStream> file = make_unique<FileStream>(file_path, FileStream_Read);
         if (!file->IsOpen())
         {
@@ -305,37 +305,37 @@ namespace Spartan
             return false;
         }
 
-        // Clear current entities
+        // clear existing entities
         Clear();
 
         m_name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
         m_file_path = file_path;
 
-        // Notify subsystems that need to load data
+        // notify subsystems that need to load data
         SP_FIRE_EVENT(EventType::WorldLoadStart);
 
-        // Load root entity count
+        // load root entity count
         const uint32_t root_entity_count = file->ReadAs<uint32_t>();
 
-        // Start progress tracking and timing
+        // start progress tracking and timing
         ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Loading world...");
         const Stopwatch timer;
 
-        // Load root entity IDs
+        // load root entity IDs
         for (uint32_t i = 0; i < root_entity_count; i++)
         {
             shared_ptr<Entity> entity = CreateEntity();
             entity->SetObjectId(file->ReadAs<uint64_t>());
         }
 
-        // Serialize root entities
+        // serialize root entities
         for (uint32_t i = 0; i < root_entity_count; i++)
         {
             m_entities[i]->Deserialize(file.get(), nullptr);
             ProgressTracker::GetProgress(ProgressType::World).JobDone();
         }
 
-        // Report time
+        // report time
         SP_LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", m_file_path.c_str(), timer.GetElapsedTimeMs());
 
         SP_FIRE_EVENT(EventType::WorldLoadEnd);
@@ -524,7 +524,7 @@ namespace Spartan
 
             // add a renderable component
             shared_ptr<Renderable> renderable = m_default_cube->AddComponent<Renderable>();
-            renderable->SetGeometry(Renderer::GetStandardMesh(Renderer_MeshType::Cube).get());
+            renderable->SetGeometry(Renderer::GetStandardMesh(MeshType::Cube).get());
             renderable->SetMaterial(material);
 
             // add physics components
@@ -809,7 +809,7 @@ namespace Spartan
 
             // add a renderable component
             shared_ptr<Renderable> renderable = ramp->AddComponent<Renderable>();
-            renderable->SetGeometry(Renderer::GetStandardMesh(Renderer_MeshType::Cube).get());
+            renderable->SetGeometry(Renderer::GetStandardMesh(MeshType::Cube).get());
             renderable->SetDefaultMaterial();
 
             // add physics components
@@ -981,7 +981,7 @@ namespace Spartan
                     water->SetScale(Vector3(1024.0f, 1.0f, 1024.0f));
 
                     Renderable* renderable = water->AddComponent<Renderable>().get();
-                    renderable->SetGeometry(Renderer_MeshType::Grid);
+                    renderable->SetGeometry(MeshType::Grid);
 
                     // material
                     {

@@ -100,14 +100,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // get cpu data
     float3 f3_value    = pass_get_f3_value();
     float tone_mapping = f3_value.y;
-    float exposure     = f3_value.z;
-   
+
     float4 color  = tex[thread_id.xy];
 
     if (buffer_frame.hdr_enabled == 0.0f) // SDR
     {
-        color.rgb *= exposure;
-
         switch (tone_mapping)
         {
             case 0:

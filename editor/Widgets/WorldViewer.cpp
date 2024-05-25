@@ -50,45 +50,41 @@ namespace
     weak_ptr <Spartan::Entity> entity_hovered;
     ImGuiSp::DragDropPayload g_payload;
 
-    void load_default_world_prompt(Editor* editor)
+    void world_selection_window(Editor* editor)
     {
         static bool is_default_world_window_visible = true;
         if (is_default_world_window_visible)
         {
             ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-    
-            if (ImGui::Begin("World selection", nullptr, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar))
+            if (ImGui::Begin("World selection", &is_default_world_window_visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar))
             {
                 ImGui::Text("Select the world you would like to load and click \"Ok\"");
     
-                // list box
-                static const char* items[] =
+                // list
+                static int item_index = 0;
                 {
-                    "1. Empty",
-                    "2. Objects",
-                    "3. Car",
-                    "4. Forest",
-                    "5. Sponza",
-                    "6. Doom",
-                    "7. Bistro",
-                    "8. Minecraft",
-                    "9. Living Room"
-                };
-                static int item_count = IM_ARRAYSIZE(items);
-                static int item_index = 2;
+                    static const char* items[] =
+                    {
+                        "1. Objects",
+                        "2. Car",
+                        "3. Forest",
+                        "4. Sponza",
+                        "5. Doom",
+                        "6. Bistro",
+                        "7. Minecraft",
+                        "8. Living Room"
+                    };
+                    static int item_count = IM_ARRAYSIZE(items);
+             
+                    ImGui::PushItemWidth(500.0f * Spartan::Window::GetDpiScale());
+                    ImGui::ListBox("##list_box", &item_index, items, item_count, item_count);
+                    ImGui::PopItemWidth();
+                }
 
-                ImGui::PushItemWidth(500.0f * Spartan::Window::GetDpiScale());
-                ImGui::ListBox("##list_box", &item_index, items, item_count, item_count);
-                ImGui::PopItemWidth();
-    
                 // button
                 if (ImGuiSp::button_centered_on_line("Ok"))
                 {
-                    if (item_index > 0)
-                    {
-                        Spartan::World::LoadDefaultWorld(static_cast<Spartan::DefaultWorld>(item_index - 1));
-                    }
-
+                    Spartan::World::LoadDefaultWorld(static_cast<Spartan::DefaultWorld>(item_index));
                     is_default_world_window_visible = false;
                 }
             }
@@ -125,7 +121,7 @@ void WorldViewer::OnTickVisible()
         }
     }
 
-    load_default_world_prompt(m_editor);
+    world_selection_window(m_editor);
 }
 
 void WorldViewer::TreeShow()
@@ -590,7 +586,7 @@ void WorldViewer::ActionEntityCreateCube()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::Renderer_MeshType::Cube);
+    renderable->SetGeometry(Spartan::MeshType::Cube);
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Cube");
 }
@@ -599,7 +595,7 @@ void WorldViewer::ActionEntityCreateQuad()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::Renderer_MeshType::Quad);
+    renderable->SetGeometry(Spartan::MeshType::Quad);
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Quad");
 }
@@ -608,7 +604,7 @@ void WorldViewer::ActionEntityCreateSphere()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::Renderer_MeshType::Sphere);
+    renderable->SetGeometry(Spartan::MeshType::Sphere);
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Sphere");
 }
@@ -617,7 +613,7 @@ void WorldViewer::ActionEntityCreateCylinder()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::Renderer_MeshType::Cylinder);
+    renderable->SetGeometry(Spartan::MeshType::Cylinder);
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Cylinder");
 }
@@ -626,7 +622,7 @@ void WorldViewer::ActionEntityCreateCone()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::Renderer_MeshType::Cone);
+    renderable->SetGeometry(Spartan::MeshType::Cone);
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Cone");
 }

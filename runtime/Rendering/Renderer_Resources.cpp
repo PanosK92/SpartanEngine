@@ -64,10 +64,10 @@ namespace Spartan
         array<shared_ptr<RHI_StructuredBuffer>, 3>                                        structured_buffers;
 
         // asset resources
-        array<shared_ptr<RHI_Texture>, 11> standard_textures;
-        array<shared_ptr<Mesh>, 7>         standard_meshes;
-        shared_ptr<Font>                   standard_font;
-        shared_ptr<Material>               standard_material;
+        array<shared_ptr<RHI_Texture>, 11>                            standard_textures;
+        array<shared_ptr<Mesh>, static_cast<uint32_t>(MeshType::Max)> standard_meshes;
+        shared_ptr<Font>                                              standard_font;
+        shared_ptr<Material>                                          standard_material;
     }
 
     void Renderer::CreateBuffers()
@@ -517,40 +517,40 @@ namespace Spartan
 
     void Renderer::CreateStandardMeshes()
     {
-        auto create_mesh = [](const Renderer_MeshType type)
+        auto create_mesh = [](const MeshType type)
         {
             const string project_directory = ResourceCache::GetProjectDirectory();
             shared_ptr<Mesh> mesh = make_shared<Mesh>();
             vector<RHI_Vertex_PosTexNorTan> vertices;
             vector<uint32_t> indices;
 
-            if (type == Renderer_MeshType::Cube)
+            if (type == MeshType::Cube)
             {
                 Geometry::CreateCube(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_cube" + EXTENSION_MODEL);
             }
-            else if (type == Renderer_MeshType::Quad)
+            else if (type == MeshType::Quad)
             {
                 Geometry::CreateQuad(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_quad" + EXTENSION_MODEL);
             }
-            else if (type == Renderer_MeshType::Grid)
+            else if (type == MeshType::Grid)
             {
                 uint32_t resolution = 40;
                 Geometry::CreateGrid(&vertices, &indices, resolution);
                 mesh->SetResourceFilePath(project_directory + "standard_grid" + EXTENSION_MODEL);
             }
-            else if (type == Renderer_MeshType::Sphere)
+            else if (type == MeshType::Sphere)
             {
                 Geometry::CreateSphere(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_sphere" + EXTENSION_MODEL);
             }
-            else if (type == Renderer_MeshType::Cylinder)
+            else if (type == MeshType::Cylinder)
             {
                 Geometry::CreateCylinder(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_cylinder" + EXTENSION_MODEL);
             }
-            else if (type == Renderer_MeshType::Cone)
+            else if (type == MeshType::Cone)
             {
                 Geometry::CreateCone(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_cone" + EXTENSION_MODEL);
@@ -558,6 +558,7 @@ namespace Spartan
 
             mesh->AddIndices(indices);
             mesh->AddVertices(vertices);
+            mesh->SetType(type);
             mesh->ComputeAabb();
             mesh->ComputeNormalizedScale();
             mesh->CreateGpuBuffers();
@@ -565,12 +566,12 @@ namespace Spartan
             standard_meshes[static_cast<uint8_t>(type)] = mesh;
         };
 
-        create_mesh(Renderer_MeshType::Cube);
-        create_mesh(Renderer_MeshType::Quad);
-        create_mesh(Renderer_MeshType::Sphere);
-        create_mesh(Renderer_MeshType::Cylinder);
-        create_mesh(Renderer_MeshType::Cone);
-        create_mesh(Renderer_MeshType::Grid);
+        create_mesh(MeshType::Cube);
+        create_mesh(MeshType::Quad);
+        create_mesh(MeshType::Sphere);
+        create_mesh(MeshType::Cylinder);
+        create_mesh(MeshType::Cone);
+        create_mesh(MeshType::Grid);
 
         // this buffers holds all debug primitives that can be drawn
         m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(true, "lines");
@@ -708,7 +709,7 @@ namespace Spartan
         return standard_textures[static_cast<uint8_t>(type)];
     }
 
-    shared_ptr<Mesh> Renderer::GetStandardMesh(const Renderer_MeshType type)
+    shared_ptr<Mesh> Renderer::GetStandardMesh(const MeshType type)
     {
         return standard_meshes[static_cast<uint8_t>(type)];
     }

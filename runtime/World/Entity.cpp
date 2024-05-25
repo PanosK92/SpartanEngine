@@ -153,7 +153,7 @@ namespace Spartan
         {
             stream->Write(m_is_active);
             stream->Write(m_hierarchy_visibility);
-            stream->Write(GetObjectId());
+            stream->Write(m_object_id);
             stream->Write(m_object_name);
             stream->Write(m_position_local);
             stream->Write(m_rotation_local);
@@ -172,7 +172,7 @@ namespace Spartan
                 }
                 else
                 {
-                    stream->Write(static_cast<uint32_t>(ComponentType::Undefined));
+                    stream->Write(static_cast<uint32_t>(ComponentType::Max));
                 }
             }
 
@@ -189,16 +189,16 @@ namespace Spartan
         {
             vector<Entity*>& children = GetChildren();
 
-            // Children count
+            // children count
             stream->Write(static_cast<uint32_t>(children.size()));
 
-            // Children IDs
+            // children IDs
             for (Entity* child : children)
             {
                 stream->Write(child->GetObjectId());
             }
 
-            // Children
+            // children
             for (Entity* child : children)
             {
                 if (child)
@@ -238,13 +238,13 @@ namespace Spartan
         {
             for (uint32_t i = 0; i < static_cast<uint32_t>(m_components.size()); i++)
             {
-                // Type
-                uint32_t component_type = static_cast<uint32_t>(ComponentType::Undefined);
+                // type
+                uint32_t component_type = static_cast<uint32_t>(ComponentType::Max);
                 stream->Read(&component_type);
 
-                if (component_type == static_cast<uint32_t>(ComponentType::Undefined))
+                if (component_type != static_cast<uint32_t>(ComponentType::Max))
                 {
-                    // Id
+                    // id
                     uint64_t component_id = 0;
                     stream->Read(&component_id);
 
