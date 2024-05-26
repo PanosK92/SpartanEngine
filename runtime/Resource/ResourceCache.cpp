@@ -49,10 +49,10 @@ namespace Spartan
 
     void ResourceCache::Initialize()
     {
-        // Create project directory
+        // create project directory
         SetProjectDirectory("project\\");
 
-        // Add engine standard resource directories
+        // add engine standard resource directories
         const string data_dir = "data\\";
         AddResourceDirectory(ResourceDirectory::Environment,    m_project_directory + "environment");
         AddResourceDirectory(ResourceDirectory::Fonts,          data_dir + "fonts");
@@ -61,9 +61,9 @@ namespace Spartan
         AddResourceDirectory(ResourceDirectory::Shaders,        data_dir + "shaders");
         AddResourceDirectory(ResourceDirectory::Textures,       data_dir + "textures");
 
-        // Subscribe to events
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldSaveStart, SP_EVENT_HANDLER_STATIC(SaveResourcesToFiles));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoadStart, SP_EVENT_HANDLER_STATIC(LoadResourcesFromFiles));
+        // subscribe to events
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldSaveStart, SP_EVENT_HANDLER_STATIC(Serialize));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoadStart, SP_EVENT_HANDLER_STATIC(Deserialize));
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,     SP_EVENT_HANDLER_STATIC(Shutdown));
     }
 
@@ -119,7 +119,7 @@ namespace Spartan
         vector<shared_ptr<IResource>> resources;
         for (shared_ptr<IResource>& resource : m_resources)
         {
-            if (resource->GetResourceType() == type || type == ResourceType::Unknown)
+            if (resource->GetResourceType() == type || type == ResourceType::Max)
             {
                 resources.emplace_back(resource);
             }
@@ -135,7 +135,7 @@ namespace Spartan
         uint64_t size = 0;
         for (shared_ptr<IResource>& resource : m_resources)
         {
-            if (resource->GetResourceType() == type || type == ResourceType::Unknown)
+            if (resource->GetResourceType() == type || type == ResourceType::Max)
             {
                 if (SpartanObject* object = dynamic_cast<SpartanObject*>(resource.get()))
                 {
@@ -147,10 +147,10 @@ namespace Spartan
         return size;
     }
 
-    void ResourceCache::SaveResourcesToFiles()
+    void ResourceCache::Serialize()
     {
-        // Create resource list file
-        string file_path = GetProjectDirectoryAbsolute() + World::GetName() + "_resources.dat";
+        // create resource list file
+        string file_path = GetProjectDirectoryAbsolute() + World::GetName() + ".resource";
         auto file = make_unique<FileStream>(file_path, FileStream_Write);
         if (!file->IsOpen())
         {
@@ -160,47 +160,43 @@ namespace Spartan
 
         const uint32_t resource_count = GetResourceCount();
 
-        // Start progress report
+        // start progress report
         ProgressTracker::GetProgress(ProgressType::Resource).Start(resource_count, "Loading resources...");
 
-        // Save resource count
+        // save resource count
         file->Write(resource_count);
 
-        // Save all the currently used resources to disk
+        // save all the currently used resources to disk
         for (shared_ptr<IResource>& resource : m_resources)
         {
-            if (!resource->HasFilePathNative())
+            if (resource->HasFilePathNative())
             {
-                // Save file path
-                file->Write(resource->GetResourceFilePathNative());
-                // Save type
-                file->Write(static_cast<uint32_t>(resource->GetResourceType()));
-                // Save resource (to a dedicated file)
-                resource->SaveToFile(resource->GetResourceFilePathNative());
+                SP_ASSERT_MSG(!resource->GetResourceFilePathNative().empty(), "Resources must have a native file path");
+                SP_ASSERT_MSG(resource->GetResourceType() != ResourceType::Max, "Resources must have a type");
+
+                file->Write(resource->GetResourceFilePathNative());              // file path
+                file->Write(static_cast<uint32_t>(resource->GetResourceType())); // type
+                resource->SaveToFile(resource->GetResourceFilePathNative());     // save
             }
 
-            // Update progress
+            // update progress
             ProgressTracker::GetProgress(ProgressType::Resource).JobDone();
         }
     }
 
-    void ResourceCache::LoadResourcesFromFiles()
+    void ResourceCache::Deserialize()
     {
-        // Open resource list file
-        string file_path = GetProjectDirectoryAbsolute() + World::GetName() + "_resources.dat";
+        // open file
+        string file_path = GetProjectDirectoryAbsolute() + World::GetName() + ".resource";
         unique_ptr<FileStream> file = make_unique<FileStream>(file_path, FileStream_Read);
         if (!file->IsOpen())
             return;
 
-        // Load resource count
+        // go through each resource and load it
         const uint32_t resource_count = file->ReadAs<uint32_t>();
-
         for (uint32_t i = 0; i < resource_count; i++)
         {
-            // Load resource file path
             string file_path = file->ReadAs<string>();
-
-            // Load resource type
             const ResourceType type = static_cast<ResourceType>(file->ReadAs<uint32_t>());
 
             switch (type)
@@ -228,7 +224,6 @@ namespace Spartan
                 break;
             }
         }
-
     }
 
     void ResourceCache::Shutdown()

@@ -44,7 +44,7 @@ namespace Spartan
         Animation,
         Font,
         Shader,
-        Unknown,
+        Max,
     };
 
     class SP_CLASS IResource : public SpartanObject
@@ -120,7 +120,7 @@ namespace Spartan
         static constexpr ResourceType TypeToEnum();
 
     protected:
-        ResourceType m_resource_type         = ResourceType::Unknown;
+        ResourceType m_resource_type         = ResourceType::Max;
         std::atomic<bool> m_is_ready_for_use = false;
         uint32_t m_flags                     = 0;
 

@@ -29,8 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class FontImporter;
-
     enum class ResourceDirectory
     {
         Environment,
@@ -56,7 +54,7 @@ namespace Spartan
         }
 
         // get by type
-        static std::vector<std::shared_ptr<IResource>> GetByType(ResourceType type = ResourceType::Unknown);
+        static std::vector<std::shared_ptr<IResource>> GetByType(ResourceType type = ResourceType::Max);
 
         // get by path
         template <class T>
@@ -161,8 +159,8 @@ namespace Spartan
         }
 
         // memory
-        static uint64_t GetMemoryUsage(ResourceType type = ResourceType::Unknown);
-        static uint32_t GetResourceCount(ResourceType type = ResourceType::Unknown);
+        static uint64_t GetMemoryUsage(ResourceType type = ResourceType::Max);
+        static uint32_t GetResourceCount(ResourceType type = ResourceType::Max);
 
         // directories
         static void AddResourceDirectory(ResourceDirectory type, const std::string& directory);
@@ -183,7 +181,7 @@ namespace Spartan
         static bool IsCached(const std::string& resource_name, const ResourceType resource_type);
 
         // event handlers
-        static void SaveResourcesToFiles();
-        static void LoadResourcesFromFiles();
+        static void Serialize();
+        static void Deserialize();
     };
 }
