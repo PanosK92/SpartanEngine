@@ -47,7 +47,7 @@ namespace Spartan
     enum RenderableFlags : uint32_t
     {
         OccludedCpu  = 1U << 0, // frustum culling
-        OccludedGpu  = 1U << 1, // occlusion query culling
+        OccludedGpu  = 1U << 1, // occlusion culling (depth culling)
         Occluder     = 1U << 2,
         CastsShadows = 1U << 3
     };
