@@ -237,11 +237,20 @@ float4 Shadow_Map(Surface surface, Light light)
         float3 normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * light.texel_size.x;
         float3 position_world     = surface.position + normal_offset_bias;
 
+        // compute slice index
+        uint slice_index = 0;
+        if (light.is_point())
+        {
+            if (dot(light.forward, light.to_pixel) < 0.0f)
+            {
+                slice_index = 1; // back paraboloid
+            }
+        }
+        
         // project to light space
-        uint slice_index = light.is_point() ? direction_to_cube_face_index(light.to_pixel) : 0;
         float3 pos_ndc   = world_to_ndc(position_world, light.view_projection[slice_index]);
         float2 pos_uv    = ndc_to_uv(pos_ndc);
-
+        
         // sample shadow map
         if (is_valid_uv(pos_uv))
         {

@@ -211,7 +211,7 @@ namespace Spartan
 
     struct Sb_Light
     {
-        Math::Matrix view_projection[6];
+        Math::Matrix view_projection[2];
 
         Color color;
 
@@ -230,10 +230,6 @@ namespace Spartan
             return
                 view_projection[0] == rhs.view_projection[0] &&
                 view_projection[1] == rhs.view_projection[1] &&
-                view_projection[2] == rhs.view_projection[2] &&
-                view_projection[3] == rhs.view_projection[3] &&
-                view_projection[4] == rhs.view_projection[4] &&
-                view_projection[5] == rhs.view_projection[5] &&
                 intensity          == rhs.intensity          &&
                 range              == rhs.range              &&
                 angle              == rhs.angle              &&

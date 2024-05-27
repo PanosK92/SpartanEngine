@@ -383,7 +383,7 @@ namespace Spartan
     void Light::ComputeViewMatrix()
     {
         const Vector3 position = GetEntity()->GetPosition();
-        const Vector3 forward  = GetEntity()->GetForward();
+        const Vector3 forward = GetEntity()->GetForward();
 
         if (m_light_type == LightType::Directional)
         {
@@ -392,12 +392,10 @@ namespace Spartan
             {
                 target = camera->GetEntity()->GetPosition();
             }
-
-            // near cascade
             Vector3 position = target - forward * orthographic_depth * 0.8f;
-            m_matrix_view[0] = Matrix::CreateLookAtLH(position, target, Vector3::Up);
-            // far cascade
-            m_matrix_view[1] = m_matrix_view[0];
+
+            m_matrix_view[0] = Matrix::CreateLookAtLH(position, target, Vector3::Up); // near
+            m_matrix_view[1] = m_matrix_view[0];                                      // far
         }
         else if (m_light_type == LightType::Spot)
         {
@@ -405,12 +403,8 @@ namespace Spartan
         }
         else if (m_light_type == LightType::Point)
         {
-            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Right,    Vector3::Up);
-            m_matrix_view[1] = Matrix::CreateLookAtLH(position, position + Vector3::Left,     Vector3::Up);
-            m_matrix_view[2] = Matrix::CreateLookAtLH(position, position + Vector3::Up,       Vector3::Backward);
-            m_matrix_view[3] = Matrix::CreateLookAtLH(position, position + Vector3::Down,     Vector3::Forward);
-            m_matrix_view[4] = Matrix::CreateLookAtLH(position, position + Vector3::Forward,  Vector3::Up);
-            m_matrix_view[5] = Matrix::CreateLookAtLH(position, position + Vector3::Backward, Vector3::Up);
+            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + forward, Vector3::Up); // front paraboloid
+            m_matrix_view[1] = Matrix::CreateLookAtLH(position, position - forward, Vector3::Up); // back paraboloid
         }
     }
 
@@ -422,7 +416,7 @@ namespace Spartan
         if (m_light_type == LightType::Directional)
         {
             for (uint32_t i = 0; i < 2; i++)
-            { 
+            {
                 // determine the orthographic extent based on the cascade index
                 float extent = (i == 0) ? orthographic_extent_near : orthographic_extent_far;
 
@@ -435,21 +429,33 @@ namespace Spartan
                 float far_plane  = orthographic_depth;
 
                 m_matrix_projection[i] = Matrix::CreateOrthoOffCenterLH(left, right, bottom, top, far_plane, near_plane);
-                m_frustums[i]          = Frustum(m_matrix_view[i], m_matrix_projection[i], far_plane - near_plane);
+                m_frustums[i] = Frustum(m_matrix_view[i], m_matrix_projection[i], far_plane - near_plane);
             }
         }
-        else
+        else if (m_light_type == LightType::Spot)
         {
             const float aspect_ratio = static_cast<float>(m_texture_depth->GetWidth()) / static_cast<float>(m_texture_depth->GetHeight());
-            const float fov          = m_light_type == LightType::Spot ? m_angle_rad * 2.0f : Math::Helper::PI_DIV_2;
+            const float fov          = m_angle_rad * 2.0f;
             const float near_plane   = 0.1f;
-            Matrix projection        = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, m_range, near_plane);
+            Matrix projection = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, m_range, near_plane);
 
-            for (uint32_t i = 0; i < m_texture_depth->GetArrayLength(); i++)
-            {
-                m_matrix_projection[i] = projection;
-                m_frustums[i]          = Frustum(m_matrix_view[i], projection, m_range);
-            }
+            m_matrix_projection[0] = projection;
+            m_frustums[0]          = Frustum(m_matrix_view[0], projection, m_range);
+        }
+        else if (m_light_type == LightType::Point)
+        {
+            const float aspect_ratio = static_cast<float>(m_texture_depth->GetWidth()) / static_cast<float>(m_texture_depth->GetHeight());
+            const float fov          = Math::Helper::PI_DIV_2;
+            const float near_plane   = 0.1f;
+            const float far_plane    = m_range;
+
+            // front paraboloid
+            m_matrix_projection[0] = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, far_plane, near_plane);
+            m_frustums[0]          = Frustum(m_matrix_view[0], m_matrix_projection[0], far_plane - near_plane);
+
+            // back paraboloid
+            m_matrix_projection[1] = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, far_plane, near_plane);
+            m_frustums[1]          = Frustum(m_matrix_view[1], m_matrix_projection[1], far_plane - near_plane);
         }
     }
 
@@ -486,33 +492,16 @@ namespace Spartan
         uint32_t flags          = RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_ClearBlit;
         m_texture_depth         = nullptr;
         m_texture_color         = nullptr;
+        uint32_t array_length   = (GetLightType() == LightType::Spot) ? 1 : 2;
 
-        if (GetLightType() == LightType::Directional)
+        // spot light:        1 slice
+        // directional light: 2 slices for cascades
+        // point light:       2 slices for front and back paraboloid
+
+        m_texture_depth = make_unique<RHI_Texture2DArray>(resolution, resolution, format_depth, 2, flags, "light_depth");
+        if (IsFlagSet(LightFlags::ShadowsTransparent))
         {
-            m_texture_depth = make_unique<RHI_Texture2DArray>(resolution, resolution, format_depth, 2, flags, "light_directional_depth");
-
-            if (IsFlagSet(LightFlags::ShadowsTransparent))
-            {
-                m_texture_color = make_unique<RHI_Texture2DArray>(resolution, resolution, format_color, 2, flags, "light_directional_color");
-            }
-        }
-        else if (GetLightType() == LightType::Spot)
-        {
-            m_texture_depth = make_unique<RHI_Texture2D>(resolution, resolution, 1, format_depth, flags, "light_spot_depth");
-
-            if (IsFlagSet(LightFlags::ShadowsTransparent))
-            {
-                m_texture_color = make_unique<RHI_Texture2D>(resolution, resolution, 1, format_color, flags, "light_spot_color");
-            }
-        }
-        else if (GetLightType() == LightType::Point)
-        {
-            m_texture_depth = make_unique<RHI_TextureCube>(resolution, resolution, format_depth, flags, "light_point_depth");
-
-            if (IsFlagSet(LightFlags::ShadowsTransparent))
-            {
-                m_texture_color = make_unique<RHI_TextureCube>(resolution, resolution, format_color, flags, "light_point_color");
-            }
+            m_texture_color = make_unique<RHI_Texture2DArray>(resolution, resolution, format_color, 2, flags, "light_color");
         }
     }
 }  

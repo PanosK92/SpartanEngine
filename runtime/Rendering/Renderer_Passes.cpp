@@ -1181,23 +1181,9 @@ namespace Spartan
                     RHI_Texture* tex_depth = light->IsFlagSet(LightFlags::Shadows)            ? light->GetDepthTexture() : nullptr;
                     RHI_Texture* tex_color = light->IsFlagSet(LightFlags::ShadowsTransparent) ? light->GetColorTexture() : nullptr;
 
-                    if (light->GetLightType() == LightType::Directional)
-                    {
-                        cmd_list->SetTexture(Renderer_BindingsSrv::light_directional_depth, tex_depth);
-                        cmd_list->SetTexture(Renderer_BindingsSrv::light_directional_color, tex_color);
-                    }
-                    else if (light->GetLightType() == LightType::Point)
-                    {
-                        cmd_list->SetTexture(Renderer_BindingsSrv::light_point_depth, tex_depth);
-                        cmd_list->SetTexture(Renderer_BindingsSrv::light_point_color, tex_color);
-                    }
-                    else if (light->GetLightType() == LightType::Spot)
-                    {
-                        cmd_list->SetTexture(Renderer_BindingsSrv::light_spot_depth, tex_depth);
-                        cmd_list->SetTexture(Renderer_BindingsSrv::light_spot_color, tex_color);
-                    }
-
-                    cmd_list->SetTexture(Renderer_BindingsSrv::sss, GetRenderTarget(Renderer_RenderTarget::sss));
+                    cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, tex_depth);
+                    cmd_list->SetTexture(Renderer_BindingsSrv::light_color, tex_color);
+                    cmd_list->SetTexture(Renderer_BindingsSrv::sss,         GetRenderTarget(Renderer_RenderTarget::sss));
                 }
 
                 // push pass constants

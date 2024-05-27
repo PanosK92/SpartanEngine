@@ -146,9 +146,9 @@ namespace Spartan
         // shadows
         std::shared_ptr<RHI_Texture> m_texture_color;
         std::shared_ptr<RHI_Texture> m_texture_depth;
-        std::array<Math::Frustum, 6> m_frustums;
-        std::array<Math::Matrix, 6> m_matrix_view;
-        std::array<Math::Matrix, 6> m_matrix_projection;
+        std::array<Math::Frustum, 2> m_frustums;
+        std::array<Math::Matrix, 2> m_matrix_view;
+        std::array<Math::Matrix, 2> m_matrix_projection;
 
         // misc
         uint32_t m_flags           = 0;

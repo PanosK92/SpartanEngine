@@ -422,27 +422,6 @@ float2 direction_sphere_uv(float3 direction)
     return float2(u, v);
 }
 
-uint direction_to_cube_face_index(const float3 direction)
-{
-    // find the absolute values of the direction components
-    float3 abs_direction = abs(direction);
-
-    // identify which component is the greatest
-    float max_component = max(max(abs_direction.x, abs_direction.y), abs_direction.z);
-
-    // determine the cube face index based on the greatest component and its sign
-    if (max_component == abs_direction.x)
-        return (direction.x > 0.0f) ? 0 : 1;
-
-    if (max_component == abs_direction.y)
-        return (direction.y > 0.0f) ? 2 : 3;
-
-    if (max_component == abs_direction.z)
-        return (direction.z > 0.0f) ? 4 : 5;
-
-    return 0;
-}
-
 /*------------------------------------------------------------------------------
     LUMINANCE
 ------------------------------------------------------------------------------*/

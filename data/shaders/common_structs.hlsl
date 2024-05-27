@@ -156,7 +156,7 @@ struct Light
     float  attenuation;
     float2 resolution;
     float2 texel_size;
-    matrix view_projection[6];
+    matrix view_projection[2];
  
     bool is_directional()           { return flags & uint(1U << 0); }
     bool is_point()                 { return flags & uint(1U << 1); }
@@ -191,20 +191,9 @@ struct Light
     float2 compute_resolution()
     {
         float2 resolution;
-        
-        if (is_directional())
-        {
-            uint layer_count;
-            tex_light_directional_depth.GetDimensions(resolution.x, resolution.y, layer_count);
-        }
-        else if (is_point())
-        {
-            tex_light_point_depth.GetDimensions(resolution.x, resolution.y);
-        }
-        else if (is_spot())
-        {
-            tex_light_spot_depth.GetDimensions(resolution.x, resolution.y);
-        }
+
+        uint layer_count;
+        tex_light_depth.GetDimensions(resolution.x, resolution.y, layer_count);
 
         return resolution;
     }
@@ -247,53 +236,17 @@ struct Light
 
     float compare_depth(float3 uv, float compare)
     {
-        // float3 -> uv, slice
-        if (is_directional())
-            return tex_light_directional_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv, compare).r;
-        
-        // float3 -> direction
-        if (is_point())
-            return tex_light_point_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv, compare).r;
-        
-        // float3 -> uv, 0
-        if (is_spot()) 
-            return tex_light_spot_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv.xy, compare).r;
-    
-        return 0.0f;
+        return tex_light_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv, compare).r;
     }
     
     float sample_depth(float3 uv)
     {
-        // float3 -> uv, slice
-        if (is_directional())
-            return tex_light_directional_depth.SampleLevel(samplers[sampler_bilinear_clamp_border], uv, 0).r;
-        
-        // float3 -> direction
-        if (is_point())
-            return tex_light_point_depth.SampleLevel(samplers[sampler_bilinear_clamp_border], uv, 0).r;
-    
-        // float3 -> uv, 0
-        if (is_spot())
-            return tex_light_spot_depth.SampleLevel(samplers[sampler_bilinear_clamp_border], uv.xy, 0).r;
-    
-        return 0.0f;
+         return tex_light_depth.SampleLevel(samplers[sampler_bilinear_clamp_border], uv, 0).r;
     }
     
     float3 sample_color(float3 uv)
     {
-        // float3 -> uv, slice
-        if (is_directional())
-            return tex_light_directional_color.SampleLevel(samplers[sampler_bilinear_clamp_border], uv, 0).rgb;
-    
-        // float3 -> direction
-        if (is_point())
-            return tex_light_point_color.SampleLevel(samplers[sampler_bilinear_clamp_border], uv, 0).rgb;
-    
-        // float3 -> uv, 0
-        if (is_spot())
-            return tex_light_spot_color.SampleLevel(samplers[sampler_bilinear_clamp_border], uv.xy, 0).rgb;
-        
-        return 0.0f;
+         return tex_light_color.SampleLevel(samplers[sampler_bilinear_clamp_border], uv, 0).rgb;
     }
 
     void Build(float3 surface_position, float3 surface_normal, float occlusion)

@@ -42,27 +42,23 @@ Texture2D tex_light_specular             : register(t9);
 Texture2D tex_light_specular_transparent : register(t10);
 Texture2D tex_light_volumetric           : register(t11);
 
-// shadow maps (depth and color)
-Texture2DArray tex_light_directional_depth : register(t12);
-Texture2DArray tex_light_directional_color : register(t13);
-TextureCube tex_light_point_depth          : register(t14);
-TextureCube tex_light_point_color          : register(t15);
-Texture2D tex_light_spot_depth             : register(t16);
-Texture2D tex_light_spot_color             : register(t17);
+// shadow maps
+Texture2DArray tex_light_depth : register(t12);
+Texture2DArray tex_light_color : register(t13);
 
 // misc
-Texture2D tex_noise_normal       : register(t18);
-Texture2DArray tex_noise_blue    : register(t19);
-Texture2D tex_lut_ibl            : register(t20);
-Texture2D tex_environment        : register(t21);
-Texture2D tex_ssgi               : register(t22);
-Texture2D tex_ssr                : register(t23);
-Texture2D tex_frame              : register(t24);
-Texture2D tex                    : register(t25);
-Texture2D tex2                   : register(t26);
-Texture2D tex_font_atlas         : register(t27);
-TextureCube tex_reflection_probe : register(t28);
-Texture2DArray tex_sss           : register(t29);
+Texture2D tex_noise_normal       : register(t14);
+Texture2DArray tex_noise_blue    : register(t15);
+Texture2D tex_lut_ibl            : register(t16);
+Texture2D tex_environment        : register(t17);
+Texture2D tex_ssgi               : register(t18);
+Texture2D tex_ssr                : register(t19);
+Texture2D tex_frame              : register(t20);
+Texture2D tex                    : register(t21);
+Texture2D tex2                   : register(t22);
+Texture2D tex_font_atlas         : register(t23);
+TextureCube tex_reflection_probe : register(t24);
+Texture2DArray tex_sss           : register(t25);
 
 //= MATERIALS ===============================================================================
 // texture array containing all material present int the world
@@ -76,7 +72,7 @@ static const uint material_emission  = material_texture_slots * 5;
 static const uint material_height    = material_texture_slots * 6;
 static const uint material_mask      = material_texture_slots * 7;
 
-Texture2D tex_materials[] : register(t30, space1);
+Texture2D tex_materials[] : register(t26, space1);
 #define GET_TEXTURE(index_texture) tex_materials[pass_get_material_index() + index_texture]
 
 // property buffer containg all materials present in the world
@@ -113,8 +109,8 @@ Material GetMaterial() { return buffer_materials[pass_get_material_index()]; }
 //= LIGHTS =============================================
 struct Light_
 {
-    matrix view_projection[6];
-    
+    matrix view_projection[2];
+
     float4 color;
 
     float3 position;

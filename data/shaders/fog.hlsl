@@ -48,10 +48,19 @@ float3 got_fog_radial(const float camera_to_pixel_length, const float3 camera_po
 ------------------------------------------------------------------------------*/
 float visibility(float3 position, Light light, uint2 pixel_pos)
 {
+    // compute slice index
+    uint slice_index = 0;
+    if (light.is_point())
+    {
+        if (dot(light.forward, light.to_pixel) < 0.0f)
+        {
+            slice_index = 1; // back paraboloid
+        }
+    }
+
     // project to light space
-    uint slice_index = light.is_point() ? direction_to_cube_face_index(light.to_pixel) : 0;
-    float3 pos_ndc   = world_to_ndc(position, light.view_projection[slice_index]);
-    float2 pos_uv    = ndc_to_uv(pos_ndc);
+    float3 pos_ndc = world_to_ndc(position, light.view_projection[slice_index]);
+    float2 pos_uv  = ndc_to_uv(pos_ndc);
 
     // shadow map comparison
     bool is_visible = light.is_directional(); // directioanl light is everywhere, so assume visible
