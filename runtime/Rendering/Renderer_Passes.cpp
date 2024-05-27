@@ -567,7 +567,8 @@ namespace Spartan
                         pso.shaders[RHI_Shader_Type::Pixel] = nullptr;
                         if (Material* material = renderable->GetMaterial())
                         {
-                            pso.shaders[RHI_Shader_Type::Pixel] = material->IsAlphaTested() ? shader_p : nullptr;
+                            bool needs_pixel_shader = material->IsAlphaTested() || is_transparent_pass;
+                            pso.shaders[RHI_Shader_Type::Pixel] = needs_pixel_shader ? shader_p : nullptr;
                         }
 
                         pso.instancing = renderable->HasInstancing();
