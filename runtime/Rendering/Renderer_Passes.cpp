@@ -1023,7 +1023,7 @@ namespace Spartan
             {
                 if (shared_ptr<Light> light = entity->GetComponent<Light>())
                 {
-                    if (!light->IsFlagSet(LightFlags::ShadowsScreenSpace))
+                    if (!light->IsFlagSet(LightFlags::ShadowsScreenSpace) || light->GetIntensityWatt() == 0.0f)
                         continue;
 
                     if (array_slice_index == tex_sss->GetArrayLength())
