@@ -445,7 +445,7 @@ namespace Spartan
         else if (m_light_type == LightType::Point)
         {
             const float aspect_ratio = static_cast<float>(m_texture_depth->GetWidth()) / static_cast<float>(m_texture_depth->GetHeight());
-            const float fov          = Math::Helper::PI_DIV_2;
+            const float fov          = Math::Helper::PI;
             const float near_plane   = 0.1f;
             const float far_plane    = m_range;
 
