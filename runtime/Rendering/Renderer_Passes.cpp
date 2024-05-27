@@ -507,23 +507,18 @@ namespace Spartan
 
         // set pso
         static RHI_PipelineState pso;
-        pso.shaders[RHI_Shader_Type::Vertex]       = shader_v;
-        pso.blend_state         = is_transparent_pass ? GetBlendState(Renderer_BlendState::Alpha).get() : GetBlendState(Renderer_BlendState::Off).get();
-        pso.depth_stencil_state = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Read).get() : GetDepthStencilState(Renderer_DepthStencilState::ReadWrite).get();
-        pso.name                = is_transparent_pass ? "shadow_maps_color" : "shadow_maps_depth";
-        pso.clear_depth         = 0.0f;
-        pso.clear_color[0]      = Color::standard_white;
-        cmd_list->SetIgnoreClearValues(false);
+        pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
+        pso.blend_state                      = is_transparent_pass ? GetBlendState(Renderer_BlendState::Alpha).get() : GetBlendState(Renderer_BlendState::Off).get();
+        pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Read).get() : GetDepthStencilState(Renderer_DepthStencilState::ReadWrite).get();
+        pso.name                             = is_transparent_pass ? "shadow_maps_color" : "shadow_maps_depth";
+        pso.clear_depth                      = 0.0f;
+        pso.clear_color[0]                   = Color::standard_white;
 
         // iterate over lights
         for (shared_ptr<Entity>& light_entity : lights)
         {
             shared_ptr<Light> light = light_entity->GetComponent<Light>();
-            if (!light)
-                continue;
-
-            // skip lights which don't cast shadows or have an intensity of zero
-            if (!light->IsFlagSet(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f)
+            if (!light || !light->IsFlagSet(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f)
                 continue;
 
             // skip lights that don't cast transparent shadows (if this is a transparent pass)
@@ -532,8 +527,8 @@ namespace Spartan
 
             // set light pso
             {
-                pso.render_target_color_textures[0] = light->GetColorTexture();
-                pso.render_target_depth_texture     = light->GetDepthTexture();
+                pso.render_target_color_textures[0] = is_transparent_pass  ? light->GetColorTexture() : nullptr;
+                pso.render_target_depth_texture     = !is_transparent_pass ? light->GetDepthTexture() : nullptr;
                 if (light->GetLightType() == LightType::Directional)
                 {
                     // disable depth clipping so that we can capture silhouettes even behind the light
@@ -546,7 +541,7 @@ namespace Spartan
             }
 
             // iterate over light cascade/faces
-            for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetArrayLength(); array_index++)
+            for (uint32_t array_index = 0; array_index < light->GetDepthTexture()->GetArrayLength(); array_index++)
             {
                 pso.render_target_array_index = array_index;
                 cmd_list->SetIgnoreClearValues(false);
@@ -562,7 +557,7 @@ namespace Spartan
 
                     shared_ptr<Entity>& entity        = m_renderables[Renderer_Entity::Mesh][i];
                     shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                    if (!renderable || !light->IsInViewFrustum(renderable.get(), array_index) || !renderable->HasFlag(RenderableFlags::CastsShadows))
+                    if (!renderable || !renderable->HasFlag(RenderableFlags::CastsShadows))
                         continue;
 
                     cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
