@@ -527,8 +527,8 @@ namespace Spartan
 
             // set light pso
             {
-                pso.render_target_color_textures[0] = is_transparent_pass  ? light->GetColorTexture() : nullptr;
-                pso.render_target_depth_texture     = !is_transparent_pass ? light->GetDepthTexture() : nullptr;
+                pso.render_target_color_textures[0] = light->GetColorTexture();
+                pso.render_target_depth_texture     = light->GetDepthTexture();
                 if (light->GetLightType() == LightType::Directional)
                 {
                     // disable depth clipping so that we can capture silhouettes even behind the light
@@ -541,10 +541,10 @@ namespace Spartan
             }
 
             // iterate over light cascade/faces
-            for (uint32_t array_index = 0; array_index < light->GetDepthTexture()->GetArrayLength(); array_index++)
+            for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetArrayLength(); array_index++)
             {
                 pso.render_target_array_index = array_index;
-                cmd_list->SetIgnoreClearValues(false);
+                cmd_list->SetIgnoreClearValues(is_transparent_pass);
 
                 // iterate over entities
                 int64_t index_start = !is_transparent_pass ? 0 : mesh_index_transparent;
