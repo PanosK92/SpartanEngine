@@ -167,7 +167,8 @@ namespace Spartan
         depth_prepass_v,
         depth_prepass_alpha_test_p,
         depth_light_v,
-        depth_light_p,
+        depth_light_alpha_color_p,
+        depth_light_alpha_color_depth_p,
         quad_v,
         quad_p,
         fxaa_c,
@@ -298,6 +299,7 @@ namespace Spartan
         Off,
         Read,
         ReadWrite,
+        Max
     };
 
     enum class Renderer_BlendState

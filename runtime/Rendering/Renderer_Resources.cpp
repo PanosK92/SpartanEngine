@@ -52,9 +52,9 @@ namespace Spartan
     namespace
     {
         // graphics states
-        array<shared_ptr<RHI_RasterizerState>, 4>   rasterizer_states;
-        array<shared_ptr<RHI_DepthStencilState>, 3> depth_stencil_states;
-        array<shared_ptr<RHI_BlendState>, 3>        blend_states;
+        array<shared_ptr<RHI_RasterizerState>, 4>                                                        rasterizer_states;
+        array<shared_ptr<RHI_DepthStencilState>, static_cast<uint32_t>(Renderer_DepthStencilState::Max)> depth_stencil_states;
+        array<shared_ptr<RHI_BlendState>, 3>                                                             blend_states;
 
         // renderer resources
         array<shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTarget::max)> render_targets;
@@ -337,8 +337,12 @@ namespace Spartan
             shader(Renderer_Shader::depth_light_v) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::depth_light_v)->Compile(RHI_Shader_Type::Vertex, shader_dir + "depth_light.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
 
-            shader(Renderer_Shader::depth_light_p) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::depth_light_p)->Compile(RHI_Shader_Type::Pixel, shader_dir + "depth_light.hlsl", async);
+            shader(Renderer_Shader::depth_light_alpha_color_p) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::depth_light_alpha_color_p)->Compile(RHI_Shader_Type::Pixel, shader_dir + "depth_light.hlsl", async);
+
+            shader(Renderer_Shader::depth_light_alpha_color_depth_p) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::depth_light_alpha_color_depth_p)->AddDefine("OUTPUT_DEPTH");
+            shader(Renderer_Shader::depth_light_alpha_color_depth_p)->Compile(RHI_Shader_Type::Pixel, shader_dir + "depth_light.hlsl", async);
         }
 
         // g-buffer

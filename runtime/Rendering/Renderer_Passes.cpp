@@ -496,21 +496,22 @@ namespace Spartan
     void Renderer::Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // acquire resources
-        RHI_Shader* shader_v = GetShader(Renderer_Shader::depth_light_v).get();
-        RHI_Shader* shader_p = GetShader(Renderer_Shader::depth_light_p).get();
-        auto& lights         = m_renderables[Renderer_Entity::Light];
-        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
+        RHI_Shader* shader_v                   = GetShader(Renderer_Shader::depth_light_v).get();
+        RHI_Shader* shader_alpha_color_p       = GetShader(Renderer_Shader::depth_light_alpha_color_p).get();
+        RHI_Shader* shader_alpha_color_depth_p = GetShader(Renderer_Shader::depth_light_alpha_color_depth_p).get();
+        auto& lights                           = m_renderables[Renderer_Entity::Light];
+        if (!shader_v->IsCompiled() || !shader_alpha_color_p->IsCompiled())
             return;
 
         lock_guard lock(m_mutex_renderables);
-        cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_color" : "shadow_maps_depth");
+        cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_alpha_color" : "shadow_maps_depth");
 
         // set pso
         static RHI_PipelineState pso;
         pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
         pso.blend_state                      = is_transparent_pass ? GetBlendState(Renderer_BlendState::Alpha).get() : GetBlendState(Renderer_BlendState::Off).get();
         pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Read).get() : GetDepthStencilState(Renderer_DepthStencilState::ReadWrite).get();
-        pso.name                             = is_transparent_pass ? "shadow_maps_color" : "shadow_maps_depth";
+        pso.name                             = is_transparent_pass ? "shadow_maps_alpha_color" : "shadow_maps_depth";
         pso.clear_depth                      = 0.0f;
         pso.clear_color[0]                   = Color::standard_white;
 
@@ -564,12 +565,9 @@ namespace Spartan
 
                     // set pipeline
                     {
-                        pso.shaders[RHI_Shader_Type::Pixel] = nullptr;
-                        if (Material* material = renderable->GetMaterial())
-                        {
-                            bool needs_pixel_shader = material->IsAlphaTested() || is_transparent_pass;
-                            pso.shaders[RHI_Shader_Type::Pixel] = needs_pixel_shader ? shader_p : nullptr;
-                        }
+                        RHI_Shader* shader_p                = light->GetLightType() == LightType::Point ? shader_alpha_color_depth_p : shader_alpha_color_p;
+                        bool needs_pixel_shader             = renderable->GetMaterial()->IsAlphaTested() || is_transparent_pass || light->GetLightType() == LightType::Point;
+                        pso.shaders[RHI_Shader_Type::Pixel] = needs_pixel_shader ? shader_p : nullptr;
 
                         pso.instancing = renderable->HasInstancing();
 
@@ -760,7 +758,6 @@ namespace Spartan
         pso.render_target_depth_texture       = tex_depth;
         pso.resolution_scale                  = true;
         pso.clear_depth                       = !is_transparent_pass ? 0.0f : rhi_depth_load;
-
 
         lock_guard lock(m_mutex_renderables);
 
