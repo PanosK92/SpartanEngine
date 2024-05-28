@@ -38,30 +38,34 @@ vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
     output.uv = input.uv;
 
     float3 f3_value_2 = pass_get_f3_value2();
-    uint index_light  = (uint)f3_value_2.x;
     uint index_array  = (uint)f3_value_2.y;
-    Light_ light      = buffer_lights[index_light];
+
+    Light light;
+    light.Build();
 
     gbuffer_vertex vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);
     output.position       = mul(float4(vertex.position, 1.0f), light.view_projection[index_array]);
 
-    // light.view_projection only contains the view matrix for
-    // point lights as we will do the paraboloid projection here
-    if (light.is_point()) 
+    if (light.is_point())
     {
-        // find the vector from the the vertex to the origin of the paraboloid/camera
-        float vertex_to_camera  = length(output.position.xyz);
-        output.position        /= vertex_to_camera;
+        // for point lights, output.position is in view space
+        // this because we do the paraboloid projection here
 
-        // find the x and y coordinates of the point where the incident ray intersects the paraboloid/camera
-        output.position.z += 1.0f;
-        output.position.x /= output.position.z;
-        output.position.y /= output.position.z;
+        // calculate the vector from the light to the vertex in view space
+        float3 light_to_vertex =  output.position.xyz;
 
-        // set the z value as the distance from the vertex to the origin of the paraboloid
-        // scaled and biased by the near and far planes of the paraboloid/camera
-        output.position.z = (vertex_to_camera - light.near) / (light.far -  light.near);
-        output.position.w = 1.0f;
+        // project onto the paraboloid
+        float d = length(light_to_vertex);
+        light_to_vertex /= d;
+
+        // compute the paraboloid coordinates
+        float2 paraboloid_coords = light_to_vertex.xy / (1.0 + light_to_vertex.z);
+
+        // calculate depth and transform to [0,1] range
+        float depth = d / light.far;
+
+        // output
+        output.position = float4(paraboloid_coords, 1.0f - depth, 1.0);
     }
 
     return output;

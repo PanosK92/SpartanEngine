@@ -118,7 +118,7 @@ struct Light_
 
     float3 direction;
     float range;
-    
+
     float angle;
     uint flags;
     float2 padding;
