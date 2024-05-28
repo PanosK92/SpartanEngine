@@ -957,7 +957,15 @@ namespace Spartan
                     {
                         for (uint32_t i = 0; i < texture->GetArrayLength(); i++)
                         {
-                            properties[index].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
+                            if (light->GetLightType() == LightType::Point)
+                            {
+                                // we do paraboloid projection in the vertex shader so we only want the view here
+                                properties[index].view_projection[i] = light->GetViewMatrix(i);
+                            }
+                            else
+                            { 
+                                properties[index].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
+                            }
                         }
                     }
                     properties[index].intensity  = light->GetIntensityWatt();

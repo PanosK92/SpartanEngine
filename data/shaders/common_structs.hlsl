@@ -258,10 +258,10 @@ struct Light
         color             = light.color.rgb;
         position          = light.position.xyz;
         intensity         = light.intensity;
+        near              = 0.1f;
         far               = light.range;
         angle             = light.angle;
         forward           = light.direction.xyz;
-        near              = 0.1f;
         distance_to_pixel = length(surface_position - position);
         to_pixel          = compute_direction(position, surface_position);
         n_dot_l           = saturate(dot(surface_normal, -to_pixel));
