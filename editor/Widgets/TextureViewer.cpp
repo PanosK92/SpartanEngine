@@ -37,6 +37,7 @@ namespace
     RHI_Texture* texture_current   = nullptr;
     uint32_t m_texture_index       = 0;
     int mip_level                  = 0;
+    int array_level                = 0;
     bool m_magnifying_glass        = false;
     bool m_channel_r               = true;
     bool m_channel_g               = true;
@@ -171,6 +172,16 @@ void TextureViewer::OnTickVisible()
             mip_level = Math::Helper::Clamp(mip_level, 0, static_cast<int>(texture_current->GetMipCount()) - 1);
         }
 
+        // array level control
+        if (texture_current->GetArrayLength() > 1)
+        {
+            ImGui::SameLine();
+            ImGui::PushItemWidth(85 * Spartan::Window::GetDpiScale());
+            ImGui::InputInt("Array", &array_level);
+            ImGui::PopItemWidth();
+            array_level = Math::Helper::Clamp(array_level, 0, static_cast<int>(texture_current->GetArrayLength()) - 1);
+        }
+
         ImGui::BeginGroup();
         {
             // information
@@ -230,6 +241,11 @@ uint32_t TextureViewer::GetVisualisationFlags()
 int TextureViewer::GetMipLevel()
 {
     return mip_level;
+}
+
+int TextureViewer::GetArrayLevel()
+{
+    return array_level;
 }
 
 uint64_t TextureViewer::GetVisualisedTextureId()

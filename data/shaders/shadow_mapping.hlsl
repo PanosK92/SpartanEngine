@@ -226,22 +226,6 @@ float Technique_Pcf(Light light, Surface surface, float3 uv, float compare)
 /*------------------------------------------------------------------------------
     ENTRYPOINT
 ------------------------------------------------------------------------------*/
-float2 compute_paraboloid_uv(float3 light_to_vertex)
-{
-    // normalize the light to vertex vector
-    float d = length(light_to_vertex);
-    light_to_vertex /= d;
-
-    // adjust the z-coordinate for the front hemisphere
-    float2 paraboloid_coords = light_to_vertex.xy / (light_to_vertex.z + 1.0);
-
-    // scale and bias to [0, 1] range
-    paraboloid_coords.x = 0.5 * paraboloid_coords.x + 0.5;
-    paraboloid_coords.y = -0.5 * paraboloid_coords.y + 0.5;
-
-    return paraboloid_coords;
-}
-
 float4 Shadow_Map(Surface surface, Light light)
 {
     float4 shadow = 1.0f; // default shadow value for fully lit (no shadow)
@@ -253,29 +237,24 @@ float4 Shadow_Map(Surface surface, Light light)
         float3 normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * light.texel_size.x;
         float3 position_world     = surface.position + normal_offset_bias;
 
-        // determine which paraboloid to use
-        uint slice_index = 0;
         if (light.is_point())
         {
-            // calculate the vector from the light to the vertex in view space
-            float3 light_to_vertex = position_world - light.position;
-
             // determine which hemisphere we are in
-            if (dot(light.forward, light_to_vertex) < 0.0f)
-            {
-                slice_index = 1; // back paraboloid
-                light_to_vertex.z = -light_to_vertex.z; // flip z for back paraboloid
-            }
+            float3 light_to_vertex_world = surface.position - light.position;
+            uint  slice_index            = dot(light.forward, light_to_vertex_world) < 0.0f; // 0 = front, 1 = back
+            
+            // calculate the vector from the light to the vertex in view space
+            float3 pos_view             = mul(float4(position_world, 1.0f), light.view_projection[slice_index]).xyz;
+            float3 light_to_vertex_view = pos_view;
 
-            // compute paraboloid UV coordinates
-            float2 paraboloid_uv = compute_paraboloid_uv(light_to_vertex);
-
-            // set UV coordinates
-            float3 sample_coords = float3(paraboloid_uv, slice_index);
-            float  compare_value = length(light_to_vertex) / (light.far - light.near);
+            // compute paraboloid coordinates and depth
+            float2 uv   = 0.0f;
+            float depth = 0.0f;
+            compute_paraboloid_uv_depth(light_to_vertex_view, light.near, light.far, slice_index == 0, uv, depth);
 
             // sample shadow map
-            shadow.a = SampleShadowMap(light, surface, sample_coords, compare_value);
+            float3 sample_coords = float3(uv, slice_index);
+            shadow.a             = SampleShadowMap(light, surface, sample_coords, depth);
 
             // handle transparent shadows if necessary
             if (shadow.a > 0.0f && light.has_shadows_transparent())
@@ -286,8 +265,9 @@ float4 Shadow_Map(Surface surface, Light light)
         else
         {
             // for non-point lights (directional, spot), use existing logic
-            float3 pos_ndc = world_to_ndc(position_world, light.view_projection[slice_index]);
-            float2 pos_uv  = ndc_to_uv(pos_ndc);
+            uint slice_index = 0;
+            float3 pos_ndc   = world_to_ndc(position_world, light.view_projection[slice_index]);
+            float2 pos_uv    = ndc_to_uv(pos_ndc);
 
             if (is_valid_uv(pos_uv))
             {
