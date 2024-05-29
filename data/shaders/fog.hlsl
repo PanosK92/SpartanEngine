@@ -59,7 +59,7 @@ float visibility(float3 position, Light light, uint2 pixel_pos)
     }
 
     // project to light space
-    float3 pos_ndc = world_to_ndc(position, light.view_projection[slice_index]);
+    float3 pos_ndc = world_to_ndc(position, light.transform[slice_index]);
     float2 pos_uv  = ndc_to_uv(pos_ndc);
 
     // shadow map comparison

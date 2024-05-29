@@ -491,21 +491,14 @@ float microw_shadowing_cod(float n_dot_l, float visibility)
     return microShadow * microShadow;
 }
 
-void compute_paraboloid_uv_depth(float3 light_to_vertex, float near_plane, float far_plane, bool is_front_hemisphere, out float2 uv, out float depth)
+void compute_paraboloid_uv_depth(float3 light_to_vertex, float near_plane, float far_plane, out float2 uv, out float depth)
 {
     // normalize the light to vertex vector
-    float d          = length(light_to_vertex);
+    float d = length(light_to_vertex);
     light_to_vertex /= d;
 
-    // adjust the z-coordinate for the front hemisphere
-    if (is_front_hemisphere)
-    {
-        uv = light_to_vertex.xy / (light_to_vertex.z + 1.0);
-    }
-    else
-    {
-        uv = light_to_vertex.xy / (1.0 - light_to_vertex.z);
-    }
+    // project onto paraboloid
+    uv = light_to_vertex.xy / (light_to_vertex.z + 1.0);
 
     // calculate depth and transform to [0,1] range
     depth = (d - near_plane) / (far_plane - near_plane);
@@ -636,5 +629,3 @@ float get_alpha_threshold(float3 world_position)
 //======================================
 
 #endif // SPARTAN_COMMON
-
-

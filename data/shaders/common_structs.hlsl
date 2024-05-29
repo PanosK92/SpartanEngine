@@ -156,7 +156,7 @@ struct Light
     float  attenuation;
     float2 resolution;
     float2 texel_size;
-    matrix view_projection[2];
+    matrix transform[2];
  
     bool is_directional()           { return flags & uint(1U << 0); }
     bool is_point()                 { return flags & uint(1U << 1); }
@@ -254,7 +254,7 @@ struct Light
         Light_ light = buffer_lights[(uint)pass_get_f3_value2().x];
 
         flags             = light.flags;
-        view_projection   = light.view_projection;
+        transform         = light.transform;
         color             = light.color.rgb;
         position          = light.position.xyz;
         intensity         = light.intensity;
