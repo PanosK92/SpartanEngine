@@ -48,29 +48,51 @@ float3 got_fog_radial(const float camera_to_pixel_length, const float3 camera_po
 ------------------------------------------------------------------------------*/
 float visibility(float3 position, Light light, uint2 pixel_pos)
 {
-    // compute slice index
+    bool is_visible      = is_visible = light.is_directional(); // directioanl light is everywhere, so assume visible
+    float2 projected_uv  = 0.0f;
+    float3 projected_pos = 0.0f;
+
+    // slice index
     uint slice_index = 0;
     if (light.is_point())
     {
-        if (dot(light.forward, light.to_pixel) < 0.0f)
+        float3 light_to_vertex_world = normalize(position - light.position);
+        slice_index                  = dot(light.forward, light_to_vertex_world) < 0.0f; // 0 = front, 1 = back
+    }
+
+    // projection and shadow map comparison
+    if (light.is_point())
+    {
+        // project
+        projected_pos               = mul(float4(position, 1.0f), light.transform[slice_index]).xyz;
+        float3 light_to_vertex_view = projected_pos;
+        float depth                 = 0.0f;
+        compute_paraboloid_uv_depth(light_to_vertex_view, light.near, light.far, projected_uv, depth);
+        projected_uv = ndc_to_uv(projected_uv);
+
+        // compare
+        if (is_valid_uv(projected_uv))
         {
-            slice_index = 1; // back paraboloid
+            float3 sample_coords = float3(projected_uv, slice_index);
+            float shadow_depth   = light.sample_depth(sample_coords);
+            is_visible           = depth > shadow_depth;
+        }
+    }
+    else
+    {
+        // project
+        projected_pos = world_to_ndc(position, light.transform[slice_index]);
+        projected_uv  = ndc_to_uv(projected_pos);
+
+        // compare
+        if (is_valid_uv(projected_uv))
+        {
+            float3 sample_coords = float3(projected_uv.x, projected_uv.y, slice_index);
+            float shadow_depth   = light.sample_depth(sample_coords);
+            is_visible           = projected_pos.z > shadow_depth;
         }
     }
 
-    // project to light space
-    float3 pos_ndc = world_to_ndc(position, light.transform[slice_index]);
-    float2 pos_uv  = ndc_to_uv(pos_ndc);
-
-    // shadow map comparison
-    bool is_visible = light.is_directional(); // directioanl light is everywhere, so assume visible
-    if (is_valid_uv(pos_uv))
-    {
-        float3 sample_coords  = light.is_point() ? light.to_pixel : float3(pos_uv.x, pos_uv.y, slice_index);
-        float shadow_depth    = light.sample_depth(sample_coords);
-        is_visible            = pos_ndc.z > shadow_depth;
-    }
-    
     return is_visible ? 1.0f : 0.0f;
 }
 
@@ -79,7 +101,7 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
     // parameters
     const float fog_density = pass_get_f3_value().x * 0.03f;
     const uint step_count   = 64;
-    
+
     const float total_distance = surface.camera_to_pixel_length;
     const float step_length    = total_distance / step_count; 
     const float3 ray_origin    = buffer_frame.camera_position;
