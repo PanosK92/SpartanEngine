@@ -44,7 +44,7 @@ vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
     light.Build();
 
     gbuffer_vertex vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);
-    output.position       = mul(float4(vertex.position, 1.0f), light.view_projection[index_array]);
+    output.position       = mul(float4(vertex.position, 1.0f), light.transform[index_array]);
 
     // for point lights, output.position is in view space this because we do the paraboloid projection here
     if (light.is_point())
@@ -52,7 +52,7 @@ vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
         float3 light_to_vertex = output.position.xyz;
         float2 uv              = 0.0f;
         float depth            = 0.0f;
-        compute_paraboloid_uv_depth(light_to_vertex, light.near, light.far, index_array == 0, uv, depth);
+        compute_paraboloid_uv_depth(light_to_vertex, light.near, light.far, uv, depth);
 
         output.position = float4(uv, depth, 1.0);
     }

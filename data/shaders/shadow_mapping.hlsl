@@ -240,18 +240,19 @@ float4 Shadow_Map(Surface surface, Light light)
         if (light.is_point())
         {
             // determine which hemisphere we are in
-            float3 light_to_vertex_world = surface.position - light.position;
+            float3 light_to_vertex_world = normalize(surface.position - light.position);
             uint  slice_index            = dot(light.forward, light_to_vertex_world) < 0.0f; // 0 = front, 1 = back
             
             // calculate the vector from the light to the vertex in view space
-            float3 pos_view             = mul(float4(position_world, 1.0f), light.view_projection[slice_index]).xyz;
+            float3 pos_view             = mul(float4(position_world, 1.0f), light.transform[slice_index]).xyz;
             float3 light_to_vertex_view = pos_view;
 
             // compute paraboloid coordinates and depth
             float2 uv   = 0.0f;
             float depth = 0.0f;
-            compute_paraboloid_uv_depth(light_to_vertex_view, light.near, light.far, slice_index == 0, uv, depth);
-
+            compute_paraboloid_uv_depth(light_to_vertex_view, light.near, light.far, uv, depth);
+            uv = ndc_to_uv(uv);
+            
             // sample shadow map
             float3 sample_coords = float3(uv, slice_index);
             shadow.a             = SampleShadowMap(light, surface, sample_coords, depth);
@@ -266,7 +267,7 @@ float4 Shadow_Map(Surface surface, Light light)
         {
             // for non-point lights (directional, spot), use existing logic
             uint slice_index = 0;
-            float3 pos_ndc   = world_to_ndc(position_world, light.view_projection[slice_index]);
+            float3 pos_ndc   = world_to_ndc(position_world, light.transform[slice_index]);
             float2 pos_uv    = ndc_to_uv(pos_ndc);
 
             if (is_valid_uv(pos_uv))
@@ -286,7 +287,7 @@ float4 Shadow_Map(Surface surface, Light light)
                 if (light.is_directional() && cascade_fade > 0.0f)
                 {
                     slice_index = 1;
-                    pos_ndc = world_to_ndc(position_world, light.view_projection[slice_index]);
+                    pos_ndc = world_to_ndc(position_world, light.transform[slice_index]);
                     pos_uv = ndc_to_uv(pos_ndc);
                     float shadow_far = SampleShadowMap(light, surface, float3(pos_uv, slice_index), pos_ndc.z);
 

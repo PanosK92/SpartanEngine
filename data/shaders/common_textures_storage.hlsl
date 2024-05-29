@@ -109,7 +109,7 @@ Material GetMaterial() { return buffer_materials[pass_get_material_index()]; }
 //= LIGHTS =============================================
 struct Light_
 {
-    matrix view_projection[2];
+    matrix transform[2];
 
     float4 color;
 
