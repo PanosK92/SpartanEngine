@@ -226,6 +226,22 @@ float Technique_Pcf(Light light, Surface surface, float3 uv, float compare)
 /*------------------------------------------------------------------------------
     ENTRYPOINT
 ------------------------------------------------------------------------------*/
+float2 compute_paraboloid_uv(float3 light_to_vertex)
+{
+    // normalize the light to vertex vector
+    float d = length(light_to_vertex);
+    light_to_vertex /= d;
+
+    // adjust the z-coordinate for the front hemisphere
+    float2 paraboloid_coords = light_to_vertex.xy / (light_to_vertex.z + 1.0);
+
+    // scale and bias to [0, 1] range
+    paraboloid_coords.x = 0.5 * paraboloid_coords.x + 0.5;
+    paraboloid_coords.y = -0.5 * paraboloid_coords.y + 0.5;
+
+    return paraboloid_coords;
+}
+
 float4 Shadow_Map(Surface surface, Light light)
 {
     float4 shadow = 1.0f; // default shadow value for fully lit (no shadow)
@@ -237,46 +253,66 @@ float4 Shadow_Map(Surface surface, Light light)
         float3 normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * light.texel_size.x;
         float3 position_world     = surface.position + normal_offset_bias;
 
-        // compute slice index
+        // determine which paraboloid to use
         uint slice_index = 0;
         if (light.is_point())
         {
-            if (dot(light.forward, light.to_pixel) < 0.0f)
+            // calculate the vector from the light to the vertex in view space
+            float3 light_to_vertex = position_world - light.position;
+
+            // determine which hemisphere we are in
+            if (dot(light.forward, light_to_vertex) < 0.0f)
             {
                 slice_index = 1; // back paraboloid
+                light_to_vertex.z = -light_to_vertex.z; // flip z for back paraboloid
             }
-        }
-        
-        // project to light space
-        float3 pos_ndc   = world_to_ndc(position_world, light.view_projection[slice_index]);
-        float2 pos_uv    = ndc_to_uv(pos_ndc);
-        
-        // sample shadow map
-        if (is_valid_uv(pos_uv))
-        {
-            float3 sample_coords = light.is_point() ? light.to_pixel : float3(pos_uv.x, pos_uv.y, slice_index);
-            float  compare_value = pos_ndc.z;
-            
+
+            // compute paraboloid UV coordinates
+            float2 paraboloid_uv = compute_paraboloid_uv(light_to_vertex);
+
+            // set UV coordinates
+            float3 sample_coords = float3(paraboloid_uv, slice_index);
+            float  compare_value = length(light_to_vertex) / (light.far - light.near);
+
+            // sample shadow map
             shadow.a = SampleShadowMap(light, surface, sample_coords, compare_value);
+
+            // handle transparent shadows if necessary
             if (shadow.a > 0.0f && light.has_shadows_transparent())
             {
-                // sample color map (this is for transparent objects - which tint the light/shadow)
                 shadow.rgb = Technique_Vogel_Color(light, surface, sample_coords);
             }
         }
-
-        // blend with the far cascade for the directional lights
-        float cascade_fade = saturate((max(abs(pos_ndc.x), abs(pos_ndc.y)) - g_shadow_cascade_blend_threshold) * 4.0f);
-        if (light.is_directional() && cascade_fade > 0.0f)
+        else
         {
-            // sample shadow map
-            slice_index      = 1;
-            pos_ndc          = world_to_ndc(position_world, light.view_projection[slice_index]);
-            pos_uv           = ndc_to_uv(pos_ndc);
-            float shadow_far = SampleShadowMap(light, surface, float3(pos_uv, slice_index), pos_ndc.z);
+            // for non-point lights (directional, spot), use existing logic
+            float3 pos_ndc = world_to_ndc(position_world, light.view_projection[slice_index]);
+            float2 pos_uv  = ndc_to_uv(pos_ndc);
 
-            // blend/lerp
-            shadow.a = lerp(shadow.a, shadow_far, cascade_fade);
+            if (is_valid_uv(pos_uv))
+            {
+                float3 sample_coords = float3(pos_uv.x, pos_uv.y, slice_index);
+                float  compare_value = pos_ndc.z;
+
+                shadow.a = SampleShadowMap(light, surface, sample_coords, compare_value);
+
+                if (shadow.a > 0.0f && light.has_shadows_transparent())
+                {
+                    shadow.rgb = Technique_Vogel_Color(light, surface, sample_coords);
+                }
+
+                // blend with the far cascade for directional lights
+                float cascade_fade = saturate((max(abs(pos_ndc.x), abs(pos_ndc.y)) - g_shadow_cascade_blend_threshold) * 4.0f);
+                if (light.is_directional() && cascade_fade > 0.0f)
+                {
+                    slice_index = 1;
+                    pos_ndc = world_to_ndc(position_world, light.view_projection[slice_index]);
+                    pos_uv = ndc_to_uv(pos_ndc);
+                    float shadow_far = SampleShadowMap(light, surface, float3(pos_uv, slice_index), pos_ndc.z);
+
+                    shadow.a = lerp(shadow.a, shadow_far, cascade_fade);
+                }
+            }
         }
     }
 

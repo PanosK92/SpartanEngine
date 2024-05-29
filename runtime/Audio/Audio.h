@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    #define MUTE 0
+    #define MUTE 1
 
     //= FWD DECLARATIONS =
     class Entity;
