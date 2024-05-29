@@ -328,7 +328,7 @@ namespace ImGui::RHI
                                 bool m_boost               = false;
                                 bool m_abs                 = false;
                                 bool m_point_sampling      = false;
-                                float mip_level            = 0;
+                                float mip_level            = 0.0f;
                                 bool is_texture_visualised = false;
                                 bool is_frame_texture      = false;
 
@@ -343,7 +343,8 @@ namespace ImGui::RHI
 
                                         // update texture viewer parameters
                                         is_texture_visualised = TextureViewer::GetVisualisedTextureId() == texture->GetObjectId();
-                                        mip_level = static_cast<float>(is_texture_visualised ? TextureViewer::GetMipLevel() : 0);
+                                        mip_level             = static_cast<float>(is_texture_visualised ? TextureViewer::GetMipLevel() : 0);
+                    
                                         if (is_texture_visualised)
                                         {
                                             m_channel_r      = TextureViewer::GetVisualisationFlags() & Visualise_Channel_R;

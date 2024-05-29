@@ -62,7 +62,7 @@ float4 main_ps(vertex input) : SV_Target
     float mip             = f3_value2.z;
     bool is_visualized    = pass_is_transparent();
     uint is_frame_texture = pass_get_material_index();
-   
+
     float4 color_texture = point_sampling ? tex.SampleLevel(samplers[sampler_point_wrap], input.uv, mip) : tex.SampleLevel(samplers[sampler_bilinear_wrap], input.uv, mip);
  
     if (is_visualized)

@@ -50,5 +50,6 @@ public:
 
     static uint32_t GetVisualisationFlags();
     static int GetMipLevel();
+    static int GetArrayLevel();
     static uint64_t GetVisualisedTextureId();
 };
