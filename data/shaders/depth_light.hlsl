@@ -48,26 +48,27 @@ vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 
     if (light.is_point())
     {
-        // for point lights, output.position is in view space
-        // this because we do the paraboloid projection here
+        // for point lights, output.position is in view space this because we do the paraboloid projection here
 
-        // calculate the vector from the light to the vertex in view space
-        float3 light_to_vertex =  output.position.xyz;
+        float3 light_to_vertex = output.position.xyz;
 
-        // project onto the paraboloid
+        // normalize the light to vertex vector
         float d = length(light_to_vertex);
         light_to_vertex /= d;
 
+        // adjust the z-coordinate
+        light_to_vertex.z += 1.0;
+
         // compute the paraboloid coordinates
-        float2 paraboloid_coords = light_to_vertex.xy / (1.0 + light_to_vertex.z);
+        float2 paraboloid_coords = light_to_vertex.xy / light_to_vertex.z;
 
         // calculate depth and transform to [0,1] range
-        float depth = d / light.far;
+        float depth = (d - light.near) / (light.far - light.near);
 
         // output
         output.position = float4(paraboloid_coords, 1.0f - depth, 1.0);
     }
-
+    
     return output;
 }
 
