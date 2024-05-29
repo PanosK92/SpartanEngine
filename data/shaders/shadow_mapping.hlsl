@@ -241,7 +241,7 @@ float4 Shadow_Map(Surface surface, Light light)
         {
             // determine which hemisphere we are in
             float3 light_to_vertex_world = normalize(surface.position - light.position);
-            uint  slice_index            = dot(light.forward, light_to_vertex_world) < 0.0f; // 0 = front, 1 = back
+            uint slice_index             = dot(light.forward, light_to_vertex_world) < 0.0f; // 0 = front, 1 = back
             
             // calculate the vector from the light to the vertex in view space
             float3 pos_view             = mul(float4(position_world, 1.0f), light.transform[slice_index]).xyz;
