@@ -800,6 +800,11 @@ namespace Spartan
         return m_renderables;
     }
 
+    vector<shared_ptr<Entity>> Renderer::GetEntitiesLights()
+    {
+        return m_renderables[Renderer_Entity::Light];
+    }
+    
     void Renderer::SetGbufferTextures(RHI_CommandList* cmd_list)
     {
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,         GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
@@ -810,7 +815,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth_backface, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_backface));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth_opaque,   GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque));
     }
-
+    
     void Renderer::BindlessUpdateMaterials()
     {
         static array<Sb_Material, rhi_max_array_size> properties; // mapped to the gpu as a structured properties buffer
