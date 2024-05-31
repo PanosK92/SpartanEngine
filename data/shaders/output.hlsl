@@ -87,6 +87,10 @@ float3 aces(float3 color)
 
 float3 nautilus(float3 c)
 {
+
+    // Nautilus fit of ACES
+    // By Nolram
+    
     float a = 2.51f;
     float b = 0.03f;
     float y = 2.43f;
