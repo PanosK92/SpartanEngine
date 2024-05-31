@@ -86,6 +86,7 @@ namespace Spartan
     enum class Renderer_Tonemapping : uint32_t
     {
         Aces,
+        NautilusACES,
         Reinhard,
         Uncharted2,
         Matrix,

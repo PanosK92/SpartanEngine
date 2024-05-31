@@ -290,7 +290,7 @@ void RenderOptions::OnTickVisible()
             ImGui::EndDisabled();
 
             // tone mapping
-            static vector<string> tonemapping_options = { "ACES", "Reinhard", "Uncharted 2", "Matrix", "Off" };
+            static vector<string> tonemapping_options = { "ACES", "Nautilus ACES", "Reinhard", "Uncharted 2", "Matrix", "Off" };
             ImGui::BeginDisabled(hdr_enabled);
             uint32_t selection_index = Renderer::GetOption<uint32_t>(Renderer_Option::Tonemapping);
             if (option_combo_box("Tonemapping", tonemapping_options, selection_index))
