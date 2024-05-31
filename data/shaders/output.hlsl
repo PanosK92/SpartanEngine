@@ -85,6 +85,15 @@ float3 aces(float3 color)
     return saturate(color);
 }
 
+float3 nautilus(float3 c)
+{
+    float a = 2.51f;
+    float b = 0.03f;
+    float y = 2.43f;
+    float d = 0.59f;
+    float e = 0.14f;
+    return clamp((c * (a * c + b)) / (c * (y * c + d) + e), 0.0, 1.0);
+}
 //==========================================================================================
 // ENTRY
 //==========================================================================================
@@ -111,12 +120,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 color.rgb = aces(color.rgb);
                 break;
             case 1:
-                color.rgb = reinhard(color.rgb);
+                color.rgb = nautilus(color.rgb);
                 break;
             case 2:
-                color.rgb = uncharted_2(color.rgb);
+                color.rgb = reinhard(color.rgb);
                 break;
             case 3:
+                color.rgb = uncharted_2(color.rgb);
+                break;
+            case 4:
                 color.rgb = matrix_movie(color.rgb);
                 break;
         }
