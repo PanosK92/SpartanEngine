@@ -491,18 +491,21 @@ float microw_shadowing_cod(float n_dot_l, float visibility)
     return microShadow * microShadow;
 }
 
-void compute_paraboloid_uv_depth(float3 light_to_vertex, float near_plane, float far_plane, out float2 uv, out float depth)
+float3 project_onto_paraboloid(float3 light_to_vertex_view, float near_plane, float far_plane)
 {
+    float3 ndc = 0.0f;
+
     // normalize the light to vertex vector
-    float d = length(light_to_vertex);
-    light_to_vertex /= d;
+    float d = length(light_to_vertex_view);
+    light_to_vertex_view /= d;
 
     // project onto paraboloid
-    uv = light_to_vertex.xy / (light_to_vertex.z + 1.0);
+    ndc.xy = light_to_vertex_view.xy / (light_to_vertex_view.z + 1.0f);
 
-    // calculate depth and transform to [0,1] range
-    depth = (d - near_plane) / (far_plane - near_plane);
-    depth = 1.0f - depth;
+     // calculate reverse depth
+    ndc.z = (far_plane - d) / (far_plane - near_plane);
+
+    return ndc;
 }
 
 /*------------------------------------------------------------------------------

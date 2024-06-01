@@ -49,12 +49,8 @@ vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
     // for point lights, output.position is in view space this because we do the paraboloid projection here
     if (light.is_point())
     {
-        float3 light_to_vertex = output.position.xyz;
-        float2 uv              = 0.0f;
-        float depth            = 0.0f;
-        compute_paraboloid_uv_depth(light_to_vertex, light.near, light.far, uv, depth);
-
-        output.position = float4(uv, depth, 1.0);
+        float3 ndc      = project_onto_paraboloid(output.position.xyz, light.near, light.far);
+        output.position = float4(ndc, 1.0);
     }
     
     return output;
@@ -82,11 +78,6 @@ PixelOutput main_ps(vertex input)
     bool alpha_albedo         = has_albedo ? GET_TEXTURE(material_albedo).Sample(samplers[sampler_point_wrap], input.uv).a : 1.0f;
     if (min(alpha_mask, alpha_albedo) <= ALPHA_THRESHOLD_DEFAULT)
         discard;
-
-#ifdef OUTPUT_DEPTH
-    clip(0.999f - input.position.z); // clip vertices behind the view frustum (reverse-z)
-    output.depth = input.position.z / input.position.w;
-#endif
 
     // colored transparent shadows
     output.color = GetMaterial().color;

@@ -239,23 +239,15 @@ float4 Shadow_Map(Surface surface, Light light)
 
         if (light.is_point())
         {
-            // determine which hemisphere we are in
-            float3 light_to_vertex_world = normalize(surface.position - light.position);
-            uint slice_index             = dot(light.forward, light_to_vertex_world) < 0.0f; // 0 = front, 1 = back
-            
-            // calculate the vector from the light to the vertex in view space
+            // compute paraboloid coordinates and depth
+            uint slice_index            = dot(light.forward, light.to_pixel) < 0.0f; // 0 = front, 1 = back
             float3 pos_view             = mul(float4(position_world, 1.0f), light.transform[slice_index]).xyz;
             float3 light_to_vertex_view = pos_view;
-
-            // compute paraboloid coordinates and depth
-            float2 uv   = 0.0f;
-            float depth = 0.0f;
-            compute_paraboloid_uv_depth(light_to_vertex_view, light.near, light.far, uv, depth);
-            uv = ndc_to_uv(uv);
+            float3 ndc                  =  project_onto_paraboloid(light_to_vertex_view, light.near, light.far);
             
             // sample shadow map
-            float3 sample_coords = float3(uv, slice_index);
-            shadow.a             = SampleShadowMap(light, surface, sample_coords, depth);
+            float3 sample_coords = float3(ndc_to_uv(ndc.xy), slice_index);
+            shadow.a             = SampleShadowMap(light, surface, sample_coords, ndc.z);
 
             // handle transparent shadows if necessary
             if (shadow.a > 0.0f && light.has_shadows_transparent())
@@ -299,3 +291,4 @@ float4 Shadow_Map(Surface surface, Light light)
 
     return shadow;
 }
+

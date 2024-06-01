@@ -496,10 +496,9 @@ namespace Spartan
     void Renderer::Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // acquire resources
-        RHI_Shader* shader_v                   = GetShader(Renderer_Shader::depth_light_v).get();
-        RHI_Shader* shader_alpha_color_p       = GetShader(Renderer_Shader::depth_light_alpha_color_p).get();
-        RHI_Shader* shader_alpha_color_depth_p = GetShader(Renderer_Shader::depth_light_alpha_color_depth_p).get();
-        auto& lights                           = m_renderables[Renderer_Entity::Light];
+        RHI_Shader* shader_v             = GetShader(Renderer_Shader::depth_light_v).get();
+        RHI_Shader* shader_alpha_color_p = GetShader(Renderer_Shader::depth_light_alpha_color_p).get();
+        auto& lights                     = m_renderables[Renderer_Entity::Light];
         if (!shader_v->IsCompiled() || !shader_alpha_color_p->IsCompiled())
             return;
 
@@ -565,9 +564,8 @@ namespace Spartan
 
                     // set pipeline
                     {
-                        RHI_Shader* shader_p                = light->GetLightType() == LightType::Point ? shader_alpha_color_depth_p : shader_alpha_color_p;
-                        bool needs_pixel_shader             = renderable->GetMaterial()->IsAlphaTested() || is_transparent_pass || light->GetLightType() == LightType::Point;
-                        pso.shaders[RHI_Shader_Type::Pixel] = needs_pixel_shader ? shader_p : nullptr;
+                        bool needs_pixel_shader             = renderable->GetMaterial()->IsAlphaTested() || is_transparent_pass;
+                        pso.shaders[RHI_Shader_Type::Pixel] = needs_pixel_shader ? shader_alpha_color_p : nullptr;
 
                         pso.instancing = renderable->HasInstancing();
 

@@ -57,16 +57,17 @@ namespace
     { 
         vector<string> contributors =
         {
-            // role,  name,                country,     button text,   button url,                                               contribution,                      steam key
-            "Spartan, Iker Galardi,        Basque Country, LinkedIn,   https://www.linkedin.com/in/iker-galardi/,                Linux port (WIP),                  N/A",
-            "Spartan, Jesse Guerrero,      United States,  LinkedIn,   https://www.linkedin.com/in/jguer,                        UX improvements,                   N/A",
-            "Spartan, Konstantinos Benos,  Greece,         Twitter,    https://twitter.com/deg3x,                                Editor theme & bug fixes,          N/A",
-            "Spartan, Nick Polyderopoulos, Greece,         LinkedIn,   https://www.linkedin.com/in/nick-polyderopoulos-21742397, UX improvements,                   N/A",
-            "Spartan, Panos Kolyvakis,     Greece,         LinkedIn,   https://www.linkedin.com/in/panos-kolyvakis-66863421a/,   Improved water buoyancy,           N/A",
-            "Spartan, Tri Tran,            Belgium,        LinkedIn,   https://www.linkedin.com/in/mtrantr/,                     Days Gone screen space shadows,    Starfield",
-
-            "Hoplite, Apostolos Bouzalas,  Greece,         LinkedIn,   https://www.linkedin.com/in/apostolos-bouzalas,           Provided performance reports,      N/A",
-            "Hoplite, Sandro Mtchedlidze,  Georgia,        Artstation, https://www.artstation.com/sandromch,                     Identified performance bottleneck, N/A",
+            // role,  name,                country,       button text,   button url,                                               contribution,                      steam key
+            "Spartan, Iker Galardi,        Basque Country,   LinkedIn,   https://www.linkedin.com/in/iker-galardi/,                Linux port (WIP),                  N/A",
+            "Spartan, Jesse Guerrero,      United States,    LinkedIn,   https://www.linkedin.com/in/jguer,                        UX improvements,                   N/A",
+            "Spartan, Konstantinos Benos,  Greece,           Twitter,    https://twitter.com/deg3x,                                Editor theme & bug fixes,          N/A",
+            "Spartan, Nick Polyderopoulos, Greece,           LinkedIn,   https://www.linkedin.com/in/nick-polyderopoulos-21742397, UX improvements,                   N/A",
+            "Spartan, Panos Kolyvakis,     Greece,           LinkedIn,   https://www.linkedin.com/in/panos-kolyvakis-66863421a/,   Improved water buoyancy,           N/A",
+            "Spartan, Tri Tran,            Belgium,          LinkedIn,   https://www.linkedin.com/in/mtrantr/,                     Days Gone screen space shadows,    Starfield",
+                                                             
+            "Hoplite, Apostolos Bouzalas,  Greece,           LinkedIn,   https://www.linkedin.com/in/apostolos-bouzalas,           Provided performance reports,      N/A",
+            "Hoplite, Marlon Wolfersdorf,  Northern Germany, N/A,        ,                                                         Nautilus ACES,                     N/A",
+            "Hoplite, Sandro Mtchedlidze,  Georgia,          Artstation, https://www.artstation.com/sandromch,                     Identified performance bottleneck, N/A",
         };
 
         vector<string> comma_seperate_contributors(const vector<string>& contributors)
@@ -188,9 +189,9 @@ namespace
                 ImGui::BeginGroup();
                 {
                     ImGui::Text("Contributors");
-                    if (ImGui::BeginTable("##contributors_table", 6, table_flags, ImVec2(ImGui::GetContentRegionAvail().x * 0.7f, 0.0f)))
+                    if (ImGui::BeginTable("##contributors_table", 6, table_flags, ImVec2(ImGui::GetContentRegionAvail().x * 0.71f, 0.0f)))
                     {
-                        ImGui::TableSetupColumn("Role");
+                        ImGui::TableSetupColumn("Title");
                         ImGui::TableSetupColumn("Name");
                         ImGui::TableSetupColumn("Country");
                         ImGui::TableSetupColumn("URL");
@@ -253,9 +254,9 @@ namespace
                     // group: role explanations
                     ImGui::BeginGroup();
                     {
-                        ImGui::Text("Role explanations");
+                        ImGui::Text("Title explanations");
                         ImGui::Text("Spartan: Made code contributions that fixed or added significant new functionality.");
-                        ImGui::Text("Hoplite: Provided valuable insights, suggestions, or other non-code contributions that improved the project.");
+                        ImGui::Text("Hoplite: Provided valuable insights, suggestions, or minor code contributions that improved the project.");
                     }
                     ImGui::EndGroup();
                 }
