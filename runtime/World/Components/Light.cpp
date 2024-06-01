@@ -383,7 +383,7 @@ namespace Spartan
     void Light::ComputeViewMatrix()
     {
         const Vector3 position = GetEntity()->GetPosition();
-        const Vector3 forward = GetEntity()->GetForward();
+        const Vector3 forward  = GetEntity()->GetForward();
 
         if (m_light_type == LightType::Directional)
         {
@@ -413,6 +413,8 @@ namespace Spartan
         if (!m_texture_depth)
             return;
 
+        float near_plane = 0.01f;
+
         if (m_light_type == LightType::Directional)
         {
             for (uint32_t i = 0; i < 2; i++)
@@ -425,7 +427,6 @@ namespace Spartan
                 float right      = extent;
                 float bottom     = -extent;
                 float top        = extent;
-                float near_plane = 0.0f;
                 float far_plane  = orthographic_depth;
 
                 m_matrix_projection[i] = Matrix::CreateOrthoOffCenterLH(left, right, bottom, top, far_plane, near_plane);
@@ -436,7 +437,6 @@ namespace Spartan
         {
             const float aspect_ratio = static_cast<float>(m_texture_depth->GetWidth()) / static_cast<float>(m_texture_depth->GetHeight());
             const float fov          = m_angle_rad * 2.0f;
-            const float near_plane   = 0.1f;
             Matrix projection = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, m_range, near_plane);
 
             m_matrix_projection[0] = projection;
@@ -446,7 +446,6 @@ namespace Spartan
         {
             const float aspect_ratio = static_cast<float>(m_texture_depth->GetWidth()) / static_cast<float>(m_texture_depth->GetHeight());
             const float fov          = Math::Helper::PI;
-            const float near_plane   = 0.1f;
             const float far_plane    = m_range;
 
             // front paraboloid

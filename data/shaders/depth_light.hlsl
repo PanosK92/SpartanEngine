@@ -49,27 +49,24 @@ vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
     // for point lights, output.position is in view space this because we do the paraboloid projection here
     if (light.is_point())
     {
-        float3 ndc      = project_onto_paraboloid(output.position.xyz, light.near, light.far);
-        output.position = float4(ndc, 1.0);
+          // check if the vertex is on the correct side of the paraboloid
+        if (output.position.z <= 0.0f)
+        {
+            // move the vertex behind the near plane to discard it
+            output.position = float4(0, 0, -1, 1);
+        }
+        else
+        {
+            float3 ndc = project_onto_paraboloid(output.position.xyz, light.near, light.far);
+            output.position = float4(ndc, 1.0);
+        }
     }
     
     return output;
 }
 
-struct PixelOutput
+ float4 main_ps(vertex input) : SV_Target0
 {
-#ifdef OUTPUT_DEPTH
-    float4 color : SV_Target0;
-    float depth  : SV_Depth;
-#else
-    float4 color : SV_Target0;
-#endif
-};
-
-PixelOutput main_ps(vertex input)
-{
-    PixelOutput output;
-
     // alpha test
     const float3 f3_value     = pass_get_f3_value();
     const bool has_alpha_mask = f3_value.x == 1.0f;
@@ -80,7 +77,5 @@ PixelOutput main_ps(vertex input)
         discard;
 
     // colored transparent shadows
-    output.color = GetMaterial().color;
-
-    return output;
+    return GetMaterial().color;
 }

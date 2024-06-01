@@ -243,7 +243,7 @@ float4 Shadow_Map(Surface surface, Light light)
             uint slice_index            = dot(light.forward, light.to_pixel) < 0.0f; // 0 = front, 1 = back
             float3 pos_view             = mul(float4(position_world, 1.0f), light.transform[slice_index]).xyz;
             float3 light_to_vertex_view = pos_view;
-            float3 ndc                  =  project_onto_paraboloid(light_to_vertex_view, light.near, light.far);
+            float3 ndc                  = project_onto_paraboloid(light_to_vertex_view, light.near, light.far);
             
             // sample shadow map
             float3 sample_coords = float3(ndc_to_uv(ndc.xy), slice_index);

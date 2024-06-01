@@ -258,7 +258,7 @@ struct Light
         color             = light.color.rgb;
         position          = light.position.xyz;
         intensity         = light.intensity;
-        near              = 0.1f;
+        near              = 0.01f;
         far               = light.range;
         angle             = light.angle;
         forward           = light.direction.xyz;
