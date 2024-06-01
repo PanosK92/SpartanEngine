@@ -505,6 +505,10 @@ float3 project_onto_paraboloid(float3 light_to_vertex_view, float near_plane, fl
      // calculate reverse depth
     ndc.z = (far_plane - d) / (far_plane - near_plane);
 
+    // if the vertex is behind the light, ndc should be zeroed out
+    float is_valid = step(0.0f, light_to_vertex_view.z); // is_valid will be 1.0 if z > 0, otherwise 0.0
+    ndc *= is_valid;
+
     return ndc;
 }
 

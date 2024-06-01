@@ -49,19 +49,10 @@ vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
     // for point lights, output.position is in view space this because we do the paraboloid projection here
     if (light.is_point())
     {
-          // check if the vertex is on the correct side of the paraboloid
-        if (output.position.z <= 0.0f)
-        {
-            // move the vertex behind the near plane to discard it
-            output.position = float4(0, 0, -1, 1);
-        }
-        else
-        {
-            float3 ndc = project_onto_paraboloid(output.position.xyz, light.near, light.far);
-            output.position = float4(ndc, 1.0);
-        }
+        float3 ndc      = project_onto_paraboloid(output.position.xyz, light.near, light.far);
+        output.position = float4(ndc, 1.0);
     }
-    
+
     return output;
 }
 
