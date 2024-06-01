@@ -339,10 +339,6 @@ namespace Spartan
 
             shader(Renderer_Shader::depth_light_alpha_color_p) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::depth_light_alpha_color_p)->Compile(RHI_Shader_Type::Pixel, shader_dir + "depth_light.hlsl", async);
-
-            shader(Renderer_Shader::depth_light_alpha_color_depth_p) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::depth_light_alpha_color_depth_p)->AddDefine("OUTPUT_DEPTH");
-            shader(Renderer_Shader::depth_light_alpha_color_depth_p)->Compile(RHI_Shader_Type::Pixel, shader_dir + "depth_light.hlsl", async);
         }
 
         // g-buffer

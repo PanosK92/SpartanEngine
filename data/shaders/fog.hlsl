@@ -53,30 +53,21 @@ float visibility(float3 position, Light light, uint2 pixel_pos)
     float3 projected_pos = 0.0f;
 
     // slice index
-    uint slice_index = 0;
-    if (light.is_point())
-    {
-        float3 light_to_vertex_world = normalize(position - light.position);
-        slice_index                  = dot(light.forward, light_to_vertex_world) < 0.0f; // 0 = front, 1 = back
-    }
+    float dot_result = dot(light.forward, light.to_pixel);
+    uint slice_index = light.is_point() * step(0.0f, -dot_result);
 
     // projection and shadow map comparison
     if (light.is_point())
     {
         // project
-        projected_pos               = mul(float4(position, 1.0f), light.transform[slice_index]).xyz;
-        float3 light_to_vertex_view = projected_pos;
-        float depth                 = 0.0f;
-        compute_paraboloid_uv_depth(light_to_vertex_view, light.near, light.far, projected_uv, depth);
-        projected_uv = ndc_to_uv(projected_uv);
+        projected_pos = mul(float4(position, 1.0f), light.transform[slice_index]).xyz;
+        float3 ndc    = project_onto_paraboloid(projected_pos, light.near, light.far);
+        projected_uv  = ndc_to_uv(ndc.xy);
 
         // compare
-        if (is_valid_uv(projected_uv))
-        {
-            float3 sample_coords = float3(projected_uv, slice_index);
-            float shadow_depth   = light.sample_depth(sample_coords);
-            is_visible           = depth > shadow_depth;
-        }
+        float3 sample_coords = float3(projected_uv, slice_index);
+        float shadow_depth   = light.sample_depth(sample_coords);
+        is_visible           = ndc.z > shadow_depth;
     }
     else
     {
