@@ -560,6 +560,9 @@ namespace Spartan
                     if (!renderable || !renderable->HasFlag(RenderableFlags::CastsShadows))
                         continue;
 
+                    if (!light->IsInViewFrustum(renderable.get(), array_index))
+                        continue;
+
                     cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
 
                     // set pipeline
@@ -814,8 +817,8 @@ namespace Spartan
         // set pipeline state
         static RHI_PipelineState pso;
         pso.name                              = is_transparent_pass ? "g_buffer_transparent" : "g_buffer";
-        pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
-        pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
+        pso.shaders[RHI_Shader_Type::Vertex]  = shader_v;
+        pso.shaders[RHI_Shader_Type::Pixel]   = shader_p;
         pso.blend_state                       = GetBlendState(Renderer_BlendState::Off).get();
         pso.rasterizer_state                  = rasterizer_state;
         pso.depth_stencil_state               = GetDepthStencilState(Renderer_DepthStencilState::Read).get();

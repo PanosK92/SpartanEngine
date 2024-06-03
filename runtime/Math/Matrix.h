@@ -252,11 +252,10 @@ namespace Spartan::Math
             );
         }
 
-        // fieldOfView -> Field of view in the y direction, in radians.
-        static inline Matrix CreatePerspectiveFieldOfViewLH(float fieldOfView, float aspectRatio, float near_plane, float far_plane)
+        static inline Matrix CreatePerspectiveFieldOfViewLH(float fov_y_radians, float aspect_ratio, float near_plane, float far_plane)
         {
-            const float scale_x = Helper::CotF(fieldOfView / 2);
-            const float scale_y = scale_x / aspectRatio;
+            const float scale_x = Helper::CotF(fov_y_radians / 2);
+            const float scale_y = scale_x / aspect_ratio;
 
             return Matrix(
                 scale_y, 0,       0,                                                  0,

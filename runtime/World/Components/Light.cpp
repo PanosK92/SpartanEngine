@@ -442,31 +442,25 @@ namespace Spartan
             m_matrix_projection[0] = projection;
             m_frustums[0]          = Frustum(m_matrix_view[0], projection, m_range);
         }
-        else if (m_light_type == LightType::Point)
-        {
-            const float aspect_ratio = static_cast<float>(m_texture_depth->GetWidth()) / static_cast<float>(m_texture_depth->GetHeight());
-            const float fov          = Math::Helper::PI;
-            const float far_plane    = m_range;
-
-            // front paraboloid
-            m_matrix_projection[0] = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, far_plane, near_plane);
-            m_frustums[0]          = Frustum(m_matrix_view[0], m_matrix_projection[0], far_plane - near_plane);
-
-            // back paraboloid
-            m_matrix_projection[1] = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, far_plane, near_plane);
-            m_frustums[1]          = Frustum(m_matrix_view[1], m_matrix_projection[1], far_plane - near_plane);
-        }
     }
 
     bool Light::IsInViewFrustum(const BoundingBox& bounding_box, const uint32_t index) const
     {
         SP_ASSERT(bounding_box != BoundingBox::Undefined);
 
-        const Vector3 center    = bounding_box.GetCenter();
-        const Vector3 extents   = bounding_box.GetExtents();
-        const bool ignore_depth = m_light_type == LightType::Directional; // orthographic
+        if (m_light_type != LightType::Point)
+        { 
+            const Vector3 center    = bounding_box.GetCenter();
+            const Vector3 extents   = bounding_box.GetExtents();
+            const bool ignore_depth = m_light_type == LightType::Directional; // orthographic
+            
+            return m_frustums[index].IsVisible(center, extents, ignore_depth);
+        }
 
-        return m_frustums[index].IsVisible(center, extents, ignore_depth);
+        Vector3 to_box = bounding_box.GetCenter() - m_entity_ptr->GetPosition();
+        float sign     = (index == 0) ? 1.0f : -1.0f;
+        float bias     = 0.1f; // small bias to expand the paraboloid
+        return Vector3::Dot(to_box, sign * m_entity_ptr->GetForward()) > -bias;
     }
 
     bool Light::IsInViewFrustum(Renderable* renderable, uint32_t index) const
