@@ -83,6 +83,21 @@ namespace Spartan
                 return size.x * size.y * size.z;
             }
 
+            std::array<Vector3, 8> GetCorners() const
+            {
+                std::array<Vector3, 8> corners = {
+                    m_min,
+                    Vector3(m_max.x, m_min.y, m_min.z),
+                    Vector3(m_min.x, m_max.y, m_min.z),
+                    Vector3(m_min.x, m_min.y, m_max.z),
+                    Vector3(m_min.x, m_max.y, m_max.z),
+                    Vector3(m_max.x, m_min.y, m_max.z),
+                    Vector3(m_max.x, m_max.y, m_min.z),
+                    m_max
+                };
+                return corners;
+            }
+
             bool operator==(const BoundingBox& other) const
             {
                 return GetMin() == other.GetMin() && GetMax() == other.GetMax();
