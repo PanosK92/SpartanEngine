@@ -457,10 +457,19 @@ namespace Spartan
             return m_frustums[index].IsVisible(center, extents, ignore_depth);
         }
 
-        Vector3 to_box = bounding_box.GetCenter() - m_entity_ptr->GetPosition();
-        float sign     = (index == 0) ? 1.0f : -1.0f;
-        float bias     = 0.1f; // small bias to expand the paraboloid
-        return Vector3::Dot(to_box, sign * m_entity_ptr->GetForward()) > -bias;
+        // paraboloid point light
+        {
+            float sign                = (index == 0) ? 1.0f : -1.0f;
+            array<Vector3, 8> corners = bounding_box.GetCorners();
+            for (const Vector3& corner : corners)
+            {
+                Vector3 to_corner = corner - m_entity_ptr->GetPosition();
+                if (Vector3::Dot(to_corner, sign * m_entity_ptr->GetForward()) > 0.0f)
+                    return true; // at least one corner is inside
+            }
+
+            return false; // no corners are inside
+        }
     }
 
     bool Light::IsInViewFrustum(Renderable* renderable, uint32_t index) const
