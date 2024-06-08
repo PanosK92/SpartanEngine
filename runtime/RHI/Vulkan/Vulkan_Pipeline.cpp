@@ -240,7 +240,7 @@ namespace Spartan
                         static_cast<uint32_t>(vertex_attribute_descs.size()), // location, assuming the next available location
                         1,                                                    // binding
                         VK_FORMAT_R32G32B32A32_SFLOAT,                        // format, assuming 32-bit float components
-                        i * sizeof(Math::Vector4)                             // offset, assuming Math::Vector4 is the type of each row
+                        static_cast<uint32_t>(i * sizeof(Math::Vector4))                             // offset, assuming Math::Vector4 is the type of each row
                     });
                 }
             }
