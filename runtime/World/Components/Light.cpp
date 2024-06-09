@@ -383,7 +383,6 @@ namespace Spartan
     void Light::ComputeViewMatrix()
     {
         const Vector3 position = GetEntity()->GetPosition();
-        const Vector3 forward  = GetEntity()->GetForward();
 
         if (m_light_type == LightType::Directional)
         {
@@ -392,19 +391,19 @@ namespace Spartan
             {
                 target = camera->GetEntity()->GetPosition();
             }
-            Vector3 position = target - forward * orthographic_depth * 0.8f;
+            Vector3 position = target - GetEntity()->GetForward() * orthographic_depth * 0.8f;
 
             m_matrix_view[0] = Matrix::CreateLookAtLH(position, target, Vector3::Up); // near
             m_matrix_view[1] = m_matrix_view[0];                                      // far
         }
         else if (m_light_type == LightType::Spot)
         {
-            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + forward, Vector3::Up);
+            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + GetEntity()->GetForward(), Vector3::Up);
         }
         else if (m_light_type == LightType::Point)
         {
-            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + forward, Vector3::Up); // front paraboloid
-            m_matrix_view[1] = Matrix::CreateLookAtLH(position, position - forward, Vector3::Up); // back paraboloid
+            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Forward, Vector3::Up); // front paraboloid
+            m_matrix_view[1] = Matrix::CreateLookAtLH(position, position - Vector3::Forward, Vector3::Up); // back paraboloid
         }
     }
 
@@ -464,7 +463,7 @@ namespace Spartan
             for (const Vector3& corner : corners)
             {
                 Vector3 to_corner = corner - m_entity_ptr->GetPosition();
-                if (Vector3::Dot(to_corner, sign * m_entity_ptr->GetForward()) > 0.0f)
+                if (Vector3::Dot(to_corner, sign * m_entity_ptr->GetForward()) >= 0.0f)
                     return true; // at least one corner is inside
             }
 

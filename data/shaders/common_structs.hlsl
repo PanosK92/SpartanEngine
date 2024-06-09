@@ -261,7 +261,7 @@ struct Light
         near              = 0.01f;
         far               = light.range;
         angle             = light.angle;
-        forward           = light.direction.xyz;
+        forward           = is_point() ? float3(0.0f, 0.0f, 1.0f) : light.direction.xyz;
         distance_to_pixel = length(surface_position - position);
         to_pixel          = compute_direction(position, surface_position);
         n_dot_l           = saturate(dot(surface_normal, -to_pixel));
