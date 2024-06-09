@@ -234,6 +234,29 @@ float2 ndc_to_uv(float3 x)
     return x.xy * float2(0.5f, -0.5f) + 0.5f;
 }
 
+float3 project_onto_paraboloid(float3 light_to_vertex_view, float near_plane, float far_plane)
+{
+    float3 ndc = 0.0f;
+
+    // normalize the light to vertex vector
+    float d = length(light_to_vertex_view);
+    light_to_vertex_view /= d;
+
+    // project onto paraboloid
+    ndc.xy = light_to_vertex_view.xy / (light_to_vertex_view.z + 1.0f);
+
+     // calculate reverse depth
+    ndc.z = (far_plane - d) / (far_plane - near_plane);
+
+    // if the vertex is behind the light, clamp it to the edge of the circular paraboloid
+    float is_valid       = step(0.0f, light_to_vertex_view.z);
+    float radius_squared = dot(ndc.xy, ndc.xy);
+    float clamped_radius = sqrt(clamp(radius_squared, 0.0f, 1.0f));
+    ndc.xy               = is_valid * ndc.xy + (1.0f - is_valid) * (ndc.xy / clamped_radius);
+
+    return ndc;
+}
+
 /*------------------------------------------------------------------------------
     NORMAL
 ------------------------------------------------------------------------------*/
@@ -300,7 +323,6 @@ float get_depth_opaque(const float2 uv)
 {
     return tex_depth_opaque.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).r;
 }
-
 
 float linearize_depth(const float z)
 {
@@ -489,29 +511,6 @@ float microw_shadowing_cod(float n_dot_l, float visibility)
     float aperture = rsqrt(1.0 - visibility);
     float microShadow = saturate(n_dot_l * aperture);
     return microShadow * microShadow;
-}
-
-float3 project_onto_paraboloid(float3 light_to_vertex_view, float near_plane, float far_plane)
-{
-    float3 ndc = 0.0f;
-
-    // normalize the light to vertex vector
-    float d = length(light_to_vertex_view);
-    light_to_vertex_view /= d;
-
-    // project onto paraboloid
-    ndc.xy = light_to_vertex_view.xy / (light_to_vertex_view.z + 1.0f);
-
-     // calculate reverse depth
-    ndc.z = (far_plane - d) / (far_plane - near_plane);
-
-    // if the vertex is behind the light, clamp it to the edge of the circular paraboloid
-    float is_valid       = step(0.0f, light_to_vertex_view.z);
-    float radius_squared = dot(ndc.xy, ndc.xy);
-    float clamped_radius = sqrt(clamp(radius_squared, 0.0f, 1.0f));
-    ndc.xy               = is_valid * ndc.xy + (1.0f - is_valid) * (ndc.xy / clamped_radius);
-
-    return ndc;
 }
 
 /*------------------------------------------------------------------------------

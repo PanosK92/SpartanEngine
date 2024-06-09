@@ -973,6 +973,7 @@ namespace Spartan
                             }
                         }
                     }
+
                     properties[index].intensity  = light->GetIntensityWatt();
                     properties[index].range      = light->GetRange();
                     properties[index].angle      = light->GetAngle();
