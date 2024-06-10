@@ -56,7 +56,7 @@ vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
     return output;
 }
 
- float4 main_ps(vertex input) : SV_Target0
+float4 main_ps(vertex input) : SV_Target0
 {
     // alpha test
     const float3 f3_value     = pass_get_f3_value();
