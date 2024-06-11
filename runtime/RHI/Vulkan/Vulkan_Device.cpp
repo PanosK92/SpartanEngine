@@ -1033,7 +1033,6 @@ namespace Spartan
 
     namespace device_features
     {
-        uint32_t enabled_graphics_shader_stages                     = 0;
         VkPhysicalDeviceFeatures2 features                          = {};
         VkPhysicalDeviceRobustness2FeaturesEXT features_robustness  = {};
         VkPhysicalDeviceVulkan13Features features_1_3               = {};
@@ -1182,15 +1181,7 @@ namespace Spartan
                     // geometry
                     SP_ASSERT(support.features.geometryShader == VK_TRUE);
                     features.features.geometryShader = VK_TRUE;
-
-                    enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
                 }
-
-                // enable shader stages
-                enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
-                enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT;
-                enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
-                enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
             }
         }
     }
@@ -2086,11 +2077,6 @@ namespace Spartan
 
             functions::set_object_name(RHI_Context::device, &name_info);
         }
-    }
-
-    uint32_t RHI_Device::GetEnabledGraphicsStages()
-    {
-        return device_features::enabled_graphics_shader_stages;
     }
 
     void RHI_Device::SetVariableRateShading(const RHI_CommandList* cmd_list, const bool enabled)

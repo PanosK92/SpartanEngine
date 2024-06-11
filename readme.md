@@ -44,6 +44,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - On the fly single dispatch GPU-based mip generation for render targets.
 - On the fly compression and mip generation for material textures.
 - Fully bindless design (materials, lights, even the samplers).
+- Fast dual paraboloid point lights.
 - Vulkan (main) and DirectX 12 (wip) backends with universal HLSL shaders.
 - Unified deferred rendering with transparency (BSDF with same render path).
 - Atmospheric scattering, real-time filtering and image-based lighting.

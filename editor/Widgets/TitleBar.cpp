@@ -50,7 +50,7 @@ namespace
     bool show_imgui_style_window   = false;
     bool show_imgui_demo_widow     = false;
     Editor* editor                 = nullptr;
-    string file_dialog_selection_path;;
+    string file_dialog_selection_path;
     unique_ptr<FileDialog> file_dialog;
 
     namespace
@@ -66,7 +66,7 @@ namespace
             "Spartan, Tri Tran,            Belgium,          LinkedIn,   https://www.linkedin.com/in/mtrantr/,                     Days Gone screen space shadows,    Starfield",
                                                              
             "Hoplite, Apostolos Bouzalas,  Greece,           LinkedIn,   https://www.linkedin.com/in/apostolos-bouzalas,           Provided performance reports,      N/A",
-            "Hoplite, Marlon Wolfersdorf,  Northern Germany, N/A,        ,                                                         Nautilus ACES,                     N/A",
+            "Hoplite, Marlon Wolfersdorf,  Northern Germany, Google,     https://www.google.com/search?q=Marlon+Wolfersdorf,       Nautilus ACES,                     N/A",
             "Hoplite, Sandro Mtchedlidze,  Georgia,          Artstation, https://www.artstation.com/sandromch,                     Identified performance bottleneck, N/A",
         };
 
