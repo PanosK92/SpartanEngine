@@ -99,7 +99,6 @@ namespace Spartan
         // misc
         static void SetResourceName(void* resource, const RHI_Resource_Type resource_type, const std::string name);
         static bool IsValidResolution(const uint32_t width, const uint32_t height);
-        static uint32_t GetEnabledGraphicsStages();
         static uint32_t GetDescriptorType(const RHI_Descriptor& descriptor);
         static PhysicalDevice* GetPrimaryPhysicalDevice();
         static void SetVariableRateShading(const RHI_CommandList* cmd_list, const bool enabled);
