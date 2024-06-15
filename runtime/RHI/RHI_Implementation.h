@@ -377,9 +377,8 @@ static const char* vkresult_to_string(const VkResult result)
         case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:          return "VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT";
         case VK_ERROR_UNKNOWN:                                      return "VK_ERROR_UNKNOWN";
         case VK_RESULT_MAX_ENUM:                                    return "VK_RESULT_MAX_ENUM";
+        default:                                                    return "Unknown error code";
     }
-
-    return "Unknown error code";
 }
 
 #define SP_ASSERT_VK_MSG(vk_result, text_message)          \
