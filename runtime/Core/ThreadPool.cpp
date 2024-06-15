@@ -126,7 +126,7 @@ namespace Spartan
         unique_lock<mutex> lock(mutex_tasks);
 
         // Save the task
-        tasks.emplace_back(bind(forward<Task>(task)));
+        tasks.emplace_back(bind(std::forward<Task>(task)));
 
         // Unlock the mutex
         lock.unlock();

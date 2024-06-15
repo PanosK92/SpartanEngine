@@ -45,7 +45,7 @@ namespace Spartan
 
     void Event::Subscribe(const EventType event_type, subscriber&& function)
     {
-        event_subscribers[static_cast<uint32_t>(event_type)].push_back(forward<subscriber>(function));
+        event_subscribers[static_cast<uint32_t>(event_type)].push_back(std::forward<subscriber>(function));
     }
 
     void Event::Fire(const EventType event_type, sp_variant data /*= 0*/)

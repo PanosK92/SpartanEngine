@@ -357,6 +357,7 @@ namespace Spartan
             case RHI_Format::R32G32B32A32_Float: return 32;
             case RHI_Format::D32_Float:          return 32;
             case RHI_Format::R11G11B10_Float:    return 11;
+            default:                             break;
         }
 
         assert(false && "Unsupported format");
@@ -386,6 +387,7 @@ namespace Spartan
             case RHI_Format::R16G16B16A16_Float: return 4;
             case RHI_Format::R32G32B32A32_Float: return 4;
             case RHI_Format::D32_Float:          return 1;
+            default:                             break;
         }
 
         assert(false && "Unsupported format");
@@ -418,6 +420,7 @@ namespace Spartan
             case RHI_Format::D32_Float_S8X24_Uint: return "RHI_Format_D32_Float_S8X24_Uint";
             case RHI_Format::BC7_Unorm:            return "RHI_Format_BC7";
             case RHI_Format::Max:                  return "RHI_Format_Undefined";
+            default:                               break;
         }
 
         assert(false && "Unsupported format");
