@@ -67,7 +67,7 @@ namespace
                                                              
             "Hoplite, Apostolos Bouzalas,  Greece,           LinkedIn,   https://www.linkedin.com/in/apostolos-bouzalas,           Provided performance reports,      N/A",
             "Hoplite, Marlon Wolfersdorf,  Northern Germany, Google,     https://www.google.com/search?q=Marlon+Wolfersdorf,       Nautilus ACES,                     N/A",
-            "Hoplite, Nikolas Pattakos,    Greece,           LinkedIn,   https://www.linkedin.com/in/nikolaspattakos/,             GGC compile fixes,                 N/A",
+            "Hoplite, Nikolas Pattakos,    Greece,           LinkedIn,   https://www.linkedin.com/in/nikolaspattakos/,             GCC compile fixes,                 N/A",
             "Hoplite, Sandro Mtchedlidze,  Georgia,          Artstation, https://www.artstation.com/sandromch,                     Identified performance bottleneck, N/A",
         };
 
