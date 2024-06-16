@@ -30,22 +30,15 @@ struct sp_info
 };
 
 //= CLASS EXPORTING/IMPORTING =====================================
+// The engine runtime links statically to the editor, therefore
+// this macro is not defined anymore. However, we keep the
+// platform-specific variations for potential future use.
 #if defined(_MSC_VER)
-    #define SP_CLASS
-    #if SPARTAN_RUNTIME_SHARED == 1
-        #ifdef SPARTAN_RUNTIME
-        #define SP_CLASS __declspec(dllexport)
-        #endif
-    #endif
+#define SP_CLASS
 #elif defined(__clang__) || defined(__GNUC__) || defined(__GNUG__)
-    #define SP_CLASS
-    #if SPARTAN_RUNTIME_SHARED == 1
-        #ifdef SPARTAN_RUNTIME
-            #define SP_CLASS __attribute__((visibility("default")))
-        #endif
-    #endif
+#define SP_CLASS
 #else
-    #error "SP_CLASS is not implemented for this compiler/platform"
+#error "SP_CLASS is not implemented for this compiler/platform"
 #endif
 //=================================================================
 
