@@ -71,6 +71,30 @@ namespace Spartan
             return VK_ATTACHMENT_LOAD_OP_CLEAR;
         };
 
+        uint32_t get_aspect_mask(const RHI_Texture* texture, const bool only_depth = false, const bool only_stencil = false)
+        {
+            uint32_t aspect_mask = 0;
+
+            if (texture->IsColorFormat())
+            {
+                aspect_mask |= VK_IMAGE_ASPECT_COLOR_BIT;
+            }
+            else
+            {
+                if (texture->IsDepthFormat() && !only_stencil)
+                {
+                    aspect_mask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+                }
+
+                if (texture->IsStencilFormat() && !only_depth)
+                {
+                    aspect_mask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+                }
+            }
+
+            return aspect_mask;
+        }
+
         VkAccessFlags2 layout_to_access_mask(const VkImageLayout layout, const bool is_destination_mask, const bool is_depth)
         {
             VkAccessFlags2 access_mask = 0;
@@ -155,21 +179,25 @@ namespace Spartan
 
             uint32_t used_stages = 0;
             {
-                if (is_destination_mask)
-                { 
-                    used_stages |= pso.shaders[RHI_Shader_Type::Vertex]  ? VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT                  : 0;
-                    used_stages |= pso.shaders[RHI_Shader_Type::Hull]    ? VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT    : 0;
-                    used_stages |= pso.shaders[RHI_Shader_Type::Domain]  ? VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT : 0;
-                    used_stages |= pso.shaders[RHI_Shader_Type::Pixel]   ? VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT                : 0;
-                    used_stages |= pso.shaders[RHI_Shader_Type::Compute] ? VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT                 : 0;
-                }
-                else
+                if (!is_destination_mask)
                 {
+                    // stages that must be waited for
+
                     used_stages |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
                     used_stages |= VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT;
                     used_stages |= VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT;
                     used_stages |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
                     used_stages |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                }
+                else
+                {
+                    // stages at which the barrier applies
+
+                    used_stages |= pso.shaders[RHI_Shader_Type::Vertex]  ? VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT                  : 0;
+                    used_stages |= pso.shaders[RHI_Shader_Type::Hull]    ? VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT    : 0;
+                    used_stages |= pso.shaders[RHI_Shader_Type::Domain]  ? VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT : 0;
+                    used_stages |= pso.shaders[RHI_Shader_Type::Pixel]   ? VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT                : 0;
+                    used_stages |= pso.shaders[RHI_Shader_Type::Compute] ? VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT                 : 0;
                 }
             }
 
@@ -266,30 +294,6 @@ namespace Spartan
                 }
             }
             return stages;
-        }
-
-        uint32_t get_aspect_mask(const RHI_Texture* texture, const bool only_depth = false, const bool only_stencil = false)
-        {
-            uint32_t aspect_mask = 0;
-
-            if (texture->IsColorFormat())
-            {
-                aspect_mask |= VK_IMAGE_ASPECT_COLOR_BIT;
-            }
-            else
-            {
-                if (texture->IsDepthFormat() && !only_stencil)
-                {
-                    aspect_mask |= VK_IMAGE_ASPECT_DEPTH_BIT;
-                }
-
-                if (texture->IsStencilFormat() && !only_depth)
-                {
-                    aspect_mask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-                }
-            }
-
-            return aspect_mask;
         }
     }
 
@@ -1579,9 +1583,15 @@ namespace Spartan
         m_timeblock_active = nullptr;
     }
 
-    void RHI_CommandList::InsertBarrierTexture(void* image, const uint32_t aspect_mask,
-        const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length,
-        const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new, const bool is_depth
+    void RHI_CommandList::InsertBarrierTexture(
+        void* image,
+        const uint32_t aspect_mask,
+        const uint32_t mip_index,
+        const uint32_t mip_range,
+        const uint32_t array_length,
+        const RHI_Image_Layout layout_old,
+        const RHI_Image_Layout layout_new,
+        const bool is_depth
     )
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
