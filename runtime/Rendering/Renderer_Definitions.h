@@ -202,7 +202,6 @@ namespace Spartan
         blur_gaussian_c,
         blur_gaussian_bilaterial_c,
         blur_gaussian_bilaterial_radius_from_texture_c,
-        antiflicker_c,
         variable_rate_shading_c,
         ffx_cas_c,
         ffx_spd_average_c,
@@ -239,7 +238,6 @@ namespace Spartan
         skysphere,
         bloom,
         blur,
-        antiflicker,
         outline,
         shading_rate,
         max

@@ -936,9 +936,6 @@ namespace Spartan
         // render
         cmd_list->Dispatch(tex_ssgi);
 
-        // antiflicker pass to stabilize
-        Pass_Antiflicker(cmd_list, tex_ssgi);
-
         // blur to denoise
         float radius = 8.0f;
         Pass_Blur_Gaussian(cmd_list, tex_ssgi, nullptr, Renderer_Shader::blur_gaussian_bilaterial_c, radius);
@@ -979,9 +976,6 @@ namespace Spartan
         cmd_list->InsertBarrierTextureReadWrite(tex_ssr_roughness);
         cmd_list->Dispatch(tex_ssr);
         cmd_list->InsertBarrierTextureReadWrite(tex_ssr_roughness);
-
-        // antiflicker pass to stabilize
-        Pass_Antiflicker(cmd_list, tex_ssr);
 
         // blur based on alpha - which contains the reflection roughness
         Pass_Blur_Gaussian(cmd_list, tex_ssr, tex_ssr_roughness, Renderer_Shader::blur_gaussian_bilaterial_radius_from_texture_c, 0.0f);
@@ -1701,34 +1695,6 @@ namespace Spartan
         cmd_list->Dispatch(tex_out);
 
         cmd_list->EndTimeblock();
-    }
-
-    void Renderer::Pass_Antiflicker(RHI_CommandList* cmd_list, RHI_Texture* tex_in)
-    {
-        // acquire shader
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::antiflicker_c).get();
-        if (!shader_c->IsCompiled())
-            return;
-
-        cmd_list->BeginMarker("antiflicker");
-
-        RHI_Texture* tex_scratch = GetRenderTarget(Renderer_RenderTarget::antiflicker).get();
-
-        // set pipeline state
-        static RHI_PipelineState pso;
-        pso.shaders[Compute] = shader_c;
-        cmd_list->SetPipelineState(pso);
-
-        // render
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
-        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_scratch);
-        cmd_list->Dispatch(tex_in);
-
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_scratch);
-        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_in);
-        cmd_list->Dispatch(tex_in);
-
-        cmd_list->EndMarker();
     }
 
     void Renderer::Pass_Ffx_Cas(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
