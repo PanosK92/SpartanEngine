@@ -71,8 +71,6 @@ namespace
             "Hoplite, Sandro Mtchedlidze,  Georgia,          Artstation, https://www.artstation.com/sandromch,                     Identified performance bottleneck, N/A",
         };
 
-        // Nikolas Pattakos, Greece, https://www.linkedin.com/in/nikolaspattakos/
-
         vector<string> comma_seperate_contributors(const vector<string>& contributors)
         {
             vector<string> result;
