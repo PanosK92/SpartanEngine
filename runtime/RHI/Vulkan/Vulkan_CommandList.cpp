@@ -173,7 +173,7 @@ namespace Spartan
             return access_mask;
         }
 
-        VkPipelineStageFlags2 access_mask_to_pipeline_stage_mask(VkAccessFlags2 access_flags, RHI_PipelineState& pso, const RHI_Image_Layout layout_old, const bool is_destination_mask)
+        VkPipelineStageFlags2 access_mask_to_pipeline_stage_mask(VkAccessFlags2 access_flags, RHI_PipelineState& pso, const RHI_Image_Layout layout_old, const bool is_destination_mask, const bool is_depth)
         {
             VkPipelineStageFlags2 stages  = 0;
 
@@ -182,18 +182,49 @@ namespace Spartan
                 if (!is_destination_mask)
                 {
                     // stages that must be waited for
-
-                    if (layout_old == RHI_Image_Layout::General)
-                    { 
-                        used_stages |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-                    }
-                    else
+                    switch (layout_old)
                     {
+                    case RHI_Image_Layout::General:
+                        used_stages |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                        break;
+
+                    case RHI_Image_Layout::Attachment:
+                        if (is_depth)
+                        {
+                            used_stages |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT;
+                            used_stages |= VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+                        }
+                        else
+                        {
+                            used_stages |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                        }
+                        break;
+
+                    case RHI_Image_Layout::Shading_Rate_Attachment:
+                        used_stages |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+                        break;
+
+                    case RHI_Image_Layout::Shader_Read:
+                    case RHI_Image_Layout::Shader_Read_Depth:
                         used_stages |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
                         used_stages |= VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT;
                         used_stages |= VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT;
                         used_stages |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
                         used_stages |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                        break;
+
+                    case RHI_Image_Layout::Transfer_Source:
+                    case RHI_Image_Layout::Transfer_Destination:
+                        used_stages |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                        break;
+
+                    case RHI_Image_Layout::Present_Source:
+                        used_stages |= VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+                        break;
+
+                    default:
+                        used_stages |= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+                        break;
                     }
                 }
                 else
@@ -1618,10 +1649,10 @@ namespace Spartan
         image_barrier.subresourceRange.levelCount     = mip_range;
         image_barrier.subresourceRange.baseArrayLayer = 0;
         image_barrier.subresourceRange.layerCount     = array_length;
-        image_barrier.srcAccessMask                   = layout_to_access_mask(image_barrier.oldLayout, false, is_depth);                           // operations that must complete before the barrier
-        image_barrier.srcStageMask                    = access_mask_to_pipeline_stage_mask(image_barrier.srcAccessMask, m_pso, layout_old, false); // stage at which the barrier applies, on the source side
-        image_barrier.dstAccessMask                   = layout_to_access_mask(image_barrier.newLayout, true, is_depth);                            // operations that must wait for the barrier, on the new layout
-        image_barrier.dstStageMask                    = access_mask_to_pipeline_stage_mask(image_barrier.dstAccessMask, m_pso, layout_old, true);  // stage at which the barrier applies, on the destination side
+        image_barrier.srcAccessMask                   = layout_to_access_mask(image_barrier.oldLayout, false, is_depth);                                     // operations that must complete before the barrier
+        image_barrier.srcStageMask                    = access_mask_to_pipeline_stage_mask(image_barrier.srcAccessMask, m_pso, layout_old, false, is_depth); // stage at which the barrier applies, on the source side
+        image_barrier.dstAccessMask                   = layout_to_access_mask(image_barrier.newLayout, true, is_depth);                                      // operations that must wait for the barrier, on the new layout
+        image_barrier.dstStageMask                    = access_mask_to_pipeline_stage_mask(image_barrier.dstAccessMask, m_pso, layout_old, true, is_depth);  // stage at which the barrier applies, on the destination side
 
         VkDependencyInfo dependency_info        = {};
         dependency_info.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
