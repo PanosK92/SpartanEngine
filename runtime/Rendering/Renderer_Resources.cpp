@@ -251,9 +251,8 @@ namespace Spartan
             }
 
             // misc
-            render_target(Renderer_RenderTarget::sss)          = make_shared<RHI_Texture2DArray>(width_render, height_render, RHI_Format::R16_Float, 4, flags | RHI_Texture_ClearBlit, "sss");
-            render_target(Renderer_RenderTarget::ssgi)         = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags, "ssgi");
-            render_target(Renderer_RenderTarget::antiflicker)  = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags | RHI_Texture_ClearBlit, "antiflicker");
+            render_target(Renderer_RenderTarget::sss)  = make_shared<RHI_Texture2DArray>(width_render, height_render, RHI_Format::R16_Float, 4, flags | RHI_Texture_ClearBlit, "sss");
+            render_target(Renderer_RenderTarget::ssgi) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags, "ssgi");
 
             if (RHI_Device::PropertyIsShadingRateSupported())
             { 
@@ -481,7 +480,7 @@ namespace Spartan
         shader(Renderer_Shader::motion_blur_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::motion_blur_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "motion_blur.hlsl", async);
 
-        // ssgi
+        // screen space global illumination
         shader(Renderer_Shader::ssgi_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::ssgi_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ssgi.hlsl", async);
 
@@ -492,10 +491,6 @@ namespace Spartan
         // screen space shadows
         shader(Renderer_Shader::sss_c_bend) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::sss_c_bend)->Compile(RHI_Shader_Type::Compute, shader_dir + "screen_space_shadows\\bend_sss.hlsl", async);
-
-        // antiflicker
-        shader(Renderer_Shader::antiflicker_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::antiflicker_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "antiflicker.hlsl", async);
 
         // depth of field
         shader(Renderer_Shader::depth_of_field_c) = make_shared<RHI_Shader>();
