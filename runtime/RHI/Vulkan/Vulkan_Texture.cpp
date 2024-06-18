@@ -277,7 +277,8 @@ namespace Spartan
         SP_ASSERT_MSG(m_height != 0, "Height can't be zero");
 
         // as per vulkan
-        SetLayout(RHI_Image_Layout::Preinitialized, nullptr);
+        RHI_Image_Layout initial_layout = HasExternalMemory() ? RHI_Image_Layout::Max : RHI_Image_Layout::Preinitialized;
+        SetLayout(initial_layout, nullptr);
 
         // create image
         RHI_Device::MemoryTextureCreate(this);

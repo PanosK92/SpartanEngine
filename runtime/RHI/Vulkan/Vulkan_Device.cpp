@@ -225,8 +225,18 @@ namespace Spartan
     {
         // hardware capability viewer: https://vulkan.gpuinfo.org/
 
-        vector<const char*> extensions_instance = { "VK_KHR_surface",   "VK_KHR_win32_surface", "VK_EXT_swapchain_colorspace" };
-        vector<const char*> extensions_device   = { "VK_KHR_swapchain", "VK_EXT_memory_budget", "VK_KHR_fragment_shading_rate", "VK_EXT_hdr_metadata", "VK_EXT_robustness2" };
+        vector<const char*> extensions_instance = { "VK_KHR_surface",   "VK_KHR_win32_surface", "VK_EXT_swapchain_colorspace", };
+        vector<const char*> extensions_device   = {
+            "VK_KHR_swapchain",
+            "VK_EXT_memory_budget",
+            "VK_KHR_fragment_shading_rate",
+            "VK_EXT_hdr_metadata",
+            "VK_EXT_robustness2",
+            #if defined(_MSC_VER)
+            "VK_KHR_external_memory",      // to share images with Open Image Denoise
+            "VK_KHR_external_memory_win32" // potential linux alternative: VK_KHR_external_memory_fd
+            #endif
+        };
 
         bool is_present_device(const char* extension_name, VkPhysicalDevice device_physical)
         {
@@ -1865,9 +1875,15 @@ namespace Spartan
 
     void RHI_Device::MemoryTextureCreate(RHI_Texture* texture)
     {
+        // external memory
+        VkExternalMemoryImageCreateInfo external_memory_image_create_info = {};
+        external_memory_image_create_info.sType       = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
+        external_memory_image_create_info.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR;
+
         // describe image
         VkImageCreateInfo create_info_image = {};
         create_info_image.sType             = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        create_info_image.pNext             = texture->HasExternalMemory() ? &external_memory_image_create_info : nullptr;
         create_info_image.imageType         = VK_IMAGE_TYPE_2D;
         create_info_image.flags             = texture->GetResourceType() == ResourceType::TextureCube ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
         create_info_image.usage             = get_image_usage_flags(texture);
@@ -1918,13 +1934,33 @@ namespace Spartan
             reinterpret_cast<VkImage*>(&resource),
             &allocation,
             &allocation_info),
-            "Failed to allocate texture");
+        "Failed to allocate texture");
 
-        // save mapped data pointer
+        // get mapped data pointer
         if (texture->GetFlags() & RHI_Texture_Mappable)
         {
             void*& mapped_data = texture->GetMappedData();
             mapped_data = allocation_info.pMappedData;
+        }
+
+        // get external memory handle
+        if (texture->HasExternalMemory())
+        {
+            VkMemoryGetWin32HandleInfoKHR get_handle_info = {};
+            get_handle_info.sType                         = VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR;
+            get_handle_info.memory                        = allocation_info.deviceMemory;
+            get_handle_info.handleType                    = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR;
+
+            #if defined(_MSC_VER)
+            HANDLE win32_handle;
+            static PFN_vkGetMemoryWin32HandleKHR vkGetMemoryWin32HandleKHR = (PFN_vkGetMemoryWin32HandleKHR)vkGetDeviceProcAddr(RHI_Context::device, "vkGetMemoryWin32HandleKHR");
+            SP_ASSERT_VK_MSG(vkGetMemoryWin32HandleKHR(RHI_Context::device, &get_handle_info, &win32_handle), "Failed to get memory handle");
+            #else
+            SP_LOG_ERROR("External memory is not implemented");
+            #endif
+
+            // store or use the win32_handle as needed
+            texture->SetExternalMemoryHandle(static_cast<void*>(win32_handle));
         }
 
         // save allocation

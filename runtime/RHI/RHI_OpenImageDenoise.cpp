@@ -60,14 +60,19 @@ namespace Spartan
 
     void RHI_OpenImageDenoise::Denoise(RHI_Texture* texture)
     {
-        // create OIDNBuffer from the input Vulkan image
-        size_t size_bytes = texture->GetWidth() * texture->GetHeight() * texture->GetBytesPerPixel();
-        OIDNBuffer buffer = oidnNewSharedBuffer(device, texture->GetRhiSrv(), size_bytes);
+        SP_ASSERT(texture->HasExternalMemory());
 
-        // set the input and output textures to the same buffer
-        oidnSetFilterImage(filter, "texture", buffer, OIDN_FORMAT_FLOAT4, texture->GetWidth(), texture->GetHeight(), 0, 0, 0);
+        // create buffer from texture
+        OIDNBuffer buffer = oidnNewSharedBufferFromWin32Handle(
+            device,
+            OIDNExternalMemoryTypeFlag::OIDN_EXTERNAL_MEMORY_TYPE_FLAG_OPAQUE_WIN32,
+            texture->GetExternalMemoryHandle(),
+            "texture",
+            texture->GetWidth() * texture->GetHeight() * texture->GetBytesPerPixel()
+        );
 
         // execute the denoising filter
+        oidnSetFilterImage(filter, "texture", buffer, OIDN_FORMAT_FLOAT4, texture->GetWidth(), texture->GetHeight(), 0, 0, 0);
         oidnExecuteFilter(filter);
 
         // release the OIDNBuffer
