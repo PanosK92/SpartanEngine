@@ -157,14 +157,14 @@ namespace Spartan
         return IsInViewFrustum(box);
     }
 
-	const Math::Ray Camera::ComputePickingRay()
-	{
+    const Math::Ray Camera::ComputePickingRay()
+    {
         Vector3 ray_start     = GetEntity()->GetPosition();
         Vector3 ray_direction = ScreenToWorldCoordinates(Input::GetMousePositionRelativeToEditorViewport(), 1.0f);
         return Ray(ray_start, ray_direction);
-	}
-
-	void Camera::Pick()
+    }
+    
+    void Camera::Pick()
     {
         // ensure the mouse is inside the viewport
         if (!Input::GetMouseIsInViewport())
@@ -173,9 +173,8 @@ namespace Spartan
             return;
         }
 
-        m_ray = ComputePickingRay();
-
         // traces ray against all AABBs in the world
+        Ray ray = ComputePickingRay();
         vector<RayHit> hits;
         {
             const vector<shared_ptr<Entity>>& entities = World::GetAllEntities();
@@ -189,17 +188,17 @@ namespace Spartan
                 const BoundingBox& aabb = entity->GetComponent<Renderable>()->GetBoundingBox(BoundingBoxType::Transformed);
 
                 // Compute hit distance
-                float distance = m_ray.HitDistance(aabb);
+                float distance = ray.HitDistance(aabb);
 
                 // Don't store hit data if there was no hit
                 if (distance == Helper::INFINITY_)
                     continue;
 
                 hits.emplace_back(
-                    entity,                                             // Entity
-                    m_ray.GetStart() + m_ray.GetDirection() * distance, // Position
-                    distance,                                           // Distance
-                    distance == 0.0f                                    // Inside
+                    entity,                                         // entity
+                    ray.GetStart() + ray.GetDirection() * distance, // position
+                    distance,                                       // distance
+                    distance == 0.0f                                // inside
                 );
             }
 
@@ -246,8 +245,7 @@ namespace Spartan
                 Vector3 p2_world = Vector3(vertices[indicies[i + 1]].pos) * vertex_transform;
                 Vector3 p3_world = Vector3(vertices[indicies[i + 2]].pos) * vertex_transform;
 
-                float distance = m_ray.HitDistance(p1_world, p2_world, p3_world);
-
+                float distance = ray.HitDistance(p1_world, p2_world, p3_world);
                 if (distance < distance_min)
                 {
                     m_selected_entity = hit.m_entity;

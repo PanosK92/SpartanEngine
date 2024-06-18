@@ -72,7 +72,6 @@ namespace Spartan
 
         // ray casting
         const Math::Ray ComputePickingRay();
-        const Math::Ray& GetPickingRay() const { return m_ray; }
 
         // picks the nearest entity under the mouse cursor
         void Pick();
@@ -175,7 +174,6 @@ namespace Spartan
         Math::Quaternion m_lerp_to_target_rotation   = Math::Quaternion::Identity;
         PhysicsBody* m_physics_body_to_control       = nullptr;
         RHI_Viewport m_last_known_viewport;
-        Math::Ray m_ray;
         Math::Frustum m_frustum;
         std::weak_ptr<Spartan::Entity> m_selected_entity;
     };
