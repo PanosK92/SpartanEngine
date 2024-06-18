@@ -252,7 +252,7 @@ namespace Spartan
 
         if (GetOption<bool>(Renderer_Option::PickingRay))
         {
-            const auto& ray = GetCamera()->GetPickingRay();
+            Ray ray = GetCamera()->ComputePickingRay();
             DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * GetCamera()->GetFarPlane(), Color(0, 1, 0, 1));
         }
         

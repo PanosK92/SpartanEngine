@@ -302,47 +302,47 @@ namespace Spartan
     {
         if (shared_ptr<Camera> camera = Renderer::GetCamera())
         {
-            const Ray& picking_ray = camera->GetPickingRay();
+            const Ray& picking_ray = camera->ComputePickingRay();
 
-            if (picking_ray.IsDefined())
-            { 
-                // get camera picking ray
-                Vector3 ray_start     = picking_ray.GetStart();
-                Vector3 ray_direction = picking_ray.GetDirection();
-                Vector3 ray_end       = ray_start + ray_direction * camera->GetFarPlane();
+            // get camera picking ray
+            Vector3 ray_start     = picking_ray.GetStart();
+            Vector3 ray_direction = picking_ray.GetDirection();
+            Vector3 ray_end       = ray_start + ray_direction * camera->GetFarPlane();
 
-                btVector3 bt_ray_start = ToBtVector3(ray_start);
-                btVector3 bt_ray_end   = ToBtVector3(ray_end);
-                btCollisionWorld::ClosestRayResultCallback rayCallback(bt_ray_start, bt_ray_end);
+            btVector3 bt_ray_start = ToBtVector3(ray_start);
+            btVector3 bt_ray_end   = ToBtVector3(ray_end);
+            btCollisionWorld::ClosestRayResultCallback ray_callback(bt_ray_start, bt_ray_end);
 
-                rayCallback.m_flags |= btTriangleRaycastCallback::kF_UseGjkConvexCastRaytest;
-                world->rayTest(bt_ray_start, bt_ray_end, rayCallback);
+            ray_callback.m_flags |= btTriangleRaycastCallback::kF_UseGjkConvexCastRaytest;
+            world->rayTest(bt_ray_start, bt_ray_end, ray_callback);
 
-                if (rayCallback.hasHit())
+            if (ray_callback.hasHit())
+            {
+                btVector3 pick_position = ray_callback.m_hitPointWorld;
+
+                if (btRigidBody* body = (btRigidBody*)btRigidBody::upcast(ray_callback.m_collisionObject))
                 {
-                    btVector3 pick_position = rayCallback.m_hitPointWorld;
-
-                    if (btRigidBody* body = (btRigidBody*)btRigidBody::upcast(rayCallback.m_collisionObject))
+                    if (!(body->isStaticObject() || body->isKinematicObject()))
                     {
-                        if (!(body->isStaticObject() || body->isKinematicObject()))
-                        {
-                            picked_body                 = body;
-                            activation_state            = picked_body->getActivationState();
-                            picked_body->setActivationState(DISABLE_DEACTIVATION);
-                            btVector3 localPivot          = body->getCenterOfMassTransform().inverse() * pick_position;
-                            btPoint2PointConstraint* p2p  = new btPoint2PointConstraint(*body, localPivot);
-                            world->addConstraint(p2p, true);
-                            picked_constraint           = p2p;
-                            btScalar mouse_pick_clamping  = 30.0f;
-                            p2p->m_setting.m_impulseClamp = mouse_pick_clamping;
-                            p2p->m_setting.m_tau          = 0.3f;
-                            p2p->m_setting.m_damping      = 0.3f;
-                        }
-                    }
+                        body->setActivationState(DISABLE_DEACTIVATION);
 
-                    hit_position              = ToVector3(pick_position);
-                    picking_distance_previous = (hit_position - ray_start).Length();
+                        activation_state              = body->getActivationState();
+                        btVector3 pivot_local         = body->getCenterOfMassTransform().inverse() * pick_position;
+                        btPoint2PointConstraint* p2p  = new btPoint2PointConstraint(*body, pivot_local);
+                        p2p->m_setting.m_impulseClamp = 10.0f; // maximum impulse the constraint can apply to maintain the connection
+                        p2p->m_setting.m_tau          = 0.1f;  // strength of the constraint (lower values make the constraint stronger)
+                        p2p->m_setting.m_damping      = 1.0f;  // amount of damping applied to the constraint (higher values reduce oscillations)
+                        world->addConstraint(p2p, true);
+
+                        picked_body       = body;
+                        picked_constraint = p2p;
+
+                        SP_LOG_INFO("Picked");
+                    }
                 }
+
+                hit_position              = ToVector3(pick_position);
+                picking_distance_previous = (hit_position - ray_start).Length();
             }
         }
     }
