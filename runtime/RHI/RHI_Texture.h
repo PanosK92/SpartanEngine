@@ -33,25 +33,19 @@ namespace Spartan
 {
     enum RHI_Texture_Flags : uint32_t
     {
-        RHI_Texture_Srv             = 1U << 0,
-        RHI_Texture_Uav             = 1U << 1,
-        RHI_Texture_Rtv             = 1U << 2,
-        RHI_Texture_Vrs             = 1U << 3,
-        RHI_Texture_ClearBlit       = 1U << 4,
-        RHI_Texture_PerMipViews     = 1U << 5,
-        RHI_Texture_Greyscale       = 1U << 6,
-        RHI_Texture_Transparent = 1U << 7,
-        RHI_Texture_Srgb            = 1U << 8,
-        RHI_Texture_Mappable        = 1U << 9,
-        RHI_Texture_KeepData        = 1U << 10,
-        RHI_Texture_DontCompress    = 1U << 11
-    };
-
-    enum RHI_Shader_View_Type : uint8_t
-    {
-        RHI_Shader_View_ColorDepth,
-        RHI_Shader_View_Stencil,
-        RHI_Shader_View_Unordered_Access
+        RHI_Texture_Srv            = 1U << 0,
+        RHI_Texture_Uav            = 1U << 1,
+        RHI_Texture_Rtv            = 1U << 2,
+        RHI_Texture_Vrs            = 1U << 3,
+        RHI_Texture_ClearBlit      = 1U << 4,
+        RHI_Texture_PerMipViews    = 1U << 5,
+        RHI_Texture_Greyscale      = 1U << 6,
+        RHI_Texture_Transparent    = 1U << 7,
+        RHI_Texture_Srgb           = 1U << 8,
+        RHI_Texture_Mappable       = 1U << 9,
+        RHI_Texture_KeepData       = 1U << 10,
+        RHI_Texture_DontCompress   = 1U << 11,
+        RHI_Texture_ExternalMemory = 1U << 12
     };
 
     struct RHI_Texture_Mip
@@ -93,6 +87,10 @@ namespace Spartan
         RHI_Format GetFormat()                             const { return m_format; }
         void SetFormat(const RHI_Format format)                  { m_format = format; }
 
+        // external memory
+        void* GetExternalMemoryHandle() const      { return m_rhi_external_memory; }
+        void SetExternalMemoryHandle(void* handle) { m_rhi_external_memory = handle; }
+
         // misc
         std::shared_ptr<RHI_Texture> GetSharedPtr() { return shared_from_this(); }
         void SaveAsImage(const std::string& file_path);
@@ -118,6 +116,7 @@ namespace Spartan
         bool HasPerMipViews()    const { return m_flags & RHI_Texture_PerMipViews; }
         bool IsGrayscale()       const { return m_flags & RHI_Texture_Greyscale; }
         bool IsSemiTransparent() const { return m_flags & RHI_Texture_Transparent; }
+        bool HasExternalMemory() const { return m_flags & RHI_Texture_ExternalMemory; }
 
         // format type
         bool IsDepthFormat()        const { return m_format == RHI_Format::D16_Unorm || m_format == RHI_Format::D32_Float || m_format == RHI_Format::D32_Float_S8X24_Uint; }
@@ -160,9 +159,10 @@ namespace Spartan
         std::array<RHI_Image_Layout, rhi_max_mip_count> m_layout;
 
         // api resources
-        void* m_rhi_resource = nullptr;
-        void* m_rhi_srv      = nullptr;
-        void* m_rhi_uav      = nullptr;
+        void* m_rhi_resource        = nullptr;
+        void* m_rhi_srv             = nullptr;
+        void* m_rhi_uav             = nullptr;
+        void* m_rhi_external_memory = nullptr;
         std::array<void*, rhi_max_mip_count> m_rhi_srv_mips;
         std::array<void*, rhi_max_mip_count> m_rhi_uav_mips;
         std::array<void*, rhi_max_render_target_count> m_rhi_rtv;
