@@ -77,7 +77,7 @@ namespace Spartan
         const char* error_message;
         if (oidnGetDeviceError(device, &error_message) != OIDN_ERROR_NONE)
         {
-            SP_LOG_ERROR("Open Image Denoise error: %s", error_message);
+            SP_LOG_ERROR("%s", error_message);
         }
     }
 }
