@@ -22,18 +22,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include "pch.h"
 #include "Renderer.h"
-#include "bend_sss_cpu.h"
+#include "ProgressTracker.h"
 #include "../Display/Display.h"
 #include "../Profiling/Profiler.h"
 #include "../World/Entity.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
+#include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_FidelityFX.h"
 #include "../RHI/RHI_RasterizerState.h"
-#include "ProgressTracker.h"
+SP_WARNINGS_OFF
+#include "bend_sss_cpu.h"
+#include "../RHI/RHI_OpenImageDenoise.h"
+SP_WARNINGS_ON
 //======================================
 
 //= NAMESPACES ===============
@@ -936,9 +940,7 @@ namespace Spartan
         // render
         cmd_list->Dispatch(tex_ssgi);
 
-        // blur to denoise
-        float radius = 8.0f;
-        Pass_Blur_Gaussian(cmd_list, tex_ssgi, nullptr, Renderer_Shader::blur_gaussian_bilaterial_c, radius);
+        //RHI_OpenImageDenoise::Denoise(tex_ssgi);
 
         cmd_list->EndTimeblock();
     }

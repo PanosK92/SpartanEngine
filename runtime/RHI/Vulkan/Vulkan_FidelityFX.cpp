@@ -175,7 +175,7 @@ namespace Spartan
         }
     }
 
-    void RHI_FidelityFX::Destroy()
+    void RHI_FidelityFX::Shutdown()
     {
         // spd
         if (spd_context_created)

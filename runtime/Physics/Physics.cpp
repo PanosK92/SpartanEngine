@@ -59,7 +59,7 @@ namespace Spartan
 
         // world properties
         int max_solve_iterations       = 256;
-        const float internal_time_step = 1.0f / 200.0f; // 200 Hz physics resolution (needed for car simulation)
+        const float internal_time_step = 1.0f / 200.0f; // 200 Hz - needed for car simulation
         float accumulator              = 0.0f;
         Math::Vector3 gravity          = Math::Vector3(0.0f, -9.81f, 0.0f);
 

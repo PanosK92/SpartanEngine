@@ -21,40 +21,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
-#include "../Math/Vector2.h"
-#include "RHI_Definitions.h"
-//==========================
+//= INCLUDES ===========
+#include "Definitions.h"
+//======================
 
 namespace Spartan
 {
-    class Camera;
+    class RHI_Texture;
 
-    class RHI_FidelityFX
+    class SP_CLASS RHI_OpenImageDenoise
     {
     public:
         static void Initialize();
         static void Shutdown();
-
-        // SPD
-        static void SPD_Dispatch(RHI_CommandList* cmd_list, RHI_Texture* texture);
-
-        // FSR 2
-        static void FSR2_ResetHistory();
-        static void FSR2_Resize(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output);
-        static void FSR2_GenerateJitterSample(float* x, float* y);
-        static void FSR2_Dispatch(
-            RHI_CommandList* cmd_list,
-            RHI_Texture* tex_color,
-            RHI_Texture* tex_color_opaque,
-            RHI_Texture* tex_depth,
-            RHI_Texture* tex_velocity,
-            RHI_Texture* tex_output,
-            Camera* camera,
-            const float delta_time,
-            const float sharpness,
-            const float exposure,
-            const float resolution_scale
-        );
+        static void Denoise(RHI_Texture* tex_in);
     };
 }

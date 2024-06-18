@@ -33,8 +33,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Queue.h"
 #include "../RHI/RHI_ConstantBuffer.h"
 #include "../RHI/RHI_Implementation.h"
-#include "../RHI/RHI_FidelityFX.h"
 #include "../RHI/RHI_StructuredBuffer.h"
+#include "../RHI/RHI_FidelityFX.h"
+#include "../RHI/RHI_OpenImageDenoise.h"
 #include "../World/Entity.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
@@ -146,8 +147,9 @@ namespace Spartan
             "renderer"
         );
 
-        // fidelityfx suite
+        // third party tool initialization
         RHI_FidelityFX::Initialize();
+        RHI_OpenImageDenoise::Initialize();
 
         // load/create resources
         {
@@ -227,7 +229,8 @@ namespace Spartan
             m_vertex_buffer_lines = nullptr;
         }
 
-        RHI_FidelityFX::Destroy();
+        RHI_OpenImageDenoise::Shutdown();
+        RHI_FidelityFX::Shutdown();
         RHI_Device::Destroy();
     }
 
