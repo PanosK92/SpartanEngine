@@ -60,7 +60,6 @@ namespace Spartan
         // world properties
         int max_solve_iterations       = 256;
         const float internal_time_step = 1.0f / 200.0f; // 200 Hz physics resolution (needed for car simulation)
-        const float real_time_step     = 1.0f / 60.0f;  // 60 Hz update rate
         float accumulator              = 0.0f;
         Math::Vector3 gravity          = Math::Vector3(0.0f, -9.81f, 0.0f);
 
@@ -319,7 +318,6 @@ namespace Spartan
             if (ray_callback.hasHit())
             {
                 btVector3 pick_position = ray_callback.m_hitPointWorld;
-
                 if (btRigidBody* body = (btRigidBody*)btRigidBody::upcast(ray_callback.m_collisionObject))
                 {
                     if (!(body->isStaticObject() || body->isKinematicObject()))
@@ -336,8 +334,6 @@ namespace Spartan
 
                         picked_body       = body;
                         picked_constraint = p2p;
-
-                        SP_LOG_INFO("Picked");
                     }
                 }
 
