@@ -92,7 +92,7 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs, float
     float2 ray_pos          = ray_start;
 
     // adjust position with some noise
-    float offset = get_noise_interleaved_gradient(screen_pos, false, false);
+    float offset  = get_noise_interleaved_gradient(screen_pos, true, true);
     ray_pos      += ray_step_uv * offset;
     
     // adaptive ray-marching variables
