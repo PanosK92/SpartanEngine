@@ -21,9 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-// RUNTIME
-#if defined(SPARTAN_RUNTIME)
-
 // definition - DirectX 12
 #if defined(API_GRAPHICS_D3D12)
 #pragma comment(lib, "d3d12.lib")
@@ -417,5 +414,3 @@ namespace Spartan
 #if defined (API_GRAPHICS_D3D12)
     #include "D3D12/D3D12_Utility.h"
 #endif
-
-#endif // RUNTIME
