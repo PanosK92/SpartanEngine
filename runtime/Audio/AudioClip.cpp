@@ -37,6 +37,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+#if defined(_MSC_VER)
     namespace
     {
         FMOD_RESULT F_CALLBACK channel_callback(FMOD_CHANNELCONTROL* channelcontrol, FMOD_CHANNELCONTROL_TYPE controlType, FMOD_CHANNELCONTROL_CALLBACK_TYPE callbackType, void* commandData1, void* commandData2)
@@ -74,6 +75,7 @@ namespace Spartan
             return length * channels * (bits / 8);
         }
     }
+#endif
 
     AudioClip::AudioClip() : IResource(ResourceType::Audio)
     {
