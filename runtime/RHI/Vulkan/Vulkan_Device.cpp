@@ -702,7 +702,7 @@ namespace Spartan
                 #if defined(_MSC_VER)
                 external_memory_handle_types.resize(physical_device_memory_properties.memoryTypeCount, VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR);
                 #else
-                SP_LOG_ERROR("Not implemented, you need to the Linux equivalent via VK_KHR_external_memory_fd");
+                SP_LOG_ERROR("Not implemented, you need to use the Linux equivalent via VK_KHR_external_memory_fd");
                 #endif
                 allocator_info.pTypeExternalMemoryHandleTypes = external_memory_handle_types.data();
 
@@ -1991,7 +1991,7 @@ namespace Spartan
 
             texture->SetExternalMemoryHandle(static_cast<void*>(win32_handle));
             #else
-            SP_LOG_ERROR("Not implemented, you need to the Linux equivalent via VK_KHR_external_memory_fd");
+            SP_LOG_ERROR("Not implemented, you need to use the Linux equivalent via VK_KHR_external_memory_fd");
             #endif
         }
 

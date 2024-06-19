@@ -19,15 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ====================
+//= INCLUDES =====================
 #include "pch.h"
 #include "RHI_OpenImageDenoise.h"
 #include "RHI_Device.h"
 #include "RHI_Texture.h"
 SP_WARNINGS_OFF
-#include "oidin/oidin/oidn.h"
+#include <OpenImageDenoise/oidn.h>
 SP_WARNINGS_ON
-//===============================
+//================================
 
 namespace Spartan
 {
@@ -41,8 +41,16 @@ namespace Spartan
     {
         // create a device
         OIDNDeviceType device_type = RHI_Device::GetPrimaryPhysicalDevice()->IsNvidia() ? OIDN_DEVICE_TYPE_CUDA : OIDN_DEVICE_TYPE_HIP;
-        OIDNDevice device = oidnNewDevice(device_type);
+        OIDNDevice device          = oidnNewDevice(device_type);
         oidnCommitDevice(device);
+
+        // check if the device supports OIDN_EXTERNAL_MEMORY_TYPE_FLAG_OPAQUE_WIN32
+        uint32_t external_memory_types = 0;
+        external_memory_types = oidnGetDeviceUInt(device, "externalMemoryTypes");
+        if ((external_memory_types & OIDN_EXTERNAL_MEMORY_TYPE_FLAG_OPAQUE_WIN32) == 0)
+        {
+            //SP_LOG_ERROR("The selected device does not support OIDN_EXTERNAL_MEMORY_TYPE_FLAG_OPAQUE_WIN32 external memory type.");
+        }
 
         // create a generic ray tracing filter
         filter = oidnNewFilter(device, "RT");
@@ -67,7 +75,7 @@ namespace Spartan
             device,
             OIDNExternalMemoryTypeFlag::OIDN_EXTERNAL_MEMORY_TYPE_FLAG_OPAQUE_WIN32,
             texture->GetExternalMemoryHandle(),
-            "texture",
+            texture->GetObjectName().c_str(),
             texture->GetWidth() * texture->GetHeight() * texture->GetBytesPerPixel()
         );
 
