@@ -1265,7 +1265,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_radius, const Renderer_Shader shader_type, const float radius, const uint32_t mip /*= all_mips*/)
+    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_radius, const Renderer_Shader shader_type, const float radius, const uint32_t mip /*= 0*/)
     {
         // acquire shader
         RHI_Shader* shader_c = GetShader(shader_type).get();
@@ -1273,10 +1273,8 @@ namespace Spartan
             return;
 
         // compute width and height
-        const bool mip_requested = mip != rhi_all_mips;
-        const uint32_t mip_range = mip_requested ? 1 : 0;
-        const uint32_t width     = mip_requested ? (tex_in->GetWidth()  >> mip) : tex_in->GetWidth();
-        const uint32_t height    = mip_requested ? (tex_in->GetHeight() >> mip) : tex_in->GetHeight();
+        const uint32_t width  = tex_in->GetWidth()  >> mip;
+        const uint32_t height = tex_in->GetHeight() >> mip;
 
         // compute thread group count
         const uint32_t thread_group_count    = 8;
@@ -1302,7 +1300,7 @@ namespace Spartan
 
             // set textures
             SetGbufferTextures(cmd_list);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_in, mip, mip_range);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_in, mip, 1);
             cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_radius);
             cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_blur); // write
 
@@ -1318,7 +1316,7 @@ namespace Spartan
 
             // set textures
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_blur);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_in, mip, mip_range); // write
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_in, mip, 1); // write
 
             // render
             cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
@@ -2231,12 +2229,15 @@ namespace Spartan
 
             m_environment_mips_to_filter_count--;
 
-            // the first 3 mips have obvious sample patterns, so blur them
+            // the first 3 mips have obvious sample patterns
+            // the rest can have seems since they are a few pixels
+            // so we blur them all
             if (m_environment_mips_to_filter_count == 0)
             {
-                Pass_Blur_Gaussian(cmd_list, tex_environment, nullptr, Renderer_Shader::blur_gaussian_c, 32.0f, 1);
-                Pass_Blur_Gaussian(cmd_list, tex_environment, nullptr, Renderer_Shader::blur_gaussian_c, 32.0f, 2);
-                Pass_Blur_Gaussian(cmd_list, tex_environment, nullptr, Renderer_Shader::blur_gaussian_c, 16.0f, 3);
+                for (uint32_t i = 1; i < mip_count; i++)
+                {
+                    Pass_Blur_Gaussian(cmd_list, tex_environment, nullptr, Renderer_Shader::blur_gaussian_c, 32.0f, i);
+                }
             }
         }
         cmd_list->EndTimeblock();
