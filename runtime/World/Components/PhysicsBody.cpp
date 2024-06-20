@@ -32,6 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/Car.h"
 #include "../../Physics/Physics.h"
 #include "../../Physics/BulletPhysicsHelper.h"
+#include "../Rendering/Renderer.h"
+#include "ProgressTracker.h"
 SP_WARNINGS_OFF
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 #include <BulletCollision/CollisionShapes/btSphereShape.h>
@@ -43,7 +45,6 @@ SP_WARNINGS_OFF
 #include <BulletCollision/CollisionShapes/btTriangleMesh.h>
 #include <BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h>
 #include <BulletCollision/CollisionShapes/btConvexHullShape.h>
-#include "../Rendering/Renderer.h"
 SP_WARNINGS_ON
 //====================================================================
 
@@ -449,7 +450,7 @@ namespace Spartan
 
     void PhysicsBody::SetRotation(const Quaternion& rotation, const bool activate /*= true*/) const
     {
-        if (!m_rigid_body)
+        if (!m_rigid_body || ProgressTracker::IsLoading())
             return;
 
         // set rotation to world transform
