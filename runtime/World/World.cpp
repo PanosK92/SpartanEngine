@@ -49,12 +49,12 @@ namespace Spartan
 {
     namespace
     {
-        vector<shared_ptr<Entity>> m_entities;
-        string m_name;
-        string m_file_path;
-        mutex m_entity_access_mutex;
-        bool m_resolve            = false;
-        bool m_was_in_editor_mode = false;
+        unordered_map<uint64_t, shared_ptr<Entity>> entities;
+        string name;
+        string file_path;
+        mutex entity_access_mutex;
+        bool resolve            = false;
+        bool was_in_editor_mode = false;
 
         // default worlds resources
         shared_ptr<Entity> m_default_terrain             = nullptr;
@@ -184,45 +184,45 @@ namespace Spartan
     {
         SP_PROFILE_CPU();
 
-        lock_guard<mutex> lock(m_entity_access_mutex);
+        lock_guard<mutex> lock(entity_access_mutex);
 
         // tick entities
         {
             // detect game toggling
-            const bool started   =  Engine::IsFlagSet(EngineMode::Game) &&  m_was_in_editor_mode;
-            const bool stopped   = !Engine::IsFlagSet(EngineMode::Game) && !m_was_in_editor_mode;
-            m_was_in_editor_mode = !Engine::IsFlagSet(EngineMode::Game);
+            const bool started =  Engine::IsFlagSet(EngineMode::Game) &&  was_in_editor_mode;
+            const bool stopped = !Engine::IsFlagSet(EngineMode::Game) && !was_in_editor_mode;
+            was_in_editor_mode = !Engine::IsFlagSet(EngineMode::Game);
 
             // start
             if (started)
             {
-                for (shared_ptr<Entity>& entity : m_entities)
+                for (auto it : entities)
                 {
-                    entity->OnStart();
+                    it.second->OnStart();
                 }
             }
 
             // stop
             if (stopped)
             {
-                for (shared_ptr<Entity>& entity : m_entities)
+                for (auto it : entities)
                 {
-                    entity->OnStop();
+                    it.second->OnStop();
                 }
             }
 
             // tick
-            for (shared_ptr<Entity>& entity : m_entities)
+            for (auto it : entities)
             {
-                entity->Tick();
+                it.second->Tick();
             }
         }
 
         // notify renderer
-        if (m_resolve && !ProgressTracker::IsLoading())
+        if (resolve && !ProgressTracker::IsLoading())
         {
-            Renderer::SetEntities(m_entities);
-            m_resolve = false;
+            Renderer::SetEntities(entities);
+            resolve = false;
         }
 
         TickDefaultWorlds();
@@ -242,8 +242,8 @@ namespace Spartan
             file_path += EXTENSION_WORLD;
         }
 
-        m_name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-        m_file_path = file_path;
+        name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+        file_path = file_path;
 
         // Notify subsystems that need to save data
         SP_FIRE_EVENT(EventType::WorldSaveStart);
@@ -281,7 +281,7 @@ namespace Spartan
         }
 
         // Report time
-        SP_LOG_INFO("World \"%s\" has been saved. Duration %.2f ms", m_file_path.c_str(), timer.GetElapsedTimeMs());
+        SP_LOG_INFO("World \"%s\" has been saved. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
 
         // Notify subsystems waiting for us to finish
         SP_FIRE_EVENT(EventType::WorldSavedEnd);
@@ -289,8 +289,10 @@ namespace Spartan
         return true;
     }
 
-    bool World::LoadFromFile(const string& file_path)
+    bool World::LoadFromFile(const string& file_path_)
     {
+        file_path = file_path_;
+
         if (!FileSystem::Exists(file_path))
         {
             SP_LOG_ERROR("\"%s\" was not found.", file_path.c_str());
@@ -308,8 +310,7 @@ namespace Spartan
         // clear existing entities
         Clear();
 
-        m_name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-        m_file_path = file_path;
+        name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
 
         // notify subsystems that need to load data
         SP_FIRE_EVENT(EventType::WorldLoadStart);
@@ -331,12 +332,12 @@ namespace Spartan
         // serialize root entities
         for (uint32_t i = 0; i < root_entity_count; i++)
         {
-            m_entities[i]->Deserialize(file.get(), nullptr);
+            entities[i]->Deserialize(file.get(), nullptr);
             ProgressTracker::GetProgress(ProgressType::World).JobDone();
         }
 
         // report time
-        SP_LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", m_file_path.c_str(), timer.GetElapsedTimeMs());
+        SP_LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
 
         SP_FIRE_EVENT(EventType::WorldLoadEnd);
 
@@ -371,16 +372,16 @@ namespace Spartan
 
     void World::Resolve()
     {
-        m_resolve = true;
+        resolve = true;
     }
 
     shared_ptr<Entity> World::CreateEntity()
     {
-        lock_guard lock(m_entity_access_mutex);
+        lock_guard lock(entity_access_mutex);
 
         shared_ptr<Entity> entity = make_shared<Entity>();
         entity->Initialize();
-        m_entities.emplace_back(entity);
+        entities[entity->GetObjectId()] = entity;
 
         return entity;
     }
@@ -395,101 +396,89 @@ namespace Spartan
     {
         SP_ASSERT_MSG(entity_to_remove != nullptr, "Entity is null");
 
-        lock_guard<mutex> lock(m_entity_access_mutex);
+        lock_guard<mutex> lock(entity_access_mutex);
 
-        // remove the entity and all of its children
+        // Remove the entity and all of its children
         {
-            // get the root entity and its descendants
-            vector<Entity*> entities_to_remove;
-            entities_to_remove.push_back(entity_to_remove);        // add the root entity
-            entity_to_remove->GetDescendants(&entities_to_remove); // get descendants 
+            // Get the root entity and its descendants
+            std::vector<Entity*> entities_to_remove;
+            entities_to_remove.push_back(entity_to_remove);        // Add the root entity
+            entity_to_remove->GetDescendants(&entities_to_remove); // Get descendants 
 
-            // create a set containing the object IDs of entities to remove
-            set<uint64_t> ids_to_remove;
-            for (Entity* entity : entities_to_remove)
-            {
+            // Create a set containing the object IDs of entities to remove
+            std::set<uint64_t> ids_to_remove;
+            for (Entity* entity : entities_to_remove) {
                 ids_to_remove.insert(entity->GetObjectId());
             }
 
-            // remove entities using a single loop
-            m_entities.erase(remove_if(m_entities.begin(), m_entities.end(),
-            [&](const shared_ptr<Entity>& entity)
+            // Remove entities using a single loop
+            for (auto it = entities.begin(); it != entities.end(); )
             {
-                return ids_to_remove.count(entity->GetObjectId()) > 0;
-            }),
-            m_entities.end());
+                if (ids_to_remove.count(it->first) > 0)
+                {
+                    it = entities.erase(it);
+                }
+                else
+                {
+                    ++it;
+                }
+            }
 
-            // if there was a parent, update it
-            if (shared_ptr<Entity> parent = entity_to_remove->GetParent())
+            // If there was a parent, update it
+            if (std::shared_ptr<Entity> parent = entity_to_remove->GetParent())
             {
                 parent->AcquireChildren();
             }
         }
 
-        m_resolve = true;
+        resolve = true;
     }
 
     vector<shared_ptr<Entity>> World::GetRootEntities()
     {
-        lock_guard<mutex> lock(m_entity_access_mutex);
+        lock_guard<mutex> lock(entity_access_mutex);
 
         vector<shared_ptr<Entity>> root_entities;
-        for (const shared_ptr<Entity>& entity : m_entities)
+        for (auto it : entities)
         {
-            if (!entity->HasParent())
+            if (!it.second->HasParent())
             {
-                root_entities.emplace_back(entity);
+                root_entities.emplace_back(it.second);
             }
         }
 
         return root_entities;
     }
 
-    const shared_ptr<Entity>& World::GetEntityByName(const string& name)
-    {
-        lock_guard<mutex> lock(m_entity_access_mutex);
-
-        for (shared_ptr<Entity>& entity : m_entities)
-        {
-            if (entity->GetObjectName() == name)
-                return entity;
-        }
-
-        static shared_ptr<Entity> empty;
-        return empty;
-    }
-
     const shared_ptr<Entity>& World::GetEntityById(const uint64_t id)
     {
-        lock_guard<mutex> lock(m_entity_access_mutex);
+        lock_guard<mutex> lock(entity_access_mutex);
 
-        for (const auto& entity : m_entities)
-        {
-            if (entity->GetObjectId() == id)
-                return entity;
-        }
+        auto it = entities.find(id);
+        if (it != entities.end())
+            return it->second;
 
         static shared_ptr<Entity> empty;
         return empty;
     }
 
-    const vector<shared_ptr<Entity>>& World::GetAllEntities()
+    const unordered_map<uint64_t, shared_ptr<Entity>>& World::GetAllEntities()
     {
-        return m_entities;
+        return entities;
     }
 
     void World::Clear()
     {
-        // Fire event
+        // fire event
         SP_FIRE_EVENT(EventType::WorldClear);
 
-        // Clear
-        m_entities.clear();
-        m_name.clear();
-        m_file_path.clear();
+        // clear
+        entities.clear();
+        name.clear();
+        file_path.clear();
 
-        // Mark for resolve
-        m_resolve = true;
+        // mark for resolve
+        resolve = true;
     }
 
     void World::CreateDefaultWorldObjects()
@@ -1402,11 +1391,11 @@ namespace Spartan
 
     const string World::GetName()
     {
-        return m_name;
+        return name;
     }
 
     const string& World::GetFilePath()
     {
-        return m_file_path;
+        return file_path;
     }
 }
