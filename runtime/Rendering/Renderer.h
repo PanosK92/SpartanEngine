@@ -85,7 +85,7 @@ namespace Spartan
         static uint64_t GetFrameNum();
         static RHI_Api_Type GetRhiApiType();
         static void Screenshot(const std::string& file_path);
-        static void SetEntities(std::vector<std::shared_ptr<Entity>>& entities);
+        static void SetEntities(std::unordered_map<uint64_t, std::shared_ptr<Entity>>& entities);
         static bool CanUseCmdList();
 
         //= RESOLUTION/SIZE =============================================================================

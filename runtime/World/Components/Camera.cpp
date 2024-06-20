@@ -177,9 +177,11 @@ namespace Spartan
         Ray ray = ComputePickingRay();
         vector<RayHit> hits;
         {
-            const vector<shared_ptr<Entity>>& entities = World::GetAllEntities();
-            for (const shared_ptr<Entity> entity : entities)
+            const unordered_map<uint64_t, shared_ptr<Entity>>& entities = World::GetAllEntities();
+            for (auto it : entities)
             {
+                shared_ptr<Entity> entity = it.second;
+
                 // Make sure there entity has a renderable
                 if (!entity->GetComponent<Renderable>())
                     continue;

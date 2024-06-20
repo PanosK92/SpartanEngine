@@ -450,6 +450,7 @@ namespace Spartan
 
     void PhysicsBody::SetRotation(const Quaternion& rotation, const bool activate /*= true*/) const
     {
+        // setting rotation when loading can sometimes cause a crash, so early exit
         if (!m_rigid_body || ProgressTracker::IsLoading())
             return;
 

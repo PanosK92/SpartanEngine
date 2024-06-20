@@ -424,15 +424,17 @@ namespace Spartan
         buffer->Update(&m_cb_frame_cpu);
     }
 
-    void Renderer::SetEntities(vector<shared_ptr<Entity>>& entities)
+    void Renderer::SetEntities(unordered_map<uint64_t, shared_ptr<Entity>>& entities)
     {
         m_mutex_renderables.lock();
 
         // clear previous state
         m_renderables.clear();
 
-        for (shared_ptr<Entity>& entity : entities)
+        for (auto it : entities)
         {
+            shared_ptr<Entity>& entity = it.second;
+
             if (!entity->IsActive())
                 continue;
 
