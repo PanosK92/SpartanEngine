@@ -138,7 +138,7 @@ function runtime_project_configuration()
             kind "SharedLib"
         end
         staticruntime "On"
-        defines{ "SPARTAN_RUNTIME", API_CPP_DEFINE  }
+        defines{ API_CPP_DEFINE  }
         if os.target() == "windows" then
             conformancemode "On"
         end
@@ -238,7 +238,7 @@ function editor_project_configuration()
         cppdialect (CPP_VERSION)
         kind "WindowedApp"
         staticruntime "On"
-        defines{ "SPARTAN_EDITOR", API_CPP_DEFINE }
+        defines{ API_CPP_DEFINE }
         if os.target() == "windows" then
             conformancemode "On"
         end
