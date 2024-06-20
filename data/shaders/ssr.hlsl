@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const float g_ssr_depth_threshold = 8.0f;
+static const float g_ssr_depth_threshold = 1.0f;
 
 uint compute_step_count(float roughness)
 {

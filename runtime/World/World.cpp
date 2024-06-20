@@ -1179,6 +1179,7 @@ namespace Spartan
             shared_ptr<Entity> light = World::CreateEntity();
             light->SetObjectName("light_point");
             light->SetPositionLocal(Vector3(2.2039f, 3.9965f, 3.2015f));
+            light->AddComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
             light->AddComponent<Light>()->SetFlag(LightFlags::ShadowsTransparent, false);
             light->AddComponent<Light>()->SetFlag(LightFlags::Volumetric, false);
             light->GetComponent<Light>()->SetLightType(LightType::Point);
