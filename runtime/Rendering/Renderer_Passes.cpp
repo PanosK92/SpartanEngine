@@ -434,7 +434,7 @@ namespace Spartan
                 for (uint32_t i = 1; i < tex_render_opaque->GetMipCount(); i++)
                 {
                     const float radius = 1.0f;
-                    Pass_Blur_Gaussian(cmd_list, tex_render_opaque, nullptr, Renderer_Shader::blur_gaussian_c, radius, i);
+                    Pass_Blur_Gaussian(cmd_list, tex_render_opaque, nullptr, radius, i);
                 }
             }
             cmd_list->EndTimeblock();
@@ -951,9 +951,8 @@ namespace Spartan
             return;
 
         // acquire resources
-        RHI_Texture* tex_ssr           = GetRenderTarget(Renderer_RenderTarget::ssr).get();
-        RHI_Texture* tex_ssr_roughness = GetRenderTarget(Renderer_RenderTarget::ssr_roughness).get();
-        RHI_Shader* shader_c           = GetShader(Renderer_Shader::ssr_c).get();
+        RHI_Texture* tex_ssr = GetRenderTarget(Renderer_RenderTarget::ssr).get();
+        RHI_Shader* shader_c = GetShader(Renderer_Shader::ssr_c).get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -972,15 +971,9 @@ namespace Spartan
         SetGbufferTextures(cmd_list);
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);             // read
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssr);            // write
-        cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_ssr_roughness); // write
 
         // render
-        cmd_list->InsertBarrierTextureReadWrite(tex_ssr_roughness);
         cmd_list->Dispatch(tex_ssr);
-        cmd_list->InsertBarrierTextureReadWrite(tex_ssr_roughness);
-
-        // blur based on alpha - which contains the reflection roughness
-        Pass_Blur_Gaussian(cmd_list, tex_ssr, tex_ssr_roughness, Renderer_Shader::blur_gaussian_bilaterial_radius_from_texture_c, 0.0f);
 
         // real time blurring can only go so far, so generate mips that we can use to emulate very high roughness
         Pass_Ffx_Spd(cmd_list, tex_ssr, Renderer_DownsampleFilter::Average);
@@ -1265,10 +1258,10 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_radius, const Renderer_Shader shader_type, const float radius, const uint32_t mip /*= 0*/)
+    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_radius, const float radius, const uint32_t mip /*= 0*/)
     {
         // acquire shader
-        RHI_Shader* shader_c = GetShader(shader_type).get();
+        RHI_Shader* shader_c = GetShader(Renderer_Shader::blur_gaussian_c).get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -1277,9 +1270,9 @@ namespace Spartan
         const uint32_t height = tex_in->GetHeight() >> mip;
 
         // compute thread group count
-        const uint32_t thread_group_count    = 8;
-        const uint32_t thread_group_count_x_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(width) / thread_group_count));
-        const uint32_t thread_group_count_y_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(height) / thread_group_count));
+        const uint32_t thread_group_count   = 8;
+        const uint32_t thread_group_count_x = (width + thread_group_count - 1) / thread_group_count;
+        const uint32_t thread_group_count_y = (height + thread_group_count - 1) / thread_group_count;
 
         // acquire blur scratch buffer
         RHI_Texture* tex_blur = GetRenderTarget(Renderer_RenderTarget::blur).get();
@@ -1305,7 +1298,7 @@ namespace Spartan
             cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_blur); // write
 
             // render
-            cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
+            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y);
         }
 
         // vertical pass
@@ -1319,7 +1312,7 @@ namespace Spartan
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_in, mip, 1); // write
 
             // render
-            cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
+            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y);
         }
 
         cmd_list->EndMarker();
@@ -2079,7 +2072,7 @@ namespace Spartan
                         // blur the color silhouette
                         {
                             const float radius = 30.0f;
-                            Pass_Blur_Gaussian(cmd_list, tex_outline, nullptr, Renderer_Shader::blur_gaussian_c, radius);
+                            Pass_Blur_Gaussian(cmd_list, tex_outline, nullptr, radius);
                         }
                         
                         // combine color silhouette with frame
@@ -2236,7 +2229,7 @@ namespace Spartan
             {
                 for (uint32_t i = 1; i < mip_count; i++)
                 {
-                    Pass_Blur_Gaussian(cmd_list, tex_environment, nullptr, Renderer_Shader::blur_gaussian_c, 32.0f, i);
+                    Pass_Blur_Gaussian(cmd_list, tex_environment, nullptr, 32.0f, i);
                 }
             }
         }

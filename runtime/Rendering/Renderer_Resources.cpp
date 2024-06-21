@@ -246,8 +246,7 @@ namespace Spartan
             // ssr
             {
                 uint32_t mip_count_ssr = 5; // we use mips to emulate high roughness, low roughness is emulated via a gaussian blur, therefore we don't need a full mip chain, just enough to get believable results
-                render_target(Renderer_RenderTarget::ssr)           = make_shared<RHI_Texture2D>(width_render, height_render, mip_count_ssr, RHI_Format::R16G16B16A16_Float, flags | RHI_Texture_PerMipViews | RHI_Texture_ClearBlit, "ssr");
-                render_target(Renderer_RenderTarget::ssr_roughness) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16_Float, flags, "ssr_roughness");
+                render_target(Renderer_RenderTarget::ssr) = make_shared<RHI_Texture2D>(width_render, height_render, mip_count_ssr, RHI_Format::R16G16B16A16_Float, flags | RHI_Texture_PerMipViews | RHI_Texture_ClearBlit, "ssr");
             }
 
             // misc
@@ -402,12 +401,6 @@ namespace Spartan
             shader(Renderer_Shader::blur_gaussian_bilaterial_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::blur_gaussian_bilaterial_c)->AddDefine("PASS_BLUR_GAUSSIAN_BILATERAL");
             shader(Renderer_Shader::blur_gaussian_bilaterial_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "blur.hlsl", async);
-
-            // gaussian bilateral - where the alpha is used as the blur radius
-            shader(Renderer_Shader::blur_gaussian_bilaterial_radius_from_texture_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::blur_gaussian_bilaterial_radius_from_texture_c)->AddDefine("PASS_BLUR_GAUSSIAN_BILATERAL");
-            shader(Renderer_Shader::blur_gaussian_bilaterial_radius_from_texture_c)->AddDefine("RADIUS_FROM_TEXTURE");
-            shader(Renderer_Shader::blur_gaussian_bilaterial_radius_from_texture_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "blur.hlsl", async);
         }
 
         // bloom
