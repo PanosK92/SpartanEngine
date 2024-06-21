@@ -397,12 +397,12 @@ namespace Spartan
         // asserts
         if (mip_specified)
         {
-            SP_ASSERT_MSG(HasPerMipViews(), "A mip is specified but the texture has no per mip views");
+            SP_ASSERT_MSG(HasPerMipViews(), (string("A mip is specified but the texture \"") + GetObjectName() + string("\" has no per mip views")).c_str());
             SP_ASSERT_MSG(mip_range != 0, "When a mip is specified, the mip_range can't be zero");
         }
 
-        // Check if the layouts are indeed different from the new layout
-        // If they are different, then find at which mip the difference starts
+        // check if the layouts are indeed different from the new layout
+        // if they are different, then find at which mip the difference starts
         bool transition_required = false;
         for (uint32_t i = mip_index; i < mip_index + mip_range; i++)
         {
