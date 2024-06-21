@@ -161,7 +161,7 @@ namespace Spartan
         );
         void InsertBarrierTexture(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new);
         void InsertBarrierTextureReadWrite(RHI_Texture* texture);
-        void GroupPendingBarriers();
+        void InsertPendingBarrierGroup();
 
         // misc
         void SetIgnoreClearValues(const bool ignore_clear_values) { m_ignore_clear_values = ignore_clear_values; }

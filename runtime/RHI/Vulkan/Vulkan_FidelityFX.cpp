@@ -290,7 +290,7 @@ namespace Spartan
             tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
             tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
             tex_output->SetLayout(RHI_Image_Layout::General, cmd_list);
-            cmd_list->GroupPendingBarriers();
+            cmd_list->InsertPendingBarrierGroup();
         }
 
         // dispatch description
