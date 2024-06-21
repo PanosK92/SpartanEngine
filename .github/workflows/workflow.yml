@@ -7,6 +7,7 @@ jobs:
     strategy:
       matrix:
         api: [vulkan, d3d12]
+        configuration: [Release, Debug]
     runs-on: "windows-latest"
     env:
       msbuild_path: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
@@ -33,17 +34,17 @@ jobs:
 
       - name: Build
         shell: cmd
-        run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m spartan.sln'
+        run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=${{ matrix.configuration }} /m spartan.sln'
 
       - name: Create artifacts
         if: github.event_name != 'pull_request' && matrix.api != 'd3d12'
         shell: cmd
         run: |
           build_scripts\package_artifact.bat ${{ matrix.api }}
-          build_scripts\7z.exe a binaries_only_${{ matrix.api }}.7z .\binaries\dxcompiler.dll .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
+          build_scripts\7z.exe a binaries_only_${{ matrix.api }}_${{ lower(matrix.configuration) }}.7z .\binaries\dxcompiler.dll .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
 
       - name: Upload full artifact
-        if: github.event_name != 'pull_request' && matrix.api != 'd3d12'
+        if: github.event_name != 'pull_request' && matrix.api != 'd3d12' && matrix.configuration == 'Release'
         uses: actions/upload-artifact@v4
         with:
           name: build_${{ matrix.api }}
@@ -53,8 +54,8 @@ jobs:
         if: github.event_name != 'pull_request' && matrix.api != 'd3d12'
         uses: actions/upload-artifact@v4
         with:
-          name: binaries_only_${{ matrix.api }}
-          path: binaries_only_${{ matrix.api }}.7z
+          name: binaries_only_${{ matrix.api }}_${{ lower(matrix.configuration) }}
+          path: binaries_only_${{ matrix.api }}_${{ lower(matrix.configuration) }}.7z
 
   release:
     if: github.event_name != 'pull_request'
@@ -72,11 +73,17 @@ jobs:
           name: build_vulkan
           path: build_vulkan.7z
 
-      - name: Download vulkan binaries-only build
+      - name: Download vulkan binaries-only release build
         uses: actions/download-artifact@v4
         with:
-          name: binaries_only_vulkan
-          path: binaries_only_vulkan.7z
+          name: binaries_only_vulkan_release
+          path: binaries_only_vulkan_release.7z
+
+      - name: Download vulkan binaries-only debug build
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries_only_vulkan_debug
+          path: binaries_only_vulkan_debug.7z
       
       - name: Publish release
         uses: "marvinpinto/action-automatic-releases@latest"
@@ -87,7 +94,8 @@ jobs:
           title: "Development Build"
           files: |
             build_vulkan.7z
-            binaries_only_vulkan.7z
+            binaries_only_vulkan_release.7z
+            binaries_only_vulkan_debug.7z
 
       - name: Set environment file for release
         run: echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
