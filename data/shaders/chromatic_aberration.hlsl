@@ -31,8 +31,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
-    if (any(int2(thread_id.xy) >= resolution_out))
-        return;
 
     const float2 uv       = (thread_id.xy + 0.5f) / resolution_out;
     float camera_aperture = pass_get_f3_value().x;
