@@ -110,14 +110,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
-    if (any(int2(thread_id.xy) >= resolution_out))
-        return;
 
-    // ssgi
     float visibility      = 0.0f;
     float3 diffuse_bounce = 0.0f;
     compute_ssgi(thread_id.xy, resolution_out, visibility, diffuse_bounce);
 
-    // out
     tex_uav[thread_id.xy] = float4(diffuse_bounce, visibility);
 }

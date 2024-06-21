@@ -83,9 +83,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         resolution_out = temp;
     }
 
-    if (any(int2(thread_id.xy) >= resolution_out))
-        return;
-
     float4 color = tex_uav[thread_id.xy];
  
     // deduce a couple of things
@@ -104,4 +101,3 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = color;
 }
-

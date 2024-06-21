@@ -28,8 +28,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     float2 resolution_out;
     tex_uav_uint.GetDimensions(resolution_out.x, resolution_out.y);
-    if (any(int2(thread_id.xy) >= resolution_out))
-        return;
 
     // get luminance
     float2 uv        = (thread_id.xy + 0.5f) / resolution_out;
