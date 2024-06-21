@@ -172,12 +172,5 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float alpha                = compute_alpha(thread_id.xy, hit_uv, v_dot_r);
     float3 reflection_color    = tex.SampleLevel(samplers[sampler_bilinear_clamp], hit_uv, 0).rgb * alpha; // modulate with alpha because invalid UVs will get clamped colors
 
-    // determine reflection roughness
-    float max_reflection_distance = 1.0f;
-    float distance_attenuation    = smoothstep(0.0f, max_reflection_distance, reflection_distance);
-    float reflection_roughness    = lerp(surface.roughness, clamp(surface.roughness * 1.5f, 0.0f, 1.0f), distance_attenuation);
-    reflection_roughness          = surface.roughness;
-
     tex_uav[thread_id.xy]  = float4(reflection_color, alpha);
-    tex_uav2[thread_id.xy] = (reflection_roughness * reflection_roughness) * 10.0f;
 }
