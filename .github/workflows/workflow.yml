@@ -41,7 +41,11 @@ jobs:
         shell: cmd
         run: |
           build_scripts\package_artifact.bat ${{ matrix.api }}
-          build_scripts\7z.exe a binaries_only_${{ matrix.api }}_${{ lower(matrix.configuration) }}.7z .\binaries\dxcompiler.dll .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
+          IF "${{ matrix.configuration }}" == "Release" (
+            build_scripts\7z.exe a binaries_only_${{ matrix.api }}_release.7z .\binaries\dxcompiler.dll .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
+          ) ELSE (
+            build_scripts\7z.exe a binaries_only_${{ matrix.api }}_debug.7z .\binaries\dxcompiler.dll .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
+          )
 
       - name: Upload full artifact
         if: github.event_name != 'pull_request' && matrix.api != 'd3d12' && matrix.configuration == 'Release'
@@ -54,8 +58,8 @@ jobs:
         if: github.event_name != 'pull_request' && matrix.api != 'd3d12'
         uses: actions/upload-artifact@v4
         with:
-          name: binaries_only_${{ matrix.api }}_${{ lower(matrix.configuration) }}
-          path: binaries_only_${{ matrix.api }}_${{ lower(matrix.configuration) }}.7z
+          name: binaries_only_${{ matrix.api }}_${{ matrix.configuration == 'Release' && 'release' || 'debug' }}
+          path: binaries_only_${{ matrix.api }}_${{ matrix.configuration == 'Release' && 'release' || 'debug' }}.7z
 
   release:
     if: github.event_name != 'pull_request'
