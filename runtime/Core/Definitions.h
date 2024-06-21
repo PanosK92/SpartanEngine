@@ -138,35 +138,24 @@ namespace Spartan
 //= ASSERT =====================================================================
 // on debug mode, the assert will have the default behaviour
 // on release mode, the assert will write the error to a file and then break
-#ifdef DEBUG
 #include <cassert>
-#define SP_ASSERT(expression)                                      \
-if (!(expression))                                                 \
-{                                                                  \
-    Spartan::Log::SetLogToFile(true);                              \
-    SP_LOG_ERROR("Assertion failed: " #expression);                \
-    SP_LOG_ERROR("Callstack:\n%s", Spartan::get_callstack_c_str());\
-    assert(expression);                                            \
+#define SP_ASSERT(expression)                                         \
+if (!(expression))                                                    \
+{                                                                     \
+    Spartan::Log::SetLogToFile(true);                                 \
+    SP_LOG_ERROR("Assertion failed: " #expression);                   \
+    SP_LOG_ERROR("Callstack:\n%s",    Spartan::get_callstack_c_str());\
+    assert(expression);                                               \
 }
-#else
-#define SP_ASSERT(expression)                                      \
-if (!(expression))                                                 \
-{                                                                  \
-    Spartan::Log::SetLogToFile(true);                              \
-    SP_LOG_ERROR("Assertion failed: " #expression);                \
-    SP_LOG_ERROR("Callstack:\n%s", Spartan::get_callstack_c_str());\
-    SP_DEBUG_BREAK();                                              \
-}
-#endif
 
-#define SP_ASSERT_MSG(expression, text_message)                    \
-if (!(expression))                                                 \
-{                                                                  \
-    Spartan::Log::SetLogToFile(true);                              \
-    SP_LOG_ERROR("Assertion failed: " #expression);                \
-    SP_LOG_ERROR("Message: %s", text_message);                     \
-    SP_LOG_ERROR("Callstack:\n%s", Spartan::get_callstack_c_str());\
-    SP_DEBUG_BREAK();                                              \
+#define SP_ASSERT_MSG(expression, text_message)                       \
+if (!(expression))                                                    \
+{                                                                     \
+    Spartan::Log::SetLogToFile(true);                                 \
+    SP_LOG_ERROR("Assertion failed: " #expression);                   \
+    SP_LOG_ERROR("Message: %s",       text_message);                  \
+    SP_LOG_ERROR("Callstack:\n%s",    Spartan::get_callstack_c_str());\
+    assert(expression);                                               \
 }
 
 // A static assert
