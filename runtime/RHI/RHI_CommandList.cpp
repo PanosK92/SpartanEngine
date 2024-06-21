@@ -64,10 +64,9 @@ namespace Spartan
 
     void RHI_CommandList::Dispatch(RHI_Texture* texture)
     {
-        const float thread_group_count      = 8.0f;
-        const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(texture->GetWidth()) / thread_group_count));
-        const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(texture->GetHeight()) / thread_group_count));
-
+        const uint32_t thread_group_count   = 8;
+        const uint32_t thread_group_count_x = (texture->GetWidth() + thread_group_count - 1) / thread_group_count;
+        const uint32_t thread_group_count_y = (texture->GetHeight() + thread_group_count - 1) / thread_group_count;
         Dispatch(thread_group_count_x, thread_group_count_y);
     }
 }
