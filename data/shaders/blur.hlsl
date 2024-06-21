@@ -69,6 +69,8 @@ float3 gaussian_blur(const uint2 pos, float2 resolution_in, float2 resolution_ou
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     const float3 f3_value  = pass_get_f3_value();
+    const float radius     = f3_value.x;
+    const float sigma      = radius / 3.0f;
     const float2 direction = f3_value.y == 1.0f ? float2(0.0f, 1.0f) : float2(1.0f, 0.0f);
 
     float2 resolution_in;
@@ -82,15 +84,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         resolution_in  = resolution_out;
         resolution_out = temp;
     }
-
-    float4 color = tex_uav[thread_id.xy];
- 
-    // deduce a couple of things
-    const float radius = f3_value.x;
-    const float sigma  = radius / 3.0f;
-    const float2 uv    = (thread_id.xy + 0.5f) / resolution_in;
+    const float2 uv = (thread_id.xy + 0.5f) / resolution_in;
     
-    color.rgb = gaussian_blur(thread_id.xy, resolution_in, resolution_out, uv, radius, sigma * sigma, direction);
-
+    float4 color          = tex_uav[thread_id.xy];
+    color.rgb             = gaussian_blur(thread_id.xy, resolution_in, resolution_out, uv, radius, sigma * sigma, direction);
     tex_uav[thread_id.xy] = color;
 }

@@ -434,7 +434,7 @@ namespace Spartan
                 for (uint32_t i = 1; i < tex_render_opaque->GetMipCount(); i++)
                 {
                     const float radius = 1.0f;
-                    Pass_Blur_Gaussian(cmd_list, tex_render_opaque, nullptr, radius, i);
+                    Pass_Blur_Gaussian(cmd_list, tex_render_opaque, radius, i);
                 }
             }
             cmd_list->EndTimeblock();
@@ -1258,7 +1258,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_radius, const float radius, const uint32_t mip /*= 0*/)
+    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const float radius, const uint32_t mip /*= rhi_all_mips*/)
     {
         // acquire shader
         RHI_Shader* shader_c = GetShader(Renderer_Shader::blur_gaussian_c).get();
@@ -1285,6 +1285,9 @@ namespace Spartan
         pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
+        const bool mip_requested = mip != rhi_all_mips;
+        const uint32_t mip_range = mip_requested ? 1 : 0;
+
         // horizontal pass
         {
             // set pass constants
@@ -1293,9 +1296,8 @@ namespace Spartan
 
             // set textures
             SetGbufferTextures(cmd_list);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_in, mip, 1);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_radius);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_blur); // write
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in, mip, mip_range);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_blur); // write
 
             // render
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y);
@@ -1309,7 +1311,7 @@ namespace Spartan
 
             // set textures
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_blur);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_in, mip, 1); // write
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_in, mip, mip_range); // write
 
             // render
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y);
@@ -2045,13 +2047,13 @@ namespace Spartan
                         {
                             // set pipeline state
                             static RHI_PipelineState pso;
-                            pso.shaders[RHI_Shader_Type::Vertex]                   = shader_v;
-                            pso.shaders[RHI_Shader_Type::Pixel]                    = shader_p;
-                            pso.rasterizer_state                = GetRasterizerState(Renderer_RasterizerState::Solid).get();
-                            pso.blend_state                     = GetBlendState(Renderer_BlendState::Off).get();
-                            pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
-                            pso.render_target_color_textures[0] = tex_outline;
-                            pso.clear_color[0]                  = Color::standard_transparent;
+                            pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
+                            pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
+                            pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid).get();
+                            pso.blend_state                      = GetBlendState(Renderer_BlendState::Off).get();
+                            pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
+                            pso.render_target_color_textures[0]  = tex_outline;
+                            pso.clear_color[0]                   = Color::standard_transparent;
                             cmd_list->SetIgnoreClearValues(false);
                             cmd_list->SetPipelineState(pso);
                         
@@ -2072,7 +2074,7 @@ namespace Spartan
                         // blur the color silhouette
                         {
                             const float radius = 30.0f;
-                            Pass_Blur_Gaussian(cmd_list, tex_outline, nullptr, radius);
+                            Pass_Blur_Gaussian(cmd_list, tex_outline, radius);
                         }
                         
                         // combine color silhouette with frame
@@ -2229,7 +2231,7 @@ namespace Spartan
             {
                 for (uint32_t i = 1; i < mip_count; i++)
                 {
-                    Pass_Blur_Gaussian(cmd_list, tex_environment, nullptr, 32.0f, i);
+                    Pass_Blur_Gaussian(cmd_list, tex_environment, 32.0f, i);
                 }
             }
         }
