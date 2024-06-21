@@ -815,7 +815,7 @@ namespace Spartan
         }
 
         // begin dynamic render pass
-        GroupBarriers();
+        GroupPendingBarriers();
         vkCmdBeginRendering(static_cast<VkCommandBuffer>(m_rhi_resource), &rendering_info);
 
         // set dynamic states
@@ -1672,6 +1672,7 @@ namespace Spartan
         {
             bool immediate_barrier = layout_old == RHI_Image_Layout::Max                  ||
                                      layout_old == RHI_Image_Layout::Preinitialized       ||
+                                     layout_old == RHI_Image_Layout::Transfer_Source      || layout_new == RHI_Image_Layout::Transfer_Source      ||
                                      layout_old == RHI_Image_Layout::Transfer_Destination || layout_new == RHI_Image_Layout::Transfer_Destination ||
                                      layout_old == RHI_Image_Layout::Present_Source       || layout_new == RHI_Image_Layout::Present_Source;
 
@@ -1705,7 +1706,7 @@ namespace Spartan
         InsertBarrierTexture(texture->GetRhiResource(), get_aspect_mask(texture), 0, 1, 1, texture->GetLayout(0), texture->GetLayout(0), texture->IsDsv());
     }
 
-    void RHI_CommandList::GroupBarriers()
+    void RHI_CommandList::GroupPendingBarriers()
     {
         if (!m_image_barriers.empty())
         {
@@ -1742,7 +1743,7 @@ namespace Spartan
 
     void RHI_CommandList::PreDraw()
     {
-        GroupBarriers();
+        GroupPendingBarriers();
 
         if (!m_render_pass_active && m_pso.IsGraphics())
         {
