@@ -98,7 +98,6 @@ void IconLoader::Initialize()
 
     IconLoader::LoadFromFile(data_dir + "Icons\\component_audioListener.png"         , IconType::Component_AudioListener);
     IconLoader::LoadFromFile(data_dir + "Icons\\component_audioSource.png"           , IconType::Component_AudioSource);
-    IconLoader::LoadFromFile(data_dir + "Icons\\component_reflectionProbe.png"       , IconType::Component_ReflectionProbe);
     IconLoader::LoadFromFile(data_dir + "Icons\\component_camera.png"                , IconType::Component_Camera);
     IconLoader::LoadFromFile(data_dir + "Icons\\component_light.png"                 , IconType::Component_Light);
     IconLoader::LoadFromFile(data_dir + "Icons\\component_material.png"              , IconType::Component_Material);
