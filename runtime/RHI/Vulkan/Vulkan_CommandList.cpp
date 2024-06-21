@@ -815,7 +815,7 @@ namespace Spartan
         }
 
         // begin dynamic render pass
-        GroupPendingBarriers();
+        InsertPendingBarrierGroup();
         vkCmdBeginRendering(static_cast<VkCommandBuffer>(m_rhi_resource), &rendering_info);
 
         // set dynamic states
@@ -1706,7 +1706,7 @@ namespace Spartan
         InsertBarrierTexture(texture->GetRhiResource(), get_aspect_mask(texture), 0, 1, 1, texture->GetLayout(0), texture->GetLayout(0), texture->IsDsv());
     }
 
-    void RHI_CommandList::GroupPendingBarriers()
+    void RHI_CommandList::InsertPendingBarrierGroup()
     {
         if (!m_image_barriers.empty())
         {
@@ -1728,10 +1728,10 @@ namespace Spartan
                 );
             }
 
-            VkDependencyInfo dependency_info = {};
-            dependency_info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
+            VkDependencyInfo dependency_info        = {};
+            dependency_info.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
             dependency_info.imageMemoryBarrierCount = static_cast<uint32_t>(m_image_barriers.size());
-            dependency_info.pImageMemoryBarriers = vk_barriers.data();
+            dependency_info.pImageMemoryBarriers    = vk_barriers.data();
             m_image_barriers.clear();
 
             RenderPassEnd();
@@ -1743,7 +1743,7 @@ namespace Spartan
 
     void RHI_CommandList::PreDraw()
     {
-        GroupPendingBarriers();
+        InsertPendingBarrierGroup();
 
         if (!m_render_pass_active && m_pso.IsGraphics())
         {
