@@ -969,8 +969,8 @@ namespace Spartan
 
         // set textures
         SetGbufferTextures(cmd_list);
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);             // read
-        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssr);            // write
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);  // read
+        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssr); // write
 
         // render
         cmd_list->Dispatch(tex_ssr);
