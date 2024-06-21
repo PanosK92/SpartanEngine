@@ -86,17 +86,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float4 color = tex_uav[thread_id.xy];
  
     // deduce a couple of things
-    #if RADIUS_FROM_TEXTURE 
-    const float radius = clamp(tex_uav2[thread_id.xy].r, 0.0f, 10.0f);
-    #else              
     const float radius = f3_value.x;
-    #endif             
     const float sigma  = radius / 3.0f;
     const float2 uv    = (thread_id.xy + 0.5f) / resolution_in;
-
-    #if RADIUS_FROM_TEXTURE
-    if (radius >= 1.0f)
-    #endif 
+    
     color.rgb = gaussian_blur(thread_id.xy, resolution_in, resolution_out, uv, radius, sigma * sigma, direction);
 
     tex_uav[thread_id.xy] = color;
