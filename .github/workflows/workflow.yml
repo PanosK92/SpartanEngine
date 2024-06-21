@@ -6,8 +6,13 @@ jobs:
   build:
     strategy:
       matrix:
-        api: [vulkan, d3d12]
-        configuration: [Release, Debug]
+        include:
+          - api: vulkan
+            configuration: Release
+          - api: vulkan
+            configuration: Debug
+          - api: d3d12
+            configuration: Release
     runs-on: "windows-latest"
     env:
       msbuild_path: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
@@ -37,26 +42,30 @@ jobs:
         run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=${{ matrix.configuration }} /m spartan.sln'
 
       - name: Create artifacts
-        if: github.event_name != 'pull_request' && matrix.api != 'd3d12'
+        if: github.event_name != 'pull_request' && matrix.api == 'vulkan'
         shell: cmd
         run: |
+          echo "Creating artifacts for ${{ matrix.api }} - ${{ matrix.configuration }}"
           IF "${{ matrix.configuration }}" == "Release" (
-            build_scripts\7z.exe a build_${{ matrix.api }}.7z .\binaries\dxcompiler.dll .\binaries\fmod.dll .\binaries\data .\binaries\project .\binaries\spartan_${{ matrix.api }}.exe
-            build_scripts\7z.exe a binaries_only_${{ matrix.api }}_release.7z .\binaries\dxcompiler.dll .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
+            echo "Creating full build archive for Release..."
+            build_scripts\7z.exe a -bb1 build_${{ matrix.api }}.7z .\binaries\dxcompiler.dll .\binaries\fmod.dll .\binaries\data .\binaries\project .\binaries\spartan_${{ matrix.api }}.exe
+            echo "Creating binaries-only archive for Release..."
+            build_scripts\7z.exe a -bb1 binaries_only_${{ matrix.api }}_release.7z .\binaries\dxcompiler.dll .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
           ) ELSE (
-            build_scripts\7z.exe a build_${{ matrix.api }}_debug.7z .\binaries\dxcompiler.dll .\binaries\fmod.dll .\binaries\data .\binaries\project .\binaries\spartan_${{ matrix.api }}_debug.exe
-            build_scripts\7z.exe a binaries_only_${{ matrix.api }}_debug.7z .\binaries\dxcompiler.dll .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}_debug.exe
+            echo "Creating binaries-only archive for Debug..."
+            build_scripts\7z.exe a -bb1 binaries_only_${{ matrix.api }}_debug.7z .\binaries\dxcompiler.dll .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}_debug.exe
           )
+          echo "Artifact creation completed for ${{ matrix.api }} - ${{ matrix.configuration }}"
 
       - name: Upload full artifact
-        if: github.event_name != 'pull_request' && matrix.api != 'd3d12'
+        if: github.event_name != 'pull_request' && matrix.api == 'vulkan' && matrix.configuration == 'Release'
         uses: actions/upload-artifact@v4
         with:
-          name: build_${{ matrix.api }}${{ matrix.configuration == 'Debug' && '_debug' || '' }}
-          path: build_${{ matrix.api }}${{ matrix.configuration == 'Debug' && '_debug' || '' }}.7z
+          name: build_${{ matrix.api }}
+          path: build_${{ matrix.api }}.7z
 
       - name: Upload binaries-only artifact
-        if: github.event_name != 'pull_request' && matrix.api != 'd3d12'
+        if: github.event_name != 'pull_request' && matrix.api == 'vulkan'
         uses: actions/upload-artifact@v4
         with:
           name: binaries_only_${{ matrix.api }}_${{ matrix.configuration == 'Release' && 'release' || 'debug' }}
@@ -77,12 +86,6 @@ jobs:
         with:
           name: build_vulkan
           path: build_vulkan.7z
-
-      - name: Download vulkan build (Debug)
-        uses: actions/download-artifact@v4
-        with:
-          name: build_vulkan_debug
-          path: build_vulkan_debug.7z
 
       - name: Download vulkan binaries-only release build
         uses: actions/download-artifact@v4
@@ -105,7 +108,6 @@ jobs:
           title: "Development Build"
           files: |
             build_vulkan.7z
-            build_vulkan_debug.7z
             binaries_only_vulkan_release.7z
             binaries_only_vulkan_debug.7z
 
