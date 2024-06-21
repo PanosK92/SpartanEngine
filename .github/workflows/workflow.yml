@@ -53,7 +53,7 @@ jobs:
             build_scripts\7z.exe a -bb1 binaries_only_${{ matrix.api }}_release.7z .\binaries\dxcompiler.dll .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
           ) ELSE (
             echo "Creating binaries-only archive for Debug..."
-            build_scripts\7z.exe a -bb1 binaries_only_${{ matrix.api }}_debug.7z .\binaries\dxcompiler.dll .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}_debug.exe
+            build_scripts\7z.exe a -bb1 binaries_only_${{ matrix.api }}_debug.7z .\binaries\dxcompiler.dll .\binaries\fmodL.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}_debug.exe
           )
           echo "Artifact creation completed for ${{ matrix.api }} - ${{ matrix.configuration }}"
 
