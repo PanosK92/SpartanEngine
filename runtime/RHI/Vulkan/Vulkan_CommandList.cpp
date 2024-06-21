@@ -1413,7 +1413,7 @@ namespace Spartan
             return;
         }
 
-        // If the texture is null or it's still loading, ignore it.
+        // if the texture is null or it's still loading, ignore it
         if (!texture || !texture->IsReadyForUse())
             return;
 
