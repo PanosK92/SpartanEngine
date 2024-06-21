@@ -95,7 +95,9 @@ namespace Spartan
             return aspect_mask;
         }
 
-        VkAccessFlags2 layout_to_access_mask(const VkImageLayout layout, const bool is_destination_mask, const bool is_depth)
+        namespace image_barrier
+        { 
+            VkAccessFlags2 layout_to_access_mask(const VkImageLayout layout, const bool is_destination_mask, const bool is_depth)
         {
             VkAccessFlags2 access_mask = 0;
 
@@ -173,7 +175,7 @@ namespace Spartan
             return access_mask;
         }
 
-        VkPipelineStageFlags2 access_mask_to_pipeline_stage_mask(VkAccessFlags2 access_flags, RHI_PipelineState& pso, const RHI_Image_Layout layout_old, const bool is_destination_mask, const bool is_depth)
+            VkPipelineStageFlags2 access_mask_to_pipeline_stage_mask(VkAccessFlags2 access_flags, RHI_PipelineState& pso, const RHI_Image_Layout layout_old, const bool is_destination_mask, const bool is_depth)
         {
             VkPipelineStageFlags2 stages  = 0;
 
@@ -205,7 +207,6 @@ namespace Spartan
                         break;
 
                     case RHI_Image_Layout::Shader_Read:
-                    case RHI_Image_Layout::Shader_Read_Depth:
                         used_stages |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
                         used_stages |= VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT;
                         used_stages |= VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT;
@@ -332,6 +333,42 @@ namespace Spartan
                 }
             }
             return stages;
+        }
+
+            VkImageMemoryBarrier2 create(
+                const RHI_Image_Layout layout_old,
+                const RHI_Image_Layout layout_new,
+                void* image,
+                uint32_t aspect_mask,
+                uint32_t mip_index,
+                uint32_t mip_range,
+                uint32_t array_length,
+                bool is_depth,
+                RHI_PipelineState& pso
+            )
+            {
+                SP_ASSERT(image != nullptr);
+
+                VkImageMemoryBarrier2 barrier           = {};
+                barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR;
+                barrier.pNext                           = nullptr;
+                barrier.oldLayout                       = vulkan_image_layout[static_cast<VkImageLayout>(layout_old)];
+                barrier.newLayout                       = vulkan_image_layout[static_cast<VkImageLayout>(layout_new)];
+                barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+                barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+                barrier.image                           = static_cast<VkImage>(image);
+                barrier.subresourceRange.aspectMask     = aspect_mask;
+                barrier.subresourceRange.baseMipLevel   = mip_index;
+                barrier.subresourceRange.levelCount     = mip_range;
+                barrier.subresourceRange.baseArrayLayer = 0;
+                barrier.subresourceRange.layerCount     = array_length;
+                barrier.srcAccessMask                   = layout_to_access_mask(barrier.oldLayout, false, is_depth);                                   // operations that must complete before the barrier
+                barrier.srcStageMask                    = access_mask_to_pipeline_stage_mask(barrier.srcAccessMask, pso, layout_old, false, is_depth); // stage at which the barrier applies, on the source side
+                barrier.dstAccessMask                   = layout_to_access_mask(barrier.newLayout, true, is_depth);                                    // operations that must wait for the barrier, on the new layout
+                barrier.dstStageMask                    = access_mask_to_pipeline_stage_mask(barrier.dstAccessMask, pso, layout_old, true, is_depth);  // stage at which the barrier applies, on the destination side
+
+                return barrier;
+            }
         }
     }
 
@@ -778,6 +815,7 @@ namespace Spartan
         }
 
         // begin dynamic render pass
+        GroupBarriers();
         vkCmdBeginRendering(static_cast<VkCommandBuffer>(m_rhi_resource), &rendering_info);
 
         // set dynamic states
@@ -958,10 +996,7 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (descriptor_sets::bind_dynamic)
-        {
-            descriptor_sets::set_dynamic(m_pso, m_rhi_resource, m_pipeline->GetResource_PipelineLayout(), m_descriptor_layout_current);
-        }
+        PreDraw();
 
         vkCmdDispatch(static_cast<VkCommandBuffer>(m_rhi_resource), x, y, z);
     }
@@ -1404,7 +1439,7 @@ namespace Spartan
             else
             {
                 SP_ASSERT(texture->IsSrv());
-                target_layout = texture->IsColorFormat() ? RHI_Image_Layout::Shader_Read : RHI_Image_Layout::Shader_Read_Depth;
+                target_layout = RHI_Image_Layout::Shader_Read;
             }
 
             // verify that an appropriate layout has been deduced
@@ -1430,7 +1465,6 @@ namespace Spartan
             // transition
             if (transition_required)
             {
-                RenderPassEnd(); // transitioning to a different layout must happen outside of a render pass
                 texture->SetLayout(target_layout, this, mip_index, mip_range);
             }
         }
@@ -1633,32 +1667,28 @@ namespace Spartan
     )
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        SP_ASSERT(image != nullptr);
-        RenderPassEnd(); // you can't have a barrier inside a render pass
 
-        VkImageMemoryBarrier2 image_barrier           = {};
-        image_barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR;
-        image_barrier.pNext                           = nullptr;
-        image_barrier.oldLayout                       = vulkan_image_layout[static_cast<VkImageLayout>(layout_old)];
-        image_barrier.newLayout                       = vulkan_image_layout[static_cast<VkImageLayout>(layout_new)];
-        image_barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-        image_barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-        image_barrier.image                           = static_cast<VkImage>(image);
-        image_barrier.subresourceRange.aspectMask     = aspect_mask;
-        image_barrier.subresourceRange.baseMipLevel   = mip_index;
-        image_barrier.subresourceRange.levelCount     = mip_range;
-        image_barrier.subresourceRange.baseArrayLayer = 0;
-        image_barrier.subresourceRange.layerCount     = array_length;
-        image_barrier.srcAccessMask                   = layout_to_access_mask(image_barrier.oldLayout, false, is_depth);                                     // operations that must complete before the barrier
-        image_barrier.srcStageMask                    = access_mask_to_pipeline_stage_mask(image_barrier.srcAccessMask, m_pso, layout_old, false, is_depth); // stage at which the barrier applies, on the source side
-        image_barrier.dstAccessMask                   = layout_to_access_mask(image_barrier.newLayout, true, is_depth);                                      // operations that must wait for the barrier, on the new layout
-        image_barrier.dstStageMask                    = access_mask_to_pipeline_stage_mask(image_barrier.dstAccessMask, m_pso, layout_old, true, is_depth);  // stage at which the barrier applies, on the destination side
+        if (!m_render_pass_active)
+        {
+            bool immediate_barrier = layout_old == RHI_Image_Layout::Max                  ||
+                                     layout_old == RHI_Image_Layout::Preinitialized       ||
+                                     layout_old == RHI_Image_Layout::Transfer_Destination || layout_new == RHI_Image_Layout::Transfer_Destination ||
+                                     layout_old == RHI_Image_Layout::Present_Source       || layout_new == RHI_Image_Layout::Present_Source;
+
+            if (!immediate_barrier)
+            { 
+                m_image_barriers.emplace_back(image, aspect_mask, mip_index, mip_range, array_length, layout_old, layout_new, is_depth);
+                return;
+            }
+        }
 
         VkDependencyInfo dependency_info        = {};
         dependency_info.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
         dependency_info.imageMemoryBarrierCount = 1;
-        dependency_info.pImageMemoryBarriers    = &image_barrier;
+        VkImageMemoryBarrier2 barrier           = image_barrier::create(layout_old, layout_new, image, aspect_mask, mip_index, mip_range, array_length, is_depth, m_pso);
+        dependency_info.pImageMemoryBarriers    = &barrier;
 
+        RenderPassEnd(); // you can't have a barrier inside a render pass
         vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
         Profiler::m_rhi_pipeline_barriers++;
     }
@@ -1675,9 +1705,46 @@ namespace Spartan
         InsertBarrierTexture(texture->GetRhiResource(), get_aspect_mask(texture), 0, 1, 1, texture->GetLayout(0), texture->GetLayout(0), texture->IsDsv());
     }
 
+    void RHI_CommandList::GroupBarriers()
+    {
+        if (!m_image_barriers.empty())
+        {
+            array<VkImageMemoryBarrier2, 16> vk_barriers;
+            for (uint32_t i = 0; i < static_cast<uint32_t>(m_image_barriers.size()); i++)
+            {
+                const ImageBarrierInfo& barrier = m_image_barriers[i];
+
+                vk_barriers[i] = image_barrier::create(
+                    barrier.layout_old,
+                    barrier.layout_new,
+                    barrier.image,
+                    barrier.aspect_mask,
+                    barrier.mip_index,
+                    barrier.mip_range,
+                    barrier.array_length,
+                    barrier.is_depth,
+                    m_pso
+                );
+            }
+
+            VkDependencyInfo dependency_info = {};
+            dependency_info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
+            dependency_info.imageMemoryBarrierCount = static_cast<uint32_t>(m_image_barriers.size());
+            dependency_info.pImageMemoryBarriers = vk_barriers.data();
+            m_image_barriers.clear();
+
+            RenderPassEnd();
+            vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
+
+            Profiler::m_rhi_pipeline_barriers++;
+        }
+    }
+
     void RHI_CommandList::PreDraw()
     {
-        if (!m_render_pass_active)
+        GroupBarriers();
+
+        if (!m_render_pass_active && m_pso.IsGraphics())
         {
             RenderPassBegin();
         }

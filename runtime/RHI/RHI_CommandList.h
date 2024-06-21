@@ -42,6 +42,18 @@ namespace Spartan
         Submitted
     };
 
+    struct ImageBarrierInfo
+    {
+        void* image                 = nullptr;
+        uint32_t aspect_mask        = 0;
+        uint32_t mip_index          = 0;
+        uint32_t mip_range          = 0;
+        uint32_t array_length       = 0;
+        RHI_Image_Layout layout_old = RHI_Image_Layout::Max;
+        RHI_Image_Layout layout_new = RHI_Image_Layout::Max;
+        bool is_depth               = false;
+    };
+
     class SP_CLASS RHI_CommandList
     {
     public:
@@ -158,6 +170,7 @@ namespace Spartan
         uint64_t GetSwapchainId() const                           { return m_swapchain_id; }
 
     private:
+        void GroupBarriers();
         void PreDraw();
         void RenderPassBegin();
         void RenderPassEnd();
@@ -181,6 +194,7 @@ namespace Spartan
         static bool m_memory_query_support;
         std::mutex m_mutex_reset;
         RHI_PipelineState m_pso;
+        std::vector<ImageBarrierInfo> m_image_barriers;
 
         // rhi resources
         void* m_rhi_resource              = nullptr;
