@@ -1265,11 +1265,12 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        // compute width and height
-        const uint32_t width  = tex_in->GetWidth()  >> mip;
-        const uint32_t height = tex_in->GetHeight() >> mip;
-
         // compute thread group count
+        const bool mip_requested            = mip != rhi_all_mips;
+        const uint32_t mip_range            = mip_requested ? 1 : 0;
+        const uint32_t bit_shift            = mip_requested ? mip : 0;
+        const uint32_t width                = tex_in->GetWidth()  >> bit_shift;
+        const uint32_t height               = tex_in->GetHeight() >> bit_shift;
         const uint32_t thread_group_count   = 8;
         const uint32_t thread_group_count_x = (width + thread_group_count - 1) / thread_group_count;
         const uint32_t thread_group_count_y = (height + thread_group_count - 1) / thread_group_count;
@@ -1284,9 +1285,6 @@ namespace Spartan
         static RHI_PipelineState pso;
         pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
-
-        const bool mip_requested = mip != rhi_all_mips;
-        const uint32_t mip_range = mip_requested ? 1 : 0;
 
         // horizontal pass
         {
