@@ -17,7 +17,29 @@ jobs:
     env:
       msbuild_path: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
-      # ... (previous steps remain the same)
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install Python dependencies
+        run: python -m pip install requests tqdm
+
+      - name: Generate project files
+        shell: python
+        env:
+          API: ${{ matrix.api }}
+        run: |
+          import subprocess
+          import os
+          api = os.environ["API"]
+          subprocess.run(f"python generate_vs2022_{api}.py")
+
+      - name: Build
+        shell: cmd
+        run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=${{ matrix.configuration }} /m spartan.sln'
 
       - name: Create artifacts
         if: github.event_name != 'pull_request' && matrix.api == 'vulkan'
