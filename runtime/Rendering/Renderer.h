@@ -80,7 +80,6 @@ namespace Spartan
         static void Present();
 
         // misc
-        static RHI_CommandList* GetCmdList();
         static void SetStandardResources(RHI_CommandList* cmd_list);
         static uint64_t GetFrameNum();
         static RHI_Api_Type GetRhiApiType();
@@ -146,7 +145,7 @@ namespace Spartan
         static void CreateStandardMaterials();
 
         // passes - core
-        static void ProduceFrame(RHI_CommandList* cmd_list);
+        static void ProduceFrame(RHI_CommandList* cmd_list_graphics, RHI_CommandList* cmd_list_compute);
         static void Pass_VariableRateShading(RHI_CommandList* cmd_list);
         static void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
         static void Pass_Visibility(RHI_CommandList* cmd_list);

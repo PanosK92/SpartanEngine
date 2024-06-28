@@ -367,7 +367,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::noise_blue,   GetStandardTexture(Renderer_StandardTexture::Noise_blue));
     }
 
-    void Renderer::ProduceFrame(RHI_CommandList* cmd_list)
+    void Renderer::ProduceFrame(RHI_CommandList* cmd_list_graphics, RHI_CommandList* cmd_list_compute)
     {
         SP_PROFILE_CPU();
 
@@ -377,19 +377,19 @@ namespace Spartan
         RHI_Texture* rt_output   = GetRenderTarget(Renderer_RenderTarget::frame_output).get();
 
         dynamic_resolution();
-        Pass_VariableRateShading(cmd_list);
-        Pass_Skysphere(cmd_list);
+        Pass_VariableRateShading(cmd_list_graphics);
+        Pass_Skysphere(cmd_list_graphics);
 
         // light integration
         {
             if (!light_integration_brdf_speculat_lut_completed)
             {
-                Pass_Light_Integration_BrdfSpecularLut(cmd_list);
+                Pass_Light_Integration_BrdfSpecularLut(cmd_list_graphics);
             }
 
             if (m_environment_mips_to_filter_count > 0)
             {
-                Pass_Light_Integration_EnvironmentPrefilter(cmd_list);
+                Pass_Light_Integration_EnvironmentPrefilter(cmd_list_graphics);
             }
         }
 
@@ -400,72 +400,72 @@ namespace Spartan
             
             // shadow maps
             {
-                Pass_ShadowMaps(cmd_list, false);
+                Pass_ShadowMaps(cmd_list_graphics, false);
                 if (do_transparent_pass)
                 {
-                    Pass_ShadowMaps(cmd_list, true);
+                    Pass_ShadowMaps(cmd_list_graphics, true);
                 }
             }
  
             // opaque
             {
-                Pass_Visibility(cmd_list);
-                Pass_Depth_Prepass(cmd_list, false);
-                Pass_GBuffer(cmd_list);
-                Pass_Ssgi(cmd_list);
-                Pass_Ssr(cmd_list, rt_render);
-                Pass_Sss(cmd_list);
-                Pass_Light(cmd_list);                        // compute diffuse and specular buffers
-                Pass_Light_Composition(cmd_list, rt_render); // compose diffuse, specular, ssgi, volumetric etc.
-                Pass_Light_ImageBased(cmd_list, rt_render);  // apply IBL and SSR
+                Pass_Visibility(cmd_list_graphics);
+                Pass_Depth_Prepass(cmd_list_graphics, false);
+                Pass_GBuffer(cmd_list_graphics);
+                Pass_Ssgi(cmd_list_graphics);
+                Pass_Ssr(cmd_list_graphics, rt_render);
+                Pass_Sss(cmd_list_graphics);
+                Pass_Light(cmd_list_graphics);                        // compute diffuse and specular buffers
+                Pass_Light_Composition(cmd_list_graphics, rt_render); // compose diffuse, specular, ssgi, volumetric etc.
+                Pass_Light_ImageBased(cmd_list_graphics, rt_render);  // apply IBL and SSR
             }
 
             // used for refraction and by FSR 2 (to produce masks)
-            cmd_list->BeginTimeblock("frame_opaque");
+            cmd_list_graphics->BeginTimeblock("frame_opaque");
             {
                 RHI_Texture* tex_render_opaque = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get();
 
-                cmd_list->Blit(rt_render, tex_render_opaque, false);
+                cmd_list_graphics->Blit(rt_render, tex_render_opaque, false);
 
                 // generate mips to simulate roughness
-                Pass_Ffx_Spd(cmd_list, tex_render_opaque, Renderer_DownsampleFilter::Average);
+                Pass_Ffx_Spd(cmd_list_graphics, tex_render_opaque, Renderer_DownsampleFilter::Average);
 
                 // blur the smaller mips to reduce blockiness/flickering
                 for (uint32_t i = 1; i < tex_render_opaque->GetMipCount(); i++)
                 {
                     const float radius = 1.0f;
-                    Pass_Blur_Gaussian(cmd_list, tex_render_opaque, radius, i);
+                    Pass_Blur_Gaussian(cmd_list_graphics, tex_render_opaque, radius, i);
                 }
             }
-            cmd_list->EndTimeblock();
+            cmd_list_graphics->EndTimeblock();
             
             // transparent
             if (do_transparent_pass)
             {
-                Pass_Depth_Prepass(cmd_list, do_transparent_pass);
-                Pass_GBuffer(cmd_list, do_transparent_pass);
-                Pass_Ssr(cmd_list, rt_render, do_transparent_pass);
-                Pass_Light(cmd_list, do_transparent_pass);
-                Pass_Light_Composition(cmd_list, rt_render, do_transparent_pass);
-                Pass_Light_ImageBased(cmd_list, rt_render, do_transparent_pass);
+                Pass_Depth_Prepass(cmd_list_graphics, do_transparent_pass);
+                Pass_GBuffer(cmd_list_graphics, do_transparent_pass);
+                Pass_Ssr(cmd_list_graphics, rt_render, do_transparent_pass);
+                Pass_Light(cmd_list_graphics, do_transparent_pass);
+                Pass_Light_Composition(cmd_list_graphics, rt_render, do_transparent_pass);
+                Pass_Light_ImageBased(cmd_list_graphics, rt_render, do_transparent_pass);
             }
 
-            Pass_PostProcess(cmd_list);
-            Pass_Grid(cmd_list, rt_output);
-            Pass_Lines(cmd_list, rt_output);
-            Pass_Outline(cmd_list, rt_output);
-            Pass_Icons(cmd_list, rt_output);
+            Pass_PostProcess(cmd_list_graphics);
+            Pass_Grid(cmd_list_graphics, rt_output);
+            Pass_Lines(cmd_list_graphics, rt_output);
+            Pass_Outline(cmd_list_graphics, rt_output);
+            Pass_Icons(cmd_list_graphics, rt_output);
         }
         else
         {
-            GetCmdList()->ClearRenderTarget(rt_output, Color::standard_black);
+            cmd_list_graphics->ClearRenderTarget(rt_output, Color::standard_black);
         }
 
-        Pass_Text(cmd_list, rt_output);
+        Pass_Text(cmd_list_graphics, rt_output);
 
         // transition the render target to a readable state so it can be rendered
         // within the viewport or copied to the swap chain back buffer
-        rt_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        rt_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list_graphics);
     }
 
     void Renderer::Pass_VariableRateShading(RHI_CommandList* cmd_list)
