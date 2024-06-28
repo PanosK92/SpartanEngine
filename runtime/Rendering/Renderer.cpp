@@ -77,7 +77,6 @@ namespace Spartan
         // rhi resources
         shared_ptr<RHI_SwapChain> swap_chain;
         const uint8_t swap_chain_buffer_count = 2;
-        RHI_CommandList* cmd_current          = nullptr;
 
         // bindless
         static array<RHI_Texture*, rhi_max_array_size> bindless_textures;
@@ -247,19 +246,26 @@ namespace Spartan
 
         RHI_Device::Tick(frame_num);
 
-        // begin command list
-        RHI_Queue* queue = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
-        cmd_current      = queue->GetCommandList();
-        cmd_current->Begin(queue);
+        // get queues
+        RHI_Queue* queue_graphics = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
+        RHI_Queue* queue_compute  = RHI_Device::GetQueue(RHI_Queue_Type::Compute);
 
-        OnSyncPoint(cmd_current);
-        ProduceFrame(cmd_current);
+        // get command lists
+        RHI_CommandList* cmd_list_graphics = queue_graphics->GetCommandList();
+        RHI_CommandList* cmd_list_compute  = queue_compute->GetCommandList();
+
+        // begin command lists
+        cmd_list_graphics->Begin(queue_graphics);
+        //cmd_list_compute->Begin(queue_compute);
+
+        OnSyncPoint(cmd_list_graphics);
+        ProduceFrame(cmd_list_graphics, cmd_list_compute);
 
         // blit to back buffer when not in editor mode
         bool is_standalone = !Engine::IsFlagSet(EngineMode::Editor);
         if (is_standalone)
         {
-            BlitToBackBuffer(cmd_current, GetRenderTarget(Renderer_RenderTarget::frame_output).get());
+            BlitToBackBuffer(cmd_list_graphics, GetRenderTarget(Renderer_RenderTarget::frame_output).get());
         }
 
         // present
@@ -517,7 +523,7 @@ namespace Spartan
         Input::SetMouseCursorVisible(!Window::IsFullScreen());
     }
 
-    void Renderer::OnSyncPoint(RHI_CommandList* cmd_list)
+    void Renderer::OnSyncPoint(RHI_CommandList* cmd_list_graphics)
     {
         // is_sync_point: the command pool has exhausted its command lists and 
         // is about to reset them, this is an opportune moment for us to perform
@@ -548,7 +554,7 @@ namespace Spartan
             }
         }
 
-        UpdateConstantBufferFrame(cmd_current);
+        UpdateConstantBufferFrame(cmd_list_graphics);
         AddLinesToBeRendered();
 
         // filter environment on directional light change
@@ -770,11 +776,6 @@ namespace Spartan
 
         // present
         swap_chain->Present();
-    }
-
-    RHI_CommandList* Renderer::GetCmdList()
-    {
-        return cmd_current;
     }
 
     RHI_Api_Type Renderer::GetRhiApiType()

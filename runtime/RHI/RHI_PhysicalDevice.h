@@ -98,8 +98,8 @@ namespace Spartan
         std::string decode_driver_version(const uint32_t version);
 
         std::string api_version      = "Unknown"; // version of api supported by the device
-        std::string driver_version   = "Unknown"; // vendor-specified version of the driver.
-        uint32_t vendor_id           = 0; // unique identifier of the vendor
+        std::string driver_version   = "Unknown"; // vendor-specified version of the driver
+        uint32_t vendor_id           = 0;         // unique identifier of the vendor
         std::string vendor_name      = "Unknown";
         RHI_PhysicalDevice_Type type = RHI_PhysicalDevice_Type::Max;
         std::string name             = "Unknown";
