@@ -30,45 +30,45 @@ using namespace std;
 
 namespace Spartan
 {
-    string PhysicalDevice::decode_driver_version(const uint32_t version)
+    string PhysicalDevice::decode_api_version(const uint32_t version)
     {
         char buffer[256];
 
+        // vulkan version conventions
+        uint32_t major = (version >> 22);
+        uint32_t minor = (version >> 12) & 0x3ff;
+        uint32_t patch = version & 0xfff;
+        sprintf(buffer, "%d.%d.%d", major, minor, patch);
+
+        return buffer;
+    }
+
+    string PhysicalDevice::decode_driver_version(const uint32_t version)
+    {
         if (IsNvidia())
         {
-            sprintf
-            (
-                buffer,
-                "%d.%d.%d.%d",
-                (version >> 22) & 0x3ff,
-                (version >> 14) & 0x0ff,
-                (version >> 6) & 0x0ff,
-                (version) & 0x003f
-            );
+            char buffer[256];
 
+            uint32_t major     = (version >> 22) & 0x3ff;
+            uint32_t minor     = (version >> 14) & 0x0ff;
+            uint32_t secondary = (version >> 6) & 0x0ff;
+            uint32_t tertiary  = version & 0x003f;
+            sprintf(buffer, "%d.%d.%d.%d", major, minor, secondary, tertiary);
+
+            return buffer;
         }
         else if (IsIntel())
         {
-            sprintf
-            (
-                buffer,
-                "%d.%d",
-                (version >> 14),
-                (version) & 0x3fff
-            );
-        }
-        else // Use Vulkan version conventions if vendor mapping is not available
-        {
-            sprintf
-            (
-                buffer,
-                "%d.%d.%d",
-                (version >> 22),
-                (version >> 12) & 0x3ff,
-                version & 0xfff
-            );
+            char buffer[256];
+
+            uint32_t major = (version >> 14);
+            uint32_t minor = version & 0x3fff;
+            sprintf(buffer, "%d.%d", major, minor);
+
+            return buffer;
         }
 
-        return buffer;
+        // Use the Vulkan convention for all other vendors as we don't have a specific convention for them
+        return decode_api_version(version);
     }
 }

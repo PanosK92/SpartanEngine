@@ -38,7 +38,7 @@ namespace Spartan
             this->name           = name;
             this->memory         = static_cast<uint32_t>(memory / 1024 / 1024); // mb
             this->data           = data;
-            this->api_version    = decode_driver_version(api_version);
+            this->api_version    = decode_api_version(api_version);
             this->driver_version = decode_driver_version(driver_version);
         }
 
@@ -94,6 +94,7 @@ namespace Spartan
             return name;
         }
 
+        std::string decode_api_version(const uint32_t version);
         std::string decode_driver_version(const uint32_t version);
 
         std::string api_version      = "Unknown"; // version of api supported by the device
