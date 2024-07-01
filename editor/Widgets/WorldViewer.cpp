@@ -32,6 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Constraint.h"
 #include "World/Components/Terrain.h"
 #include "Commands/CommandStack.h"
+#include "FileSystem.h"
+#include "Resource/ResourceCache.h"
 #include "../ImGui/ImGuiExtension.h"
 SP_WARNINGS_OFF
 #include "../ImGui/Source/imgui_stdlib.h"
@@ -44,15 +46,15 @@ using namespace std;
 
 namespace
 {
-    bool popup_rename_entity       = false;
-    Spartan::Entity* entity_copied = nullptr;
     weak_ptr <Spartan::Entity> entity_clicked;
     weak_ptr <Spartan::Entity> entity_hovered;
     ImGuiSp::DragDropPayload g_payload;
+    bool popup_rename_entity                    = false;
+    Spartan::Entity* entity_copied              = nullptr;
+    static bool is_default_world_window_visible = true;
 
     void world_selection_window(Editor* editor)
     {
-        static bool is_default_world_window_visible = true;
         if (is_default_world_window_visible)
         {
             ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
@@ -95,8 +97,9 @@ namespace
 
 WorldViewer::WorldViewer(Editor* editor) : Widget(editor)
 {
-    m_title = "World";
-    m_flags |= ImGuiWindowFlags_HorizontalScrollbar;
+    m_title                          = "World";
+    m_flags                         |= ImGuiWindowFlags_HorizontalScrollbar;
+    is_default_world_window_visible  = !Spartan::FileSystem::IsDirectoryEmpty(Spartan::ResourceCache::GetProjectDirectory());
 }
 
 void WorldViewer::OnTickVisible()

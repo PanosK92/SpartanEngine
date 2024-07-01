@@ -440,21 +440,21 @@ namespace Spartan
         // import flags
         uint32_t import_flags = 0;
         {
-            import_flags |= aiProcess_ValidateDataStructure; // Validates the imported scene data structure.
-            import_flags |= aiProcess_Triangulate;           // Triangulates all faces of all meshes.
-            import_flags |= aiProcess_SortByPType;           // Splits meshes with more than one primitive type in homogeneous sub-meshes.
+            import_flags |= aiProcess_ValidateDataStructure; // validates the imported scene data structure.
+            import_flags |= aiProcess_Triangulate;           // triangulates all faces of all meshes.
+            import_flags |= aiProcess_SortByPType;           // splits meshes with more than one primitive type in homogeneous sub-meshes
 
             // switch to engine conventions
-            import_flags |= aiProcess_MakeLeftHanded;   // DirectX style.
-            import_flags |= aiProcess_FlipUVs;          // DirectX style.
-            import_flags |= aiProcess_FlipWindingOrder; // DirectX style.
+            import_flags |= aiProcess_MakeLeftHanded;   // directx style
+            import_flags |= aiProcess_FlipUVs;          // directx style
+            import_flags |= aiProcess_FlipWindingOrder; // directx style
 
             // generate missing normals or UVs
-            import_flags |= aiProcess_CalcTangentSpace; // Calculates  tangents and bitangents
-            import_flags |= aiProcess_GenSmoothNormals; // Ignored if the mesh already has normals
-            import_flags |= aiProcess_GenUVCoords;      // Converts non-UV mappings (such as spherical or cylindrical mapping) to proper texture coordinate channels
+            import_flags |= aiProcess_CalcTangentSpace; // calculates  tangents and bitangents
+            import_flags |= aiProcess_GenSmoothNormals; // ignored if the mesh already has normals
+            import_flags |= aiProcess_GenUVCoords;      // converts non-UV mappings (such as spherical or cylindrical mapping) to proper texture coordinate channels
 
-            // Combine meshes
+            // combine meshes
             if (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportCombineMeshes))
             {
                 import_flags |= aiProcess_OptimizeMeshes;
@@ -465,11 +465,11 @@ namespace Spartan
             // validate
             if (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportRemoveRedundantData))
             {
-                import_flags |= aiProcess_RemoveRedundantMaterials; // Searches for redundant/unreferenced materials and removes them
-                import_flags |= aiProcess_JoinIdenticalVertices;    // Identifies and joins identical vertex data sets within all imported meshes
-                import_flags |= aiProcess_FindDegenerates;          // Convert degenerate primitives to proper lines or points.
-                import_flags |= aiProcess_FindInvalidData;          // This step searches all meshes for invalid data, such as zeroed normal vectors or invalid UV coords and removes / fixes them
-                import_flags |= aiProcess_FindInstances;            // This step searches for duplicate meshes and replaces them with references to the first mesh
+                import_flags |= aiProcess_RemoveRedundantMaterials; // searches for redundant/unreferenced materials and removes them
+                import_flags |= aiProcess_JoinIdenticalVertices;    // identifies and joins identical vertex data sets within all imported meshes
+                import_flags |= aiProcess_FindDegenerates;          // convert degenerate primitives to proper lines or points.
+                import_flags |= aiProcess_FindInvalidData;          // this step searches all meshes for invalid data, such as zeroed normal vectors or invalid UV coords and removes / fixes them
+                import_flags |= aiProcess_FindInstances;            // this step searches for duplicate meshes and replaces them with references to the first mesh
             }
         }
 
