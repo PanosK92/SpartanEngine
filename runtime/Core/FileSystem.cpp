@@ -165,6 +165,26 @@ namespace Spartan
         return false;
     }
 
+    bool FileSystem::IsDirectoryEmpty(const string& path)
+    {
+        try
+        {
+            if (!filesystem::exists(path))
+                return false; // directory doesn't exist
+
+            if (!filesystem::is_directory(path))
+                return false; // path exists but is not a directory
+
+            // check if the directory is empty
+            return filesystem::directory_iterator(path) == filesystem::directory_iterator();
+        }
+        catch (const filesystem::filesystem_error& e)
+        {
+            SP_LOG_WARNING("%s, %s", e.what(), path.c_str());
+            return false;
+        }
+    }
+
     bool FileSystem::IsDirectory(const string& path)
     {
         try
