@@ -9,7 +9,6 @@ def main():
 
     script = script_dir / "build_scripts" / "generate_project_files.py"
     subprocess.Popen([sys.executable, str(script), "vs2022", "vulkan"]).communicate()
-
     sys.exit(0)
 
 if __name__ == "__main__":
