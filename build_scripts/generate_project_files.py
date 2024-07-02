@@ -121,12 +121,12 @@ def copy(source, destination):
         print(f"Copying directory \"{source}\" to directory \"{destination}\"...")
         if os.path.exists(destination):
             shutil.rmtree(destination, onerror=on_rm_error)
-        shutil.copytree(source, destination)
+        shutil.copytree(source, destination, dirs_exist_ok=True)
     else:
         print(f"Error: {source} and {destination} are not compatible.")
         return False
     return True
-
+    
 def extract_third_party_dependencies():
     print("1. Extracting third-party dependencies...")
     cmd = (
@@ -144,6 +144,9 @@ def extract_assets():
         else "7za x assets/assets.7z -oassets/ -aoa"
     )
     os.system(cmd)
+    
+    if not os.path.exists("assets\\models"):
+        print("Warning: assets\\models directory not found after extraction.")
 
 def create_binaries_folder():
     print("\n2. Copying required data to the binaries directory..")
@@ -167,6 +170,10 @@ def generate_project_files():
         else f"premake5 --file=build_scripts/premake.lua {sys.argv[1]} {sys.argv[2]}"
     )
     subprocess.Popen(cmd, shell=True).communicate()
+    
+    if not os.path.exists("spartan.sln"):
+        print("Error: spartan.sln not generated.")
+        sys.exit(1)
 
 def main():
     library_url = 'https://www.dropbox.com/scl/fi/1skztgtsx2zkwmyo9bsph/libraries.7z?rlkey=d8t3n75px5f8b99pjqimml8kf&st=vl8cy9ss&dl=1'
