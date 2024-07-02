@@ -187,6 +187,10 @@ def main():
     #Download files with hash checking
     download_file(library_url, library_destination, library_expected_hash)
     download_file(assets_url, assets_destination, assets_expected_hash)
+    
+    # Extract the downloaded files
+    extract_third_party_dependencies()
+    extract_assets()
 
     create_binaries_folder()
     copy_dlls()
