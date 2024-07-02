@@ -197,9 +197,10 @@ namespace Spartan
         std::vector<ImageBarrierInfo> m_image_barriers;
 
         // rhi resources
-        void* m_rhi_resource              = nullptr;
-        void* m_rhi_cmd_pool_resource     = nullptr;
-        void* m_rhi_query_pool_timestamps = nullptr;
-        void* m_rhi_query_pool_occlusion  = nullptr;
+        void* m_rhi_resource                       = nullptr;
+        void* m_rhi_cmd_pool_resource              = nullptr;
+        void* m_rhi_query_pool_timestamps          = nullptr;
+        void* m_rhi_query_pool_pipeline_statistics = nullptr;
+        void* m_rhi_query_pool_occlusion           = nullptr;
     };
 }

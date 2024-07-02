@@ -68,6 +68,10 @@ namespace Spartan
         
         // metrics - rhi
         static uint32_t m_rhi_draw;
+        static uint32_t m_rhi_timeblock_count;
+        static uint32_t m_rhi_pipeline_bindings;
+        static uint32_t m_rhi_pipeline_barriers;
+        static uint32_t m_rhi_pipeline_vertex_count;
         static uint32_t m_rhi_bindings_buffer_index;
         static uint32_t m_rhi_bindings_buffer_vertex;
         static uint32_t m_rhi_bindings_buffer_constant;
@@ -80,9 +84,6 @@ namespace Spartan
         static uint32_t m_rhi_bindings_render_target;
         static uint32_t m_rhi_bindings_texture_storage;
         static uint32_t m_rhi_bindings_descriptor_set;
-        static uint32_t m_rhi_bindings_pipeline;
-        static uint32_t m_rhi_pipeline_barriers;
-        static uint32_t m_rhi_timeblock_count;
 
         // metrics - time
         static float m_time_frame_avg ;
@@ -115,6 +116,9 @@ namespace Spartan
         static void ClearRhiMetrics()
         {
             m_rhi_draw                       = 0;
+            m_rhi_timeblock_count            = 0;
+            m_rhi_pipeline_bindings          = 0;
+            m_rhi_pipeline_barriers          = 0;
             m_rhi_bindings_buffer_index      = 0;
             m_rhi_bindings_buffer_vertex     = 0;
             m_rhi_bindings_buffer_constant   = 0;
@@ -127,9 +131,6 @@ namespace Spartan
             m_rhi_bindings_render_target     = 0;
             m_rhi_bindings_texture_storage   = 0;
             m_rhi_bindings_descriptor_set    = 0;
-            m_rhi_bindings_pipeline          = 0;
-            m_rhi_pipeline_barriers          = 0;
-            m_rhi_timeblock_count            = 0;
         }
 
         static TimeBlock* GetNewTimeBlock();

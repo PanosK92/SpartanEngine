@@ -42,6 +42,10 @@ namespace Spartan
 
     // metrics - rhi
     uint32_t Profiler::m_rhi_draw                       = 0;
+    uint32_t Profiler::m_rhi_timeblock_count            = 0;
+    uint32_t Profiler::m_rhi_pipeline_bindings          = 0;
+    uint32_t Profiler::m_rhi_pipeline_barriers          = 0;
+    uint32_t Profiler::m_rhi_pipeline_vertex_count      = 0;
     uint32_t Profiler::m_rhi_bindings_buffer_index      = 0;
     uint32_t Profiler::m_rhi_bindings_buffer_vertex     = 0;
     uint32_t Profiler::m_rhi_bindings_buffer_constant   = 0;
@@ -54,9 +58,6 @@ namespace Spartan
     uint32_t Profiler::m_rhi_bindings_render_target     = 0;
     uint32_t Profiler::m_rhi_bindings_texture_storage   = 0;
     uint32_t Profiler::m_rhi_bindings_descriptor_set    = 0;
-    uint32_t Profiler::m_rhi_bindings_pipeline          = 0;
-    uint32_t Profiler::m_rhi_pipeline_barriers          = 0;
-    uint32_t Profiler::m_rhi_timeblock_count            = 0;
 
     // metrics - time
     float Profiler::m_time_frame_avg  = 0.0f;
@@ -506,13 +507,16 @@ namespace Spartan
 
         // api calls
         oss_metrics << "\nAPI calls" << endl;
-        oss_metrics << "Draw:\t\t\t\t\t\t\t\t\t\t\t" << m_rhi_draw << endl;
-        oss_metrics
-            << "Index buffer bindings:\t\t\t"  << m_rhi_bindings_buffer_index   << endl
-            << "Vertex buffer bindings:\t\t"   << m_rhi_bindings_buffer_vertex  << endl
-            << "Descriptor set bindings:\t\t"  << m_rhi_bindings_descriptor_set << endl
-            << "Pipeline bindings:\t\t\t\t\t"  << m_rhi_bindings_pipeline       << endl
-            << "Pipeline barriers:\t\t\t\t\t"  << m_rhi_pipeline_barriers       << endl;
+        oss_metrics << "Draw:\t\t\t\t\t\t\t\t\t\t\t"  << m_rhi_draw << endl;
+        oss_metrics << "Index buffer bindings:\t\t\t" << m_rhi_bindings_buffer_index   << endl
+                    << "Vertex buffer bindings:\t\t"  << m_rhi_bindings_buffer_vertex  << endl
+                    << "Descriptor set bindings:\t\t" << m_rhi_bindings_descriptor_set << endl;
+
+        // resources
+        oss_metrics << "\nPipeline\n"
+            << "Bindings:\t\t\t" << m_rhi_pipeline_bindings     << endl
+            << "Barriers:\t\t\t" << m_rhi_pipeline_barriers     << endl
+            << "Vertex count:\t" << m_rhi_pipeline_vertex_count << endl;
 
         // resources
         oss_metrics << "\nResources\n"
