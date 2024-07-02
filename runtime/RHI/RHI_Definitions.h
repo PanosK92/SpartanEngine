@@ -449,8 +449,6 @@ namespace Spartan
     const uint32_t rhi_max_array_size_lights     = 128;
     const uint32_t rhi_max_descriptor_set_count  = 512;
     const uint8_t  rhi_max_mip_count             = 13;
-    const uint32_t rhi_max_queries_occlusion     = 4096;
-    const uint32_t rhi_max_queries_timestamps    = 512;
     const uint32_t rhi_all_mips                  = std::numeric_limits<uint32_t>::max();
     const uint32_t rhi_dynamic_offset_empty      = std::numeric_limits<uint32_t>::max();
 }
