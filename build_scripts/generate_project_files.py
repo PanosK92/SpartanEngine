@@ -25,6 +25,7 @@ from pathlib import Path
 import requests
 import importlib
 import stat
+import hashlib
 
 paths = {
     "binaries": {
@@ -47,21 +48,6 @@ paths = {
     },
 }
 
-def calculate_file_hash(file_path, hash_type="sha256"):
-    """Calculate the hash of a file."""
-    hash_func = hashlib.new(hash_type)
-    with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_func.update(chunk)
-    return hash_func.hexdigest()
-
-def check_file_hash(file_path, expected_hash, hash_type="sha256"):
-    """Check if the file's hash matches the expected hash."""
-    if not os.path.exists(file_path):
-        return False
-    file_hash = calculate_file_hash(file_path, hash_type)
-    return file_hash == expected_hash
-    
 def install_and_import(package):
     try:
         importlib.import_module(package)
@@ -74,8 +60,23 @@ def install_and_import(package):
 install_and_import('tqdm')
 from tqdm import tqdm
 
-def download_file(url, destination):
-    """Downloads a file from the specified URL to the given destination with a progress bar."""
+def calculate_file_hash(file_path, hash_type="sha256"):
+    hash_func = hashlib.new(hash_type)
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_func.update(chunk)
+    return hash_func.hexdigest()
+
+def download_file(url, destination, expected_hash):
+    """Downloads a file from the specified URL to the given destination with a progress bar and hash check."""
+    if not os.path.exists(destination):
+        print(f"File {destination} doesn't exist. Downloading...")
+    elif calculate_file_hash(destination) != expected_hash:
+        print(f"Hash of {destination} is outdated. Downloading new version...")
+    else:
+        print(f"File {destination} already exists with the correct hash. Skipping download.")
+        return
+
     os.makedirs(os.path.dirname(destination), exist_ok=True)  # Ensure the directory exists
     response = requests.get(url, stream=True)
     total_size = int(response.headers.get('content-length', 0))
@@ -87,9 +88,15 @@ def download_file(url, destination):
             f.write(chunk)
     t.close()
     if total_size != 0 and t.n != total_size:
-        print("ERROR, something went wrong")
-    print("Download complete!")
+        print("ERROR, something went wrong during download")
+        return
 
+    # Verify the hash after download
+    if calculate_file_hash(destination) != expected_hash:
+        print(f"ERROR: Hash mismatch for {destination} after download")
+    else:
+        print(f"Download of {destination} complete and hash verified!")
+        
 def is_directory(path):
     if not os.path.exists(path):
         return os.path.splitext(path)[1] == ""
@@ -164,26 +171,21 @@ def generate_project_files():
 def main():
     library_url = 'https://www.dropbox.com/scl/fi/1skztgtsx2zkwmyo9bsph/libraries.7z?rlkey=d8t3n75px5f8b99pjqimml8kf&st=vl8cy9ss&dl=1'
     library_destination = 'third_party/libraries/libraries.7z'
+    library_expected_hash = '95348b87dc1d02cf174af911b7cfc21bcce4d4b476a3c61cdc049bbdc2f3bb62'
+
     assets_url = 'https://www.dropbox.com/scl/fi/hagxxndy0dnq7pu0ufkxh/assets.7z?rlkey=gmwlxlhf6q3eubh7r50q2xp27&st=60lavvyz&dl=1'
     assets_destination = 'assets/assets.7z'
-
-    # Check if the libraries file exists, download if not
-    if not os.path.exists(library_destination):
-        print("libraries.7z not found, downloading...")
-        download_file(library_url, library_destination)
-    extract_third_party_dependencies()
-
-    # Check if the assets file exists, download if not
-    if not os.path.exists(assets_destination):
-        print("assets.7z not found, downloading...")
-        download_file(assets_url, assets_destination)
-    extract_assets()
+    assets_expected_hash = '59cd3b52b0aa84ed3f9bfc9fdef7af945d3f42e134e8bc8bded2bc9519380b8a'
+    
+    #Download files with hash checking
+    download_file(library_url, library_destination, library_expected_hash)
+    download_file(assets_url, assets_destination, assets_expected_hash)
 
     create_binaries_folder()
     copy_dlls()
     copy_assets()
     generate_project_files()
-    os.system('pause')
+    #os.system('pause')
     sys.exit(0)
 
 if __name__ == "__main__":
