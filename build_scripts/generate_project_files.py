@@ -24,6 +24,7 @@ import subprocess
 from pathlib import Path
 import requests
 import importlib
+import stat
 
 paths = {
     "binaries": {
@@ -46,6 +47,21 @@ paths = {
     },
 }
 
+def calculate_file_hash(file_path, hash_type="sha256"):
+    """Calculate the hash of a file."""
+    hash_func = hashlib.new(hash_type)
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_func.update(chunk)
+    return hash_func.hexdigest()
+
+def check_file_hash(file_path, expected_hash, hash_type="sha256"):
+    """Check if the file's hash matches the expected hash."""
+    if not os.path.exists(file_path):
+        return False
+    file_hash = calculate_file_hash(file_path, hash_type)
+    return file_hash == expected_hash
+    
 def install_and_import(package):
     try:
         importlib.import_module(package)
@@ -80,17 +96,29 @@ def is_directory(path):
     return os.path.isdir(path)
 
 def copy(source, destination):
-    if os.path.isfile(source) and is_directory(destination):
-        print(f"Copying file \"{source}\" to directory \"{destination}\"...")
-        shutil.copy(source, destination)
+    def on_rm_error(func, path, exc_info):
+        # Make the file writable if it's read-only
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+
+    if os.path.isfile(source):
+        if is_directory(destination):
+            dest_file = os.path.join(destination, os.path.basename(source))
+        else:
+            dest_file = destination
+        print(f"Copying file \"{source}\" to \"{dest_file}\"...")
+        if os.path.exists(dest_file):
+            os.chmod(dest_file, stat.S_IWRITE)  # Make the file writable if it exists
+        shutil.copy2(source, dest_file)
     elif is_directory(source) and is_directory(destination):
         print(f"Copying directory \"{source}\" to directory \"{destination}\"...")
         if os.path.exists(destination):
-            shutil.rmtree(destination)
+            shutil.rmtree(destination, onerror=on_rm_error)
         shutil.copytree(source, destination)
     else:
         print(f"Error: {source} and {destination} are not compatible.")
-        sys.exit(1)
+        return False
+    return True
 
 def extract_third_party_dependencies():
     print("1. Extracting third-party dependencies...")
@@ -155,6 +183,7 @@ def main():
     copy_dlls()
     copy_assets()
     generate_project_files()
+    os.system('pause')
     sys.exit(0)
 
 if __name__ == "__main__":
