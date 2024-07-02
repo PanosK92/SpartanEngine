@@ -464,6 +464,45 @@ namespace Spartan
             }
         }
 
+        namespace pipeline_statistics
+        {
+            bool is_query_active = false;
+            const uint32_t query_count = 1;
+            array<uint64_t, query_count> data;
+
+            void update(void* cmd_list, void* query_pool)
+            {
+                if (is_query_active)
+                { 
+                    vkCmdEndQuery(static_cast<VkCommandBuffer>(cmd_list), static_cast<VkQueryPool>(query_pool), 0);
+                    is_query_active = false;
+
+                    vkGetQueryPoolResults(
+                        RHI_Context::device,                  // device
+                        static_cast<VkQueryPool>(query_pool), // queryPool
+                        0,                                    // firstQuery
+                        query_count,                          // queryCount
+                        query_count * sizeof(uint64_t),       // dataSize
+                        data.data(),                          // pData
+                        sizeof(uint64_t),                     // stride
+                        VK_QUERY_RESULT_64_BIT                // flags
+                    );
+
+                    Profiler::m_rhi_pipeline_vertex_count = static_cast<uint32_t>(data[0]);
+                }
+            }
+
+            void reset(void* cmd_list, void*& query_pool)
+            {
+                if (!is_query_active)
+                { 
+                    vkCmdResetQueryPool(static_cast<VkCommandBuffer>(cmd_list), static_cast<VkQueryPool>(query_pool), 0, query_count);
+                    vkCmdBeginQuery(static_cast<VkCommandBuffer>(cmd_list), static_cast<VkQueryPool>(query_pool), 0, 0);
+                    is_query_active = true;
+                }
+            }
+        }
+
         namespace occlusion
         {
             uint32_t index              = 0;
@@ -493,7 +532,7 @@ namespace Spartan
             }
         }
 
-        void initialize(void*& pool_timestamp, void*& pool_occlusion)
+        void initialize(void*& pool_timestamp, void*& pool_occlusion, void*& pool_pipeline_statistics)
         {
             // timestamps
             if (Profiler::IsGpuTimingEnabled())
@@ -508,6 +547,21 @@ namespace Spartan
                 RHI_Device::SetResourceName(pool_timestamp, RHI_Resource_Type::QueryPool, "query_pool_timestamp");
 
                 timestamp::data.fill(0);
+            }
+
+            // pipeline statistics
+            {
+                VkQueryPoolCreateInfo query_pool_info = {};
+                query_pool_info.sType                 = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+                query_pool_info.queryType             = VK_QUERY_TYPE_PIPELINE_STATISTICS;
+                query_pool_info.queryCount            = pipeline_statistics::query_count;
+                query_pool_info.pipelineStatistics    = VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT;
+
+                auto query_pool = reinterpret_cast<VkQueryPool*>(&pool_pipeline_statistics);
+                SP_ASSERT_VK_MSG(vkCreateQueryPool(RHI_Context::device, &query_pool_info, nullptr, query_pool), "Failed to create pipeline statistics query pool");
+                RHI_Device::SetResourceName(pool_pipeline_statistics, RHI_Resource_Type::QueryPool, "query_pool_pipeline_statistics");
+
+                pipeline_statistics::data.fill(0);
             }
 
             // occlusion
@@ -525,10 +579,11 @@ namespace Spartan
             }
         }
 
-        void shutdown(void*& pool_timestamp, void*& pool_occlusion)
+        void shutdown(void*& pool_timestamp, void*& pool_occlusion, void*& pool_pipeline_statistics)
         {
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::QueryPool, pool_timestamp);
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::QueryPool, pool_occlusion);
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::QueryPool, pool_pipeline_statistics);
         }
     }
 
@@ -555,12 +610,12 @@ namespace Spartan
         m_rendering_complete_semaphore          = make_shared<RHI_Semaphore>(false, name);
         m_rendering_complete_semaphore_timeline = make_shared<RHI_Semaphore>(true, name);
 
-        queries::initialize(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion);
+        queries::initialize(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion, m_rhi_query_pool_pipeline_statistics);
     }
 
     RHI_CommandList::~RHI_CommandList()
     {
-        queries::shutdown(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion);
+        queries::shutdown(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion, m_rhi_query_pool_pipeline_statistics);
     }
 
     void RHI_CommandList::Begin(const RHI_Queue* queue)
@@ -608,6 +663,7 @@ namespace Spartan
             m_timestamp_index = 0;
             queries::timestamp::reset(m_rhi_resource, m_rhi_query_pool_timestamps);
             queries::occlusion::reset(m_rhi_resource, m_rhi_query_pool_occlusion);
+            queries::pipeline_statistics::reset(m_rhi_resource, m_rhi_query_pool_pipeline_statistics);
         }
     }
 
@@ -616,7 +672,8 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // end
-        RenderPassEnd(); // only happens if needed
+        RenderPassEnd();
+        queries::pipeline_statistics::update(m_rhi_resource, m_rhi_query_pool_pipeline_statistics);
         SP_ASSERT_VK_MSG(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource)), "Failed to end command buffer");
 
         // when minimized, or when entering/exiting fullscreen mode, the swapchain
@@ -662,7 +719,7 @@ namespace Spartan
             vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_rhi_resource), pipeline_bind_point, vk_pipeline);
 
             // profile
-            Profiler::m_rhi_bindings_pipeline++;
+            Profiler::m_rhi_pipeline_bindings++;
 
             // set some dynamic states
             if (m_pso.IsGraphics())

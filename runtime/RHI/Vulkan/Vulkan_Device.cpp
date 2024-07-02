@@ -1140,6 +1140,10 @@ namespace Spartan
                     // cubemaps
                     SP_ASSERT(support.features.imageCubeArray == VK_TRUE);
                     features.features.imageCubeArray = VK_TRUE;
+
+                    // pipeline statistics
+                    SP_ASSERT(support.features.pipelineStatisticsQuery == VK_TRUE);
+                    features.features.pipelineStatisticsQuery = VK_TRUE;
                 }
 
                 // quality of life improvements
