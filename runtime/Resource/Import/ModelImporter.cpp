@@ -347,13 +347,6 @@ namespace Spartan
 
             // if metalness and/or roughness are not provided, try to deduce some sensible values
             {
-                bool is_vegetation =
-                    name.find("foliage") != string::npos ||
-                    name.find("leaf")    != string::npos ||
-                    name.find("leaves")  != string::npos ||
-                    name.find("flowers") != string::npos ||
-                    name.find("plant")   != string::npos;
-
                 bool is_metal =
                     name.find("metal")    != string::npos ||
                     name.find("iron")     != string::npos ||
@@ -373,7 +366,7 @@ namespace Spartan
                 // roughness
                 if (!material->HasTexture(MaterialTexture::Roughness))
                 {
-                    if (is_smooth || is_metal || is_vegetation)
+                    if (is_smooth || is_metal)
                     {
                         material->SetProperty(MaterialProperty::Roughness, 0.3f);
                     }
@@ -385,12 +378,6 @@ namespace Spartan
                     {
                         material->SetProperty(MaterialProperty::Roughness, 0.65f);
                     }
-                }
-
-                // subsurface scattering
-                if (is_vegetation)
-                {
-                    material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                 }
             }
 
