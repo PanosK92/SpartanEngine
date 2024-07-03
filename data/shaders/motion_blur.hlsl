@@ -30,6 +30,8 @@ static const float  g_velocity_threshold      = 0.01f; // threshold for skipping
 static const float  g_adaptive_threshold      = 0.1f;  // threshold for max adaptive sampling
 static const float  g_depth_scale             = 1.0f;  // adjust this to control depth difference sensitivity
 
+groupshared uint g_tile_max_velocity_sqr;
+
 float2 get_velocity_3x3_average(float2 uv, float2 resolution_out)
 {
     float2 texel_size     = 1.0f / resolution_out;
@@ -58,7 +60,7 @@ uint get_adaptive_sample_count(float2 velocity)
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void main_cs(uint3 thread_id : SV_DispatchThreadID)
+void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_GroupThreadID, uint group_index : SV_GroupIndex)
 {
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
@@ -72,6 +74,25 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     
     // scale velocity by the motion blur strength, delta time, and additional scale factor
     velocity *= motion_blur_strength * g_velocity_scale / (buffer_frame.delta_time + FLT_MIN);
+    
+    // Compute max velocity squared for the tile
+    if (group_index == 0)
+    {
+        g_tile_max_velocity_sqr = 0;
+    }
+    GroupMemoryBarrierWithGroupSync();
+    
+    uint velocity_sqr = (uint)(dot(velocity, velocity) * 1000000.0f); // Scale up and convert to integer
+    InterlockedMax(g_tile_max_velocity_sqr, velocity_sqr);
+    
+    GroupMemoryBarrierWithGroupSync();
+    
+    // skip blur calculation for low-motion tiles
+    if (sqrt(float(g_tile_max_velocity_sqr) / 1000000.0f) < g_velocity_threshold)
+    {
+        tex_uav[thread_id.xy] = color;
+        return;
+    }
     
     // skip blur calculation for low-motion pixels
     if (length(velocity) < g_velocity_threshold)
