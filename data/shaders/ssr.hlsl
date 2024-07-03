@@ -172,6 +172,3 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy]  = float4(reflection_color, alpha);
 }
-
-
-
