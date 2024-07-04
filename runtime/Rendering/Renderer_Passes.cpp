@@ -1456,7 +1456,7 @@ namespace Spartan
         cmd_list->EndMarker();
 
         // generate mips
-        Pass_Ffx_Spd(cmd_list, tex_bloom, Renderer_DownsampleFilter::Antiflicker);
+        Pass_Ffx_Spd(cmd_list, tex_bloom, Renderer_DownsampleFilter::Average);
 
         // starting from the lowest mip, upsample and blend with the higher one
         cmd_list->BeginMarker("upsample_and_blend_with_higher_mip");
@@ -1737,11 +1737,7 @@ namespace Spartan
         // acquire shader
         RHI_Shader* shader_c = nullptr;
         {
-            // deduce appropriate shader
-            Renderer_Shader shader = Renderer_Shader::ffx_spd_average_c;
-            if (filter == Renderer_DownsampleFilter::Max)         shader = Renderer_Shader::ffx_spd_max_c;
-            if (filter == Renderer_DownsampleFilter::Antiflicker) shader = Renderer_Shader::ffx_spd_antiflicker_c;
-
+            Renderer_Shader shader = (filter == Renderer_DownsampleFilter::Average) ? Renderer_Shader::ffx_spd_average_c : Renderer_Shader::ffx_spd_max_c;
             shader_c = GetShader(shader).get();
             if (!shader_c->IsCompiled())
                 return;

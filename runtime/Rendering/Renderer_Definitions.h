@@ -205,7 +205,6 @@ namespace Spartan
         ffx_cas_c,
         ffx_spd_average_c,
         ffx_spd_max_c,
-        ffx_spd_antiflicker_c,
         max
     };
     
@@ -307,8 +306,7 @@ namespace Spartan
 
     enum class Renderer_DownsampleFilter
     {
-        Average,
         Max,
-        Antiflicker
+        Average
     };
 }

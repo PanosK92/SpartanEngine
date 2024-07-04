@@ -28,7 +28,7 @@ static const float BLOOM_THRESHOLD = 1.0;
 static const float BLOOM_SOFT_KNEE = 0.7;
 static const float BLOOM_SCATTER   = 0.8;
 static const float MAX_BRIGHTNESS  = 10.0;
-static const float BLOOM_SPREAD    = 4.0f;
+static const float BLOOM_SPREAD    = 5.0f;
 
 float3 threshold(float3 color)
 {
