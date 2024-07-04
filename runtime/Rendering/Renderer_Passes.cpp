@@ -1336,16 +1336,6 @@ namespace Spartan
         #define get_output_in  swap_output ? rt_frame_output_scratch : rt_frame_output
         #define get_output_out swap_output ? rt_frame_output : rt_frame_output_scratch
 
-        // RENDER RESOLUTION
-        {
-            // Depth of Field
-            if (GetOption<bool>(Renderer_Option::DepthOfField))
-            {
-                swap_render = !swap_render;
-                Pass_DepthOfField(cmd_list, get_render_in, get_render_out);
-            }
-        }
-
         // deduce some information
         Renderer_Upsampling upsampling_mode = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling);
         Renderer_Antialiasing antialiasing  = GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing);
@@ -1371,6 +1361,13 @@ namespace Spartan
 
         // OUTPUT RESOLUTION
         {
+            // Depth of Field
+            if (GetOption<bool>(Renderer_Option::DepthOfField))
+            {
+                swap_output = !swap_output;
+                Pass_DepthOfField(cmd_list, get_output_in, get_output_out);
+            }
+
             // motion Blur
             if (GetOption<bool>(Renderer_Option::MotionBlur))
             {
@@ -1742,7 +1739,7 @@ namespace Spartan
         {
             // deduce appropriate shader
             Renderer_Shader shader = Renderer_Shader::ffx_spd_average_c;
-            if (filter == Renderer_DownsampleFilter::Highest)     shader = Renderer_Shader::ffx_spd_highest_c;
+            if (filter == Renderer_DownsampleFilter::Max)         shader = Renderer_Shader::ffx_spd_max_c;
             if (filter == Renderer_DownsampleFilter::Antiflicker) shader = Renderer_Shader::ffx_spd_antiflicker_c;
 
             shader_c = GetShader(shader).get();

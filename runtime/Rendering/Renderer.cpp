@@ -189,7 +189,7 @@ namespace Spartan
         SetOption(Renderer_Option::Hdr,                           swap_chain->IsHdr() ? 1.0f : 0.0f);
         SetOption(Renderer_Option::WhitePoint,                    350.0f);
         SetOption(Renderer_Option::Tonemapping,                   static_cast<float>(Renderer_Tonemapping::Max));
-        SetOption(Renderer_Option::Bloom,                         0.03f);                                                // non-zero values activate it and define the blend factor
+        SetOption(Renderer_Option::Bloom,                         1.0f);                                                 // non-zero values activate it and control the intensity
         SetOption(Renderer_Option::MotionBlur,                    1.0f);
         SetOption(Renderer_Option::DepthOfField,                  1.0f);
         SetOption(Renderer_Option::ScreenSpaceGlobalIllumination, 1.0f);

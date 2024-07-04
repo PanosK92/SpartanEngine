@@ -186,11 +186,12 @@ namespace Spartan
         uint32_t width_output  = static_cast<uint32_t>(GetResolutionOutput().x);
         uint32_t height_output = static_cast<uint32_t>(GetResolutionOutput().y);
 
-        // deduce how many mips are required to scale down any dimension close to 16px (or exactly)
+        // deduce how many mips are required to scale down any dimension at 16px
+        // computing smaller mips results in blockiness in most passes that use mip maps
         uint32_t mip_count          = 1;
         uint32_t width              = width_render;
         uint32_t height             = height_render;
-        uint32_t smallest_dimension = 1;
+        uint32_t smallest_dimension = 16;
         while (width > smallest_dimension && height > smallest_dimension)
         {
             width  /= 2;
@@ -267,7 +268,10 @@ namespace Spartan
             render_target(Renderer_RenderTarget::frame_output_2) = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, flags_rt | RHI_Texture_ClearBlit, "frame_output_2");
 
             // misc
-            render_target(Renderer_RenderTarget::bloom)                = make_shared<RHI_Texture2D>(width_output, height_output, mip_count, RHI_Format::R11G11B10_Float, flags | RHI_Texture_PerMipViews, "bloom");
+            {
+                render_target(Renderer_RenderTarget::bloom) = make_shared<RHI_Texture2D>(width_output, height_output, mip_count, RHI_Format::R11G11B10_Float, flags | RHI_Texture_PerMipViews, "bloom");
+            }
+
             render_target(Renderer_RenderTarget::outline)              = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R8G8B8A8_Unorm, flags_rt, "outline");
             render_target(Renderer_RenderTarget::gbuffer_depth_output) = make_shared<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::D32_Float, flags_rt_depth, "gbuffer_depth_output");
         }
@@ -433,9 +437,9 @@ namespace Spartan
                 shader(Renderer_Shader::ffx_spd_average_c)->AddDefine("AVERAGE");
                 shader(Renderer_Shader::ffx_spd_average_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
 
-                shader(Renderer_Shader::ffx_spd_highest_c) = make_shared<RHI_Shader>();
-                shader(Renderer_Shader::ffx_spd_highest_c)->AddDefine("HIGHEST");
-                shader(Renderer_Shader::ffx_spd_highest_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
+                shader(Renderer_Shader::ffx_spd_max_c) = make_shared<RHI_Shader>();
+                shader(Renderer_Shader::ffx_spd_max_c)->AddDefine("MAX");
+                shader(Renderer_Shader::ffx_spd_max_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
 
                 shader(Renderer_Shader::ffx_spd_antiflicker_c) = make_shared<RHI_Shader>();
                 shader(Renderer_Shader::ffx_spd_antiflicker_c)->AddDefine("ANTIFLICKER");
