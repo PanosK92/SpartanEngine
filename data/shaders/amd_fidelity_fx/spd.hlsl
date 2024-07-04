@@ -64,33 +64,20 @@ void SpdStoreIntermediate(AU1 x, AU1 y, AF4 value)
 AF4 SpdReduce4(AF4 s1, AF4 s2, AF4 s3, AF4 s4)
 {
     #if AVERAGE
-
-    return (s1 + s2 + s3 + s4) * 0.25f;
-
-    #elif HIGHEST
-
-    // return the maximum depth value (reverse-z)
-    AF4 max_depth = s1;
-    max_depth = min(s1, s2);
-    max_depth = min(max_depth, s3);
-    max_depth = min(max_depth, s4); 
-    return max_depth;
-
+        return (s1 + s2 + s3 + s4) * 0.25f;
+    #elif MAX
+        return max(max(s1, s2), max(s3, s4));
     #elif ANTIFLICKER
-
-    // luminance weighted average
-    float s1w          = 1 / (luminance(s1) + 1);
-    float s2w          = 1 / (luminance(s2) + 1);
-    float s3w          = 1 / (luminance(s3) + 1);
-    float s4w          = 1 / (luminance(s4) + 1);
-    float one_div_wsum = 1.0 / (s1w + s2w + s3w + s4w);   
-    return (s1 * s1w + s2 * s2w + s3 * s3w + s4 * s4w) * one_div_wsum;
-
+        // luminance weighted average
+        float s1w          = 1 / (luminance(s1) + 1);
+        float s2w          = 1 / (luminance(s2) + 1);
+        float s3w          = 1 / (luminance(s3) + 1);
+        float s4w          = 1 / (luminance(s4) + 1);
+        float one_div_wsum = 1.0 / (s1w + s2w + s3w + s4w);
+        return (s1 * s1w + s2 * s2w + s3 * s3w + s4 * s4w) * one_div_wsum;
     #endif
-
     return 0.0f;
 }
-
 void SpdIncreaseAtomicCounter(AU1 slice)
 {
     InterlockedAdd(g_atomic_counter[0], 1, spd_counter);
