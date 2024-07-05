@@ -18,7 +18,7 @@
 [![Discord](https://img.shields.io/discord/677302405263785986?logo=discord&label=Discord&color=5865F2&logoColor=white)](https://discord.gg/TG5r2BS)
 
 # Media
-| Video: Livestream of FSR 2 integration | Video: A demonstration of the engine's and the community |
+| Video: Livestream of FSR 2 integration | Video: The engine and the community |
 |:-:|:-:|
 |[![Image1](https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/readme_1.4.jpg)](https://www.youtube.com/watch?v=QhyMal6RY7M) | [![Image2](https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/video_promo.png)](https://www.youtube.com/watch?v=TMZ0epSVwCk)
 
