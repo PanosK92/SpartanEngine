@@ -93,7 +93,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                     shadow.a = min(shadow.a, tex_sss[int3(thread_id.xy, array_slice_index)].x);
                 }
             }
-        
+
             // ensure that the shadow is as transparent as the material
             if (pass_is_transparent())
             {
@@ -151,7 +151,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         volumetric_fog = compute_volumetric_fog(surface, light, thread_id.xy);
     }
     
-    /* diffuse  */   tex_uav[thread_id.xy]  += float4(saturate_11(light_diffuse  * light.radiance + light_subsurface), 1.0f);
-    /* specular */   tex_uav2[thread_id.xy] += float4(saturate_11(light_specular * light.radiance), 1.0f);
-    /* volumetric */ tex_uav3[thread_id.xy] += float4(saturate_11(volumetric_fog), 1.0f);
+    /* diffuse  */   tex_uav[thread_id.xy]      += float4(saturate_11(light_diffuse  * light.radiance + light_subsurface), 1.0f);
+    /* specular */   tex_uav2[thread_id.xy]     += float4(saturate_11(light_specular * light.radiance), 1.0f);
+    /* shadow */     tex_uav_uint[thread_id.xy] -= shadow.a;
+    /* volumetric */ tex_uav3[thread_id.xy]     += float4(saturate_11(volumetric_fog), 1.0f);
 }

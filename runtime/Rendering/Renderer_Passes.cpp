@@ -984,7 +984,7 @@ namespace Spartan
         if (!GetOption<bool>(Renderer_Option::ScreenSpaceShadows))
             return;
 
-        // acquire resources
+        // get resources
         RHI_Shader* shader_c                       = GetShader(Renderer_Shader::sss_c_bend).get();
         RHI_Texture* tex_sss                       = GetRenderTarget(Renderer_RenderTarget::sss).get();
         const vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Light];
@@ -999,8 +999,8 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // set textures
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)); // read from that
-            cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, tex_sss); // write to that
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)); // read
+            cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, tex_sss);                                               // write
 
             // iterate through all the lights
             static float array_slice_index = 0.0f;
@@ -1118,6 +1118,7 @@ namespace Spartan
         RHI_Shader* shader_c        = GetShader(Renderer_Shader::light_c).get();
         RHI_Texture* tex_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse).get();
         RHI_Texture* tex_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular).get();
+        RHI_Texture* tex_shadow     = GetRenderTarget(Renderer_RenderTarget::light_shadow).get();
         RHI_Texture* tex_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric).get();
         auto& entities              = m_renderables[Renderer_Entity::Light];
         if (!shader_c->IsCompiled())
@@ -1134,6 +1135,7 @@ namespace Spartan
         { 
             cmd_list->ClearRenderTarget(tex_diffuse,    Color::standard_black);
             cmd_list->ClearRenderTarget(tex_specular,   Color::standard_black);
+            cmd_list->ClearRenderTarget(tex_shadow,     Color::standard_white);
             cmd_list->ClearRenderTarget(tex_volumetric, Color::standard_black);
         }
 
@@ -1150,9 +1152,10 @@ namespace Spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::ssgi, GetRenderTarget(Renderer_RenderTarget::ssgi));
 
             // write to these
-            cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_diffuse);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_specular);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex3, tex_volumetric);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex,      tex_diffuse);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex2,     tex_specular);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex_uint, tex_shadow);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex3,     tex_volumetric);
 
             if (shared_ptr<Light> light = entities[light_index]->GetComponent<Light>())
             {
