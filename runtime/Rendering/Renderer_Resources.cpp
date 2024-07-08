@@ -238,7 +238,7 @@ namespace Spartan
 
                 render_target(Renderer_RenderTarget::light_diffuse)    = make_unique<RHI_Texture2D>(width_render, height_render, 1,  RHI_Format::R11G11B10_Float, light_flags, "light_diffuse");
                 render_target(Renderer_RenderTarget::light_specular)   = make_unique<RHI_Texture2D>(width_render, height_render, 1,  RHI_Format::R11G11B10_Float, light_flags, "light_specular");
-                render_target(Renderer_RenderTarget::light_shadow)     = make_unique<RHI_Texture2D>(width_render, height_render, 1,  RHI_Format::R8_Unorm,        light_flags, "light_Shadow");
+                render_target(Renderer_RenderTarget::light_shadow)     = make_unique<RHI_Texture2D>(width_render, height_render, 1,  RHI_Format::R8_Unorm,        light_flags, "light_shadow");
                 render_target(Renderer_RenderTarget::light_volumetric) = make_unique<RHI_Texture2D>(width_render, height_render, 1,  RHI_Format::R11G11B10_Float, light_flags, "light_volumetric");
             }
 
@@ -277,9 +277,9 @@ namespace Spartan
         // fixed resolution - created only once
         if (!render_target(Renderer_RenderTarget::brdf_specular_lut))
         {
-            render_target(Renderer_RenderTarget::brdf_specular_lut) = make_unique<RHI_Texture2D>(512, 512, 1, RHI_Format::R8G8_Unorm, flags, "brdf_specular_lut");
-            render_target(Renderer_RenderTarget::skysphere)         = make_unique<RHI_Texture2D>(4096, 4096, mip_count, RHI_Format::R11G11B10_Float, flags | RHI_Texture_PerMipViews, "skysphere");
-            render_target(Renderer_RenderTarget::blur)              = make_unique<RHI_Texture2D>(4096, 4096, 1, RHI_Format::R16G16B16A16_Float, flags, "blur");
+            render_target(Renderer_RenderTarget::brdf_specular_lut) = make_unique<RHI_Texture2D>(512,  512,  1,         RHI_Format::R8G8_Unorm,         flags, "brdf_specular_lut");
+            render_target(Renderer_RenderTarget::skysphere)         = make_unique<RHI_Texture2D>(4096, 4096, mip_count, RHI_Format::R11G11B10_Float,    flags | RHI_Texture_PerMipViews, "skysphere");
+            render_target(Renderer_RenderTarget::blur)              = make_unique<RHI_Texture2D>(4096, 4096, 1,         RHI_Format::R16G16B16A16_Float, flags, "blur");
         }
         
 
