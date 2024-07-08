@@ -68,7 +68,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     Light light;
     light.Build(surface);
 
-    float4 shadow           = 1.0f;
+    float4 shadow           = 0.0f;
     float3 light_diffuse    = 0.0f;
     float3 light_specular   = 0.0f;
     float3 volumetric_fog   = 0.0f;
@@ -151,8 +151,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         volumetric_fog = compute_volumetric_fog(surface, light, thread_id.xy);
     }
     
-    /* diffuse  */   tex_uav[thread_id.xy]      += float4(saturate_11(light_diffuse  * light.radiance + light_subsurface), 1.0f);
-    /* specular */   tex_uav2[thread_id.xy]     += float4(saturate_11(light_specular * light.radiance), 1.0f);
-    /* shadow */     tex_uav_uint[thread_id.xy] -= shadow.a;
-    /* volumetric */ tex_uav3[thread_id.xy]     += float4(saturate_11(volumetric_fog), 1.0f);
+    /* diffuse    */ tex_uav[thread_id.xy]  += float4(saturate_11(light_diffuse  * light.radiance + light_subsurface), 1.0f);
+    /* specular   */ tex_uav2[thread_id.xy] += float4(saturate_11(light_specular * light.radiance), 1.0f);
+    /* shadow     */ tex_uav3[thread_id.xy]  = saturate(tex_uav3[thread_id.xy] - (1.0f - shadow.a));
+    /* volumetric */ tex_uav4[thread_id.xy] += float4(saturate_11(volumetric_fog), 1.0f);
 }
+
