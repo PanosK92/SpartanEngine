@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     float2 resolution_out;
-    tex_uav_uint.GetDimensions(resolution_out.x, resolution_out.y);
+    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
 
     // get luminance
     float2 uv        = (thread_id.xy + 0.5f) / resolution_out;
@@ -41,5 +41,5 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         shading_rate = 5;
     }
 
-    tex_uav_uint[thread_id.xy] = shading_rate;
+    tex_uav[thread_id.xy] = shading_rate;
 }
