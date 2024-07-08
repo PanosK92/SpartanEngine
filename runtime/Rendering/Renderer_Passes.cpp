@@ -489,7 +489,7 @@ namespace Spartan
 
         // set textures
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
-        cmd_list->SetTexture(Renderer_BindingsUav::tex_uint, tex_out);
+        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
 
         // render
         cmd_list->Dispatch(tex_out);
@@ -1152,10 +1152,10 @@ namespace Spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::ssgi, GetRenderTarget(Renderer_RenderTarget::ssgi));
 
             // write to these
-            cmd_list->SetTexture(Renderer_BindingsUav::tex,      tex_diffuse);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex2,     tex_specular);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex_uint, tex_shadow);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex3,     tex_volumetric);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_diffuse);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_specular);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex3, tex_shadow);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex4, tex_volumetric);
 
             if (shared_ptr<Light> light = entities[light_index]->GetComponent<Light>())
             {
