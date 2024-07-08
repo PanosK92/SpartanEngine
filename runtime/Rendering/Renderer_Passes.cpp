@@ -919,7 +919,7 @@ namespace Spartan
         if (!GetOption<bool>(Renderer_Option::ScreenSpaceGlobalIllumination))
             return;
 
-        // acquire resources
+        // get resources
         RHI_Texture* tex_ssgi   = GetRenderTarget(Renderer_RenderTarget::ssgi).get();
         RHI_Shader* shader_ssgi = GetShader(Renderer_Shader::ssgi_c).get();
         if (!shader_ssgi->IsCompiled())
@@ -939,8 +939,6 @@ namespace Spartan
 
         // render
         cmd_list->Dispatch(tex_ssgi);
-
-        //RHI_OpenImageDenoise::Denoise(tex_ssgi);
 
         cmd_list->EndTimeblock();
     }
@@ -1116,7 +1114,7 @@ namespace Spartan
 
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
-        // acquire resources
+        // get resources
         RHI_Shader* shader_c        = GetShader(Renderer_Shader::light_c).get();
         RHI_Texture* tex_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse).get();
         RHI_Texture* tex_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular).get();
@@ -1125,26 +1123,24 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock(is_transparent_pass ? "light_transparent" : "light");
-
-        // clear render targets
-        cmd_list->ClearRenderTarget(tex_diffuse,    Color::standard_black);
-        cmd_list->ClearRenderTarget(tex_specular,   Color::standard_black);
-        cmd_list->ClearRenderTarget(tex_volumetric, Color::standard_black);
-
         uint32_t light_count = static_cast<uint32_t>(entities.size());
         if (light_count == 0)
-        {
-            cmd_list->EndTimeblock();
             return;
+
+        cmd_list->BeginTimeblock(is_transparent_pass ? "light_transparent" : "light");
+
+        // clear render targets the first time around (opaque pas)
+        if (!is_transparent_pass)
+        { 
+            cmd_list->ClearRenderTarget(tex_diffuse,    Color::standard_black);
+            cmd_list->ClearRenderTarget(tex_specular,   Color::standard_black);
+            cmd_list->ClearRenderTarget(tex_volumetric, Color::standard_black);
         }
 
         // set pipeline state
         static RHI_PipelineState pso;
         pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
-   
-        SetGbufferTextures(cmd_list);
 
         // iterate through all the lights
         for (uint32_t light_index = 0; light_index < light_count; light_index++)
