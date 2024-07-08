@@ -237,11 +237,9 @@ namespace Spartan
                 uint32_t light_flags    = flags | RHI_Texture_ClearBlit;
                 RHI_Format light_format = RHI_Format::R11G11B10_Float;
 
-                render_target(Renderer_RenderTarget::light_diffuse)              = make_unique<RHI_Texture2D>(width_render, height_render, 1, light_format, light_flags, "light_diffuse");
-                render_target(Renderer_RenderTarget::light_diffuse_transparent)  = make_unique<RHI_Texture2D>(width_render, height_render, 1, light_format, light_flags, "light_diffuse_transparent");
-                render_target(Renderer_RenderTarget::light_specular)             = make_unique<RHI_Texture2D>(width_render, height_render, 1, light_format, light_flags, "light_specular");
-                render_target(Renderer_RenderTarget::light_specular_transparent) = make_unique<RHI_Texture2D>(width_render, height_render, 1, light_format, light_flags, "light_specular_transparent");
-                render_target(Renderer_RenderTarget::light_volumetric)           = make_unique<RHI_Texture2D>(width_render, height_render, 1, light_format, light_flags, "light_volumetric");
+                render_target(Renderer_RenderTarget::light_diffuse)    = make_unique<RHI_Texture2D>(width_render, height_render, 1, light_format, light_flags, "light_diffuse");
+                render_target(Renderer_RenderTarget::light_specular)   = make_unique<RHI_Texture2D>(width_render, height_render, 1, light_format, light_flags, "light_specular");
+                render_target(Renderer_RenderTarget::light_volumetric) = make_unique<RHI_Texture2D>(width_render, height_render, 1, light_format, light_flags, "light_volumetric");
             }
 
             // ssr

@@ -1118,8 +1118,8 @@ namespace Spartan
     {
         // acquire resources
         RHI_Shader* shader_c        = GetShader(Renderer_Shader::light_c).get();
-        RHI_Texture* tex_diffuse    = is_transparent_pass ? GetRenderTarget(Renderer_RenderTarget::light_diffuse_transparent).get() : GetRenderTarget(Renderer_RenderTarget::light_diffuse).get();
-        RHI_Texture* tex_specular   = is_transparent_pass ? GetRenderTarget(Renderer_RenderTarget::light_specular_transparent).get() : GetRenderTarget(Renderer_RenderTarget::light_specular).get();
+        RHI_Texture* tex_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse).get();
+        RHI_Texture* tex_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular).get();
         RHI_Texture* tex_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric).get();
         auto& entities              = m_renderables[Renderer_Entity::Light];
         if (!shader_c->IsCompiled())
@@ -1211,8 +1211,8 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsUav::tex,              tex_out);
         cmd_list->SetTexture(Renderer_BindingsUav::tex2,             GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
         cmd_list->SetTexture(Renderer_BindingsSrv::tex,              GetStandardTexture(Renderer_StandardTexture::Foam));
-        cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,    is_transparent_pass ? GetRenderTarget(Renderer_RenderTarget::light_diffuse_transparent).get()  : GetRenderTarget(Renderer_RenderTarget::light_diffuse).get());
-        cmd_list->SetTexture(Renderer_BindingsSrv::light_specular,   is_transparent_pass ? GetRenderTarget(Renderer_RenderTarget::light_specular_transparent).get() : GetRenderTarget(Renderer_RenderTarget::light_specular).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,    GetRenderTarget(Renderer_RenderTarget::light_diffuse).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::light_specular,   GetRenderTarget(Renderer_RenderTarget::light_specular).get());
         cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric, GetRenderTarget(Renderer_RenderTarget::light_volumetric));
         cmd_list->SetTexture(Renderer_BindingsSrv::frame,            tex_refraction);
         cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,             GetRenderTarget(Renderer_RenderTarget::ssgi));
