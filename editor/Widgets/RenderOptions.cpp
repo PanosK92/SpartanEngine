@@ -308,6 +308,10 @@ void RenderOptions::OnTickVisible()
 
             // ssgi
             option_check_box("SSGI - Screen space global illumination", Renderer_Option::ScreenSpaceGlobalIllumination, "SSAO with a diffuse light bounce");
+
+            // sss
+            option_check_box("SSS - Screen space shadows", Renderer_Option::ScreenSpaceShadows, "Requires a light with shadows enabled");
+
         }
 
         if (option("Anti-Aliasing"))
@@ -364,9 +368,6 @@ void RenderOptions::OnTickVisible()
         {
             // volumetric fog
             option_check_box("Volumetric fog", Renderer_Option::FogVolumetric, "Requires a light with shadows enabled");
-
-            // screen space shadows
-            option_check_box("Screen space shadows", Renderer_Option::ScreenSpaceShadows, "Requires a light with shadows enabled");
 
             // shadow resolution
             int resolution_shadow = Renderer::GetOption<int>(Renderer_Option::ShadowResolution);
