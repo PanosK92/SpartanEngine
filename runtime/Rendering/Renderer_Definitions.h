@@ -116,34 +116,32 @@ namespace Spartan
         gbuffer_depth_opaque   = 6,
 
         // lighting
-        light_diffuse              = 7,
-        light_diffuse_transparent  = 8,
-        light_specular             = 9,
-        light_specular_transparent = 10,
-        light_volumetric           = 11,
+        light_diffuse    = 7,
+        light_specular   = 8,
+        light_volumetric = 9,
     
         // light depth/color maps
-        light_depth = 12,
-        light_color = 13,
+        light_depth = 10,
+        light_color = 11,
     
         // noise
-        noise_normal = 14,
-        noise_blue   = 15,
+        noise_normal = 12,
+        noise_blue   = 13,
     
         // misc
-        lutIbl           = 16,
-        environment      = 17,
-        ssgi             = 18,
-        ssr              = 19,
-        frame            = 20,
-        tex              = 21,
-        tex2             = 22,
-        font_atlas       = 23,
-        reflection_probe = 24,
-        sss              = 25,
+        lutIbl           = 14,
+        environment      = 15,
+        ssgi             = 16,
+        ssr              = 17,
+        frame            = 18,
+        tex              = 19,
+        tex2             = 20,
+        font_atlas       = 21,
+        reflection_probe = 22,
+        sss              = 23,
 
         // bindless
-        materials = 26
+        materials = 24
     };
 
     enum class Renderer_BindingsUav
