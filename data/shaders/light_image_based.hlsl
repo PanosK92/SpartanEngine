@@ -69,7 +69,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 ibl_specular                 = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level);
     // apply shadow mask
     float shadow_mask  = tex[thread_id.xy].r;
-    shadow_mask        = max(shadow_mask, 0.5f);
+    shadow_mask        = max(shadow_mask, 0.35f);
     ibl_specular      *= shadow_mask;
     
     // ssr
