@@ -190,7 +190,7 @@ namespace
                 ImGui::BeginGroup();
                 {
                     ImGui::Text("Contributors");
-                    if (ImGui::BeginTable("##contributors_table", 6, table_flags, ImVec2(ImGui::GetContentRegionAvail().x * 0.71f, 0.0f)))
+                    if (ImGui::BeginTable("##contributors_table", 6, table_flags, ImVec2(ImGui::GetContentRegionAvail().x * 0.72f, 0.0f)))
                     {
                         ImGui::TableSetupColumn("Title");
                         ImGui::TableSetupColumn("Name");
