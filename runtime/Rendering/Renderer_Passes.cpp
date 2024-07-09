@@ -2186,46 +2186,35 @@ namespace Spartan
             return;
 
         cmd_list->BeginTimeblock("light_integration_environment_filter");
+
+        // set pipeline state
+        static RHI_PipelineState pso;
+        pso.shaders[Compute] = shader_c;
+        cmd_list->SetPipelineState(pso);
+
+        uint32_t mip_count = tex_environment->GetMipCount();
+        uint32_t mip_level = mip_count - m_environment_mips_to_filter_count;
+        SP_ASSERT(mip_level != 0);
+
+        cmd_list->SetTexture(Renderer_BindingsSrv::environment, tex_environment);
+
+        // do one mip at a time, splitting the cost over a couple of frames
+        Vector2 resolution = Vector2(tex_environment->GetWidth() >> mip_level, tex_environment->GetHeight() >> mip_level);
         {
-            // set pipeline state
-            static RHI_PipelineState pso;
-            pso.shaders[Compute] = shader_c;
-            cmd_list->SetPipelineState(pso);
+            // set pass constants
+            m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(mip_count), 0.0f);
+            cmd_list->PushConstants(m_pcb_pass_cpu);
 
-            uint32_t mip_count = tex_environment->GetMipCount();
-            uint32_t mip_level = mip_count - m_environment_mips_to_filter_count;
-            SP_ASSERT(mip_level != 0);
-
-            cmd_list->SetTexture(Renderer_BindingsSrv::environment, tex_environment);
-
-            // do one mip at a time, splitting the cost over a couple of frames
-            Vector2 resolution = Vector2(tex_environment->GetWidth() >> mip_level, tex_environment->GetHeight() >> mip_level);
-            {
-                // set pass constants
-                m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(mip_count), 0.0f);
-                cmd_list->PushConstants(m_pcb_pass_cpu);
-
-                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
-                const uint32_t thread_group_count = 8;
-                cmd_list->Dispatch(
-                    static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.x) / thread_group_count)),
-                    static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.y) / thread_group_count))
-                );
-            }
-
-            m_environment_mips_to_filter_count--;
-
-            // the first 3 mips have obvious sample patterns
-            // the rest can have seems since they are a few pixels
-            // so we blur them all
-            if (m_environment_mips_to_filter_count == 0)
-            {
-                for (uint32_t i = 1; i < mip_count; i++)
-                {
-                    Pass_Blur_Gaussian(cmd_list, tex_environment, 32.0f, i);
-                }
-            }
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
+            const uint32_t thread_group_count = 8;
+            cmd_list->Dispatch(
+                static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.x) / thread_group_count)),
+                static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.y) / thread_group_count))
+            );
         }
+
+        m_environment_mips_to_filter_count--;
+
         cmd_list->EndTimeblock();
     }
 }

@@ -224,37 +224,34 @@ namespace Spartan
         SP_ASSERT(!m_indices.empty());
         SP_ASSERT(!m_vertices.empty());
 
-        uint32_t index_count                     = static_cast<uint32_t>(m_indices.size());
-        uint32_t vertex_count                    = static_cast<uint32_t>(m_vertices.size());
-        size_t vertex_size                       = sizeof(RHI_Vertex_PosTexNorTan);
+        const uint32_t index_count               = static_cast<uint32_t>(m_indices.size());
+        const uint32_t vertex_count              = static_cast<uint32_t>(m_vertices.size());
+        const size_t vertex_size                 = sizeof(RHI_Vertex_PosTexNorTan);
         vector<uint32_t> indices                 = m_indices;
         vector<RHI_Vertex_PosTexNorTan> vertices = m_vertices;
 
         // vertex cache optimization
-        // improves the GPU's post-transform cache hit rate, reducing the required vertex shader invocations
         if (m_flags & static_cast<uint32_t>(MeshFlags::OptimizeVertexCache))
         {
-            meshopt_optimizeVertexCache(&indices[0], &m_indices[0], index_count, vertex_count);
+            meshopt_optimizeVertexCache(&indices[0], &indices[0], index_count, vertex_count);
         }
 
         // overdraw optimization
-        // minimizes overdraw by reordering triangles, aiming to reduce pixel shader invocations
         if (m_flags & static_cast<uint32_t>(MeshFlags::OptimizeOverdraw))
         {
-            meshopt_optimizeOverdraw(&indices[0], &indices[0], index_count, &m_vertices[0].pos[0], vertex_count, vertex_size, 1.05f);
+            meshopt_optimizeOverdraw(&indices[0], &indices[0], index_count, &vertices[0].pos[0], vertex_count, vertex_size, 1.05f);
         }
 
         // vertex fetch optimization
-        // reorders vertices and changes indices to improve vertex fetch cache performance, reducing the bandwidth needed to fetch vertices
         if (m_flags & static_cast<uint32_t>(MeshFlags::OptimizeVertexFetch))
         {
-            meshopt_optimizeVertexFetch(&m_vertices[0], &indices[0], index_count, &vertices[0], vertex_count, vertex_size);
+            meshopt_optimizeVertexFetch(&vertices[0], &indices[0], index_count, &vertices[0], vertex_count, vertex_size);
         }
 
-        // store the updated indices back to m_indices
-        m_indices = indices;
+        // store the updated data back to member variables
+        m_indices  = move(indices);
+        m_vertices = move(vertices);
     }
-
     void Mesh::CreateGpuBuffers()
     {
         SP_ASSERT_MSG(!m_indices.empty(), "There are no indices");
