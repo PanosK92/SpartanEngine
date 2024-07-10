@@ -202,7 +202,7 @@ namespace Spartan
         SetOption(Renderer_Option::Fog,                           0.3f);                                                 // controls the intensity of the volumetric fog as well
         SetOption(Renderer_Option::FogVolumetric,                 1.0f);                                                 // these is only a toggle for the volumetric fog
         SetOption(Renderer_Option::Antialiasing,                  static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 2 for taa
-        SetOption(Renderer_Option::Upsampling,                    static_cast<float>(Renderer_Upsampling::Fsr2));
+        SetOption(Renderer_Option::Upsampling,                    static_cast<float>(Renderer_Upsampling::Fsr3));
         SetOption(Renderer_Option::ResolutionScale,               1.0f);
         SetOption(Renderer_Option::VariableRateShading,           0.0f);
         SetOption(Renderer_Option::Vsync,                         0.0f);
@@ -383,9 +383,9 @@ namespace Spartan
 
         // generate jitter sample in case FSR (which also does TAA) is enabled
         Renderer_Upsampling upsampling_mode = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling);
-        if (upsampling_mode == Renderer_Upsampling::Fsr2 || GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa)
+        if (upsampling_mode == Renderer_Upsampling::Fsr3 || GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa)
         {
-            RHI_FidelityFX::FSR2_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
+            RHI_FidelityFX::FSR3_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
             m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(jitter_offset.x, jitter_offset.y, 0.0f));
         }
         else
@@ -654,15 +654,14 @@ namespace Spartan
             if (option == Renderer_Option::Antialiasing)
             {
                 bool taa_enabled = value == static_cast<float>(Renderer_Antialiasing::Taa) || value == static_cast<float>(Renderer_Antialiasing::TaaFxaa);
-                bool fsr_enabled = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::Fsr2;
+                bool fsr_enabled = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::Fsr3;
 
                 if (taa_enabled)
                 {
-                    // implicitly enable FSR since it's doing TAA.
                     if (!fsr_enabled)
                     {
-                        m_options[Renderer_Option::Upsampling] = static_cast<float>(Renderer_Upsampling::Fsr2);
-                        RHI_FidelityFX::FSR2_ResetHistory();
+                        m_options[Renderer_Option::Upsampling] = static_cast<float>(Renderer_Upsampling::Fsr3);
+                        RHI_FidelityFX::FSR3_ResetHistory();
                     }
                 }
                 else
@@ -681,21 +680,19 @@ namespace Spartan
 
                 if (value == static_cast<float>(Renderer_Upsampling::Linear))
                 {
-                    // Implicitly disable TAA since FSR 2.0 is doing it
                     if (taa_enabled)
                     {
                         m_options[Renderer_Option::Antialiasing] = static_cast<float>(Renderer_Antialiasing::Disabled);
-                        SP_LOG_INFO("Disabled TAA since it's done by FSR 2.0.");
+                        SP_LOG_INFO("Disabled TAA since it's done by FSR 3.0.");
                     }
                 }
-                else if (value == static_cast<float>(Renderer_Upsampling::Fsr2))
+                else if (value == static_cast<float>(Renderer_Upsampling::Fsr3))
                 {
-                    // Implicitly enable TAA since FSR 2.0 is doing it
                     if (!taa_enabled)
                     {
                         m_options[Renderer_Option::Antialiasing] = static_cast<float>(Renderer_Antialiasing::Taa);
-                        RHI_FidelityFX::FSR2_ResetHistory();
-                        SP_LOG_INFO("Enabled TAA since FSR 2.0 does it.");
+                        RHI_FidelityFX::FSR3_ResetHistory();
+                        SP_LOG_INFO("Enabled TAA since FSR 3.0 does it.");
                     }
                 }
             }

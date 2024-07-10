@@ -256,7 +256,7 @@ void RenderOptions::OnTickVisible()
                 static vector<string> upsampling_modes =
                 {
                     "Linear",
-                    "FSR 2"
+                    "FSR 3"
                 };
 
                 bool is_upsampling = resolution_render.x < resolution_output.x || resolution_render.y < resolution_output.y;
@@ -271,7 +271,7 @@ void RenderOptions::OnTickVisible()
                 ImGui::EndDisabled();
 
                 // sharpening
-                bool use_rcas  = Renderer::GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::Fsr2;
+                bool use_rcas  = Renderer::GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::Fsr3;
                 string label   = use_rcas ? "Sharpness (RCAS)" : "Sharpness (CAS)";
                 string tooltip = use_rcas ? "AMD FidelityFX Robust Contrast Adaptive Sharpening (RCAS)" : "AMD FidelityFX Contrast Adaptive Sharpening (CAS)";
                 option_value(label.c_str(), Renderer_Option::Sharpness, tooltip.c_str(), 0.1f, 0.0f, 1.0f);

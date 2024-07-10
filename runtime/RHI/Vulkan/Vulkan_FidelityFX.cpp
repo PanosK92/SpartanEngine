@@ -28,8 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../World/Components/Camera.h"
 SP_WARNINGS_OFF
 #include <FidelityFX/host/backends/vk/ffx_vk.h>
-#include <FidelityFX/host/ffx_spd.h>
-#include <FidelityFX/host/ffx_fsr2.h>
+#include <FidelityFX/host/ffx_fsr3.h>
 SP_WARNINGS_ON
 //=============================================
 
@@ -42,21 +41,16 @@ namespace Spartan
     namespace
     {
         // common
-        FfxInterface common_interface = {};
+        FfxInterface ffx_interface = {};
 
-        // spd
-        FfxSpdContext            spd_context             = {};
-        FfxSpdContextDescription spd_context_description = {};
-        bool                     spd_context_created     = false;
+        // fsr 3
+        FfxFsr3UpscalerContext fsr3_context                         = {};
+        FfxFsr3UpscalerContextDescription fsr3_description_context  = {};
+        FfxFsr3UpscalerDispatchDescription fs3_description_dispatch = {};
+        bool fsr3_context_created                                   = false;
+        uint32_t fsr3_jitter_index                                  = 0;
 
-        // fsr 2
-        FfxFsr2Context fsr2_context                          = {};
-        FfxFsr2ContextDescription fsr2_context_description   = {};
-        FfxFsr2DispatchDescription fsr2_dispatch_description = {};
-        bool fsr2_context_created                            = false;
-        uint32_t fsr2_jitter_index                           = 0;
-
-        static void ffx_message_callback(FfxMsgType type, const wchar_t* message)
+        void ffx_message_callback(FfxMsgType type, const wchar_t* message)
         {
             if (type == FFX_MESSAGE_TYPE_ERROR)
             {
@@ -138,137 +132,112 @@ namespace Spartan
 
     void RHI_FidelityFX::Initialize()
     {
-        // common interface
+        // ffx interface
         {
-            const size_t size =
-                //FFX_SPD_CONTEXT_COUNT +
-                FFX_FSR2_CONTEXT_COUNT;
+            const size_t countext_count = FFX_FSR3_CONTEXT_COUNT;
 
             VkDeviceContext device_context  = {};
             device_context.vkDevice         = RHI_Context::device;
             device_context.vkPhysicalDevice = RHI_Context::device_physical;
+            device_context.vkDeviceProcAddr = vkGetDeviceProcAddr;
 
-            const size_t scratch_buffer_size = ffxGetScratchMemorySizeVK(RHI_Context::device_physical, size);
-            void* scratch_buffer             = malloc(scratch_buffer_size);
+            const size_t scratch_buffer_size = ffxGetScratchMemorySizeVK(RHI_Context::device_physical, countext_count);
+            void* scratch_buffer             = calloc(1, scratch_buffer_size);
 
-            SP_ASSERT(ffxGetInterfaceVK(&common_interface, ffxGetDeviceVK(&device_context), scratch_buffer, scratch_buffer_size, size) == FFX_OK);
+            FfxErrorCode result = ffxGetInterfaceVK(&ffx_interface, ffxGetDeviceVK(&device_context), scratch_buffer, scratch_buffer_size, countext_count);
+            SP_ASSERT(result == FFX_OK);
         }
 
-        // spd
+        // fsr 3
         {
             // interface
-            spd_context_description.backendInterface = common_interface;
+            fsr3_description_context.backendInterface = ffx_interface;
 
             // context
-            spd_context_description.flags = FFX_SPD_SAMPLER_LINEAR | FFX_SPD_WAVE_INTEROP_WAVE_OPS | FFX_SPD_MATH_PACKED;
-            //ffxSpdContextCreate(&spd_context, &spd_context_description);
-            //spd_context_created = true;
-        }
-
-        // fsr 2
-        {
-            // interface
-            fsr2_context_description.backendInterface = common_interface;
-
-            // context
-            // the context is (re)created below, in FSR2_Resize()
+            // the context is created in FSR3_Resize()
         }
     }
 
     void RHI_FidelityFX::Shutdown()
     {
-        // spd
-        if (spd_context_created)
+        // fsr 3
+        if (fsr3_context_created)
         {
-            ffxSpdContextDestroy(&spd_context);
-            spd_context_created = false;
+            ffxFsr3UpscalerContextDestroy(&fsr3_context);
+            fsr3_context_created = false;
         }
 
-        // fsr 2
-        if (fsr2_context_created)
+        // ffx interface
+        if (ffx_interface.scratchBuffer != nullptr)
         {
-            ffxFsr2ContextDestroy(&fsr2_context);
-            fsr2_context_created = false;
-        }
-
-        // common
-        if (common_interface.scratchBuffer != nullptr)
-        {
-            free(common_interface.scratchBuffer);
+            free(ffx_interface.scratchBuffer);
         }
     }
 
-    void RHI_FidelityFX::SPD_Dispatch(RHI_CommandList* cmd_list, RHI_Texture* texture)
+    void RHI_FidelityFX::FSR3_ResetHistory()
     {
-        FfxSpdDispatchDescription dispatch_description = {};
-        dispatch_description.commandList               = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
-        dispatch_description.resource                  = to_ffx_resource(texture, L"spd_texture", FFX_RESOURCE_USAGE_ARRAYVIEW);
-
-        //SP_ASSERT(ffxSpdContextDispatch(&spd_context, &dispatch_description) == FFX_OK);
+        fs3_description_dispatch.reset = true;
     }
 
-    void RHI_FidelityFX::FSR2_ResetHistory()
-    {
-        fsr2_dispatch_description.reset = true;
-    }
-
-    void RHI_FidelityFX::FSR2_GenerateJitterSample(float* x, float* y)
+    void RHI_FidelityFX::FSR3_GenerateJitterSample(float* x, float* y)
     {
         // get jitter phase count
-        const uint32_t resolution_render_x = static_cast<uint32_t>(fsr2_context_description.maxRenderSize.width);
-        const uint32_t resolution_render_y = static_cast<uint32_t>(fsr2_context_description.maxRenderSize.height);
-        const int32_t jitter_phase_count   = ffxFsr2GetJitterPhaseCount(resolution_render_x, resolution_render_x);
+        const uint32_t resolution_render_x = static_cast<uint32_t>(fsr3_description_context.maxRenderSize.width);
+        const uint32_t resolution_render_y = static_cast<uint32_t>(fsr3_description_context.maxRenderSize.height);
+        const int32_t jitter_phase_count   = ffxFsr3GetJitterPhaseCount(resolution_render_x, resolution_render_x);
 
-        // ensure fsr2_jitter_index is properly wrapped around the jitter_phase_count
-        fsr2_jitter_index = (fsr2_jitter_index + 1) % jitter_phase_count;
+        // ensure fsr3_jitter_index is properly wrapped around the jitter_phase_count
+        fsr3_jitter_index = (fsr3_jitter_index + 1) % jitter_phase_count;
 
         // generate jitter sample
-        FfxErrorCode result = ffxFsr2GetJitterOffset(&fsr2_dispatch_description.jitterOffset.x, &fsr2_dispatch_description.jitterOffset.y, fsr2_jitter_index, jitter_phase_count);
+        FfxErrorCode result = ffxFsr3GetJitterOffset(&fs3_description_dispatch.jitterOffset.x, &fs3_description_dispatch.jitterOffset.y, fsr3_jitter_index, jitter_phase_count);
         SP_ASSERT(result == FFX_OK);
 
         // adjust the jitter offset for the projection matrix, based on the function comments
-        *x =  2.0f * fsr2_dispatch_description.jitterOffset.x / resolution_render_x;
-        *y = -2.0f * fsr2_dispatch_description.jitterOffset.y / resolution_render_y;
+        *x =  2.0f * fs3_description_dispatch.jitterOffset.x / resolution_render_x;
+        *y = -2.0f * fs3_description_dispatch.jitterOffset.y / resolution_render_y;
     }
 
-    void RHI_FidelityFX::FSR2_Resize(const Vector2& resolution_render, const Vector2& resolution_output)
+    void RHI_FidelityFX::FSR3_Resize(const Vector2& resolution_render, const Vector2& resolution_output)
     {
         // destroy context
-        if (fsr2_context_created)
+        if (fsr3_context_created)
         {
-            ffxFsr2ContextDestroy(&fsr2_context);
-            fsr2_context_created = false;
+            ffxFsr3UpscalerContextDestroy(&fsr3_context);
+            fsr3_context_created = false;
         }
 
         // create context
         {
-            // the maximum size that rendering will be performed at
-            fsr2_context_description.maxRenderSize.width  = static_cast<uint32_t>(resolution_render.x);
-            fsr2_context_description.maxRenderSize.height = static_cast<uint32_t>(resolution_render.y);
+            // max render size
+            fsr3_description_context.maxRenderSize.width  = static_cast<uint32_t>(resolution_render.x);
+            fsr3_description_context.maxRenderSize.height = static_cast<uint32_t>(resolution_render.y);
 
-            // the size of the presentation resolution targeted by the upscaling process
-            fsr2_context_description.displaySize.width  = static_cast<uint32_t>(resolution_output.x);
-            fsr2_context_description.displaySize.height = static_cast<uint32_t>(resolution_output.y);
+            // max output size
+            fsr3_description_context.maxUpscaleSize.width  = static_cast<uint32_t>(resolution_output.x);
+            fsr3_description_context.maxUpscaleSize.height = static_cast<uint32_t>(resolution_output.y);
 
             // flags
             {
-                fsr2_context_description.flags      = FFX_FSR2_ENABLE_DEPTH_INVERTED | FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE | FFX_FSR2_ENABLE_DYNAMIC_RESOLUTION;
+                fsr3_description_context.flags      = 0;
+                fsr3_description_context.flags     |= FFX_FSR3_ENABLE_UPSCALING_ONLY | FFX_FSR3_ENABLE_DEPTH_INVERTED | FFX_FSR3_ENABLE_DYNAMIC_RESOLUTION;
+                fsr3_description_context.flags     |= FFX_FSR3_ENABLE_HIGH_DYNAMIC_RANGE; // hdr input
                 #ifdef DEBUG
-                fsr2_context_description.flags     |= FFX_FSR2_ENABLE_DEBUG_CHECKING;
-                fsr2_context_description.fpMessage  = &ffx_message_callback;
+                fsr3_description_context.flags     |= FFX_FSR3_ENABLE_DEBUG_CHECKING;
+                fsr3_description_context.fpMessage  = &ffx_message_callback;
                 #endif
             }
 
             // context
-            ffxFsr2ContextCreate(&fsr2_context, &fsr2_context_description);
-            fsr2_context_created = true;
+            ffxFsr3UpscalerContextCreate(&fsr3_context, &fsr3_description_context);
+            fsr3_context_created = true;
         }
 
         // reset jitter index
-        fsr2_jitter_index = 0;
+        fsr3_jitter_index = 0;
     }
 
-    void RHI_FidelityFX::FSR2_Dispatch
+    void RHI_FidelityFX::FSR3_Dispatch
     (
         RHI_CommandList* cmd_list,
         RHI_Texture* tex_color,
@@ -297,35 +266,35 @@ namespace Spartan
         {
             // resources
             {
-                fsr2_dispatch_description.color           = to_ffx_resource(tex_color,        L"fsr2_color");
-                fsr2_dispatch_description.colorOpaqueOnly = to_ffx_resource(tex_color_opaque, L"fsr2_color_opaque");
-                fsr2_dispatch_description.depth           = to_ffx_resource(tex_depth,        L"fsr2_depth");
-                fsr2_dispatch_description.output          = to_ffx_resource(tex_output,       L"fsr2_output");
-                fsr2_dispatch_description.motionVectors   = to_ffx_resource(tex_velocity,     L"fsr2_velocity");
-                fsr2_dispatch_description.commandList     = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
+                fs3_description_dispatch.color           = to_ffx_resource(tex_color,        L"fsr3_color");
+                fs3_description_dispatch.depth           = to_ffx_resource(tex_depth,        L"fsr3_depth");
+                fs3_description_dispatch.motionVectors   = to_ffx_resource(tex_velocity,     L"fsr3_velocity");
+                //fs3_description_dispatch.colorOpaqueOnly = to_ffx_resource(tex_color_opaque, L"fsr3_color_opaque");
+                fs3_description_dispatch.output          = to_ffx_resource(tex_output,       L"fsr3_output");
+                fs3_description_dispatch.commandList     = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
             }
 
             // configuration
-            fsr2_dispatch_description.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth());
-            fsr2_dispatch_description.motionVectorScale.y    = -static_cast<float>(tex_velocity->GetHeight());
-            fsr2_dispatch_description.enableSharpening       = sharpness != 0.0f;
-            fsr2_dispatch_description.sharpness              = sharpness;
-            fsr2_dispatch_description.frameTimeDelta         = delta_time_sec * 1000.0f;                                            // seconds to milliseconds
-            fsr2_dispatch_description.preExposure            = exposure;                                                            // the exposure value if not using FFX_FSR2_ENABLE_AUTO_EXPOSURE
-            fsr2_dispatch_description.renderSize.width       = static_cast<uint32_t>(tex_velocity->GetWidth() * resolution_scale);  // viewport size
-            fsr2_dispatch_description.renderSize.height      = static_cast<uint32_t>(tex_velocity->GetHeight() * resolution_scale); // viewport size
-            fsr2_dispatch_description.cameraNear             = camera->GetFarPlane();                                               // far as near because we are using reverse-z
-            fsr2_dispatch_description.cameraFar              = camera->GetNearPlane();                                              // near as far because we are using reverse-z
-            fsr2_dispatch_description.cameraFovAngleVertical = camera->GetFovVerticalRad();
-            fsr2_dispatch_description.enableAutoReactive     = true;                                                                // generate reactive and transparency & composition masks
-            fsr2_dispatch_description.autoReactiveMax        = 0.5f;                                                                // a value to clamp the reactive mask
-            fsr2_dispatch_description.autoReactiveScale      = 1.0f;                                                                // a value to scale the reactive mask
-            fsr2_dispatch_description.autoTcThreshold        = 0.5f;                                                                // a value to clamp the transparency and composition mask
-            fsr2_dispatch_description.autoTcScale            = 1.0f;                                                                // a value to scale the transparency and composition mask
+            fs3_description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth());
+            fs3_description_dispatch.motionVectorScale.y    = -static_cast<float>(tex_velocity->GetHeight());
+            fs3_description_dispatch.enableSharpening       = sharpness != 0.0f;
+            fs3_description_dispatch.sharpness              = sharpness;
+            fs3_description_dispatch.frameTimeDelta         = delta_time_sec * 1000.0f;                                            // seconds to milliseconds
+            fs3_description_dispatch.preExposure            = exposure;                                                            // the exposure value if not using FFX_FSR3_ENABLE_AUTO_EXPOSURE
+            fs3_description_dispatch.renderSize.width       = static_cast<uint32_t>(tex_velocity->GetWidth() * resolution_scale);  // viewport size
+            fs3_description_dispatch.renderSize.height      = static_cast<uint32_t>(tex_velocity->GetHeight() * resolution_scale); // viewport size
+            fs3_description_dispatch.cameraNear             = camera->GetFarPlane();                                               // far as near because we are using reverse-z
+            fs3_description_dispatch.cameraFar              = camera->GetNearPlane();                                              // near as far because we are using reverse-z
+            fs3_description_dispatch.cameraFovAngleVertical = camera->GetFovVerticalRad();
+            //fs3_description_dispatch.enableAutoReactive     = true;                                                                // generate reactive and transparency & composition masks
+            //fs3_description_dispatch.autoReactiveMax        = 0.5f;                                                                // a value to clamp the reactive mask
+            //fs3_description_dispatch.autoReactiveScale      = 1.0f;                                                                // a value to scale the reactive mask
+            //fs3_description_dispatch.autoTcThreshold        = 0.5f;                                                                // a value to clamp the transparency and composition mask
+            //fs3_description_dispatch.autoTcScale            = 1.0f;                                                                // a value to scale the transparency and composition mask
         }
 
         // dispatch
-        SP_ASSERT(ffxFsr2ContextDispatch(&fsr2_context, &fsr2_dispatch_description) == FFX_OK);
-        fsr2_dispatch_description.reset = false;
+        SP_ASSERT(ffxFsr3UpscalerContextDispatch(&fsr3_context, &fs3_description_dispatch) == FFX_OK);
+        fs3_description_dispatch.reset = false;
     }
 }

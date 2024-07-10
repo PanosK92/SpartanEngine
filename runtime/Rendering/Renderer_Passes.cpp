@@ -1349,9 +1349,9 @@ namespace Spartan
             swap_render = !swap_render;
 
             // use FSR 2 for different resolutions if enabled, otherwise blit
-            if (upsampling_mode == Renderer_Upsampling::Fsr2)
+            if (upsampling_mode == Renderer_Upsampling::Fsr3)
             {
-                Pass_Ffx_Fsr2(cmd_list, get_render_in, rt_frame_output);
+                Pass_Ffx_Fsr3(cmd_list, get_render_in, rt_frame_output);
             }
             else
             {
@@ -1387,7 +1387,7 @@ namespace Spartan
             Pass_Output(cmd_list, get_output_in, get_output_out);
 
             // sharpening
-            if (GetOption<bool>(Renderer_Option::Sharpness) && upsampling_mode != Renderer_Upsampling::Fsr2)
+            if (GetOption<bool>(Renderer_Option::Sharpness) && upsampling_mode != Renderer_Upsampling::Fsr3)
             {
                 swap_output = !swap_output;
                 Pass_Ffx_Cas(cmd_list, get_output_in, get_output_out);
@@ -1766,11 +1766,11 @@ namespace Spartan
         cmd_list->EndMarker();
     }
 
-    void Renderer::Pass_Ffx_Fsr2(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
+    void Renderer::Pass_Ffx_Fsr3(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
-        cmd_list->BeginTimeblock("amd_ffx_fsr2");
+        cmd_list->BeginTimeblock("amd_ffx_fsr3");
 
-        RHI_FidelityFX::FSR2_Dispatch(
+        RHI_FidelityFX::FSR3_Dispatch(
             cmd_list,
             tex_in,
             GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get(),

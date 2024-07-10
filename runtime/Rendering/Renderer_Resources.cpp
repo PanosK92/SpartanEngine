@@ -284,7 +284,7 @@ namespace Spartan
         
 
         RHI_Device::QueueWaitAll();
-        RHI_FidelityFX::FSR2_Resize(GetResolutionRender(), GetResolutionOutput());
+        RHI_FidelityFX::FSR3_Resize(GetResolutionRender(), GetResolutionOutput());
     }
 
     void Renderer::CreateShaders()
