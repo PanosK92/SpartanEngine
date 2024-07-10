@@ -235,6 +235,7 @@ namespace Spartan
         blur,
         outline,
         shading_rate,
+        reactive,
         max
     };
 

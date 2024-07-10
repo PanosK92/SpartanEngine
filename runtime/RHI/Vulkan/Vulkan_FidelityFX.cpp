@@ -44,11 +44,11 @@ namespace Spartan
         FfxInterface ffx_interface = {};
 
         // fsr 3
-        FfxFsr3UpscalerContext fsr3_context                         = {};
-        FfxFsr3UpscalerContextDescription fsr3_description_context  = {};
-        FfxFsr3UpscalerDispatchDescription fs3_description_dispatch = {};
-        bool fsr3_context_created                                   = false;
-        uint32_t fsr3_jitter_index                                  = 0;
+        FfxFsr3UpscalerContext fsr3_context                          = {};
+        FfxFsr3UpscalerContextDescription fsr3_description_context   = {};
+        FfxFsr3UpscalerDispatchDescription fsr3_description_dispatch = {};
+        bool fsr3_context_created                                    = false;
+        uint32_t fsr3_jitter_index                                   = 0;
 
         void ffx_message_callback(FfxMsgType type, const wchar_t* message)
         {
@@ -176,7 +176,7 @@ namespace Spartan
 
     void RHI_FidelityFX::FSR3_ResetHistory()
     {
-        fs3_description_dispatch.reset = true;
+        fsr3_description_dispatch.reset = true;
     }
 
     void RHI_FidelityFX::FSR3_GenerateJitterSample(float* x, float* y)
@@ -190,12 +190,12 @@ namespace Spartan
         fsr3_jitter_index = (fsr3_jitter_index + 1) % jitter_phase_count;
 
         // generate jitter sample
-        FfxErrorCode result = ffxFsr3GetJitterOffset(&fs3_description_dispatch.jitterOffset.x, &fs3_description_dispatch.jitterOffset.y, fsr3_jitter_index, jitter_phase_count);
+        FfxErrorCode result = ffxFsr3GetJitterOffset(&fsr3_description_dispatch.jitterOffset.x, &fsr3_description_dispatch.jitterOffset.y, fsr3_jitter_index, jitter_phase_count);
         SP_ASSERT(result == FFX_OK);
 
         // adjust the jitter offset for the projection matrix, based on the function comments
-        *x =  2.0f * fs3_description_dispatch.jitterOffset.x / resolution_render_x;
-        *y = -2.0f * fs3_description_dispatch.jitterOffset.y / resolution_render_y;
+        *x =  2.0f * fsr3_description_dispatch.jitterOffset.x / resolution_render_x;
+        *y = -2.0f * fsr3_description_dispatch.jitterOffset.y / resolution_render_y;
     }
 
     void RHI_FidelityFX::FSR3_Resize(const Vector2& resolution_render, const Vector2& resolution_output)
@@ -241,9 +241,10 @@ namespace Spartan
     (
         RHI_CommandList* cmd_list,
         RHI_Texture* tex_color,
-        RHI_Texture* tex_color_opaque,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
+        RHI_Texture* tex_color_opaque,
+        RHI_Texture* tex_reactive,
         RHI_Texture* tex_output,
         Camera* camera,
         const float delta_time_sec,
@@ -262,39 +263,51 @@ namespace Spartan
             cmd_list->InsertPendingBarrierGroup();
         }
 
-        // dispatch description
+        // generate reactive mask
         {
-            // resources
-            {
-                fs3_description_dispatch.color           = to_ffx_resource(tex_color,        L"fsr3_color");
-                fs3_description_dispatch.depth           = to_ffx_resource(tex_depth,        L"fsr3_depth");
-                fs3_description_dispatch.motionVectors   = to_ffx_resource(tex_velocity,     L"fsr3_velocity");
-                //fs3_description_dispatch.colorOpaqueOnly = to_ffx_resource(tex_color_opaque, L"fsr3_color_opaque");
-                fs3_description_dispatch.output          = to_ffx_resource(tex_output,       L"fsr3_output");
-                fs3_description_dispatch.commandList     = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
-            }
+            FfxFsr3UpscalerGenerateReactiveDescription fsr3_reactive_mask_description = {};
+            fsr3_reactive_mask_description.commandList                                = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
+            fsr3_reactive_mask_description.colorOpaqueOnly                            = to_ffx_resource(tex_color_opaque, L"fsr3_color_opaque");
+            fsr3_reactive_mask_description.colorPreUpscale                            = to_ffx_resource(tex_color, L"fsr3_color");
+            fsr3_reactive_mask_description.outReactive                                = to_ffx_resource(tex_reactive, L"fsr3_reactive");
+            fsr3_reactive_mask_description.renderSize.width                           = static_cast<uint32_t>(tex_velocity->GetWidth() * resolution_scale);
+            fsr3_reactive_mask_description.renderSize.height                          = static_cast<uint32_t>(tex_velocity->GetHeight() * resolution_scale);
+            fsr3_reactive_mask_description.scale                                      = 1.0f; // global multiplier for reactivity, higher values increase overall reactivity
+            fsr3_reactive_mask_description.cutoffThreshold                            = 0.8f; // difference threshold, lower values make more pixels reactive
+            fsr3_reactive_mask_description.binaryValue                                = 1.0f; // value assigned to reactive pixels in the mask (typically 1.0)
+            fsr3_reactive_mask_description.flags                                      = 0;
 
-            // configuration
-            fs3_description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth());
-            fs3_description_dispatch.motionVectorScale.y    = -static_cast<float>(tex_velocity->GetHeight());
-            fs3_description_dispatch.enableSharpening       = sharpness != 0.0f;
-            fs3_description_dispatch.sharpness              = sharpness;
-            fs3_description_dispatch.frameTimeDelta         = delta_time_sec * 1000.0f;                                            // seconds to milliseconds
-            fs3_description_dispatch.preExposure            = exposure;                                                            // the exposure value if not using FFX_FSR3_ENABLE_AUTO_EXPOSURE
-            fs3_description_dispatch.renderSize.width       = static_cast<uint32_t>(tex_velocity->GetWidth() * resolution_scale);  // viewport size
-            fs3_description_dispatch.renderSize.height      = static_cast<uint32_t>(tex_velocity->GetHeight() * resolution_scale); // viewport size
-            fs3_description_dispatch.cameraNear             = camera->GetFarPlane();                                               // far as near because we are using reverse-z
-            fs3_description_dispatch.cameraFar              = camera->GetNearPlane();                                              // near as far because we are using reverse-z
-            fs3_description_dispatch.cameraFovAngleVertical = camera->GetFovVerticalRad();
-            //fs3_description_dispatch.enableAutoReactive     = true;                                                                // generate reactive and transparency & composition masks
-            //fs3_description_dispatch.autoReactiveMax        = 0.5f;                                                                // a value to clamp the reactive mask
-            //fs3_description_dispatch.autoReactiveScale      = 1.0f;                                                                // a value to scale the reactive mask
-            //fs3_description_dispatch.autoTcThreshold        = 0.5f;                                                                // a value to clamp the transparency and composition mask
-            //fs3_description_dispatch.autoTcScale            = 1.0f;                                                                // a value to scale the transparency and composition mask
+            SP_ASSERT(ffxFsr3UpscalerContextGenerateReactiveMask(&fsr3_context, &fsr3_reactive_mask_description) == FFX_OK);
         }
 
-        // dispatch
-        SP_ASSERT(ffxFsr3UpscalerContextDispatch(&fsr3_context, &fs3_description_dispatch) == FFX_OK);
-        fs3_description_dispatch.reset = false;
+        // upscale
+        {
+            // set resources
+            {
+                fsr3_description_dispatch.color           = to_ffx_resource(tex_color,    L"fsr3_color");
+                fsr3_description_dispatch.depth           = to_ffx_resource(tex_depth,    L"fsr3_depth");
+                fsr3_description_dispatch.motionVectors   = to_ffx_resource(tex_velocity, L"fsr3_velocity");
+                fsr3_description_dispatch.reactive        = to_ffx_resource(tex_reactive, L"fsr3_reactive");
+                fsr3_description_dispatch.output          = to_ffx_resource(tex_output,   L"fsr3_output");
+                fsr3_description_dispatch.commandList     = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
+            }
+
+            // configure
+            fsr3_description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth());
+            fsr3_description_dispatch.motionVectorScale.y    = -static_cast<float>(tex_velocity->GetHeight());
+            fsr3_description_dispatch.enableSharpening       = sharpness != 0.0f;
+            fsr3_description_dispatch.sharpness              = sharpness;
+            fsr3_description_dispatch.frameTimeDelta         = delta_time_sec * 1000.0f;                                            // seconds to milliseconds
+            fsr3_description_dispatch.preExposure            = exposure;                                                            // the exposure value if not using FFX_FSR3_ENABLE_AUTO_EXPOSURE
+            fsr3_description_dispatch.renderSize.width       = static_cast<uint32_t>(tex_velocity->GetWidth() * resolution_scale);  // viewport size
+            fsr3_description_dispatch.renderSize.height      = static_cast<uint32_t>(tex_velocity->GetHeight() * resolution_scale); // viewport size
+            fsr3_description_dispatch.cameraNear             = camera->GetFarPlane();                                               // far as near because we are using reverse-z
+            fsr3_description_dispatch.cameraFar              = camera->GetNearPlane();                                              // near as far because we are using reverse-z
+            fsr3_description_dispatch.cameraFovAngleVertical = camera->GetFovVerticalRad();
+
+            // dispatch
+            SP_ASSERT(ffxFsr3UpscalerContextDispatch(&fsr3_context, &fsr3_description_dispatch) == FFX_OK);
+            fsr3_description_dispatch.reset = false;
+        }
     }
 }
