@@ -36,14 +36,11 @@ namespace Spartan
         static void Initialize();
         static void Shutdown();
 
-        // SPD
-        static void SPD_Dispatch(RHI_CommandList* cmd_list, RHI_Texture* texture);
-
-        // FSR 2
-        static void FSR2_ResetHistory();
-        static void FSR2_Resize(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output);
-        static void FSR2_GenerateJitterSample(float* x, float* y);
-        static void FSR2_Dispatch(
+        // FSR 3
+        static void FSR3_ResetHistory();
+        static void FSR3_Resize(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output);
+        static void FSR3_GenerateJitterSample(float* x, float* y);
+        static void FSR3_Dispatch(
             RHI_CommandList* cmd_list,
             RHI_Texture* tex_color,
             RHI_Texture* tex_color_opaque,

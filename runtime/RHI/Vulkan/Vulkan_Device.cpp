@@ -234,8 +234,9 @@ namespace Spartan
             "VK_EXT_robustness2",
             "VK_KHR_external_memory",       // to share images with Intel Open Image Denoise
             #if defined(_MSC_VER)
-            "VK_KHR_external_memory_win32"  // external memory handle type, linux alternative: VK_KHR_external_memory_fd
+            "VK_KHR_external_memory_win32",  // external memory handle type, linux alternative: VK_KHR_external_memory_fd
             #endif
+            "VK_KHR_get_memory_requirements2" // needed by AMD FidelityFX
         };
 
         bool is_present_device(const char* extension_name, VkPhysicalDevice device_physical)

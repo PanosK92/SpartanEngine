@@ -34,7 +34,7 @@ API_INCLUDES = {
 	vulkan = {
         "../third_party/spirv_cross",
         "../third_party/vulkan",
-        "../third_party/amd_fidelity_fx"
+        "../third_party/amd_fidelityfx"
     }
 }
 
@@ -60,9 +60,11 @@ API_LIBRARIES = {
             "spirv-cross-cpp",
             "spirv-cross-glsl",
             "spirv-cross-hlsl",
-            "ffx_backend_vk",
-			"ffx_fsr2",
-			"ffx_spd"
+            "ffx_backend_vk_x64",
+			"ffx_frameinterpolation_x64",
+			"ffx_fsr3_x64",
+			"ffx_fsr3upscaler_x64",
+			"ffx_opticalflow_x64"
         },
         debug = {
             "spirv-cross-c_debug",
@@ -70,9 +72,11 @@ API_LIBRARIES = {
             "spirv-cross-cpp_debug",
             "spirv-cross-glsl_debug",
             "spirv-cross-hlsl_debug",
-            "ffx_backend_vk_debug",
-			"ffx_fsr2_debug",
-			"ffx_spd_debug"
+            "ffx_backend_vk_x64d",
+			"ffx_frameinterpolation_x64d",
+			"ffx_fsr3_x64d",
+			"ffx_fsr3upscaler_x64d",
+			"ffx_opticalflow_x64d"
         }
     }
 }

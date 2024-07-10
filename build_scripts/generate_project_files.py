@@ -175,10 +175,28 @@ def generate_project_files():
         print("Error: spartan.sln not generated.")
         sys.exit(1)
 
+def print_local_file_hashes():
+    local_files = {
+        'libraries': 'third_party/libraries/libraries.7z',
+        'assets': 'assets/assets.7z'
+    }
+    
+    print("Local file hashes:")
+    for name, path in local_files.items():
+        if os.path.exists(path):
+            hash = calculate_file_hash(path)
+            print(f"{name}: {hash}")
+        else:
+            print(f"{name}: File not found")
+    
+    input("Press Enter to continue...")
+    
 def main():
+    #print_local_file_hashes()
+    
     library_url = 'https://www.dropbox.com/scl/fi/1skztgtsx2zkwmyo9bsph/libraries.7z?rlkey=d8t3n75px5f8b99pjqimml8kf&st=vl8cy9ss&dl=1'
     library_destination = 'third_party/libraries/libraries.7z'
-    library_expected_hash = '95348b87dc1d02cf174af911b7cfc21bcce4d4b476a3c61cdc049bbdc2f3bb62'
+    library_expected_hash = '534e30b8a061b2ace905d2770e2cc45e7fc76dbbd096a2c17ae8a5999f7793be'
 
     assets_url = 'https://www.dropbox.com/scl/fi/hagxxndy0dnq7pu0ufkxh/assets.7z?rlkey=gmwlxlhf6q3eubh7r50q2xp27&st=60lavvyz&dl=1'
     assets_destination = 'assets/assets.7z'
