@@ -43,9 +43,10 @@ namespace Spartan
         static void FSR3_Dispatch(
             RHI_CommandList* cmd_list,
             RHI_Texture* tex_color,
-            RHI_Texture* tex_color_opaque,
             RHI_Texture* tex_depth,
             RHI_Texture* tex_velocity,
+            RHI_Texture* tex_color_opaque,
+            RHI_Texture* tex_reactive,
             RHI_Texture* tex_output,
             Camera* camera,
             const float delta_time,

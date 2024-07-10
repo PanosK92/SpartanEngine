@@ -1773,9 +1773,10 @@ namespace Spartan
         RHI_FidelityFX::FSR3_Dispatch(
             cmd_list,
             tex_in,
-            GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get(),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
+            GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get(),
+            GetRenderTarget(Renderer_RenderTarget::reactive).get(),
             tex_out,
             GetCamera().get(),
             m_cb_frame_cpu.delta_time,
