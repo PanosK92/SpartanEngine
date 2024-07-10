@@ -60,7 +60,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - Temporal anti-aliasing.
 - HDR10 output.
 - Post-process effects like fxaa, bloom, motion-blur, depth of field, chromatic aberration etc.
-- AMD FidelityFX features like FSR 2, SPD, CAS, Compressonator etc.
+- AMD FidelityFX features like FSR 3.1, SPD, CAS, Compressonator etc.
 - Comprehensive debug rendering options.
 
 #### General

@@ -43,22 +43,22 @@ namespace Spartan
 
     }
 
-    void RHI_FidelityFX::FSR2_ResetHistory()
+    void RHI_FidelityFX::FSR3_ResetHistory()
     {
 
     }
 
-    void RHI_FidelityFX::FSR2_GenerateJitterSample(float* x, float* y)
+    void RHI_FidelityFX::FSR3_GenerateJitterSample(float* x, float* y)
     {
 
     }
 
-    void RHI_FidelityFX::FSR2_Resize(const Vector2& resolution_render, const Vector2& resolution_output)
+    void RHI_FidelityFX::FSR3_Resize(const Vector2& resolution_render, const Vector2& resolution_output)
     {
 
     }
 
-    void RHI_FidelityFX::FSR2_Dispatch
+    void RHI_FidelityFX::FSR3_Dispatch
     (
         RHI_CommandList* cmd_list,
         RHI_Texture* tex_color,
