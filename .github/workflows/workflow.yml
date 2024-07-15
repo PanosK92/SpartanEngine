@@ -1,6 +1,22 @@
 name: build
 
-on: [push, pull_request]
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+      - 'funding.yml'
+      - '.gitignore'
+      - '.gitattributes'
+      - '.github/images'
+      - '.github/ISSUE_TEMPLATE'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'funding.yml'
+      - '.gitignore'
+      - '.gitattributes'
+      - '.github/images'
+      - '.github/ISSUE_TEMPLATE'
 
 jobs:
   build:
@@ -13,6 +29,7 @@ jobs:
             configuration: Debug
           - api: d3d12
             configuration: Release
+
     runs-on: "windows-latest"
     env:
       msbuild_path: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
@@ -80,7 +97,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-     
+
       - name: Download vulkan full build (Release)
         uses: actions/download-artifact@v4
         with:
@@ -98,7 +115,7 @@ jobs:
         with:
           name: spartan_vulkan_binaries_debug
           path: spartan_vulkan_binaries_debug.7z
-      
+
       - name: Publish release
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
