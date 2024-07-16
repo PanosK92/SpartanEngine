@@ -368,8 +368,10 @@ namespace Spartan
                     dirty_orthographic_projection = true;
                 }
 
-                m_cb_frame_cpu.view       = camera->GetViewMatrix();
-                m_cb_frame_cpu.projection = camera->GetProjectionMatrix();
+                m_cb_frame_cpu.view           = camera->GetViewMatrix();
+                m_cb_frame_cpu.view_inv       = Matrix::Invert(m_cb_frame_cpu.view);
+                m_cb_frame_cpu.projection     = camera->GetProjectionMatrix();
+                m_cb_frame_cpu.projection_inv = Matrix::Invert(m_cb_frame_cpu.projection);
             }
 
             if (dirty_orthographic_projection)

@@ -64,7 +64,9 @@ API_LIBRARIES = {
 			"ffx_frameinterpolation_x64",
 			"ffx_fsr3_x64",
 			"ffx_fsr3upscaler_x64",
-			"ffx_opticalflow_x64"
+			"ffx_opticalflow_x64",
+			"ffx_denoiser_x64",
+			"ffx_sssr_x64"
         },
         debug = {
             "spirv-cross-c_debug",
@@ -76,7 +78,9 @@ API_LIBRARIES = {
 			"ffx_frameinterpolation_x64d",
 			"ffx_fsr3_x64d",
 			"ffx_fsr3upscaler_x64d",
-			"ffx_opticalflow_x64d"
+			"ffx_opticalflow_x64d",
+			"ffx_denoiser_x64d",
+			"ffx_sssr_x64d"
         }
     }
 }

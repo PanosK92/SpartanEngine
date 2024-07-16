@@ -29,16 +29,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
     class Camera;
+    struct Cb_Frame;
 
     class RHI_FidelityFX
     {
     public:
         static void Initialize();
         static void Shutdown();
+        static void Resize(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output);
 
         // FSR 3
         static void FSR3_ResetHistory();
-        static void FSR3_Resize(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output);
         static void FSR3_GenerateJitterSample(float* x, float* y);
         static void FSR3_Dispatch(
             RHI_CommandList* cmd_list,
@@ -52,6 +53,20 @@ namespace Spartan
             const float delta_time,
             const float sharpness,
             const float exposure,
+            const float resolution_scale
+        );
+
+        // SSSR
+        static void SSSR_Dispatch(
+            RHI_CommandList* cmd_list,
+            RHI_Texture* tex_color,
+            RHI_Texture* tex_depth,
+            RHI_Texture* tex_motion_vectors,
+            RHI_Texture* tex_normal,
+            RHI_Texture* tex_material,
+            RHI_Texture* tex_brdf,
+            RHI_Texture* tex_output,
+            Cb_Frame* cb_frame,
             const float resolution_scale
         );
     };

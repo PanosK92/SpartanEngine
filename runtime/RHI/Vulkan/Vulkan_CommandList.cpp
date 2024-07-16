@@ -466,16 +466,15 @@ namespace Spartan
 
         namespace pipeline_statistics
         {
-            bool is_query_active = false;
             const uint32_t query_count = 1;
             array<uint64_t, query_count> data;
 
-            void update(void* cmd_list, void* query_pool)
+            void update(void* cmd_list, void* query_pool, bool* is_query_active)
             {
-                if (is_query_active)
+                if (*is_query_active)
                 { 
                     vkCmdEndQuery(static_cast<VkCommandBuffer>(cmd_list), static_cast<VkQueryPool>(query_pool), 0);
-                    is_query_active = false;
+                    *is_query_active = false;
 
                     vkGetQueryPoolResults(
                         RHI_Context::device,                  // device
@@ -492,13 +491,13 @@ namespace Spartan
                 }
             }
 
-            void reset(void* cmd_list, void*& query_pool)
+            void reset(void* cmd_list, void*& query_pool, bool* is_query_active)
             {
-                if (!is_query_active)
+                if (!*is_query_active)
                 { 
                     vkCmdResetQueryPool(static_cast<VkCommandBuffer>(cmd_list), static_cast<VkQueryPool>(query_pool), 0, query_count);
                     vkCmdBeginQuery(static_cast<VkCommandBuffer>(cmd_list), static_cast<VkQueryPool>(query_pool), 0, 0);
-                    is_query_active = true;
+                    *is_query_active = true;
                 }
             }
         }
@@ -663,7 +662,7 @@ namespace Spartan
             m_timestamp_index = 0;
             queries::timestamp::reset(m_rhi_resource, m_rhi_query_pool_timestamps);
             queries::occlusion::reset(m_rhi_resource, m_rhi_query_pool_occlusion);
-            queries::pipeline_statistics::reset(m_rhi_resource, m_rhi_query_pool_pipeline_statistics);
+            queries::pipeline_statistics::reset(m_rhi_resource, m_rhi_query_pool_pipeline_statistics, &m_is_query_active);
         }
     }
 
@@ -673,7 +672,7 @@ namespace Spartan
 
         // end
         RenderPassEnd();
-        queries::pipeline_statistics::update(m_rhi_resource, m_rhi_query_pool_pipeline_statistics);
+        queries::pipeline_statistics::update(m_rhi_resource, m_rhi_query_pool_pipeline_statistics, &m_is_query_active);
         SP_ASSERT_VK_MSG(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource)), "Failed to end command buffer");
 
         // when minimized, or when entering/exiting fullscreen mode, the swapchain

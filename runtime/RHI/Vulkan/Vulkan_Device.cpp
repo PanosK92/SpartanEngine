@@ -228,13 +228,13 @@ namespace Spartan
         vector<const char*> extensions_instance = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_swapchain_colorspace", };
         vector<const char*> extensions_device   = {
             "VK_KHR_swapchain",
-            "VK_EXT_memory_budget",         // to obtain precise memory usage information from Vulkan Memory Allocator
+            "VK_EXT_memory_budget",           // to obtain precise memory usage information from Vulkan Memory Allocator
             "VK_KHR_fragment_shading_rate",
             "VK_EXT_hdr_metadata",
             "VK_EXT_robustness2",
-            "VK_KHR_external_memory",       // to share images with Intel Open Image Denoise
+            "VK_KHR_external_memory",         // to share images with Intel Open Image Denoise
             #if defined(_MSC_VER)
-            "VK_KHR_external_memory_win32",  // external memory handle type, linux alternative: VK_KHR_external_memory_fd
+            "VK_KHR_external_memory_win32",   // external memory handle type, linux alternative: VK_KHR_external_memory_fd
             #endif
             "VK_KHR_get_memory_requirements2" // needed by AMD FidelityFX
         };
@@ -419,10 +419,6 @@ namespace Spartan
                         // silence false positive synchronization error due to validation layer issue
                         // check fix progress here: https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/7600
                         if (p_callback_data->messageIdNumber == 0x29910a35)
-                            return VK_FALSE;
-
-                        // fidelityfx sdk issues related to best practices and deprecations
-                        if (p_callback_data->messageIdNumber == 0xfd92477a || p_callback_data->messageIdNumber == 0x990cbf9f || p_callback_data->messageIdNumber == 0xd8a870c)
                             return VK_FALSE;
 
                         // occlusion queries

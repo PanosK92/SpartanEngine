@@ -26,7 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 struct FrameBufferData
 {
     matrix view;
+    matrix view_inverted;
     matrix projection;
+    matrix projection_inverted;
     matrix view_projection;
     matrix view_projection_inverted;
     matrix view_projection_orthographic;
