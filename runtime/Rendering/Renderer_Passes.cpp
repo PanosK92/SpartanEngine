@@ -139,27 +139,55 @@ namespace Spartan
                 // find transparent index
                 auto transparent_start = find_if(renderables.begin(), renderables.end(), [](const shared_ptr<Entity>& entity)
                 {
-                    return entity->GetComponent<Renderable>()->GetMaterial()->IsTransparent();
+                    Material* material = entity->GetComponent<Renderable>()->GetMaterial();
+                    bool is_transparent = material->IsTransparent();
+                    return is_transparent;
                 });
-                mesh_index_transparent = distance(renderables.begin(), transparent_start);
+
+                // check if any transparent object was found
+                if (transparent_start == renderables.end())
+                {
+                    mesh_index_transparent = -1;
+                }
+                else
+                {
+                    mesh_index_transparent = distance(renderables.begin(), transparent_start);
+                }
 
                 // find non-instanced index for opaque objects
                 auto non_instanced_opaque_start = find_if(renderables.begin(), renderables.end(), [&](const shared_ptr<Entity>& entity)
                 {
                     shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                    bool is_transparent               = renderable->GetMaterial()->IsTransparent();
-                    bool is_instanced                 = renderable->HasInstancing();
-
+                    bool is_transparent = renderable->GetMaterial()->IsTransparent();
+                    bool is_instanced = renderable->HasInstancing();
                     return !is_transparent && !is_instanced;
                 });
-                mesh_index_non_instanced_opaque = distance(renderables.begin(), non_instanced_opaque_start);
+
+                // check if any non-instanced opaque object was found
+                if (non_instanced_opaque_start == renderables.end())
+                {
+                    mesh_index_non_instanced_opaque = -1;
+                }
+                else
+                {
+                    mesh_index_non_instanced_opaque = distance(renderables.begin(), non_instanced_opaque_start);
+                }
 
                 // find non-instanced index for transparent objects
                 auto non_instanced_transparent_start = find_if(transparent_start, renderables.end(), [&](const shared_ptr<Entity>& entity)
                 {
                     return !entity->GetComponent<Renderable>()->HasInstancing();
                 });
-                mesh_index_non_instanced_transparent = distance(renderables.begin(), non_instanced_transparent_start);
+
+                // check if any non-instanced transparent object was found
+                if (non_instanced_transparent_start == renderables.end())
+                {
+                    mesh_index_non_instanced_transparent = -1;
+                }
+                else
+                {
+                    mesh_index_non_instanced_transparent = distance(renderables.begin(), non_instanced_transparent_start);
+                }
             }
 
             void determine_occluders(vector<shared_ptr<Entity>>& renderables)
@@ -348,6 +376,29 @@ namespace Spartan
                 Renderer::SetOption(Renderer_Option::ResolutionScale, screen_percentage);
             }
         }
+
+        int64_t get_mesh_indices(vector<shared_ptr<Entity>>& renderables, bool is_transparent, bool get_start)
+        {
+            int64_t index_start, index_end;
+            int64_t total_size = static_cast<int64_t>(renderables.size());
+
+            if (!is_transparent)
+            {
+                index_start = 0;
+                index_end   = (mesh_index_transparent != -1) ? mesh_index_transparent : total_size;
+            }
+            else
+            {
+                index_start = (mesh_index_transparent != -1) ? mesh_index_transparent : total_size;
+                index_end   = total_size;
+            }
+
+            // ensure indices are within bounds
+            index_start = std::max(int64_t(0), std::min(index_start, total_size));
+            index_end   = std::max(int64_t(0), std::min(index_end, total_size));
+
+            return get_start ? index_start : index_end;
+        }
     }
 
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
@@ -395,13 +446,10 @@ namespace Spartan
 
         if (shared_ptr<Camera> camera = GetCamera())
         { 
-            // determine if a transparent pass is required
-            const bool do_transparent_pass = mesh_index_transparent != -1;
-            
             // shadow maps
             {
                 Pass_ShadowMaps(cmd_list_graphics, false);
-                if (do_transparent_pass)
+                if (mesh_index_transparent != -1)
                 {
                     Pass_ShadowMaps(cmd_list_graphics, true);
                 }
@@ -420,15 +468,12 @@ namespace Spartan
                 Pass_Light_ImageBased(cmd_list_graphics, rt_render);  // apply IBL and SSR
             }
 
-            // used for refraction and by FSR 2 (to produce masks)
+            // used for refraction and to produce a reactive mask for FSR
             cmd_list_graphics->BeginTimeblock("frame_opaque");
             {
                 RHI_Texture* tex_render_opaque = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get();
-
-                cmd_list_graphics->Blit(rt_render, tex_render_opaque, false);
-
-                // generate mips to simulate roughness
-                Pass_Ffx_Spd(cmd_list_graphics, tex_render_opaque, Renderer_DownsampleFilter::Average);
+                cmd_list_graphics->Blit(rt_render, tex_render_opaque, false); 
+                Pass_Ffx_Spd(cmd_list_graphics, tex_render_opaque, Renderer_DownsampleFilter::Average);  // generate mips to simulate roughness
 
                 // blur the smaller mips to reduce blockiness/flickering
                 for (uint32_t i = 1; i < tex_render_opaque->GetMipCount(); i++)
@@ -440,14 +485,14 @@ namespace Spartan
             cmd_list_graphics->EndTimeblock();
             
             // transparent
-            if (do_transparent_pass)
+            if (mesh_index_transparent != -1)
             {
-                Pass_Depth_Prepass(cmd_list_graphics, do_transparent_pass);
-                Pass_GBuffer(cmd_list_graphics, do_transparent_pass);
-                Pass_Ssr(cmd_list_graphics, rt_render, do_transparent_pass);
-                Pass_Light(cmd_list_graphics, do_transparent_pass);
-                Pass_Light_Composition(cmd_list_graphics, rt_render, do_transparent_pass);
-                Pass_Light_ImageBased(cmd_list_graphics, rt_render, do_transparent_pass);
+                Pass_Depth_Prepass(cmd_list_graphics, true);
+                Pass_GBuffer(cmd_list_graphics, true);
+                Pass_Ssr(cmd_list_graphics, rt_render, true);
+                Pass_Light(cmd_list_graphics, true);
+                Pass_Light_Composition(cmd_list_graphics, rt_render, true);
+                Pass_Light_ImageBased(cmd_list_graphics, rt_render, true);
             }
 
             Pass_PostProcess(cmd_list_graphics);
@@ -551,8 +596,8 @@ namespace Spartan
                 cmd_list->SetIgnoreClearValues(is_transparent_pass);
 
                 // iterate over entities
-                int64_t index_start = !is_transparent_pass ? 0 : mesh_index_transparent;
-                int64_t index_end   = !is_transparent_pass ? mesh_index_transparent : static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size());
+                int64_t index_start = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], is_transparent_pass, true);
+                int64_t index_end   = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], is_transparent_pass, false);
                 for (int64_t i = index_start; i < index_end; i++)
                 {
                     // this can happen during async loading
@@ -653,8 +698,8 @@ namespace Spartan
         auto pass = [cmd_list, shader_h, shader_d, shader_p](RHI_PipelineState& pso, bool is_transparent_pass, bool is_back_face_pass)
         {
             bool set_pipeline   = true;
-            int64_t index_start = !is_transparent_pass ? 0 : mesh_index_transparent;
-            int64_t index_end   = !is_transparent_pass ? mesh_index_transparent : static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size());
+            int64_t index_start = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], is_transparent_pass, true);
+            int64_t index_end   = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], is_transparent_pass, false);
             for (int64_t i = index_start; i < index_end; i++)
             {
                 // this can happen during async loading
@@ -841,8 +886,8 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         lock_guard lock(m_mutex_renderables);
-        int64_t index_start = !is_transparent_pass ? 0 : mesh_index_transparent;
-        int64_t index_end   = !is_transparent_pass ? mesh_index_transparent : static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size());
+        int64_t index_start = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], is_transparent_pass, true);
+        int64_t index_end   = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], is_transparent_pass, false);
         for (int64_t i = index_start; i < index_end; i++)
         {
             // this can happen during async loading
@@ -948,33 +993,20 @@ namespace Spartan
         if (!GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
             return;
 
-        // acquire resources
-        RHI_Texture* tex_ssr = GetRenderTarget(Renderer_RenderTarget::ssr).get();
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::ssr_c).get();
-        if (!shader_c->IsCompiled())
-            return;
+        cmd_list->BeginTimeblock(!is_transparent_pass ? "amd_ffx_sssr" : "amd_ffx_sssr_transparent");
 
-        cmd_list->BeginTimeblock(!is_transparent_pass ? "ssr" : "ssr_transparent");
-
-        // set pipeline state
-        static RHI_PipelineState pso;
-        pso.shaders[Compute] = shader_c;
-        cmd_list->SetPipelineState(pso);
-
-        // set pass constants
-        m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
-        cmd_list->PushConstants(m_pcb_pass_cpu);
-
-        // set textures
-        SetGbufferTextures(cmd_list);
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);  // read
-        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssr); // write
-
-        // render
-        cmd_list->Dispatch(tex_ssr);
-
-        // real time blurring can only go so far, so generate mips that we can use to emulate very high roughness
-        Pass_Ffx_Spd(cmd_list, tex_ssr, Renderer_DownsampleFilter::Average);
+        RHI_FidelityFX::SSSR_Dispatch(
+            cmd_list,
+            GetRenderTarget(Renderer_RenderTarget::frame_render).get(),
+            GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(),
+            GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
+            GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get(),
+            GetRenderTarget(Renderer_RenderTarget::gbuffer_material).get(),
+            GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut).get(),
+            GetRenderTarget(Renderer_RenderTarget::ssr).get(),
+            &m_cb_frame_cpu,
+            GetOption<float>(Renderer_Option::ResolutionScale)
+        );
 
         cmd_list->EndTimeblock();
     }

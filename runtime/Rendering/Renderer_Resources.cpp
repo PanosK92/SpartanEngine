@@ -284,7 +284,7 @@ namespace Spartan
         
 
         RHI_Device::QueueWaitAll();
-        RHI_FidelityFX::FSR3_Resize(GetResolutionRender(), GetResolutionOutput());
+        RHI_FidelityFX::Resize(GetResolutionRender(), GetResolutionOutput());
     }
 
     void Renderer::CreateShaders()
@@ -474,10 +474,6 @@ namespace Spartan
         // screen space global illumination
         shader(Renderer_Shader::ssgi_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::ssgi_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ssgi.hlsl", async);
-
-        // screen space reflections
-        shader(Renderer_Shader::ssr_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::ssr_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ssr.hlsl", async);
 
         // screen space shadows
         shader(Renderer_Shader::sss_c_bend) = make_shared<RHI_Shader>();

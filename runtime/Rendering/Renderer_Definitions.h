@@ -195,7 +195,6 @@ namespace Spartan
         font_v,
         font_p,
         ssgi_c,
-        ssr_c,
         sss_c_bend,
         skysphere_c,
         blur_gaussian_c,

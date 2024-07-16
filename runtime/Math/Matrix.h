@@ -125,7 +125,7 @@ namespace Spartan::Math
         {
             const Vector3 scale = GetScale();
 
-            // avoid division by zero (we'll divide to remove scaling)
+            // avoid division by zero (division is needed to remove scaling)
             if (scale.x == 0.0f || scale.y == 0.0f || scale.z == 0.0f)
                 return Quaternion::Identity;
 
@@ -338,7 +338,7 @@ namespace Spartan::Math
         void Decompose(Vector3& scale, Quaternion& rotation, Vector3& translation) const
         {
             translation = GetTranslation();
-            scale        = GetScale();
+            scale       = GetScale();
             rotation    = GetRotation();
         }
 
@@ -437,13 +437,12 @@ namespace Spartan::Math
         [[nodiscard]] const float* Data() const { return &m00; }
         [[nodiscard]] std::string ToString() const;
 
-        // column-major memory representation
+        // note: column-major memory representation because directx shader compiler and
+        // FidelityFX SDK assume that, therefore we can avoid transposing the matrix
         float m00 = 0.0f, m10 = 0.0f, m20 = 0.0f, m30 = 0.0f;
         float m01 = 0.0f, m11 = 0.0f, m21 = 0.0f, m31 = 0.0f;
         float m02 = 0.0f, m12 = 0.0f, m22 = 0.0f, m32 = 0.0f;
         float m03 = 0.0f, m13 = 0.0f, m23 = 0.0f, m33 = 0.0f;
-        // note: directx compiler assumes column-major as a default,
-        // we go with it so that we can map directly map matrices to the gpu
 
         static const Matrix Identity;
     };

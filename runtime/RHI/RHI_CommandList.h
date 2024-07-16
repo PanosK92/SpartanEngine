@@ -186,11 +186,12 @@ namespace Spartan
         uint64_t m_swapchain_id                              = 0;
         uint32_t m_timestamp_index                           = 0;
         RHI_Pipeline* m_pipeline                             = nullptr;
-        bool m_render_pass_active                            = false;
         RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
         std::atomic<RHI_CommandListState> m_state            = RHI_CommandListState::Idle;
         RHI_CullMode m_cull_mode                             = RHI_CullMode::Back;
         const char* m_timeblock_active                       = nullptr;
+        bool m_render_pass_active                            = false;
+        bool m_is_query_active                               = false;
         static bool m_memory_query_support;
         std::mutex m_mutex_reset;
         RHI_PipelineState m_pso;

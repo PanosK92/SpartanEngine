@@ -34,7 +34,9 @@ namespace Spartan
     struct Cb_Frame
     {
         Math::Matrix view;
+        Math::Matrix view_inv;
         Math::Matrix projection;
+        Math::Matrix projection_inv;
         Math::Matrix view_projection;
         Math::Matrix view_projection_inv;
         Math::Matrix view_projection_ortho;
