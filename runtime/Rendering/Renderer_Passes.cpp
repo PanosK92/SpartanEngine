@@ -1323,7 +1323,6 @@ namespace Spartan
         uint32_t mip_level = mip_count - m_environment_mips_to_filter_count;
         SP_ASSERT(mip_level != 0);
 
-
         // generate mips as light_integration.hlsl expects them
         if (mip_level == 0)
         { 
