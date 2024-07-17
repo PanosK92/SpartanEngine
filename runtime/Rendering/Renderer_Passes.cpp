@@ -473,13 +473,13 @@ namespace Spartan
             {
                 RHI_Texture* tex_render_opaque = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get();
                 cmd_list_graphics->Blit(rt_render, tex_render_opaque, false); 
-                Pass_Ffx_Spd(cmd_list_graphics, tex_render_opaque, Renderer_DownsampleFilter::Average);  // generate mips to simulate roughness
+                Pass_Mips(cmd_list_graphics, tex_render_opaque, Renderer_DownsampleFilter::Average);  // generate mips to simulate roughness
 
                 // blur the smaller mips to reduce blockiness/flickering
                 for (uint32_t i = 1; i < tex_render_opaque->GetMipCount(); i++)
                 {
                     const float radius = 1.0f;
-                    Pass_Blur_Gaussian(cmd_list_graphics, tex_render_opaque, radius, i);
+                    Pass_Blur(cmd_list_graphics, tex_render_opaque, radius, i);
                 }
             }
             cmd_list_graphics->EndTimeblock();
@@ -993,7 +993,7 @@ namespace Spartan
         if (!GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
             return;
 
-        cmd_list->BeginTimeblock(!is_transparent_pass ? "amd_ffx_sssr" : "amd_ffx_sssr_transparent");
+        cmd_list->BeginTimeblock(!is_transparent_pass ? "pass_ssr" : "pass_ssr_transparent");
 
         RHI_FidelityFX::SSSR_Dispatch(
             cmd_list,
@@ -1281,8 +1281,7 @@ namespace Spartan
         // set pass constants
         m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
         uint32_t mip_count_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount();
-        uint32_t mip_count_ssr       = GetRenderTarget(Renderer_RenderTarget::ssr)->GetMipCount();
-        m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_count_skysphere), static_cast<float>(mip_count_ssr));
+        m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_count_skysphere));
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
         // render
@@ -1290,64 +1289,72 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const float radius, const uint32_t mip /*= rhi_all_mips*/)
+    void Renderer::Pass_Light_Integration_BrdfSpecularLut(RHI_CommandList* cmd_list)
     {
         // acquire shader
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::blur_gaussian_c).get();
-        if (!shader_c->IsCompiled())
+        RHI_Shader* shader_c = GetShader(Renderer_Shader::light_integration_brdf_specular_lut_c).get();
+        if (!shader_c || !shader_c->IsCompiled())
             return;
 
-        // compute thread group count
-        const bool mip_requested            = mip != rhi_all_mips;
-        const uint32_t mip_range            = mip_requested ? 1 : 0;
-        const uint32_t bit_shift            = mip_requested ? mip : 0;
-        const uint32_t width                = tex_in->GetWidth()  >> bit_shift;
-        const uint32_t height               = tex_in->GetHeight() >> bit_shift;
-        const uint32_t thread_group_count   = 8;
-        const uint32_t thread_group_count_x = (width + thread_group_count - 1) / thread_group_count;
-        const uint32_t thread_group_count_y = (height + thread_group_count - 1) / thread_group_count;
+        cmd_list->BeginTimeblock("light_integration_brdf_specular_lut");
 
-        // acquire blur scratch buffer
-        RHI_Texture* tex_blur = GetRenderTarget(Renderer_RenderTarget::blur).get();
-        SP_ASSERT_MSG(width <= tex_blur->GetWidth() && height <= tex_blur->GetHeight(), "Input texture is larger than the blur scratch buffer");
-
-        cmd_list->BeginMarker("blur_gaussian");
+        // acquire render target
+        RHI_Texture* tex_brdf_specular_lut = GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut).get();
 
         // set pipeline state
         static RHI_PipelineState pso;
         pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
-        // horizontal pass
+        // set texture
+        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_brdf_specular_lut);
+
+        // render
+        cmd_list->Dispatch(tex_brdf_specular_lut);
+
+        cmd_list->EndTimeblock();
+        light_integration_brdf_speculat_lut_completed = true;
+    }
+
+    void Renderer::Pass_Light_Integration_EnvironmentPrefilter(RHI_CommandList* cmd_list)
+    {
+        // acquire resources
+        RHI_Texture* tex_environment = GetRenderTarget(Renderer_RenderTarget::skysphere).get();
+        RHI_Shader* shader_c         = GetShader(Renderer_Shader::light_integration_environment_filter_c).get();
+        if (!shader_c || !shader_c->IsCompiled())
+            return;
+
+        cmd_list->BeginTimeblock("light_integration_environment_filter");
+
+        // set pipeline state
+        static RHI_PipelineState pso;
+        pso.shaders[Compute] = shader_c;
+        cmd_list->SetPipelineState(pso);
+
+        uint32_t mip_count = tex_environment->GetMipCount();
+        uint32_t mip_level = mip_count - m_environment_mips_to_filter_count;
+        SP_ASSERT(mip_level != 0);
+
+        cmd_list->SetTexture(Renderer_BindingsSrv::environment, tex_environment);
+
+        // do one mip at a time, splitting the cost over a couple of frames
+        Vector2 resolution = Vector2(tex_environment->GetWidth() >> mip_level, tex_environment->GetHeight() >> mip_level);
         {
             // set pass constants
-            m_pcb_pass_cpu.set_f3_value(radius, 0.0f); // horizontal
+            m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(mip_count), 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
-            // set textures
-            SetGbufferTextures(cmd_list);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in, mip, mip_range);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_blur); // write
-
-            // render
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
+            const uint32_t thread_group_count = 8;
+            cmd_list->Dispatch(
+                static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.x) / thread_group_count)),
+                static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.y) / thread_group_count))
+            );
         }
 
-        // vertical pass
-        {
-            // set pass constants
-            m_pcb_pass_cpu.set_f3_value(radius, 1.0f); // vertical
-            cmd_list->PushConstants(m_pcb_pass_cpu);
+        m_environment_mips_to_filter_count--;
 
-            // set textures
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_blur);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_in, mip, mip_range); // write
-
-            // render
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y);
-        }
-
-        cmd_list->EndMarker();
+        cmd_list->EndTimeblock();
     }
 
     void Renderer::Pass_PostProcess(RHI_CommandList* cmd_list)
@@ -1383,7 +1390,7 @@ namespace Spartan
             // use FSR 2 for different resolutions if enabled, otherwise blit
             if (upsampling_mode == Renderer_Upsampling::Fsr3)
             {
-                Pass_Ffx_Fsr3(cmd_list, get_render_in, rt_frame_output);
+                Pass_Upscale(cmd_list, get_render_in, rt_frame_output);
             }
             else
             {
@@ -1488,7 +1495,7 @@ namespace Spartan
         cmd_list->EndMarker();
 
         // generate mips
-        Pass_Ffx_Spd(cmd_list, tex_bloom, Renderer_DownsampleFilter::Average);
+        Pass_Mips(cmd_list, tex_bloom, Renderer_DownsampleFilter::Average);
 
         // starting from the lowest mip, upsample and blend with the higher one
         cmd_list->BeginMarker("upsample_and_blend_with_higher_mip");
@@ -1719,6 +1726,28 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
+    void Renderer::Pass_Upscale(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
+    {
+        cmd_list->BeginTimeblock("pass_upscale");
+
+        RHI_FidelityFX::FSR3_Dispatch(
+            cmd_list,
+            tex_in,
+            GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(),
+            GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
+            GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get(),
+            GetRenderTarget(Renderer_RenderTarget::reactive).get(),
+            tex_out,
+            GetCamera().get(),
+            m_cb_frame_cpu.delta_time,
+            GetOption<float>(Renderer_Option::Sharpness),
+            GetOption<float>(Renderer_Option::Exposure),
+            GetOption<float>(Renderer_Option::ResolutionScale)
+        );
+
+        cmd_list->EndTimeblock();
+    }
+
     void Renderer::Pass_Ffx_Cas(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // acquire resources
@@ -1747,7 +1776,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Ffx_Spd(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter, const uint32_t mip_start)
+    void Renderer::Pass_Mips(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter, const uint32_t mip_start)
     {
         // AMD FidelityFX Single Pass Downsampler.
         // Provides an RDNA™-optimized solution for generating up to 12 MIP levels of a texture.
@@ -1775,7 +1804,7 @@ namespace Spartan
                 return;
         }
 
-        cmd_list->BeginMarker("ffx_spd");
+        cmd_list->BeginMarker("pass_mips");
         {
             // set pipeline state
             static RHI_PipelineState pso;
@@ -1798,26 +1827,64 @@ namespace Spartan
         cmd_list->EndMarker();
     }
 
-    void Renderer::Pass_Ffx_Fsr3(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
+    void Renderer::Pass_Blur(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const float radius, const uint32_t mip /*= rhi_all_mips*/)
     {
-        cmd_list->BeginTimeblock("amd_ffx_fsr3");
+        // acquire shader
+        RHI_Shader* shader_c = GetShader(Renderer_Shader::blur_gaussian_c).get();
+        if (!shader_c->IsCompiled())
+            return;
 
-        RHI_FidelityFX::FSR3_Dispatch(
-            cmd_list,
-            tex_in,
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(),
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
-            GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get(),
-            GetRenderTarget(Renderer_RenderTarget::reactive).get(),
-            tex_out,
-            GetCamera().get(),
-            m_cb_frame_cpu.delta_time,
-            GetOption<float>(Renderer_Option::Sharpness),
-            GetOption<float>(Renderer_Option::Exposure),
-            GetOption<float>(Renderer_Option::ResolutionScale)
-        );
+        // compute thread group count
+        const bool mip_requested            = mip != rhi_all_mips;
+        const uint32_t mip_range            = mip_requested ? 1 : 0;
+        const uint32_t bit_shift            = mip_requested ? mip : 0;
+        const uint32_t width                = tex_in->GetWidth()  >> bit_shift;
+        const uint32_t height               = tex_in->GetHeight() >> bit_shift;
+        const uint32_t thread_group_count   = 8;
+        const uint32_t thread_group_count_x = (width + thread_group_count - 1) / thread_group_count;
+        const uint32_t thread_group_count_y = (height + thread_group_count - 1) / thread_group_count;
 
-        cmd_list->EndTimeblock();
+        // acquire blur scratch buffer
+        RHI_Texture* tex_blur = GetRenderTarget(Renderer_RenderTarget::blur).get();
+        SP_ASSERT_MSG(width <= tex_blur->GetWidth() && height <= tex_blur->GetHeight(), "Input texture is larger than the blur scratch buffer");
+
+        cmd_list->BeginMarker("pass_blur");
+
+        // set pipeline state
+        static RHI_PipelineState pso;
+        pso.shaders[Compute] = shader_c;
+        cmd_list->SetPipelineState(pso);
+
+        // horizontal pass
+        {
+            // set pass constants
+            m_pcb_pass_cpu.set_f3_value(radius, 0.0f); // horizontal
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+
+            // set textures
+            SetGbufferTextures(cmd_list);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in, mip, mip_range);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_blur); // write
+
+            // render
+            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y);
+        }
+
+        // vertical pass
+        {
+            // set pass constants
+            m_pcb_pass_cpu.set_f3_value(radius, 1.0f); // vertical
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+
+            // set textures
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_blur);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_in, mip, mip_range); // write
+
+            // render
+            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y);
+        }
+
+        cmd_list->EndMarker();
     }
 
     void Renderer::Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
@@ -2098,7 +2165,7 @@ namespace Spartan
                         // blur the color silhouette
                         {
                             const float radius = 30.0f;
-                            Pass_Blur_Gaussian(cmd_list, tex_outline, radius);
+                            Pass_Blur(cmd_list, tex_outline, radius);
                         }
                         
                         // combine color silhouette with frame
@@ -2181,73 +2248,5 @@ namespace Spartan
         cmd_list->EndTimeblock();
 
         cmd_list->EndMarker();
-    }
-
-    void Renderer::Pass_Light_Integration_BrdfSpecularLut(RHI_CommandList* cmd_list)
-    {
-        // acquire shader
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::light_integration_brdf_specular_lut_c).get();
-        if (!shader_c || !shader_c->IsCompiled())
-            return;
-
-        cmd_list->BeginTimeblock("light_integration_brdf_specular_lut");
-
-        // acquire render target
-        RHI_Texture* tex_brdf_specular_lut = GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut).get();
-
-        // set pipeline state
-        static RHI_PipelineState pso;
-        pso.shaders[Compute] = shader_c;
-        cmd_list->SetPipelineState(pso);
-
-        // set texture
-        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_brdf_specular_lut);
-
-        // render
-        cmd_list->Dispatch(tex_brdf_specular_lut);
-
-        cmd_list->EndTimeblock();
-        light_integration_brdf_speculat_lut_completed = true;
-    }
-
-    void Renderer::Pass_Light_Integration_EnvironmentPrefilter(RHI_CommandList* cmd_list)
-    {
-        // acquire resources
-        RHI_Texture* tex_environment = GetRenderTarget(Renderer_RenderTarget::skysphere).get();
-        RHI_Shader* shader_c         = GetShader(Renderer_Shader::light_integration_environment_filter_c).get();
-        if (!shader_c || !shader_c->IsCompiled())
-            return;
-
-        cmd_list->BeginTimeblock("light_integration_environment_filter");
-
-        // set pipeline state
-        static RHI_PipelineState pso;
-        pso.shaders[Compute] = shader_c;
-        cmd_list->SetPipelineState(pso);
-
-        uint32_t mip_count = tex_environment->GetMipCount();
-        uint32_t mip_level = mip_count - m_environment_mips_to_filter_count;
-        SP_ASSERT(mip_level != 0);
-
-        cmd_list->SetTexture(Renderer_BindingsSrv::environment, tex_environment);
-
-        // do one mip at a time, splitting the cost over a couple of frames
-        Vector2 resolution = Vector2(tex_environment->GetWidth() >> mip_level, tex_environment->GetHeight() >> mip_level);
-        {
-            // set pass constants
-            m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(mip_count), 0.0f);
-            cmd_list->PushConstants(m_pcb_pass_cpu);
-
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
-            const uint32_t thread_group_count = 8;
-            cmd_list->Dispatch(
-                static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.x) / thread_group_count)),
-                static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.y) / thread_group_count))
-            );
-        }
-
-        m_environment_mips_to_filter_count--;
-
-        cmd_list->EndTimeblock();
     }
 }
