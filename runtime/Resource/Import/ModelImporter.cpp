@@ -372,7 +372,7 @@ namespace Spartan
                     }
                     else if (is_tile)
                     {
-                        material->SetProperty(MaterialProperty::Roughness, 0.5f);
+                        material->SetProperty(MaterialProperty::Roughness, 0.25f);
                     }
                     else if (is_plaster)
                     {
