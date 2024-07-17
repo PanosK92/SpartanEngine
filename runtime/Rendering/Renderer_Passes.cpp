@@ -461,7 +461,7 @@ namespace Spartan
                 Pass_Depth_Prepass(cmd_list_graphics, false);
                 Pass_GBuffer(cmd_list_graphics);
                 Pass_Ssgi(cmd_list_graphics);
-                Pass_Ssr(cmd_list_graphics, rt_render);
+                Pass_Ssr(cmd_list_graphics, rt_render, false);
                 Pass_Sss(cmd_list_graphics);
                 Pass_Light(cmd_list_graphics);                        // compute diffuse and specular buffers
                 Pass_Light_Composition(cmd_list_graphics, rt_render); // compose diffuse, specular, ssgi, volumetric etc.
@@ -489,6 +489,7 @@ namespace Spartan
             {
                 Pass_Depth_Prepass(cmd_list_graphics, true);
                 Pass_GBuffer(cmd_list_graphics, true);
+                Pass_Ssr(cmd_list_graphics, rt_render, true);
                 Pass_Light(cmd_list_graphics, true);
                 Pass_Light_Composition(cmd_list_graphics, rt_render, true);
                 Pass_Light_ImageBased(cmd_list_graphics, rt_render, true);
@@ -806,7 +807,7 @@ namespace Spartan
         pso.vrs_input_texture                 = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
         pso.render_target_depth_texture       = tex_depth;
         pso.resolution_scale                  = true;
-        pso.clear_depth                       = !is_transparent_pass ? 0.0f : rhi_depth_load;
+        pso.clear_depth                       = 0.0f; // clear so that passes like SSR, only ray march for what's visible in opaque/transparent passes
 
         lock_guard lock(m_mutex_renderables);
 
@@ -987,12 +988,12 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in)
+    void Renderer::Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool is_transparent_pass)
     {
         if (!GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
             return;
 
-        cmd_list->BeginTimeblock("ssr");
+        cmd_list->BeginTimeblock(is_transparent_pass ? "ssr_transparent" : "ssr");
 
         RHI_FidelityFX::SSSR_Dispatch(
             cmd_list,
