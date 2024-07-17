@@ -422,12 +422,51 @@ namespace Spartan
         sssr_description_dispatch.renderSize.height = static_cast<uint32_t>(tex_color->GetHeight() * resolution_scale);
 
         // set camera matrices
-        to_ffx_matrix(cb_frame->view,                     sssr_description_dispatch.view);
-        to_ffx_matrix(cb_frame->view_inv,                 sssr_description_dispatch.invView);
-        to_ffx_matrix(cb_frame->projection,               sssr_description_dispatch.projection);
-        to_ffx_matrix(cb_frame->projection_inv,           sssr_description_dispatch.invProjection);
-        to_ffx_matrix(cb_frame->view_projection_inv,      sssr_description_dispatch.invViewProjection);
-        to_ffx_matrix(cb_frame->view_projection_previous, sssr_description_dispatch.prevViewProjection);
+        {
+            auto adjust_matrix_view = [](const Matrix& matrix)
+            {
+                Matrix adjusted = matrix.Transposed();
+
+                // negate the third row to switch handedness
+                adjusted.m20 = -adjusted.m20;
+                adjusted.m21 = -adjusted.m21;
+                adjusted.m22 = -adjusted.m22;
+                adjusted.m23 = -adjusted.m23;
+
+                return adjusted;
+            };
+
+            auto adjust_matrix_projection = [](const Matrix& matrix)
+            {
+                Matrix adjusted = matrix.Transposed();
+
+                // switch to reverse-z projection
+                adjusted.m22 = 0.0f;
+                adjusted.m23 = matrix.m32; // near plane value
+                adjusted.m32 = -1.0f;
+                adjusted.m33 = 0.0f;
+
+                return adjusted;
+            };
+
+            static Matrix view_projection = Matrix::Identity;
+
+            Matrix view                     = adjust_matrix_view(cb_frame->view);
+            Matrix projection               = adjust_matrix_projection(cb_frame->projection);
+
+            Matrix view_inv                 = Matrix::Invert(view);
+            Matrix projection_inv           = Matrix::Invert(projection);
+            Matrix view_projection_previous = view_projection;
+            view_projection                 = projection * view;
+            Matrix view_projection_inv      = Matrix::Invert(view_projection);
+         
+            to_ffx_matrix(view,                     sssr_description_dispatch.view);
+            to_ffx_matrix(view_inv,                 sssr_description_dispatch.invView);
+            to_ffx_matrix(projection,               sssr_description_dispatch.projection);
+            to_ffx_matrix(projection_inv,           sssr_description_dispatch.invProjection);
+            to_ffx_matrix(view_projection_inv,      sssr_description_dispatch.invViewProjection);
+            to_ffx_matrix(view_projection_previous, sssr_description_dispatch.prevViewProjection);
+        }
 
         // set sssr specific parameters
         sssr_description_dispatch.motionVectorScale.x                   = 1.0f;
