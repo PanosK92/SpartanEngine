@@ -242,13 +242,8 @@ namespace Spartan
                 render_target(Renderer_RenderTarget::light_volumetric) = make_unique<RHI_Texture2D>(width_render, height_render, 1,  RHI_Format::R11G11B10_Float, light_flags, "light_volumetric");
             }
 
-            // ssr
-            {
-                uint32_t mip_count_ssr = 5; // we use mips to emulate high roughness, low roughness is emulated via a gaussian blur, therefore we don't need a full mip chain, just enough to get believable results
-                render_target(Renderer_RenderTarget::ssr) = make_shared<RHI_Texture2D>(width_render, height_render, mip_count_ssr, RHI_Format::R16G16B16A16_Float, flags | RHI_Texture_PerMipViews | RHI_Texture_ClearBlit, "ssr");
-            }
-
             // misc
+            render_target(Renderer_RenderTarget::ssr)      = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags, "ssr");
             render_target(Renderer_RenderTarget::sss)      = make_shared<RHI_Texture2DArray>(width_render, height_render, RHI_Format::R16_Float, 4, flags | RHI_Texture_ClearBlit, "sss");
             render_target(Renderer_RenderTarget::ssgi)     = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags, "ssgi");
             render_target(Renderer_RenderTarget::reactive) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16_Float, flags, "reactive");

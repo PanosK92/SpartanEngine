@@ -155,9 +155,12 @@ namespace Spartan
         static void Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool is_transparent_pass = false);
         static void Pass_Sss(RHI_CommandList* cmd_list);
         static void Pass_Skysphere(RHI_CommandList* cmd_list);
+        // passes - lighting
+        static void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
+        static void Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass = false);
+        static void Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass = false);
         static void Pass_Light_Integration_BrdfSpecularLut(RHI_CommandList* cmd_list);
         static void Pass_Light_Integration_EnvironmentPrefilter(RHI_CommandList* cmd_list);
-        static void Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const float radius, const uint32_t mip = rhi_all_mips);
         // passes - debug/editor
         static void Pass_Grid(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
@@ -173,14 +176,11 @@ namespace Spartan
         static void Pass_MotionBlur(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_DepthOfField(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        // passes - lighting
-        static void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
-        static void Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass = false);
-        static void Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass = false);
-        // passes - amd fidelityfx
-        static void Pass_Ffx_Cas(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_Ffx_Spd(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter, const uint32_t mip_start = 0);
-        static void Pass_Ffx_Fsr3(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
+        static void Pass_Ffx_Cas(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);     
+        static void Pass_Upscale(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
+        // passes - utility
+        static void Pass_Blur(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const float radius, const uint32_t mip = rhi_all_mips);
+        static void Pass_Mips(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter, const uint32_t mip_start = 0);
 
         // event handlers
         static void OnClear();
