@@ -401,8 +401,8 @@ namespace Spartan
     {
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/stochastic-screen-space-reflections.md
 
-        // transition the depth to shade read to avoid validation errors caused
-        // by ffx to create a depth view that is incompatible with the resource
+        // transition the depth to shader read, to avoid validation errors caused by ffx
+        // when trying to create a depth view that is incompatible with the resource properties
         tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         cmd_list->InsertPendingBarrierGroup();
 
