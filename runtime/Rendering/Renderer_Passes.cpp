@@ -460,8 +460,8 @@ namespace Spartan
                 Pass_Visibility(cmd_list_graphics);
                 Pass_Depth_Prepass(cmd_list_graphics, false);
                 Pass_GBuffer(cmd_list_graphics);
+                Pass_Ssr(cmd_list_graphics, rt_render);
                 Pass_Ssgi(cmd_list_graphics);
-                Pass_Ssr(cmd_list_graphics, rt_render, false);
                 Pass_Sss(cmd_list_graphics);
                 Pass_Light(cmd_list_graphics);                        // compute diffuse and specular buffers
                 Pass_Light_Composition(cmd_list_graphics, rt_render); // compose diffuse, specular, ssgi, volumetric etc.
@@ -473,7 +473,7 @@ namespace Spartan
             {
                 RHI_Texture* tex_render_opaque = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get();
                 cmd_list_graphics->Blit(rt_render, tex_render_opaque, false); 
-                Pass_Mips(cmd_list_graphics, tex_render_opaque, Renderer_DownsampleFilter::Average);  // generate mips to simulate roughness
+                Pass_Mips(cmd_list_graphics, tex_render_opaque, Renderer_DownsampleFilter::Average); // generate mips to simulate roughness
 
                 // blur the smaller mips to reduce blockiness/flickering
                 for (uint32_t i = 1; i < tex_render_opaque->GetMipCount(); i++)
@@ -489,7 +489,6 @@ namespace Spartan
             {
                 Pass_Depth_Prepass(cmd_list_graphics, true);
                 Pass_GBuffer(cmd_list_graphics, true);
-                Pass_Ssr(cmd_list_graphics, rt_render, true);
                 Pass_Light(cmd_list_graphics, true);
                 Pass_Light_Composition(cmd_list_graphics, rt_render, true);
                 Pass_Light_ImageBased(cmd_list_graphics, rt_render, true);
@@ -807,7 +806,7 @@ namespace Spartan
         pso.vrs_input_texture                 = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
         pso.render_target_depth_texture       = tex_depth;
         pso.resolution_scale                  = true;
-        pso.clear_depth                       = 0.0f; // clear so that passes like SSR, only ray march for what's visible in opaque/transparent passes
+        pso.clear_depth                       = is_transparent_pass ? rhi_depth_load : 0.0f;
 
         lock_guard lock(m_mutex_renderables);
 
@@ -988,12 +987,12 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool is_transparent_pass)
+    void Renderer::Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in)
     {
         if (!GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
             return;
 
-        cmd_list->BeginTimeblock(is_transparent_pass ? "ssr_transparent" : "ssr");
+        cmd_list->BeginTimeblock("ssr");
 
         RHI_FidelityFX::SSSR_Dispatch(
             cmd_list,
