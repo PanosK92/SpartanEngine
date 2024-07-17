@@ -473,7 +473,7 @@ namespace Spartan
         sssr_description_dispatch.normalUnPackAdd                       = 0.0f;
         sssr_description_dispatch.depthBufferThickness                  = 0.05f; // hit acceptance bias, larger values can cause streaks, lower values can cause holes
         sssr_description_dispatch.varianceThreshold                     = 0.0f;  // luminance differences between history results will trigger an additional ray if they are greater than this threshold value
-        sssr_description_dispatch.maxTraversalIntersections             = 128;  
+        sssr_description_dispatch.maxTraversalIntersections             = 32;  
         sssr_description_dispatch.minTraversalOccupancy                 = 4;     // exit the core loop early if less than this number of threads are running
         sssr_description_dispatch.mostDetailedMip                       = 0;    
         sssr_description_dispatch.temporalStabilityFactor               = 0.7f;  // the accumulation of history values, Higher values reduce noise, but are more likely to exhibit ghosting artifacts
