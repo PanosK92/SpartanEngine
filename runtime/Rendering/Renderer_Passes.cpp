@@ -436,6 +436,7 @@ namespace Spartan
             if (!light_integration_brdf_speculat_lut_completed)
             {
                 Pass_Light_Integration_BrdfSpecularLut(cmd_list_graphics);
+                light_integration_brdf_speculat_lut_completed = true;
             }
 
             if (m_environment_mips_to_filter_count > 0)
@@ -1122,11 +1123,10 @@ namespace Spartan
                 return;
         }
 
+        RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere).get();
+
         cmd_list->BeginTimeblock("skysphere");
         {
-            // acquire render targets
-            RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::skysphere).get();
-
             // set pipeline state
             static RHI_PipelineState pso;
             pso.shaders[Compute] = shader_c;
@@ -1136,8 +1136,8 @@ namespace Spartan
             m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), 0.0f, 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
-            cmd_list->Dispatch(tex_out);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
+            cmd_list->Dispatch(tex_skysphere);
 
         }
         cmd_list->EndTimeblock();
@@ -1290,29 +1290,23 @@ namespace Spartan
 
     void Renderer::Pass_Light_Integration_BrdfSpecularLut(RHI_CommandList* cmd_list)
     {
-        // acquire shader
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::light_integration_brdf_specular_lut_c).get();
+        // acquire resources
+        RHI_Shader* shader_c               = GetShader(Renderer_Shader::light_integration_brdf_specular_lut_c).get();
+        RHI_Texture* tex_brdf_specular_lut = GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut).get();
         if (!shader_c || !shader_c->IsCompiled())
             return;
 
         cmd_list->BeginTimeblock("light_integration_brdf_specular_lut");
+        {
+            // set pipeline state
+            static RHI_PipelineState pso;
+            pso.shaders[Compute] = shader_c;
+            cmd_list->SetPipelineState(pso);
 
-        // acquire render target
-        RHI_Texture* tex_brdf_specular_lut = GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut).get();
-
-        // set pipeline state
-        static RHI_PipelineState pso;
-        pso.shaders[Compute] = shader_c;
-        cmd_list->SetPipelineState(pso);
-
-        // set texture
-        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_brdf_specular_lut);
-
-        // render
-        cmd_list->Dispatch(tex_brdf_specular_lut);
-
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_brdf_specular_lut);
+            cmd_list->Dispatch(tex_brdf_specular_lut);
+        }
         cmd_list->EndTimeblock();
-        light_integration_brdf_speculat_lut_completed = true;
     }
 
     void Renderer::Pass_Light_Integration_EnvironmentPrefilter(RHI_CommandList* cmd_list)
@@ -1325,31 +1319,36 @@ namespace Spartan
 
         cmd_list->BeginTimeblock("light_integration_environment_filter");
 
+        uint32_t mip_count = tex_environment->GetMipCount();
+        uint32_t mip_level = mip_count - m_environment_mips_to_filter_count;
+        SP_ASSERT(mip_level != 0);
+
+
+        // generate mips as light_integration.hlsl expects them
+        if (mip_level == 0)
+        { 
+            Pass_Mips(cmd_list, tex_environment, Renderer_DownsampleFilter::Average);
+        }
+
         // set pipeline state
         static RHI_PipelineState pso;
         pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
-        uint32_t mip_count = tex_environment->GetMipCount();
-        uint32_t mip_level = mip_count - m_environment_mips_to_filter_count;
-        SP_ASSERT(mip_level != 0);
-
         cmd_list->SetTexture(Renderer_BindingsSrv::environment, tex_environment);
+        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
 
-        // do one mip at a time, splitting the cost over a couple of frames
-        Vector2 resolution = Vector2(tex_environment->GetWidth() >> mip_level, tex_environment->GetHeight() >> mip_level);
-        {
-            // set pass constants
-            m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(mip_count), 0.0f);
-            cmd_list->PushConstants(m_pcb_pass_cpu);
+        // set pass constants
+        m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(mip_count), 0.0f);
+        cmd_list->PushConstants(m_pcb_pass_cpu);
 
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
-            const uint32_t thread_group_count = 8;
-            cmd_list->Dispatch(
-                static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.x) / thread_group_count)),
-                static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution.y) / thread_group_count))
-            );
-        }
+        const uint32_t thread_group_count = 8;
+        const uint32_t resolution_x       = tex_environment->GetWidth()  >> mip_level;
+        const uint32_t resolution_y       = tex_environment->GetHeight() >> mip_level;
+        cmd_list->Dispatch(
+            static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution_y) / thread_group_count)),
+            static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(resolution_y) / thread_group_count))
+        );
 
         m_environment_mips_to_filter_count--;
 

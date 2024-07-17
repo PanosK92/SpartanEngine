@@ -126,53 +126,55 @@ float2 integrate_brdf(float n_dot_v, float roughness)
     return float2(A, B);
 }
 
-float D_GGX(float n_dot_h, float roughness_alpha_squared)
+float distribution_ggx(float n_dot_h, float roughness)
 {
-    float f = (n_dot_h * roughness_alpha_squared - n_dot_h) * n_dot_h + 1.0f;
-    return roughness_alpha_squared / (PI * f * f + FLT_MIN);
+    float a     = roughness * roughness;
+    float a2    = a * a;
+    float denom = n_dot_h * n_dot_h * (a2 - 1.0) + 1.0;
+    return a2 / (PI * denom * denom);
 }
 
 float3 prefilter_environment(float2 uv)
 {
-    uint mip_level          = pass_get_f3_value().x;
-    uint mip_count          = pass_get_f3_value().y;
+    uint mip_level = pass_get_f3_value().x;
+    uint mip_count = pass_get_f3_value().y;
     const uint sample_count = 8196 / max(mip_level, 1);
-    float roughness         = (float)mip_level / (float)(mip_count - 1);
+    float roughness = (float)mip_level / (float)(mip_count - 1);
 
     // convert spherical uv to direction
-    float phi   = uv.x * 2.0 * PI;
+    float phi = uv.x * 2.0 * PI;
     float theta = (1.0f - uv.y) * PI;
-    float3 V    = normalize(float3(sin(theta) * cos(phi), cos(theta), sin(theta) * sin(phi)));
-    float3 N    = V;
-    
-    float3 color       = 0.0f;
+    float3 V = normalize(float3(sin(theta) * cos(phi), cos(theta), sin(theta) * sin(phi)));
+    float3 N = V;
+
+    float3 color = 0.0f;
     float total_weight = 0.0;
-    for(uint i = 0; i < sample_count; i++)
+
+    for (uint i = 0; i < sample_count; i++)
     {
         float2 Xi = hammersley(i, sample_count);
-        float3 H  = importance_sample_ggx(Xi, N, roughness);
-        float3 L  = normalize(2.0 * dot(V, H) * H - V);
-
+        float3 H = importance_sample_ggx(Xi, N, roughness);
+        float3 L = normalize(2.0 * dot(V, H) * H - V);
         float n_dot_l = saturate(dot(N, L));
+
         if (n_dot_l > 0.0)
         {
             // compute uv
-            phi     = atan2(L.z, L.x) + PI;
-            theta   = acos(L.y);
-            float u = (phi / (2.0 * PI)) + 0.5; // shifting UV by half the texture width
-            u       = fmod(u, 1.0);             // wrap manually if u goes out of bounds
+            phi = atan2(L.z, L.x) + PI;
+            theta = acos(L.y);
+            float u = (phi / (2.0 * PI)) + 0.5;
+            u = fmod(u, 1.0);
             float v = 1.0 - (theta / PI);
 
-            // sample
-            float mip_level_previous = mip_level - 1;
-            color += tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], float2(u, v), mip_level_previous).rgb * n_dot_l;
+            // Sample from the previous mip level
+            float3 sample_color = tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], float2(u, v), mip_level - 1).rgb;
 
-            // accumulate weight
+            color += sample_color * n_dot_l;
             total_weight += n_dot_l;
         }
     }
 
-    return color / total_weight;
+    return total_weight > 0.0 ? color / total_weight : float3(1.0, 0.0, 1.0);  // Magenta if no samples
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
