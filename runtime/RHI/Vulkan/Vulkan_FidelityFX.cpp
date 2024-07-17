@@ -45,7 +45,7 @@ namespace Spartan
     namespace
     {
         // misc
-        shared_ptr<RHI_Texture> tex_cubemap_empty;
+        shared_ptr<RHI_Texture> tex_cubemap;
 
         // common
         FfxInterface ffx_interface = {};
@@ -202,12 +202,14 @@ namespace Spartan
         }
 
         // assets
-        tex_cubemap_empty = make_unique<RHI_TextureCube>(128, 128, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv, "ffx_environment_dummy");
+        {
+            tex_cubemap = make_unique<RHI_TextureCube>(1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv, "ffx_environment");
+        }
     }
 
     void RHI_FidelityFX::Shutdown()
     {
-        tex_cubemap_empty = nullptr;
+        tex_cubemap = nullptr;
 
         // sssr
         if (sssr_context_created)
@@ -406,14 +408,14 @@ namespace Spartan
 
         // set resources
         sssr_description_dispatch.commandList        = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
-        sssr_description_dispatch.color              = to_ffx_resource(tex_color,               L"sssr_color");
-        sssr_description_dispatch.depth              = to_ffx_resource(tex_depth,               L"sssr_depth");
-        sssr_description_dispatch.motionVectors      = to_ffx_resource(tex_velocity,            L"sssr_velocity");
-        sssr_description_dispatch.normal             = to_ffx_resource(tex_normal,              L"sssr_normal");
-        sssr_description_dispatch.materialParameters = to_ffx_resource(tex_material,            L"sssr_roughness"); // FfxSssrDispatchDescription specifies the channel
-        sssr_description_dispatch.environmentMap     = to_ffx_resource(tex_cubemap_empty.get(), L"sssr_environment");
-        sssr_description_dispatch.brdfTexture        = to_ffx_resource(tex_brdf,                L"sssr_brdf");
-        sssr_description_dispatch.output             = to_ffx_resource(tex_output,              L"sssr_output");
+        sssr_description_dispatch.color              = to_ffx_resource(tex_color,         L"sssr_color");
+        sssr_description_dispatch.depth              = to_ffx_resource(tex_depth,         L"sssr_depth");
+        sssr_description_dispatch.motionVectors      = to_ffx_resource(tex_velocity,      L"sssr_velocity");
+        sssr_description_dispatch.normal             = to_ffx_resource(tex_normal,        L"sssr_normal");
+        sssr_description_dispatch.materialParameters = to_ffx_resource(tex_material,      L"sssr_roughness"); // FfxSssrDispatchDescription specifies the channel
+        sssr_description_dispatch.environmentMap     = to_ffx_resource(tex_cubemap.get(), L"sssr_environment");
+        sssr_description_dispatch.brdfTexture        = to_ffx_resource(tex_brdf,          L"sssr_brdf");
+        sssr_description_dispatch.output             = to_ffx_resource(tex_output,        L"sssr_output");
  
         // set render size
         sssr_description_dispatch.renderSize.width  = static_cast<uint32_t>(tex_color->GetWidth()  * resolution_scale);

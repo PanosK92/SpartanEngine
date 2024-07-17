@@ -36,7 +36,7 @@ namespace Spartan
         }
 
         // creates a texture from data (intended for sampling)
-        RHI_TextureCube(const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t flags, const std::vector<RHI_Texture_Slice>& data)
+        RHI_TextureCube(const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t flags, const std::vector<RHI_Texture_Slice>& data, std::string name = "")
         {
             m_resource_type    = ResourceType::TextureCube;
             m_width            = width;
