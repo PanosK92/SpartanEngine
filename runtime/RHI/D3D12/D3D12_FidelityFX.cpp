@@ -53,7 +53,7 @@ namespace Spartan
 
     }
 
-    void RHI_FidelityFX::FSR3_Resize(const Vector2& resolution_render, const Vector2& resolution_output)
+    void RHI_FidelityFX::Resize(const Vector2& resolution_render, const Vector2& resolution_output)
     {
 
     }
@@ -71,6 +71,22 @@ namespace Spartan
         const float delta_time_sec,
         const float sharpness,
         const float exposure,
+        const float resolution_scale
+    )
+    {
+
+    }
+
+    void RHI_FidelityFX::SSSR_Dispatch(
+        RHI_CommandList* cmd_list,
+        RHI_Texture* tex_color,
+        RHI_Texture* tex_depth,
+        RHI_Texture* tex_velocity,
+        RHI_Texture* tex_normal,
+        RHI_Texture* tex_material,
+        RHI_Texture* tex_brdf,
+        RHI_Texture* tex_output,
+        Cb_Frame* cb_frame,
         const float resolution_scale
     )
     {
