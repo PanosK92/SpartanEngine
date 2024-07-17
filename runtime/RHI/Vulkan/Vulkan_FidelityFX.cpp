@@ -467,8 +467,8 @@ namespace Spartan
         }
 
         // set sssr specific parameters
-        sssr_description_dispatch.motionVectorScale.x                   = 0.5f;
-        sssr_description_dispatch.motionVectorScale.y                   = -0.5f;
+        sssr_description_dispatch.motionVectorScale.x                   = -1.0f;
+        sssr_description_dispatch.motionVectorScale.y                   = -1.0f;
         sssr_description_dispatch.normalUnPackMul                       = 1.0f;
         sssr_description_dispatch.normalUnPackAdd                       = 0.0f;
         sssr_description_dispatch.depthBufferThickness                  = 0.015f;  // hit acceptance bias, larger values can cause streaks, lower values can cause holes
@@ -476,7 +476,7 @@ namespace Spartan
         sssr_description_dispatch.maxTraversalIntersections             = 128;
         sssr_description_dispatch.minTraversalOccupancy                 = 4;      // exit the core loop early if less than this number of threads are running
         sssr_description_dispatch.mostDetailedMip                       = 0;
-        sssr_description_dispatch.temporalStabilityFactor               = 1.0f;   // the accumulation of history values, Higher values reduce noise, but are more likely to exhibit ghosting artifacts
+        sssr_description_dispatch.temporalStabilityFactor               = 0.7f;   // the accumulation of history values, Higher values reduce noise, but are more likely to exhibit ghosting artifacts
         sssr_description_dispatch.temporalVarianceGuidedTracingEnabled  = true;   // whether a ray should be spawned on pixels where a temporal variance is detected or not
         sssr_description_dispatch.samplesPerQuad                        = 1;      // the minimum number of rays per quad, variance guided tracing can increase this up to a maximum of 4
         sssr_description_dispatch.iblFactor                             = 0.0f;

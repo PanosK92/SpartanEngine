@@ -128,7 +128,7 @@ namespace Spartan
         SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
-    void RHI_CommandList::ClearRenderTarget(
+    void RHI_CommandList::ClearTexture(
         RHI_Texture* texture,
         const Color& clear_color     /*= rhi_color_load*/,
         const float clear_depth      /*= rhi_depth_load*/,

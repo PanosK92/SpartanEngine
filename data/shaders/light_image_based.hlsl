@@ -74,15 +74,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     
     // ssr
     {
-        float4 ssr_sample   = tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, 0) * float(is_ssr_enabled());
-        float ssr_luminance = dot(ssr_sample.rgb, float3(0.299, 0.587, 0.114));
-
-        // threshold for considering SSR valid
-        const float LUMINANCE_THRESHOLD = 0.001f;
-        if (ssr_luminance > LUMINANCE_THRESHOLD)
-        {
-            ibl_specular = ssr_sample.rgb;
-        }
+        float4 ssr_sample           = tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, 0) * float(is_ssr_enabled());
+        const float blend_threshold = 0.0001f;
+        const float blend_speed     = 0.01f;
+        float blend_factor          = saturate((ssr_sample.a - blend_threshold) / blend_speed);
+        float3 ibl_result           = ibl_specular * specular_energy;
+        float3 ssr_result           = ssr_sample.rgb;
+        ibl_specular                = lerp(ibl_result, ssr_result, blend_factor);
     }
     
     // combine
@@ -91,3 +89,5 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] += float4(saturate_16(ibl), 0.0f);
 }
+
+

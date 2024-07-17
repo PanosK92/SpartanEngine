@@ -1727,7 +1727,7 @@ namespace Spartan
 
     void Renderer::Pass_Upscale(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
-        cmd_list->BeginTimeblock("pass_upscale");
+        cmd_list->BeginTimeblock("upscale");
 
         RHI_FidelityFX::FSR3_Dispatch(
             cmd_list,
