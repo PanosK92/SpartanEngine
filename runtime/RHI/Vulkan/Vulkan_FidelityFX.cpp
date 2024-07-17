@@ -467,8 +467,8 @@ namespace Spartan
         }
 
         // set sssr specific parameters
-        sssr_description_dispatch.motionVectorScale.x                   = -1.0f;
-        sssr_description_dispatch.motionVectorScale.y                   = -1.0f;
+        sssr_description_dispatch.motionVectorScale.x                   = -0.5f; // expects [-0.5, 0.5] range
+        sssr_description_dispatch.motionVectorScale.y                   = -0.5f; // expects [-0.5, 0.5] range, +Y as top-down
         sssr_description_dispatch.normalUnPackMul                       = 1.0f;
         sssr_description_dispatch.normalUnPackAdd                       = 0.0f;
         sssr_description_dispatch.depthBufferThickness                  = 0.05f; // hit acceptance bias, larger values can cause streaks, lower values can cause holes
@@ -482,7 +482,7 @@ namespace Spartan
         sssr_description_dispatch.iblFactor                             = 0.0f; 
         sssr_description_dispatch.roughnessChannel                      = 0;    
         sssr_description_dispatch.isRoughnessPerceptual                 = false;
-        sssr_description_dispatch.roughnessThreshold                    = 1.0f;   // regions with a roughness value greater than this threshold won't spawn rays
+        sssr_description_dispatch.roughnessThreshold                    = 1.0f;  // regions with a roughness value greater than this threshold won't spawn rays
 
         // dispatch
         FfxErrorCode errorCode = ffxSssrContextDispatch(&sssr_context, &sssr_description_dispatch);
