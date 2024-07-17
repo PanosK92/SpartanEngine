@@ -67,7 +67,7 @@ namespace Spartan
 
         // clear
         void ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state);
-        void ClearRenderTarget(
+        void ClearTexture(
             RHI_Texture* texture,
             const Color& clear_color     = rhi_color_load,
             const float clear_depth      = rhi_depth_load,

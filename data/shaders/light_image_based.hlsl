@@ -66,15 +66,24 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     const float3 reflection             = reflect(surface.camera_to_pixel, surface.normal);
     float3 dominant_specular_direction  = get_dominant_specular_direction(surface.normal, reflection, surface.roughness);
     float mip_level                     = lerp(0, mip_count_environment - 1, surface.roughness);
-    float3 ibl_specular                 = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level);
+    float3 ibl_specular                 = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level) * specular_energy;
     // apply shadow mask
     float shadow_mask  = tex[thread_id.xy].r;
     shadow_mask        = max(shadow_mask, 0.35f);
     ibl_specular      *= shadow_mask;
     
     // ssr
-    float4 ssr_sample = tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, 0) * float(is_ssr_enabled());
-    ibl_specular      = lerp(ibl_specular, ssr_sample.rgb, ssr_sample.a) * specular_energy;
+    {
+        float4 ssr_sample   = tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, 0) * float(is_ssr_enabled());
+        float ssr_luminance = dot(ssr_sample.rgb, float3(0.299, 0.587, 0.114));
+
+        // threshold for considering SSR valid
+        const float LUMINANCE_THRESHOLD = 0.001f;
+        if (ssr_luminance > LUMINANCE_THRESHOLD)
+        {
+            ibl_specular = ssr_sample.rgb;
+        }
+    }
     
     // combine
     float3 ibl  = ibl_diffuse + ibl_specular;

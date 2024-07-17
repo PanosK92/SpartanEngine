@@ -965,7 +965,7 @@ namespace Spartan
         vkCmdClearAttachments(static_cast<VkCommandBuffer>(m_rhi_resource), attachment_count, attachments.data(), 1, &clear_rect);
     }
 
-    void RHI_CommandList::ClearRenderTarget(
+    void RHI_CommandList::ClearTexture(
         RHI_Texture* texture,
         const Color& clear_color     /*= rhi_color_load*/,
         const float clear_depth      /*= rhi_depth_load*/,

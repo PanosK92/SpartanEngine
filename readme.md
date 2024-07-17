@@ -41,27 +41,27 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 #### Rendering
 - Cutting edge Vulkan renderer.
 - 128-byte push constant buffer for lightning fast CPU to GPU data transfer.
-- On the fly single dispatch GPU-based mip generation for render targets.
-- On the fly compression and mip generation for material textures.
+- On the fly single dispatch GPU-based mip generation for render targets (FidelityFX SPD).
+- On the fly compression and mip generation for material textures (FidelityFX Compressonator).
 - Fully bindless design (materials, lights, even the samplers).
 - Fast dual paraboloid point lights.
 - Vulkan (main) and DirectX 12 (wip) backends with universal HLSL shaders.
 - Unified deferred rendering with transparency (BSDF with same render path).
 - Atmospheric scattering, real-time filtering and image-based lighting.
 - Screen space shadows from Bend Studio's Days Gone.
-- Screen space global illumination & reflections.
+- Screen space global illumination.
+- Screen space reflections (FidelityFX SSSR).
 - Variable rate shading.
 - Dynamic resolution scaling.
+- Upscaling (FidelityFX FSR 3.1).
+- Temporal anti-aliasing.
 - Advanced shadow features with penumbra and colored translucency.
 - Physical light units (intensity from lumens and color from kelvin).
 - Frustum & occlusion culling (software and hardware hybrid).
 - Physically based camera.
 - Volumetric fog.
-- Temporal anti-aliasing.
 - HDR10 output.
 - Post-process effects like fxaa, bloom, motion-blur, depth of field, chromatic aberration etc.
-- AMD FidelityFX features like FSR 3.1, SPD, CAS, Compressonator etc.
-- Comprehensive debug rendering options.
 
 #### General
 - One-click project generation for easy setup.

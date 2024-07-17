@@ -489,7 +489,6 @@ namespace Spartan
             {
                 Pass_Depth_Prepass(cmd_list_graphics, true);
                 Pass_GBuffer(cmd_list_graphics, true);
-                Pass_Ssr(cmd_list_graphics, rt_render, true);
                 Pass_Light(cmd_list_graphics, true);
                 Pass_Light_Composition(cmd_list_graphics, rt_render, true);
                 Pass_Light_ImageBased(cmd_list_graphics, rt_render, true);
@@ -503,7 +502,7 @@ namespace Spartan
         }
         else
         {
-            cmd_list_graphics->ClearRenderTarget(rt_output, Color::standard_black);
+            cmd_list_graphics->ClearTexture(rt_output, Color::standard_black);
         }
 
         Pass_Text(cmd_list_graphics, rt_output);
@@ -988,16 +987,16 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool is_transparent_pass)
+    void Renderer::Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in)
     {
         if (!GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
             return;
 
-        cmd_list->BeginTimeblock(!is_transparent_pass ? "pass_ssr" : "pass_ssr_transparent");
+        cmd_list->BeginTimeblock("ssr");
 
         RHI_FidelityFX::SSSR_Dispatch(
             cmd_list,
-            GetRenderTarget(Renderer_RenderTarget::frame_render).get(),
+            tex_in, // what to reflect from
             GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get(),
@@ -1165,10 +1164,10 @@ namespace Spartan
         // clear render targets the first time around (opaque pas)
         if (!is_transparent_pass)
         { 
-            cmd_list->ClearRenderTarget(tex_diffuse,    Color::standard_black);
-            cmd_list->ClearRenderTarget(tex_specular,   Color::standard_black);
-            cmd_list->ClearRenderTarget(tex_shadow,     Color::standard_white);
-            cmd_list->ClearRenderTarget(tex_volumetric, Color::standard_black);
+            cmd_list->ClearTexture(tex_diffuse,    Color::standard_black);
+            cmd_list->ClearTexture(tex_specular,   Color::standard_black);
+            cmd_list->ClearTexture(tex_shadow,     Color::standard_white);
+            cmd_list->ClearTexture(tex_volumetric, Color::standard_black);
         }
 
         // set pipeline state
@@ -1804,7 +1803,7 @@ namespace Spartan
                 return;
         }
 
-        cmd_list->BeginMarker("pass_mips");
+        cmd_list->BeginMarker("mips");
         {
             // set pipeline state
             static RHI_PipelineState pso;
@@ -1848,7 +1847,7 @@ namespace Spartan
         RHI_Texture* tex_blur = GetRenderTarget(Renderer_RenderTarget::blur).get();
         SP_ASSERT_MSG(width <= tex_blur->GetWidth() && height <= tex_blur->GetHeight(), "Input texture is larger than the blur scratch buffer");
 
-        cmd_list->BeginMarker("pass_blur");
+        cmd_list->BeginMarker("blur");
 
         // set pipeline state
         static RHI_PipelineState pso;
