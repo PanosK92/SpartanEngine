@@ -79,5 +79,8 @@ namespace Spartan
             RHI_Texture* tex_material,
             Cb_Frame* cb_frame
         );
+
+    private:
+        static void DestroyContexts();
     };
 }

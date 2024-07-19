@@ -38,6 +38,11 @@ namespace Spartan
 
     }
 
+    void RHI_FidelityFX::DestroyContexts()
+    {
+
+    }
+
     void RHI_FidelityFX::Shutdown()
     {
 
