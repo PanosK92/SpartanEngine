@@ -93,7 +93,10 @@ namespace Spartan
 
     }
 
-    void RHI_FidelityFX::BrixelizerGI_Dispatch(RHI_CommandList* cmd_list)
+    void RHI_FidelityFX::BrixelizerGI_Dispatch(
+        RHI_CommandList* cmd_list,
+        Cb_Frame* cb_frame
+    )
     {
 
     }

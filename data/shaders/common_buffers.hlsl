@@ -27,8 +27,10 @@ struct FrameBufferData
 {
     matrix view;
     matrix view_inverted;
+    matrix view_previous;
     matrix projection;
     matrix projection_inverted;
+    matrix projection_previous;
     matrix view_projection;
     matrix view_projection_inverted;
     matrix view_projection_orthographic;
