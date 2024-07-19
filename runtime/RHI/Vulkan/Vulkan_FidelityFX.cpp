@@ -32,6 +32,7 @@ SP_WARNINGS_OFF
 #include <FidelityFX/host/backends/vk/ffx_vk.h>
 #include <FidelityFX/host/ffx_fsr3.h>
 #include <FidelityFX/host/ffx_sssr.h>
+#include <FidelityFX/host/ffx_brixelizer.h>
 #include <FidelityFX/host/ffx_brixelizergi.h>
 SP_WARNINGS_ON
 //=============================================
@@ -43,7 +44,7 @@ using namespace std;
 
 namespace Spartan
 {
-    namespace
+    namespace // holds ffx structures and adapter functions
     {
         // misc
         shared_ptr<RHI_Texture> tex_cubemap;
@@ -66,10 +67,16 @@ namespace Spartan
         FfxSssrDispatchDescription sssr_description_dispatch = {};
 
         // brixelizer gi
-        bool brixelizer_context_created                                       = false;
+        bool brixelizer_gi_context_created                                    = false;
         FfxBrixelizerGIContext brixelizer_gi_context                          = {};
+        FfxBrixelizerContext brixelizer_context                               = {};
         FfxBrixelizerGIContextDescription brixelizer_gi_description_context   = {};
+        FfxBrixelizerContextDescription brixelizer_description_context        = {};
         FfxBrixelizerGIDispatchDescription brixelizer_gi_description_dispatch = {};
+        float brixelizer_gi_mesh_unit_size                                    = 0.2f;
+        float brixelizer_gi_cascade_size_ratio                                = 2.0f;
+        #define FFX_BRIXELIZER_MAX_CASCADES 24
+        #define NUM_BRIXELIZER_CASCADES (FFX_BRIXELIZER_MAX_CASCADES / 3)
 
         void ffx_message_callback(FfxMsgType type, const wchar_t* message)
         {
@@ -192,20 +199,18 @@ namespace Spartan
             dest[1] = source.y;
             dest[2] = source.z;
         }
-
-        void set_ffx_float4x4(FfxFloat32x3& dest, const Vector3& source)
-        {
-            dest[0] = source.x;
-            dest[1] = source.y;
-            dest[2] = source.z;
-        }
     }
 
     void RHI_FidelityFX::Initialize()
     {
         // ffx interface
         {
-            const size_t countext_count = FFX_FSR3_CONTEXT_COUNT + FFX_SSSR_CONTEXT_COUNT + FFX_BRIXELIZER_GI_CONTEXT_COUNT;
+            // all used contexts need to be accounted for here
+            const size_t countext_count =
+                FFX_FSR3_CONTEXT_COUNT       +
+                FFX_SSSR_CONTEXT_COUNT       +
+                FFX_BRIXELIZER_CONTEXT_COUNT +
+                FFX_BRIXELIZER_GI_CONTEXT_COUNT;
             
             VkDeviceContext device_context  = {};
             device_context.vkDevice         = RHI_Context::device;
@@ -215,8 +220,8 @@ namespace Spartan
             const size_t scratch_buffer_size = ffxGetScratchMemorySizeVK(RHI_Context::device_physical, countext_count);
             void* scratch_buffer             = calloc(1, scratch_buffer_size);
             
-            FfxErrorCode result = ffxGetInterfaceVK(&ffx_interface, ffxGetDeviceVK(&device_context), scratch_buffer, scratch_buffer_size, countext_count);
-            SP_ASSERT(result == FFX_OK);
+            FfxErrorCode error_code = ffxGetInterfaceVK(&ffx_interface, ffxGetDeviceVK(&device_context), scratch_buffer, scratch_buffer_size, countext_count);
+            SP_ASSERT(error_code == FFX_OK);
         }
 
         // assets
@@ -225,9 +230,15 @@ namespace Spartan
         }
     }
 
-    void RHI_FidelityFX::Shutdown()
+    void RHI_FidelityFX::DestroyContexts()
     {
-        tex_cubemap = nullptr;
+        // brixelizer gi
+        if (brixelizer_gi_context_created)
+        {
+            SP_ASSERT(ffxBrixelizerContextDestroy(&brixelizer_context) == FFX_OK);
+            SP_ASSERT(ffxBrixelizerGIContextDestroy(&brixelizer_gi_context) == FFX_OK);
+            brixelizer_gi_context_created = false;
+        }
 
         // sssr
         if (sssr_context_created)
@@ -242,6 +253,13 @@ namespace Spartan
             SP_ASSERT(ffxFsr3UpscalerContextDestroy(&fsr3_context) == FFX_OK);
             fsr3_context_created = false;
         }
+    }
+
+    void RHI_FidelityFX::Shutdown()
+    {
+        tex_cubemap = nullptr;
+
+        DestroyContexts();
 
         // ffx interface
         if (ffx_interface.scratchBuffer != nullptr)
@@ -252,82 +270,84 @@ namespace Spartan
 
     void RHI_FidelityFX::Resize(const Vector2& resolution_render, const Vector2& resolution_output)
     {
-        // context fs3
-        {
-            // destroy
-            if (fsr3_context_created)
-            {
-                FfxErrorCode error_code = ffxFsr3UpscalerContextDestroy(&fsr3_context);
-                SP_ASSERT(error_code == FFX_OK);
-                fsr3_context_created = false;
-            }
+        // contexts are resolution dependent, so we destroy and (re)create them when resizing
+        DestroyContexts();
 
-            // create
-            {
-                // description
-                fsr3_description_context.maxRenderSize.width   = static_cast<uint32_t>(resolution_render.x);
-                fsr3_description_context.maxRenderSize.height  = static_cast<uint32_t>(resolution_render.y);
-                fsr3_description_context.maxUpscaleSize.width  = static_cast<uint32_t>(resolution_output.x);
-                fsr3_description_context.maxUpscaleSize.height = static_cast<uint32_t>(resolution_output.y);
-                fsr3_description_context.backendInterface      = ffx_interface;
-                fsr3_description_context.flags                 = 0;
-                fsr3_description_context.flags                 |= FFX_FSR3_ENABLE_UPSCALING_ONLY | FFX_FSR3_ENABLE_DEPTH_INVERTED | FFX_FSR3_ENABLE_DYNAMIC_RESOLUTION;
-                fsr3_description_context.flags                 |= FFX_FSR3_ENABLE_HIGH_DYNAMIC_RANGE; // hdr input
+        // fs3
+        {
+            // description
+            fsr3_description_context.maxRenderSize.width   = static_cast<uint32_t>(resolution_render.x);
+            fsr3_description_context.maxRenderSize.height  = static_cast<uint32_t>(resolution_render.y);
+            fsr3_description_context.maxUpscaleSize.width  = static_cast<uint32_t>(resolution_output.x);
+            fsr3_description_context.maxUpscaleSize.height = static_cast<uint32_t>(resolution_output.y);
+            fsr3_description_context.backendInterface      = ffx_interface;
+            fsr3_description_context.flags                 = 0;
+            fsr3_description_context.flags                 |= FFX_FSR3_ENABLE_UPSCALING_ONLY | FFX_FSR3_ENABLE_DEPTH_INVERTED | FFX_FSR3_ENABLE_DYNAMIC_RESOLUTION;
+            fsr3_description_context.flags                 |= FFX_FSR3_ENABLE_HIGH_DYNAMIC_RANGE; // hdr input
             #ifdef DEBUG
-                fsr3_description_context.flags                 |= FFX_FSR3_ENABLE_DEBUG_CHECKING;
-                fsr3_description_context.fpMessage              = &ffx_message_callback;
+            fsr3_description_context.flags                 |= FFX_FSR3_ENABLE_DEBUG_CHECKING;
+            fsr3_description_context.fpMessage              = &ffx_message_callback;
             #endif
 
-                // context
-                SP_ASSERT(ffxFsr3UpscalerContextCreate(&fsr3_context, &fsr3_description_context) == FFX_OK);
-                fsr3_context_created = true;
-            }
+            // context
+            SP_ASSERT(ffxFsr3UpscalerContextCreate(&fsr3_context, &fsr3_description_context) == FFX_OK);
+            fsr3_context_created = true;
 
             // reset jitter index
             fsr3_jitter_index = 0;
         }
 
-        // context sssr
+        // sssr
         {
-            // destroy
-            if (sssr_context_created)
-            { 
-                SP_ASSERT(ffxSssrContextDestroy(&sssr_context) == FFX_OK);
-                sssr_context_created = false;
-            }
+             sssr_description_context.flags                      = FFX_SSSR_ENABLE_DEPTH_INVERTED;
+             sssr_description_context.renderSize.width           = static_cast<uint32_t>(resolution_render.x);
+             sssr_description_context.renderSize.height          = static_cast<uint32_t>(resolution_render.y);
+             sssr_description_context.normalsHistoryBufferFormat = to_ffx_surface_format(RHI_Format::R16G16B16A16_Float);
+             sssr_description_context.backendInterface           = ffx_interface;
 
-            // create
-            {
-                sssr_description_context.flags                      = FFX_SSSR_ENABLE_DEPTH_INVERTED;
-                sssr_description_context.renderSize.width           = static_cast<uint32_t>(resolution_render.x);
-                sssr_description_context.renderSize.height          = static_cast<uint32_t>(resolution_render.y);
-                sssr_description_context.normalsHistoryBufferFormat = to_ffx_surface_format(RHI_Format::R16G16B16A16_Float);
-                sssr_description_context.backendInterface           = ffx_interface;
-
-                SP_ASSERT(ffxSssrContextCreate(&sssr_context, &sssr_description_context) == FFX_OK);
-                sssr_context_created = true;
-            }
+             SP_ASSERT(ffxSssrContextCreate(&sssr_context, &sssr_description_context) == FFX_OK);
+             sssr_context_created = true;
         }
 
-        // context brixelizer gi
+        // brixelizer gi
         {
-            // destroy
-            if (brixelizer_context_created)
+            // underlying context
             {
-                SP_ASSERT(ffxBrixelizerGIContextDestroy(&brixelizer_gi_context) == FFX_OK);
-                brixelizer_context_created = false;
+                // misc
+                #ifdef DEBUG
+                brixelizer_description_context.flags            = FFX_BRIXELIZER_CONTEXT_FLAG_ALL_DEBUG;
+                #endif
+                brixelizer_description_context.backendInterface = ffx_interface;
+
+                // sdf
+                brixelizer_description_context.sdfCenter[0]     = 0.0f;
+                brixelizer_description_context.sdfCenter[1]     = 0.0f;
+                brixelizer_description_context.sdfCenter[2]     = 0.0f;
+
+                // cascades
+                brixelizer_description_context.numCascades      = NUM_BRIXELIZER_CASCADES;
+                float voxel_size = brixelizer_gi_mesh_unit_size;
+                for (uint32_t i = 0; i < brixelizer_description_context.numCascades; ++i)
+                {
+                    FfxBrixelizerCascadeDescription* cascadeDesc  = &brixelizer_description_context.cascadeDescs[i];
+                    cascadeDesc->flags                            = (FfxBrixelizerCascadeFlag)(FFX_BRIXELIZER_CASCADE_STATIC | FFX_BRIXELIZER_CASCADE_DYNAMIC);
+                    cascadeDesc->voxelSize                        = brixelizer_gi_mesh_unit_size;
+                    voxel_size                                   *= brixelizer_gi_cascade_size_ratio;
+                }
+
+                SP_ASSERT(ffxBrixelizerContextCreate(&brixelizer_description_context, &brixelizer_context) == FFX_OK);
             }
 
-            // create
+            // gi
             {
                 brixelizer_gi_description_context.flags              = FfxBrixelizerGIFlags::FFX_BRIXELIZER_GI_FLAG_DEPTH_INVERTED;
                 brixelizer_gi_description_context.internalResolution = FfxBrixelizerGIInternalResolution::FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_NATIVE;
                 brixelizer_gi_description_context.displaySize.width  = static_cast<uint32_t>(resolution_render.x);
                 brixelizer_gi_description_context.displaySize.height = static_cast<uint32_t>(resolution_render.y);
                 brixelizer_gi_description_context.backendInterface   = ffx_interface;
-
+                
                 SP_ASSERT(ffxBrixelizerGIContextCreate(&brixelizer_gi_context, &brixelizer_gi_description_context) == FFX_OK);
-                brixelizer_context_created = true;
+                brixelizer_gi_context_created = true;
             }
         }
     }
@@ -551,6 +571,7 @@ namespace Spartan
             set_ffx_float16(brixelizer_gi_description_dispatch.prevProjection, cb_frame->projection_previous);
         }
 
+        // set spatial parameters
         set_ffx_float3(brixelizer_gi_description_dispatch.cameraPosition, cb_frame->camera_position); // A 3-dimensional vector representing the direction of the camera
         //brixelizer_gi_description_dispatch.startCascade        = ...;     //< The index of the start cascade for use with ray marching with Brixelizer.
         //brixelizer_gi_description_dispatch.endCascade          = ...;     ///< The index of the end cascade for use with ray marching with Brixelizer.
@@ -572,6 +593,7 @@ namespace Spartan
         brixelizer_gi_description_dispatch.motionVectors    = to_ffx_resource(tex_velocity, L"brixelizer_gi_velocity");
         //brixelizer_gi_description_dispatch.noiseTexture   = nullptr;            ///< The input blue noise texture.
 
+        // set engine specific parameters
         brixelizer_gi_description_dispatch.normalsUnpackMul        = 1.0f; // a multiply factor to transform the normal to the space expected by Brixelizer GI
         brixelizer_gi_description_dispatch.normalsUnpackAdd        = 0.0f; // an offset to transform the normal to the space expected by Brixelizer GI
         brixelizer_gi_description_dispatch.isRoughnessPerceptual   = true; // if false, we assume roughness squared was stored in the Gbuffer
@@ -591,10 +613,14 @@ namespace Spartan
 
         //brixelizer_gi_description_dispatch.outputDiffuseGI   = ...;       ///< A texture to write the output diffuse GI calculated by Brixelizer GI.
         //brixelizer_gi_description_dispatch.outputSpecularGI  = ...;       ///< A texture to write the output specular GI calculated by Brixelizer GI.
-        //brixelizer_gi_description_dispatch.brixelizerContext = ...;       ///< A pointer to the Brixelizer context for use with Brixelizer GI.
 
+        // get the underlying brixelizer context (not the GI one)
+        FfxErrorCode error_code = ffxBrixelizerGetRawContext(&brixelizer_context, &brixelizer_gi_description_dispatch.brixelizerContext);
+        SP_ASSERT(error_code == FFX_OK);
+
+        // dispatch
         FfxCommandList commandList = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
-        FfxErrorCode error_code    = ffxBrixelizerGIContextDispatch(&brixelizer_gi_context, &brixelizer_gi_description_dispatch, commandList);
+        error_code                 = ffxBrixelizerGIContextDispatch(&brixelizer_gi_context, &brixelizer_gi_description_dispatch, commandList);
         SP_ASSERT(error_code == FFX_OK);
     }
 }
