@@ -43,44 +43,47 @@ namespace Spartan
         static void FSR3_GenerateJitterSample(float* x, float* y);
         static void FSR3_Dispatch(
             RHI_CommandList* cmd_list,
+            Camera* camera,
+            const float delta_time,
+            const float sharpness,
+            const float exposure,
+            const float resolution_scale,
             RHI_Texture* tex_color,
             RHI_Texture* tex_depth,
             RHI_Texture* tex_velocity,
             RHI_Texture* tex_color_opaque,
             RHI_Texture* tex_reactive,
-            RHI_Texture* tex_output,
-            Camera* camera,
-            const float delta_time,
-            const float sharpness,
-            const float exposure,
-            const float resolution_scale
+            RHI_Texture* tex_output
         );
 
         // SSSR
         static void SSSR_Dispatch(
             RHI_CommandList* cmd_list,
+            Cb_Frame* cb_frame,
+            const float resolution_scale,
             RHI_Texture* tex_color,
             RHI_Texture* tex_depth,
             RHI_Texture* tex_motion_vectors,
             RHI_Texture* tex_normal,
             RHI_Texture* tex_material,
             RHI_Texture* tex_brdf,
-            RHI_Texture* tex_output,
-            Cb_Frame* cb_frame,
-            const float resolution_scale
+            RHI_Texture* tex_output
         );
 
         // Brixelizer GI
-        static void BrixelizerGI_Update();
+        static void BrixelizerGI_Update(
+            RHI_CommandList* cmd_list,
+            Cb_Frame* cb_frame
+        );
         static void BrixelizerGI_Dispatch(
             RHI_CommandList* cmd_list,
+            Cb_Frame* cb_frame,
             RHI_Texture* tex_depth,
             RHI_Texture* tex_velocity,
             RHI_Texture* tex_normal,
             RHI_Texture* tex_material,
             RHI_Texture* tex_diffuse_gi,
-            RHI_Texture* tex_specular_gi,
-            Cb_Frame* cb_frame
+            RHI_Texture* tex_specular_gi
         );
 
     private:
