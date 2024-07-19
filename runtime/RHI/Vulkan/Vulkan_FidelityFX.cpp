@@ -188,17 +188,17 @@ namespace Spartan
             );
         }
 
-        void set_ffx_float16(float* ffx_matrix, const Matrix& matrix)
-        {
-            const float* data = matrix.Data();
-            memcpy(ffx_matrix, data, sizeof(Matrix));
-        }
-
         void set_ffx_float3(FfxFloat32x3& dest, const Vector3& source)
         {
             dest[0] = source.x;
             dest[1] = source.y;
             dest[2] = source.z;
+        }
+
+        void set_ffx_float16(float* ffx_matrix, const Matrix& matrix)
+        {
+            const float* data = matrix.Data();
+            memcpy(ffx_matrix, data, sizeof(Matrix));
         }
     }
 
@@ -559,18 +559,18 @@ namespace Spartan
 
     void RHI_FidelityFX::BrixelizerGI_Update()
     {
-        //brixelizer_description_update.resources;                                                    // Structure containing all resources to be used by the Brixelizer context
-        //brixelizer_description_update.frameIndex;                                                   // The index of the current frame.
-        //brixelizer_description_update.sdfCenter[3];                                                 // The center of the cascades.
+        //brixelizer_description_update.resources;                                                    // structure containing all resources to be used by the Brixelizer context
+        //brixelizer_description_update.frameIndex;                                                   // index of the current frame
+        //brixelizer_description_update.sdfCenter[3];                                                 // center of the cascades
         #ifdef DEBUG
         brixelizer_description_update.populateDebugAABBsFlags   = FFX_BRIXELIZER_POPULATE_AABBS_NONE; // Flags determining which AABBs to draw in a debug visualization
         #endif
-        //brixelizer_description_update.debugVisualizationDesc;                                       // An optional debug visualization description. If this parameter is set to <c><i>NULL</i></c> no debug visualization is drawn
-        brixelizer_description_update.maxReferences             = 32 * (1 << 20);                     // The maximum number of triangle voxel references to be stored in the update.
-        brixelizer_description_update.triangleSwapSize          = 300 * (1 << 20);                    // The size of the swap space available to be used for storing triangles in the update
-        brixelizer_description_update.maxBricksPerBake          = 1 << 14;                            // The maximum number of bricks to be updated
-        //brixelizer_description_update.utScratchBufferSize;                                          // An optional pointer to a <c><i>size_t</i></c> to receive the size of the GPU scratch buffer needed to process the update
-        //brixelizer_description_update.outStats;                                                     // An optional pointer to an <c><i>FfxBrixelizerStats</i></c> struct to receive statistics for the update. Note, stats read back after a call to update do
+        //brixelizer_description_update.debugVisualizationDesc;                                       // optional debug visualization description. If this parameter is set to <c><i>NULL</i></c> no debug visualization is drawn
+        brixelizer_description_update.maxReferences             = 32 * (1 << 20);                     // maximum number of triangle voxel references to be stored in the update
+        brixelizer_description_update.triangleSwapSize          = 300 * (1 << 20);                    // size of the swap space available to be used for storing triangles in the update
+        brixelizer_description_update.maxBricksPerBake          = 1 << 14;                            // maximum number of bricks to be updated
+        //brixelizer_description_update.utScratchBufferSize;                                          // optional pointer to a <c><i>size_t</i></c> to receive the size of the GPU scratch buffer needed to process the update
+        //brixelizer_description_update.outStats;                                                     // optional pointer to an <c><i>FfxBrixelizerStats</i></c> struct to receive statistics for the update. Note, stats read back after a call to update do
 
         // ffxBrixelizerBakeUpdate(&m_BrixelizerContext, &updateDesc, &m_BrixelizerBakedUpdateDesc);
         // ffxBrixelizerUpdate(&m_BrixelizerContext, &m_BrixelizerBakedUpdateDesc, ffxGpuScratchBuffer, SDKWrapper::ffxGetCommandList(pCmdList));
@@ -582,6 +582,8 @@ namespace Spartan
         RHI_Texture* tex_velocity,
         RHI_Texture* tex_normal,
         RHI_Texture* tex_material,
+        RHI_Texture* tex_diffuse_gi,
+        RHI_Texture* tex_specular_gi,
         Cb_Frame* cb_frame
     )
     {
@@ -604,8 +606,8 @@ namespace Spartan
         brixelizer_gi_description_dispatch.roughness        = to_ffx_resource(tex_material, L"brixelizer_gi_roughness");
         brixelizer_gi_description_dispatch.motionVectors    = to_ffx_resource(tex_velocity, L"brixelizer_gi_velocity");
         //brixelizer_gi_description_dispatch.noiseTexture   = nullptr;      // The input blue noise texture
-        //brixelizer_gi_description_dispatch.outputDiffuseGI   = ...;       // A texture to write the output diffuse GI calculated by Brixelizer GI
-        //brixelizer_gi_description_dispatch.outputSpecularGI  = ...;       // A texture to write the output specular GI calculated by Brixelizer GI
+        brixelizer_gi_description_dispatch.outputDiffuseGI  = to_ffx_resource(tex_diffuse_gi, L"brixelizer_gi_diffuse");
+        brixelizer_gi_description_dispatch.outputSpecularGI = to_ffx_resource(tex_specular_gi, L"brixelizer_gi_specular");
 
          // set sdf/spatial parameters
         set_ffx_float3(brixelizer_gi_description_dispatch.cameraPosition, cb_frame->camera_position); // A 3-dimensional vector representing the direction of the camera
