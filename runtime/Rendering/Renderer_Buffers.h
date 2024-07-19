@@ -35,8 +35,10 @@ namespace Spartan
     {
         Math::Matrix view;
         Math::Matrix view_inv;
+        Math::Matrix view_previous;
         Math::Matrix projection;
         Math::Matrix projection_inv;
+        Math::Matrix projection_previous;
         Math::Matrix view_projection;
         Math::Matrix view_projection_inv;
         Math::Matrix view_projection_ortho;

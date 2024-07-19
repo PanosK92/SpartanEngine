@@ -180,13 +180,24 @@ namespace Spartan
             );
         }
 
-        void to_ffx_matrix(const Matrix& matrix, float* ffx_matrix)
+        void set_ffx_float16(float* ffx_matrix, const Matrix& matrix)
         {
             const float* data = matrix.Data();
-            for (uint8_t i = 0; i < 16; i++)
-            {
-                ffx_matrix[i] = data[i];
-            }
+            memcpy(ffx_matrix, data, sizeof(Matrix));
+        }
+
+        void set_ffx_float3(FfxFloat32x3& dest, const Vector3& source)
+        {
+            dest[0] = source.x;
+            dest[1] = source.y;
+            dest[2] = source.z;
+        }
+
+        void set_ffx_float4x4(FfxFloat32x3& dest, const Vector3& source)
+        {
+            dest[0] = source.x;
+            dest[1] = source.y;
+            dest[2] = source.z;
         }
     }
 
@@ -489,13 +500,14 @@ namespace Spartan
             Matrix view_projection_previous = view_projection;
             view_projection                 = projection * view;
             Matrix view_projection_inv      = Matrix::Invert(view_projection);
-         
-            to_ffx_matrix(view,                     sssr_description_dispatch.view);
-            to_ffx_matrix(view_inv,                 sssr_description_dispatch.invView);
-            to_ffx_matrix(projection,               sssr_description_dispatch.projection);
-            to_ffx_matrix(projection_inv,           sssr_description_dispatch.invProjection);
-            to_ffx_matrix(view_projection_inv,      sssr_description_dispatch.invViewProjection);
-            to_ffx_matrix(view_projection_previous, sssr_description_dispatch.prevViewProjection);
+
+            // ffx expects column major layout
+            set_ffx_float16(sssr_description_dispatch.view,               view);
+            set_ffx_float16(sssr_description_dispatch.invView,            view_inv);
+            set_ffx_float16(sssr_description_dispatch.projection,         projection);
+            set_ffx_float16(sssr_description_dispatch.invProjection,      projection_inv);
+            set_ffx_float16(sssr_description_dispatch.invViewProjection,  view_projection_inv);
+            set_ffx_float16(sssr_description_dispatch.prevViewProjection, view_projection_previous);
         }
 
         // set sssr specific parameters
@@ -521,14 +533,21 @@ namespace Spartan
         SP_ASSERT(error_code == FFX_OK);
     }
 
-    void RHI_FidelityFX::BrixelizerGI_Dispatch(RHI_CommandList* cmd_list)
+    void RHI_FidelityFX::BrixelizerGI_Dispatch(
+        RHI_CommandList* cmd_list,
+        Cb_Frame* cb_frame
+    )
     {
-        //brixelizer_gi_description_dispatch.view           = ...;          ///< The view matrix for the scene in row major order.
-        //brixelizer_gi_description_dispatch.projection     = ...;          ///< The projection matrix for the scene in row major order.
-        //brixelizer_gi_description_dispatch.prevView       = ...;          ///< The view matrix for the previous frame of the scene in row major order.
-        //brixelizer_gi_description_dispatch.prevProjection = ...;          ///< The projection matrix for the scene in row major order.
+        // set camera matrices
+        {
+            // ffx expects row major order
+            set_ffx_float16(brixelizer_gi_description_dispatch.view,           cb_frame->view);
+            set_ffx_float16(brixelizer_gi_description_dispatch.prevView,       cb_frame->view_previous);
+            set_ffx_float16(brixelizer_gi_description_dispatch.projection,     cb_frame->projection);
+            set_ffx_float16(brixelizer_gi_description_dispatch.prevProjection, cb_frame->projection_previous);
+        }
 
-        //brixelizer_gi_description_dispatch.cameraPosition      = ...;     ///< A 3-dimensional vector representing the position of the camera.
+        set_ffx_float3(brixelizer_gi_description_dispatch.cameraPosition, cb_frame->camera_position); // A 3-dimensional vector representing the direction of the camera
         //brixelizer_gi_description_dispatch.startCascade        = ...;     //< The index of the start cascade for use with ray marching with Brixelizer.
         //brixelizer_gi_description_dispatch.endCascade          = ...;     ///< The index of the end cascade for use with ray marching with Brixelizer.
         //brixelizer_gi_description_dispatch.rayPushoff          = ...;     ///< The distance from a surface along the normal vector to offset the diffuse ray origin.
@@ -548,13 +567,13 @@ namespace Spartan
         //brixelizer_gi_description_dispatch.motionVectors  = ...;            ///< The input motion vectors texture.
         //brixelizer_gi_description_dispatch.noiseTexture   = ...;            ///< The input blue noise texture.
 
-        //brixelizer_gi_description_dispatch.normalsUnpackMul        = ...;     ///< A multiply factor to transform the normal to the space expected by Brixelizer GI.       
-        //brixelizer_gi_description_dispatch.normalsUnpackAdd        = ...;     ///< An offset to transform the normal to the space expected by Brixelizer GI.
-        //brixelizer_gi_description_dispatch.isRoughnessPerceptual   = ...;     ///< A boolean to describe the space used to store roughness in the materialParameters texture. If false, we assume roughness squared was stored in the Gbuffer.  
-        //brixelizer_gi_description_dispatch.roughnessChannel        = ...;     ///< The channel to read the roughness from the roughness texture       
-        //brixelizer_gi_description_dispatch.roughnessThreshold      = ...;     ///< Regions with a roughness value greater than this threshold won't spawn specular rays.     
-        //brixelizer_gi_description_dispatch.environmentMapIntensity = ...;     ///< The value to scale the contribution from the environment map.
-        //brixelizer_gi_description_dispatch.motionVectorScale       = ...;     ///< The scale factor to apply to motion vectors.      
+        brixelizer_gi_description_dispatch.normalsUnpackMul        = 1.0f;     // A multiply factor to transform the normal to the space expected by Brixelizer GI.
+        brixelizer_gi_description_dispatch.normalsUnpackAdd        = 0.0f;     // An offset to transform the normal to the space expected by Brixelizer GI.
+        brixelizer_gi_description_dispatch.isRoughnessPerceptual   = true;     ///< A boolean to describe the space used to store roughness in the materialParameters texture. If false, we assume roughness squared was stored in the Gbuffer.  
+        brixelizer_gi_description_dispatch.roughnessChannel        = 0;        ///< The channel to read the roughness from the roughness texture
+        brixelizer_gi_description_dispatch.roughnessThreshold      = 1.0f;     ///< Regions with a roughness value greater than this threshold won't spawn specular rays.
+        //brixelizer_gi_description_dispatch.environmentMapIntensity = ...;    ///< The value to scale the contribution from the environment map.
+        //brixelizer_gi_description_dispatch.motionVectorScale       = ...;    ///< The scale factor to apply to motion vectors.
 
         //brixelizer_gi_description_dispatch.sdfAtlas    = ...;                   ///< The SDF Atlas resource used by Brixelizer.
         //brixelizer_gi_description_dispatch.bricksAABBs = ...;                   ///< The brick AABBs resource used by Brixelizer.
