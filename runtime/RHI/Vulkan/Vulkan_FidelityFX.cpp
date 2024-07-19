@@ -535,6 +535,10 @@ namespace Spartan
 
     void RHI_FidelityFX::BrixelizerGI_Dispatch(
         RHI_CommandList* cmd_list,
+        RHI_Texture* tex_depth,
+        RHI_Texture* tex_velocity,
+        RHI_Texture* tex_normal,
+        RHI_Texture* tex_material,
         Cb_Frame* cb_frame
     )
     {
@@ -557,23 +561,25 @@ namespace Spartan
         //brixelizer_gi_description_dispatch.tMin                = ...;     ///< The TMin value for use with Brixelizer.
         //brixelizer_gi_description_dispatch.tMax                = ...;     ///< The TMax value for use with Brixelizer.
 
+        // set textures
         //brixelizer_gi_description_dispatch.environmentMap = ...;            ///< The environment map.
         //brixelizer_gi_description_dispatch.prevLitOutput  = ...;            ///< The lit output from the previous frame.
-        //brixelizer_gi_description_dispatch.depth          = ...;            ///< The input depth buffer.
+        brixelizer_gi_description_dispatch.depth            = to_ffx_resource(tex_depth, L"brixelizer_gi_depth");
         //brixelizer_gi_description_dispatch.historyDepth   = ...;            ///< The previous frame input depth buffer.
-        //brixelizer_gi_description_dispatch.normal         = ...;            ///< The input normal buffer.
+        brixelizer_gi_description_dispatch.normal           = to_ffx_resource(tex_normal, L"brixelizer_gi_normal");
         //brixelizer_gi_description_dispatch.historyNormal  = ...;            ///< The previous frame input normal buffer.
-        //brixelizer_gi_description_dispatch.roughness      = ...;            ///< The resource containing roughness information.
-        //brixelizer_gi_description_dispatch.motionVectors  = ...;            ///< The input motion vectors texture.
-        //brixelizer_gi_description_dispatch.noiseTexture   = ...;            ///< The input blue noise texture.
+        brixelizer_gi_description_dispatch.roughness        = to_ffx_resource(tex_material, L"brixelizer_gi_roughness");
+        brixelizer_gi_description_dispatch.motionVectors    = to_ffx_resource(tex_velocity, L"brixelizer_gi_velocity");
+        //brixelizer_gi_description_dispatch.noiseTexture   = nullptr;            ///< The input blue noise texture.
 
-        brixelizer_gi_description_dispatch.normalsUnpackMul        = 1.0f;     // A multiply factor to transform the normal to the space expected by Brixelizer GI.
-        brixelizer_gi_description_dispatch.normalsUnpackAdd        = 0.0f;     // An offset to transform the normal to the space expected by Brixelizer GI.
-        brixelizer_gi_description_dispatch.isRoughnessPerceptual   = true;     ///< A boolean to describe the space used to store roughness in the materialParameters texture. If false, we assume roughness squared was stored in the Gbuffer.  
-        brixelizer_gi_description_dispatch.roughnessChannel        = 0;        ///< The channel to read the roughness from the roughness texture
-        brixelizer_gi_description_dispatch.roughnessThreshold      = 1.0f;     ///< Regions with a roughness value greater than this threshold won't spawn specular rays.
-        //brixelizer_gi_description_dispatch.environmentMapIntensity = ...;    ///< The value to scale the contribution from the environment map.
-        //brixelizer_gi_description_dispatch.motionVectorScale       = ...;    ///< The scale factor to apply to motion vectors.
+        brixelizer_gi_description_dispatch.normalsUnpackMul        = 1.0f; // a multiply factor to transform the normal to the space expected by Brixelizer GI
+        brixelizer_gi_description_dispatch.normalsUnpackAdd        = 0.0f; // an offset to transform the normal to the space expected by Brixelizer GI
+        brixelizer_gi_description_dispatch.isRoughnessPerceptual   = true; // if false, we assume roughness squared was stored in the Gbuffer
+        brixelizer_gi_description_dispatch.roughnessChannel        = 0;    // the channel to read the roughness from the roughness texture
+        brixelizer_gi_description_dispatch.roughnessThreshold      = 1.0f; // regions with a roughness value greater than this threshold won't spawn specular rays
+        brixelizer_gi_description_dispatch.environmentMapIntensity = 0.0f; // value to scale the contribution from the environment map
+        brixelizer_gi_description_dispatch.motionVectorScale.x     = 1.0f; // scale factor to apply to motion vectors
+        brixelizer_gi_description_dispatch.motionVectorScale.y     = 1.0f; // scale factor to apply to motion vectors
 
         //brixelizer_gi_description_dispatch.sdfAtlas    = ...;                   ///< The SDF Atlas resource used by Brixelizer.
         //brixelizer_gi_description_dispatch.bricksAABBs = ...;                   ///< The brick AABBs resource used by Brixelizer.

@@ -73,6 +73,10 @@ namespace Spartan
         // Brixelizer GI
         static void BrixelizerGI_Dispatch(
             RHI_CommandList* cmd_list,
+            RHI_Texture* tex_depth,
+            RHI_Texture* tex_velocity,
+            RHI_Texture* tex_normal,
+            RHI_Texture* tex_material,
             Cb_Frame* cb_frame
         );
     };
