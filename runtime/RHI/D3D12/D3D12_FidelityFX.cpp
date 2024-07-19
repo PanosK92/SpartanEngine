@@ -98,6 +98,11 @@ namespace Spartan
 
     }
 
+    void RHI_FidelityFX::BrixelizerGI_Update()
+    {
+
+    }
+
     void RHI_FidelityFX::BrixelizerGI_Dispatch(
         RHI_CommandList* cmd_list,
         RHI_Texture* tex_depth,
