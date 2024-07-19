@@ -71,6 +71,7 @@ namespace Spartan
         );
 
         // Brixelizer GI
+        static void BrixelizerGI_Update();
         static void BrixelizerGI_Dispatch(
             RHI_CommandList* cmd_list,
             RHI_Texture* tex_depth,
