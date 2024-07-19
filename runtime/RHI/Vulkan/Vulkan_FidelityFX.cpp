@@ -592,6 +592,9 @@ namespace Spartan
         RHI_Texture* tex_specular_gi
     )
     {
+        // update bricks
+        BrixelizerGI_Update(cmd_list, cb_frame);
+
         // set camera matrices
         {
             // ffx expects row major order
