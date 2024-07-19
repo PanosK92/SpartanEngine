@@ -66,9 +66,10 @@ namespace Spartan
         FfxSssrDispatchDescription sssr_description_dispatch = {};
 
         // brixelizer gi
-        bool brixelizer_context_created                                     = false;
-        FfxBrixelizerGIContext brixelizer_gi_context                        = {};
-        FfxBrixelizerGIContextDescription brixelizer_gi_description_context = {};
+        bool brixelizer_context_created                                       = false;
+        FfxBrixelizerGIContext brixelizer_gi_context                          = {};
+        FfxBrixelizerGIContextDescription brixelizer_gi_description_context   = {};
+        FfxBrixelizerGIDispatchDescription brixelizer_gi_description_dispatch = {};
 
         void ffx_message_callback(FfxMsgType type, const wchar_t* message)
         {
@@ -517,6 +518,58 @@ namespace Spartan
 
         // dispatch
         FfxErrorCode error_code = ffxSssrContextDispatch(&sssr_context, &sssr_description_dispatch);
+        SP_ASSERT(error_code == FFX_OK);
+    }
+
+    void RHI_FidelityFX::BrixelizerGI_Dispatch(RHI_CommandList* cmd_list)
+    {
+        //brixelizer_gi_description_dispatch.view           = ...;          ///< The view matrix for the scene in row major order.
+        //brixelizer_gi_description_dispatch.projection     = ...;          ///< The projection matrix for the scene in row major order.
+        //brixelizer_gi_description_dispatch.prevView       = ...;          ///< The view matrix for the previous frame of the scene in row major order.
+        //brixelizer_gi_description_dispatch.prevProjection = ...;          ///< The projection matrix for the scene in row major order.
+
+        //brixelizer_gi_description_dispatch.cameraPosition      = ...;     ///< A 3-dimensional vector representing the position of the camera.
+        //brixelizer_gi_description_dispatch.startCascade        = ...;     //< The index of the start cascade for use with ray marching with Brixelizer.
+        //brixelizer_gi_description_dispatch.endCascade          = ...;     ///< The index of the end cascade for use with ray marching with Brixelizer.
+        //brixelizer_gi_description_dispatch.rayPushoff          = ...;     ///< The distance from a surface along the normal vector to offset the diffuse ray origin.
+        //brixelizer_gi_description_dispatch.sdfSolveEps         = ...;     //< The epsilon value for ray marching to be used with Brixelizer for diffuse rays.
+        //brixelizer_gi_description_dispatch.specularRayPushoff  = ...;     ///< The distance from a surface along the normal vector to offset the specular ray origin.
+        //brixelizer_gi_description_dispatch.specularSDFSolveEps = ...;     ///< The epsilon value for ray marching to be used with Brixelizer for specular rays.
+        //brixelizer_gi_description_dispatch.tMin                = ...;     ///< The TMin value for use with Brixelizer.
+        //brixelizer_gi_description_dispatch.tMax                = ...;     ///< The TMax value for use with Brixelizer.
+
+        //brixelizer_gi_description_dispatch.environmentMap = ...;            ///< The environment map.
+        //brixelizer_gi_description_dispatch.prevLitOutput  = ...;            ///< The lit output from the previous frame.
+        //brixelizer_gi_description_dispatch.depth          = ...;            ///< The input depth buffer.
+        //brixelizer_gi_description_dispatch.historyDepth   = ...;            ///< The previous frame input depth buffer.
+        //brixelizer_gi_description_dispatch.normal         = ...;            ///< The input normal buffer.
+        //brixelizer_gi_description_dispatch.historyNormal  = ...;            ///< The previous frame input normal buffer.
+        //brixelizer_gi_description_dispatch.roughness      = ...;            ///< The resource containing roughness information.
+        //brixelizer_gi_description_dispatch.motionVectors  = ...;            ///< The input motion vectors texture.
+        //brixelizer_gi_description_dispatch.noiseTexture   = ...;            ///< The input blue noise texture.
+
+        //brixelizer_gi_description_dispatch.normalsUnpackMul        = ...;     ///< A multiply factor to transform the normal to the space expected by Brixelizer GI.       
+        //brixelizer_gi_description_dispatch.normalsUnpackAdd        = ...;     ///< An offset to transform the normal to the space expected by Brixelizer GI.
+        //brixelizer_gi_description_dispatch.isRoughnessPerceptual   = ...;     ///< A boolean to describe the space used to store roughness in the materialParameters texture. If false, we assume roughness squared was stored in the Gbuffer.  
+        //brixelizer_gi_description_dispatch.roughnessChannel        = ...;     ///< The channel to read the roughness from the roughness texture       
+        //brixelizer_gi_description_dispatch.roughnessThreshold      = ...;     ///< Regions with a roughness value greater than this threshold won't spawn specular rays.     
+        //brixelizer_gi_description_dispatch.environmentMapIntensity = ...;     ///< The value to scale the contribution from the environment map.
+        //brixelizer_gi_description_dispatch.motionVectorScale       = ...;     ///< The scale factor to apply to motion vectors.      
+
+        //brixelizer_gi_description_dispatch.sdfAtlas    = ...;                   ///< The SDF Atlas resource used by Brixelizer.
+        //brixelizer_gi_description_dispatch.bricksAABBs = ...;                   ///< The brick AABBs resource used by Brixelizer.
+        for (uint32_t i = 0; i < 24; ++i)
+        {
+            //brixelizer_gi_description_dispatch.cascadeAABBTrees[i] = ...; ///< The cascade AABB tree resources used by Brixelizer.
+            //brixelizer_gi_description_dispatch.cascadeBrickMaps[i] = ...; ///< The cascade brick map resources used by Brixelizer.
+        }
+
+        //brixelizer_gi_description_dispatch.outputDiffuseGI   = ...;       ///< A texture to write the output diffuse GI calculated by Brixelizer GI.
+        //brixelizer_gi_description_dispatch.outputSpecularGI  = ...;       ///< A texture to write the output specular GI calculated by Brixelizer GI.
+        //brixelizer_gi_description_dispatch.brixelizerContext = ...;       ///< A pointer to the Brixelizer context for use with Brixelizer GI.
+
+        FfxCommandList commandList = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
+        FfxErrorCode error_code    = ffxBrixelizerGIContextDispatch(&brixelizer_gi_context, &brixelizer_gi_description_dispatch, commandList);
         SP_ASSERT(error_code == FFX_OK);
     }
 }

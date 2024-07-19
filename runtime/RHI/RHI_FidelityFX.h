@@ -69,5 +69,10 @@ namespace Spartan
             Cb_Frame* cb_frame,
             const float resolution_scale
         );
+
+        // Brixelizer GI
+        static void BrixelizerGI_Dispatch(
+            RHI_CommandList* cmd_list
+        );
     };
 }
