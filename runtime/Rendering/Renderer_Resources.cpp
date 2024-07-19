@@ -191,7 +191,7 @@ namespace Spartan
         uint32_t mip_count          = 1;
         uint32_t width              = width_render;
         uint32_t height             = height_render;
-        uint32_t smallest_dimension = 16;
+        uint32_t smallest_dimension = 1;
         while (width > smallest_dimension && height > smallest_dimension)
         {
             width  /= 2;
@@ -209,7 +209,7 @@ namespace Spartan
         uint32_t flags_rt_clearable = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit;
         uint32_t flags_rt_depth     = RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit; // GPUs are picky about feature are supported for depth
 
-        // render resolution
+        // resolution - render
         if (create_render)
         {
             // frame
@@ -253,7 +253,7 @@ namespace Spartan
             }
         }
 
-        // output resolution
+        // resolution - output
         if (create_output)
         {
             // frame
@@ -261,15 +261,12 @@ namespace Spartan
             render_target(Renderer_RenderTarget::frame_output_2) = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, flags_rt | RHI_Texture_ClearBlit, "frame_output_2");
 
             // misc
-            {
-                render_target(Renderer_RenderTarget::bloom) = make_shared<RHI_Texture2D>(width_output, height_output, mip_count, RHI_Format::R11G11B10_Float, flags | RHI_Texture_PerMipViews, "bloom");
-            }
-
+            render_target(Renderer_RenderTarget::bloom)                = make_shared<RHI_Texture2D>(width_output, height_output, mip_count, RHI_Format::R11G11B10_Float, flags | RHI_Texture_PerMipViews, "bloom");
             render_target(Renderer_RenderTarget::outline)              = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R8G8B8A8_Unorm, flags_rt, "outline");
             render_target(Renderer_RenderTarget::gbuffer_depth_output) = make_shared<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::D32_Float, flags_rt_depth, "gbuffer_depth_output");
         }
 
-        // fixed resolution - created only once
+        // resolution - fixed (created once)
         if (!render_target(Renderer_RenderTarget::brdf_specular_lut))
         {
             render_target(Renderer_RenderTarget::brdf_specular_lut) = make_unique<RHI_Texture2D>(512,  512,  1,         RHI_Format::R8G8_Unorm,         flags, "brdf_specular_lut");

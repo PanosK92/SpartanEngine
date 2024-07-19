@@ -476,7 +476,7 @@ namespace Spartan
         sssr_description_dispatch.maxTraversalIntersections             = 32;  
         sssr_description_dispatch.minTraversalOccupancy                 = 4;     // exit the core loop early if less than this number of threads are running
         sssr_description_dispatch.mostDetailedMip                       = 0;    
-        sssr_description_dispatch.temporalStabilityFactor               = 0.7f;  // the accumulation of history values, Higher values reduce noise, but are more likely to exhibit ghosting artifacts
+        sssr_description_dispatch.temporalStabilityFactor               = 0.5f;  // the accumulation of history values, Higher values reduce noise, but are more likely to exhibit ghosting artifacts
         sssr_description_dispatch.temporalVarianceGuidedTracingEnabled  = true;  // whether a ray should be spawned on pixels where a temporal variance is detected or not
         sssr_description_dispatch.samplesPerQuad                        = 1;     // the minimum number of rays per quad, variance guided tracing can increase this up to a maximum of 4
         sssr_description_dispatch.iblFactor                             = 0.0f; 
@@ -485,7 +485,7 @@ namespace Spartan
         sssr_description_dispatch.roughnessThreshold                    = 1.0f;  // regions with a roughness value greater than this threshold won't spawn rays
 
         // dispatch
-        FfxErrorCode errorCode = ffxSssrContextDispatch(&sssr_context, &sssr_description_dispatch);
-        SP_ASSERT(errorCode == FFX_OK);
+        FfxErrorCode error_code = ffxSssrContextDispatch(&sssr_context, &sssr_description_dispatch);
+        SP_ASSERT(error_code == FFX_OK);
     }
 }
