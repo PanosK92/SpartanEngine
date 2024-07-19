@@ -180,7 +180,7 @@ namespace Spartan
         static void Pass_Upscale(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         // passes - utility
         static void Pass_Blur(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const float radius, const uint32_t mip = rhi_all_mips);
-        static void Pass_Mips(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter, const uint32_t mip_start = 0);
+        static void Pass_Downsample(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter);
 
         // event handlers
         static void OnClear();

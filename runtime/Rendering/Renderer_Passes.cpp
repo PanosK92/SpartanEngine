@@ -474,7 +474,7 @@ namespace Spartan
             {
                 RHI_Texture* tex_render_opaque = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get();
                 cmd_list_graphics->Blit(rt_render, tex_render_opaque, false); 
-                Pass_Mips(cmd_list_graphics, tex_render_opaque, Renderer_DownsampleFilter::Average); // generate mips to simulate roughness
+                Pass_Downsample(cmd_list_graphics, tex_render_opaque, Renderer_DownsampleFilter::Average); // generate mips to simulate roughness
 
                 // blur the smaller mips to reduce blockiness/flickering
                 for (uint32_t i = 1; i < tex_render_opaque->GetMipCount(); i++)
@@ -1326,7 +1326,7 @@ namespace Spartan
         // generate mips as light_integration.hlsl expects them
         if (mip_level == 0)
         { 
-            Pass_Mips(cmd_list, tex_environment, Renderer_DownsampleFilter::Average);
+            Pass_Downsample(cmd_list, tex_environment, Renderer_DownsampleFilter::Average);
         }
 
         // set pipeline state
@@ -1492,7 +1492,7 @@ namespace Spartan
         cmd_list->EndMarker();
 
         // generate mips
-        Pass_Mips(cmd_list, tex_bloom, Renderer_DownsampleFilter::Average);
+        Pass_Downsample(cmd_list, tex_bloom, Renderer_DownsampleFilter::Average);
 
         // starting from the lowest mip, upsample and blend with the higher one
         cmd_list->BeginMarker("upsample_and_blend_with_higher_mip");
@@ -1773,7 +1773,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Mips(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter, const uint32_t mip_start)
+    void Renderer::Pass_Downsample(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter)
     {
         // AMD FidelityFX Single Pass Downsampler.
         // Provides an RDNA™-optimized solution for generating up to 12 MIP levels of a texture.
@@ -1781,8 +1781,9 @@ namespace Spartan
         // Documentation: https://github.com/GPUOpen-Effects/FidelityFX-SPD/blob/master/docs/FidelityFX_SPD.pdf
 
         // deduce information
+        const uint32_t mip_start             = 0;
         const uint32_t output_mip_count      = tex->GetMipCount() - (mip_start + 1);
-        const uint32_t width                 = tex->GetWidth()  >> mip_start;
+        const uint32_t width                 = tex->GetWidth();
         const uint32_t height                = tex->GetHeight() >> mip_start;
         const uint32_t thread_group_count_x_ = (width + 63)  >> 6; // as per document documentation (page 22)
         const uint32_t thread_group_count_y_ = (height + 63) >> 6; // as per document documentation (page 22)
@@ -1805,7 +1806,7 @@ namespace Spartan
         {
             // set pipeline state
             static RHI_PipelineState pso;
-            pso.name           = "ffx_spd";
+            pso.name             = "ffx_spd";
             pso.shaders[Compute] = shader_c;
             cmd_list->SetPipelineState(pso);
 
