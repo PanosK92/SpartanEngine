@@ -66,17 +66,17 @@ namespace Spartan
     void RHI_FidelityFX::FSR3_Dispatch
     (
         RHI_CommandList* cmd_list,
+        Camera* camera,
+        const float delta_time_sec,
+        const float sharpness,
+        const float exposure,
+        const float resolution_scale,
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
         RHI_Texture* tex_color_opaque,
         RHI_Texture* tex_reactive,
-        RHI_Texture* tex_output,
-        Camera* camera,
-        const float delta_time_sec,
-        const float sharpness,
-        const float exposure,
-        const float resolution_scale
+        RHI_Texture* tex_output
     )
     {
 
@@ -84,34 +84,34 @@ namespace Spartan
 
     void RHI_FidelityFX::SSSR_Dispatch(
         RHI_CommandList* cmd_list,
+        Cb_Frame* cb_frame,
+        const float resolution_scale,
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
         RHI_Texture* tex_normal,
         RHI_Texture* tex_material,
         RHI_Texture* tex_brdf,
-        RHI_Texture* tex_output,
-        Cb_Frame* cb_frame,
-        const float resolution_scale
+        RHI_Texture* tex_output
     )
     {
 
     }
 
-    void RHI_FidelityFX::BrixelizerGI_Update()
+    void RHI_FidelityFX::BrixelizerGI_Update(RHI_CommandList* cmd_list)
     {
 
     }
 
     void RHI_FidelityFX::BrixelizerGI_Dispatch(
         RHI_CommandList* cmd_list,
+        Cb_Frame* cb_frame,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
         RHI_Texture* tex_normal,
         RHI_Texture* tex_material,
         RHI_Texture* tex_diffuse_gi,
-        RHI_Texture* tex_specular_gi,
-        Cb_Frame* cb_frame
+        RHI_Texture* tex_specular_gi
     )
     {
 

@@ -997,15 +997,15 @@ namespace Spartan
 
         RHI_FidelityFX::SSSR_Dispatch(
             cmd_list,
+            &m_cb_frame_cpu,
+            GetOption<float>(Renderer_Option::ResolutionScale),
             tex_in, // what to reflect from
             GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get(),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_material).get(),
             GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut).get(),
-            GetRenderTarget(Renderer_RenderTarget::ssr).get(),
-            &m_cb_frame_cpu,
-            GetOption<float>(Renderer_Option::ResolutionScale)
+            GetRenderTarget(Renderer_RenderTarget::ssr).get()
         );
 
         cmd_list->EndTimeblock();
@@ -1729,17 +1729,17 @@ namespace Spartan
 
         RHI_FidelityFX::FSR3_Dispatch(
             cmd_list,
+            GetCamera().get(),
+            m_cb_frame_cpu.delta_time,
+            GetOption<float>(Renderer_Option::Sharpness),
+            GetOption<float>(Renderer_Option::Exposure),
+            GetOption<float>(Renderer_Option::ResolutionScale),
             tex_in,
             GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
             GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get(),
             GetRenderTarget(Renderer_RenderTarget::reactive).get(),
-            tex_out,
-            GetCamera().get(),
-            m_cb_frame_cpu.delta_time,
-            GetOption<float>(Renderer_Option::Sharpness),
-            GetOption<float>(Renderer_Option::Exposure),
-            GetOption<float>(Renderer_Option::ResolutionScale)
+            tex_out
         );
 
         cmd_list->EndTimeblock();
