@@ -78,6 +78,8 @@ namespace Spartan
             RHI_Texture* tex_velocity,
             RHI_Texture* tex_normal,
             RHI_Texture* tex_material,
+            RHI_Texture* tex_diffuse_gi,
+            RHI_Texture* tex_specular_gi,
             Cb_Frame* cb_frame
         );
 

@@ -236,10 +236,12 @@ namespace Spartan
             {
                 uint32_t light_flags = flags | RHI_Texture_ClearBlit;
 
-                render_target(Renderer_RenderTarget::light_diffuse)    = make_unique<RHI_Texture2D>(width_render, height_render, 1,  RHI_Format::R11G11B10_Float, light_flags, "light_diffuse");
-                render_target(Renderer_RenderTarget::light_specular)   = make_unique<RHI_Texture2D>(width_render, height_render, 1,  RHI_Format::R11G11B10_Float, light_flags, "light_specular");
-                render_target(Renderer_RenderTarget::light_shadow)     = make_unique<RHI_Texture2D>(width_render, height_render, 1,  RHI_Format::R8_Unorm,        light_flags, "light_shadow");
-                render_target(Renderer_RenderTarget::light_volumetric) = make_unique<RHI_Texture2D>(width_render, height_render, 1,  RHI_Format::R11G11B10_Float, light_flags, "light_volumetric");
+                render_target(Renderer_RenderTarget::light_diffuse)     = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, light_flags, "light_diffuse");
+                render_target(Renderer_RenderTarget::light_diffuse_gi)  = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, light_flags, "light_diffuse_gi");
+                render_target(Renderer_RenderTarget::light_specular)    = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, light_flags, "light_specular");
+                render_target(Renderer_RenderTarget::light_specular_gi) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, light_flags, "light_specular_gi");
+                render_target(Renderer_RenderTarget::light_shadow)      = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8_Unorm,           light_flags, "light_shadow");
+                render_target(Renderer_RenderTarget::light_volumetric)  = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R11G11B10_Float,    light_flags, "light_volumetric");
             }
 
             // misc
