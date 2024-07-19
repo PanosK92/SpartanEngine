@@ -471,17 +471,17 @@ namespace Spartan
         sssr_description_dispatch.motionVectorScale.y                   = -0.5f; // expects [-0.5, 0.5] range, +Y as top-down
         sssr_description_dispatch.normalUnPackMul                       = 1.0f;
         sssr_description_dispatch.normalUnPackAdd                       = 0.0f;
-        sssr_description_dispatch.depthBufferThickness                  = 0.05f; // hit acceptance bias, larger values can cause streaks, lower values can cause holes
+        sssr_description_dispatch.depthBufferThickness                  = 0.08f; // hit acceptance bias, larger values can cause streaks, lower values can cause holes
         sssr_description_dispatch.varianceThreshold                     = 0.0f;  // luminance differences between history results will trigger an additional ray if they are greater than this threshold value
-        sssr_description_dispatch.maxTraversalIntersections             = 32;  
+        sssr_description_dispatch.maxTraversalIntersections             = 32;    // caps the maximum number of lookups that are performed from the depth buffer hierarchy, most rays should end after about 20 lookups
         sssr_description_dispatch.minTraversalOccupancy                 = 4;     // exit the core loop early if less than this number of threads are running
-        sssr_description_dispatch.mostDetailedMip                       = 0;    
+        sssr_description_dispatch.mostDetailedMip                       = 0;
         sssr_description_dispatch.temporalStabilityFactor               = 0.5f;  // the accumulation of history values, Higher values reduce noise, but are more likely to exhibit ghosting artifacts
         sssr_description_dispatch.temporalVarianceGuidedTracingEnabled  = true;  // whether a ray should be spawned on pixels where a temporal variance is detected or not
         sssr_description_dispatch.samplesPerQuad                        = 1;     // the minimum number of rays per quad, variance guided tracing can increase this up to a maximum of 4
-        sssr_description_dispatch.iblFactor                             = 0.0f; 
-        sssr_description_dispatch.roughnessChannel                      = 0;    
-        sssr_description_dispatch.isRoughnessPerceptual                 = false;
+        sssr_description_dispatch.iblFactor                             = 0.0f;
+        sssr_description_dispatch.roughnessChannel                      = 0;
+        sssr_description_dispatch.isRoughnessPerceptual                 = true;
         sssr_description_dispatch.roughnessThreshold                    = 1.0f;  // regions with a roughness value greater than this threshold won't spawn rays
 
         // dispatch
