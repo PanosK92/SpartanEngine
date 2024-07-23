@@ -1534,17 +1534,17 @@ namespace Spartan
         descriptor_sets::bind_dynamic = true;
     }
 
-    void RHI_CommandList::SetStructuredBuffer(const uint32_t slot, RHI_Buffer* structured_buffer) const
+    void RHI_CommandList::SetBuffer(const uint32_t slot, RHI_Buffer* buffer) const
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         if (!m_descriptor_layout_current)
         {
-            SP_LOG_WARNING("Descriptor layout not set, try setting structured buffer \"%s\" within a render pass", structured_buffer->GetObjectName().c_str());
+            SP_LOG_WARNING("Descriptor layout not set, try setting buffer \"%s\" within a render pass", buffer->GetObjectName().c_str());
             return;
         }
 
-        m_descriptor_layout_current->SetStructuredBuffer(slot, structured_buffer);
+        m_descriptor_layout_current->SetBuffer(slot, buffer);
 
         // todo: detect if there are changes, otherwise don't bother binding
         descriptor_sets::bind_dynamic = true;

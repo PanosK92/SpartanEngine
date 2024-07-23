@@ -67,15 +67,15 @@ namespace Spartan
         }
     }
 
-    void RHI_DescriptorSetLayout::SetStructuredBuffer(const uint32_t slot, RHI_Buffer* structured_buffer)
+    void RHI_DescriptorSetLayout::SetBuffer(const uint32_t slot, RHI_Buffer* buffer)
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
             if (descriptor.slot == slot + rhi_shader_shift_register_u)
             {
-                descriptor.data           = static_cast<void*>(structured_buffer);
-                descriptor.range          = structured_buffer->GetStride();
-                descriptor.dynamic_offset = structured_buffer->GetOffset();
+                descriptor.data           = static_cast<void*>(buffer);
+                descriptor.range          = buffer->GetStride();
+                descriptor.dynamic_offset = buffer->GetOffset();
 
                 return;
             }

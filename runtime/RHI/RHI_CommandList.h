@@ -125,9 +125,9 @@ namespace Spartan
         void SetTexture(const Renderer_BindingsSrv slot,                       RHI_Texture* texture,  const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0) { SetTexture(static_cast<uint32_t>(slot), texture,       mip_index, mip_range, false); }
         void SetTexture(const Renderer_BindingsSrv slot, const std::shared_ptr<RHI_Texture>& texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0) { SetTexture(static_cast<uint32_t>(slot), texture.get(), mip_index, mip_range, false); }
 
-        // structured buffer
-        void SetStructuredBuffer(const uint32_t slot, RHI_Buffer* structured_buffer) const;
-        void SetStructuredBuffer(const Renderer_BindingsUav slot, const std::shared_ptr<RHI_Buffer>& structured_buffer) const { SetStructuredBuffer(static_cast<uint32_t>(slot), structured_buffer.get()); }
+        // buffer
+        void SetBuffer(const uint32_t slot, RHI_Buffer* buffer) const;
+        void SetBuffer(const Renderer_BindingsUav slot, const std::shared_ptr<RHI_Buffer>& buffer) const { SetBuffer(static_cast<uint32_t>(slot), buffer.get()); }
 
         // markers
         void BeginMarker(const char* name);
