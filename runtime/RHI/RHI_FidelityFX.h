@@ -71,10 +71,6 @@ namespace Spartan
         );
 
         // Brixelizer GI
-        static void BrixelizerGI_Update(
-            RHI_CommandList* cmd_list,
-            Cb_Frame* cb_frame
-        );
         static void BrixelizerGI_Dispatch(
             RHI_CommandList* cmd_list,
             Cb_Frame* cb_frame,
