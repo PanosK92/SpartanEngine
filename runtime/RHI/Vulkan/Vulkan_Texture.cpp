@@ -79,6 +79,10 @@ namespace Spartan
                 {
                     view_type = VkImageViewType::VK_IMAGE_VIEW_TYPE_2D;
                 }
+                else if (resource_type == ResourceType::Texture3d)
+                {
+                    view_type = VkImageViewType::VK_IMAGE_VIEW_TYPE_3D;
+                }
                 else if (resource_type == ResourceType::Texture2dArray)
                 {
                     view_type = VkImageViewType::VK_IMAGE_VIEW_TYPE_2D_ARRAY;
@@ -152,6 +156,7 @@ namespace Spartan
 
             const uint32_t width        = texture->GetWidth();
             const uint32_t height       = texture->GetHeight();
+            const uint32_t depth        = texture->GetDepth();
             const uint32_t array_length = texture->GetArrayLength();
             const uint32_t mip_count    = texture->GetMipCount();
 
@@ -159,7 +164,7 @@ namespace Spartan
             regions.resize(region_count);
             regions.reserve(region_count);
 
-            VkDeviceSize buffer_offset   = 0;
+            VkDeviceSize buffer_offset    = 0;
             VkDeviceSize buffer_alignment = RHI_Device::PropertyGetOptimalBufferCopyOffsetAlignment();
 
             for (uint32_t array_index = 0; array_index < array_length; array_index++)
@@ -169,8 +174,9 @@ namespace Spartan
                     uint32_t region_index = mip_index + array_index * mip_count;
                     uint32_t mip_width    = width >> mip_index;
                     uint32_t mip_height   = height >> mip_index;
+                    uint32_t mip_depth    = texture->GetResourceType() == ResourceType::Texture3d ? (texture->GetDepth() >> mip_index) : 1;
 
-                    SP_ASSERT(mip_width != 0 && mip_height != 0);
+                    SP_ASSERT(mip_width != 0 && mip_height != 0 && mip_depth != 0);
 
                     // align buffer offset
                     buffer_offset = (buffer_offset + buffer_alignment - 1) & ~(buffer_alignment - 1);
@@ -183,9 +189,9 @@ namespace Spartan
                     regions[region_index].imageSubresource.baseArrayLayer = array_index;
                     regions[region_index].imageSubresource.layerCount     = 1;
                     regions[region_index].imageOffset                     = { 0, 0, 0 };
-                    regions[region_index].imageExtent                     = { mip_width, mip_height, 1 };
+                    regions[region_index].imageExtent                     = { mip_width, mip_height, mip_depth };
 
-                    buffer_offset += RHI_Texture::CalculateMipSize(mip_width, mip_height, texture->GetFormat(), texture->GetBitsPerChannel(), texture->GetChannelCount());
+                    buffer_offset += RHI_Texture::CalculateMipSize(mip_width, mip_height, mip_depth, texture->GetFormat(), texture->GetBitsPerChannel(), texture->GetChannelCount());
                 }
             }
 
@@ -200,7 +206,11 @@ namespace Spartan
                 {
                     for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
                     {
-                        size_t size = RHI_Texture::CalculateMipSize(width >> mip_index, height >> mip_index, texture->GetFormat(), texture->GetBitsPerChannel(), texture->GetChannelCount());
+
+                        uint32_t mip_width  = width >> mip_index;
+                        uint32_t mip_height = height >> mip_index;
+                        uint32_t mip_depth  = (texture->GetResourceType() == ResourceType::Texture3d) ? (depth >> mip_index) : 1;
+                        size_t size = RHI_Texture::CalculateMipSize(mip_width, mip_height, mip_depth, texture->GetFormat(), texture->GetBitsPerChannel(), texture->GetChannelCount());
 
                         if (texture->GetMip(array_index, mip_index).bytes.size() != 0)
                         {
@@ -330,19 +340,30 @@ namespace Spartan
             }
 
             // render target views
-            for (uint32_t i = 0; i < m_array_length; i++)
+            if (m_resource_type != ResourceType::Texture3d)
             {
-                // both cube map slices/faces and array length is encoded into m_array_length.
-                // they are rendered on individually, hence why the resource type is ResourceType::Texture2d
+                for (uint32_t i = 0; i < m_array_length; i++)
+                {
+                    // both cube map slices/faces and array length is encoded into m_array_length.
+                    // they are rendered on individually, hence why the resource type is ResourceType::Texture2d
 
+                    if (IsRtv())
+                    {
+                        create_image_view(m_rhi_resource, m_rhi_rtv[i], this, ResourceType::Texture2d, i, 1, 0, 1, false, false);
+                    }
+
+                    if (IsDsv())
+                    {
+                        create_image_view(m_rhi_resource, m_rhi_dsv[i], this, ResourceType::Texture2d, i, 1, 0, 1, true, false);
+                    }
+                }
+            }
+            else
+            {
+                // for 3d textures, we create a single rtv for the entire volume
                 if (IsRtv())
                 {
-                    create_image_view(m_rhi_resource, m_rhi_rtv[i], this, ResourceType::Texture2d, i, 1, 0, 1, false, false);
-                }
-
-                if (IsDsv())
-                {
-                    create_image_view(m_rhi_resource, m_rhi_dsv[i], this, ResourceType::Texture2d, i, 1, 0, 1, true, false);
+                    create_image_view(m_rhi_resource, m_rhi_rtv[0], this, ResourceType::Texture3d, 0, 1, 0, 1, false, false);
                 }
             }
 

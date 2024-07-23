@@ -95,11 +95,12 @@ namespace Spartan
         std::shared_ptr<RHI_Texture> GetSharedPtr() { return shared_from_this(); }
         void SaveAsImage(const std::string& file_path);
         static bool IsCompressedFormat(const RHI_Format format);
-        static size_t CalculateMipSize(uint32_t width, uint32_t height, RHI_Format format, uint32_t bits_per_channel, uint32_t channel_count);
+        static size_t CalculateMipSize(uint32_t width, uint32_t height, uint32_t depth, RHI_Format format, uint32_t bits_per_channel, uint32_t channel_count);
 
         // data
         uint32_t GetArrayLength()                          const { return m_array_length; }
         uint32_t GetMipCount()                             const { return m_mip_count; }
+        uint32_t GetDepth()                                const { return m_depth; }
         bool HasData()                                     const { return !m_slices.empty() && !m_slices[0].mips.empty() && !m_slices[0].mips[0].bytes.empty(); };
         std::vector<RHI_Texture_Slice>& GetData()                { return m_slices; }
         RHI_Texture_Mip& CreateMip(const uint32_t array_index);
@@ -147,12 +148,13 @@ namespace Spartan
     protected:
         bool RHI_CreateResource();
 
-        uint32_t m_bits_per_channel = 0;
         uint32_t m_width            = 0;
         uint32_t m_height           = 0;
-        uint32_t m_channel_count    = 0;
-        uint32_t m_array_length     = 1;
+        uint32_t m_depth            = 1;
         uint32_t m_mip_count        = 1;
+        uint32_t m_array_length     = 1;
+        uint32_t m_bits_per_channel = 0;
+        uint32_t m_channel_count    = 0;
         RHI_Format m_format         = RHI_Format::Max;
         RHI_Viewport m_viewport;
         std::vector<RHI_Texture_Slice> m_slices;

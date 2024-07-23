@@ -35,6 +35,7 @@ namespace Spartan
     {
         Texture,
         Texture2d,
+        Texture3d,
         Texture2dArray,
         TextureCube,
         Audio,

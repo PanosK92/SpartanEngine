@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_Texture.h"
+#include "../RHI_Texture3D.h"
 #include "../RHI_TextureCube.h"
 #include "../RHI_StructuredBuffer.h"
 #include "../Rendering/Renderer_Buffers.h"
@@ -136,23 +137,24 @@ namespace Spartan
                 state    = to_ffx_resource_state(texture->GetLayout(0));
 
                 // usage
-                bool is_cubemap = texture->GetResourceType() == ResourceType::TextureCube;
                 uint32_t usage = FFX_RESOURCE_USAGE_READ_ONLY;
                 if (texture->IsDepthFormat())
                     usage |= FFX_RESOURCE_USAGE_DEPTHTARGET;
                 if (texture->IsUav())
                     usage |= FFX_RESOURCE_USAGE_UAV;
-                if (texture->GetResourceType() == ResourceType::Texture2dArray || is_cubemap)
-                    usage |= FFX_RESOURCE_USAGE_ARRAYVIEW; // can be used for both 2d arrays and cubemaps
+                if (texture->GetResourceType() == ResourceType::Texture2dArray || texture->GetResourceType() == ResourceType::TextureCube)
+                    usage |= FFX_RESOURCE_USAGE_ARRAYVIEW;
                 if (texture->IsRtv())
                     usage |= FFX_RESOURCE_USAGE_RENDERTARGET;
 
                 // description
-                description.type     = is_cubemap ? FFX_RESOURCE_TYPE_TEXTURE_CUBE : FFX_RESOURCE_TYPE_TEXTURE2D;
+                description.type     = texture->GetResourceType() == ResourceType::Texture2d   ? FFX_RESOURCE_TYPE_TEXTURE2D    : description.type;
+                description.type     = texture->GetResourceType() == ResourceType::Texture3d   ? FFX_RESOURCE_TYPE_TEXTURE3D    : description.type;
+                description.type     = texture->GetResourceType() == ResourceType::TextureCube ? FFX_RESOURCE_TYPE_TEXTURE_CUBE : description.type;
                 description.width    = texture->GetWidth();
                 description.height   = texture->GetHeight();
+                description.depth    = texture->GetDepth();
                 description.mipCount = texture->GetMipCount();
-                description.depth    = texture->GetArrayLength();
                 description.format   = to_ffx_surface_format(texture->GetFormat());
                 description.flags    = FfxResourceFlags::FFX_RESOURCE_FLAGS_NONE;
                 description.usage    = static_cast<FfxResourceUsage>(usage);
@@ -253,11 +255,20 @@ namespace Spartan
 
         // assets
         {
-            sssr::cubemap = make_unique<RHI_TextureCube>(1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv, "ffx_environment");
+            // sssr
+            {
+                sssr::cubemap = make_unique<RHI_TextureCube>(1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv, "ffx_environment");
+            }
 
-            // 256MB scratch buffer
-            uint32_t size = 1 << 28; // 2^28 = 268,435,456 bytes (256 MB)
-            brixelizer_gi::buffer_scratch = make_shared<RHI_StructuredBuffer>(size, 1, "ffx_brixelizer_gi_scratch");
+            // brixelizer gi
+            {
+                // 256MB scratch buffer
+                uint32_t size = 1 << 28; // 2^28 = 268,435,456 bytes (256 MB)
+                brixelizer_gi::buffer_scratch = make_shared<RHI_StructuredBuffer>(size, 1, "ffx_brixelizer_gi_scratch");
+
+                uint32_t dimensions = 512;
+                brixelizer_gi::texture_sdf_atlas = make_unique<RHI_Texture3D>(dimensions, dimensions, dimensions, RHI_Format::R8_Unorm, RHI_Texture_Srv, "ffx_sdf_atlas");
+            }
         }
     }
 
@@ -514,8 +525,8 @@ namespace Spartan
         sssr::description_dispatch.depth              = to_ffx_resource(tex_depth,           nullptr, L"sssr_depth");
         sssr::description_dispatch.motionVectors      = to_ffx_resource(tex_velocity,        nullptr, L"sssr_velocity");
         sssr::description_dispatch.normal             = to_ffx_resource(tex_normal,          nullptr, L"sssr_normal");
-        sssr::description_dispatch.materialParameters = to_ffx_resource(tex_material,        nullptr, L"sssr_roughness"); // FfxSssrDispatchDescription specifies the channel
-        sssr::description_dispatch.environmentMap     = to_ffx_resource(sssr::cubemap.get(), nullptr, L"sssr_environment");
+        sssr::description_dispatch.materialParameters = to_ffx_resource(tex_material,        nullptr, L"sssr_roughness");   // FfxSssrDispatchDescription specifies the channel
+        sssr::description_dispatch.environmentMap     = to_ffx_resource(sssr::cubemap.get(), nullptr, L"sssr_environment"); // dummy/empty as we don't want SSSR to also do IBL
         sssr::description_dispatch.brdfTexture        = to_ffx_resource(tex_brdf,            nullptr, L"sssr_brdf");
         sssr::description_dispatch.output             = to_ffx_resource(tex_output,          nullptr, L"sssr_output");
  
@@ -525,6 +536,8 @@ namespace Spartan
 
         // set camera matrices
         {
+            //note: ffx expects column major layout and right handed matrices
+
             auto adjust_matrix_view = [](const Matrix& matrix)
             {
                 Matrix adjusted = matrix.Transposed();
@@ -560,7 +573,6 @@ namespace Spartan
             view_projection                 = projection * view;
             Matrix view_projection_inv      = Matrix::Invert(view_projection);
 
-            // ffx expects column major layout
             set_ffx_float16(sssr::description_dispatch.view,               view);
             set_ffx_float16(sssr::description_dispatch.invView,            view_inv);
             set_ffx_float16(sssr::description_dispatch.projection,         projection);
