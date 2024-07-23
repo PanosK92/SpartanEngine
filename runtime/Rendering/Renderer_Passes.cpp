@@ -409,9 +409,9 @@ namespace Spartan
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetConstantBufferFrame());
 
         // structure buffers
-        cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_materials, GetStructuredBuffer(Renderer_StructuredBuffer::Materials));
-        cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_lights,    GetStructuredBuffer(Renderer_StructuredBuffer::Lights));
-        cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_spd,       GetStructuredBuffer(Renderer_StructuredBuffer::Spd));
+        cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_materials, GetBuffer(Renderer_Buffer::Materials));
+        cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_lights,    GetBuffer(Renderer_Buffer::Lights));
+        cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_spd,       GetBuffer(Renderer_Buffer::Spd));
     }
 
     void Renderer::ProduceFrame(RHI_CommandList* cmd_list_graphics, RHI_CommandList* cmd_list_compute)

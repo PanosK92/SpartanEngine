@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2024 Panos Karabelas
+Copyright(c) 2016-2021 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,32 +19,30 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+//= INCLUDES =======================
+#include "pch.h"
+#include "../RHI_Implementation.h"
+#include "../RHI_Buffer.h"
+//==================================
 
-//= INCLUDES =====================
-#include "../Core/SpartanObject.h"
-//================================
+//= NAMESPACES =====
+using namespace std;
+//==================
 
 namespace Spartan
 {
-    class RHI_StructuredBuffer : public SpartanObject
+    RHI_Buffer::RHI_Buffer(const uint32_t stride, const uint32_t element_count, const uint32_t usage, const char* name)
     {
-    public:
-        RHI_StructuredBuffer(const uint32_t stride, const uint32_t element_count, const char* name);
-        ~RHI_StructuredBuffer();
 
-        void Update(void* data, const uint32_t update_size = 0);
-        void ResetOffset()           { m_offset = 0; first_update = true; }
-        uint32_t GetStride()   const { return m_stride; }
-        uint32_t GetOffset()   const { return m_offset; }
-        void* GetRhiResource() const { return m_rhi_resource; }
+    }
 
-    private:
-        uint32_t m_stride        = 0;
-        uint32_t m_offset        = 0;
-        uint32_t m_element_count = 0;
-        bool first_update        = true;
-        void* m_mapped_data      = nullptr;
-        void* m_rhi_resource     = nullptr;
-    };
+    RHI_Buffer::~RHI_Buffer()
+    {
+
+    }
+
+    void RHI_Buffer::Update(void* data_cpu, const uint32_t update_size)
+    {
+        SP_ASSERT_MSG(false, "Not implemented");
+    }
 }

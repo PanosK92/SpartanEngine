@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Sampler.h"
 #include "../RHI_ConstantBuffer.h"
-#include "../RHI_StructuredBuffer.h"
+#include "../RHI_Buffer.h"
 #include "../Rendering/Renderer.h"
 //=====================================
 
@@ -153,7 +153,7 @@ namespace Spartan
             }
             else if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer)
             {
-                info_buffers[index].buffer = static_cast<VkBuffer>(static_cast<RHI_StructuredBuffer*>(descriptor.data)->GetRhiResource());
+                info_buffers[index].buffer = static_cast<VkBuffer>(static_cast<RHI_Buffer*>(descriptor.data)->GetRhiResource());
                 info_buffers[index].offset = 0;
                 info_buffers[index].range  = descriptor.range;
 

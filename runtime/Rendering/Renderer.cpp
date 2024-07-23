@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Queue.h"
 #include "../RHI/RHI_ConstantBuffer.h"
 #include "../RHI/RHI_Implementation.h"
-#include "../RHI/RHI_StructuredBuffer.h"
+#include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_FidelityFX.h"
 #include "../RHI/RHI_OpenImageDenoise.h"
 #include "../World/Entity.h"
@@ -550,7 +550,7 @@ namespace Spartan
             }
 
             // reset dynamic buffer offsets
-            GetStructuredBuffer(Renderer_StructuredBuffer::Spd)->ResetOffset();
+            GetBuffer(Renderer_Buffer::Spd)->ResetOffset();
             GetConstantBufferFrame()->ResetOffset();
 
             if (bindless_materials_dirty)
@@ -935,9 +935,9 @@ namespace Spartan
         // gpu
         {
             // material properties
-            Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->ResetOffset();
+            Renderer::GetBuffer(Renderer_Buffer::Materials)->ResetOffset();
             uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Material)) * index;
-            Renderer::GetStructuredBuffer(Renderer_StructuredBuffer::Materials)->Update(&properties[0], update_size);
+            Renderer::GetBuffer(Renderer_Buffer::Materials)->Update(&properties[0], update_size);
 
             // material textures
             bindless_materials_dirty = true;
@@ -1006,7 +1006,7 @@ namespace Spartan
 
         // cpu to gpu
         uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Light)) * index;
-        RHI_StructuredBuffer* buffer = GetStructuredBuffer(Renderer_StructuredBuffer::Lights).get();
+        RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::Lights).get();
         buffer->ResetOffset();
         buffer->Update(&properties[0], update_size);
     }

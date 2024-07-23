@@ -46,7 +46,7 @@ namespace Spartan
     class RHI_InputLayout;
     class RHI_VertexBuffer;
     class RHI_IndexBuffer;
-    class RHI_StructuredBuffer;
+    class RHI_Buffer;
     class RHI_ConstantBuffer;
     class RHI_Sampler;
     class RHI_Viewport;
