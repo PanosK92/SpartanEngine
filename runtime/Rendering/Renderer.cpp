@@ -195,13 +195,14 @@ namespace Spartan
         SetOption(Renderer_Option::ScreenSpaceGlobalIllumination, 1.0f);
         SetOption(Renderer_Option::ScreenSpaceShadows,            static_cast<float>(Renderer_ScreenspaceShadow::Bend));
         SetOption(Renderer_Option::ScreenSpaceReflections,        1.0f);
+        SetOption(Renderer_Option::GlobalIllumination,            0.0f);
         SetOption(Renderer_Option::Anisotropy,                    16.0f);
         SetOption(Renderer_Option::ShadowResolution,              2048.0f);
         SetOption(Renderer_Option::Exposure,                      1.0f);
         SetOption(Renderer_Option::Sharpness,                     0.5f);                                                 // becomes the upsampler's sharpness as well
         SetOption(Renderer_Option::Fog,                           0.3f);                                                 // controls the intensity of the volumetric fog as well
         SetOption(Renderer_Option::FogVolumetric,                 1.0f);                                                 // these is only a toggle for the volumetric fog
-        SetOption(Renderer_Option::Antialiasing,                  static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 2 for taa
+        SetOption(Renderer_Option::Antialiasing,                  static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 3 for taa
         SetOption(Renderer_Option::Upsampling,                    static_cast<float>(Renderer_Upsampling::Fsr3));
         SetOption(Renderer_Option::ResolutionScale,               1.0f);
         SetOption(Renderer_Option::VariableRateShading,           0.0f);

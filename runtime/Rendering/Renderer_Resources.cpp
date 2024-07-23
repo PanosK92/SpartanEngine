@@ -207,7 +207,7 @@ namespace Spartan
         uint32_t flags              = RHI_Texture_Uav | RHI_Texture_Srv;
         uint32_t flags_rt           = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv;
         uint32_t flags_rt_clearable = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit;
-        uint32_t flags_rt_depth     = RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit; // GPUs are picky about feature are supported for depth
+        uint32_t flags_rt_depth     = RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit; // GPUs are picky about wihch features are supported for depth
 
         // resolution - render
         if (create_render)
