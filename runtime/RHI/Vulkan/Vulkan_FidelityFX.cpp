@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_CommandList.h"
 #include "../RHI_Texture.h"
 #include "../RHI_TextureCube.h"
+#include "../RHI_StructuredBuffer.h"
 #include "../Rendering/Renderer_Buffers.h"
 #include "../../World/Components/Camera.h"
 SP_WARNINGS_OFF
@@ -44,11 +45,8 @@ using namespace std;
 
 namespace Spartan
 {
-    namespace // holds ffx structures and adapter functions
+    namespace // holds ffx structures, adapter functions and resources like scratch buffers
     {
-        // misc
-        shared_ptr<RHI_Texture> tex_cubemap;
-
         // common
         FfxInterface ffx_interface = {};
 
@@ -65,6 +63,7 @@ namespace Spartan
         FfxSssrContext sssr_context                          = {};
         FfxSssrContextDescription sssr_description_context   = {};
         FfxSssrDispatchDescription sssr_description_dispatch = {};
+        shared_ptr<RHI_Texture> sssr_cubemap;
 
         // brixelizer gi
         bool brixelizer_gi_context_created                                      = false;
@@ -79,6 +78,7 @@ namespace Spartan
         const float brixelizer_gi_cascade_size_ratio                            = 2.0f;
         const uint32_t brixelizer_gi_max_cascades                               = 24;
         const uint32_t brixelizer_gi_cascade_count                              = brixelizer_gi_max_cascades / 3;
+        shared_ptr<RHI_StructuredBuffer> brixelizer_gi_buffer_scratch           = nullptr;
 
         void ffx_message_callback(FfxMsgType type, const wchar_t* message)
         {
@@ -155,37 +155,51 @@ namespace Spartan
             }
         }
 
-        FfxResource to_ffx_resource(RHI_Texture* texture, const wchar_t* name, FfxResourceUsage usage_additional = static_cast<FfxResourceUsage>(0))
+        FfxResource to_ffx_resource(RHI_Texture* texture, RHI_StructuredBuffer* buffer, const wchar_t* name)
         {
-            bool is_cubemap = texture->GetResourceType() == ResourceType::TextureCube;
+            void* resource                     = nullptr;
+            FfxResourceDescription description = {};
+            FfxResourceStates state            = FFX_RESOURCE_STATE_COMMON;
 
-            // usage
-            uint32_t usage = FFX_RESOURCE_USAGE_READ_ONLY;
-            if (texture->IsDepthFormat())
-                usage |= FFX_RESOURCE_USAGE_DEPTHTARGET;
-            if (texture->IsUav())
-                usage |= FFX_RESOURCE_USAGE_UAV;
-            if (texture->GetResourceType() == ResourceType::Texture2dArray || is_cubemap)
-                usage |= FFX_RESOURCE_USAGE_ARRAYVIEW; // works on 2D and cubemap textures
-            if (texture->IsRtv())
-                usage |= FFX_RESOURCE_USAGE_RENDERTARGET;
-            usage |= usage_additional;
+            if (texture)
+            {
+                resource = texture->GetRhiResource();
+                state    = to_ffx_resource_state(texture->GetLayout(0));
 
-            FfxResourceDescription resource_description = {};
-            resource_description.type                   = is_cubemap ? FFX_RESOURCE_TYPE_TEXTURE_CUBE : FFX_RESOURCE_TYPE_TEXTURE2D;
-            resource_description.width                  = texture->GetWidth();
-            resource_description.height                 = texture->GetHeight();
-            resource_description.mipCount               = texture->GetMipCount();
-            resource_description.depth                  = texture->GetArrayLength();
-            resource_description.format                 = to_ffx_surface_format(texture->GetFormat());
-            resource_description.flags                  = FfxResourceFlags::FFX_RESOURCE_FLAGS_NONE;
-            resource_description.usage                  = static_cast<FfxResourceUsage>(usage);
+                // usage
+                bool is_cubemap = texture->GetResourceType() == ResourceType::TextureCube;
+                uint32_t usage = FFX_RESOURCE_USAGE_READ_ONLY;
+                if (texture->IsDepthFormat())
+                    usage |= FFX_RESOURCE_USAGE_DEPTHTARGET;
+                if (texture->IsUav())
+                    usage |= FFX_RESOURCE_USAGE_UAV;
+                if (texture->GetResourceType() == ResourceType::Texture2dArray || is_cubemap)
+                    usage |= FFX_RESOURCE_USAGE_ARRAYVIEW; // can be used for both 2d arrays and cubemaps
+                if (texture->IsRtv())
+                    usage |= FFX_RESOURCE_USAGE_RENDERTARGET;
+
+                // description
+                description.type     = is_cubemap ? FFX_RESOURCE_TYPE_TEXTURE_CUBE : FFX_RESOURCE_TYPE_TEXTURE2D;
+                description.width    = texture->GetWidth();
+                description.height   = texture->GetHeight();
+                description.mipCount = texture->GetMipCount();
+                description.depth    = texture->GetArrayLength();
+                description.format   = to_ffx_surface_format(texture->GetFormat());
+                description.flags    = FfxResourceFlags::FFX_RESOURCE_FLAGS_NONE;
+                description.usage    = static_cast<FfxResourceUsage>(usage);
+            }
+            else
+            {
+                resource         = buffer->GetRhiResource();
+                description.type = FFX_RESOURCE_TYPE_BUFFER;
+                state            = FFX_RESOURCE_STATE_COMMON;
+            }
 
             return ffxGetResourceVK(
-                static_cast<VkImage>(texture->GetRhiResource()),
-                resource_description,
+                resource,
+                description,
                 const_cast<wchar_t*>(name),
-                to_ffx_resource_state(texture->GetLayout(0))
+                state
             );
         }
 
@@ -228,7 +242,10 @@ namespace Spartan
 
         // assets
         {
-            tex_cubemap = make_unique<RHI_TextureCube>(1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv, "ffx_environment");
+            sssr_cubemap = make_unique<RHI_TextureCube>(1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv, "ffx_environment");
+
+            uint32_t size = 1 << 30;
+            brixelizer_gi_buffer_scratch = make_shared<RHI_StructuredBuffer>(size, 1, "ffx_brixelizer_gi_scratch");
         }
     }
 
@@ -259,7 +276,8 @@ namespace Spartan
 
     void RHI_FidelityFX::Shutdown()
     {
-        tex_cubemap = nullptr;
+        sssr_cubemap                 = nullptr;
+        brixelizer_gi_buffer_scratch = nullptr;
 
         DestroyContexts();
 
@@ -409,9 +427,9 @@ namespace Spartan
         {
             // set resources
             fsr3_description_reactive_mask.commandList       = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
-            fsr3_description_reactive_mask.colorOpaqueOnly   = to_ffx_resource(tex_color_opaque, L"fsr3_color_opaque");
-            fsr3_description_reactive_mask.colorPreUpscale   = to_ffx_resource(tex_color,        L"fsr3_color");
-            fsr3_description_reactive_mask.outReactive       = to_ffx_resource(tex_reactive,     L"fsr3_reactive");
+            fsr3_description_reactive_mask.colorOpaqueOnly   = to_ffx_resource(tex_color_opaque, nullptr, L"fsr3_color_opaque");
+            fsr3_description_reactive_mask.colorPreUpscale   = to_ffx_resource(tex_color,        nullptr, L"fsr3_color");
+            fsr3_description_reactive_mask.outReactive       = to_ffx_resource(tex_reactive,     nullptr, L"fsr3_reactive");
 
             // configure
             fsr3_description_reactive_mask.renderSize.width  = static_cast<uint32_t>(tex_velocity->GetWidth() * resolution_scale);
@@ -429,11 +447,11 @@ namespace Spartan
         {
             // set resources
             fsr3_description_dispatch.commandList   = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
-            fsr3_description_dispatch.color         = to_ffx_resource(tex_color,    L"fsr3_color");
-            fsr3_description_dispatch.depth         = to_ffx_resource(tex_depth,    L"fsr3_depth");
-            fsr3_description_dispatch.motionVectors = to_ffx_resource(tex_velocity, L"fsr3_velocity");
-            fsr3_description_dispatch.reactive      = to_ffx_resource(tex_reactive, L"fsr3_reactive");
-            fsr3_description_dispatch.output        = to_ffx_resource(tex_output,   L"fsr3_output");
+            fsr3_description_dispatch.color         = to_ffx_resource(tex_color,    nullptr, L"fsr3_color");
+            fsr3_description_dispatch.depth         = to_ffx_resource(tex_depth,    nullptr, L"fsr3_depth");
+            fsr3_description_dispatch.motionVectors = to_ffx_resource(tex_velocity, nullptr, L"fsr3_velocity");
+            fsr3_description_dispatch.reactive      = to_ffx_resource(tex_reactive, nullptr, L"fsr3_reactive");
+            fsr3_description_dispatch.output        = to_ffx_resource(tex_output,   nullptr, L"fsr3_output");
 
             // configure
             fsr3_description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth());
@@ -476,14 +494,14 @@ namespace Spartan
 
         // set resources
         sssr_description_dispatch.commandList        = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
-        sssr_description_dispatch.color              = to_ffx_resource(tex_color,         L"sssr_color");
-        sssr_description_dispatch.depth              = to_ffx_resource(tex_depth,         L"sssr_depth");
-        sssr_description_dispatch.motionVectors      = to_ffx_resource(tex_velocity,      L"sssr_velocity");
-        sssr_description_dispatch.normal             = to_ffx_resource(tex_normal,        L"sssr_normal");
-        sssr_description_dispatch.materialParameters = to_ffx_resource(tex_material,      L"sssr_roughness"); // FfxSssrDispatchDescription specifies the channel
-        sssr_description_dispatch.environmentMap     = to_ffx_resource(tex_cubemap.get(), L"sssr_environment");
-        sssr_description_dispatch.brdfTexture        = to_ffx_resource(tex_brdf,          L"sssr_brdf");
-        sssr_description_dispatch.output             = to_ffx_resource(tex_output,        L"sssr_output");
+        sssr_description_dispatch.color              = to_ffx_resource(tex_color,          nullptr, L"sssr_color");
+        sssr_description_dispatch.depth              = to_ffx_resource(tex_depth,          nullptr, L"sssr_depth");
+        sssr_description_dispatch.motionVectors      = to_ffx_resource(tex_velocity,       nullptr, L"sssr_velocity");
+        sssr_description_dispatch.normal             = to_ffx_resource(tex_normal,         nullptr, L"sssr_normal");
+        sssr_description_dispatch.materialParameters = to_ffx_resource(tex_material,       nullptr, L"sssr_roughness"); // FfxSssrDispatchDescription specifies the channel
+        sssr_description_dispatch.environmentMap     = to_ffx_resource(sssr_cubemap.get(), nullptr, L"sssr_environment");
+        sssr_description_dispatch.brdfTexture        = to_ffx_resource(tex_brdf,           nullptr, L"sssr_brdf");
+        sssr_description_dispatch.output             = to_ffx_resource(tex_output,         nullptr, L"sssr_output");
  
         // set render size
         sssr_description_dispatch.renderSize.width  = static_cast<uint32_t>(tex_color->GetWidth()  * resolution_scale);
@@ -563,22 +581,34 @@ namespace Spartan
         Cb_Frame* cb_frame
     )
     {
-        //brixelizer_description_update.resources;                                                    // structure containing all resources to be used by the Brixelizer context
-        brixelizer_description_update.frameIndex                = cb_frame->frame;                    // index of the current frame
-        //brixelizer_description_update.sdfCenter[3];                                                 // center of the cascades
-        #ifdef DEBUG
-        brixelizer_description_update.populateDebugAABBsFlags   = FFX_BRIXELIZER_POPULATE_AABBS_NONE; // Flags determining which AABBs to draw in a debug visualization
-        #endif
-        //brixelizer_description_update.debugVisualizationDesc;                                       // optional debug visualization description. If this parameter is set to <c><i>NULL</i></c> no debug visualization is drawn
-        brixelizer_description_update.maxReferences             = 32 * (1 << 20);                     // maximum number of triangle voxel references to be stored in the update
-        brixelizer_description_update.triangleSwapSize          = 300 * (1 << 20);                    // size of the swap space available to be used for storing triangles in the update
-        brixelizer_description_update.maxBricksPerBake          = 1 << 14;                            // maximum number of bricks to be updated
-        //brixelizer_description_update.utScratchBufferSize;                                          // optional pointer to a <c><i>size_t</i></c> to receive the size of the GPU scratch buffer needed to process the update
-        //brixelizer_description_update.outStats;                                                     // optional pointer to an <c><i>FfxBrixelizerStats</i></c> struct to receive statistics for the update. Note, stats read back after a call to update do
+        FfxBrixelizerStats stats = {};
+        size_t scratchBufferSize = 0;
+        FfxBrixelizerDebugVisualizationDescription debug_description = {};
 
+        //brixelizer_description_update.resources;                                                           // structure containing all resources to be used by the Brixelizer context
+        brixelizer_description_update.frameIndex                = cb_frame->frame;                           // index of the current frame
+        //brixelizer_description_update.sdfCenter[3];                                                        // center of the cascades
+        #ifdef DEBUG
+        brixelizer_description_update.populateDebugAABBsFlags = FFX_BRIXELIZER_POPULATE_AABBS_CASCADE_AABBS; // Flags determining which AABBs to draw in a debug visualization
+        brixelizer_description_update.debugVisualizationDesc  = &debug_description;                          // optional debug visualization description. If this parameter is set to <c><i>NULL</i></c> no debug visualization is drawn
+        #endif
+        brixelizer_description_update.maxReferences           = 32 * (1 << 20);                              // maximum number of triangle voxel references to be stored in the update
+        brixelizer_description_update.triangleSwapSize        = 300 * (1 << 20);                             // size of the swap space available to be used for storing triangles in the update
+        brixelizer_description_update.maxBricksPerBake        = 1 << 14;                                     // maximum number of bricks to be updated
+        brixelizer_description_update.outScratchBufferSize    = &scratchBufferSize;                          // optional pointer to a <c><i>size_t</i></c> to receive the size of the GPU scratch buffer needed to process the update
+        brixelizer_description_update.outStats                = &stats;                                      // optional pointer to an <c><i>FfxBrixelizerStats</i></c> struct to receive statistics for the update. Note, stats read back after a call to update do
+
+        // bake update
         FfxCommandList ffx_command_list = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
-        ffxBrixelizerBakeUpdate(&brixelizer_context, &brixelizer_description_update, &brixelizer_description_update_baked);
-        //ffxBrixelizerUpdate(&brixelizer_context, &brixelizer_description_update_baked, ffxGpuScratchBuffer, ffx_command_list);
+        FfxErrorCode error_code         = ffxBrixelizerBakeUpdate(&brixelizer_context, &brixelizer_description_update, &brixelizer_description_update_baked);
+        SP_ASSERT(error_code == FFX_OK);
+
+        SP_ASSERT_MSG(scratchBufferSize < brixelizer_gi_buffer_scratch->GetObjectSize(), "Required Brixelizer scratch memory size larger than available GPU buffer");
+
+        // update
+        FfxResource scratch_buffer = to_ffx_resource(nullptr, brixelizer_gi_buffer_scratch.get(), L"ffxBrixelizerUpdate_scratch_buffer");
+        error_code                 = ffxBrixelizerUpdate(&brixelizer_context, &brixelizer_description_update_baked, scratch_buffer, ffx_command_list);
+        SP_ASSERT(error_code == FFX_OK);
     }
 
     void RHI_FidelityFX::BrixelizerGI_Dispatch(
@@ -605,17 +635,17 @@ namespace Spartan
         }
 
         // set textures
-        brixelizer_gi_description_dispatch.environmentMap   = to_ffx_resource(tex_cubemap.get(), L"brixelizer_environment");
+        brixelizer_gi_description_dispatch.environmentMap   = to_ffx_resource(sssr_cubemap.get(), nullptr, L"brixelizer_environment");
         //brixelizer_gi_description_dispatch.prevLitOutput  =
-        brixelizer_gi_description_dispatch.depth            = to_ffx_resource(tex_depth,         L"brixelizer_gi_depth");
+        brixelizer_gi_description_dispatch.depth            = to_ffx_resource(tex_depth, nullptr, L"brixelizer_gi_depth");
         //brixelizer_gi_description_dispatch.historyDepth   =
-        brixelizer_gi_description_dispatch.normal           = to_ffx_resource(tex_normal,        L"brixelizer_gi_normal");
+        brixelizer_gi_description_dispatch.normal           = to_ffx_resource(tex_normal, nullptr, L"brixelizer_gi_normal");
         //brixelizer_gi_description_dispatch.historyNormal  =
-        brixelizer_gi_description_dispatch.roughness        = to_ffx_resource(tex_material,      L"brixelizer_gi_roughness");
-        brixelizer_gi_description_dispatch.motionVectors    = to_ffx_resource(tex_velocity,      L"brixelizer_gi_velocity");
+        brixelizer_gi_description_dispatch.roughness        = to_ffx_resource(tex_material, nullptr, L"brixelizer_gi_roughness");
+        brixelizer_gi_description_dispatch.motionVectors    = to_ffx_resource(tex_velocity, nullptr, L"brixelizer_gi_velocity");
         //brixelizer_gi_description_dispatch.noiseTexture   =
-        brixelizer_gi_description_dispatch.outputDiffuseGI  = to_ffx_resource(tex_diffuse_gi,    L"brixelizer_gi_diffuse_gi");
-        brixelizer_gi_description_dispatch.outputSpecularGI = to_ffx_resource(tex_specular_gi,   L"brixelizer_gi_specular_gi");
+        brixelizer_gi_description_dispatch.outputDiffuseGI  = to_ffx_resource(tex_diffuse_gi, nullptr, L"brixelizer_gi_diffuse_gi");
+        brixelizer_gi_description_dispatch.outputSpecularGI = to_ffx_resource(tex_specular_gi, nullptr, L"brixelizer_gi_specular_gi");
 
          // set sdf/spatial parameters
         set_ffx_float3(brixelizer_gi_description_dispatch.cameraPosition, cb_frame->camera_position); // camera position
