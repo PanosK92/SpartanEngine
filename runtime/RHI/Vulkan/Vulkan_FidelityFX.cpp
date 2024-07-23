@@ -187,12 +187,13 @@ namespace Spartan
 
         namespace fsr3
         {
+            uint32_t jitter_index = 0;
+
             bool                                       context_created           = false;
             FfxFsr3UpscalerContext                     context                   = {};
             FfxFsr3UpscalerContextDescription          description_context       = {};
             FfxFsr3UpscalerDispatchDescription         description_dispatch      = {};
             FfxFsr3UpscalerGenerateReactiveDescription description_reactive_mask = {};
-            uint32_t                                   jitter_index              = 0;
         }
 
         namespace sssr
@@ -206,6 +207,11 @@ namespace Spartan
 
         namespace brixelizer_gi
         {
+            const float    mesh_unit_size     = 0.2f;
+            const float    cascade_size_ratio = 2.0f;
+            const uint32_t cascade_max        = 24;
+            const uint32_t cascade_count      = cascade_max / 3;
+
             bool                                    context_created                        = false;
             FfxBrixelizerContext                    context                                = {};
             FfxBrixelizerContextDescription         description_context                    = {};
@@ -214,10 +220,6 @@ namespace Spartan
             FfxBrixelizerGIContext                  context_gi                             = {};
             FfxBrixelizerGIContextDescription       description_context_gi                 = {};
             FfxBrixelizerGIDispatchDescription      description_dispatch_gi                = {};
-            const float                             mesh_unit_size                         = 0.2f;
-            const float                             cascade_size_ratio                     = 2.0f;
-            const uint32_t                          cascade_max                            = 24;
-            const uint32_t                          cascade_count                          = cascade_max / 3;
             shared_ptr<RHI_Texture>                 texture_sdf_atlas                      = nullptr;
             shared_ptr<RHI_StructuredBuffer>        buffer_brick_aabbs                     = nullptr;
             array<shared_ptr<RHI_StructuredBuffer>, cascade_max> buffer_cascade_aabb_trees = {};
@@ -253,7 +255,8 @@ namespace Spartan
         {
             sssr::cubemap = make_unique<RHI_TextureCube>(1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv, "ffx_environment");
 
-            uint32_t size = 1 << 30;
+            // 256MB scratch buffer
+            uint32_t size = 1 << 28; // 2^28 = 268,435,456 bytes (256 MB)
             brixelizer_gi::buffer_scratch = make_shared<RHI_StructuredBuffer>(size, 1, "ffx_brixelizer_gi_scratch");
         }
     }
@@ -594,8 +597,8 @@ namespace Spartan
         Cb_Frame* cb_frame
     )
     {
-        FfxBrixelizerStats stats = {};
-        size_t scratchBufferSize = 0;
+        FfxBrixelizerStats stats   = {};
+        size_t scratch_buffer_size = 0;
         FfxBrixelizerDebugVisualizationDescription debug_description = {};
 
         //brixelizer_description_update.resources;                                                               // structure containing all resources to be used by the Brixelizer context
@@ -608,7 +611,7 @@ namespace Spartan
         brixelizer_gi::description_update.maxReferences           = 32 * (1 << 20);                              // maximum number of triangle voxel references to be stored in the update
         brixelizer_gi::description_update.triangleSwapSize        = 300 * (1 << 20);                             // size of the swap space available to be used for storing triangles in the update
         brixelizer_gi::description_update.maxBricksPerBake        = 1 << 14;                                     // maximum number of bricks to be updated
-        brixelizer_gi::description_update.outScratchBufferSize    = &scratchBufferSize;                          // optional pointer to a <c><i>size_t</i></c> to receive the size of the GPU scratch buffer needed to process the update
+        brixelizer_gi::description_update.outScratchBufferSize    = &scratch_buffer_size;                        // optional pointer to a <c><i>size_t</i></c> to receive the size of the GPU scratch buffer needed to process the update
         brixelizer_gi::description_update.outStats                = &stats;                                      // optional pointer to an <c><i>FfxBrixelizerStats</i></c> struct to receive statistics for the update. Note, stats read back after a call to update do
 
         // bake update
@@ -616,7 +619,16 @@ namespace Spartan
         FfxErrorCode error_code         = ffxBrixelizerBakeUpdate(&brixelizer_gi::context, &brixelizer_gi::description_update, &brixelizer_gi::description_update_baked);
         SP_ASSERT(error_code == FFX_OK);
 
-        SP_ASSERT_MSG(scratchBufferSize < brixelizer_gi::buffer_scratch->GetObjectSize(), "Required Brixelizer scratch memory size larger than available GPU buffer");
+        // check if we need to resize the scratch buffer
+        if (scratch_buffer_size > brixelizer_gi::buffer_scratch->GetObjectSize())
+        {
+            // round up to the nearest power of 2 for efficiency
+            size_t new_size = 1;
+            while (new_size < scratch_buffer_size) new_size <<= 1;
+
+            brixelizer_gi::buffer_scratch = make_shared<RHI_StructuredBuffer>(new_size, 1, "ffx_brixelizer_gi_scratch");
+            SP_LOG_INFO("Resized Brixelizer GI scratch buffer to %zu bytes", new_size);
+        }
 
         // update
         FfxResource scratch_buffer = to_ffx_resource(nullptr, brixelizer_gi::buffer_scratch.get(), L"ffxBrixelizerUpdate_scratch_buffer");
