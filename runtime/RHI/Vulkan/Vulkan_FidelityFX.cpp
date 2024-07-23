@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_Texture.h"
+#include "../RHI_Texture2D.h"
 #include "../RHI_Texture3D.h"
 #include "../RHI_TextureCube.h"
 #include "../RHI_StructuredBuffer.h"
@@ -226,19 +227,21 @@ namespace Spartan
             Vector3        sdf_center               = Vector3::Zero;
             const bool     sdf_follow_camera        = true;
 
-            bool                                    context_created                        = false;
-            FfxBrixelizerContext                    context                                = {};
-            FfxBrixelizerContextDescription         description_context                    = {};
-            FfxBrixelizerUpdateDescription          description_update                     = {};
-            FfxBrixelizerBakedUpdateDescription     description_update_baked               = {};
-            FfxBrixelizerGIContext                  context_gi                             = {};
-            FfxBrixelizerGIContextDescription       description_context_gi                 = {};
-            FfxBrixelizerGIDispatchDescription      description_dispatch_gi                = {};
-            shared_ptr<RHI_Texture>                 texture_sdf_atlas                      = nullptr;
-            shared_ptr<RHI_StructuredBuffer>        buffer_brick_aabbs                     = nullptr;
+            bool                                    context_created                       = false;
+            FfxBrixelizerContext                    context                               = {};
+            FfxBrixelizerContextDescription         description_context                   = {};
+            FfxBrixelizerUpdateDescription          description_update                    = {};
+            FfxBrixelizerBakedUpdateDescription     description_update_baked              = {};
+            FfxBrixelizerGIContext                  context_gi                            = {};
+            FfxBrixelizerGIContextDescription       description_context_gi                = {};
+            FfxBrixelizerGIDispatchDescription      description_dispatch_gi               = {};
+            shared_ptr<RHI_Texture>                 texture_sdf_atlas                     = nullptr;
+            shared_ptr<RHI_Texture>                 texture_depth_previous                = nullptr;
+            shared_ptr<RHI_Texture>                 texture_normal_previous               = nullptr;
+            shared_ptr<RHI_StructuredBuffer>        buffer_brick_aabbs                    = nullptr;
             array<shared_ptr<RHI_StructuredBuffer>, cascade_max> buffer_cascade_aabb_tree = {};
             array<shared_ptr<RHI_StructuredBuffer>, cascade_max> buffer_cascade_brick_map = {};
-            shared_ptr<RHI_StructuredBuffer>        buffer_scratch                         = nullptr;
+            shared_ptr<RHI_StructuredBuffer>        buffer_scratch                        = nullptr;
         }
     }
 
@@ -353,12 +356,14 @@ namespace Spartan
 
     void RHI_FidelityFX::Shutdown()
     {
-        sssr::cubemap                     = nullptr;
-        brixelizer_gi::texture_sdf_atlas  = nullptr;
-        brixelizer_gi::buffer_brick_aabbs = nullptr;
+        sssr::cubemap                          = nullptr;
+        brixelizer_gi::texture_sdf_atlas       = nullptr;
+        brixelizer_gi::buffer_brick_aabbs      = nullptr;
+        brixelizer_gi::buffer_scratch          = nullptr;
+        brixelizer_gi::texture_depth_previous  = nullptr;
+        brixelizer_gi::texture_normal_previous = nullptr;
         brixelizer_gi::buffer_cascade_aabb_tree.fill(nullptr);
         brixelizer_gi::buffer_cascade_brick_map.fill(nullptr);
-        brixelizer_gi::buffer_scratch     = nullptr;
 
         DestroyContexts();
 
@@ -374,12 +379,15 @@ namespace Spartan
         // contexts are resolution dependent, so we destroy and (re)create them when resizing
         DestroyContexts();
 
+        uint32_t width  = static_cast<uint32_t>(resolution_render.x);
+        uint32_t height = static_cast<uint32_t>(resolution_render.y);
+
         // fs3
         if (!fsr3::context_created)
         {
             // description
-            fsr3::description_context.maxRenderSize.width    = static_cast<uint32_t>(resolution_render.x);
-            fsr3::description_context.maxRenderSize.height   = static_cast<uint32_t>(resolution_render.y);
+            fsr3::description_context.maxRenderSize.width    = width;
+            fsr3::description_context.maxRenderSize.height   = height;
             fsr3::description_context.maxUpscaleSize.width   = static_cast<uint32_t>(resolution_output.x);
             fsr3::description_context.maxUpscaleSize.height  = static_cast<uint32_t>(resolution_output.y);
             fsr3::description_context.flags                  = FFX_FSR3_ENABLE_UPSCALING_ONLY | FFX_FSR3_ENABLE_DEPTH_INVERTED | FFX_FSR3_ENABLE_DYNAMIC_RESOLUTION;
@@ -401,8 +409,8 @@ namespace Spartan
         // sssr
         if (!sssr::context_created)
         {
-             sssr::description_context.renderSize.width           = static_cast<uint32_t>(resolution_render.x);
-             sssr::description_context.renderSize.height          = static_cast<uint32_t>(resolution_render.y);
+             sssr::description_context.renderSize.width           = width;
+             sssr::description_context.renderSize.height          = height;
              sssr::description_context.normalsHistoryBufferFormat = to_ffx_surface_format(RHI_Format::R16G16B16A16_Float);
              sssr::description_context.flags                      = FFX_SSSR_ENABLE_DEPTH_INVERTED;
              sssr::description_context.backendInterface           = ffx_interface;
@@ -414,12 +422,12 @@ namespace Spartan
         // brixelizer gi
         if (!brixelizer_gi::context_created)
         {
-            // brixelizer context
+            // context
             {
                 // sdf
-                brixelizer_gi::description_context.sdfCenter[0]     = 0.0f;
-                brixelizer_gi::description_context.sdfCenter[1]     = 0.0f;
-                brixelizer_gi::description_context.sdfCenter[2]     = 0.0f;
+                brixelizer_gi::description_context.sdfCenter[0] = 0.0f;
+                brixelizer_gi::description_context.sdfCenter[1] = 0.0f;
+                brixelizer_gi::description_context.sdfCenter[2] = 0.0f;
 
                 // cascades
                 brixelizer_gi::description_context.numCascades = brixelizer_gi::cascade_count;
@@ -441,7 +449,7 @@ namespace Spartan
                 SP_ASSERT(ffxBrixelizerContextCreate(&brixelizer_gi::description_context, &brixelizer_gi::context) == FFX_OK);
             }
 
-            // brixelizer gi context (sits on top of the brixelizer context)
+            // context gi
             {
                 brixelizer_gi::description_context_gi.internalResolution = FfxBrixelizerGIInternalResolution::FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_NATIVE;
                 brixelizer_gi::description_context_gi.displaySize.width  = static_cast<uint32_t>(resolution_render.x);
@@ -450,6 +458,12 @@ namespace Spartan
                 brixelizer_gi::description_context_gi.backendInterface   = ffx_interface;
                 
                 SP_ASSERT(ffxBrixelizerGIContextCreate(&brixelizer_gi::context_gi, &brixelizer_gi::description_context_gi) == FFX_OK);
+            }
+            
+            // resources
+            {
+                brixelizer_gi::texture_depth_previous  = make_shared<RHI_Texture2D>(width, height, 1, RHI_Format::D32_Float,    RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "ffx_depth_previous");
+                brixelizer_gi::texture_normal_previous = make_shared<RHI_Texture2D>(width, height, 1, RHI_Format::R16G16_Float, RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "ffx_normal_previous");
             }
 
             brixelizer_gi::context_created = true;
@@ -679,7 +693,7 @@ namespace Spartan
             {
                 brixelizer_gi::description_update.resources.sdfAtlas   = to_ffx_resource(brixelizer_gi::texture_sdf_atlas.get(), nullptr, L"brixelizer_gi_sdf_atlas");
                 brixelizer_gi::description_update.resources.brickAABBs = to_ffx_resource(nullptr, brixelizer_gi::buffer_brick_aabbs.get(), L"brixelizer_gi_brick_aabbs");
-                for (uint32_t i = 0; i < brixelizer_gi::cascade_max; ++i)
+                for (uint32_t i = 0; i < brixelizer_gi::cascade_max; i++)
                 {
                     brixelizer_gi::description_update.resources.cascadeResources[i].aabbTree = to_ffx_resource(nullptr, brixelizer_gi::buffer_cascade_aabb_tree[i].get(), L"brixelizer_gi_abbb_tree");
                     brixelizer_gi::description_update.resources.cascadeResources[i].brickMap = to_ffx_resource(nullptr, brixelizer_gi::buffer_cascade_brick_map[i].get(), L"brixelizer_gi_brick_map");
@@ -735,14 +749,14 @@ namespace Spartan
             // set resources
             {
                 brixelizer_gi::description_dispatch_gi.environmentMap   = to_ffx_resource(sssr::cubemap.get(), nullptr, L"brixelizer_environment");
-                //brixelizer_gi_description_dispatch.prevLitOutput  =
+                //brixelizer_gi::description_dispatch_gi.prevLitOutput    = to_ffx_resource(tex_diffuse_gi, nullptr, L"brixelizer_gi_diffuse_gi_previous");
                 brixelizer_gi::description_dispatch_gi.depth            = to_ffx_resource(tex_depth, nullptr, L"brixelizer_gi_depth");
-                //brixelizer_gi_description_dispatch.historyDepth   =
+                brixelizer_gi::description_dispatch_gi.historyDepth     = to_ffx_resource(brixelizer_gi::texture_depth_previous.get(), nullptr, L"brixelizer_gi_depth_previous");
                 brixelizer_gi::description_dispatch_gi.normal           = to_ffx_resource(tex_normal, nullptr, L"brixelizer_gi_normal");
-                //brixelizer_gi_description_dispatch.historyNormal  =
+                brixelizer_gi::description_dispatch_gi.historyNormal    = to_ffx_resource(brixelizer_gi::texture_normal_previous.get(), nullptr, L"brixelizer_gi_normal_previous");
                 brixelizer_gi::description_dispatch_gi.roughness        = to_ffx_resource(tex_material, nullptr, L"brixelizer_gi_roughness");
                 brixelizer_gi::description_dispatch_gi.motionVectors    = to_ffx_resource(tex_velocity, nullptr, L"brixelizer_gi_velocity");
-                //brixelizer_gi_description_dispatch.noiseTexture   =
+                //brixelizer_gi::description_dispatch_gi.noiseTexture     = to_ffx_resource(nullptr, nullptr, L"brixelizer_gi_noise");
                 brixelizer_gi::description_dispatch_gi.outputDiffuseGI  = to_ffx_resource(tex_diffuse_gi, nullptr, L"brixelizer_gi_diffuse_gi");
                 brixelizer_gi::description_dispatch_gi.outputSpecularGI = to_ffx_resource(tex_specular_gi, nullptr, L"brixelizer_gi_specular_gi");
                 brixelizer_gi::description_dispatch_gi.sdfAtlas         = to_ffx_resource(brixelizer_gi::texture_sdf_atlas.get(), nullptr, L"brixelizer_gi_sdf_atlas"); // SDF Atlas resource used by Brixelizer
@@ -781,6 +795,10 @@ namespace Spartan
             FfxCommandList ffx_command_list = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
             error_code                      = ffxBrixelizerGIContextDispatch(&brixelizer_gi::context_gi, &brixelizer_gi::description_dispatch_gi, ffx_command_list);
             SP_ASSERT(error_code == FFX_OK);
+
+            // blit the dept and the noormal so that we can use them in the next frame as "history"
+            cmd_list->Blit(tex_depth,  brixelizer_gi::texture_depth_previous.get(),  false);
+            cmd_list->Blit(tex_normal, brixelizer_gi::texture_normal_previous.get(), false);
         }
     }
 }
