@@ -337,9 +337,10 @@ namespace Spartan
         // allocate memory if requested
         {
             uint32_t mip_index = static_cast<uint32_t>(m_slices[array_index].mips.size()) - 1;
-            uint32_t width     = m_width >> mip_index;
+            uint32_t width     = m_width  >> mip_index;
             uint32_t height    = m_height >> mip_index;
-            size_t size_bytes  = CalculateMipSize(width, height, m_format, m_bits_per_channel, m_channel_count);
+            uint32_t depth     = (GetResourceType() == ResourceType::Texture3d) ? (m_depth >> mip_index) : 1;
+            size_t size_bytes  = CalculateMipSize(width, height, depth, m_format, m_bits_per_channel, m_channel_count);
 
             mip.bytes.resize(size_bytes);
             mip.bytes.reserve(size_bytes);
@@ -379,10 +380,11 @@ namespace Spartan
         {
             for (uint32_t mip_index = 0; mip_index < m_mip_count; mip_index++)
             {
-                const uint32_t mip_width  = m_width >> mip_index;
+                const uint32_t mip_width  = m_width  >> mip_index;
                 const uint32_t mip_height = m_height >> mip_index;
+                const uint32_t mip_depth  = (GetResourceType() == ResourceType::Texture3d) ? (m_depth  >> mip_index) : 1;
 
-                m_object_size += CalculateMipSize(mip_width, mip_height, m_format, m_bits_per_channel, m_channel_count);
+                m_object_size += CalculateMipSize(mip_width, mip_height, m_depth, m_format, m_bits_per_channel, m_channel_count);
             }
         }
     }
@@ -456,17 +458,17 @@ namespace Spartan
             format == RHI_Format::ASTC;
     }
 
-    size_t RHI_Texture::CalculateMipSize(uint32_t width, uint32_t height, RHI_Format format, uint32_t bits_per_channel, uint32_t channel_count)
+    size_t RHI_Texture::CalculateMipSize(uint32_t width, uint32_t height, uint32_t depth, RHI_Format format, uint32_t bits_per_channel, uint32_t channel_count)
     {
-        SP_ASSERT(width > 0);
+        SP_ASSERT(width  > 0);
         SP_ASSERT(height > 0);
+        SP_ASSERT(depth  > 0);
 
         if (IsCompressedFormat(format))
         {
             uint32_t block_size;
             uint32_t block_width  = 4; // default block width  for BC formats
             uint32_t block_height = 4; // default block height for BC formats
-
             switch (format)
             {
             case RHI_Format::BC1_Unorm:
@@ -480,23 +482,21 @@ namespace Spartan
             case RHI_Format::ASTC: // VK_FORMAT_ASTC_4x4_UNORM_BLOCK
                 block_width  = 4;
                 block_height = 4;
-                block_size   = 16;
+                block_size  = 16;
                 break;
             default:
                 SP_ASSERT(false);
                 return 0;
             }
-
             uint32_t num_blocks_wide = (width + block_width - 1) / block_width;
             uint32_t num_blocks_high = (height + block_height - 1) / block_height;
-            return num_blocks_wide * num_blocks_high * block_size;
+            return static_cast<size_t>(num_blocks_wide) * static_cast<size_t>(num_blocks_high) * static_cast<size_t>(depth) * static_cast<size_t>(block_size);
         }
         else
         {
             SP_ASSERT(channel_count > 0);
             SP_ASSERT(bits_per_channel > 0);
-
-            return static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(channel_count) * static_cast<size_t>(bits_per_channel / 8);
+            return static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(depth) * static_cast<size_t>(channel_count) * static_cast<size_t>(bits_per_channel / 8);
         }
     }
 }

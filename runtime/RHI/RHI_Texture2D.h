@@ -36,11 +36,7 @@ namespace Spartan
         {
             m_resource_type = ResourceType::Texture2d;
             m_flags         = flags;
-
-            if (name != nullptr)
-            {
-                m_object_name = name;
-            }
+            m_object_name   = name ? name : m_object_name;
         }
 
         // creates a texture from data (intended for sampling)
@@ -56,11 +52,7 @@ namespace Spartan
             m_flags            = flags;
             m_channel_count    = rhi_to_format_channel_count(m_format);
             m_bits_per_channel = rhi_format_to_bits_per_channel(m_format);
-
-            if (name != nullptr)
-            {
-                m_object_name = name;
-            }
+            m_object_name      = name ? name : m_object_name;
 
             RHI_Texture2D::RHI_CreateResource();
             m_is_ready_for_use = true;
@@ -78,11 +70,7 @@ namespace Spartan
             m_flags            = flags;
             m_channel_count    = rhi_to_format_channel_count(format);
             m_bits_per_channel = rhi_format_to_bits_per_channel(m_format);
-
-            if (name != nullptr)
-            {
-                m_object_name = name;
-            }
+            m_object_name      = name ? name : m_object_name;
 
             RHI_Texture2D::RHI_CreateResource();
             m_is_ready_for_use = true;

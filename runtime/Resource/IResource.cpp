@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IResource.h"
 #include "../Audio/AudioClip.h"
 #include "../RHI/RHI_Texture2D.h"
+#include "../RHI/RHI_Texture3D.h"
 #include "../RHI/RHI_Texture2DArray.h"
 #include "../RHI/RHI_TextureCube.h"
 #include "../Rendering/Font/Font.h"
@@ -53,6 +54,7 @@ inline constexpr void validate_resource_type() { static_assert(std::is_base_of<I
 // To add a new resource to the engine, simply register it here
 INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture,           ResourceType::Texture)
 INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture2D,         ResourceType::Texture2d)
+INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture3D,         ResourceType::Texture3d)
 INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture2DArray,    ResourceType::Texture2dArray)
 INSTANTIATE_TO_RESOURCE_TYPE(RHI_TextureCube,       ResourceType::TextureCube)
 INSTANTIATE_TO_RESOURCE_TYPE(AudioClip,             ResourceType::Audio)
