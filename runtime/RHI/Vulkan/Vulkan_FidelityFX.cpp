@@ -133,7 +133,7 @@ namespace Spartan
             if (texture)
             {
                 resource = texture->GetRhiResource();
-                state    = to_ffx_resource_state(texture->GetLayout(0));
+                state = to_ffx_resource_state(texture->GetLayout(0));
 
                 // usage
                 uint32_t usage = FFX_RESOURCE_USAGE_READ_ONLY;
@@ -147,9 +147,22 @@ namespace Spartan
                     usage |= FFX_RESOURCE_USAGE_RENDERTARGET;
 
                 // description
-                description.type     = texture->GetResourceType() == ResourceType::Texture2d   ? FFX_RESOURCE_TYPE_TEXTURE2D    : description.type;
-                description.type     = texture->GetResourceType() == ResourceType::Texture3d   ? FFX_RESOURCE_TYPE_TEXTURE3D    : description.type;
-                description.type     = texture->GetResourceType() == ResourceType::TextureCube ? FFX_RESOURCE_TYPE_TEXTURE_CUBE : description.type;
+                switch (texture->GetResourceType())
+                {
+                case ResourceType::Texture2d:
+                    description.type = FFX_RESOURCE_TYPE_TEXTURE2D;
+                    break;
+                case ResourceType::Texture3d:
+                    description.type = FFX_RESOURCE_TYPE_TEXTURE3D;
+                    break;
+                case ResourceType::TextureCube:
+                    description.type = FFX_RESOURCE_TYPE_TEXTURE_CUBE;
+                    break;
+                default:
+                    SP_ASSERT_MSG(false, "Unsupported texture type");
+                    break;
+                }
+
                 description.width    = texture->GetWidth();
                 description.height   = texture->GetHeight();
                 description.depth    = texture->GetDepth();
@@ -160,9 +173,9 @@ namespace Spartan
             }
             else
             {
-                resource         = buffer->GetRhiResource();
+                resource = buffer->GetRhiResource();
                 description.type = FFX_RESOURCE_TYPE_BUFFER;
-                state            = FFX_RESOURCE_STATE_UNORDERED_ACCESS;
+                state = FFX_RESOURCE_STATE_UNORDERED_ACCESS;
             }
 
             return ffxGetResourceVK(
@@ -227,21 +240,21 @@ namespace Spartan
             Vector3        sdf_center               = Vector3::Zero;
             const bool     sdf_follow_camera        = true;
 
-            bool                                    context_created                       = false;
-            FfxBrixelizerContext                    context                               = {};
-            FfxBrixelizerContextDescription         description_context                   = {};
-            FfxBrixelizerUpdateDescription          description_update                    = {};
-            FfxBrixelizerBakedUpdateDescription     description_update_baked              = {};
-            FfxBrixelizerGIContext                  context_gi                            = {};
-            FfxBrixelizerGIContextDescription       description_context_gi                = {};
-            FfxBrixelizerGIDispatchDescription      description_dispatch_gi               = {};
-            shared_ptr<RHI_Texture>                 texture_sdf_atlas                     = nullptr;
-            shared_ptr<RHI_Texture>                 texture_depth_previous                = nullptr;
-            shared_ptr<RHI_Texture>                 texture_normal_previous               = nullptr;
-            shared_ptr<RHI_Buffer>        buffer_brick_aabbs                    = nullptr;
-            array<shared_ptr<RHI_Buffer>, cascade_max> buffer_cascade_aabb_tree = {};
-            array<shared_ptr<RHI_Buffer>, cascade_max> buffer_cascade_brick_map = {};
-            shared_ptr<RHI_Buffer>        buffer_scratch                        = nullptr;
+            bool                                context_created                       = false;
+            FfxBrixelizerContext                context                               = {};
+            FfxBrixelizerContextDescription     description_context                   = {};
+            FfxBrixelizerUpdateDescription      description_update                    = {};
+            FfxBrixelizerBakedUpdateDescription description_update_baked              = {};
+            FfxBrixelizerGIContext              context_gi                            = {};
+            FfxBrixelizerGIContextDescription   description_context_gi                = {};
+            FfxBrixelizerGIDispatchDescription  description_dispatch_gi               = {};
+            shared_ptr<RHI_Texture>             texture_sdf_atlas                     = nullptr;
+            shared_ptr<RHI_Texture>             texture_depth_previous                = nullptr;
+            shared_ptr<RHI_Texture>             texture_normal_previous               = nullptr;
+            shared_ptr<RHI_Buffer>              buffer_brick_aabbs                    = nullptr;
+            array<shared_ptr<RHI_Buffer>,       cascade_max> buffer_cascade_aabb_tree = {};
+            array<shared_ptr<RHI_Buffer>,       cascade_max> buffer_cascade_brick_map = {};
+            shared_ptr<RHI_Buffer>              buffer_scratch                        = nullptr;
         }
     }
 
@@ -278,36 +291,30 @@ namespace Spartan
             // brixelizer gi initialization
             {
                 // scratch buffer
-                {
-                    brixelizer_gi::buffer_scratch = make_shared<RHI_Buffer>(
-                        1 << 28, // 256 MB (will grow if needed)
-                        1,
-                        RHI_Buffer_Uav | RHI_Buffer_Transfer_Src | RHI_Buffer_Transfer_Dst,
-                        "ffx_brixelizer_gi_scratch"
-                    );
-                }
+                brixelizer_gi::buffer_scratch = make_shared<RHI_Buffer>(
+                    1 << 28, // 256 MB (will grow if needed)
+                    1,
+                    RHI_Buffer_Uav | RHI_Buffer_Transfer_Src | RHI_Buffer_Transfer_Dst,
+                    "ffx_brixelizer_gi_scratch"
+                );
 
                 // sdf atlas texture
-                {
-                    brixelizer_gi::texture_sdf_atlas = make_unique<RHI_Texture3D>(
-                        brixelizer_gi::sdf_atlas_size,
-                        brixelizer_gi::sdf_atlas_size,
-                        brixelizer_gi::sdf_atlas_size,
-                        RHI_Format::R8_Unorm,
-                        RHI_Texture_Srv | RHI_Texture_Uav,
-                        "ffx_sdf_atlas"
-                    );
-                }
+                brixelizer_gi::texture_sdf_atlas = make_unique<RHI_Texture3D>(
+                    brixelizer_gi::sdf_atlas_size,
+                    brixelizer_gi::sdf_atlas_size,
+                    brixelizer_gi::sdf_atlas_size,
+                    RHI_Format::R8_Unorm,
+                    RHI_Texture_Srv | RHI_Texture_Uav,
+                    "ffx_sdf_atlas"
+                );
 
                 // brick aabbs buffer
-                {
-                    brixelizer_gi::buffer_brick_aabbs = make_shared<RHI_Buffer>(
-                        brixelizer_gi::brick_aabbs_stride,
-                        brixelizer_gi::max_bricks_x8,
-                        RHI_Buffer_Uav,
-                        "ffx_brick_aabbs"
-                    );
-                }
+                brixelizer_gi::buffer_brick_aabbs = make_shared<RHI_Buffer>(
+                    brixelizer_gi::brick_aabbs_stride,
+                    brixelizer_gi::max_bricks_x8,
+                    RHI_Buffer_Uav,
+                    "ffx_brick_aabbs"
+                );
 
                 // cascade aabb trees
                 for (uint32_t i = 0; i < brixelizer_gi::cascade_max; ++i)
@@ -469,8 +476,9 @@ namespace Spartan
             
             // resources
             {
-                brixelizer_gi::texture_depth_previous  = make_shared<RHI_Texture2D>(width, height, 1, RHI_Format::D32_Float,    RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "ffx_depth_previous");
-                brixelizer_gi::texture_normal_previous = make_shared<RHI_Texture2D>(width, height, 1, RHI_Format::R16G16_Float, RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "ffx_normal_previous");
+                uint32_t flags = RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit;
+                brixelizer_gi::texture_depth_previous  = make_shared<RHI_Texture2D>(width, height, 1, RHI_Format::D32_Float,          flags, "ffx_depth_previous");
+                brixelizer_gi::texture_normal_previous = make_shared<RHI_Texture2D>(width, height, 1, RHI_Format::R16G16B16A16_Unorm, flags, "ffx_normal_previous");
             }
 
             brixelizer_gi::context_created = true;
@@ -520,8 +528,7 @@ namespace Spartan
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/super-resolution-upscaler.md
         // requires:      VK_KHR_get_memory_requirements2
 
-        // output is displayed in the viewport via imgui so we add
-        // a barrier to ensure FSR has done whatever it needs to do
+        // output is displayed in the viewport via imgui so we add a barrier to ensure FSR has done whatever it needs to do
         cmd_list->InsertBarrierTextureReadWrite(tex_output);
         cmd_list->InsertPendingBarrierGroup();
 
