@@ -225,7 +225,7 @@ namespace Spartan
         m_slices.shrink_to_fit();
 
         bool keep_data = (m_flags & RHI_Texture_KeepData) != 0;
-        bool compress  = (m_flags & RHI_Texture_DontCompress) == 0;
+        bool compress  = (m_flags & RHI_Texture_Compress) != 0;
 
         // load from drive
         {

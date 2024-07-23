@@ -44,7 +44,7 @@ namespace Spartan
         RHI_Texture_Srgb           = 1U << 8,
         RHI_Texture_Mappable       = 1U << 9,
         RHI_Texture_KeepData       = 1U << 10,
-        RHI_Texture_DontCompress   = 1U << 11,
+        RHI_Texture_Compress       = 1U << 11,
         RHI_Texture_ExternalMemory = 1U << 12
     };
 

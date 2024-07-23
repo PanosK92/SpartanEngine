@@ -61,7 +61,7 @@ Icon::Icon(IconType type, const string& file_path)
 
     // create texture
     string name = FileSystem::GetFileNameFromFilePath(file_path);
-    m_texture   = make_shared<RHI_Texture2D>(RHI_Texture_Srv | RHI_Texture_DontCompress, name.c_str());
+    m_texture   = make_shared<RHI_Texture2D>(RHI_Texture_Srv | RHI_Texture_Compress, name.c_str());
 
     // load texture
     ThreadPool::AddTask([this, file_path]()

@@ -51,7 +51,7 @@ namespace Spartan
             // if the data is not there, load it
             if (height_data.empty())
             {
-                height_texture->SetFlag(RHI_Texture_KeepData | RHI_Texture_DontCompress);
+                height_texture->SetFlag(RHI_Texture_KeepData);
                 if (height_texture->LoadFromFile(height_texture->GetResourceFilePath()))
                 {
                     height_data = height_texture->GetMip(0, 0).bytes;
