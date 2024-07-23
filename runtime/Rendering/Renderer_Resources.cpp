@@ -64,10 +64,10 @@ namespace Spartan
         array<shared_ptr<RHI_StructuredBuffer>, 3>                                        structured_buffers;
 
         // asset resources
-        array<shared_ptr<RHI_Texture>, 11>                            standard_textures;
-        array<shared_ptr<Mesh>, static_cast<uint32_t>(MeshType::Max)> standard_meshes;
-        shared_ptr<Font>                                              standard_font;
-        shared_ptr<Material>                                          standard_material;
+        array<shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_StandardTexture::Max)> standard_textures;
+        array<shared_ptr<Mesh>, static_cast<uint32_t>(MeshType::Max)>                        standard_meshes;
+        shared_ptr<Font>                                                                     standard_font;
+        shared_ptr<Material>                                                                 standard_material;
     }
 
     void Renderer::CreateBuffers()
@@ -556,39 +556,52 @@ namespace Spartan
         const string dir_texture = ResourceCache::GetResourceDirectory(ResourceDirectory::Textures) + "\\";
         #define standard_texture(x) standard_textures[static_cast<uint32_t>(x)]
 
+        uint32_t flags = RHI_Texture_Srv | RHI_Texture_DontCompress;
+
         // noise
         {
-            standard_texture(Renderer_StandardTexture::Noise_normal) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_noise_normal");
-            standard_texture(Renderer_StandardTexture::Noise_normal)->LoadFromFile(dir_texture + "noise_normal.png");
-
-            standard_texture(Renderer_StandardTexture::Noise_blue) = make_shared<RHI_Texture2DArray>(RHI_Texture_Srv, "standard_noise_blue");
-            standard_texture(Renderer_StandardTexture::Noise_blue)->LoadFromFile(dir_texture + "noise_blue_0.png");
+            standard_texture(Renderer_StandardTexture::Noise_blue_0) = make_shared<RHI_Texture2D>(flags, "standard_noise_blue_0");
+            standard_texture(Renderer_StandardTexture::Noise_blue_0)->LoadFromFile(dir_texture + "noise_blue_0.png");
+            standard_texture(Renderer_StandardTexture::Noise_blue_1) = make_shared<RHI_Texture2D>(flags, "standard_noise_blue_1");
+            standard_texture(Renderer_StandardTexture::Noise_blue_1)->LoadFromFile(dir_texture + "noise_blue_1.png");
+            standard_texture(Renderer_StandardTexture::Noise_blue_2) = make_shared<RHI_Texture2D>(flags, "standard_noise_blue_2");
+            standard_texture(Renderer_StandardTexture::Noise_blue_2)->LoadFromFile(dir_texture + "noise_blue_2.png");
+            standard_texture(Renderer_StandardTexture::Noise_blue_3) = make_shared<RHI_Texture2D>(flags, "standard_noise_blue_3");
+            standard_texture(Renderer_StandardTexture::Noise_blue_3)->LoadFromFile(dir_texture + "noise_blue_3.png");
+            standard_texture(Renderer_StandardTexture::Noise_blue_4) = make_shared<RHI_Texture2D>(flags, "standard_noise_blue_4");
+            standard_texture(Renderer_StandardTexture::Noise_blue_4)->LoadFromFile(dir_texture + "noise_blue_4.png");
+            standard_texture(Renderer_StandardTexture::Noise_blue_5) = make_shared<RHI_Texture2D>(flags, "standard_noise_blue_5");
+            standard_texture(Renderer_StandardTexture::Noise_blue_5)->LoadFromFile(dir_texture + "noise_blue_5.png");
+            standard_texture(Renderer_StandardTexture::Noise_blue_6) = make_shared<RHI_Texture2D>(flags, "standard_noise_blue_6");
+            standard_texture(Renderer_StandardTexture::Noise_blue_6)->LoadFromFile(dir_texture + "noise_blue_6.png");
+            standard_texture(Renderer_StandardTexture::Noise_blue_7) = make_shared<RHI_Texture2D>(flags, "standard_noise_blue_7");
+            standard_texture(Renderer_StandardTexture::Noise_blue_7)->LoadFromFile(dir_texture + "noise_blue_7.png");
         }
 
         // color
         {
-            standard_texture(Renderer_StandardTexture::Checkerboard) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_transparent");
+            standard_texture(Renderer_StandardTexture::Checkerboard) = make_shared<RHI_Texture2D>(flags, "standard_transparent");
             standard_texture(Renderer_StandardTexture::Checkerboard)->LoadFromFile(dir_texture + "no_texture.png");
         }
 
         // gizmos
         {
-            standard_texture(Renderer_StandardTexture::Gizmo_light_directional) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_icon_light_directional");
+            standard_texture(Renderer_StandardTexture::Gizmo_light_directional) = make_shared<RHI_Texture2D>(flags, "standard_icon_light_directional");
             standard_texture(Renderer_StandardTexture::Gizmo_light_directional)->LoadFromFile(dir_texture + "sun.png");
 
-            standard_texture(Renderer_StandardTexture::Gizmo_light_point) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_icon_light_point");
+            standard_texture(Renderer_StandardTexture::Gizmo_light_point) = make_shared<RHI_Texture2D>(flags, "standard_icon_light_point");
             standard_texture(Renderer_StandardTexture::Gizmo_light_point)->LoadFromFile(dir_texture + "light_bulb.png");
 
-            standard_texture(Renderer_StandardTexture::Gizmo_light_spot) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_icon_light_spot");
+            standard_texture(Renderer_StandardTexture::Gizmo_light_spot) = make_shared<RHI_Texture2D>(flags, "standard_icon_light_spot");
             standard_texture(Renderer_StandardTexture::Gizmo_light_spot)->LoadFromFile(dir_texture + "flashlight.png");
 
-            standard_texture(Renderer_StandardTexture::Gizmo_audio_source) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_icon_audio_source");
+            standard_texture(Renderer_StandardTexture::Gizmo_audio_source) = make_shared<RHI_Texture2D>(flags, "standard_icon_audio_source");
             standard_texture(Renderer_StandardTexture::Gizmo_audio_source)->LoadFromFile(dir_texture + "audio.png");
         }
 
         // misc
         {
-            standard_texture(Renderer_StandardTexture::Foam) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_foam");
+            standard_texture(Renderer_StandardTexture::Foam) = make_shared<RHI_Texture2D>(flags, "standard_foam");
             standard_texture(Renderer_StandardTexture::Foam)->LoadFromFile(dir_texture + "foam.jpg");
         } 
     }

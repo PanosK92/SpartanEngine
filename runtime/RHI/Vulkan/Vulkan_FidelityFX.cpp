@@ -679,6 +679,7 @@ namespace Spartan
         RHI_Texture* tex_velocity,
         RHI_Texture* tex_normal,
         RHI_Texture* tex_material,
+        array<RHI_Texture*, 8>& tex_noise,
         RHI_Texture* tex_diffuse_gi,
         RHI_Texture* tex_specular_gi
     )
@@ -748,18 +749,18 @@ namespace Spartan
 
             // set resources
             {
-                brixelizer_gi::description_dispatch_gi.environmentMap   = to_ffx_resource(sssr::cubemap.get(), nullptr, L"brixelizer_environment");
+                brixelizer_gi::description_dispatch_gi.environmentMap   = to_ffx_resource(sssr::cubemap.get(),                          nullptr, L"brixelizer_environment");
                 //brixelizer_gi::description_dispatch_gi.prevLitOutput    = to_ffx_resource(tex_diffuse_gi, nullptr, L"brixelizer_gi_diffuse_gi_previous");
-                brixelizer_gi::description_dispatch_gi.depth            = to_ffx_resource(tex_depth, nullptr, L"brixelizer_gi_depth");
-                brixelizer_gi::description_dispatch_gi.historyDepth     = to_ffx_resource(brixelizer_gi::texture_depth_previous.get(), nullptr, L"brixelizer_gi_depth_previous");
-                brixelizer_gi::description_dispatch_gi.normal           = to_ffx_resource(tex_normal, nullptr, L"brixelizer_gi_normal");
+                brixelizer_gi::description_dispatch_gi.depth            = to_ffx_resource(tex_depth,                                    nullptr, L"brixelizer_gi_depth");
+                brixelizer_gi::description_dispatch_gi.historyDepth     = to_ffx_resource(brixelizer_gi::texture_depth_previous.get(),  nullptr, L"brixelizer_gi_depth_previous");
+                brixelizer_gi::description_dispatch_gi.normal           = to_ffx_resource(tex_normal,                                   nullptr, L"brixelizer_gi_normal");
                 brixelizer_gi::description_dispatch_gi.historyNormal    = to_ffx_resource(brixelizer_gi::texture_normal_previous.get(), nullptr, L"brixelizer_gi_normal_previous");
-                brixelizer_gi::description_dispatch_gi.roughness        = to_ffx_resource(tex_material, nullptr, L"brixelizer_gi_roughness");
-                brixelizer_gi::description_dispatch_gi.motionVectors    = to_ffx_resource(tex_velocity, nullptr, L"brixelizer_gi_velocity");
-                //brixelizer_gi::description_dispatch_gi.noiseTexture     = to_ffx_resource(nullptr, nullptr, L"brixelizer_gi_noise");
-                brixelizer_gi::description_dispatch_gi.outputDiffuseGI  = to_ffx_resource(tex_diffuse_gi, nullptr, L"brixelizer_gi_diffuse_gi");
-                brixelizer_gi::description_dispatch_gi.outputSpecularGI = to_ffx_resource(tex_specular_gi, nullptr, L"brixelizer_gi_specular_gi");
-                brixelizer_gi::description_dispatch_gi.sdfAtlas         = to_ffx_resource(brixelizer_gi::texture_sdf_atlas.get(), nullptr, L"brixelizer_gi_sdf_atlas"); // SDF Atlas resource used by Brixelizer
+                brixelizer_gi::description_dispatch_gi.roughness        = to_ffx_resource(tex_material,                                 nullptr, L"brixelizer_gi_roughness");
+                brixelizer_gi::description_dispatch_gi.motionVectors    = to_ffx_resource(tex_velocity,                                 nullptr, L"brixelizer_gi_velocity");
+                brixelizer_gi::description_dispatch_gi.noiseTexture     = to_ffx_resource(tex_noise[cb_frame->frame % 8],               nullptr, L"brixelizer_gi_noise");
+                brixelizer_gi::description_dispatch_gi.outputDiffuseGI  = to_ffx_resource(tex_diffuse_gi,                               nullptr, L"brixelizer_gi_diffuse_gi");
+                brixelizer_gi::description_dispatch_gi.outputSpecularGI = to_ffx_resource(tex_specular_gi,                              nullptr, L"brixelizer_gi_specular_gi");
+                brixelizer_gi::description_dispatch_gi.sdfAtlas         = to_ffx_resource(brixelizer_gi::texture_sdf_atlas.get(),       nullptr, L"brixelizer_gi_sdf_atlas");
                 brixelizer_gi::description_dispatch_gi.bricksAABBs      = to_ffx_resource(nullptr, brixelizer_gi::buffer_brick_aabbs.get(), L"brixelizer_gi_brick_aabbs");
                 for (uint32_t i = 0; i < brixelizer_gi::cascade_max; ++i)
                 {
