@@ -787,9 +787,7 @@ namespace Spartan
             brixelizer_gi::description_dispatch_gi.environmentMapIntensity = 0.0f;                                                                    // value to scale the contribution from the environment map
             brixelizer_gi::description_dispatch_gi.motionVectorScale.x     = 1.0f;                                                                    // scale factor to apply to motion vectors
             brixelizer_gi::description_dispatch_gi.motionVectorScale.y     = 1.0f;                                                                    // scale factor to apply to motion vectors
-
-            // get the underlying brixelizer context (not the GI one)
-            FfxErrorCode error_code = ffxBrixelizerGetRawContext(&brixelizer_gi::context, &brixelizer_gi::description_dispatch_gi.brixelizerContext);
+            FfxErrorCode error_code = ffxBrixelizerGetRawContext(&brixelizer_gi::context, &brixelizer_gi::description_dispatch_gi.brixelizerContext); // get the raw context for use with Brixelizer GI
             SP_ASSERT(error_code == FFX_OK);
 
             // dispatch
@@ -797,7 +795,7 @@ namespace Spartan
             error_code                      = ffxBrixelizerGIContextDispatch(&brixelizer_gi::context_gi, &brixelizer_gi::description_dispatch_gi, ffx_command_list);
             SP_ASSERT(error_code == FFX_OK);
 
-            // blit the dept and the noormal so that we can use them in the next frame as "history"
+            // blit the dept and the normal so that we can use them in the next frame as "history"
             cmd_list->Blit(tex_depth,  brixelizer_gi::texture_depth_previous.get(),  false);
             cmd_list->Blit(tex_normal, brixelizer_gi::texture_normal_previous.get(), false);
         }

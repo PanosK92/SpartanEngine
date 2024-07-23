@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ===============
 using namespace Spartan::Math;
+using namespace std;
 //============================
 
 namespace Spartan
@@ -105,7 +106,7 @@ namespace Spartan
         RHI_Texture* tex_velocity,
         RHI_Texture* tex_normal,
         RHI_Texture* tex_material,
-        array< RHI_Texture*, 8>& tex_noise,
+        array<RHI_Texture*, 8>& tex_noise,
         RHI_Texture* tex_diffuse_gi,
         RHI_Texture* tex_specular_gi
     )
