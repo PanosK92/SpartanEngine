@@ -102,6 +102,7 @@ namespace Spartan
     void RHI_FidelityFX::BrixelizerGI_Dispatch(
         RHI_CommandList* cmd_list,
         Cb_Frame* cb_frame,
+        RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
         RHI_Texture* tex_normal,
