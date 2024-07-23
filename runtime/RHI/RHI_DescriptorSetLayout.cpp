@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "RHI_DescriptorSetLayout.h"
 #include "RHI_ConstantBuffer.h"
-#include "RHI_StructuredBuffer.h"
+#include "RHI_Buffer.h"
 #include "RHI_Texture.h"
 #include "RHI_DescriptorSet.h"
 #include "RHI_Device.h"
@@ -67,7 +67,7 @@ namespace Spartan
         }
     }
 
-    void RHI_DescriptorSetLayout::SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer)
+    void RHI_DescriptorSetLayout::SetStructuredBuffer(const uint32_t slot, RHI_Buffer* structured_buffer)
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {

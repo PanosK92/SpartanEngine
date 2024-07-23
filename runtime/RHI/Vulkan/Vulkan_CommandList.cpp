@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_VertexBuffer.h"
 #include "../RHI_IndexBuffer.h"
 #include "../RHI_ConstantBuffer.h"
-#include "../RHI_StructuredBuffer.h"
+#include "../RHI_Buffer.h"
 #include "../RHI_Sampler.h"
 #include "../RHI_DescriptorSet.h"
 #include "../RHI_DescriptorSetLayout.h"
@@ -1534,7 +1534,7 @@ namespace Spartan
         descriptor_sets::bind_dynamic = true;
     }
 
-    void RHI_CommandList::SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer) const
+    void RHI_CommandList::SetStructuredBuffer(const uint32_t slot, RHI_Buffer* structured_buffer) const
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 

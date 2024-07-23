@@ -259,11 +259,12 @@ namespace Spartan
         Max
     };
 
-    enum class Renderer_StructuredBuffer
+    enum class Renderer_Buffer
     {
         Spd,
         Materials,
-        Lights
+        Lights,
+        Max
     };
 
     enum class Renderer_StandardTexture

@@ -1183,9 +1183,13 @@ namespace Spartan
                     features_robustness.nullDescriptor = VK_TRUE;
                 }
 
-                // fsr 2
+                // fidelity fx
                 {
-                    // extended types (int8, int16, int64, etc) - SPD
+                    // brixelizer gi
+                    SP_ASSERT(support_1_2.shaderStorageBufferArrayNonUniformIndexing == VK_TRUE);
+                    features_1_2.shaderStorageBufferArrayNonUniformIndexing = VK_TRUE;
+
+                    // spd
                     SP_ASSERT(support_1_2.shaderSubgroupExtendedTypes == VK_TRUE);
                     features_1_2.shaderSubgroupExtendedTypes = VK_TRUE;
 

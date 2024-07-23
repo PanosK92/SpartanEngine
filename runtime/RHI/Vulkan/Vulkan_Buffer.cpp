@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "../RHI_Device.h"
 #include "../RHI_Implementation.h"
-#include "../RHI_StructuredBuffer.h"
+#include "../RHI_Buffer.h"
 //==================================
 
 //= NAMESPACES =====
@@ -32,14 +32,15 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_StructuredBuffer::RHI_StructuredBuffer(const uint32_t stride, const uint32_t element_count, const char* name)
+    RHI_Buffer::RHI_Buffer(const uint32_t stride, const uint32_t element_count, const uint32_t usage, const char* name)
     {
         m_object_name   = name;
         m_stride        = stride;
         m_element_count = element_count;
+        m_usage         = usage;
         m_object_size   = stride * element_count;
 
-        // calculate required alignment based on minimum device offset alignment
+        // Calculate required alignment based on minimum device offset alignment
         size_t min_alignment = RHI_Device::PropertyGetMinStorageBufferOffsetAllignment();
         if (min_alignment > 0)
         {
@@ -47,25 +48,36 @@ namespace Spartan
         }
         m_object_size = m_stride * m_element_count;
 
+        // determine Vulkan buffer usage flags
+        VkBufferUsageFlags vk_usage = 0;
+        if (m_usage & RHI_Buffer_Uav)
+            vk_usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+        if (m_usage & RHI_Buffer_Transfer_Src)
+            vk_usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        if (m_usage & RHI_Buffer_Transfer_Dst)
+            vk_usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+        SP_ASSERT(vk_usage != 0);
+
         // create buffer
-        VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
-        RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, flags, nullptr, name);
-        RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::Buffer, name); // name the resource
+        VkMemoryPropertyFlags memory_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
+        RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, vk_usage, memory_flags, nullptr, name);
+        RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::Buffer, name);
 
         // get mapped data pointer
-        m_mapped_data = RHI_Device::MemoryGetMappedDataFromBuffer(m_rhi_resource); 
+        m_mapped_data = RHI_Device::MemoryGetMappedDataFromBuffer(m_rhi_resource);
     }
 
-    RHI_StructuredBuffer::~RHI_StructuredBuffer()
+    RHI_Buffer::~RHI_Buffer()
     {
         RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_rhi_resource);
         m_rhi_resource = nullptr;
     }
 
-    void RHI_StructuredBuffer::Update(void* data_cpu, const uint32_t update_size)
+    void RHI_Buffer::Update(void* data_cpu, const uint32_t update_size)
     {
-        SP_ASSERT_MSG(data_cpu != nullptr,                  "Invalid update data");
-        SP_ASSERT_MSG(m_mapped_data != nullptr,             "Invalid mapped data");
+        SP_ASSERT_MSG(data_cpu != nullptr, "Invalid update data");
+        SP_ASSERT_MSG(m_mapped_data != nullptr, "Invalid mapped data");
         SP_ASSERT_MSG(m_offset + m_stride <= m_object_size, "Out of memory");
 
         // advance offset

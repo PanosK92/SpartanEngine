@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Texture2D.h"
 #include "../RHI_Texture3D.h"
 #include "../RHI_TextureCube.h"
-#include "../RHI_StructuredBuffer.h"
+#include "../RHI_Buffer.h"
 #include "../Rendering/Renderer_Buffers.h"
 #include "../../World/Components/Camera.h"
 SP_WARNINGS_OFF
@@ -124,7 +124,7 @@ namespace Spartan
             }
         }
 
-        FfxResource to_ffx_resource(RHI_Texture* texture, RHI_StructuredBuffer* buffer, const wchar_t* name)
+        FfxResource to_ffx_resource(RHI_Texture* texture, RHI_Buffer* buffer, const wchar_t* name)
         {
             void* resource                     = nullptr;
             FfxResourceDescription description = {};
@@ -238,10 +238,10 @@ namespace Spartan
             shared_ptr<RHI_Texture>                 texture_sdf_atlas                     = nullptr;
             shared_ptr<RHI_Texture>                 texture_depth_previous                = nullptr;
             shared_ptr<RHI_Texture>                 texture_normal_previous               = nullptr;
-            shared_ptr<RHI_StructuredBuffer>        buffer_brick_aabbs                    = nullptr;
-            array<shared_ptr<RHI_StructuredBuffer>, cascade_max> buffer_cascade_aabb_tree = {};
-            array<shared_ptr<RHI_StructuredBuffer>, cascade_max> buffer_cascade_brick_map = {};
-            shared_ptr<RHI_StructuredBuffer>        buffer_scratch                        = nullptr;
+            shared_ptr<RHI_Buffer>        buffer_brick_aabbs                    = nullptr;
+            array<shared_ptr<RHI_Buffer>, cascade_max> buffer_cascade_aabb_tree = {};
+            array<shared_ptr<RHI_Buffer>, cascade_max> buffer_cascade_brick_map = {};
+            shared_ptr<RHI_Buffer>        buffer_scratch                        = nullptr;
         }
     }
 
@@ -279,8 +279,12 @@ namespace Spartan
             {
                 // scratch buffer
                 {
-                    uint32_t size = 1 << 28; // 256 MB (will grow if needed)
-                    brixelizer_gi::buffer_scratch = make_shared<RHI_StructuredBuffer>(1, size, "ffx_brixelizer_gi_scratch");
+                    brixelizer_gi::buffer_scratch = make_shared<RHI_Buffer>(
+                        1 << 28, // 256 MB (will grow if needed)
+                        1,
+                        RHI_Buffer_Uav | RHI_Buffer_Transfer_Src | RHI_Buffer_Transfer_Dst,
+                        "ffx_brixelizer_gi_scratch"
+                    );
                 }
 
                 // sdf atlas texture
@@ -290,16 +294,17 @@ namespace Spartan
                         brixelizer_gi::sdf_atlas_size,
                         brixelizer_gi::sdf_atlas_size,
                         RHI_Format::R8_Unorm,
-                        RHI_Texture_Uav,
+                        RHI_Texture_Srv | RHI_Texture_Uav,
                         "ffx_sdf_atlas"
                     );
                 }
 
                 // brick aabbs buffer
                 {
-                    brixelizer_gi::buffer_brick_aabbs = make_shared<RHI_StructuredBuffer>(
+                    brixelizer_gi::buffer_brick_aabbs = make_shared<RHI_Buffer>(
                         brixelizer_gi::brick_aabbs_stride,
                         brixelizer_gi::max_bricks_x8,
+                        RHI_Buffer_Uav,
                         "ffx_brick_aabbs"
                     );
                 }
@@ -307,10 +312,11 @@ namespace Spartan
                 // cascade aabb trees
                 for (uint32_t i = 0; i < brixelizer_gi::cascade_max; ++i)
                 {
-                    std::string name = "ffx_cascade_aabb_tree_" + to_string(i);
-                    brixelizer_gi::buffer_cascade_aabb_tree[i] = make_shared<RHI_StructuredBuffer>(
+                    string name = "ffx_cascade_aabb_tree_" + to_string(i);
+                    brixelizer_gi::buffer_cascade_aabb_tree[i] = make_shared<RHI_Buffer>(
                         brixelizer_gi::cascade_aabb_tree_stride,
                         brixelizer_gi::cascade_aabb_tree_size / brixelizer_gi::cascade_aabb_tree_stride,
+                        RHI_Buffer_Uav,
                         name.c_str()
                     );
                 }
@@ -318,10 +324,11 @@ namespace Spartan
                 // cascade brick maps
                 for (uint32_t i = 0; i < brixelizer_gi::cascade_max; ++i)
                 {
-                    std::string name = "ffx_cascade_brick_map_" + to_string(i);
-                    brixelizer_gi::buffer_cascade_brick_map[i] = make_shared<RHI_StructuredBuffer>(
+                    string name = "ffx_cascade_brick_map_" + to_string(i);
+                    brixelizer_gi::buffer_cascade_brick_map[i] = make_shared<RHI_Buffer>(
                         brixelizer_gi::cascade_brick_map_stride,
                         brixelizer_gi::cascade_brick_map_size / brixelizer_gi::cascade_brick_map_stride,
+                        RHI_Buffer_Uav,
                         name.c_str()
                     );
                 }
@@ -730,7 +737,7 @@ namespace Spartan
                 size_t new_size = 1;
                 while (new_size < scratch_buffer_size) new_size <<= 1;
 
-                brixelizer_gi::buffer_scratch = make_shared<RHI_StructuredBuffer>(new_size, 1, "ffx_brixelizer_gi_scratch");
+                brixelizer_gi::buffer_scratch = make_shared<RHI_Buffer>(new_size, 1, RHI_Buffer_Uav | RHI_Buffer_Transfer_Src | RHI_Buffer_Transfer_Dst, "ffx_brixelizer_gi_scratch");
                 SP_LOG_INFO("Resized Brixelizer GI scratch buffer to %zu bytes", new_size);
             }
 
@@ -743,10 +750,10 @@ namespace Spartan
         // dispatch
         {
             // set camera matrices (ffx expects row major order)
-            set_ffx_float16(brixelizer_gi::description_dispatch_gi.view,           cb_frame->view);
-            set_ffx_float16(brixelizer_gi::description_dispatch_gi.prevView,       cb_frame->view_previous);
-            set_ffx_float16(brixelizer_gi::description_dispatch_gi.projection,     cb_frame->projection);
-            set_ffx_float16(brixelizer_gi::description_dispatch_gi.prevProjection, cb_frame->projection_previous);
+            set_ffx_float16(brixelizer_gi::description_dispatch_gi.view,           Matrix::Transpose(cb_frame->view));
+            set_ffx_float16(brixelizer_gi::description_dispatch_gi.prevView,       Matrix::Transpose(cb_frame->view_previous));
+            set_ffx_float16(brixelizer_gi::description_dispatch_gi.projection,     Matrix::Transpose(cb_frame->projection));
+            set_ffx_float16(brixelizer_gi::description_dispatch_gi.prevProjection, Matrix::Transpose(cb_frame->projection_previous));
 
             // set resources
             {
