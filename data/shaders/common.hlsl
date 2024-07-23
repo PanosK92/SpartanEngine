@@ -50,11 +50,6 @@ static const uint  THREAD_GROUP_COUNT_X = 8;
 static const uint  THREAD_GROUP_COUNT_Y = 8;
 static const uint  THREAD_GROUP_COUNT   = 64;
 static const float DEG_TO_RAD           = PI / 180.0f;
-/*------------------------------------------------------------------------------
-   COMMON
-------------------------------------------------------------------------------*/
-float2 get_tex_noise_normal_scale() { return float2(buffer_frame.resolution_render.x / 256.0f, buffer_frame.resolution_render.y / 256.0f); }
-float2 get_tex_noise_blue_scale()   { return float2(buffer_frame.resolution_render.x / 470.0f, buffer_frame.resolution_render.y / 470.0f); }
 
 /*------------------------------------------------------------------------------
     MATH
@@ -480,20 +475,6 @@ float get_noise_interleaved_gradient(float2 screen_pos, bool animate, bool anima
 
     float3 magic = float3(0.06711056f, 0.00583715f, 52.9829189f);
     return frac(magic.z * frac(dot(screen_pos, magic.xy)));
-}
-
-float get_noise_blue(float2 screen_pos, bool animate)
-{
-    // temporal factor - alternate between blue noise images
-    float slice = (buffer_frame.frame % 8) * (float)is_taa_enabled() * float(animate);
-    float2 uv   = (screen_pos + 0.5f) * get_tex_noise_blue_scale();
-    return tex_noise_blue.SampleLevel(samplers[sampler_point_wrap], float3(uv.x, uv.y, slice), 0).r;
-}
-
-float3 get_noise_normal(uint2 screen_pos)
-{
-    float2 uv = (screen_pos + 0.5f) * get_tex_noise_normal_scale();
-    return normalize(tex_noise_normal.SampleLevel(samplers[sampler_point_wrap], uv, 0).xyz);
 }
 
 /*------------------------------------------------------------------------------

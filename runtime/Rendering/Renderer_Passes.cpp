@@ -412,10 +412,6 @@ namespace Spartan
         cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_materials, GetStructuredBuffer(Renderer_StructuredBuffer::Materials));
         cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_lights,    GetStructuredBuffer(Renderer_StructuredBuffer::Lights));
         cmd_list->SetStructuredBuffer(Renderer_BindingsUav::sb_spd,       GetStructuredBuffer(Renderer_StructuredBuffer::Spd));
-
-        // textures - todo: could at these two in the bindless array
-        cmd_list->SetTexture(Renderer_BindingsSrv::noise_normal, GetStandardTexture(Renderer_StandardTexture::Noise_normal));
-        cmd_list->SetTexture(Renderer_BindingsSrv::noise_blue,   GetStandardTexture(Renderer_StandardTexture::Noise_blue));
     }
 
     void Renderer::ProduceFrame(RHI_CommandList* cmd_list_graphics, RHI_CommandList* cmd_list_compute)
@@ -1224,6 +1220,18 @@ namespace Spartan
 
         cmd_list->BeginTimeblock("global_illumination");
 
+        static array<RHI_Texture*, 8> noise_textures =
+        {
+            GetStandardTexture(Renderer_StandardTexture::Noise_blue_0).get(),
+            GetStandardTexture(Renderer_StandardTexture::Noise_blue_1).get(),
+            GetStandardTexture(Renderer_StandardTexture::Noise_blue_2).get(),
+            GetStandardTexture(Renderer_StandardTexture::Noise_blue_3).get(),
+            GetStandardTexture(Renderer_StandardTexture::Noise_blue_4).get(),
+            GetStandardTexture(Renderer_StandardTexture::Noise_blue_5).get(),
+            GetStandardTexture(Renderer_StandardTexture::Noise_blue_6).get(),
+            GetStandardTexture(Renderer_StandardTexture::Noise_blue_7).get()
+        };
+
         RHI_FidelityFX::BrixelizerGI_Dispatch(
             cmd_list,
             &m_cb_frame_cpu,
@@ -1231,6 +1239,7 @@ namespace Spartan
             GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get(),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_material).get(),
+            noise_textures,
             GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi).get(),
             GetRenderTarget(Renderer_RenderTarget::light_specular_gi).get()
         );

@@ -126,24 +126,20 @@ namespace Spartan
         light_depth = 11,
         light_color = 12,
     
-        // noise
-        noise_normal = 13,
-        noise_blue   = 14,
-    
         // misc
-        lutIbl           = 15,
-        environment      = 16,
-        ssgi             = 17,
-        ssr              = 18,
-        frame            = 19,
-        tex              = 20,
-        tex2             = 21,
-        font_atlas       = 22,
-        reflection_probe = 23,
-        sss              = 24,
+        lutIbl           = 13,
+        environment      = 14,
+        ssgi             = 15,
+        ssr              = 16,
+        frame            = 17,
+        tex              = 18,
+        tex2             = 19,
+        font_atlas       = 20,
+        reflection_probe = 21,
+        sss              = 22,
 
         // bindless
-        materials = 25
+        materials = 23
     };
 
     enum class Renderer_BindingsUav
@@ -272,14 +268,22 @@ namespace Spartan
 
     enum class Renderer_StandardTexture
     {
-        Noise_normal,
-        Noise_blue,
+        Noise_blue_0,
+        Noise_blue_1,
+        Noise_blue_2,
+        Noise_blue_3,
+        Noise_blue_4,
+        Noise_blue_5,
+        Noise_blue_6,
+        Noise_blue_7,
+        Noise_blue_8,
         Checkerboard,
         Gizmo_light_directional,
         Gizmo_light_point,
         Gizmo_light_spot,
         Gizmo_audio_source,
-        Foam
+        Foam,
+        Max
     };
 
     enum class Renderer_RasterizerState
