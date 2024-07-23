@@ -48,7 +48,7 @@ m_parent       = nullptr;
 A Visual Studio extension that automatically aligns like this can be found [here](https://marketplace.visualstudio.com/items?itemName=cpmcgrath.Codealignment).
 
 ## If statements
-When you are initializing a lot of variables, try to align them in a symmetrical manner, like so:
+If statements should have their brackets in their own individual lines.
 ```
 if (condition)
 {
