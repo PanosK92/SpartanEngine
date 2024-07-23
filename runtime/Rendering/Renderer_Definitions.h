@@ -47,6 +47,7 @@ namespace Spartan
         ScreenSpaceGlobalIllumination,
         ScreenSpaceShadows,
         ScreenSpaceReflections,
+        GlobalIllumination,
         MotionBlur,
         DepthOfField,
         FilmGrain,

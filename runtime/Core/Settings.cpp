@@ -63,6 +63,7 @@ namespace Spartan
                 case Renderer_Option::ScreenSpaceGlobalIllumination: return "ScreenSpaceGlobalIllumination";
                 case Renderer_Option::ScreenSpaceShadows:            return "ScreenSpaceShadows";
                 case Renderer_Option::ScreenSpaceReflections:        return "ScreenSpaceReflections";
+                case Renderer_Option::GlobalIllumination:            return "GlobalIllumination";
                 case Renderer_Option::MotionBlur:                    return "MotionBlur";
                 case Renderer_Option::DepthOfField:                  return "DepthOfField";
                 case Renderer_Option::FilmGrain:                     return "FilmGrain";

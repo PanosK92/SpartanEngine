@@ -301,7 +301,7 @@ void RenderOptions::OnTickVisible()
         }
 
 
-        if (option("Screen space lighting"))
+        if (option("Lighting"))
         {
             // ssr
             option_check_box("SSR - Screen space reflections", Renderer_Option::ScreenSpaceReflections);
@@ -312,6 +312,8 @@ void RenderOptions::OnTickVisible()
             // sss
             option_check_box("SSS - Screen space shadows", Renderer_Option::ScreenSpaceShadows, "Requires a light with shadows enabled");
 
+            // sss
+            option_check_box("GI - Global Illumination (WIP)", Renderer_Option::GlobalIllumination);
         }
 
         if (option("Anti-Aliasing"))
