@@ -292,7 +292,7 @@ namespace Spartan
                     );
                 }
 
-                // brick AABBs buffer
+                // brick aabbs buffer
                 {
                     brixelizer_gi::buffer_brick_aabbs = make_shared<RHI_StructuredBuffer>(
                         brixelizer_gi::brick_aabbs_stride,

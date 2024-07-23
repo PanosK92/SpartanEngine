@@ -157,6 +157,7 @@ namespace Spartan
         static void Pass_Skysphere(RHI_CommandList* cmd_list);
         // passes - lighting
         static void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
+        static void Pass_Light_GlobalIllumination(RHI_CommandList* cmd_list);
         static void Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass = false);
         static void Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass = false);
         static void Pass_Light_Integration_BrdfSpecularLut(RHI_CommandList* cmd_list);
