@@ -98,14 +98,6 @@ namespace Spartan
 
     }
 
-    void RHI_FidelityFX::BrixelizerGI_Update(
-        RHI_CommandList* cmd_list,
-        Cb_Frame* cb_frame
-    )
-    {
-
-    }
-
     void RHI_FidelityFX::BrixelizerGI_Dispatch(
         RHI_CommandList* cmd_list,
         Cb_Frame* cb_frame,
