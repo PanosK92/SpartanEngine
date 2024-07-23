@@ -556,7 +556,7 @@ namespace Spartan
         const string dir_texture = ResourceCache::GetResourceDirectory(ResourceDirectory::Textures) + "\\";
         #define standard_texture(x) standard_textures[static_cast<uint32_t>(x)]
 
-        uint32_t flags = RHI_Texture_Srv | RHI_Texture_DontCompress;
+        uint32_t flags = RHI_Texture_Srv;
 
         // noise
         {
