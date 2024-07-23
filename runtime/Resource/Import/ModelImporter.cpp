@@ -346,6 +346,7 @@ namespace Spartan
             }
 
             // if metalness and/or roughness are not provided, try to deduce some sensible values
+            if (!material->HasTexture(MaterialTexture::Metalness) || !material->HasTexture(MaterialTexture::Roughness))
             {
                 bool is_metal =
                     name.find("metal")    != string::npos ||
@@ -372,7 +373,7 @@ namespace Spartan
                     }
                     else if (is_tile)
                     {
-                        material->SetProperty(MaterialProperty::Roughness, 0.25f);
+                        material->SetProperty(MaterialProperty::Roughness, 0.4f);
                     }
                     else if (is_plaster)
                     {
