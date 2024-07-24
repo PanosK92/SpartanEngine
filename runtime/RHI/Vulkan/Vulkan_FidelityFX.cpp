@@ -325,7 +325,7 @@ namespace Spartan
             {
                 // scratch buffer
                 brixelizer_gi::buffer_scratch = make_shared<RHI_Buffer>(
-                    1 << 28, // 256 MB (will grow if needed)
+                    1 << 30, // 1024 MB (will grow if needed)
                     1,
                     RHI_Buffer_Uav | RHI_Buffer_Transfer_Src | RHI_Buffer_Transfer_Dst,
                     "ffx_brixelizer_gi_scratch"
@@ -798,8 +798,12 @@ namespace Spartan
                 size_t new_size = 1;
                 while (new_size < scratch_buffer_size) new_size <<= 1;
 
+                // create
                 brixelizer_gi::buffer_scratch = make_shared<RHI_Buffer>(new_size, 1, RHI_Buffer_Uav | RHI_Buffer_Transfer_Src | RHI_Buffer_Transfer_Dst, "ffx_brixelizer_gi_scratch");
-                SP_LOG_INFO("Resized Brixelizer GI scratch buffer to %zu bytes", new_size);
+
+                // let the user know
+                float new_size_mb = static_cast<float>(new_size) / (1024.0f * 1024.0f);
+                SP_LOG_INFO("Resized Brixelizer GI scratch buffer to %.2f MB", new_size_mb);
             }
 
             // update
