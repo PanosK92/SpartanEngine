@@ -1372,11 +1372,13 @@ namespace Spartan
         if (m_buffer_id_index == buffer->GetObjectId())
             return;
 
+        bool is_16bit = buffer->GetStride() == sizeof(uint16_t);
+
         vkCmdBindIndexBuffer(
-            static_cast<VkCommandBuffer>(m_rhi_resource),                   // commandBuffer
-            static_cast<VkBuffer>(buffer->GetRhiResource()),                // buffer
-            0,                                                              // offset
-            buffer->Is16Bit() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // indexType
+            static_cast<VkCommandBuffer>(m_rhi_resource),          // commandBuffer
+            static_cast<VkBuffer>(buffer->GetRhiResource()),       // buffer
+            0,                                                     // offset
+            is_16bit ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // indexType
         );
 
         m_buffer_id_index = buffer->GetObjectId();

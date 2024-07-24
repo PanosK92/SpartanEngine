@@ -42,7 +42,7 @@ namespace Spartan
         }
     }
 
-    void RHI_VertexBuffer::_create(const void* vertices)
+    void RHI_VertexBuffer::RHI_CreateResource(const void* vertices)
     {
         // destroy previous buffer
         if (m_rhi_resource)

@@ -42,45 +42,45 @@ namespace Spartan
         template<typename T>
         void Create(const std::vector<T>& vertices)
         {
-            m_stride = static_cast<uint32_t>(sizeof(T));
-            m_vertex_count = static_cast<uint32_t>(vertices.size());
-            m_object_size  = static_cast<uint64_t>(m_stride * m_vertex_count);
+            m_stride        = static_cast<uint32_t>(sizeof(T));
+            m_element_count = static_cast<uint32_t>(vertices.size());
+            m_object_size   = static_cast<uint64_t>(m_stride * m_element_count);
 
-            _create(static_cast<const void*>(vertices.data()));
+            RHI_CreateResource(static_cast<const void*>(vertices.data()));
         }
 
         template<typename T>
         void Create(const T* vertices, const uint32_t vertex_count)
         {
-            m_stride       = static_cast<uint32_t>(sizeof(T));
-            m_vertex_count = vertex_count;
-            m_object_size  = static_cast<uint64_t>(m_stride * m_vertex_count);
+            m_stride        = static_cast<uint32_t>(sizeof(T));
+            m_element_count = vertex_count;
+            m_object_size   = static_cast<uint64_t>(m_stride * m_element_count);
 
-            _create(static_cast<const void*>(vertices));
+            RHI_CreateResource(static_cast<const void*>(vertices));
         }
 
         template<typename T>
         void CreateDynamic(const uint32_t vertex_count)
         {
-            m_stride       = static_cast<uint32_t>(sizeof(T));
-            m_vertex_count = vertex_count;
-            m_object_size  = static_cast<uint64_t>(m_stride * m_vertex_count);
+            m_stride        = static_cast<uint32_t>(sizeof(T));
+            m_element_count = vertex_count;
+            m_object_size   = static_cast<uint64_t>(m_stride * m_element_count);
 
-            _create(nullptr);
+            RHI_CreateResource(nullptr);
         }
 
-        void* GetMappedData()     const { return m_mapped_data; }
-        void* GetRhiResource()    const { return m_rhi_resource; }
-        uint32_t GetStride()      const { return m_stride; }
-        uint32_t GetVertexCount() const { return m_vertex_count; }
+        void* GetMappedData()      const { return m_mapped_data; }
+        void* GetRhiResource()     const { return m_rhi_resource; }
+        uint32_t GetStride()       const { return m_stride; }
+        uint32_t GetElementCount() const { return m_element_count; }
 
     private:
-        void _create(const void* vertices);
+        void RHI_CreateResource(const void* vertices);
 
         void* m_mapped_data      = nullptr;
         bool m_is_mappable       = false;
         uint32_t m_stride        = 0;
-        uint32_t m_vertex_count  = 0;
+        uint32_t m_element_count = 0;
         void* m_rhi_resource     = nullptr;
     };
 }
