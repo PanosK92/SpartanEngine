@@ -71,7 +71,6 @@ namespace Spartan
         static uint32_t m_rhi_timeblock_count;
         static uint32_t m_rhi_pipeline_bindings;
         static uint32_t m_rhi_pipeline_barriers;
-        static uint32_t m_rhi_pipeline_vertex_count;
         static uint32_t m_rhi_bindings_buffer_index;
         static uint32_t m_rhi_bindings_buffer_vertex;
         static uint32_t m_rhi_bindings_buffer_constant;

@@ -191,7 +191,6 @@ namespace Spartan
         RHI_CullMode m_cull_mode                             = RHI_CullMode::Back;
         const char* m_timeblock_active                       = nullptr;
         bool m_render_pass_active                            = false;
-        bool m_is_query_active                               = false;
         static bool m_memory_query_support;
         std::mutex m_mutex_reset;
         RHI_PipelineState m_pso;
