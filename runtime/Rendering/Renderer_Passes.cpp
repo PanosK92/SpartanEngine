@@ -1215,7 +1215,7 @@ namespace Spartan
 
     void Renderer::Pass_Light_GlobalIllumination(RHI_CommandList* cmd_list, RHI_Texture* tex_in)
     {
-        if (!GetOption<bool>(Renderer_Option::GlobalIllumination))
+        if (!GetOption<bool>(Renderer_Option::GlobalIllumination) || !m_initialized_third_party)
             return;
 
         cmd_list->BeginTimeblock("global_illumination");
@@ -1417,7 +1417,7 @@ namespace Spartan
             swap_render = !swap_render;
 
             // use FSR 2 for different resolutions if enabled, otherwise blit
-            if (upsampling_mode == Renderer_Upsampling::Fsr3)
+            if (upsampling_mode == Renderer_Upsampling::Fsr3 && m_initialized_third_party)
             {
                 Pass_Upscale(cmd_list, get_render_in, rt_frame_output);
             }
@@ -1458,7 +1458,7 @@ namespace Spartan
             if (GetOption<bool>(Renderer_Option::Sharpness) && upsampling_mode != Renderer_Upsampling::Fsr3)
             {
                 swap_output = !swap_output;
-                Pass_Ffx_Cas(cmd_list, get_output_in, get_output_out);
+                Pass_Sharpening(cmd_list, get_output_in, get_output_out);
             }
 
             // fxaa
@@ -1777,31 +1777,31 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Ffx_Cas(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
+    void Renderer::Pass_Sharpening(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // acquire resources
         RHI_Shader* shader_c = GetShader(Renderer_Shader::ffx_cas_c).get();
-        if (!shader_c->IsCompiled())
+        if (!shader_c->IsCompiled() || !m_initialized_third_party)
             return;
 
-        cmd_list->BeginTimeblock("ffx_cas");
-        
-        // set pipeline state
-        static RHI_PipelineState pso;
-        pso.shaders[Compute] = shader_c;
-        cmd_list->SetPipelineState(pso);
-        
-        // set pass constants
-        m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Sharpness), 0.0f, 0.0f);
-        cmd_list->PushConstants(m_pcb_pass_cpu);
-        
-        // set textures
-        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
-        
-        // render
-        cmd_list->Dispatch(tex_out);
-        
+        cmd_list->BeginTimeblock("sharpening");
+        {
+            // set pipeline state
+            static RHI_PipelineState pso;
+            pso.shaders[Compute] = shader_c;
+            cmd_list->SetPipelineState(pso);
+            
+            // set pass constants
+            m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Sharpness), 0.0f, 0.0f);
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+            
+            // set textures
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
+            
+            // render
+            cmd_list->Dispatch(tex_out);
+        }
         cmd_list->EndTimeblock();
     }
 

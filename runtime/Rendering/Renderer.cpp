@@ -62,7 +62,8 @@ namespace Spartan
 
     // misc
     uint32_t Renderer::m_resource_index                           = 0;
-    atomic<bool> Renderer::m_resources_created                    = false;
+    atomic<bool> Renderer::m_initialized_resources                = false;
+    atomic<bool> Renderer::m_initialized_third_party              = false;
     atomic<uint32_t> Renderer::m_environment_mips_to_filter_count = 0;
     unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
     mutex Renderer::m_mutex_renderables;
@@ -147,21 +148,26 @@ namespace Spartan
         );
 
         // third party tool initialization
-        RHI_FidelityFX::Initialize();
-        RHI_OpenImageDenoise::Initialize();
+        ThreadPool::AddTask([]()
+        {
+            m_initialized_third_party = false;
+            RHI_FidelityFX::Initialize();
+            RHI_OpenImageDenoise::Initialize();
+            m_initialized_third_party = true;
+        });
 
         // load/create resources
         {
             // reduce startup time by doing expensive operations in another thread
             ThreadPool::AddTask([]()
             {
-                m_resources_created = false;
+                m_initialized_resources = false;
                 CreateStandardMeshes();
                 CreateStandardTextures();
                 CreateStandardMaterials();
                 CreateFonts();
                 CreateShaders();
-                m_resources_created = true;
+                m_initialized_resources = true;
             });
 
             CreateBuffers();
@@ -238,7 +244,7 @@ namespace Spartan
     void Renderer::Tick()
     {
         // don't waste cpu/gpu time if nothing can be seen
-        if (Window::IsMinimized() || !m_resources_created)
+        if (Window::IsMinimized() || !m_initialized_resources)
             return;
 
         if (frame_num == 1)
