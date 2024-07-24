@@ -27,25 +27,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class RHI_IndexBuffer : public SpartanObject
+    enum class RHI_Buffer_Type
+    {
+        Vertex,
+        Instance,
+        Index,
+        Max
+    };
+
+    class RHI_GeometryBuffer : public SpartanObject
     {
     public:
-        RHI_IndexBuffer() = default;
-        RHI_IndexBuffer(bool is_mappable, const char* name)
+        RHI_GeometryBuffer() = default;
+        RHI_GeometryBuffer(const RHI_Buffer_Type type, const bool is_mappable, const char* name)
         {
+            m_type        = type;
             m_is_mappable = is_mappable;
             m_object_name = name;
         }
-        ~RHI_IndexBuffer();
+        ~RHI_GeometryBuffer();
 
         template<typename T>
-        void Create(const std::vector<T>& indices)
+        void Create(const std::vector<T>& data)
         {
             m_stride        = sizeof(T);
-            m_element_count = static_cast<uint32_t>(indices.size());
+            m_element_count = static_cast<uint32_t>(data.size());
             m_object_size   = static_cast<uint64_t>(m_stride * m_element_count);
 
-            RHI_CreateResource(static_cast<const void*>(indices.data()));
+            RHI_CreateResource(static_cast<const void*>(data.data()));
         }
 
         template<typename T>
@@ -68,14 +77,15 @@ namespace Spartan
             RHI_CreateResource(nullptr);
         }
 
-        void* GetMappedData()      const { return m_mapped_data; }
-        void* GetRhiResource()     const { return m_rhi_resource; }
+        void* GetMappedData() const      { return m_mapped_data; }
+        void* GetRhiResource() const     { return m_rhi_resource; }
         uint32_t GetElementCount() const { return m_element_count; }
-        uint32_t GetStride()       const { return m_stride; }
+        uint32_t GetStride() const       { return m_stride; }
 
     private:
         void RHI_CreateResource(const void* indices);
 
+        RHI_Buffer_Type m_type   = RHI_Buffer_Type::Max;
         void* m_mapped_data      = nullptr;
         bool m_is_mappable       = false;
         uint32_t m_stride        = 0;

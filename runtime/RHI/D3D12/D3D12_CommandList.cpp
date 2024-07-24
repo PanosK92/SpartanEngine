@@ -29,8 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Texture.h"
 #include "../RHI_Shader.h"
 #include "../RHI_ConstantBuffer.h"
-#include "../RHI_VertexBuffer.h"
-#include "../RHI_IndexBuffer.h"
+#include "../RHI_GeometryBuffer.h"
 #include "../RHI_BlendState.h"
 #include "../RHI_DepthStencilState.h"
 #include "../RHI_RasterizerState.h"
@@ -232,7 +231,7 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
     }
 
-    void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint32_t binding /*= 0*/)
+    void RHI_CommandList::SetBufferVertex(const RHI_GeometryBuffer* buffer, const uint32_t binding /*= 0*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
@@ -255,17 +254,19 @@ namespace Spartan
         Profiler::m_rhi_bindings_buffer_vertex++;
     }
     
-    void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
+    void RHI_CommandList::SetBufferIndex(const RHI_GeometryBuffer* buffer)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         if (m_buffer_id_index == buffer->GetObjectId())
             return;
 
+        bool is_16_bit = buffer->GetStride() == sizeof(uint16_t);
+
         D3D12_INDEX_BUFFER_VIEW index_buffer_view = {};
         index_buffer_view.BufferLocation          = 0;
         index_buffer_view.SizeInBytes             = static_cast<UINT>(buffer->GetObjectSize());
-        index_buffer_view.Format                  = buffer->Is16Bit() ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+        index_buffer_view.Format                  = is_16_bit ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
 
         static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->IASetIndexBuffer(
             &index_buffer_view // pView

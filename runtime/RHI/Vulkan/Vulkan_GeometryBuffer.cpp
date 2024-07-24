@@ -23,8 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
-#include "../RHI_VertexBuffer.h"
+#include "../RHI_GeometryBuffer.h"
 #include "../RHI_CommandList.h"
+#include "../Rendering/Renderer.h"
 //================================
 
 //= NAMESPACES =====
@@ -33,7 +34,7 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_VertexBuffer::~RHI_VertexBuffer()
+    RHI_GeometryBuffer::~RHI_GeometryBuffer()
     {
         if (m_rhi_resource)
         {
@@ -42,7 +43,7 @@ namespace Spartan
         }
     }
 
-    void RHI_VertexBuffer::RHI_CreateResource(const void* vertices)
+    void RHI_GeometryBuffer::RHI_CreateResource(const void* indices)
     {
         // destroy previous buffer
         if (m_rhi_resource)
@@ -51,27 +52,30 @@ namespace Spartan
             m_rhi_resource = nullptr;
         }
 
-        m_is_mappable = vertices == nullptr;
+        bool vertex                = m_type == RHI_Buffer_Type::Vertex || m_type == RHI_Buffer_Type::Instance;
+        VkBufferUsageFlagBits type = vertex ? VK_BUFFER_USAGE_VERTEX_BUFFER_BIT : VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+        m_is_mappable              = indices == nullptr;
 
         if (m_is_mappable)
         {
             // define memory properties
-            uint32_t flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
+            uint32_t flags  = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
 
-            // created
-            RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, flags, nullptr, m_object_name.c_str());
+            // create
+           
+            RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, type, flags, nullptr, m_object_name.c_str());
 
             // get mapped data pointer
             m_mapped_data = RHI_Device::MemoryGetMappedDataFromBuffer(m_rhi_resource);
         }
-        else // the reason we use staging is because memory with VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, the buffer is not mappable but it's fast, we want that.
+        else // the reason we use staging is because memory with VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT is not mappable but it's fast, we want that.
         {
-            // create staging/source buffer and copy the vertices to it
+            // create staging/source buffer and copy the indices to it
             void* staging_buffer = nullptr;
-            RHI_Device::MemoryBufferCreate(staging_buffer, m_object_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertices, m_object_name.c_str());
+            RHI_Device::MemoryBufferCreate(staging_buffer, m_object_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indices, m_object_name.c_str());
 
             // create destination buffer
-            RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, m_object_name.c_str());
+            RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | type, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, m_object_name.c_str());
 
             // copy staging buffer to destination buffer
             {
@@ -89,7 +93,7 @@ namespace Spartan
                 // flush and free command buffer
                 RHI_Device::CmdImmediateSubmit(cmd_list);
 
-                // destroy staging resources
+                // destroy staging buffer
                 RHI_Device::MemoryBufferDestroy(staging_buffer);
             }
         }

@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Light.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_CommandList.h"
-#include "../RHI/RHI_VertexBuffer.h"
+#include "../RHI/RHI_GeometryBuffer.h"
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_FidelityFX.h"
 #include "../RHI/RHI_RasterizerState.h"

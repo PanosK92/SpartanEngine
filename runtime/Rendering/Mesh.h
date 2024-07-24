@@ -94,8 +94,8 @@ namespace Spartan
 
         // gpu buffers
         void CreateGpuBuffers();
-        RHI_IndexBuffer* GetIndexBuffer()   { return m_index_buffer.get();  }
-        RHI_VertexBuffer* GetVertexBuffer() { return m_vertex_buffer.get(); }
+        RHI_GeometryBuffer* GetIndexBuffer()  { return m_index_buffer.get();  }
+        RHI_GeometryBuffer* GetVertexBuffer() { return m_vertex_buffer.get(); }
 
         // root entity
         std::weak_ptr<Entity> GetRootEntity() { return m_root_entity; }
@@ -119,8 +119,8 @@ namespace Spartan
         std::vector<uint32_t> m_indices;
 
         // gpu buffers
-        std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer;
-        std::shared_ptr<RHI_IndexBuffer> m_index_buffer;
+        std::shared_ptr<RHI_GeometryBuffer> m_vertex_buffer;
+        std::shared_ptr<RHI_GeometryBuffer> m_index_buffer;
 
         // aabb
         Math::BoundingBox m_aabb;
