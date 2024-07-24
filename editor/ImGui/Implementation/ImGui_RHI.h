@@ -219,9 +219,9 @@ namespace ImGui::RHI
         // update vertex and index buffers
         {
             // grow vertex buffer as needed
-            if (vertex_buffer->GetVertexCount() < static_cast<uint32_t>(draw_data->TotalVtxCount))
+            if (vertex_buffer->GetElementCount() < static_cast<uint32_t>(draw_data->TotalVtxCount))
             {
-                const uint32_t vertex_count     = vertex_buffer->GetVertexCount();
+                const uint32_t vertex_count     = vertex_buffer->GetElementCount();
                 const uint32_t vertex_count_new = draw_data->TotalVtxCount + 15000;
                 vertex_buffer->CreateDynamic<ImDrawVert>(vertex_count_new);
 
@@ -232,9 +232,9 @@ namespace ImGui::RHI
             }
 
             // grow index buffer as needed
-            if (index_buffer->GetIndexCount() < static_cast<uint32_t>(draw_data->TotalIdxCount))
+            if (index_buffer->GetElementCount() < static_cast<uint32_t>(draw_data->TotalIdxCount))
             {
-                const uint32_t index_count     = index_buffer->GetIndexCount();
+                const uint32_t index_count     = index_buffer->GetElementCount();
                 const uint32_t index_count_new = draw_data->TotalIdxCount + 30000;
                 index_buffer->CreateDynamic<ImDrawIdx>(index_count_new);
 

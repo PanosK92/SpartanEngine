@@ -21,9 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES =====================
 #include "../Core/SpartanObject.h"
-//============================
+//================================
 
 namespace Spartan
 {
@@ -41,46 +41,45 @@ namespace Spartan
         template<typename T>
         void Create(const std::vector<T>& indices)
         {
-            m_stride      = sizeof(T);
-            m_index_count = static_cast<uint32_t>(indices.size());
-            m_object_size = static_cast<uint64_t>(m_stride * m_index_count);
+            m_stride        = sizeof(T);
+            m_element_count = static_cast<uint32_t>(indices.size());
+            m_object_size   = static_cast<uint64_t>(m_stride * m_element_count);
 
-            _create(static_cast<const void*>(indices.data()));
+            RHI_CreateResource(static_cast<const void*>(indices.data()));
         }
 
         template<typename T>
         void Create(const T* indices, const uint32_t index_count)
         {
-            m_stride      = sizeof(T);
-            m_index_count = index_count;
-            m_object_size = static_cast<uint64_t>(m_stride * m_index_count);
+            m_stride        = sizeof(T);
+            m_element_count = index_count;
+            m_object_size   = static_cast<uint64_t>(m_stride * m_element_count);
 
-            _create(static_cast<const void*>(indices));
+            RHI_CreateResource(static_cast<const void*>(indices));
         }
 
         template<typename T>
         void CreateDynamic(const uint32_t index_count)
         {
-            m_stride      = sizeof(T);
-            m_index_count = index_count;
-            m_object_size = static_cast<uint64_t>(m_stride * m_index_count);
+            m_stride        = sizeof(T);
+            m_element_count = index_count;
+            m_object_size   = static_cast<uint64_t>(m_stride * m_element_count);
 
-            _create(nullptr);
+            RHI_CreateResource(nullptr);
         }
 
-        void* GetMappedData()    const { return m_mapped_data; }
-        void* GetRhiResource()   const { return m_rhi_resource; }
-        uint32_t GetIndexCount() const { return m_index_count; }
-        bool Is16Bit()           const { return sizeof(uint16_t) == m_stride; }
-        bool Is32Bit()           const { return sizeof(uint32_t) == m_stride; }
+        void* GetMappedData()      const { return m_mapped_data; }
+        void* GetRhiResource()     const { return m_rhi_resource; }
+        uint32_t GetElementCount() const { return m_element_count; }
+        uint32_t GetStride()       const { return m_stride; }
 
     private:
-        void _create(const void* indices);
+        void RHI_CreateResource(const void* indices);
 
-        void* m_mapped_data    = nullptr;
-        bool m_is_mappable     = false;
-        uint32_t m_stride      = 0;
-        uint32_t m_index_count = 0;
+        void* m_mapped_data      = nullptr;
+        bool m_is_mappable       = false;
+        uint32_t m_stride        = 0;
+        uint32_t m_element_count = 0;
 
         // RHI Resources
         void* m_rhi_resource = nullptr;

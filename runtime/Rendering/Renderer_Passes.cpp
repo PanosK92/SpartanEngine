@@ -2091,7 +2091,7 @@ namespace Spartan
 
             // grow vertex buffer (if needed)
             uint32_t vertex_count = static_cast<uint32_t>(m_line_vertices.size());
-            if (vertex_count > m_vertex_buffer_lines->GetVertexCount())
+            if (vertex_count > m_vertex_buffer_lines->GetElementCount())
             {
                 m_vertex_buffer_lines->CreateDynamic<RHI_Vertex_PosCol>(vertex_count);
             }

@@ -43,7 +43,7 @@ namespace Spartan
         }
     }
 
-    void RHI_IndexBuffer::_create(const void* indices)
+    void RHI_IndexBuffer::RHI_CreateResource(const void* indices)
     {
         // destroy previous buffer
         if (m_rhi_resource)

@@ -197,7 +197,7 @@ namespace Spartan
         }
 
         // create/grow buffers
-        if (vertices.size() > m_vertex_buffer->GetVertexCount())
+        if (vertices.size() > m_vertex_buffer->GetElementCount())
         {
             m_vertex_buffer->CreateDynamic<RHI_Vertex_PosTex>(static_cast<uint32_t>(vertices.size()));
             m_index_buffer->CreateDynamic<uint32_t>(static_cast<uint32_t>(indices.size()));
@@ -222,6 +222,6 @@ namespace Spartan
     uint32_t Font::GetIndexCount()
     {
         SP_ASSERT(m_index_buffer);
-        return m_index_buffer->GetIndexCount();
+        return m_index_buffer->GetElementCount();
     }
 }
