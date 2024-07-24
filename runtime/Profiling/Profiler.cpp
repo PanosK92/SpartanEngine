@@ -1,4 +1,4 @@
-﻿/*
+﻿#/*
 Copyright(c) 2016-2024 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -45,7 +45,6 @@ namespace Spartan
     uint32_t Profiler::m_rhi_timeblock_count            = 0;
     uint32_t Profiler::m_rhi_pipeline_bindings          = 0;
     uint32_t Profiler::m_rhi_pipeline_barriers          = 0;
-    uint32_t Profiler::m_rhi_pipeline_vertex_count      = 0;
     uint32_t Profiler::m_rhi_bindings_buffer_index      = 0;
     uint32_t Profiler::m_rhi_bindings_buffer_vertex     = 0;
     uint32_t Profiler::m_rhi_bindings_buffer_constant   = 0;
@@ -514,9 +513,8 @@ namespace Spartan
 
         // resources
         oss_metrics << "\nPipeline\n"
-            << "Bindings:\t\t\t" << m_rhi_pipeline_bindings     << endl
-            << "Barriers:\t\t\t" << m_rhi_pipeline_barriers     << endl
-            << "Vertex count:\t" << m_rhi_pipeline_vertex_count << endl;
+            << "Bindings:\t\t\t" << m_rhi_pipeline_bindings << endl
+            << "Barriers:\t\t\t" << m_rhi_pipeline_barriers << endl;
 
         // resources
         oss_metrics << "\nResources\n"

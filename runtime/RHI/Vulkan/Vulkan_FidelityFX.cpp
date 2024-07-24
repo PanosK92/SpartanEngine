@@ -320,7 +320,7 @@ namespace Spartan
                 sssr::cubemap = make_unique<RHI_TextureCube>(1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv, "ffx_environment");
             }
 
-            // brixelizer gi initialization
+            // brixelizer gi
             {
                 // scratch buffer
                 brixelizer_gi::buffer_scratch = make_shared<RHI_Buffer>(
@@ -336,7 +336,7 @@ namespace Spartan
                     brixelizer_gi::sdf_atlas_size,
                     brixelizer_gi::sdf_atlas_size,
                     RHI_Format::R8_Unorm,
-                    RHI_Texture_Uav,
+                    RHI_Texture_Srv | RHI_Texture_Uav,
                     "ffx_sdf_atlas"
                 );
 
