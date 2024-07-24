@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderable.h"
 #include "../Entity.h"
 #include "../Rendering/Renderer.h"
-#include "../RHI/RHI_VertexBuffer.h"
+#include "../RHI/RHI_GeometryBuffer.h"
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../Rendering/GridPartitioning.h"
@@ -269,7 +269,7 @@ namespace Spartan
         return m_material ? m_material->GetObjectName() : "";
     }
 
-	RHI_IndexBuffer* Renderable::GetIndexBuffer() const
+    RHI_GeometryBuffer* Renderable::GetIndexBuffer() const
 	{
         if (!m_mesh)
             return nullptr;
@@ -277,7 +277,7 @@ namespace Spartan
         return m_mesh->GetIndexBuffer();
 	}
 
-    RHI_VertexBuffer* Renderable::GetVertexBuffer() const
+    RHI_GeometryBuffer* Renderable::GetVertexBuffer() const
     {
         if (!m_mesh)
             return nullptr;
@@ -309,7 +309,7 @@ namespace Spartan
             instances_transposed.push_back(instance.Transposed());
         }
 
-        m_instance_buffer = make_shared<RHI_VertexBuffer>(false, "instance_buffer");
+        m_instance_buffer = make_shared<RHI_GeometryBuffer>(RHI_Buffer_Type::Instance, false, "instance_buffer");
         m_instance_buffer->Create<Matrix>(instances_transposed);
 
         m_bounding_box_dirty = true;

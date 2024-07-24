@@ -23,8 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Mesh.h"
 #include "Renderer.h"
-#include "../RHI/RHI_VertexBuffer.h"
-#include "../RHI/RHI_IndexBuffer.h"
+#include "../RHI/RHI_GeometryBuffer.h"
 #include "../RHI/RHI_Texture2D.h"
 #include "../World/Components/Renderable.h"
 #include "../World/Entity.h"
@@ -255,11 +254,11 @@ namespace Spartan
     void Mesh::CreateGpuBuffers()
     {
         SP_ASSERT_MSG(!m_indices.empty(), "There are no indices");
-        m_index_buffer = make_shared<RHI_IndexBuffer>(false, (string("mesh_index_buffer_") + m_object_name).c_str());
+        m_index_buffer = make_shared<RHI_GeometryBuffer>(RHI_Buffer_Type::Index, false, (string("mesh_index_buffer_") + m_object_name).c_str());
         m_index_buffer->Create(m_indices);
 
         SP_ASSERT_MSG(!m_vertices.empty(), "There are no vertices");
-        m_vertex_buffer = make_shared<RHI_VertexBuffer>(false, (string("mesh_vertex_buffer_") + m_object_name).c_str());
+        m_vertex_buffer = make_shared<RHI_GeometryBuffer>(RHI_Buffer_Type::Vertex, false, (string("mesh_vertex_buffer_") + m_object_name).c_str());
         m_vertex_buffer->Create(m_vertices);
     }
 

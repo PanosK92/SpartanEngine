@@ -25,8 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Queue.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Pipeline.h"
-#include "../RHI_VertexBuffer.h"
-#include "../RHI_IndexBuffer.h"
+#include "../RHI_GeometryBuffer.h"
 #include "../RHI_ConstantBuffer.h"
 #include "../RHI_Buffer.h"
 #include "../RHI_Sampler.h"
@@ -1339,7 +1338,7 @@ namespace Spartan
         );
     }
 
-    void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint32_t binding /*= 0*/)
+    void RHI_CommandList::SetBufferVertex(const RHI_GeometryBuffer* buffer, const uint32_t binding /*= 0*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(buffer != nullptr);
@@ -1363,7 +1362,7 @@ namespace Spartan
         Profiler::m_rhi_bindings_buffer_vertex++;
     }
 
-    void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
+    void RHI_CommandList::SetBufferIndex(const RHI_GeometryBuffer* buffer)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(buffer != nullptr);

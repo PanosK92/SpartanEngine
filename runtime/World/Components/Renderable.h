@@ -91,14 +91,14 @@ namespace Spartan
         //===============================================================================
 
         // mesh
-        RHI_IndexBuffer* GetIndexBuffer() const;
-        RHI_VertexBuffer* GetVertexBuffer() const;
+        RHI_GeometryBuffer* GetIndexBuffer() const;
+        RHI_GeometryBuffer* GetVertexBuffer() const;
         const std::string& GetMeshName() const;
 
         // instancing
-        bool HasInstancing() const                  { return !m_instances.empty(); }
-        RHI_VertexBuffer* GetInstanceBuffer() const { return m_instance_buffer.get(); }
-        uint32_t GetInstanceCount()  const          { return static_cast<uint32_t>(m_instances.size()); }
+        bool HasInstancing() const                    { return !m_instances.empty(); }
+        RHI_GeometryBuffer* GetInstanceBuffer() const { return m_instance_buffer.get(); }
+        uint32_t GetInstanceCount()  const            { return static_cast<uint32_t>(m_instances.size()); }
         void SetInstances(const std::vector<Math::Matrix>& instances);
 
         // misc
@@ -133,7 +133,7 @@ namespace Spartan
         // instancing
         std::vector<Math::Matrix> m_instances;
         std::vector<uint32_t> m_instance_group_end_indices;
-        std::shared_ptr<RHI_VertexBuffer> m_instance_buffer;
+        std::shared_ptr<RHI_GeometryBuffer> m_instance_buffer;
 
         // misc
         Math::Matrix m_transform_previous = Math::Matrix::Identity;

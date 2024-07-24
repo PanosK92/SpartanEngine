@@ -44,9 +44,8 @@ namespace Spartan
     class RHI_BlendState;
     class RHI_DepthStencilState;
     class RHI_InputLayout;
-    class RHI_VertexBuffer;
-    class RHI_IndexBuffer;
     class RHI_Buffer;
+    class RHI_GeometryBuffer;
     class RHI_ConstantBuffer;
     class RHI_Sampler;
     class RHI_Viewport;

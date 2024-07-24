@@ -36,7 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_RasterizerState.h"
 #include "../RHI/RHI_DepthStencilState.h"
 #include "../RHI/RHI_Buffer.h"
-#include "../RHI/RHI_VertexBuffer.h"
+#include "../RHI/RHI_GeometryBuffer.h"
 #include "../RHI/RHI_FidelityFX.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_Queue.h"
@@ -548,7 +548,7 @@ namespace Spartan
         create_mesh(MeshType::Grid);
 
         // this buffers holds all debug primitives that can be drawn
-        m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(true, "lines");
+        m_vertex_buffer_lines = make_shared<RHI_GeometryBuffer>(RHI_Buffer_Type::Vertex, true, "lines");
     }
 
     void Renderer::CreateStandardTextures()
