@@ -177,7 +177,7 @@ namespace Spartan
         static void Pass_MotionBlur(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_DepthOfField(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_Ffx_Cas(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);     
+        static void Pass_Sharpening(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);     
         static void Pass_Upscale(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         // passes - utility
         static void Pass_Blur(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const float radius, const uint32_t mip = rhi_all_mips);
@@ -207,7 +207,8 @@ namespace Spartan
         static uint32_t m_lines_index_depth_off;
         static uint32_t m_lines_index_depth_on;
         static uint32_t m_resource_index;
-        static std::atomic<bool> m_resources_created;
+        static std::atomic<bool> m_initialized_resources;
+        static std::atomic<bool> m_initialized_third_party;
         static std::atomic<uint32_t> m_environment_mips_to_filter_count;
         static std::mutex m_mutex_renderables;
     };

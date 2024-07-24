@@ -199,6 +199,11 @@ namespace Spartan
             memcpy(ffx_matrix, data, sizeof(Matrix));
         }
 
+        void set_ffx_float16(float* ffx_matrix_destination, float* ffx_matrix_source)
+        {
+            memcpy(ffx_matrix_destination, ffx_matrix_source, sizeof(Matrix));
+        }
+
         FfxInterface ffx_interface = {};
 
         namespace fsr3
@@ -269,10 +274,10 @@ namespace Spartan
                 BrickID,
                 CascadeID
             };
-            DebugMode debug_mode                                         = DebugMode::Distance;
+            DebugMode debug_mode                                         = DebugMode::Gradient;
             FfxBrixelizerDebugVisualizationDescription debug_description = {};
 
-            FfxBrixelizerTraceDebugModes to_ffx_debug_state(const DebugMode debug_mode)
+            FfxBrixelizerTraceDebugModes to_ffx_debug_mode(const DebugMode debug_mode)
             {
                 if (debug_mode == brixelizer_gi::DebugMode::Distance)   return FFX_BRIXELIZER_TRACE_DEBUG_MODE_DISTANCE;
                 if (debug_mode == brixelizer_gi::DebugMode::UVW)        return FFX_BRIXELIZER_TRACE_DEBUG_MODE_UVW;
@@ -745,34 +750,40 @@ namespace Spartan
             }
 
             // set parameters
-            brixelizer_gi::sdf_center                                 = brixelizer_gi::sdf_follow_camera ? cb_frame->camera_position : brixelizer_gi::sdf_center;
-            brixelizer_gi::description_update.sdfCenter[0]            = brixelizer_gi::sdf_center.x;
-            brixelizer_gi::description_update.sdfCenter[1]            = brixelizer_gi::sdf_center.y;
-            brixelizer_gi::description_update.sdfCenter[2]            = brixelizer_gi::sdf_center.z;
-            brixelizer_gi::description_update.frameIndex              = cb_frame->frame;                             // index of the current frame
-            brixelizer_gi::description_update.maxReferences           = 32 * (1 << 20);                              // maximum number of triangle voxel references to be stored in the update
-            brixelizer_gi::description_update.triangleSwapSize        = 300 * (1 << 20);                             // size of the swap space available to be used for storing triangles in the update
-            brixelizer_gi::description_update.maxBricksPerBake        = 1 << 14;                                     // maximum number of bricks to be updated
-            brixelizer_gi::description_update.outScratchBufferSize    = &scratch_buffer_size;                        // optional pointer to receive the size of the GPU scratch buffer needed to process the update
-            brixelizer_gi::description_update.outStats                = &stats;                                      // optional pointer to receive statistics for the update. Note, stats read back after a call to update do
+            brixelizer_gi::sdf_center                              = brixelizer_gi::sdf_follow_camera ? cb_frame->camera_position : brixelizer_gi::sdf_center;
+            brixelizer_gi::description_update.sdfCenter[0]         = brixelizer_gi::sdf_center.x;
+            brixelizer_gi::description_update.sdfCenter[1]         = brixelizer_gi::sdf_center.y;
+            brixelizer_gi::description_update.sdfCenter[2]         = brixelizer_gi::sdf_center.z;
+            brixelizer_gi::description_update.frameIndex           = cb_frame->frame;      // index of the current frame
+            brixelizer_gi::description_update.maxReferences        = 32 * (1 << 20);       // maximum number of triangle voxel references to be stored in the update
+            brixelizer_gi::description_update.triangleSwapSize     = 300 * (1 << 20);      // size of the swap space available to be used for storing triangles in the update
+            brixelizer_gi::description_update.maxBricksPerBake     = 1 << 14;              // maximum number of bricks to be updated
+            brixelizer_gi::description_update.outScratchBufferSize = &scratch_buffer_size; // optional pointer to receive the size of the GPU scratch buffer needed to process the update
+            brixelizer_gi::description_update.outStats             = &stats;               // optional pointer to receive statistics for the update. Note, stats read back after a call to update do
 
             // set debug visualization parameters
             if (brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Off)
             {
-                brixelizer_gi::description_update.populateDebugAABBsFlags = FFX_BRIXELIZER_POPULATE_AABBS_CASCADE_AABBS; // flags determining which AABBs to draw in a debug visualization
+                // enable
+                brixelizer_gi::description_update.populateDebugAABBsFlags = FFX_BRIXELIZER_POPULATE_AABBS_CASCADE_AABBS;
                 brixelizer_gi::description_update.debugVisualizationDesc  = &debug_description;
 
-                set_ffx_float16(brixelizer_gi::debug_description.inverseViewMatrix, cb_frame->view);
+                // set output texture
+                brixelizer_gi::debug_description.output       = to_ffx_resource(tex_diffuse_gi, nullptr, L"brixelizer_debug_visualization");
+                brixelizer_gi::debug_description.renderWidth  = tex_diffuse_gi->GetWidth();
+                brixelizer_gi::debug_description.renderHeight = tex_diffuse_gi->GetHeight();
+
+                // set matrices
+                set_ffx_float16(brixelizer_gi::debug_description.inverseViewMatrix,       cb_frame->view);
                 set_ffx_float16(brixelizer_gi::debug_description.inverseProjectionMatrix, cb_frame->projection);
-                brixelizer_gi::debug_description.debugState        = brixelizer_gi::to_ffx_debug_state(brixelizer_gi::debug_mode);
-                brixelizer_gi::debug_description.startCascadeIndex = 2 * brixelizer_gi::cascade_count;
-                brixelizer_gi::debug_description.endCascadeIndex   = 3 * brixelizer_gi::cascade_count - 1;
-                brixelizer_gi::debug_description.tMin              = 0.0f;
-                brixelizer_gi::debug_description.tMax              = 10000.0f;
+
+                // set parameters
+                brixelizer_gi::debug_description.debugState        = brixelizer_gi::to_ffx_debug_mode(brixelizer_gi::debug_mode);
+                brixelizer_gi::debug_description.startCascadeIndex = brixelizer_gi::description_dispatch_gi.startCascade;
+                brixelizer_gi::debug_description.endCascadeIndex   = brixelizer_gi::description_dispatch_gi.endCascade;
+                brixelizer_gi::debug_description.tMin              = brixelizer_gi::description_dispatch_gi.tMin;
+                brixelizer_gi::debug_description.tMax              = brixelizer_gi::description_dispatch_gi.tMax;
                 brixelizer_gi::debug_description.sdfSolveEps       = 0.5f;
-                brixelizer_gi::debug_description.renderWidth       = tex_diffuse_gi->GetWidth();
-                brixelizer_gi::debug_description.renderHeight      = tex_diffuse_gi->GetHeight();
-                brixelizer_gi::debug_description.output            = to_ffx_resource(tex_diffuse_gi, nullptr, L"brixelizer_debug_visualization");
             }
 
             // bake update
@@ -863,35 +874,35 @@ namespace Spartan
         {
             FfxBrixelizerGIDebugDescription debug_desc = {};
 
-            set_ffx_float16(debug_desc.view, Matrix::Transpose(cb_frame->view));
-            set_ffx_float16(debug_desc.projection, Matrix::Transpose(cb_frame->projection));
+            // set output texture
+            debug_desc.outputDebug   = brixelizer_gi::description_dispatch_gi.outputDiffuseGI;
+            debug_desc.outputSize[0] = tex_diffuse_gi->GetWidth();
+            debug_desc.outputSize[1] = tex_diffuse_gi->GetHeight();
 
-            debug_desc.outputSize[0]    = tex_diffuse_gi->GetWidth();
-            debug_desc.outputSize[1]    = tex_diffuse_gi->GetHeight();
-            debug_desc.normalsUnpackMul = 1.0f;
-            debug_desc.normalsUnpackAdd = 0.0f;
-            debug_desc.debugMode        = FFX_BRIXELIZER_GI_DEBUG_MODE_RADIANCE_CACHE;
-            debug_desc.startCascade     = 2 * brixelizer_gi::cascade_count;
-            debug_desc.endCascade       = 3 * brixelizer_gi::cascade_count - 1;
+            // set matrices
+            set_ffx_float16(debug_desc.view,       brixelizer_gi::description_dispatch_gi.view);
+            set_ffx_float16(debug_desc.projection, brixelizer_gi::description_dispatch_gi.projection);
 
-            debug_desc.depth       = brixelizer_gi::description_dispatch_gi.depth;
-            debug_desc.normal      = brixelizer_gi::description_dispatch_gi.normal;
-            debug_desc.sdfAtlas    = brixelizer_gi::description_dispatch_gi.sdfAtlas;
-            debug_desc.bricksAABBs = brixelizer_gi::description_dispatch_gi.bricksAABBs;
-
+            debug_desc.debugMode        = FfxBrixelizerGIDebugMode::FFX_BRIXELIZER_GI_DEBUG_MODE_RADIANCE_CACHE;
+            debug_desc.normalsUnpackMul = brixelizer_gi::description_dispatch_gi.normalsUnpackMul;
+            debug_desc.normalsUnpackAdd = brixelizer_gi::description_dispatch_gi.normalsUnpackAdd;
+            debug_desc.startCascade     = brixelizer_gi::description_dispatch_gi.startCascade;
+            debug_desc.endCascade       = brixelizer_gi::description_dispatch_gi.endCascade;
+            debug_desc.depth            = brixelizer_gi::description_dispatch_gi.depth;
+            debug_desc.normal           = brixelizer_gi::description_dispatch_gi.normal;
+            debug_desc.sdfAtlas         = brixelizer_gi::description_dispatch_gi.sdfAtlas;
+            debug_desc.bricksAABBs      = brixelizer_gi::description_dispatch_gi.bricksAABBs;
             for (uint32_t i = 0; i < brixelizer_gi::cascade_max; ++i)
             {
                 debug_desc.cascadeAABBTrees[i] = brixelizer_gi::description_dispatch_gi.cascadeAABBTrees[i];
                 debug_desc.cascadeBrickMaps[i] = brixelizer_gi::description_dispatch_gi.cascadeBrickMaps[i];
             }
 
-            debug_desc.outputDebug = brixelizer_gi::description_dispatch_gi.outputDiffuseGI;
-
             FfxErrorCode error = ffxBrixelizerGetRawContext(&brixelizer_gi::context, &debug_desc.brixelizerContext);
             SP_ASSERT(error == FFX_OK);
 
             FfxCommandList ffx_command_list = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
-            error = ffxBrixelizerGIContextDebugVisualization(&brixelizer_gi::context_gi, &debug_desc, ffx_command_list);
+            error                           = ffxBrixelizerGIContextDebugVisualization(&brixelizer_gi::context_gi, &debug_desc, ffx_command_list);
             SP_ASSERT(error == FFX_OK);
         }
     }
