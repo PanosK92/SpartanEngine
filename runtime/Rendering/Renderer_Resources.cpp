@@ -84,7 +84,7 @@ namespace Spartan
         {
             uint32_t times_used_in_frame = 12; // safe to tweak this, if it's not enough the engine will assert
             uint32_t stride              = static_cast<uint32_t>(sizeof(uint32_t));
-            buffer(Renderer_Buffer::Spd) = make_shared<RHI_Buffer>(stride, element_count * times_used_in_frame, RHI_Buffer_Uav, "spd_counter");
+            buffer(Renderer_Buffer::Spd) = make_shared<RHI_Buffer>(stride, element_count * times_used_in_frame, 0, "spd_counter");
 
             // only needs to be set once, then after each use SPD resets it itself
             uint32_t counter_value = 0;
@@ -92,10 +92,10 @@ namespace Spartan
         }
 
         uint32_t stride = static_cast<uint32_t>(sizeof(Sb_Material)) * rhi_max_array_size;
-        buffer(Renderer_Buffer::Materials) = make_shared<RHI_Buffer>(stride, 1, RHI_Buffer_Uav, "materials");
+        buffer(Renderer_Buffer::Materials) = make_shared<RHI_Buffer>(stride, 1, 0, "materials");
 
         stride = static_cast<uint32_t>(sizeof(Sb_Light)) * rhi_max_array_size_lights;
-        buffer(Renderer_Buffer::Lights) = make_shared<RHI_Buffer>(stride, 1, RHI_Buffer_Uav, "lights");
+        buffer(Renderer_Buffer::Lights) = make_shared<RHI_Buffer>(stride, 1, 0, "lights");
     }
 
     void Renderer::CreateDepthStencilStates()
