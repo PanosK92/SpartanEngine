@@ -49,9 +49,7 @@ namespace Spartan
         m_object_size = m_stride * m_element_count;
 
         // determine Vulkan buffer usage flags
-        VkBufferUsageFlags vk_usage = 0;
-        if (m_usage & RHI_Buffer_Uav)
-            vk_usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+        VkBufferUsageFlags vk_usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
         if (m_usage & RHI_Buffer_Transfer_Src)
             vk_usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         if (m_usage & RHI_Buffer_Transfer_Dst)

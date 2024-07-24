@@ -173,9 +173,9 @@ namespace Spartan
             }
             else
             {
-                resource = buffer->GetRhiResource();
+                resource         = buffer->GetRhiResource();
                 description.type = FFX_RESOURCE_TYPE_BUFFER;
-                state = FFX_RESOURCE_STATE_UNORDERED_ACCESS;
+                state            = FFX_RESOURCE_STATE_UNORDERED_ACCESS;
             }
 
             return ffxGetResourceVK(
@@ -326,7 +326,7 @@ namespace Spartan
                 brixelizer_gi::buffer_scratch = make_shared<RHI_Buffer>(
                     1 << 30, // 1024 MB (will grow if needed)
                     1,
-                    RHI_Buffer_Uav | RHI_Buffer_Transfer_Src | RHI_Buffer_Transfer_Dst,
+                    RHI_Buffer_Transfer_Src | RHI_Buffer_Transfer_Dst,
                     "ffx_brixelizer_gi_scratch"
                 );
 
@@ -336,7 +336,7 @@ namespace Spartan
                     brixelizer_gi::sdf_atlas_size,
                     brixelizer_gi::sdf_atlas_size,
                     RHI_Format::R8_Unorm,
-                    RHI_Texture_Srv | RHI_Texture_Uav,
+                    RHI_Texture_Uav,
                     "ffx_sdf_atlas"
                 );
 
@@ -344,7 +344,7 @@ namespace Spartan
                 brixelizer_gi::buffer_brick_aabbs = make_shared<RHI_Buffer>(
                     brixelizer_gi::brick_aabbs_stride,
                     brixelizer_gi::bricks_max,
-                    RHI_Buffer_Uav,
+                    0,
                     "ffx_brick_aabbs"
                 );
 
@@ -355,7 +355,7 @@ namespace Spartan
                     brixelizer_gi::buffer_cascade_aabb_tree[i] = make_shared<RHI_Buffer>(
                         brixelizer_gi::cascade_aabb_tree_stride,
                         brixelizer_gi::cascade_aabb_tree_size / brixelizer_gi::cascade_aabb_tree_stride,
-                        RHI_Buffer_Uav,
+                        0,
                         name.c_str()
                     );
                 }
@@ -367,7 +367,7 @@ namespace Spartan
                     brixelizer_gi::buffer_cascade_brick_map[i] = make_shared<RHI_Buffer>(
                         brixelizer_gi::cascade_brick_map_stride,
                         brixelizer_gi::cascade_brick_map_size / brixelizer_gi::cascade_brick_map_stride,
-                        RHI_Buffer_Uav,
+                        0,
                         name.c_str()
                     );
                 }
@@ -757,8 +757,8 @@ namespace Spartan
             brixelizer_gi::description_update.maxReferences        = 32 * (1 << 20);       // maximum number of triangle voxel references to be stored in the update
             brixelizer_gi::description_update.triangleSwapSize     = 300 * (1 << 20);      // size of the swap space available to be used for storing triangles in the update
             brixelizer_gi::description_update.maxBricksPerBake     = 1 << 14;              // maximum number of bricks to be updated
-            brixelizer_gi::description_update.outScratchBufferSize = &scratch_buffer_size; // optional pointer to receive the size of the GPU scratch buffer needed to process the update
-            brixelizer_gi::description_update.outStats             = &stats;               // optional pointer to receive statistics for the update. Note, stats read back after a call to update do
+            brixelizer_gi::description_update.outScratchBufferSize = &scratch_buffer_size; // the size of the GPU scratch buffer needed to process the update
+            brixelizer_gi::description_update.outStats             = &stats;               // statistics for the update, stats read back after ffxBrixelizerUpdate()
 
             // set debug visualization parameters
             if (brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Off)
@@ -798,7 +798,7 @@ namespace Spartan
                 while (new_size < scratch_buffer_size) new_size <<= 1;
 
                 // create
-                brixelizer_gi::buffer_scratch = make_shared<RHI_Buffer>(new_size, 1, RHI_Buffer_Uav | RHI_Buffer_Transfer_Src | RHI_Buffer_Transfer_Dst, "ffx_brixelizer_gi_scratch");
+                brixelizer_gi::buffer_scratch = make_shared<RHI_Buffer>(new_size, 1, RHI_Buffer_Transfer_Src | RHI_Buffer_Transfer_Dst, "ffx_brixelizer_gi_scratch");
 
                 // let the user know
                 float new_size_mb = static_cast<float>(new_size) / (1024.0f * 1024.0f);
@@ -872,7 +872,7 @@ namespace Spartan
             cmd_list->Blit(tex_normal, brixelizer_gi::texture_normal_previous.get(), false);
         }
 
-        // debug visualization
+        // debug visualization (overwrites diffuse gi output texture)
         if (brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Off)
         {
             FfxBrixelizerGIDebugDescription debug_desc = {};

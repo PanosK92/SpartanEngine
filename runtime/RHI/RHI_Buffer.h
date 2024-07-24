@@ -29,9 +29,8 @@ namespace Spartan
 {
     enum RHI_Buffer_Usage : uint32_t
     {
-        RHI_Buffer_Uav          = 1 << 0,
-        RHI_Buffer_Transfer_Src = 1 << 1,
-        RHI_Buffer_Transfer_Dst = 1 << 2
+        RHI_Buffer_Transfer_Src = 1 << 0,
+        RHI_Buffer_Transfer_Dst = 1 << 1
     };
 
     class RHI_Buffer : public SpartanObject
