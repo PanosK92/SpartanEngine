@@ -229,14 +229,13 @@ namespace Spartan
         namespace brixelizer_gi
         {
             // parameters
-            const uint32_t bricks_max               = 1 << 18;
             const float    mesh_unit_size           = 0.2f;
             const float    cascade_size_ratio       = 2.0f;
             const uint32_t cascade_max              = 24;
             const uint32_t cascade_count            = cascade_max / 3;
-            const uint32_t max_bricks_x8            = bricks_max;
+            const uint32_t bricks_max               = 1 << 18;
             const uint32_t brick_aabbs_stride       = sizeof(uint32_t);
-            const uint32_t brick_aabbs_size         = max_bricks_x8 * brick_aabbs_stride;
+            const uint32_t brick_aabbs_size         = bricks_max * brick_aabbs_stride;
             const uint32_t cascade_resolution       = 64;
             const uint32_t cascade_aabb_tree_size   = (16 * 16 * 16) * sizeof(uint32_t) + (4 * 4 * 4 + 1) * sizeof(Vector3) * 2;
             const uint32_t cascade_aabb_tree_stride = sizeof(uint32_t);
@@ -344,7 +343,7 @@ namespace Spartan
                 // brick aabbs buffer
                 brixelizer_gi::buffer_brick_aabbs = make_shared<RHI_Buffer>(
                     brixelizer_gi::brick_aabbs_stride,
-                    brixelizer_gi::max_bricks_x8,
+                    brixelizer_gi::bricks_max,
                     RHI_Buffer_Uav,
                     "ffx_brick_aabbs"
                 );

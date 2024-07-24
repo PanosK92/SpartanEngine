@@ -1917,12 +1917,12 @@ namespace Spartan
         VkImageCreateInfo create_info_image = {};
         create_info_image.sType             = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         create_info_image.pNext             = texture->HasExternalMemory() ? &external_memory_image_create_info : nullptr;
-        create_info_image.imageType         = VK_IMAGE_TYPE_2D;
+        create_info_image.imageType         = texture->GetResourceType() == ResourceType::Texture3d ? VK_IMAGE_TYPE_3D : VK_IMAGE_TYPE_2D;
         create_info_image.flags             = texture->GetResourceType() == ResourceType::TextureCube ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
         create_info_image.usage             = get_image_usage_flags(texture);
         create_info_image.extent.width      = texture->GetWidth();
         create_info_image.extent.height     = texture->GetHeight();
-        create_info_image.extent.depth      = 1;
+        create_info_image.extent.depth      = texture->GetDepth();
         create_info_image.mipLevels         = texture->GetMipCount();
         create_info_image.arrayLayers       = texture->GetArrayLength();
         create_info_image.format            = vulkan_format[rhi_format_to_index(texture->GetFormat())];
