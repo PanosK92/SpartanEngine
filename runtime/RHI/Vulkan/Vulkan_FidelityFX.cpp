@@ -265,6 +265,7 @@ namespace Spartan
             array<shared_ptr<RHI_Buffer>,       cascade_max> buffer_cascade_aabb_tree = {};
             array<shared_ptr<RHI_Buffer>,       cascade_max> buffer_cascade_brick_map = {};
             shared_ptr<RHI_Buffer>              buffer_scratch                        = nullptr;
+            vector<BoundingBox> aabbs;
 
             // debug visualization (which overwrites the diffuse gi output texture)
             enum class DebugMode
@@ -279,7 +280,7 @@ namespace Spartan
                 Radiance,  // gi
                 Irradiance // gi
             };
-            DebugMode debug_mode                                            = DebugMode::Off;
+            DebugMode debug_mode                                            = DebugMode::Radiance;
             FfxBrixelizerDebugVisualizationDescription debug_description    = {};
             FfxBrixelizerGIDebugDescription            debug_description_gi = {};
 
@@ -657,7 +658,7 @@ namespace Spartan
 
         // set camera matrices
         {
-            //note: ffx expects column major layout and right handed matrices
+            // note: ffx expects column-major layout (as well ass column-major memory layout) and right-handed matrices
 
             auto adjust_matrix_view = [](const Matrix& matrix)
             {
@@ -735,89 +736,137 @@ namespace Spartan
         RHI_Texture* tex_material,
         array<RHI_Texture*, 8>& tex_noise,
         RHI_Texture* tex_diffuse_gi,
-        RHI_Texture* tex_specular_gi
+        RHI_Texture* tex_specular_gi,
+        const vector<BoundingBox>& aabbs
     )
     {
-        // update
+        // aabbs (treating them all as dynamic for now)
         {
-            FfxBrixelizerStats stats            = {};
-            size_t required_scratch_buffer_size = 0;
+            static vector<FfxBrixelizerInstanceDescription> instances;
+            instances.clear();
 
-            for (uint32_t i = 0; i < brixelizer_gi::cascade_max; i++)
+            for (const BoundingBox& aabb : brixelizer_gi::aabbs)
             {
-                brixelizer_gi::description_update.resources.cascadeResources[i].aabbTree = to_ffx_resource(nullptr, brixelizer_gi::buffer_cascade_aabb_tree[i].get(), L"brixelizer_gi_abbb_tree");
-                brixelizer_gi::description_update.resources.cascadeResources[i].brickMap = to_ffx_resource(nullptr, brixelizer_gi::buffer_cascade_brick_map[i].get(), L"brixelizer_gi_brick_map");
+                FfxBrixelizerInstanceDescription desc = {};
+                desc.aabb.min[0]                      = aabb.GetMin().x;
+                desc.aabb.min[1]                      = aabb.GetMin().y;
+                desc.aabb.min[2]                      = aabb.GetMin().z;
+                desc.aabb.max[0]                      = aabb.GetMax().x;
+                desc.aabb.max[1]                      = aabb.GetMax().y;
+                desc.aabb.max[2]                      = aabb.GetMax().z;
+                desc.flags                            = FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC;
+                instances.push_back(desc);
             }
-            brixelizer_gi::description_update.resources.sdfAtlas   = to_ffx_resource(brixelizer_gi::texture_sdf_atlas.get(), nullptr, L"brixelizer_gi_sdf_atlas");
-            brixelizer_gi::description_update.resources.brickAABBs = to_ffx_resource(nullptr, brixelizer_gi::buffer_brick_aabbs.get(), L"brixelizer_gi_brick_aabbs");
-            brixelizer_gi::sdf_center                              = brixelizer_gi::sdf_follow_camera ? cb_frame->camera_position : brixelizer_gi::sdf_center;
-            brixelizer_gi::description_update.sdfCenter[0]         = brixelizer_gi::sdf_center.x;
-            brixelizer_gi::description_update.sdfCenter[1]         = brixelizer_gi::sdf_center.y;
-            brixelizer_gi::description_update.sdfCenter[2]         = brixelizer_gi::sdf_center.z;
-            brixelizer_gi::description_update.frameIndex           = cb_frame->frame;
-            brixelizer_gi::description_update.maxReferences        = 32 * (1 << 20);                // maximum number of triangle voxel references to be stored in the update
-            brixelizer_gi::description_update.triangleSwapSize     = 300 * (1 << 20);               // size of the swap space available to be used for storing triangles in the update
-            brixelizer_gi::description_update.maxBricksPerBake     = 1 << 14;                       // maximum number of bricks to be updated
-            brixelizer_gi::description_update.outScratchBufferSize = &required_scratch_buffer_size; // the size of the GPU scratch buffer needed for ffxBrixelizerUpdate()
-            brixelizer_gi::description_update.outStats             = &stats;                        // statistics for the update, stats read back after ffxBrixelizerUpdate()
-
-            // debug visualization
-            if (brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Off        &&
-                brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Radiance   &&
-                brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Irradiance
-                )
+            
+            vector<FfxBrixelizerInstanceID> instance_ids;
+            for (const auto& instance : instances)
             {
-                brixelizer_gi::description_update.populateDebugAABBsFlags = FFX_BRIXELIZER_POPULATE_AABBS_NONE;
-                brixelizer_gi::description_update.debugVisualizationDesc  = &brixelizer_gi::debug_description;
-                brixelizer_gi::debug_description.output                   = to_ffx_resource(tex_diffuse_gi, nullptr, L"brixelizer_debug_visualization");
-                brixelizer_gi::debug_description.renderWidth              = tex_diffuse_gi->GetWidth();
-                brixelizer_gi::debug_description.renderHeight             = tex_diffuse_gi->GetHeight();
-                brixelizer_gi::debug_description.debugState               = brixelizer_gi::to_ffx_debug_mode(brixelizer_gi::debug_mode);
-                brixelizer_gi::debug_description.startCascadeIndex        = brixelizer_gi::description_dispatch_gi.startCascade;
-                brixelizer_gi::debug_description.endCascadeIndex          = brixelizer_gi::description_dispatch_gi.endCascade;
-                brixelizer_gi::debug_description.tMin                     = brixelizer_gi::description_dispatch_gi.tMin;
-                brixelizer_gi::debug_description.tMax                     = brixelizer_gi::description_dispatch_gi.tMax;
-                brixelizer_gi::debug_description.sdfSolveEps              = 0.5f;
-                set_ffx_float16(brixelizer_gi::debug_description.inverseViewMatrix,       Matrix::Transpose(cb_frame->view_inv));
-                set_ffx_float16(brixelizer_gi::debug_description.inverseProjectionMatrix, Matrix::Transpose(cb_frame->projection_inv));
+                if (instance.outInstanceID)
+                    instance_ids.push_back(*instance.outInstanceID);
             }
-
-            // update
+            if (!instance_ids.empty())
             {
-                // bake
-                FfxCommandList ffx_command_list = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
-                FfxErrorCode error_code         = ffxBrixelizerBakeUpdate(&brixelizer_gi::context, &brixelizer_gi::description_update, &brixelizer_gi::description_update_baked);
-                SP_ASSERT(error_code == FFX_OK);
-
-                // grow scratch buffer (if needed)
-                if (required_scratch_buffer_size > brixelizer_gi::buffer_scratch->GetObjectSize())
-                {
-                    // round up to the nearest power of 2 for efficiency
-                    size_t new_size = 1;
-                    while (new_size < required_scratch_buffer_size) new_size <<= 1;
-
-                    // create
-                    brixelizer_gi::buffer_scratch = make_shared<RHI_Buffer>(new_size, 1, RHI_Buffer_Transfer_Src | RHI_Buffer_Transfer_Dst, "ffx_brixelizer_gi_scratch");
-                    SP_LOG_INFO("Resized scratch buffer to %.2f MB", static_cast<float>(new_size) / (1024.0f * 1024.0f));
-                }
-
-                // update
-                FfxResource scratch_buffer = to_ffx_resource(nullptr, brixelizer_gi::buffer_scratch.get(), L"ffx_brixelizer_gi_scratch");
-                error_code                 = ffxBrixelizerUpdate(&brixelizer_gi::context, &brixelizer_gi::description_update_baked, scratch_buffer, ffx_command_list);
-                SP_ASSERT(error_code == FFX_OK);
+                FfxErrorCode error = ffxBrixelizerDeleteInstances(&brixelizer_gi::context, instance_ids.data(), static_cast<uint32_t>(instance_ids.size()));
+                SP_ASSERT(error == FFX_OK);
+            }
+            
+            if (!instances.empty())
+            {
+                FfxErrorCode error = ffxBrixelizerCreateInstances(&brixelizer_gi::context, instances.data(), static_cast<uint32_t>(instances.size()));
+                SP_ASSERT(error == FFX_OK);
             }
         }
 
-        // dispatch
+        // brixelizer
         {
-            // set camera matrices (ffx expects row major order)
-            set_ffx_float16(brixelizer_gi::description_dispatch_gi.view,           Matrix::Transpose(cb_frame->view));
-            set_ffx_float16(brixelizer_gi::description_dispatch_gi.prevView,       Matrix::Transpose(cb_frame->view_previous));
-            set_ffx_float16(brixelizer_gi::description_dispatch_gi.projection,     Matrix::Transpose(cb_frame->projection));
-            set_ffx_float16(brixelizer_gi::description_dispatch_gi.prevProjection, Matrix::Transpose(cb_frame->projection_previous));
+            // note: ffx expects row-major, right-handed matrices
+            static Matrix view         = Matrix::Identity;
+            static Matrix projection   = Matrix::Identity;
+            Matrix view_previous       = view;
+            Matrix projection_previous = projection;
+            view                       = Matrix::Transpose(cb_frame->view);
+            projection                 = Matrix::Transpose(cb_frame->projection);
+            Matrix view_inverted       = Matrix::Invert(view);
+            Matrix projection_inverted = Matrix::Invert(projection);
 
-            // set resources
+            // update
             {
+                FfxBrixelizerStats stats            = {};
+                size_t required_scratch_buffer_size = 0;
+
+                for (uint32_t i = 0; i < brixelizer_gi::cascade_max; i++)
+                {
+                    brixelizer_gi::description_update.resources.cascadeResources[i].aabbTree = to_ffx_resource(nullptr, brixelizer_gi::buffer_cascade_aabb_tree[i].get(), L"brixelizer_gi_abbb_tree");
+                    brixelizer_gi::description_update.resources.cascadeResources[i].brickMap = to_ffx_resource(nullptr, brixelizer_gi::buffer_cascade_brick_map[i].get(), L"brixelizer_gi_brick_map");
+                }
+                brixelizer_gi::description_update.resources.sdfAtlas   = to_ffx_resource(brixelizer_gi::texture_sdf_atlas.get(), nullptr, L"brixelizer_gi_sdf_atlas");
+                brixelizer_gi::description_update.resources.brickAABBs = to_ffx_resource(nullptr, brixelizer_gi::buffer_brick_aabbs.get(), L"brixelizer_gi_brick_aabbs");
+                brixelizer_gi::sdf_center                              = brixelizer_gi::sdf_follow_camera ? cb_frame->camera_position : brixelizer_gi::sdf_center;
+                brixelizer_gi::description_update.sdfCenter[0]         = brixelizer_gi::sdf_center.x;
+                brixelizer_gi::description_update.sdfCenter[1]         = brixelizer_gi::sdf_center.y;
+                brixelizer_gi::description_update.sdfCenter[2]         = brixelizer_gi::sdf_center.z;
+                brixelizer_gi::description_update.frameIndex           = cb_frame->frame;
+                brixelizer_gi::description_update.maxReferences        = 32 * (1 << 20);                // maximum number of triangle voxel references to be stored in the update
+                brixelizer_gi::description_update.triangleSwapSize     = 300 * (1 << 20);               // size of the swap space available to be used for storing triangles in the update
+                brixelizer_gi::description_update.maxBricksPerBake     = 1 << 14;                       // maximum number of bricks to be updated
+                brixelizer_gi::description_update.outScratchBufferSize = &required_scratch_buffer_size; // the size of the GPU scratch buffer needed for ffxBrixelizerUpdate()
+                brixelizer_gi::description_update.outStats             = &stats;                        // statistics for the update, stats read back after ffxBrixelizerUpdate()
+
+                // debug visualization for: distance, uvw, iterations, brick id, cascade id
+                if (brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Off      &&
+                    brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Radiance && brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Irradiance
+                    )
+                {
+                    brixelizer_gi::description_update.populateDebugAABBsFlags = FFX_BRIXELIZER_POPULATE_AABBS_DYNAMIC_INSTANCES;
+                    brixelizer_gi::description_update.debugVisualizationDesc  = &brixelizer_gi::debug_description;
+                    brixelizer_gi::debug_description.output                   = to_ffx_resource(tex_diffuse_gi, nullptr, L"brixelizer_debug_visualization");
+                    brixelizer_gi::debug_description.renderWidth              = tex_diffuse_gi->GetWidth();
+                    brixelizer_gi::debug_description.renderHeight             = tex_diffuse_gi->GetHeight();
+                    brixelizer_gi::debug_description.debugState               = brixelizer_gi::to_ffx_debug_mode(brixelizer_gi::debug_mode);
+                    brixelizer_gi::debug_description.startCascadeIndex        = brixelizer_gi::description_dispatch_gi.startCascade;
+                    brixelizer_gi::debug_description.endCascadeIndex          = brixelizer_gi::description_dispatch_gi.endCascade;
+                    brixelizer_gi::debug_description.tMin                     = brixelizer_gi::description_dispatch_gi.tMin;
+                    brixelizer_gi::debug_description.tMax                     = brixelizer_gi::description_dispatch_gi.tMax;
+                    brixelizer_gi::debug_description.sdfSolveEps              = 0.5f;
+                    set_ffx_float16(brixelizer_gi::debug_description.inverseViewMatrix,       view_inverted);
+                    set_ffx_float16(brixelizer_gi::debug_description.inverseProjectionMatrix, projection_inverted);
+                }
+
+                // update
+                {
+                    // bake
+                    FfxCommandList ffx_command_list = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
+                    FfxErrorCode error_code         = ffxBrixelizerBakeUpdate(&brixelizer_gi::context, &brixelizer_gi::description_update, &brixelizer_gi::description_update_baked);
+                    SP_ASSERT(error_code == FFX_OK);
+
+                    // grow scratch buffer (if needed)
+                    if (required_scratch_buffer_size > brixelizer_gi::buffer_scratch->GetObjectSize())
+                    {
+                        // round up to the nearest power of 2 for efficiency
+                        size_t new_size = 1;
+                        while (new_size < required_scratch_buffer_size) new_size <<= 1;
+
+                        // create
+                        brixelizer_gi::buffer_scratch = make_shared<RHI_Buffer>(new_size, 1, RHI_Buffer_Transfer_Src | RHI_Buffer_Transfer_Dst, "ffx_brixelizer_gi_scratch");
+                        SP_LOG_INFO("Resized scratch buffer to %.2f MB", static_cast<float>(new_size) / (1024.0f * 1024.0f));
+                    }
+
+                    // update
+                    FfxResource scratch_buffer = to_ffx_resource(nullptr, brixelizer_gi::buffer_scratch.get(), L"ffx_brixelizer_gi_scratch");
+                    error_code                 = ffxBrixelizerUpdate(&brixelizer_gi::context, &brixelizer_gi::description_update_baked, scratch_buffer, ffx_command_list);
+                    SP_ASSERT(error_code == FFX_OK);
+                }
+            }
+
+            // dispatch
+            {
+                // set camera matrices
+                set_ffx_float16(brixelizer_gi::description_dispatch_gi.view,           view);
+                set_ffx_float16(brixelizer_gi::description_dispatch_gi.prevView,       view_previous);
+                set_ffx_float16(brixelizer_gi::description_dispatch_gi.projection,     projection);
+                set_ffx_float16(brixelizer_gi::description_dispatch_gi.prevProjection, projection_previous);
+
+                // set resources
                 brixelizer_gi::description_dispatch_gi.environmentMap   = to_ffx_resource(sssr::cubemap.get(),                          nullptr, L"brixelizer_environment");
                 brixelizer_gi::description_dispatch_gi.prevLitOutput    = to_ffx_resource(tex_color,                                    nullptr, L"brixelizer_gi_lit_output_previous");
                 brixelizer_gi::description_dispatch_gi.depth            = to_ffx_resource(tex_depth,                                    nullptr, L"brixelizer_gi_depth");
@@ -836,69 +885,69 @@ namespace Spartan
                     brixelizer_gi::description_update.resources.cascadeResources[i].aabbTree = to_ffx_resource(nullptr, brixelizer_gi::buffer_cascade_aabb_tree[i].get(), L"brixelizer_gi_abbb_tree");
                     brixelizer_gi::description_update.resources.cascadeResources[i].brickMap = to_ffx_resource(nullptr, brixelizer_gi::buffer_cascade_brick_map[i].get(), L"brixelizer_gi_brick_map");
                 }
+
+                // set parameters
+                brixelizer_gi::description_dispatch_gi.startCascade            = 0                                  + (2 * brixelizer_gi::cascade_count); // index of the start cascade for use with ray marching with Brixelizer
+                brixelizer_gi::description_dispatch_gi.endCascade              = (brixelizer_gi::cascade_count - 1) + (2 * brixelizer_gi::cascade_count); // index of the end cascade for use with ray marching with Brixelizer
+                brixelizer_gi::description_dispatch_gi.rayPushoff              = 0.25f;                                                                   // distance from a surface along the normal vector to offset the diffuse ray origin
+                brixelizer_gi::description_dispatch_gi.sdfSolveEps             = 0.5f;                                                                    // epsilon value for ray marching to be used with Brixelizer for diffuse rays
+                brixelizer_gi::description_dispatch_gi.specularRayPushoff      = 0.25f;                                                                   // distance from a surface along the normal vector to offset the specular ray origin
+                brixelizer_gi::description_dispatch_gi.specularSDFSolveEps     = 0.5f;                                                                    // epsilon value for ray marching to be used with Brixelizer for specular rays
+                brixelizer_gi::description_dispatch_gi.tMin                    = 0.0f;
+                brixelizer_gi::description_dispatch_gi.tMax                    = 10000.0f;
+                brixelizer_gi::description_dispatch_gi.normalsUnpackMul        = 1.0f;                                                                    // a multiply factor to transform the normal to the space expected by Brixelizer GI
+                brixelizer_gi::description_dispatch_gi.normalsUnpackAdd        = 0.0f;                                                                    // an offset to transform the normal to the space expected by Brixelizer GI
+                brixelizer_gi::description_dispatch_gi.isRoughnessPerceptual   = true;                                                                    // if false, we assume roughness squared was stored in the Gbuffer
+                brixelizer_gi::description_dispatch_gi.roughnessChannel        = 0;                                                                       // the channel to read the roughness from the roughness texture
+                brixelizer_gi::description_dispatch_gi.roughnessThreshold      = 1.0f;                                                                    // regions with a roughness value greater than this threshold won't spawn specular rays
+                brixelizer_gi::description_dispatch_gi.environmentMapIntensity = 0.0f;                                                                    // value to scale the contribution from the environment map
+                brixelizer_gi::description_dispatch_gi.motionVectorScale.x     = 1.0f;                                                                    // scale factor to apply to motion vectors
+                brixelizer_gi::description_dispatch_gi.motionVectorScale.y     = 1.0f;                                                                    // scale factor to apply to motion vectors
+                set_ffx_float3(brixelizer_gi::description_dispatch_gi.cameraPosition, cb_frame->camera_position);                                         // camera position
+                FfxErrorCode error_code = ffxBrixelizerGetRawContext(&brixelizer_gi::context, &brixelizer_gi::description_dispatch_gi.brixelizerContext); // get the raw context for use with Brixelizer GI
+                SP_ASSERT(error_code == FFX_OK);
+
+                // dispatch
+                FfxCommandList ffx_command_list = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
+                error_code                      = ffxBrixelizerGIContextDispatch(&brixelizer_gi::context_gi, &brixelizer_gi::description_dispatch_gi, ffx_command_list);
+                SP_ASSERT(error_code == FFX_OK);
+
+                // blit the dept and the normal so that we can use them in the next frame as "history"
+                cmd_list->Blit(tex_depth,  brixelizer_gi::texture_depth_previous.get(),  false);
+                cmd_list->Blit(tex_normal, brixelizer_gi::texture_normal_previous.get(), false);
             }
 
-            // set parameters
-            brixelizer_gi::description_dispatch_gi.startCascade            = 0                                  + (2 * brixelizer_gi::cascade_count); // index of the start cascade for use with ray marching with Brixelizer
-            brixelizer_gi::description_dispatch_gi.endCascade              = (brixelizer_gi::cascade_count - 1) + (2 * brixelizer_gi::cascade_count); // index of the end cascade for use with ray marching with Brixelizer
-            brixelizer_gi::description_dispatch_gi.rayPushoff              = 0.25f;                                                                   // distance from a surface along the normal vector to offset the diffuse ray origin
-            brixelizer_gi::description_dispatch_gi.sdfSolveEps             = 0.5f;                                                                    // epsilon value for ray marching to be used with Brixelizer for diffuse rays
-            brixelizer_gi::description_dispatch_gi.specularRayPushoff      = 0.25f;                                                                   // distance from a surface along the normal vector to offset the specular ray origin
-            brixelizer_gi::description_dispatch_gi.specularSDFSolveEps     = 0.5f;                                                                    // epsilon value for ray marching to be used with Brixelizer for specular rays
-            brixelizer_gi::description_dispatch_gi.tMin                    = 0.0f;
-            brixelizer_gi::description_dispatch_gi.tMax                    = 10000.0f;
-            brixelizer_gi::description_dispatch_gi.normalsUnpackMul        = 1.0f;                                                                    // a multiply factor to transform the normal to the space expected by Brixelizer GI
-            brixelizer_gi::description_dispatch_gi.normalsUnpackAdd        = 0.0f;                                                                    // an offset to transform the normal to the space expected by Brixelizer GI
-            brixelizer_gi::description_dispatch_gi.isRoughnessPerceptual   = true;                                                                    // if false, we assume roughness squared was stored in the Gbuffer
-            brixelizer_gi::description_dispatch_gi.roughnessChannel        = 0;                                                                       // the channel to read the roughness from the roughness texture
-            brixelizer_gi::description_dispatch_gi.roughnessThreshold      = 1.0f;                                                                    // regions with a roughness value greater than this threshold won't spawn specular rays
-            brixelizer_gi::description_dispatch_gi.environmentMapIntensity = 0.0f;                                                                    // value to scale the contribution from the environment map
-            brixelizer_gi::description_dispatch_gi.motionVectorScale.x     = 1.0f;                                                                    // scale factor to apply to motion vectors
-            brixelizer_gi::description_dispatch_gi.motionVectorScale.y     = 1.0f;                                                                    // scale factor to apply to motion vectors
-            set_ffx_float3(brixelizer_gi::description_dispatch_gi.cameraPosition, cb_frame->camera_position);                                         // camera position
-            FfxErrorCode error_code = ffxBrixelizerGetRawContext(&brixelizer_gi::context, &brixelizer_gi::description_dispatch_gi.brixelizerContext); // get the raw context for use with Brixelizer GI
-            SP_ASSERT(error_code == FFX_OK);
-
-            // dispatch
-            FfxCommandList ffx_command_list = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
-            error_code                      = ffxBrixelizerGIContextDispatch(&brixelizer_gi::context_gi, &brixelizer_gi::description_dispatch_gi, ffx_command_list);
-            SP_ASSERT(error_code == FFX_OK);
-
-            // blit the dept and the normal so that we can use them in the next frame as "history"
-            cmd_list->Blit(tex_depth,  brixelizer_gi::texture_depth_previous.get(),  false);
-            cmd_list->Blit(tex_normal, brixelizer_gi::texture_normal_previous.get(), false);
-        }
-
-        // debug visualization (overwrites diffuse gi output texture)
-        if (brixelizer_gi::debug_mode == brixelizer_gi::DebugMode::Radiance || brixelizer_gi::debug_mode == brixelizer_gi::DebugMode::Irradiance)
-        {
-            set_ffx_float16(brixelizer_gi::debug_description_gi.view,       brixelizer_gi::description_dispatch_gi.view);
-            set_ffx_float16(brixelizer_gi::debug_description_gi.projection, brixelizer_gi::description_dispatch_gi.projection);
-
-            brixelizer_gi::debug_description_gi.outputDebug      = brixelizer_gi::description_dispatch_gi.outputDiffuseGI;
-            brixelizer_gi::debug_description_gi.outputSize[0]    = tex_diffuse_gi->GetWidth();
-            brixelizer_gi::debug_description_gi.outputSize[1]    = tex_diffuse_gi->GetHeight();
-            brixelizer_gi::debug_description_gi.debugMode        = brixelizer_gi::debug_mode == brixelizer_gi::DebugMode::Radiance ? FFX_BRIXELIZER_GI_DEBUG_MODE_RADIANCE_CACHE : FFX_BRIXELIZER_GI_DEBUG_MODE_IRRADIANCE_CACHE;
-            brixelizer_gi::debug_description_gi.normalsUnpackMul = brixelizer_gi::description_dispatch_gi.normalsUnpackMul;
-            brixelizer_gi::debug_description_gi.normalsUnpackAdd = brixelizer_gi::description_dispatch_gi.normalsUnpackAdd;
-            brixelizer_gi::debug_description_gi.startCascade     = brixelizer_gi::description_dispatch_gi.startCascade;
-            brixelizer_gi::debug_description_gi.endCascade       = brixelizer_gi::description_dispatch_gi.endCascade;
-            brixelizer_gi::debug_description_gi.depth            = brixelizer_gi::description_dispatch_gi.depth;
-            brixelizer_gi::debug_description_gi.normal           = brixelizer_gi::description_dispatch_gi.normal;
-            brixelizer_gi::debug_description_gi.sdfAtlas         = brixelizer_gi::description_dispatch_gi.sdfAtlas;
-            brixelizer_gi::debug_description_gi.bricksAABBs      = brixelizer_gi::description_dispatch_gi.bricksAABBs;
-            for (uint32_t i = 0; i < brixelizer_gi::cascade_max; ++i)
+            // debug visualization for: radiance, irradience
+            if (brixelizer_gi::debug_mode == brixelizer_gi::DebugMode::Radiance || brixelizer_gi::debug_mode == brixelizer_gi::DebugMode::Irradiance)
             {
-                brixelizer_gi::debug_description_gi.cascadeAABBTrees[i] = brixelizer_gi::description_dispatch_gi.cascadeAABBTrees[i];
-                brixelizer_gi::debug_description_gi.cascadeBrickMaps[i] = brixelizer_gi::description_dispatch_gi.cascadeBrickMaps[i];
+                set_ffx_float16(brixelizer_gi::debug_description_gi.view,       view);
+                set_ffx_float16(brixelizer_gi::debug_description_gi.projection, projection);
+
+                brixelizer_gi::debug_description_gi.outputDebug      = brixelizer_gi::description_dispatch_gi.outputDiffuseGI;
+                brixelizer_gi::debug_description_gi.outputSize[0]    = tex_diffuse_gi->GetWidth();
+                brixelizer_gi::debug_description_gi.outputSize[1]    = tex_diffuse_gi->GetHeight();
+                brixelizer_gi::debug_description_gi.debugMode        = brixelizer_gi::debug_mode == brixelizer_gi::DebugMode::Radiance ? FFX_BRIXELIZER_GI_DEBUG_MODE_RADIANCE_CACHE : FFX_BRIXELIZER_GI_DEBUG_MODE_IRRADIANCE_CACHE;
+                brixelizer_gi::debug_description_gi.normalsUnpackMul = brixelizer_gi::description_dispatch_gi.normalsUnpackMul;
+                brixelizer_gi::debug_description_gi.normalsUnpackAdd = brixelizer_gi::description_dispatch_gi.normalsUnpackAdd;
+                brixelizer_gi::debug_description_gi.startCascade     = brixelizer_gi::description_dispatch_gi.startCascade;
+                brixelizer_gi::debug_description_gi.endCascade       = brixelizer_gi::description_dispatch_gi.endCascade;
+                brixelizer_gi::debug_description_gi.depth            = brixelizer_gi::description_dispatch_gi.depth;
+                brixelizer_gi::debug_description_gi.normal           = brixelizer_gi::description_dispatch_gi.normal;
+                brixelizer_gi::debug_description_gi.sdfAtlas         = brixelizer_gi::description_dispatch_gi.sdfAtlas;
+                brixelizer_gi::debug_description_gi.bricksAABBs      = brixelizer_gi::description_dispatch_gi.bricksAABBs;
+                for (uint32_t i = 0; i < brixelizer_gi::cascade_max; ++i)
+                {
+                    brixelizer_gi::debug_description_gi.cascadeAABBTrees[i] = brixelizer_gi::description_dispatch_gi.cascadeAABBTrees[i];
+                    brixelizer_gi::debug_description_gi.cascadeBrickMaps[i] = brixelizer_gi::description_dispatch_gi.cascadeBrickMaps[i];
+                }
+
+                FfxErrorCode error = ffxBrixelizerGetRawContext(&brixelizer_gi::context, &brixelizer_gi::debug_description_gi.brixelizerContext);
+                SP_ASSERT(error == FFX_OK);
+
+                FfxCommandList ffx_command_list = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
+                error                           = ffxBrixelizerGIContextDebugVisualization(&brixelizer_gi::context_gi, &brixelizer_gi::debug_description_gi, ffx_command_list);
+                SP_ASSERT(error == FFX_OK);
             }
-
-            FfxErrorCode error = ffxBrixelizerGetRawContext(&brixelizer_gi::context, &brixelizer_gi::debug_description_gi.brixelizerContext);
-            SP_ASSERT(error == FFX_OK);
-
-            FfxCommandList ffx_command_list = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
-            error                           = ffxBrixelizerGIContextDebugVisualization(&brixelizer_gi::context_gi, &brixelizer_gi::debug_description_gi, ffx_command_list);
-            SP_ASSERT(error == FFX_OK);
         }
     }
 }

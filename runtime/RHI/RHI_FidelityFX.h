@@ -81,7 +81,8 @@ namespace Spartan
             RHI_Texture* tex_material,
             std::array< RHI_Texture*, 8>& tex_noise,
             RHI_Texture* tex_diffuse_gi,
-            RHI_Texture* tex_specular_gi
+            RHI_Texture* tex_specular_gi,
+            const std::vector<Math::BoundingBox>& aabbs
         );
 
     private:
