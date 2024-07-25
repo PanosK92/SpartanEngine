@@ -1232,15 +1232,24 @@ namespace Spartan
             GetStandardTexture(Renderer_StandardTexture::Noise_blue_7).get()
         };
 
-        static vector<BoundingBox> aabbs;
+        static vector<Entity*> entities;
         {
-            aabbs.clear();
-            for (const auto& entity : m_renderables[Renderer_Entity::Mesh])
+            entities.clear();
+
+            int64_t index_start = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], false, true);
+            int64_t index_end   = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], false, false);
+            for (int64_t i = index_start; i < index_end; i++)
             {
+                // this can happen during async loading
+                if (i >= static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size()))
+                    continue;
+
+                shared_ptr<Entity>& entity = m_renderables[Renderer_Entity::Mesh][i];
                 if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
                 {
-                    aabbs.emplace_back(renderable->GetBoundingBox(BoundingBoxType::Transformed));
+                    entities.emplace_back(entity.get());
                 }
+
             }
         }
 
@@ -1255,7 +1264,7 @@ namespace Spartan
             noise_textures,
             GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi).get(),
             GetRenderTarget(Renderer_RenderTarget::light_specular_gi).get(),
-            aabbs
+            entities
         );
 
         cmd_list->EndTimeblock();
