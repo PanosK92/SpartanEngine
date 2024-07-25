@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Texture2D.h"
 #include "../RHI_Texture3D.h"
 #include "../RHI_TextureCube.h"
+#include "../RHI_Device.h"
 #include "../RHI_Buffer.h"
 #include "../Rendering/Renderer_Buffers.h"
 #include "../../World/Components/Camera.h"
@@ -173,9 +174,12 @@ namespace Spartan
             }
             else
             {
-                resource         = buffer->GetRhiResource();
-                description.type = FFX_RESOURCE_TYPE_BUFFER;
-                state            = FFX_RESOURCE_STATE_UNORDERED_ACCESS;
+                description.type   = FFX_RESOURCE_TYPE_BUFFER;
+                description.usage  = FFX_RESOURCE_USAGE_UAV;
+                description.size   = buffer->GetObjectSize();
+                description.stride = buffer->GetStride();
+                resource           = buffer->GetRhiResource();
+                state              = FFX_RESOURCE_STATE_UNORDERED_ACCESS;
             }
 
             return ffxGetResourceVK(
@@ -273,7 +277,7 @@ namespace Spartan
                 BrickID,
                 CascadeID
             };
-            DebugMode debug_mode                                         = DebugMode::Gradient;
+            DebugMode debug_mode                                         = DebugMode::Off;
             FfxBrixelizerDebugVisualizationDescription debug_description = {};
 
             FfxBrixelizerTraceDebugModes to_ffx_debug_mode(const DebugMode debug_mode)
@@ -814,10 +818,10 @@ namespace Spartan
         // dispatch
         {
             // set camera matrices (ffx expects row major order)
-            set_ffx_float16(brixelizer_gi::description_dispatch_gi.view,           Matrix::Transpose(cb_frame->view));
-            set_ffx_float16(brixelizer_gi::description_dispatch_gi.prevView,       Matrix::Transpose(cb_frame->view_previous));
-            set_ffx_float16(brixelizer_gi::description_dispatch_gi.projection,     Matrix::Transpose(cb_frame->projection));
-            set_ffx_float16(brixelizer_gi::description_dispatch_gi.prevProjection, Matrix::Transpose(cb_frame->projection_previous));
+            set_ffx_float16(brixelizer_gi::description_dispatch_gi.view,           (cb_frame->view));
+            set_ffx_float16(brixelizer_gi::description_dispatch_gi.prevView,       (cb_frame->view_previous));
+            set_ffx_float16(brixelizer_gi::description_dispatch_gi.projection,     (cb_frame->projection));
+            set_ffx_float16(brixelizer_gi::description_dispatch_gi.prevProjection, (cb_frame->projection_previous));
 
             // set resources
             {
