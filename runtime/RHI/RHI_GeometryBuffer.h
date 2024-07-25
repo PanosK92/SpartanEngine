@@ -83,15 +83,14 @@ namespace Spartan
         uint32_t GetStride() const       { return m_stride; }
 
     private:
-        void RHI_CreateResource(const void* indices);
-
         RHI_Buffer_Type m_type   = RHI_Buffer_Type::Max;
         void* m_mapped_data      = nullptr;
         bool m_is_mappable       = false;
         uint32_t m_stride        = 0;
         uint32_t m_element_count = 0;
 
-        // RHI Resources
+        // rhi
+        void RHI_CreateResource(const void* indices);
         void* m_rhi_resource = nullptr;
     };
 }
