@@ -1232,6 +1232,18 @@ namespace Spartan
             GetStandardTexture(Renderer_StandardTexture::Noise_blue_7).get()
         };
 
+        static vector<BoundingBox> aabbs;
+        {
+            aabbs.clear();
+            for (const auto& entity : m_renderables[Renderer_Entity::Mesh])
+            {
+                if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
+                {
+                    aabbs.emplace_back(renderable->GetBoundingBox(BoundingBoxType::Transformed));
+                }
+            }
+        }
+
         RHI_FidelityFX::BrixelizerGI_Dispatch(
             cmd_list,
             &m_cb_frame_cpu,
@@ -1242,7 +1254,8 @@ namespace Spartan
             GetRenderTarget(Renderer_RenderTarget::gbuffer_material).get(),
             noise_textures,
             GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi).get(),
-            GetRenderTarget(Renderer_RenderTarget::light_specular_gi).get()
+            GetRenderTarget(Renderer_RenderTarget::light_specular_gi).get(),
+            aabbs
         );
 
         cmd_list->EndTimeblock();
