@@ -1,7 +1,7 @@
 
 <img align="center" padding="2" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/data/textures/banner.bmp"/>
 
-<p> Spartan Engine is a research-focused game engine designed for real-time solutions, it's not intended for game development. Initially created to enrich my portfolio, I've achieved what I wanted from it and now aim to give back to the community. This engine is now a hub for learning, with the mission of collaboration and connection. It offers exclusive perks like contributor recognition, networking opportunities with tech professionals, and learning resources, including an active Discord community and insightful YouTube videos.</p>
+<p>Spartan Engine is a cutting-edge, open-source game engine focused on real-time solutions and research. What began as a portfolio project has evolved into a vibrant hub for learning and innovation. While not designed for commercial game development, it offers a unique space where developers can explore, contribute, and connect. Our thriving Discord community of over 400 members provides networking opportunities with industry professionals, recognition for contributors, and access to extensive learning resources. Join us in pushing the boundaries of game engine technology, whether you're here to learn, innovate, or be part of something extraordinary.</p>
 
 - <img align="left" width="32" src="https://i.pinimg.com/736x/99/65/5e/99655e9fe24eb0a7ea38de683cedb735.jpg"/>For occasional updates regarding the project's development, you can follow me on <a href="https://twitter.com/panoskarabelas1?ref_src=twsrc%5Etfw">X</a>.
   
