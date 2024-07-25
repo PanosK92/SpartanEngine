@@ -110,7 +110,7 @@ namespace Spartan
         array<RHI_Texture*, 8>& tex_noise,
         RHI_Texture* tex_diffuse_gi,
         RHI_Texture* tex_specular_gi,
-        const vector<BoundingBox>& aabbs
+        const vector<Entity*>& entities
     )
     {
 
