@@ -24,15 +24,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_FidelityFX.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
-#include "../RHI_Texture.h"
 #include "../RHI_Texture2D.h"
 #include "../RHI_Texture3D.h"
 #include "../RHI_TextureCube.h"
-#include "../RHI_Device.h"
 #include "../RHI_Buffer.h"
+#include "../RHI_GeometryBuffer.h"
+#include "../Input/Input.h"
 #include "../Rendering/Renderer_Buffers.h"
 #include "../World/Components/Renderable.h"
-#include "../../World/Components/Camera.h"
+#include "../World/Components/Camera.h"
 #include "../World/Entity.h"
 SP_WARNINGS_OFF
 #include <FidelityFX/host/backends/vk/ffx_vk.h>
@@ -40,7 +40,6 @@ SP_WARNINGS_OFF
 #include <FidelityFX/host/ffx_sssr.h>
 #include <FidelityFX/host/ffx_brixelizer.h>
 #include <FidelityFX/host/ffx_brixelizergi.h>
-#include "../RHI_GeometryBuffer.h"
 SP_WARNINGS_ON
 //=============================================
 
@@ -53,6 +52,8 @@ namespace Spartan
 {
     namespace
     {
+        FfxInterface ffx_interface = {};
+
         void ffx_message_callback(FfxMsgType type, const wchar_t* message)
         {
             if (type == FFX_MESSAGE_TYPE_ERROR)
@@ -220,8 +221,6 @@ namespace Spartan
             memcpy(ffx_matrix_destination, ffx_matrix_source, sizeof(Matrix));
         }
 
-        FfxInterface ffx_interface = {};
-
         namespace fsr3
         {
             uint32_t jitter_index = 0;
@@ -277,23 +276,23 @@ namespace Spartan
             array<shared_ptr<RHI_Buffer>,       cascade_max> buffer_cascade_aabb_tree = {};
             array<shared_ptr<RHI_Buffer>,       cascade_max> buffer_cascade_brick_map = {};
             shared_ptr<RHI_Buffer>              buffer_scratch                        = nullptr;
-            vector<FfxBrixelizerInstanceDescription> instances;
-            vector<pair<const RHI_GeometryBuffer*, uint32_t>> buffer_indices;
+            vector<pair<const RHI_GeometryBuffer*, uint32_t>> entity_buffer_indices;
+            vector<FfxBrixelizerInstanceDescription> entity_instances;
 
             // debug visualization (which overwrites the diffuse gi output texture)
             enum class DebugMode
             {
-                Off,       // brixelizer
-                Distance,  // brixelizer
-                UVW,       // brixelizer
-                Iterations,// brixelizer
-                Gradient,  // brixelizer
-                BrickID,   // brixelizer
-                CascadeID, // brixelizer
-                Radiance,  // gi
-                Irradiance // gi
+                Distance,   // brixelizer
+                UVW,        // brixelizer
+                Iterations, // brixelizer
+                Gradient,   // brixelizer
+                BrickID,    // brixelizer
+                CascadeID,  // brixelizer
+                Radiance,   // gi
+                Irradiance, // gi
+                Max
             };
-            DebugMode debug_mode                                            = DebugMode::Radiance;
+            DebugMode debug_mode                                            = DebugMode::Max;
             FfxBrixelizerDebugVisualizationDescription debug_description    = {};
             FfxBrixelizerGIDebugDescription            debug_description_gi = {};
 
@@ -307,6 +306,29 @@ namespace Spartan
                 if (debug_mode == brixelizer_gi::DebugMode::CascadeID)  return FFX_BRIXELIZER_TRACE_DEBUG_MODE_CASCADE_ID;
 
                 return FFX_BRIXELIZER_TRACE_DEBUG_MODE_DISTANCE;
+            }
+
+            uint32_t get_buffer_index(const RHI_GeometryBuffer* buffer)
+            {
+                auto it = find_if(entity_buffer_indices.begin(), entity_buffer_indices.end(), [buffer](const auto& pair)
+                {
+                    return pair.first == buffer;
+                });
+
+                if (it != entity_buffer_indices.end())
+                    return it->second;
+
+                uint32_t new_index = static_cast<uint32_t>(entity_buffer_indices.size());
+                entity_buffer_indices.emplace_back(buffer, new_index);
+
+                FfxBrixelizerBufferDescription buffer_desc = {};
+                buffer_desc.buffer                         = to_ffx_resource(nullptr, nullptr, const_cast<RHI_GeometryBuffer*>(buffer), L"brixelizer_gi_buffer");
+                buffer_desc.outIndex                       = &new_index;
+
+                FfxErrorCode error = ffxBrixelizerRegisterBuffers(&context, &buffer_desc, 1);
+                SP_ASSERT(error == FFX_OK);
+
+                return new_index;
             }
         }
     }
@@ -748,11 +770,21 @@ namespace Spartan
         RHI_Texture* tex_debug
     )
     {
+        // switch between debug modes
+        if (Input::GetKeyDown(KeyCode::Arrow_Left))
+        {
+            brixelizer_gi::debug_mode = static_cast<brixelizer_gi::DebugMode>((static_cast<uint32_t>(brixelizer_gi::debug_mode) - 1) % static_cast<uint32_t>(brixelizer_gi::DebugMode::Max));
+        }
+        else if (Input::GetKeyDown(KeyCode::Arrow_Right))
+        {
+            brixelizer_gi::debug_mode = static_cast<brixelizer_gi::DebugMode>((static_cast<uint32_t>(brixelizer_gi::debug_mode) + 1) % static_cast<uint32_t>(brixelizer_gi::DebugMode::Max));
+        }
+
         // aabbs
         {
-            // Delete existing instances
+            // delete existing instances
             vector<FfxBrixelizerInstanceID> instance_ids;
-            for (const FfxBrixelizerInstanceDescription& instance : brixelizer_gi::instances)
+            for (const FfxBrixelizerInstanceDescription& instance : brixelizer_gi::entity_instances)
             {
                 if (instance.outInstanceID)
                     instance_ids.push_back(*instance.outInstanceID);
@@ -763,9 +795,9 @@ namespace Spartan
                 SP_ASSERT(error == FFX_OK);
             }
             
-            // Create new instances
+            // create new instances
             {
-                brixelizer_gi::instances.clear();
+                brixelizer_gi::entity_instances.clear();
             
                 for (int64_t i = index_start; i < index_end; i++)
                 {
@@ -783,61 +815,27 @@ namespace Spartan
                     desc.aabb.max[2]        = aabb.GetMax().z;
                 
                     // vertex buffer
-                    auto vb = renderable->GetVertexBuffer();
-                    auto vb_it = find_if(brixelizer_gi::buffer_indices.begin(), brixelizer_gi::buffer_indices.end(),
-                        [vb](const auto& pair) { return pair.first == vb; });
-                    if (vb_it == brixelizer_gi::buffer_indices.end())
-                    {
-                        uint32_t new_index = static_cast<uint32_t>(brixelizer_gi::buffer_indices.size());
-                        brixelizer_gi::buffer_indices.emplace_back(vb, new_index);
-      
-                        FfxBrixelizerBufferDescription buffer_desc = {};
-                        buffer_desc.buffer                         = to_ffx_resource(nullptr, nullptr, vb, L"brixelizer_gi_buffer_vertex");
-                        buffer_desc.outIndex                       = &new_index;
-
-                        FfxErrorCode error = ffxBrixelizerRegisterBuffers(&brixelizer_gi::context, &buffer_desc, 1);
-                        SP_ASSERT(error == FFX_OK);
-                        desc.vertexBuffer = new_index;
-                    }
-                    else
-                    {
-                        desc.vertexBuffer = vb_it->second;
-                    }
-                    desc.vertexCount        = renderable->GetVertexCount();
-                    desc.vertexStride       = sizeof(RHI_Vertex_PosTexNorTan);
-                    desc.vertexFormat       = FFX_SURFACE_FORMAT_R32G32B32_FLOAT;
-                    desc.vertexBufferOffset = 0;
+                    RHI_GeometryBuffer* buffer_vertex = renderable->GetVertexBuffer();
+                    desc.vertexBuffer                 = brixelizer_gi::get_buffer_index(buffer_vertex);
+                    desc.vertexStride                 = sizeof(RHI_Vertex_PosTexNorTan);
+                    desc.vertexBufferOffset           = renderable->GetVertexOffset();
+                    desc.vertexCount                  = renderable->GetVertexCount();
+                    desc.vertexFormat                 = FFX_SURFACE_FORMAT_R32G32B32_FLOAT;
 
                     // index buffer
-                    auto ib = renderable->GetIndexBuffer();
-                    auto ib_it = find_if(brixelizer_gi::buffer_indices.begin(), brixelizer_gi::buffer_indices.end(),
-                        [ib](const auto& pair) { return pair.first == ib; });
-                    if (ib_it == brixelizer_gi::buffer_indices.end())
-                    {
-                        uint32_t new_index = static_cast<uint32_t>(brixelizer_gi::buffer_indices.size());
-                        brixelizer_gi::buffer_indices.emplace_back(ib, new_index);
+                    RHI_GeometryBuffer* buffer_index = renderable->GetIndexBuffer();
+                    desc.indexBuffer                 = brixelizer_gi::get_buffer_index(buffer_index);
+                    desc.indexBufferOffset           = renderable->GetIndexOffset();
+                    desc.triangleCount               = renderable->GetIndexCount() / 3;
+                    desc.indexFormat                 = (buffer_index->GetStride() == sizeof(uint16_t)) ? FFX_INDEX_TYPE_UINT16 : FFX_INDEX_TYPE_UINT32;
 
-                        FfxBrixelizerBufferDescription buffer_desc = {};
-                        buffer_desc.buffer                         = to_ffx_resource(nullptr, nullptr, ib, L"brixelizer_gi_buffer_index");
-                        buffer_desc.outIndex                       = &new_index;
-
-                        FfxErrorCode error = ffxBrixelizerRegisterBuffers(&brixelizer_gi::context, &buffer_desc, 1);
-                        SP_ASSERT(error == FFX_OK);
-                        desc.indexBuffer = new_index;
-                    }
-                    else
-                    {
-                        desc.indexBuffer = ib_it->second;
-                    }
-                
                     // misc
-                    desc.triangleCount = renderable->GetIndexCount() / 3;
-                    desc.flags         = FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC;
+                    desc.flags = FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC;
                 
-                    brixelizer_gi::instances.push_back(desc);
+                    brixelizer_gi::entity_instances.push_back(desc);
                 }
                 
-                FfxErrorCode error = ffxBrixelizerCreateInstances(&brixelizer_gi::context, brixelizer_gi::instances.data(), static_cast<uint32_t>(brixelizer_gi::instances.size()));
+                FfxErrorCode error = ffxBrixelizerCreateInstances(&brixelizer_gi::context, brixelizer_gi::entity_instances.data(), static_cast<uint32_t>(brixelizer_gi::entity_instances.size()));
                 SP_ASSERT(error == FFX_OK);
             }
         }
@@ -864,7 +862,7 @@ namespace Spartan
         brixelizer_gi::description_update.outStats             = &stats;                        // statistics for the update, stats read back after ffxBrixelizerUpdate()
         
         // debug visualization for: distance, uvw, iterations, brick id, cascade id
-        bool debug_on     = brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Off;
+        bool debug_on     = brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Max;
         bool debug_update = brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Radiance && brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Irradiance;
         if (debug_on && debug_update)
         {
