@@ -1218,7 +1218,7 @@ namespace Spartan
         if (!GetOption<bool>(Renderer_Option::GlobalIllumination) || !m_initialized_third_party)
             return;
 
-        cmd_list->BeginTimeblock("global_illumination");
+        cmd_list->BeginTimeblock("light_global_illumination");
 
         // update
         {
