@@ -283,6 +283,7 @@ namespace Spartan
                 FfxBrixelizerInstanceID id = FFX_BRIXELIZER_INVALID_ID;
             };
             vector<BrixelizerInstanceInfo> entity_instances;
+            std::vector<FfxBrixelizerInstanceID> created_instance_ids;
 
             // debug visualization (which overwrites the diffuse gi output texture)
             enum class DebugMode
@@ -297,7 +298,7 @@ namespace Spartan
                 Irradiance, // gi
                 Max
             };
-            DebugMode debug_mode                                            = DebugMode::Max;
+            DebugMode debug_mode                                            = DebugMode::Gradient;
             FfxBrixelizerDebugVisualizationDescription debug_description    = {};
             FfxBrixelizerGIDebugDescription            debug_description_gi = {};
 
@@ -787,53 +788,52 @@ namespace Spartan
 
         // aabbs
         {
+            // clear the list of created instance ids
+            brixelizer_gi::created_instance_ids.clear();
+
             // delete existing instances
-            vector<FfxBrixelizerInstanceID> instance_ids;
-            for (const auto& instance : brixelizer_gi::entity_instances)
+            if (!brixelizer_gi::created_instance_ids.empty())
             {
-                if (instance.id != FFX_BRIXELIZER_INVALID_ID)
-                    instance_ids.push_back(instance.id);
-            }
-            if (!instance_ids.empty())
-            {
-                FfxErrorCode error = ffxBrixelizerDeleteInstances(&brixelizer_gi::context, instance_ids.data(), static_cast<uint32_t>(instance_ids.size()));
+                FfxErrorCode error = ffxBrixelizerDeleteInstances(
+                    &brixelizer_gi::context,
+                    brixelizer_gi::created_instance_ids.data(),
+                    static_cast<uint32_t>(brixelizer_gi::created_instance_ids.size())
+                );
                 SP_ASSERT(error == FFX_OK);
             }
 
             // create new instances
             {
                 brixelizer_gi::entity_instances.clear();
-
                 for (int64_t i = index_start; i < index_end; i++)
                 {
-                    shared_ptr<Entity>& entity             = entities[i];
-                    shared_ptr<Renderable> renderable      = entity->GetComponent<Renderable>();
-                    brixelizer_gi::BrixelizerInstanceInfo instance_info;
-                    FfxBrixelizerInstanceDescription& desc = instance_info.desc;
+                    shared_ptr<Entity>& entity                          = entities[i];
+                    shared_ptr<Renderable> renderable                   = entity->GetComponent<Renderable>();
+                    brixelizer_gi::BrixelizerInstanceInfo instance_info = {};
+                    FfxBrixelizerInstanceDescription& desc              = instance_info.desc;
 
                     // aabb
-                    const BoundingBox& aabb = renderable->GetBoundingBox(BoundingBoxType::Transformed);
+                    const BoundingBox& aabb = renderable->GetBoundingBox(BoundingBoxType::Untransformed);
                     desc.aabb.min[0]        = aabb.GetMin().x;
                     desc.aabb.min[1]        = aabb.GetMin().y;
                     desc.aabb.min[2]        = aabb.GetMin().z;
                     desc.aabb.max[0]        = aabb.GetMax().x;
                     desc.aabb.max[1]        = aabb.GetMax().y;
                     desc.aabb.max[2]        = aabb.GetMax().z;
+                    set_ffx_float16(desc.transform, entity->GetMatrix());
 
                     // vertex buffer
-                    RHI_GeometryBuffer* buffer_vertex = renderable->GetVertexBuffer();
-                    desc.vertexBuffer                 = brixelizer_gi::get_buffer_index(buffer_vertex);
-                    desc.vertexStride                 = sizeof(RHI_Vertex_PosTexNorTan);
-                    desc.vertexBufferOffset           = renderable->GetVertexOffset();
-                    desc.vertexCount                  = renderable->GetVertexCount();
-                    desc.vertexFormat                 = FFX_SURFACE_FORMAT_R32G32B32_FLOAT;
+                    desc.vertexBuffer       = brixelizer_gi::get_buffer_index(renderable->GetVertexBuffer());
+                    desc.vertexStride       = sizeof(RHI_Vertex_PosTexNorTan);
+                    desc.vertexBufferOffset = renderable->GetVertexOffset();
+                    desc.vertexCount        = renderable->GetVertexCount();
+                    desc.vertexFormat       = FFX_SURFACE_FORMAT_R32G32B32_FLOAT;
 
                     // index buffer
-                    RHI_GeometryBuffer* buffer_index = renderable->GetIndexBuffer();
-                    desc.indexBuffer                 = brixelizer_gi::get_buffer_index(buffer_index);
-                    desc.indexBufferOffset           = renderable->GetIndexOffset();
-                    desc.triangleCount               = renderable->GetIndexCount() / 3;
-                    desc.indexFormat                 = (buffer_index->GetStride() == sizeof(uint16_t)) ? FFX_INDEX_TYPE_UINT16 : FFX_INDEX_TYPE_UINT32;
+                    desc.indexBuffer       = brixelizer_gi::get_buffer_index(renderable->GetIndexBuffer());
+                    desc.indexBufferOffset = renderable->GetIndexOffset();
+                    desc.triangleCount     = renderable->GetIndexCount() / 3;
+                    desc.indexFormat       = (renderable->GetIndexBuffer()->GetStride() == sizeof(uint16_t)) ? FFX_INDEX_TYPE_UINT16 : FFX_INDEX_TYPE_UINT32;
 
                     // misc
                     desc.flags         = FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC;
@@ -851,12 +851,18 @@ namespace Spartan
 
                 FfxErrorCode error = ffxBrixelizerCreateInstances(&brixelizer_gi::context, instance_descs.data(), static_cast<uint32_t>(instance_descs.size()));
                 SP_ASSERT(error == FFX_OK);
+
+                // after successful creation, store the created instance ids
+                for (auto& instance : brixelizer_gi::entity_instances)
+                {
+                    if (instance.id != FFX_BRIXELIZER_INVALID_ID)
+                    {
+                        brixelizer_gi::created_instance_ids.push_back(instance.id);
+                    }
+                }
             }
         }
-        
-        FfxBrixelizerStats stats            = {};
-        size_t required_scratch_buffer_size = 0;
-        
+
         for (uint32_t i = 0; i < brixelizer_gi::cascade_max; i++)
         {
             brixelizer_gi::description_update.resources.cascadeResources[i].aabbTree = to_ffx_resource(nullptr, brixelizer_gi::buffer_cascade_aabb_tree[i].get(), nullptr, L"brixelizer_gi_abbb_tree");
@@ -872,7 +878,9 @@ namespace Spartan
         brixelizer_gi::description_update.maxReferences        = 32 * (1 << 20);                // maximum number of triangle voxel references to be stored in the update
         brixelizer_gi::description_update.triangleSwapSize     = 300 * (1 << 20);               // size of the swap space available to be used for storing triangles in the update
         brixelizer_gi::description_update.maxBricksPerBake     = 1 << 14;                       // maximum number of bricks to be updated
+        size_t required_scratch_buffer_size                    = 0;
         brixelizer_gi::description_update.outScratchBufferSize = &required_scratch_buffer_size; // the size of the GPU scratch buffer needed for ffxBrixelizerUpdate()
+        FfxBrixelizerStats stats                               = {};
         brixelizer_gi::description_update.outStats             = &stats;                        // statistics for the update, stats read back after ffxBrixelizerUpdate()
         
         // debug visualization for: distance, uvw, iterations, brick id, cascade id
