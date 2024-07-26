@@ -490,9 +490,11 @@ namespace Spartan
 
         m_mutex_renderables.unlock();
 
-        // update bindless resources
-        BindlessUpdateMaterials();
-        BindlessUpdateLights();
+        // update structures that rely on the renderables
+        {
+            BindlessUpdateMaterials();
+            BindlessUpdateLights();
+        }
     }
 
     bool Renderer::CanUseCmdList()

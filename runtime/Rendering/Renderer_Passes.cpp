@@ -1220,52 +1220,50 @@ namespace Spartan
 
         cmd_list->BeginTimeblock("global_illumination");
 
-        static array<RHI_Texture*, 8> noise_textures =
+        // update
         {
-            GetStandardTexture(Renderer_StandardTexture::Noise_blue_0).get(),
-            GetStandardTexture(Renderer_StandardTexture::Noise_blue_1).get(),
-            GetStandardTexture(Renderer_StandardTexture::Noise_blue_2).get(),
-            GetStandardTexture(Renderer_StandardTexture::Noise_blue_3).get(),
-            GetStandardTexture(Renderer_StandardTexture::Noise_blue_4).get(),
-            GetStandardTexture(Renderer_StandardTexture::Noise_blue_5).get(),
-            GetStandardTexture(Renderer_StandardTexture::Noise_blue_6).get(),
-            GetStandardTexture(Renderer_StandardTexture::Noise_blue_7).get()
-        };
+            vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Mesh];
+            int64_t index_start                  = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], false, true);
+            int64_t index_end                    = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], false, false);
 
-        static vector<Entity*> entities;
-        {
-            entities.clear();
-
-            int64_t index_start = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], false, true);
-            int64_t index_end   = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], false, false);
-            for (int64_t i = index_start; i < index_end; i++)
-            {
-                // this can happen during async loading
-                if (i >= static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size()))
-                    continue;
-
-                shared_ptr<Entity>& entity = m_renderables[Renderer_Entity::Mesh][i];
-                if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
-                {
-                    entities.emplace_back(entity.get());
-                }
-
-            }
+            RHI_FidelityFX::BrixelizerGI_Update(
+                cmd_list,
+                &m_cb_frame_cpu,
+                entities,
+                index_start,
+                index_end,
+                GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi).get() // use as debug output (if needed)
+            );
         }
 
-        RHI_FidelityFX::BrixelizerGI_Dispatch(
-            cmd_list,
-            &m_cb_frame_cpu,
-            tex_in, // previous lit output
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(),
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get(),
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_material).get(),
-            noise_textures,
-            GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi).get(),
-            GetRenderTarget(Renderer_RenderTarget::light_specular_gi).get(),
-            entities
-        );
+        // dispatch
+        {
+            static array<RHI_Texture*, 8> noise_textures =
+            {
+                GetStandardTexture(Renderer_StandardTexture::Noise_blue_0).get(),
+                GetStandardTexture(Renderer_StandardTexture::Noise_blue_1).get(),
+                GetStandardTexture(Renderer_StandardTexture::Noise_blue_2).get(),
+                GetStandardTexture(Renderer_StandardTexture::Noise_blue_3).get(),
+                GetStandardTexture(Renderer_StandardTexture::Noise_blue_4).get(),
+                GetStandardTexture(Renderer_StandardTexture::Noise_blue_5).get(),
+                GetStandardTexture(Renderer_StandardTexture::Noise_blue_6).get(),
+                GetStandardTexture(Renderer_StandardTexture::Noise_blue_7).get()
+            };
+
+            RHI_FidelityFX::BrixelizerGI_Dispatch(
+                cmd_list,
+                &m_cb_frame_cpu,
+                tex_in, // previous lit output
+                GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(),
+                GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
+                GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get(),
+                GetRenderTarget(Renderer_RenderTarget::gbuffer_material).get(),
+                noise_textures,
+                GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi).get(),
+                GetRenderTarget(Renderer_RenderTarget::light_specular_gi).get(),
+                GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi).get() // use as debug output (if needed)
+            );
+        }
 
         cmd_list->EndTimeblock();
     }
