@@ -1290,15 +1290,17 @@ namespace Spartan
 
         // set textures
         SetGbufferTextures(cmd_list);
-        cmd_list->SetTexture(Renderer_BindingsUav::tex,              tex_out);
-        cmd_list->SetTexture(Renderer_BindingsUav::tex2,             GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex,              GetStandardTexture(Renderer_StandardTexture::Foam));
-        cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,    GetRenderTarget(Renderer_RenderTarget::light_diffuse).get());
-        cmd_list->SetTexture(Renderer_BindingsSrv::light_specular,   GetRenderTarget(Renderer_RenderTarget::light_specular).get());
-        cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric, GetRenderTarget(Renderer_RenderTarget::light_volumetric));
-        cmd_list->SetTexture(Renderer_BindingsSrv::frame,            tex_refraction);
-        cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,             GetRenderTarget(Renderer_RenderTarget::ssgi));
-        cmd_list->SetTexture(Renderer_BindingsSrv::environment,      GetRenderTarget(Renderer_RenderTarget::skysphere));
+        cmd_list->SetTexture(Renderer_BindingsUav::tex,               tex_out);
+        cmd_list->SetTexture(Renderer_BindingsUav::tex2,              GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex,               GetStandardTexture(Renderer_StandardTexture::Foam));
+        cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,     GetRenderTarget(Renderer_RenderTarget::light_diffuse).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse_gi,  GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::light_specular,    GetRenderTarget(Renderer_RenderTarget::light_specular).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::light_specular_gi, GetRenderTarget(Renderer_RenderTarget::light_specular_gi).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric,  GetRenderTarget(Renderer_RenderTarget::light_volumetric));
+        cmd_list->SetTexture(Renderer_BindingsSrv::frame,             tex_refraction);
+        cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,              GetRenderTarget(Renderer_RenderTarget::ssgi));
+        cmd_list->SetTexture(Renderer_BindingsSrv::environment,       GetRenderTarget(Renderer_RenderTarget::skysphere));
 
         // render
         cmd_list->Dispatch(tex_out);
