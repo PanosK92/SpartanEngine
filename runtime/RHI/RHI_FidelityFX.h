@@ -71,6 +71,14 @@ namespace Spartan
         );
 
         // Brixelizer GI
+        static void BrixelizerGI_Update(
+            RHI_CommandList* cmd_list,
+            Cb_Frame* cb_frame,
+            std::vector<std::shared_ptr<Entity>>& entities,
+            int64_t index_start,
+            int64_t index_end,
+            RHI_Texture* tex_debug
+        );
         static void BrixelizerGI_Dispatch(
             RHI_CommandList* cmd_list,
             Cb_Frame* cb_frame,
@@ -82,7 +90,7 @@ namespace Spartan
             std::array< RHI_Texture*, 8>& tex_noise,
             RHI_Texture* tex_diffuse_gi,
             RHI_Texture* tex_specular_gi,
-            const std::vector<Entity*>& entities
+            RHI_Texture* tex_debug
         );
 
     private:
