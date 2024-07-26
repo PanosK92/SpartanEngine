@@ -82,7 +82,7 @@ The [wiki](https://github.com/PanosK92/SpartanEngine/wiki/Wiki) can answer most 
 Questions can also be answered by my AI replica, [Panos](https://chat.openai.com/g/g-etpaCChzi-spartan).
 
 # Interesting facts
-- This engine started as a way to learn and enrich my portfolio while I was a university student, circa 2014, represeting over a decade of non stop development.
+- This engine started as a way to learn and enrich my portfolio while I was a university student, circa 2014, represeting over a decade of non-stop development.
 - It's one of the most rewarding projects in terms of the perks you receive should you become a contributor, more [here](https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor).
 
 # Use cases
