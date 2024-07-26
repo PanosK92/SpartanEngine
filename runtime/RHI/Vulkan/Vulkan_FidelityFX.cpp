@@ -246,7 +246,7 @@ namespace Spartan
             // parameters
             const float    mesh_unit_size           = 0.2f;
             const float    cascade_size_ratio       = 2.0f;
-            const uint32_t cascade_max              = 24;
+            const uint32_t cascade_max              = 24; // 24 cascades is the maximum supported
             const uint32_t cascade_count            = cascade_max / 3;
             const uint32_t bricks_max               = 1 << 18;
             const uint32_t brick_aabbs_stride       = sizeof(uint32_t);
@@ -260,22 +260,17 @@ namespace Spartan
             Vector3        sdf_center               = Vector3::Zero;
             const bool     sdf_follow_camera        = true;
 
-            // structs & resources
-            bool                                context_created                       = false;
-            FfxBrixelizerContext                context                               = {};
-            FfxBrixelizerContextDescription     description_context                   = {};
-            FfxBrixelizerUpdateDescription      description_update                    = {};
-            FfxBrixelizerBakedUpdateDescription description_update_baked              = {};
-            FfxBrixelizerGIContext              context_gi                            = {};
-            FfxBrixelizerGIContextDescription   description_context_gi                = {};
-            FfxBrixelizerGIDispatchDescription  description_dispatch_gi               = {};
-            shared_ptr<RHI_Texture>             texture_sdf_atlas                     = nullptr;
-            shared_ptr<RHI_Texture>             texture_depth_previous                = nullptr;
-            shared_ptr<RHI_Texture>             texture_normal_previous               = nullptr;
-            shared_ptr<RHI_Buffer>              buffer_brick_aabbs                    = nullptr;
-            array<shared_ptr<RHI_Buffer>,       cascade_max> buffer_cascade_aabb_tree = {};
-            array<shared_ptr<RHI_Buffer>,       cascade_max> buffer_cascade_brick_map = {};
-            shared_ptr<RHI_Buffer>              buffer_scratch                        = nullptr;
+            // structs
+            bool                                       context_created          = false;
+            FfxBrixelizerContext                       context                  = {};
+            FfxBrixelizerContextDescription            description_context      = {};
+            FfxBrixelizerUpdateDescription             description_update       = {};
+            FfxBrixelizerBakedUpdateDescription        description_update_baked = {};
+            FfxBrixelizerGIContext                     context_gi               = {};
+            FfxBrixelizerGIContextDescription          description_context_gi   = {};
+            FfxBrixelizerGIDispatchDescription         description_dispatch_gi  = {};
+            FfxBrixelizerDebugVisualizationDescription debug_description        = {};
+            FfxBrixelizerGIDebugDescription            debug_description_gi     = {};
             vector<pair<const RHI_GeometryBuffer*, uint32_t>> entity_buffer_indices;
             struct BrixelizerInstanceInfo
             {
@@ -283,9 +278,18 @@ namespace Spartan
                 FfxBrixelizerInstanceID id = FFX_BRIXELIZER_INVALID_ID;
             };
             vector<BrixelizerInstanceInfo> entity_instances;
-            std::vector<FfxBrixelizerInstanceID> created_instance_ids;
+            vector<FfxBrixelizerInstanceID> created_instance_ids;
 
-            // debug visualization (which overwrites the diffuse gi output texture)
+            // resources
+            shared_ptr<RHI_Texture>                    texture_sdf_atlas        = nullptr;
+            shared_ptr<RHI_Texture>                    texture_depth_previous   = nullptr;
+            shared_ptr<RHI_Texture>                    texture_normal_previous  = nullptr;
+            shared_ptr<RHI_Buffer>                     buffer_brick_aabbs       = nullptr;
+            array<shared_ptr<RHI_Buffer>, cascade_max> buffer_cascade_aabb_tree = {};
+            array<shared_ptr<RHI_Buffer>, cascade_max> buffer_cascade_brick_map = {};
+            shared_ptr<RHI_Buffer>                     buffer_scratch           = nullptr;
+
+            // misc
             enum class DebugMode
             {
                 Distance,   // brixelizer
@@ -298,9 +302,7 @@ namespace Spartan
                 Irradiance, // gi
                 Max
             };
-            DebugMode debug_mode                                            = DebugMode::Gradient;
-            FfxBrixelizerDebugVisualizationDescription debug_description    = {};
-            FfxBrixelizerGIDebugDescription            debug_description_gi = {};
+            DebugMode debug_mode = DebugMode::Max;
 
             FfxBrixelizerTraceDebugModes to_ffx_debug_mode(const DebugMode debug_mode)
             {
@@ -699,7 +701,7 @@ namespace Spartan
 
         // set camera matrices
         {
-            // note: ffx expects column-major layout (as well ass column-major memory layout) and right-handed matrices
+            // note: ffx expects column-major layout (as well as column-major memory layout) right-handed matrices
 
             auto adjust_matrix_view = [](const Matrix& matrix)
             {
