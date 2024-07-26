@@ -278,7 +278,8 @@ namespace Spartan
                 FfxBrixelizerInstanceID id = FFX_BRIXELIZER_INVALID_ID;
             };
             vector<BrixelizerInstanceInfo> entity_instances;
-            vector<FfxBrixelizerInstanceID> created_instance_ids;
+            vector<FfxBrixelizerInstanceID> instance_ids;
+            vector<FfxBrixelizerInstanceDescription> instance_descs;
 
             // resources
             shared_ptr<RHI_Texture>                    texture_sdf_atlas        = nullptr;
@@ -434,6 +435,9 @@ namespace Spartan
             SP_ASSERT(ffxBrixelizerContextDestroy(&brixelizer_gi::context) == FFX_OK);
             SP_ASSERT(ffxBrixelizerGIContextDestroy(&brixelizer_gi::context_gi) == FFX_OK);
             brixelizer_gi::context_created = false;
+            brixelizer_gi::entity_buffer_indices.clear();
+            brixelizer_gi::entity_instances.clear();
+            brixelizer_gi::instance_ids.clear();
         }
 
         // sssr
@@ -790,23 +794,23 @@ namespace Spartan
 
         // aabbs
         {
-            // clear the list of created instance ids
-            brixelizer_gi::created_instance_ids.clear();
-
             // delete existing instances
-            if (!brixelizer_gi::created_instance_ids.empty())
+            if (!brixelizer_gi::instance_ids.empty())
             {
                 FfxErrorCode error = ffxBrixelizerDeleteInstances(
                     &brixelizer_gi::context,
-                    brixelizer_gi::created_instance_ids.data(),
-                    static_cast<uint32_t>(brixelizer_gi::created_instance_ids.size())
+                    brixelizer_gi::instance_ids.data(),
+                    static_cast<uint32_t>(brixelizer_gi::instance_ids.size())
                 );
                 SP_ASSERT(error == FFX_OK);
             }
+            brixelizer_gi::instance_ids.clear();
 
             // create new instances
             {
                 brixelizer_gi::entity_instances.clear();
+                uint32_t next_instance_id = 0;
+
                 for (int64_t i = index_start; i < index_end; i++)
                 {
                     shared_ptr<Entity>& entity                          = entities[i];
@@ -837,21 +841,22 @@ namespace Spartan
                     desc.triangleCount     = renderable->GetIndexCount() / 3;
                     desc.indexFormat       = (renderable->GetIndexBuffer()->GetStride() == sizeof(uint16_t)) ? FFX_INDEX_TYPE_UINT16 : FFX_INDEX_TYPE_UINT32;
 
-                    // misc
-                    desc.flags         = FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC;
+                    // assign instance id
+                    instance_info.id   = next_instance_id++;
                     desc.outInstanceID = &instance_info.id;
+                    desc.flags         = FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC;
 
                     brixelizer_gi::entity_instances.push_back(instance_info);
                 }
 
-                vector<FfxBrixelizerInstanceDescription> instance_descs;
-                instance_descs.reserve(brixelizer_gi::entity_instances.size());
-                for (auto& instance : brixelizer_gi::entity_instances)
+                brixelizer_gi::instance_descs.clear();
+                brixelizer_gi::instance_descs.reserve(brixelizer_gi::entity_instances.size());
+                for (brixelizer_gi::BrixelizerInstanceInfo& instance : brixelizer_gi::entity_instances)
                 {
-                    instance_descs.push_back(instance.desc);
+                    brixelizer_gi::instance_descs.push_back(instance.desc);
                 }
 
-                FfxErrorCode error = ffxBrixelizerCreateInstances(&brixelizer_gi::context, instance_descs.data(), static_cast<uint32_t>(instance_descs.size()));
+                FfxErrorCode error = ffxBrixelizerCreateInstances(&brixelizer_gi::context, brixelizer_gi::instance_descs.data(), static_cast<uint32_t>(brixelizer_gi::instance_descs.size()));
                 SP_ASSERT(error == FFX_OK);
 
                 // after successful creation, store the created instance ids
@@ -859,7 +864,7 @@ namespace Spartan
                 {
                     if (instance.id != FFX_BRIXELIZER_INVALID_ID)
                     {
-                        brixelizer_gi::created_instance_ids.push_back(instance.id);
+                        brixelizer_gi::instance_ids.push_back(instance.id);
                     }
                 }
             }
