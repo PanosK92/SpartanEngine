@@ -249,12 +249,12 @@ namespace Spartan
         namespace brixelizer_gi
         {
             // parameters
-            const float    mesh_unit_size      = 0.2f;
+            const float    voxel_size          = 0.4f;
             const float    cascade_size_ratio  = 2.0f;
             const uint32_t sdf_atlas_size      = 512;
             const uint32_t bricks_max          = 262144;
-            const uint32_t cascade_resolution  = 64;
             const uint32_t cascade_count       = 8; // max is 24
+            const uint32_t cascade_resolution  = 64;
 
             // structs
             bool                                       context_created          = false;
@@ -276,33 +276,6 @@ namespace Spartan
             shared_ptr<RHI_Buffer>                       buffer_brick_aabbs       = nullptr;
             array<shared_ptr<RHI_Buffer>, cascade_count> buffer_cascade_aabb_tree = {};
             array<shared_ptr<RHI_Buffer>, cascade_count> buffer_cascade_brick_map = {};
-
-            // misc
-            enum class DebugMode
-            {
-                Distance,   // brixelizer
-                UVW,        // brixelizer
-                Iterations, // brixelizer
-                Gradient,   // brixelizer
-                BrickID,    // brixelizer
-                CascadeID,  // brixelizer
-                Radiance,   // brixelizer gi
-                Irradiance, // brixelizer gi
-                Max
-            };
-            DebugMode debug_mode = DebugMode::Max;
-
-            FfxBrixelizerTraceDebugModes to_ffx_debug_mode(const DebugMode debug_mode)
-            {
-                if (debug_mode == brixelizer_gi::DebugMode::Distance)   return FFX_BRIXELIZER_TRACE_DEBUG_MODE_DISTANCE;
-                if (debug_mode == brixelizer_gi::DebugMode::UVW)        return FFX_BRIXELIZER_TRACE_DEBUG_MODE_UVW;
-                if (debug_mode == brixelizer_gi::DebugMode::Iterations) return FFX_BRIXELIZER_TRACE_DEBUG_MODE_ITERATIONS;
-                if (debug_mode == brixelizer_gi::DebugMode::Gradient)   return FFX_BRIXELIZER_TRACE_DEBUG_MODE_GRAD;
-                if (debug_mode == brixelizer_gi::DebugMode::BrickID)    return FFX_BRIXELIZER_TRACE_DEBUG_MODE_BRICK_ID;
-                if (debug_mode == brixelizer_gi::DebugMode::CascadeID)  return FFX_BRIXELIZER_TRACE_DEBUG_MODE_CASCADE_ID;
-
-                return FFX_BRIXELIZER_TRACE_DEBUG_MODE_DISTANCE;
-            }
 
             uint32_t register_geometry_buffer(const RHI_GeometryBuffer* buffer, vector<pair<const RHI_GeometryBuffer*, uint32_t>>& buffers)
             {
@@ -330,6 +303,33 @@ namespace Spartan
 
                     return index;
                 }
+            }
+
+            // debug visualisation
+            enum class DebugMode
+            {
+                Distance,   // brixelizer
+                UVW,        // brixelizer
+                Iterations, // brixelizer
+                Gradient,   // brixelizer
+                BrickID,    // brixelizer
+                CascadeID,  // brixelizer
+                Radiance,   // brixelizer gi
+                Irradiance, // brixelizer gi
+                Max
+            };
+            DebugMode debug_mode = DebugMode::Gradient;
+
+            FfxBrixelizerTraceDebugModes to_ffx_debug_mode(const DebugMode debug_mode)
+            {
+                if (debug_mode == brixelizer_gi::DebugMode::Distance)   return FFX_BRIXELIZER_TRACE_DEBUG_MODE_DISTANCE;
+                if (debug_mode == brixelizer_gi::DebugMode::UVW)        return FFX_BRIXELIZER_TRACE_DEBUG_MODE_UVW;
+                if (debug_mode == brixelizer_gi::DebugMode::Iterations) return FFX_BRIXELIZER_TRACE_DEBUG_MODE_ITERATIONS;
+                if (debug_mode == brixelizer_gi::DebugMode::Gradient)   return FFX_BRIXELIZER_TRACE_DEBUG_MODE_GRAD;
+                if (debug_mode == brixelizer_gi::DebugMode::BrickID)    return FFX_BRIXELIZER_TRACE_DEBUG_MODE_BRICK_ID;
+                if (debug_mode == brixelizer_gi::DebugMode::CascadeID)  return FFX_BRIXELIZER_TRACE_DEBUG_MODE_CASCADE_ID;
+
+                return FFX_BRIXELIZER_TRACE_DEBUG_MODE_DISTANCE;
             }
         }
     }
@@ -523,19 +523,18 @@ namespace Spartan
 
                 // cascades
                 brixelizer_gi::description_context.numCascades = brixelizer_gi::cascade_count;
-                float voxel_size = brixelizer_gi::mesh_unit_size;
-                for (uint32_t i = 0; i < brixelizer_gi::description_context.numCascades; ++i)
+                float voxel_size = brixelizer_gi::voxel_size;
+                for (uint32_t i = 0; i < brixelizer_gi::cascade_count; ++i)
                 {
                     FfxBrixelizerCascadeDescription* cascadeDesc  = &brixelizer_gi::description_context.cascadeDescs[i];
-                    cascadeDesc->flags                            = (FfxBrixelizerCascadeFlag)(FFX_BRIXELIZER_CASCADE_STATIC | FFX_BRIXELIZER_CASCADE_DYNAMIC);
-                    cascadeDesc->voxelSize                        = brixelizer_gi::mesh_unit_size;
+                    cascadeDesc->flags                            = FfxBrixelizerCascadeFlag::FFX_BRIXELIZER_CASCADE_DYNAMIC;
+                    cascadeDesc->voxelSize                        = brixelizer_gi::voxel_size;
                     voxel_size                                   *= brixelizer_gi::cascade_size_ratio;
                 }
 
                 // misc
-                #ifdef DEBUG
-                brixelizer_gi::description_context.flags = FFX_BRIXELIZER_CONTEXT_FLAG_ALL_DEBUG;
-                #endif
+                bool debug_enabled                                  = brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Max;
+                brixelizer_gi::description_context.flags            = debug_enabled ? FfxBrixelizerContextFlags::FFX_BRIXELIZER_CONTEXT_FLAG_ALL_DEBUG : (FfxBrixelizerContextFlags)0;
                 brixelizer_gi::description_context.backendInterface = ffx_interface;
 
                 SP_ASSERT(ffxBrixelizerContextCreate(&brixelizer_gi::description_context, &brixelizer_gi::context) == FFX_OK);
@@ -785,14 +784,13 @@ namespace Spartan
             brixelizer_gi::debug_mode = static_cast<brixelizer_gi::DebugMode>((static_cast<uint32_t>(brixelizer_gi::debug_mode) + 1) % static_cast<uint32_t>(brixelizer_gi::DebugMode::Max));
         }
 
-        // add entities
+        // add entities (what ffx refers to as instances)
         {
             // note: if the need arises, instances and buffers can be delete/unregistered
             static vector<pair<const RHI_GeometryBuffer*, uint32_t>> buffers;
             static vector<FfxBrixelizerInstanceDescription> instances;
 
             instances.clear();
-
             for (int64_t i = index_start; i < index_end; i++)
             {
                 shared_ptr<Entity>& entity            = entities[i];
@@ -800,14 +798,14 @@ namespace Spartan
                 FfxBrixelizerInstanceDescription desc = {};
 
                 // aabb
-                const BoundingBox& aabb = renderable->GetBoundingBox(BoundingBoxType::Transformed);
+                const BoundingBox& aabb = renderable->GetBoundingBox(BoundingBoxType::Untransformed);
                 desc.aabb.min[0]        = aabb.GetMin().x;
                 desc.aabb.min[1]        = aabb.GetMin().y;
                 desc.aabb.min[2]        = aabb.GetMin().z;
                 desc.aabb.max[0]        = aabb.GetMax().x;
                 desc.aabb.max[1]        = aabb.GetMax().y;
                 desc.aabb.max[2]        = aabb.GetMax().z;
-                set_ffx_float16(desc.transform, entity->GetMatrix());
+                set_ffx_float16(desc.transform, Matrix::Transpose(entity->GetMatrix())); // world space row-major transform
 
                 // vertex buffer
                 desc.vertexBuffer       = brixelizer_gi::register_geometry_buffer(renderable->GetVertexBuffer(), buffers);
@@ -822,7 +820,7 @@ namespace Spartan
                 desc.triangleCount     = renderable->GetIndexCount() / 3;
                 desc.indexFormat       = (renderable->GetIndexBuffer()->GetStride() == sizeof(uint16_t)) ? FFX_INDEX_TYPE_UINT16 : FFX_INDEX_TYPE_UINT32;
 
-                // assign instance id
+                // misc
                 uint32_t id        = static_cast<uint32_t>(entity->GetObjectId());
                 desc.outInstanceID = &id;
                 desc.flags         = FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC;
@@ -830,7 +828,7 @@ namespace Spartan
                 instances.push_back(desc);
             }
 
-            // note: name is misleading, this function creates/updates instances
+            // note: the name is misleading, this function creates/updates instances
             SP_ASSERT(ffxBrixelizerCreateInstances(&brixelizer_gi::context, instances.data(), static_cast<uint32_t>(instances.size())) == FFX_OK);
         }
 
@@ -896,11 +894,6 @@ namespace Spartan
         // update
         FfxResource scratch_buffer = to_ffx_resource(nullptr, brixelizer_gi::buffer_scratch.get(), nullptr, L"ffx_brixelizer_gi_scratch");
         SP_ASSERT(ffxBrixelizerUpdate(&brixelizer_gi::context, &brixelizer_gi::description_update_baked, scratch_buffer, to_ffx_cmd_list(cmd_list)) == FFX_OK);
-
-        SP_LOG_INFO("Brixelizer stats - Dynamic Cascade: Triangles: %d, References: %d, Bricks: %d",
-            stats.dynamicCascadeStats.trianglesAllocated,
-            stats.dynamicCascadeStats.referencesAllocated,
-            stats.dynamicCascadeStats.bricksAllocated);
     }
 
     void RHI_FidelityFX::BrixelizerGI_Dispatch(
