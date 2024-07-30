@@ -249,13 +249,15 @@ namespace Spartan
         namespace brixelizer_gi
         {
             // parameters
-            const float    mesh_unit_size     = 0.2f;
-            const float    cascade_size_ratio = 2.0f;
-            const uint32_t sdf_atlas_size     = 512;
-            const uint32_t bricks_max         = 262144;
-            const uint32_t cascade_resolution = 64;
-            const uint32_t cascade_max        = 24; // 24 cascades is the maximum supported
-            const uint32_t cascade_count      = cascade_max / 3;
+            const float    mesh_unit_size      = 0.2f;
+            const float    cascade_size_ratio  = 2.0f;
+            const uint32_t sdf_atlas_size      = 512;
+            const uint32_t bricks_max          = 262144;
+            const uint32_t cascade_resolution  = 64;
+            const uint32_t cascade_max         = 24; // 24 cascades is the maximum supported
+            const uint32_t cascade_count       = cascade_max / 3;
+            const uint32_t cascade_index_start = 0;
+            const uint32_t cascade_index_end   = cascade_count - 1;
 
             // structs
             bool                                       context_created          = false;
@@ -788,7 +790,7 @@ namespace Spartan
             brixelizer_gi::debug_mode = static_cast<brixelizer_gi::DebugMode>((static_cast<uint32_t>(brixelizer_gi::debug_mode) + 1) % static_cast<uint32_t>(brixelizer_gi::DebugMode::Max));
         }
 
-        // aabbs
+        // add entities
         {
             unordered_set<uint32_t> current_instance_ids;
             brixelizer_gi::entity_instances.clear();
@@ -864,8 +866,8 @@ namespace Spartan
                 SP_ASSERT(error == FFX_OK);
             }
 
-            // update our list of current instance IDs
-            brixelizer_gi::instance_ids = std::move(new_instance_ids);
+            // update our list of current instance ids
+            brixelizer_gi::instance_ids = move(new_instance_ids);
         }
 
         for (uint32_t i = 0; i < brixelizer_gi::cascade_max; i++)
@@ -898,8 +900,8 @@ namespace Spartan
             brixelizer_gi::debug_description.renderWidth              = tex_debug->GetWidth();
             brixelizer_gi::debug_description.renderHeight             = tex_debug->GetHeight();
             brixelizer_gi::debug_description.debugState               = brixelizer_gi::to_ffx_debug_mode(brixelizer_gi::debug_mode);
-            brixelizer_gi::debug_description.startCascadeIndex        = brixelizer_gi::description_dispatch_gi.startCascade;
-            brixelizer_gi::debug_description.endCascadeIndex          = brixelizer_gi::description_dispatch_gi.endCascade;
+            brixelizer_gi::debug_description.startCascadeIndex        = brixelizer_gi::cascade_index_start;
+            brixelizer_gi::debug_description.endCascadeIndex          = brixelizer_gi::cascade_index_end;
             brixelizer_gi::debug_description.tMin                     = brixelizer_gi::description_dispatch_gi.tMin;
             brixelizer_gi::debug_description.tMax                     = brixelizer_gi::description_dispatch_gi.tMax;
             brixelizer_gi::debug_description.sdfSolveEps              = 0.5f;
@@ -983,34 +985,29 @@ namespace Spartan
         }
         
         // set parameters
-        brixelizer_gi::description_dispatch_gi.startCascade            = 0                                  + (2 * brixelizer_gi::cascade_count); // index of the start cascade for use with ray marching with brixelizer
-        brixelizer_gi::description_dispatch_gi.endCascade              = (brixelizer_gi::cascade_count - 1) + (2 * brixelizer_gi::cascade_count); // index of the end cascade for use with ray marching with brixelizer
-        brixelizer_gi::description_dispatch_gi.rayPushoff              = 0.25f;                                                                   // distance from a surface along the normal vector to offset the diffuse ray origin
-        brixelizer_gi::description_dispatch_gi.sdfSolveEps             = 0.5f;                                                                    // epsilon value for ray marching to be used with brixelizer for diffuse rays
-        brixelizer_gi::description_dispatch_gi.specularRayPushoff      = 0.25f;                                                                   // distance from a surface along the normal vector to offset the specular ray origin
-        brixelizer_gi::description_dispatch_gi.specularSDFSolveEps     = 0.5f;                                                                    // epsilon value for ray marching to be used with brixelizer for specular rays
+        uint32_t offset = 2 * brixelizer_gi::cascade_count;
+        brixelizer_gi::description_dispatch_gi.startCascade            = brixelizer_gi::cascade_index_start + offset; // index of the start cascade for use with ray marching with brixelizer
+        brixelizer_gi::description_dispatch_gi.endCascade              = brixelizer_gi::cascade_index_end   + offset; // index of the end cascade for use with ray marching with brixelizer
+        brixelizer_gi::description_dispatch_gi.rayPushoff              = 0.25f;                                       // distance from a surface along the normal vector to offset the diffuse ray origin
+        brixelizer_gi::description_dispatch_gi.sdfSolveEps             = 0.5f;                                        // epsilon value for ray marching to be used with brixelizer for diffuse rays
+        brixelizer_gi::description_dispatch_gi.specularRayPushoff      = 0.25f;                                       // distance from a surface along the normal vector to offset the specular ray origin
+        brixelizer_gi::description_dispatch_gi.specularSDFSolveEps     = 0.5f;                                        // epsilon value for ray marching to be used with brixelizer for specular rays
         brixelizer_gi::description_dispatch_gi.tMin                    = 0.0f;
         brixelizer_gi::description_dispatch_gi.tMax                    = 10000.0f;
-        brixelizer_gi::description_dispatch_gi.normalsUnpackMul        = 1.0f;                                                                    // a multiply factor to transform the normal to the space expected by brixelizer gi
-        brixelizer_gi::description_dispatch_gi.normalsUnpackAdd        = 0.0f;                                                                    // an offset to transform the normal to the space expected by brixelizer gi
-        brixelizer_gi::description_dispatch_gi.isRoughnessPerceptual   = true;                                                                    // if false, we assume roughness squared was stored in the Gbuffer
-        brixelizer_gi::description_dispatch_gi.roughnessChannel        = 0;                                                                       // the channel to read the roughness from the roughness texture
-        brixelizer_gi::description_dispatch_gi.roughnessThreshold      = 1.0f;                                                                    // regions with a roughness value greater than this threshold won't spawn specular rays
-        brixelizer_gi::description_dispatch_gi.environmentMapIntensity = 0.0f;                                                                    // value to scale the contribution from the environment map
-        brixelizer_gi::description_dispatch_gi.motionVectorScale.x     = 1.0f;                                                                    // scale factor to apply to motion vectors
-        brixelizer_gi::description_dispatch_gi.motionVectorScale.y     = 1.0f;                                                                    // scale factor to apply to motion vectors
-        set_ffx_float3(brixelizer_gi::description_dispatch_gi.cameraPosition, cb_frame->camera_position);                                         // camera position
-        
+        brixelizer_gi::description_dispatch_gi.normalsUnpackMul        = 1.0f;                                        // a multiply factor to transform the normal to the space expected by brixelizer gi
+        brixelizer_gi::description_dispatch_gi.normalsUnpackAdd        = 0.0f;                                        // an offset to transform the normal to the space expected by brixelizer gi
+        brixelizer_gi::description_dispatch_gi.isRoughnessPerceptual   = true;                                        // if false, we assume roughness squared was stored in the Gbuffer
+        brixelizer_gi::description_dispatch_gi.roughnessChannel        = 0;                                           // the channel to read the roughness from the roughness texture
+        brixelizer_gi::description_dispatch_gi.roughnessThreshold      = 1.0f;                                        // regions with a roughness value greater than this threshold won't spawn specular rays
+        brixelizer_gi::description_dispatch_gi.environmentMapIntensity = 0.0f;                                        // value to scale the contribution from the environment map
+        brixelizer_gi::description_dispatch_gi.motionVectorScale.x     = 1.0f;                                        // scale factor to apply to motion vectors
+        brixelizer_gi::description_dispatch_gi.motionVectorScale.y     = 1.0f;                                        // scale factor to apply to motion vectors
+        set_ffx_float3(brixelizer_gi::description_dispatch_gi.cameraPosition, cb_frame->camera_position);             // camera position
+
         // dispatch
-        {
-            FfxErrorCode error_code = ffxBrixelizerGetRawContext(&brixelizer_gi::context, &brixelizer_gi::description_dispatch_gi.brixelizerContext); // get the raw context for use with brixelizer gi
-            SP_ASSERT(error_code == FFX_OK);
-            
-            // dispatch
-            error_code = ffxBrixelizerGIContextDispatch(&brixelizer_gi::context_gi, &brixelizer_gi::description_dispatch_gi, to_ffx_cmd_list(cmd_list));
-            SP_ASSERT(error_code == FFX_OK);
-        }
-        
+        SP_ASSERT(ffxBrixelizerGetRawContext(&brixelizer_gi::context, &brixelizer_gi::description_dispatch_gi.brixelizerContext) == FFX_OK);
+        SP_ASSERT(ffxBrixelizerGIContextDispatch(&brixelizer_gi::context_gi, &brixelizer_gi::description_dispatch_gi, to_ffx_cmd_list(cmd_list)) == FFX_OK);
+
         // blit the dept and the normal so that we can use them in the next frame as "history"
         cmd_list->Blit(tex_depth,  brixelizer_gi::texture_depth_previous.get(),  false);
         cmd_list->Blit(tex_normal, brixelizer_gi::texture_normal_previous.get(), false);
@@ -1043,13 +1040,8 @@ namespace Spartan
             }
 
             // dispatch
-            {
-                FfxErrorCode error = ffxBrixelizerGetRawContext(&brixelizer_gi::context, &brixelizer_gi::debug_description_gi.brixelizerContext);
-                SP_ASSERT(error == FFX_OK);
-
-                error = ffxBrixelizerGIContextDebugVisualization(&brixelizer_gi::context_gi, &brixelizer_gi::debug_description_gi, to_ffx_cmd_list(cmd_list));
-                SP_ASSERT(error == FFX_OK);
-            }
+            SP_ASSERT(ffxBrixelizerGetRawContext(&brixelizer_gi::context, &brixelizer_gi::debug_description_gi.brixelizerContext) == FFX_OK);
+            SP_ASSERT(ffxBrixelizerGIContextDebugVisualization(&brixelizer_gi::context_gi, &brixelizer_gi::debug_description_gi, to_ffx_cmd_list(cmd_list)) == FFX_OK);
         }
     }
 }
