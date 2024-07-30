@@ -249,19 +249,13 @@ namespace Spartan
         namespace brixelizer_gi
         {
             // parameters
-            const float    mesh_unit_size           = 0.2f;
-            const float    cascade_size_ratio       = 2.0f;
-            const uint32_t cascade_max              = 24; // 24 cascades is the maximum supported
-            const uint32_t cascade_count            = cascade_max / 3;
-            const uint32_t bricks_max               = 262144;
-            const uint32_t brick_aabbs_stride       = sizeof(uint32_t);
-            const uint32_t brick_aabbs_size         = bricks_max * brick_aabbs_stride;
-            const uint32_t cascade_resolution       = 64;
-            const uint32_t cascade_aabb_tree_size   = (16 * 16 * 16) * sizeof(uint32_t) + (4 * 4 * 4 + 1) * sizeof(Vector3) * 2;
-            const uint32_t cascade_aabb_tree_stride = sizeof(uint32_t);
-            const uint32_t cascade_brick_map_size   = cascade_resolution * cascade_resolution * cascade_resolution * sizeof(uint32_t);
-            const uint32_t cascade_brick_map_stride = sizeof(uint32_t);
-            const uint32_t sdf_atlas_size           = 512;
+            const float    mesh_unit_size     = 0.2f;
+            const float    cascade_size_ratio = 2.0f;
+            const uint32_t sdf_atlas_size     = 512;
+            const uint32_t bricks_max         = 262144;
+            const uint32_t cascade_resolution = 64;
+            const uint32_t cascade_max        = 24; // 24 cascades is the maximum supported
+            const uint32_t cascade_count      = cascade_max / 3;
 
             // structs
             bool                                       context_created          = false;
@@ -377,14 +371,6 @@ namespace Spartan
 
             // brixelizer gi
             {
-                // scratch buffer
-                brixelizer_gi::buffer_scratch = make_shared<RHI_Buffer>(
-                    1 << 30, // 1024 MB (will grow if needed)
-                    1,
-                    RHI_Buffer_Transfer_Src | RHI_Buffer_Transfer_Dst,
-                    "ffx_brixelizer_gi_scratch"
-                );
-
                 // sdf atlas texture
                 brixelizer_gi::texture_sdf_atlas = make_unique<RHI_Texture3D>(
                     brixelizer_gi::sdf_atlas_size,
@@ -395,33 +381,43 @@ namespace Spartan
                     "ffx_sdf_atlas"
                 );
 
+                // scratch buffer
+                brixelizer_gi::buffer_scratch = make_shared<RHI_Buffer>(
+                    1 << 30, // stride - 1024 MB (will grow if needed)
+                    1,       // element count
+                    RHI_Buffer_Transfer_Src | RHI_Buffer_Transfer_Dst,
+                    "ffx_brixelizer_gi_scratch"
+                );
+
                 // brick aabbs buffer
                 brixelizer_gi::buffer_brick_aabbs = make_shared<RHI_Buffer>(
-                    brixelizer_gi::brick_aabbs_stride,
-                    brixelizer_gi::bricks_max,
+                    sizeof(uint32_t),          // stride
+                    brixelizer_gi::bricks_max, // element count
                     0,
                     "ffx_brick_aabbs"
                 );
 
                 // cascade aabb trees
+                const uint32_t cascade_aabb_tree_size = (16 * 16 * 16) * sizeof(uint32_t) + (4 * 4 * 4 + 1) * sizeof(Vector3) * 2;
                 for (uint32_t i = 0; i < brixelizer_gi::cascade_max; ++i)
                 {
                     string name = "ffx_cascade_aabb_tree_" + to_string(i);
                     brixelizer_gi::buffer_cascade_aabb_tree[i] = make_shared<RHI_Buffer>(
-                        brixelizer_gi::cascade_aabb_tree_stride,
-                        brixelizer_gi::cascade_aabb_tree_size / brixelizer_gi::cascade_aabb_tree_stride,
+                        sizeof(uint32_t),                          // stride
+                        cascade_aabb_tree_size / sizeof(uint32_t), // element count
                         0,
                         name.c_str()
                     );
                 }
 
                 // cascade brick maps
+                const uint32_t cascade_brick_map_size = brixelizer_gi::cascade_resolution * brixelizer_gi::cascade_resolution * brixelizer_gi::cascade_resolution * sizeof(uint32_t);
                 for (uint32_t i = 0; i < brixelizer_gi::cascade_max; ++i)
                 {
                     string name = "ffx_cascade_brick_map_" + to_string(i);
                     brixelizer_gi::buffer_cascade_brick_map[i] = make_shared<RHI_Buffer>(
-                        brixelizer_gi::cascade_brick_map_stride,
-                        brixelizer_gi::cascade_brick_map_size / brixelizer_gi::cascade_brick_map_stride,
+                        sizeof(uint32_t),                          // stride
+                        cascade_brick_map_size / sizeof(uint32_t), // element count
                         0,
                         name.c_str()
                     );
