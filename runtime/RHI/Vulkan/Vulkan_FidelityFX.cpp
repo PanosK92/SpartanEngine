@@ -203,6 +203,11 @@ namespace Spartan
             );
         }
 
+        FfxCommandList to_ffx_cmd_list(RHI_CommandList* cmd_list)
+        {
+            return ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
+        }
+
         void set_ffx_float3(FfxFloat32x3& dest, const Vector3& source)
         {
             dest[0] = source.x;
@@ -248,7 +253,7 @@ namespace Spartan
             const float    cascade_size_ratio       = 2.0f;
             const uint32_t cascade_max              = 24; // 24 cascades is the maximum supported
             const uint32_t cascade_count            = cascade_max / 3;
-            const uint32_t bricks_max               = 1 << 18;
+            const uint32_t bricks_max               = 262144;
             const uint32_t brick_aabbs_stride       = sizeof(uint32_t);
             const uint32_t brick_aabbs_size         = bricks_max * brick_aabbs_stride;
             const uint32_t cascade_resolution       = 64;
@@ -257,8 +262,6 @@ namespace Spartan
             const uint32_t cascade_brick_map_size   = cascade_resolution * cascade_resolution * cascade_resolution * sizeof(uint32_t);
             const uint32_t cascade_brick_map_stride = sizeof(uint32_t);
             const uint32_t sdf_atlas_size           = 512;
-            Vector3        sdf_center               = Vector3::Zero;
-            const bool     sdf_follow_camera        = true;
 
             // structs
             bool                                       context_created          = false;
@@ -285,10 +288,10 @@ namespace Spartan
             shared_ptr<RHI_Texture>                    texture_sdf_atlas        = nullptr;
             shared_ptr<RHI_Texture>                    texture_depth_previous   = nullptr;
             shared_ptr<RHI_Texture>                    texture_normal_previous  = nullptr;
+            shared_ptr<RHI_Buffer>                     buffer_scratch           = nullptr;
             shared_ptr<RHI_Buffer>                     buffer_brick_aabbs       = nullptr;
             array<shared_ptr<RHI_Buffer>, cascade_max> buffer_cascade_aabb_tree = {};
             array<shared_ptr<RHI_Buffer>, cascade_max> buffer_cascade_brick_map = {};
-            shared_ptr<RHI_Buffer>                     buffer_scratch           = nullptr;
 
             // misc
             enum class DebugMode
@@ -299,8 +302,8 @@ namespace Spartan
                 Gradient,   // brixelizer
                 BrickID,    // brixelizer
                 CascadeID,  // brixelizer
-                Radiance,   // gi
-                Irradiance, // gi
+                Radiance,   // brixelizer gi
+                Irradiance, // brixelizer gi
                 Max
             };
             DebugMode debug_mode = DebugMode::Max;
@@ -619,7 +622,7 @@ namespace Spartan
         // generate reactive mask
         {
             // set resources
-            fsr3::description_reactive_mask.commandList       = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
+            fsr3::description_reactive_mask.commandList       = to_ffx_cmd_list(cmd_list);
             fsr3::description_reactive_mask.colorOpaqueOnly   = to_ffx_resource(tex_color_opaque, nullptr, nullptr, L"fsr3_color_opaque");
             fsr3::description_reactive_mask.colorPreUpscale   = to_ffx_resource(tex_color,        nullptr, nullptr, L"fsr3_color");
             fsr3::description_reactive_mask.outReactive       = to_ffx_resource(tex_reactive,     nullptr, nullptr, L"fsr3_reactive");
@@ -639,7 +642,7 @@ namespace Spartan
         // upscale
         {
             // set resources
-            fsr3::description_dispatch.commandList   = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
+            fsr3::description_dispatch.commandList   = to_ffx_cmd_list(cmd_list);
             fsr3::description_dispatch.color         = to_ffx_resource(tex_color,    nullptr, nullptr, L"fsr3_color");
             fsr3::description_dispatch.depth         = to_ffx_resource(tex_depth,    nullptr, nullptr, L"fsr3_depth");
             fsr3::description_dispatch.motionVectors = to_ffx_resource(tex_velocity, nullptr, nullptr, L"fsr3_velocity");
@@ -651,12 +654,12 @@ namespace Spartan
             fsr3::description_dispatch.motionVectorScale.y    = -static_cast<float>(tex_velocity->GetHeight());
             fsr3::description_dispatch.enableSharpening       = sharpness != 0.0f;
             fsr3::description_dispatch.sharpness              = sharpness;
-            fsr3::description_dispatch.frameTimeDelta         = delta_time_sec * 1000.0f;                         // seconds to milliseconds
-            fsr3::description_dispatch.preExposure            = exposure;                                         // the exposure value if not using FFX_FSR3_ENABLE_AUTO_EXPOSURE
+            fsr3::description_dispatch.frameTimeDelta         = delta_time_sec * 1000.0f;    // seconds to milliseconds
+            fsr3::description_dispatch.preExposure            = exposure;                    // the exposure value if not using FFX_FSR3_ENABLE_AUTO_EXPOSURE
             fsr3::description_dispatch.renderSize.width       = fsr3::description_reactive_mask.renderSize.width;
             fsr3::description_dispatch.renderSize.height      = fsr3::description_reactive_mask.renderSize.height;
-            fsr3::description_dispatch.cameraNear             = camera->GetFarPlane();                            // far as near because we are using reverse-z
-            fsr3::description_dispatch.cameraFar              = camera->GetNearPlane();                           // near as far because we are using reverse-z
+            fsr3::description_dispatch.cameraNear             = camera->GetFarPlane();       // far as near because we are using reverse-z
+            fsr3::description_dispatch.cameraFar              = camera->GetNearPlane();      // near as far because we are using reverse-z
             fsr3::description_dispatch.cameraFovAngleVertical = camera->GetFovVerticalRad();
 
             // dispatch
@@ -686,7 +689,7 @@ namespace Spartan
         cmd_list->InsertPendingBarrierGroup();
 
         // set resources
-        sssr::description_dispatch.commandList        = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
+        sssr::description_dispatch.commandList        = to_ffx_cmd_list(cmd_list);
         sssr::description_dispatch.color              = to_ffx_resource(tex_color,           nullptr, nullptr, L"sssr_color");
         sssr::description_dispatch.depth              = to_ffx_resource(tex_depth,           nullptr, nullptr, L"sssr_depth");
         sssr::description_dispatch.motionVectors      = to_ffx_resource(tex_velocity,        nullptr, nullptr, L"sssr_velocity");
@@ -831,7 +834,7 @@ namespace Spartan
                 desc.outInstanceID = &instance_info.id;
                 desc.flags         = FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC;
 
-                // Only add the instance if it's not already in our set
+                // only add the instance if it's not already in our set
                 if (current_instance_ids.insert(instance_info.id).second)
                 {
                     brixelizer_gi::entity_instances.push_back(instance_info);
@@ -876,10 +879,9 @@ namespace Spartan
         }
         brixelizer_gi::description_update.resources.sdfAtlas   = to_ffx_resource(brixelizer_gi::texture_sdf_atlas.get(), nullptr,  nullptr, L"brixelizer_gi_sdf_atlas");
         brixelizer_gi::description_update.resources.brickAABBs = to_ffx_resource(nullptr, brixelizer_gi::buffer_brick_aabbs.get(), nullptr, L"brixelizer_gi_brick_aabbs");
-        brixelizer_gi::sdf_center                              = brixelizer_gi::sdf_follow_camera ? cb_frame->camera_position : brixelizer_gi::sdf_center;
-        brixelizer_gi::description_update.sdfCenter[0]         = brixelizer_gi::sdf_center.x;
-        brixelizer_gi::description_update.sdfCenter[1]         = brixelizer_gi::sdf_center.y;
-        brixelizer_gi::description_update.sdfCenter[2]         = brixelizer_gi::sdf_center.z;
+        brixelizer_gi::description_update.sdfCenter[0]         = cb_frame->camera_position.x;
+        brixelizer_gi::description_update.sdfCenter[1]         = cb_frame->camera_position.y;
+        brixelizer_gi::description_update.sdfCenter[2]         = cb_frame->camera_position.z;
         brixelizer_gi::description_update.frameIndex           = cb_frame->frame;
         brixelizer_gi::description_update.maxReferences        = 32 * (1 << 20);                // maximum number of triangle voxel references to be stored in the update
         brixelizer_gi::description_update.triangleSwapSize     = 300 * (1 << 20);               // size of the swap space available to be used for storing triangles in the update
@@ -911,8 +913,7 @@ namespace Spartan
         }
         
         // bake
-        FfxCommandList ffx_command_list = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
-        FfxErrorCode error_code         = ffxBrixelizerBakeUpdate(&brixelizer_gi::context, &brixelizer_gi::description_update, &brixelizer_gi::description_update_baked);
+        FfxErrorCode error_code = ffxBrixelizerBakeUpdate(&brixelizer_gi::context, &brixelizer_gi::description_update, &brixelizer_gi::description_update_baked);
         SP_ASSERT(error_code == FFX_OK);
 
         // grow scratch buffer (if needed)
@@ -931,7 +932,7 @@ namespace Spartan
 
         // update
         FfxResource scratch_buffer = to_ffx_resource(nullptr, brixelizer_gi::buffer_scratch.get(), nullptr, L"ffx_brixelizer_gi_scratch");
-        error_code                 = ffxBrixelizerUpdate(&brixelizer_gi::context, &brixelizer_gi::description_update_baked, scratch_buffer, ffx_command_list);
+        error_code                 = ffxBrixelizerUpdate(&brixelizer_gi::context, &brixelizer_gi::description_update_baked, scratch_buffer, to_ffx_cmd_list(cmd_list));
         SP_ASSERT(error_code == FFX_OK);
     }
 
@@ -978,7 +979,7 @@ namespace Spartan
         brixelizer_gi::description_dispatch_gi.outputDiffuseGI  = to_ffx_resource(tex_diffuse_gi,                               nullptr, nullptr, L"brixelizer_gi_diffuse_gi");
         brixelizer_gi::description_dispatch_gi.outputSpecularGI = to_ffx_resource(tex_specular_gi,                              nullptr, nullptr, L"brixelizer_gi_specular_gi");
         brixelizer_gi::description_dispatch_gi.sdfAtlas         = to_ffx_resource(brixelizer_gi::texture_sdf_atlas.get(),       nullptr, nullptr, L"brixelizer_gi_sdf_atlas");
-        brixelizer_gi::description_dispatch_gi.bricksAABBs      = to_ffx_resource(nullptr, brixelizer_gi::buffer_brick_aabbs.get(), nullptr, L"brixelizer_gi_brick_aabbs");
+        brixelizer_gi::description_dispatch_gi.bricksAABBs      = to_ffx_resource(nullptr, brixelizer_gi::buffer_brick_aabbs.get(),      nullptr, L"brixelizer_gi_brick_aabbs");
         for (uint32_t i = 0; i < brixelizer_gi::cascade_max; i++)
         {
             brixelizer_gi::description_update.resources.cascadeResources[i].aabbTree = to_ffx_resource(nullptr, brixelizer_gi::buffer_cascade_aabb_tree[i].get(), nullptr, L"brixelizer_gi_abbb_tree");
@@ -986,16 +987,16 @@ namespace Spartan
         }
         
         // set parameters
-        brixelizer_gi::description_dispatch_gi.startCascade            = 0                                  + (2 * brixelizer_gi::cascade_count); // index of the start cascade for use with ray marching with Brixelizer
-        brixelizer_gi::description_dispatch_gi.endCascade              = (brixelizer_gi::cascade_count - 1) + (2 * brixelizer_gi::cascade_count); // index of the end cascade for use with ray marching with Brixelizer
+        brixelizer_gi::description_dispatch_gi.startCascade            = 0                                  + (2 * brixelizer_gi::cascade_count); // index of the start cascade for use with ray marching with brixelizer
+        brixelizer_gi::description_dispatch_gi.endCascade              = (brixelizer_gi::cascade_count - 1) + (2 * brixelizer_gi::cascade_count); // index of the end cascade for use with ray marching with brixelizer
         brixelizer_gi::description_dispatch_gi.rayPushoff              = 0.25f;                                                                   // distance from a surface along the normal vector to offset the diffuse ray origin
-        brixelizer_gi::description_dispatch_gi.sdfSolveEps             = 0.5f;                                                                    // epsilon value for ray marching to be used with Brixelizer for diffuse rays
+        brixelizer_gi::description_dispatch_gi.sdfSolveEps             = 0.5f;                                                                    // epsilon value for ray marching to be used with brixelizer for diffuse rays
         brixelizer_gi::description_dispatch_gi.specularRayPushoff      = 0.25f;                                                                   // distance from a surface along the normal vector to offset the specular ray origin
-        brixelizer_gi::description_dispatch_gi.specularSDFSolveEps     = 0.5f;                                                                    // epsilon value for ray marching to be used with Brixelizer for specular rays
+        brixelizer_gi::description_dispatch_gi.specularSDFSolveEps     = 0.5f;                                                                    // epsilon value for ray marching to be used with brixelizer for specular rays
         brixelizer_gi::description_dispatch_gi.tMin                    = 0.0f;
         brixelizer_gi::description_dispatch_gi.tMax                    = 10000.0f;
-        brixelizer_gi::description_dispatch_gi.normalsUnpackMul        = 1.0f;                                                                    // a multiply factor to transform the normal to the space expected by Brixelizer GI
-        brixelizer_gi::description_dispatch_gi.normalsUnpackAdd        = 0.0f;                                                                    // an offset to transform the normal to the space expected by Brixelizer GI
+        brixelizer_gi::description_dispatch_gi.normalsUnpackMul        = 1.0f;                                                                    // a multiply factor to transform the normal to the space expected by brixelizer gi
+        brixelizer_gi::description_dispatch_gi.normalsUnpackAdd        = 0.0f;                                                                    // an offset to transform the normal to the space expected by brixelizer gi
         brixelizer_gi::description_dispatch_gi.isRoughnessPerceptual   = true;                                                                    // if false, we assume roughness squared was stored in the Gbuffer
         brixelizer_gi::description_dispatch_gi.roughnessChannel        = 0;                                                                       // the channel to read the roughness from the roughness texture
         brixelizer_gi::description_dispatch_gi.roughnessThreshold      = 1.0f;                                                                    // regions with a roughness value greater than this threshold won't spawn specular rays
@@ -1006,12 +1007,11 @@ namespace Spartan
         
         // dispatch
         {
-            FfxErrorCode error_code = ffxBrixelizerGetRawContext(&brixelizer_gi::context, &brixelizer_gi::description_dispatch_gi.brixelizerContext); // get the raw context for use with Brixelizer GI
+            FfxErrorCode error_code = ffxBrixelizerGetRawContext(&brixelizer_gi::context, &brixelizer_gi::description_dispatch_gi.brixelizerContext); // get the raw context for use with brixelizer gi
             SP_ASSERT(error_code == FFX_OK);
             
             // dispatch
-            FfxCommandList ffx_command_list = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
-            error_code                      = ffxBrixelizerGIContextDispatch(&brixelizer_gi::context_gi, &brixelizer_gi::description_dispatch_gi, ffx_command_list);
+            error_code = ffxBrixelizerGIContextDispatch(&brixelizer_gi::context_gi, &brixelizer_gi::description_dispatch_gi, to_ffx_cmd_list(cmd_list));
             SP_ASSERT(error_code == FFX_OK);
         }
         
@@ -1051,8 +1051,7 @@ namespace Spartan
                 FfxErrorCode error = ffxBrixelizerGetRawContext(&brixelizer_gi::context, &brixelizer_gi::debug_description_gi.brixelizerContext);
                 SP_ASSERT(error == FFX_OK);
 
-                FfxCommandList ffx_command_list = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
-                error = ffxBrixelizerGIContextDebugVisualization(&brixelizer_gi::context_gi, &brixelizer_gi::debug_description_gi, ffx_command_list);
+                error = ffxBrixelizerGIContextDebugVisualization(&brixelizer_gi::context_gi, &brixelizer_gi::debug_description_gi, to_ffx_cmd_list(cmd_list));
                 SP_ASSERT(error == FFX_OK);
             }
         }
