@@ -206,9 +206,9 @@ namespace Spartan::Math
             );
         }
 
-        static inline Matrix CreateScale(float scale) { return CreateScale(scale, scale, scale); }
-        static inline Matrix CreateScale(const Vector3& scale) { return CreateScale(scale.x, scale.y, scale.z); }
-        static inline Matrix CreateScale(float scaleX, float scaleY, float ScaleZ)
+        static Matrix CreateScale(float scale) { return CreateScale(scale, scale, scale); }
+        static Matrix CreateScale(const Vector3& scale) { return CreateScale(scale.x, scale.y, scale.z); }
+        static Matrix CreateScale(float scaleX, float scaleY, float ScaleZ)
         {
             return Matrix(
                 scaleX, 0, 0, 0,
@@ -218,7 +218,7 @@ namespace Spartan::Math
             );
         }
 
-        static inline Matrix CreateLookAtLH(const Vector3& position, const Vector3& target, const Vector3& up)
+        static Matrix CreateLookAtLH(const Vector3& position, const Vector3& target, const Vector3& up)
         {
             const Vector3 zAxis = Vector3::Normalize(target - position);
             const Vector3 xAxis = Vector3::Normalize(Vector3::Cross(up, zAxis));
@@ -232,7 +232,7 @@ namespace Spartan::Math
             );
         }
 
-        static inline Matrix CreateOrthographicLH(float width, float height, float zNearPlane, float zFarPlane)
+        static Matrix CreateOrthographicLH(float width, float height, float zNearPlane, float zFarPlane)
         {
             return Matrix(
                 2 / width, 0, 0, 0,
@@ -242,7 +242,7 @@ namespace Spartan::Math
             );
         }
 
-        static inline Matrix CreateOrthoOffCenterLH(float left, float right, float bottom, float top, float zNearPlane, float zFarPlane)
+        static Matrix CreateOrthoOffCenterLH(float left, float right, float bottom, float top, float zNearPlane, float zFarPlane)
         {
             return Matrix(
                 2 / (right - left), 0, 0, 0,
@@ -252,22 +252,23 @@ namespace Spartan::Math
             );
         }
 
-        static inline Matrix CreatePerspectiveFieldOfViewLH(float fov_y_radians, float aspect_ratio, float near_plane, float far_plane)
+        static Matrix CreatePerspectiveFieldOfViewLH(float fov_y_radians, float aspect_ratio, float near_plane, float far_plane)
         {
-            const float scale_x = Helper::CotF(fov_y_radians / 2);
-            const float scale_y = scale_x / aspect_ratio;
+            const float tan_half_fovy = Helper::Tan(fov_y_radians / 2);
+            const float f             = 1.0f / tan_half_fovy;
+            const float range_inv     = 1.0f / (far_plane - near_plane);
 
             return Matrix(
-                scale_y, 0,       0,                                                  0,
-                0,       scale_x, 0,                                                  0,
-                0,       0,       far_plane / (far_plane - near_plane),               1,
-                0,       0,       -near_plane * far_plane / (far_plane - near_plane), 0
+                f / aspect_ratio, 0, 0, 0,
+                0, f, 0, 0,
+                0, 0, far_plane * range_inv, 1,
+                0, 0, -near_plane * far_plane * range_inv, 0
             );
         }
 
         [[nodiscard]] Matrix Transposed() const { return Transpose(*this); }
         void Transpose() { *this = Transpose(*this); }
-        static inline Matrix Transpose(const Matrix& matrix)
+        static Matrix Transpose(const Matrix& matrix)
         {
             return Matrix(
                 matrix.m00, matrix.m10, matrix.m20, matrix.m30,
@@ -437,8 +438,7 @@ namespace Spartan::Math
         [[nodiscard]] const float* Data() const { return &m00; }
         [[nodiscard]] std::string ToString() const;
 
-        // note: column-major memory representation because directx shader compiler and
-        // FidelityFX SDK assume that, therefore we can avoid transposing the matrix
+        // row-major layout with column-major memory layout
         float m00 = 0.0f, m10 = 0.0f, m20 = 0.0f, m30 = 0.0f;
         float m01 = 0.0f, m11 = 0.0f, m21 = 0.0f, m31 = 0.0f;
         float m02 = 0.0f, m12 = 0.0f, m22 = 0.0f, m32 = 0.0f;
