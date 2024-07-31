@@ -331,6 +331,41 @@ namespace Spartan
 
                 return FFX_BRIXELIZER_TRACE_DEBUG_MODE_DISTANCE;
             }
+
+            
+            Matrix adjust_view_matrix(const Matrix& matrix)
+            {
+                // brixelizer gi: row-major, column-major memory layout, right-handed
+                // engine:        row-major, column-major memory layout, left-handed
+
+                // memory layout matches, so no transposition is needed
+                Matrix adjusted = matrix;
+
+                // switch to right-handed coordinate system
+                adjusted.m20 = -adjusted.m20;
+                adjusted.m21 = -adjusted.m21;
+                adjusted.m22 = -adjusted.m22;
+
+                return adjusted;
+            };
+
+            auto adjust_projection_matrix(const Matrix& matrix)
+            {
+                // brixelizer gi: row-major, column-major memory layout, right-handed
+                // engine:        row-major, column-major memory layout, left-handed
+
+                // memory layout matches, so no transposition is needed
+                Matrix adjusted = matrix;
+
+                // switch to right-handed coordinate system
+                adjusted.m22 = 0.0f;
+                adjusted.m23 = matrix.m32;
+                adjusted.m32 = -1.0f;
+                adjusted.m33 = 0.0f;
+
+                return adjusted;
+            };
+
         }
     }
 
@@ -695,10 +730,12 @@ namespace Spartan
 
         // set camera matrices
         {
-            // note: ffx expects column-major layout (as well as column-major memory layout) right-handed matrices
+            // sssr:   column-major, column-major memory layout, right-handed
+            // engine: row-major,    column-major memory layout, left-handed
 
             auto adjust_matrix_view = [](const Matrix& matrix)
             {
+                // different memory layout, so transposition is needed
                 Matrix adjusted = matrix.Transposed();
 
                 // negate the third row to switch handedness
@@ -712,11 +749,12 @@ namespace Spartan
 
             auto adjust_matrix_projection = [](const Matrix& matrix)
             {
+                // different memory layout, so transposition is needed
                 Matrix adjusted = matrix.Transposed();
 
-                // adjust for reverse-z
+                // negate the third row to switch handedness
                 adjusted.m22 = 0.0f;
-                adjusted.m23 = matrix.m32; // near plane value
+                adjusted.m23 = matrix.m32;
                 adjusted.m32 = -1.0f;
                 adjusted.m33 = 0.0f;
 
@@ -839,9 +877,6 @@ namespace Spartan
         }
         brixelizer_gi::description_update.resources.sdfAtlas   = to_ffx_resource(brixelizer_gi::texture_sdf_atlas.get(), nullptr,  nullptr, L"brixelizer_gi_sdf_atlas");
         brixelizer_gi::description_update.resources.brickAABBs = to_ffx_resource(nullptr, brixelizer_gi::buffer_brick_aabbs.get(), nullptr, L"brixelizer_gi_brick_aabbs");
-        brixelizer_gi::description_update.sdfCenter[0]         = cb_frame->camera_position.x;
-        brixelizer_gi::description_update.sdfCenter[1]         = cb_frame->camera_position.y;
-        brixelizer_gi::description_update.sdfCenter[2]         = cb_frame->camera_position.z;
         brixelizer_gi::description_update.frameIndex           = cb_frame->frame;
         brixelizer_gi::description_update.maxReferences        = 32 * (1 << 20);                // maximum number of triangle voxel references to be stored in the update
         brixelizer_gi::description_update.triangleSwapSize     = 300 * (1 << 20);               // size of the swap space available to be used for storing triangles in the update
@@ -850,7 +885,8 @@ namespace Spartan
         brixelizer_gi::description_update.outScratchBufferSize = &required_scratch_buffer_size; // the size of the GPU scratch buffer needed for ffxBrixelizerUpdate()
         FfxBrixelizerStats stats                               = {};
         brixelizer_gi::description_update.outStats             = &stats;                        // statistics for the update, stats read back after ffxBrixelizerUpdate()
-        
+        set_ffx_float3(brixelizer_gi::description_update.sdfCenter, cb_frame->camera_position); // sdf center in world space
+
         // debug visualization for: distance, uvw, iterations, brick id, cascade id
         bool debug_on     = brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Max;
         bool debug_update = brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Radiance && brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Irradiance;
@@ -858,6 +894,7 @@ namespace Spartan
         {
             brixelizer_gi::description_update.populateDebugAABBsFlags = FFX_BRIXELIZER_POPULATE_AABBS_DYNAMIC_INSTANCES;
             brixelizer_gi::description_update.debugVisualizationDesc  = &brixelizer_gi::debug_description;
+            brixelizer_gi::debug_description.commandList              = to_ffx_cmd_list(cmd_list);
             brixelizer_gi::debug_description.output                   = to_ffx_resource(tex_debug, nullptr, nullptr, L"brixelizer_gi_tex_debug");
             brixelizer_gi::debug_description.renderWidth              = tex_debug->GetWidth();
             brixelizer_gi::debug_description.renderHeight             = tex_debug->GetHeight();
@@ -866,10 +903,10 @@ namespace Spartan
             brixelizer_gi::debug_description.endCascadeIndex          = brixelizer_gi::cascade_count - 1;
             brixelizer_gi::debug_description.tMin                     = brixelizer_gi::description_dispatch_gi.tMin;
             brixelizer_gi::debug_description.tMax                     = brixelizer_gi::description_dispatch_gi.tMax;
-            brixelizer_gi::debug_description.sdfSolveEps              = 0.5f;
+            brixelizer_gi::debug_description.sdfSolveEps              = brixelizer_gi::description_dispatch_gi.sdfSolveEps;
 
-            set_ffx_float16(brixelizer_gi::debug_description.inverseViewMatrix,       Matrix::Transpose(cb_frame->view_inv));
-            set_ffx_float16(brixelizer_gi::debug_description.inverseProjectionMatrix, Matrix::Transpose(cb_frame->projection_inv));
+            set_ffx_float16(brixelizer_gi::debug_description.inverseViewMatrix,       brixelizer_gi::adjust_view_matrix(cb_frame->view_inv));
+            set_ffx_float16(brixelizer_gi::debug_description.inverseProjectionMatrix, brixelizer_gi::adjust_projection_matrix(cb_frame->projection_inv));
         }
         
         // bake update
@@ -917,8 +954,8 @@ namespace Spartan
         static Matrix projection   = Matrix::Identity;
         Matrix view_previous       = view;
         Matrix projection_previous = projection;
-        view                       = Matrix::Transpose(cb_frame->view);
-        projection                 = Matrix::Transpose(cb_frame->projection);
+        view                       = brixelizer_gi::adjust_view_matrix(cb_frame->view);
+        projection                 = brixelizer_gi::adjust_projection_matrix(cb_frame->projection);
         Matrix view_inverted       = Matrix::Invert(view);
         Matrix projection_inverted = Matrix::Invert(projection);
 
