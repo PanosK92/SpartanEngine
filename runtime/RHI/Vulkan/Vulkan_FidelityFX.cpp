@@ -313,7 +313,7 @@ namespace Spartan
                 Irradiance, // brixelizer gi
                 Max
             };
-            DebugMode debug_mode = DebugMode::Gradient;
+            DebugMode debug_mode = DebugMode::Distance;
 
             FfxBrixelizerTraceDebugModes to_ffx_debug_mode(const DebugMode debug_mode)
             {
@@ -830,14 +830,16 @@ namespace Spartan
                 FfxBrixelizerInstanceDescription desc = {};
 
                 // aabb
-                const BoundingBox& aabb = renderable->GetBoundingBox(BoundingBoxType::Untransformed);
+                const BoundingBox& aabb = renderable->GetBoundingBox(BoundingBoxType::Transformed);
                 desc.aabb.min[0]        = aabb.GetMin().x;
                 desc.aabb.min[1]        = aabb.GetMin().y;
                 desc.aabb.min[2]        = aabb.GetMin().z;
                 desc.aabb.max[0]        = aabb.GetMax().x;
                 desc.aabb.max[1]        = aabb.GetMax().y;
                 desc.aabb.max[2]        = aabb.GetMax().z;
-                set_ffx_float16(desc.transform, brixelizer_gi::adjust_matrix(entity->GetMatrix())); // world space, row-major, right-handed transform
+
+                // transform: world space, row-major
+                set_ffx_float16(desc.transform, entity->GetMatrix());
 
                 // vertex buffer
                 desc.vertexBuffer       = brixelizer_gi::register_geometry_buffer(renderable->GetVertexBuffer(), buffers);
@@ -944,6 +946,12 @@ namespace Spartan
     )
     {
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/brixelizer-gi.md
+
+        bool debug_on       = brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Max;
+        bool debug_dispatch = brixelizer_gi::debug_mode == brixelizer_gi::DebugMode::Radiance || brixelizer_gi::debug_mode == brixelizer_gi::DebugMode::Irradiance;
+        bool debug_update   = debug_on && !debug_dispatch;
+        if (debug_update)
+            return;
 
         // note: ffx expects row-major, right-handed matrices
         static Matrix view         = Matrix::Identity;
