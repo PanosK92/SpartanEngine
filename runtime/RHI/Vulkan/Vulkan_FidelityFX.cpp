@@ -299,8 +299,10 @@ namespace Spartan
             const float    voxel_size          = 0.4f;
             const float    cascade_size_ratio  = 2.0f;
             const uint32_t sdf_atlas_size      = 512;
+            const float sdf_solve_epsilon      = 0.5f;   // epsilon value for ray marching to be used with brixelizer for diffuse rays
+            const float ray_pushoff            = 0.25f;  // distance from a surface along the normal vector to offset the diffuse ray origin
             const uint32_t bricks_max          = 262144;
-            const uint32_t cascade_count       = 8; // max is 24
+            const uint32_t cascade_count       = 8;      // max is 24
             const uint32_t cascade_resolution  = 64;
 
             // structs
@@ -365,7 +367,8 @@ namespace Spartan
                 Irradiance, // brixelizer gi
                 Max
             };
-            DebugMode debug_mode = DebugMode::Distance;
+            DebugMode debug_mode         = DebugMode::Max;
+            bool debug_mode_arrow_switch = true;
 
             FfxBrixelizerTraceDebugModes to_ffx_debug_mode(const DebugMode debug_mode)
             {
@@ -622,6 +625,21 @@ namespace Spartan
         view_inverted            = Matrix::Invert(view);
         projection_inverted      = Matrix::Invert(projection);
         view_projection_inverted = Matrix::Invert(view_projection);
+
+        // brixelizer gi
+        if (brixelizer_gi::debug_mode_arrow_switch)
+        {
+            if (Input::GetKeyDown(KeyCode::Arrow_Left))
+            {
+                brixelizer_gi::debug_mode = static_cast<brixelizer_gi::DebugMode>((static_cast<uint32_t>(brixelizer_gi::debug_mode) - 1) % static_cast<uint32_t>(brixelizer_gi::DebugMode::Max));
+                SP_LOG_INFO("Debug mode: %d", static_cast<uint32_t>(brixelizer_gi::debug_mode));
+            }
+            else if (Input::GetKeyDown(KeyCode::Arrow_Right))
+            {
+                brixelizer_gi::debug_mode = static_cast<brixelizer_gi::DebugMode>((static_cast<uint32_t>(brixelizer_gi::debug_mode) + 1) % static_cast<uint32_t>(brixelizer_gi::DebugMode::Max));
+                SP_LOG_INFO("Debug mode: %d", static_cast<uint32_t>(brixelizer_gi::debug_mode));
+            }
+        }
     }
 
     void RHI_FidelityFX::FSR3_ResetHistory()
@@ -754,14 +772,6 @@ namespace Spartan
         sssr::description_dispatch.renderSize.width  = static_cast<uint32_t>(tex_color->GetWidth()  * resolution_scale);
         sssr::description_dispatch.renderSize.height = static_cast<uint32_t>(tex_color->GetHeight() * resolution_scale);
 
-        // set camera matrices
-        set_ffx_float16(sssr::description_dispatch.view,               view);
-        set_ffx_float16(sssr::description_dispatch.invView,            view_inverted);
-        set_ffx_float16(sssr::description_dispatch.projection,         projection);
-        set_ffx_float16(sssr::description_dispatch.invProjection,      projection_inverted);
-        set_ffx_float16(sssr::description_dispatch.invViewProjection,  view_projection_inverted);
-        set_ffx_float16(sssr::description_dispatch.prevViewProjection, view_projection_previous);
-
         // set sssr specific parameters
         sssr::description_dispatch.motionVectorScale.x                  = -0.5f; // expects [-0.5, 0.5] range
         sssr::description_dispatch.motionVectorScale.y                  = -0.5f; // expects [-0.5, 0.5] range, +Y as top-down
@@ -780,6 +790,14 @@ namespace Spartan
         sssr::description_dispatch.isRoughnessPerceptual                = true;
         sssr::description_dispatch.roughnessThreshold                   = 1.0f;  // regions with a roughness value greater than this threshold won't spawn rays
 
+        // set camera matrices
+        set_ffx_float16(sssr::description_dispatch.view,               view);
+        set_ffx_float16(sssr::description_dispatch.invView,            view_inverted);
+        set_ffx_float16(sssr::description_dispatch.projection,         projection);
+        set_ffx_float16(sssr::description_dispatch.invProjection,      projection_inverted);
+        set_ffx_float16(sssr::description_dispatch.invViewProjection,  view_projection_inverted);
+        set_ffx_float16(sssr::description_dispatch.prevViewProjection, view_projection_previous);
+
         // dispatch
         FfxErrorCode error_code = ffxSssrContextDispatch(&sssr::context, &sssr::description_dispatch);
         SP_ASSERT(error_code == FFX_OK);
@@ -795,16 +813,6 @@ namespace Spartan
     )
     {
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/brixelizer-gi.md
-
-        // switch between debug modes
-        if (Input::GetKeyDown(KeyCode::Arrow_Left))
-        {
-            brixelizer_gi::debug_mode = static_cast<brixelizer_gi::DebugMode>((static_cast<uint32_t>(brixelizer_gi::debug_mode) - 1) % static_cast<uint32_t>(brixelizer_gi::DebugMode::Max));
-        }
-        else if (Input::GetKeyDown(KeyCode::Arrow_Right))
-        {
-            brixelizer_gi::debug_mode = static_cast<brixelizer_gi::DebugMode>((static_cast<uint32_t>(brixelizer_gi::debug_mode) + 1) % static_cast<uint32_t>(brixelizer_gi::DebugMode::Max));
-        }
 
         // add entities (what ffx refers to as instances)
         {
@@ -834,13 +842,13 @@ namespace Spartan
                 // vertex buffer
                 desc.vertexBuffer       = brixelizer_gi::register_geometry_buffer(renderable->GetVertexBuffer(), buffers);
                 desc.vertexStride       = renderable->GetVertexBuffer()->GetStride();
-                desc.vertexBufferOffset = renderable->GetVertexOffset() * desc.vertexStride;
+                desc.vertexBufferOffset = renderable->GetVertexOffset() * desc.vertexStride; // offset in bytes
                 desc.vertexCount        = renderable->GetVertexCount();
                 desc.vertexFormat       = FFX_SURFACE_FORMAT_R32G32B32_FLOAT;
 
                 // index buffer
                 desc.indexBuffer       = brixelizer_gi::register_geometry_buffer(renderable->GetIndexBuffer(), buffers);
-                desc.indexBufferOffset = renderable->GetIndexOffset() * renderable->GetIndexBuffer()->GetStride();
+                desc.indexBufferOffset = renderable->GetIndexOffset() * renderable->GetIndexBuffer()->GetStride(); // offset in bytes
                 desc.triangleCount     = renderable->GetIndexCount() / 3;
                 desc.indexFormat       = (renderable->GetIndexBuffer()->GetStride() == sizeof(uint16_t)) ? FFX_INDEX_TYPE_UINT16 : FFX_INDEX_TYPE_UINT32;
 
@@ -889,12 +897,10 @@ namespace Spartan
             brixelizer_gi::debug_description.endCascadeIndex          = brixelizer_gi::cascade_count - 1;
             brixelizer_gi::debug_description.tMin                     = brixelizer_gi::description_dispatch_gi.tMin;
             brixelizer_gi::debug_description.tMax                     = brixelizer_gi::description_dispatch_gi.tMax;
-            brixelizer_gi::debug_description.sdfSolveEps              = brixelizer_gi::description_dispatch_gi.sdfSolveEps;
+            brixelizer_gi::debug_description.sdfSolveEps              = brixelizer_gi::sdf_solve_epsilon;
 
-            Matrix adjusted_matrix_projection = to_ffx_matrix_projection(cb_frame->projection);
-            Matrix adjusted_matrix_view       = to_ffx_matrix_view(cb_frame->view);
-            set_ffx_float16(brixelizer_gi::debug_description.inverseViewMatrix,       Matrix::Invert(adjusted_matrix_view));
-            set_ffx_float16(brixelizer_gi::debug_description.inverseProjectionMatrix, Matrix::Invert(adjusted_matrix_projection));
+            set_ffx_float16(brixelizer_gi::debug_description.inverseViewMatrix,       view_inverted);
+            set_ffx_float16(brixelizer_gi::debug_description.inverseProjectionMatrix, projection_inverted);
         }
         
         // bake update
@@ -972,10 +978,10 @@ namespace Spartan
         // set parameters
         brixelizer_gi::description_dispatch_gi.startCascade            = 0;                                // index of the start cascade for use with ray marching with brixelizer
         brixelizer_gi::description_dispatch_gi.endCascade              = brixelizer_gi::cascade_count - 1; // index of the end cascade for use with ray marching with brixelizer
-        brixelizer_gi::description_dispatch_gi.rayPushoff              = 0.25f;                            // distance from a surface along the normal vector to offset the diffuse ray origin
-        brixelizer_gi::description_dispatch_gi.sdfSolveEps             = 0.5f;                             // epsilon value for ray marching to be used with brixelizer for diffuse rays
-        brixelizer_gi::description_dispatch_gi.specularRayPushoff      = 0.25f;                            // distance from a surface along the normal vector to offset the specular ray origin
-        brixelizer_gi::description_dispatch_gi.specularSDFSolveEps     = 0.5f;                             // epsilon value for ray marching to be used with brixelizer for specular rays
+        brixelizer_gi::description_dispatch_gi.rayPushoff              = brixelizer_gi::ray_pushoff;       // distance from a surface along the normal vector to offset the diffuse ray origin
+        brixelizer_gi::description_dispatch_gi.sdfSolveEps             = brixelizer_gi::sdf_solve_epsilon; // epsilon value for ray marching to be used with brixelizer for diffuse rays
+        brixelizer_gi::description_dispatch_gi.specularRayPushoff      = brixelizer_gi::ray_pushoff;       // distance from a surface along the normal vector to offset the specular ray origin
+        brixelizer_gi::description_dispatch_gi.specularSDFSolveEps     = brixelizer_gi::sdf_solve_epsilon; // epsilon value for ray marching to be used with brixelizer for specular rays
         brixelizer_gi::description_dispatch_gi.tMin                    = 0.0f;
         brixelizer_gi::description_dispatch_gi.tMax                    = 10000.0f;
         brixelizer_gi::description_dispatch_gi.normalsUnpackMul        = 1.0f;                             // a multiply factor to transform the normal to the space expected by brixelizer gi
