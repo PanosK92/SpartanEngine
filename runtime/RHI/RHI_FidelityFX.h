@@ -37,6 +37,7 @@ namespace Spartan
         static void Initialize();
         static void Shutdown();
         static void Resize(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output);
+        static void Update(Cb_Frame* cb_frame);
 
         // FSR 3
         static void FSR3_ResetHistory();
@@ -59,7 +60,6 @@ namespace Spartan
         // SSSR
         static void SSSR_Dispatch(
             RHI_CommandList* cmd_list,
-            Cb_Frame* cb_frame,
             const float resolution_scale,
             RHI_Texture* tex_color,
             RHI_Texture* tex_depth,

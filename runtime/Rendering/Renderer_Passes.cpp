@@ -423,6 +423,7 @@ namespace Spartan
         RHI_Texture* rt_render_2 = GetRenderTarget(Renderer_RenderTarget::frame_render_2).get();
         RHI_Texture* rt_output   = GetRenderTarget(Renderer_RenderTarget::frame_output).get();
 
+        RHI_FidelityFX::Update(&m_cb_frame_cpu);
         dynamic_resolution();
         Pass_VariableRateShading(cmd_list_graphics);
         Pass_Skysphere(cmd_list_graphics);
@@ -994,7 +995,6 @@ namespace Spartan
 
         RHI_FidelityFX::SSSR_Dispatch(
             cmd_list,
-            &m_cb_frame_cpu,
             GetOption<float>(Renderer_Option::ResolutionScale),
             tex_in, // what to reflect from
             GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(),

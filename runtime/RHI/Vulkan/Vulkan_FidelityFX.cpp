@@ -52,7 +52,17 @@ namespace Spartan
 {
     namespace
     {
-        FfxInterface ffx_interface = {};
+        // shared
+        FfxInterface ffx_interface      = {};
+        Matrix view                     = Matrix::Identity;
+        Matrix view_previous            = Matrix::Identity;
+        Matrix projection               = Matrix::Identity;
+        Matrix projection_previous      = Matrix::Identity;
+        Matrix view_projection          = Matrix::Identity;
+        Matrix view_inverted            = Matrix::Identity;
+        Matrix projection_inverted      = Matrix::Identity;
+        Matrix view_projection_previous = Matrix::Identity;
+        Matrix view_projection_inverted = Matrix::Identity;
 
         void ffx_message_callback(FfxMsgType type, const wchar_t* message)
         {
@@ -221,6 +231,48 @@ namespace Spartan
             memcpy(ffx_matrix, data, sizeof(Matrix));
         }
 
+        Matrix to_ffx_matrix_view(const Matrix& matrix)
+        {
+            // sssr:          column-major, column-major memory layout, right-handed
+            // brixelizer gi: row-major,    column-major memory layout, right-handed
+            // engine:        row-major,    column-major memory layout, left-handed
+
+            // note: ffx probably has invalid documentation, as the
+            // below conversions work for both sssr and brixelizer gi
+
+            // layout matches, so no transposition is needed
+            Matrix adjusted = matrix.Transposed();
+
+            // switch handedness
+            adjusted.m20 = -adjusted.m20;
+            adjusted.m21 = -adjusted.m21;
+            adjusted.m22 = -adjusted.m22;
+            adjusted.m23 = -adjusted.m23;
+
+            return adjusted;
+        };
+
+        Matrix to_ffx_matrix_projection(const Matrix& matrix)
+        {
+            // sssr:          column-major, column-major memory layout, right-handed
+            // brixelizer gi: row-major,    column-major memory layout, right-handed
+            // engine:        row-major,    column-major memory layout, left-handed
+
+            // note: ffx probably has invalid documentation, as the
+            // below conversions work for both sssr and brixelizer gi
+
+            // layout matches, so no transposition is needed
+            Matrix adjusted = matrix.Transposed();
+
+            // switch handedness
+            adjusted.m22 = 0.0f;
+            adjusted.m23 = matrix.m32;
+            adjusted.m32 = -1.0f;
+            adjusted.m33 = 0.0f;
+
+            return adjusted;
+        }
+
         namespace fsr3
         {
             uint32_t jitter_index = 0;
@@ -325,40 +377,6 @@ namespace Spartan
                 if (debug_mode == brixelizer_gi::DebugMode::CascadeID)  return FFX_BRIXELIZER_TRACE_DEBUG_MODE_CASCADE_ID;
 
                 return FFX_BRIXELIZER_TRACE_DEBUG_MODE_DISTANCE;
-            }
-
-            Matrix adjust_matrix(const Matrix& matrix)
-            {
-                // brixelizer gi: row-major, column-major memory layout, right-handed
-                // engine:        row-major, column-major memory layout, left-handed
-
-                // layout matches, so no transposition is needed
-                Matrix adjusted = matrix.Transposed();
-
-                // switch handedness
-                adjusted.m20 = -adjusted.m20;
-                adjusted.m21 = -adjusted.m21;
-                adjusted.m22 = -adjusted.m22;
-                adjusted.m23 = -adjusted.m23;
-
-                return adjusted;
-            };
-
-            Matrix adjust_matrix_projection(const Matrix& matrix)
-            {
-                // brixelizer gi: row-major, column-major memory layout, right-handed
-                // engine:        row-major, column-major memory layout, left-handed
- 
-                // layout matches, so no transposition is needed
-                Matrix adjusted = matrix.Transposed();
-
-                // switch handedness
-                adjusted.m22 = 0.0f;
-                adjusted.m23 = matrix.m32;
-                adjusted.m32 = -1.0f;
-                adjusted.m33 = 0.0f;
-
-                return adjusted;
             }
         }
     }
@@ -590,6 +608,21 @@ namespace Spartan
             brixelizer_gi::context_created = true;
         }
     }
+ 
+    void RHI_FidelityFX::Update(Cb_Frame* cb_frame)
+    {
+        view_previous            = view;
+        projection_previous      = projection;
+        view_projection_previous = view_projection;
+
+        view                     = to_ffx_matrix_view(cb_frame->view);
+        projection               = to_ffx_matrix_projection(cb_frame->projection);
+        view_projection          = projection * view;
+
+        view_inverted            = Matrix::Invert(view);
+        projection_inverted      = Matrix::Invert(projection);
+        view_projection_inverted = Matrix::Invert(view_projection);
+    }
 
     void RHI_FidelityFX::FSR3_ResetHistory()
     {
@@ -689,7 +722,6 @@ namespace Spartan
 
     void RHI_FidelityFX::SSSR_Dispatch(
         RHI_CommandList* cmd_list,
-        Cb_Frame* cb_frame,
         const float resolution_scale,
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
@@ -723,54 +755,12 @@ namespace Spartan
         sssr::description_dispatch.renderSize.height = static_cast<uint32_t>(tex_color->GetHeight() * resolution_scale);
 
         // set camera matrices
-        {
-            // sssr:   column-major, column-major memory layout, right-handed
-            // engine: row-major,    column-major memory layout, left-handed
-
-            auto adjust_matrix_view = [](const Matrix& matrix)
-            {
-                // different layout, so transposition is needed
-                Matrix adjusted = matrix.Transposed();
-
-                // switch handedness
-                adjusted.m20 = -adjusted.m20;
-                adjusted.m21 = -adjusted.m21;
-                adjusted.m22 = -adjusted.m22;
-                adjusted.m23 = -adjusted.m23;
-
-                return adjusted;
-            };
-
-            auto adjust_matrix_projection = [](const Matrix& matrix)
-            {
-                // different layout, so transposition is needed
-                Matrix adjusted = matrix.Transposed();
-
-                // switch handedness and adjust for reverse-z (I think SSSR ignores the reverse-z flag)
-                adjusted.m22 = 0.0f;
-                adjusted.m23 = matrix.m32;
-                adjusted.m32 = -1.0f;
-                adjusted.m33 = 0.0f;
-
-                return adjusted;
-            };
-
-            Matrix view                     = adjust_matrix_view(cb_frame->view);
-            Matrix projection               = adjust_matrix_projection(cb_frame->projection);
-            static Matrix view_projection   = Matrix::Identity;
-            Matrix view_inv                 = Matrix::Invert(view);
-            Matrix projection_inv           = Matrix::Invert(projection);
-            Matrix view_projection_previous = view_projection;
-            view_projection                 = projection * view;
-            Matrix view_projection_inv      = Matrix::Invert(view_projection);
-
-            set_ffx_float16(sssr::description_dispatch.view,               view);
-            set_ffx_float16(sssr::description_dispatch.invView,            view_inv);
-            set_ffx_float16(sssr::description_dispatch.projection,         projection);
-            set_ffx_float16(sssr::description_dispatch.invProjection,      projection_inv);
-            set_ffx_float16(sssr::description_dispatch.invViewProjection,  view_projection_inv);
-            set_ffx_float16(sssr::description_dispatch.prevViewProjection, view_projection_previous);
-        }
+        set_ffx_float16(sssr::description_dispatch.view,               view);
+        set_ffx_float16(sssr::description_dispatch.invView,            view_inverted);
+        set_ffx_float16(sssr::description_dispatch.projection,         projection);
+        set_ffx_float16(sssr::description_dispatch.invProjection,      projection_inverted);
+        set_ffx_float16(sssr::description_dispatch.invViewProjection,  view_projection_inverted);
+        set_ffx_float16(sssr::description_dispatch.prevViewProjection, view_projection_previous);
 
         // set sssr specific parameters
         sssr::description_dispatch.motionVectorScale.x                  = -0.5f; // expects [-0.5, 0.5] range
@@ -884,9 +874,9 @@ namespace Spartan
         set_ffx_float3(brixelizer_gi::description_update.sdfCenter, cb_frame->camera_position); // sdf center in world space
 
         // debug visualization for: distance, uvw, iterations, brick id, cascade id
-        bool debug_on     = brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Max;
-        bool debug_update = brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Radiance && brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Irradiance;
-        if (debug_on && debug_update)
+        bool debug_enabled = brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Max;
+        bool debug_update  = brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Radiance && brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Irradiance;
+        if (debug_enabled && debug_update)
         {
             brixelizer_gi::description_update.populateDebugAABBsFlags = FFX_BRIXELIZER_POPULATE_AABBS_DYNAMIC_INSTANCES;
             brixelizer_gi::description_update.debugVisualizationDesc  = &brixelizer_gi::debug_description;
@@ -901,8 +891,8 @@ namespace Spartan
             brixelizer_gi::debug_description.tMax                     = brixelizer_gi::description_dispatch_gi.tMax;
             brixelizer_gi::debug_description.sdfSolveEps              = brixelizer_gi::description_dispatch_gi.sdfSolveEps;
 
-            Matrix adjusted_matrix_projection = brixelizer_gi::adjust_matrix_projection(cb_frame->projection);
-            Matrix adjusted_matrix_view       = brixelizer_gi::adjust_matrix(cb_frame->view);
+            Matrix adjusted_matrix_projection = to_ffx_matrix_projection(cb_frame->projection);
+            Matrix adjusted_matrix_view       = to_ffx_matrix_view(cb_frame->view);
             set_ffx_float16(brixelizer_gi::debug_description.inverseViewMatrix,       Matrix::Invert(adjusted_matrix_view));
             set_ffx_float16(brixelizer_gi::debug_description.inverseProjectionMatrix, Matrix::Invert(adjusted_matrix_projection));
         }
@@ -947,28 +937,18 @@ namespace Spartan
     {
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/brixelizer-gi.md
 
-        bool debug_on       = brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Max;
+        bool debug_enabled  = brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Max;
         bool debug_dispatch = brixelizer_gi::debug_mode == brixelizer_gi::DebugMode::Radiance || brixelizer_gi::debug_mode == brixelizer_gi::DebugMode::Irradiance;
-        bool debug_update   = debug_on && !debug_dispatch;
+        bool debug_update   = debug_enabled && !debug_dispatch;
         if (debug_update)
             return;
-
-        // note: ffx expects row-major, right-handed matrices
-        static Matrix view         = Matrix::Identity;
-        static Matrix projection   = Matrix::Identity;
-        Matrix view_previous       = view;
-        Matrix projection_previous = projection;
-        view                       = brixelizer_gi::adjust_matrix(cb_frame->view);
-        projection                 = brixelizer_gi::adjust_matrix_projection(cb_frame->projection);
-        Matrix view_inverted       = Matrix::Invert(view);
-        Matrix projection_inverted = Matrix::Invert(projection);
 
         // set camera matrices
         set_ffx_float16(brixelizer_gi::description_dispatch_gi.view,           view);
         set_ffx_float16(brixelizer_gi::description_dispatch_gi.prevView,       view_previous);
         set_ffx_float16(brixelizer_gi::description_dispatch_gi.projection,     projection);
         set_ffx_float16(brixelizer_gi::description_dispatch_gi.prevProjection, projection_previous);
-        
+
         // set resources
         brixelizer_gi::description_dispatch_gi.environmentMap   = to_ffx_resource(sssr::cubemap.get(),                          nullptr, nullptr, L"brixelizer_environment");
         brixelizer_gi::description_dispatch_gi.prevLitOutput    = to_ffx_resource(tex_color,                                    nullptr, nullptr, L"brixelizer_gi_lit_output_previous");
