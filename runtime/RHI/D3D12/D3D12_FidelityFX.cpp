@@ -64,6 +64,11 @@ namespace Spartan
 
     }
 
+    void RHI_FidelityFX::Update(Cb_Frame* cb_frame)
+    {
+
+    }
+
     void RHI_FidelityFX::FSR3_Dispatch
     (
         RHI_CommandList* cmd_list,
@@ -85,7 +90,6 @@ namespace Spartan
 
     void RHI_FidelityFX::SSSR_Dispatch(
         RHI_CommandList* cmd_list,
-        Cb_Frame* cb_frame,
         const float resolution_scale,
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
