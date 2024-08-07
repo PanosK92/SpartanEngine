@@ -290,14 +290,17 @@ namespace Spartan
         namespace brixelizer_gi
         {
             // parameters
-            const float    voxel_size          = 0.4f;
-            const float    cascade_size_ratio  = 2.0f;
-            const uint32_t sdf_atlas_size      = 512;
-            const float sdf_solve_epsilon      = 0.5f;   // epsilon value for ray marching to be used with brixelizer for diffuse rays
-            const float ray_pushoff            = 0.25f;  // distance from a surface along the normal vector to offset the diffuse ray origin
-            const uint32_t bricks_max          = 262144;
-            const uint32_t cascade_count       = 8;      // max is 24
-            const uint32_t cascade_resolution  = 64;
+            const float    voxel_size              = 0.4f;
+            const float    cascade_size_ratio      = 2.0f;
+            const uint32_t cascade_count           = 8;         // max is 24
+            const uint32_t cascade_resolution      = 64;
+            const uint32_t sdf_atlas_size          = 512;
+            const float    sdf_ray_epsilon         = 0.5f;      // epsilon value for ray marching to be used with brixelizer for rays
+            const float    sdf_ray_normal_offset   = 0.25f;     // distance from a surface along the normal vector to offset the ray origin
+            const uint32_t bricks_max              = 262144;
+            const uint32_t bricks_per_update_max   = 16384;     // maximum number of bricks to be updated
+            const uint32_t triangle_references_max = 33554432;  // maximum number of triangle voxel references to be stored in the update
+            const uint32_t triangle_swap_size      = 314572800; // size of the swap space available to be used for storing triangles in the update
 
             // structs
             bool                                       context_created          = false;
@@ -361,11 +364,9 @@ namespace Spartan
                 Irradiance, // brixelizer gi
                 Max
             };
-            DebugMode debug_mode                     = DebugMode::Max;
-            bool debug_mode_arrow_switch             = true;
-            bool debug_mode_context_readback_buffers = true;
-            bool debug_mode_cascade_readback_buffers = true;
-            bool debug_mode_draw_aabbs               = true;
+            DebugMode debug_mode            = DebugMode::Max;
+            bool debug_mode_arrow_switch    = true;
+            bool debug_mode_aabbs_and_stats = true;
 
             FfxBrixelizerTraceDebugModes to_ffx_debug_mode(const DebugMode debug_mode)
             {
@@ -576,14 +577,8 @@ namespace Spartan
                     voxel_size                                   *= brixelizer_gi::cascade_size_ratio;
                 }
 
-                // flags
-                uint32_t flags = 0;
-                flags          = brixelizer_gi::debug_mode_context_readback_buffers ? FFX_BRIXELIZER_CONTEXT_FLAG_DEBUG_CONTEXT_READBACK_BUFFERS : flags;
-                flags          = brixelizer_gi::debug_mode_cascade_readback_buffers ? FFX_BRIXELIZER_CONTEXT_FLAG_DEBUG_CASCADE_READBACK_BUFFERS : flags;
-                flags          = brixelizer_gi::debug_mode_draw_aabbs               ? FFX_BRIXELIZER_CONTEXT_FLAG_DEBUG_AABBS                    : flags;
-                brixelizer_gi::description_context.flags = static_cast<FfxBrixelizerContextFlags>(flags);
-
                 // interface
+                brixelizer_gi::description_context.flags            = brixelizer_gi::debug_mode_aabbs_and_stats ? FFX_BRIXELIZER_CONTEXT_FLAG_ALL_DEBUG : static_cast<FfxBrixelizerContextFlags>(0);
                 brixelizer_gi::description_context.backendInterface = ffx_interface;
 
                 SP_ASSERT(ffxBrixelizerContextCreate(&brixelizer_gi::description_context, &brixelizer_gi::context) == FFX_OK);
@@ -816,7 +811,7 @@ namespace Spartan
 
         // add entities (what ffx refers to as instances)
         {
-            // note: if the need arises, instances and buffers can be delete/unregistered
+            // note: if the need arises, instances and buffers can be deleted/unregistered
             // note: instances can be static or dynamic, I am going fully dynamic here
             static vector<pair<const RHI_GeometryBuffer*, uint32_t>> buffers;
             static vector<FfxBrixelizerInstanceDescription> instances;
@@ -873,12 +868,12 @@ namespace Spartan
         brixelizer_gi::description_update.resources.sdfAtlas   = to_ffx_resource(brixelizer_gi::texture_sdf_atlas.get(),  L"brixelizer_gi_sdf_atlas");
         brixelizer_gi::description_update.resources.brickAABBs = to_ffx_resource(brixelizer_gi::buffer_brick_aabbs.get(), L"brixelizer_gi_brick_aabbs");
         brixelizer_gi::description_update.frameIndex           = cb_frame->frame;
-        brixelizer_gi::description_update.maxReferences        = 32 * (1 << 20);                // maximum number of triangle voxel references to be stored in the update
-        brixelizer_gi::description_update.triangleSwapSize     = 300 * (1 << 20);               // size of the swap space available to be used for storing triangles in the update
-        brixelizer_gi::description_update.maxBricksPerBake     = 1 << 14;                       // maximum number of bricks to be updated
+        brixelizer_gi::description_update.maxReferences        = brixelizer_gi::triangle_references_max;
+        brixelizer_gi::description_update.triangleSwapSize     = brixelizer_gi::triangle_swap_size;
+        brixelizer_gi::description_update.maxBricksPerBake     = brixelizer_gi::bricks_per_update_max;
         size_t required_scratch_buffer_size                    = 0;
         brixelizer_gi::description_update.outScratchBufferSize = &required_scratch_buffer_size; // the size of the gpu scratch buffer needed for ffxBrixelizerUpdate()
-        FfxBrixelizerStats stats                               = {};
+        static FfxBrixelizerStats stats                        = {};
         brixelizer_gi::description_update.outStats             = &stats;                        // statistics for the update, stats read back after ffxBrixelizerUpdate()
         set_ffx_float3(brixelizer_gi::description_update.sdfCenter, cb_frame->camera_position); // sdf center in world space
 
@@ -898,7 +893,7 @@ namespace Spartan
             brixelizer_gi::debug_description.endCascadeIndex          = brixelizer_gi::cascade_count - 1;
             brixelizer_gi::debug_description.tMin                     = brixelizer_gi::description_dispatch_gi.tMin;
             brixelizer_gi::debug_description.tMax                     = brixelizer_gi::description_dispatch_gi.tMax;
-            brixelizer_gi::debug_description.sdfSolveEps              = brixelizer_gi::sdf_solve_epsilon;
+            brixelizer_gi::debug_description.sdfSolveEps              = brixelizer_gi::sdf_ray_epsilon;
 
             set_ffx_float16(brixelizer_gi::debug_description.inverseViewMatrix,       view_inverted);
             set_ffx_float16(brixelizer_gi::debug_description.inverseProjectionMatrix, projection_inverted);
@@ -980,10 +975,10 @@ namespace Spartan
         // set parameters
         brixelizer_gi::description_dispatch_gi.startCascade            = 0;                                // index of the start cascade for use with ray marching with brixelizer
         brixelizer_gi::description_dispatch_gi.endCascade              = brixelizer_gi::cascade_count - 1; // index of the end cascade for use with ray marching with brixelizer
-        brixelizer_gi::description_dispatch_gi.rayPushoff              = brixelizer_gi::ray_pushoff;       // distance from a surface along the normal vector to offset the diffuse ray origin
-        brixelizer_gi::description_dispatch_gi.sdfSolveEps             = brixelizer_gi::sdf_solve_epsilon; // epsilon value for ray marching to be used with brixelizer for diffuse rays
-        brixelizer_gi::description_dispatch_gi.specularRayPushoff      = brixelizer_gi::ray_pushoff;       // distance from a surface along the normal vector to offset the specular ray origin
-        brixelizer_gi::description_dispatch_gi.specularSDFSolveEps     = brixelizer_gi::sdf_solve_epsilon; // epsilon value for ray marching to be used with brixelizer for specular rays
+        brixelizer_gi::description_dispatch_gi.rayPushoff              = brixelizer_gi::sdf_ray_normal_offset;
+        brixelizer_gi::description_dispatch_gi.sdfSolveEps             = brixelizer_gi::sdf_ray_epsilon;
+        brixelizer_gi::description_dispatch_gi.specularRayPushoff      = brixelizer_gi::sdf_ray_normal_offset;
+        brixelizer_gi::description_dispatch_gi.specularSDFSolveEps     = brixelizer_gi::sdf_ray_epsilon;
         brixelizer_gi::description_dispatch_gi.tMin                    = 0.0f;
         brixelizer_gi::description_dispatch_gi.tMax                    = 10000.0f;
         brixelizer_gi::description_dispatch_gi.normalsUnpackMul        = 1.0f;                             // a multiply factor to transform the normal to the space expected by brixelizer gi
