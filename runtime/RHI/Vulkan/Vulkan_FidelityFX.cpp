@@ -379,6 +379,20 @@ namespace Spartan
 
                 return FFX_BRIXELIZER_TRACE_DEBUG_MODE_DISTANCE;
             }
+
+            string debug_mode_to_string(const DebugMode debug_mode)
+            {
+                if (debug_mode == brixelizer_gi::DebugMode::Distance)   return "Distance";
+                if (debug_mode == brixelizer_gi::DebugMode::UVW)        return "UVW";
+                if (debug_mode == brixelizer_gi::DebugMode::Iterations) return "Iterations";
+                if (debug_mode == brixelizer_gi::DebugMode::Gradient)   return "Gradient";
+                if (debug_mode == brixelizer_gi::DebugMode::BrickID)    return "Brick ID";
+                if (debug_mode == brixelizer_gi::DebugMode::CascadeID)  return "Cascade ID";
+                if (debug_mode == brixelizer_gi::DebugMode::Radiance)   return "Radiance";
+                if (debug_mode == brixelizer_gi::DebugMode::Irradiance) return "Irradiance";
+
+                return "Disabled";
+            }
         }
     }
 
@@ -573,7 +587,7 @@ namespace Spartan
                 {
                     FfxBrixelizerCascadeDescription* cascadeDesc  = &brixelizer_gi::description_context.cascadeDescs[i];
                     cascadeDesc->flags                            = FfxBrixelizerCascadeFlag::FFX_BRIXELIZER_CASCADE_DYNAMIC;
-                    cascadeDesc->voxelSize                        = brixelizer_gi::voxel_size;
+                    cascadeDesc->voxelSize                        = voxel_size;
                     voxel_size                                   *= brixelizer_gi::cascade_size_ratio;
                 }
 
@@ -626,12 +640,12 @@ namespace Spartan
             if (Input::GetKeyDown(KeyCode::Arrow_Left))
             {
                 brixelizer_gi::debug_mode = static_cast<brixelizer_gi::DebugMode>((static_cast<uint32_t>(brixelizer_gi::debug_mode) - 1) % static_cast<uint32_t>(brixelizer_gi::DebugMode::Max));
-                SP_LOG_INFO("Debug mode: %d", static_cast<uint32_t>(brixelizer_gi::debug_mode));
+                SP_LOG_INFO("Debug mode: %s", brixelizer_gi::debug_mode_to_string(brixelizer_gi::debug_mode));
             }
             else if (Input::GetKeyDown(KeyCode::Arrow_Right))
             {
                 brixelizer_gi::debug_mode = static_cast<brixelizer_gi::DebugMode>((static_cast<uint32_t>(brixelizer_gi::debug_mode) + 1) % static_cast<uint32_t>(brixelizer_gi::DebugMode::Max));
-                SP_LOG_INFO("Debug mode: %d", static_cast<uint32_t>(brixelizer_gi::debug_mode));
+                SP_LOG_INFO("Debug mode: %s", brixelizer_gi::debug_mode_to_string(brixelizer_gi::debug_mode));
             }
         }
     }
@@ -811,8 +825,8 @@ namespace Spartan
 
         // add entities (what ffx refers to as instances)
         {
-            // note: if the need arises, instances and buffers can be deleted/unregistered
-            // note: instances can be static or dynamic, I am going fully dynamic here
+            // note 1: instances and buffers can be deleted/unregistered
+            // note 2: instances can be static and/or dynamic
             static vector<pair<const RHI_GeometryBuffer*, uint32_t>> buffers;
             static vector<FfxBrixelizerInstanceDescription> instances;
 
@@ -899,28 +913,10 @@ namespace Spartan
             set_ffx_float16(brixelizer_gi::debug_description.inverseProjectionMatrix, projection_inverted);
         }
         
-        // bake update
-        {
-            SP_ASSERT(ffxBrixelizerBakeUpdate(&brixelizer_gi::context, &brixelizer_gi::description_update, &brixelizer_gi::description_update_baked) == FFX_OK);
-
-            // grow scratch buffer (if needed)
-            if (required_scratch_buffer_size > brixelizer_gi::buffer_scratch->GetObjectSize())
-            {
-                // round up to the nearest power of 2 for efficiency
-                size_t new_size = 1;
-                while (new_size < required_scratch_buffer_size)
-                { 
-                    new_size <<= 1;
-                }
-
-                brixelizer_gi::buffer_scratch = make_shared<RHI_Buffer>(new_size, 1, RHI_Buffer_Transfer_Src | RHI_Buffer_Transfer_Dst, "ffx_brixelizer_gi_scratch");
-                SP_LOG_INFO("Resized scratch buffer to %.2f MB", static_cast<float>(new_size) / (1024.0f * 1024.0f));
-            }
-        }
-
         // update
-        FfxResource scratch_buffer = to_ffx_resource(brixelizer_gi::buffer_scratch.get(), L"ffx_brixelizer_gi_scratch");
-        SP_ASSERT(ffxBrixelizerUpdate(&brixelizer_gi::context, &brixelizer_gi::description_update_baked, scratch_buffer, to_ffx_cmd_list(cmd_list)) == FFX_OK);
+        SP_ASSERT(ffxBrixelizerBakeUpdate(&brixelizer_gi::context, &brixelizer_gi::description_update, &brixelizer_gi::description_update_baked) == FFX_OK);
+        SP_ASSERT_MSG(required_scratch_buffer_size <= brixelizer_gi::buffer_scratch->GetObjectSize(), "Create a larger scratch buffer");
+        SP_ASSERT(ffxBrixelizerUpdate(&brixelizer_gi::context, &brixelizer_gi::description_update_baked, to_ffx_resource(brixelizer_gi::buffer_scratch.get(), L"ffx_brixelizer_gi_scratch"), to_ffx_cmd_list(cmd_list)) == FFX_OK);
     }
 
     void RHI_FidelityFX::BrixelizerGI_Dispatch(
