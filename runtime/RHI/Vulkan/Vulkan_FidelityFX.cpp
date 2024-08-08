@@ -290,13 +290,13 @@ namespace Spartan
         namespace brixelizer_gi
         {
             // parameters
-            const float    voxel_size              = 0.4f;
+            const float    voxel_size              = 0.2f;
             const float    cascade_size_ratio      = 2.0f;
             const uint32_t cascade_count           = 8;         // max is 24
             const uint32_t cascade_resolution      = 64;
             const uint32_t sdf_atlas_size          = 512;
-            const float    sdf_ray_epsilon         = 0.5f;      // epsilon value for ray marching to be used with brixelizer for rays
             const float    sdf_ray_normal_offset   = 0.25f;     // distance from a surface along the normal vector to offset the ray origin
+            const float    sdf_ray_epsilon         = 0.5f;      // epsilon value for ray marching to be used with brixelizer for rays
             const uint32_t bricks_max              = 262144;
             const uint32_t bricks_per_update_max   = 16384;     // maximum number of bricks to be updated
             const uint32_t triangle_references_max = 33554432;  // maximum number of triangle voxel references to be stored in the update
@@ -366,7 +366,7 @@ namespace Spartan
             };
             DebugMode debug_mode            = DebugMode::Max;
             bool debug_mode_arrow_switch    = true;
-            bool debug_mode_aabbs_and_stats = true;
+            bool debug_mode_aabbs_and_stats = false;
 
             FfxBrixelizerTraceDebugModes to_ffx_debug_mode(const DebugMode debug_mode)
             {
@@ -585,10 +585,10 @@ namespace Spartan
                 float voxel_size = brixelizer_gi::voxel_size;
                 for (uint32_t i = 0; i < brixelizer_gi::cascade_count; ++i)
                 {
-                    FfxBrixelizerCascadeDescription* cascadeDesc  = &brixelizer_gi::description_context.cascadeDescs[i];
-                    cascadeDesc->flags                            = FfxBrixelizerCascadeFlag::FFX_BRIXELIZER_CASCADE_DYNAMIC;
-                    cascadeDesc->voxelSize                        = voxel_size;
-                    voxel_size                                   *= brixelizer_gi::cascade_size_ratio;
+                    FfxBrixelizerCascadeDescription* cascade_description  = &brixelizer_gi::description_context.cascadeDescs[i];
+                    cascade_description->flags                            = FfxBrixelizerCascadeFlag::FFX_BRIXELIZER_CASCADE_DYNAMIC;
+                    cascade_description->voxelSize                        = voxel_size;
+                    voxel_size                                           *= brixelizer_gi::cascade_size_ratio;
                 }
 
                 // interface
@@ -622,31 +622,39 @@ namespace Spartan
  
     void RHI_FidelityFX::Update(Cb_Frame* cb_frame)
     {
-        view_previous            = view;
-        projection_previous      = projection;
-        view_projection_previous = view_projection;
+        // matrices - ffx is right-handed
+        {
+            view_previous            = view;
+            projection_previous      = projection;
+            view_projection_previous = view_projection;
 
-        view                     = to_ffx_matrix_view(cb_frame->view);
-        projection               = to_ffx_matrix_projection(cb_frame->projection);
-        view_projection          = projection * view;
+            view                     = to_ffx_matrix_view(cb_frame->view);
+            projection               = to_ffx_matrix_projection(cb_frame->projection);
+            view_projection          = projection * view;
 
-        view_inverted            = Matrix::Invert(view);
-        projection_inverted      = Matrix::Invert(projection);
-        view_projection_inverted = Matrix::Invert(view_projection);
+            view_inverted            = Matrix::Invert(view);
+            projection_inverted      = Matrix::Invert(projection);
+            view_projection_inverted = Matrix::Invert(view_projection);
+        }
 
         // brixelizer gi
         if (brixelizer_gi::debug_mode_arrow_switch)
         {
             if (Input::GetKeyDown(KeyCode::Arrow_Left))
             {
-                brixelizer_gi::debug_mode = static_cast<brixelizer_gi::DebugMode>((static_cast<uint32_t>(brixelizer_gi::debug_mode) - 1) % static_cast<uint32_t>(brixelizer_gi::DebugMode::Max));
+                brixelizer_gi::debug_mode = static_cast<brixelizer_gi::DebugMode>(
+                    (static_cast<uint32_t>(brixelizer_gi::debug_mode) - 1 + static_cast<uint32_t>(brixelizer_gi::DebugMode::Max) + 1) %
+                    (static_cast<uint32_t>(brixelizer_gi::DebugMode::Max) + 1));
                 SP_LOG_INFO("Debug mode: %s", brixelizer_gi::debug_mode_to_string(brixelizer_gi::debug_mode));
             }
             else if (Input::GetKeyDown(KeyCode::Arrow_Right))
             {
-                brixelizer_gi::debug_mode = static_cast<brixelizer_gi::DebugMode>((static_cast<uint32_t>(brixelizer_gi::debug_mode) + 1) % static_cast<uint32_t>(brixelizer_gi::DebugMode::Max));
+                brixelizer_gi::debug_mode = static_cast<brixelizer_gi::DebugMode>(
+                    (static_cast<uint32_t>(brixelizer_gi::debug_mode) + 1) %
+                    (static_cast<uint32_t>(brixelizer_gi::DebugMode::Max) + 1));
                 SP_LOG_INFO("Debug mode: %s", brixelizer_gi::debug_mode_to_string(brixelizer_gi::debug_mode));
             }
+
         }
     }
 
@@ -870,7 +878,6 @@ namespace Spartan
                 instances.push_back(desc);
             }
 
-            // note: the name is misleading, this function creates/updates instances
             SP_ASSERT(ffxBrixelizerCreateInstances(&brixelizer_gi::context, instances.data(), static_cast<uint32_t>(instances.size())) == FFX_OK);
         }
 
@@ -982,7 +989,7 @@ namespace Spartan
         brixelizer_gi::description_dispatch_gi.isRoughnessPerceptual   = true;                             // if false, we assume roughness squared was stored in the Gbuffer
         brixelizer_gi::description_dispatch_gi.roughnessChannel        = 0;                                // the channel to read the roughness from the roughness texture
         brixelizer_gi::description_dispatch_gi.roughnessThreshold      = 1.0f;                             // regions with a roughness value greater than this threshold won't spawn specular rays
-        brixelizer_gi::description_dispatch_gi.environmentMapIntensity = 0.0f;                             // value to scale the contribution from the environment map
+        brixelizer_gi::description_dispatch_gi.environmentMapIntensity = 1.0f;                             // value to scale the contribution from the environment map
         brixelizer_gi::description_dispatch_gi.motionVectorScale.x     = 1.0f;                             // scale factor to apply to motion vectors
         brixelizer_gi::description_dispatch_gi.motionVectorScale.y     = 1.0f;                             // scale factor to apply to motion vectors
         set_ffx_float3(brixelizer_gi::description_dispatch_gi.cameraPosition, cb_frame->camera_position);  // camera position
@@ -1024,7 +1031,7 @@ namespace Spartan
             brixelizer_gi::debug_description_gi.normalsUnpackAdd = brixelizer_gi::description_dispatch_gi.normalsUnpackAdd;
 
             // dispatch
-            SP_ASSERT(ffxBrixelizerGetRawContext(&brixelizer_gi::context, &brixelizer_gi::debug_description_gi.brixelizerContext) == FFX_OK);
+            brixelizer_gi::debug_description_gi.brixelizerContext = brixelizer_gi::description_dispatch_gi.brixelizerContext;
             SP_ASSERT(ffxBrixelizerGIContextDebugVisualization(&brixelizer_gi::context_gi, &brixelizer_gi::debug_description_gi, to_ffx_cmd_list(cmd_list)) == FFX_OK);
         }
     }
