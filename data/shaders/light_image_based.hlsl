@@ -89,5 +89,3 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] += float4(saturate_16(ibl), 0.0f);
 }
-
-
