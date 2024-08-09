@@ -323,16 +323,22 @@ namespace Spartan
             array<shared_ptr<RHI_Buffer>, cascade_count> buffer_cascade_aabb_tree = {};
             array<shared_ptr<RHI_Buffer>, cascade_count> buffer_cascade_brick_map = {};
 
-            uint32_t register_geometry_buffer(const RHI_GeometryBuffer* buffer, vector<pair<const RHI_GeometryBuffer*, uint32_t>>& buffers)
+            // instances
+            vector<pair<const RHI_GeometryBuffer*, uint32_t>> instance_buffers = {};
+            vector<FfxBrixelizerInstanceDescription> instances                 = {};
+            vector<uint32_t> instance_ids                                      = {};
+            uint32_t instance_id                                               = 0;
+
+            uint32_t register_geometry_buffer(const RHI_GeometryBuffer* buffer)
             {
                 // return existing
                 {
-                    auto it = find_if(buffers.begin(), buffers.end(), [buffer](const auto& pair)
+                    auto it = find_if(instance_buffers.begin(), instance_buffers.end(), [buffer](const auto& pair)
                     {
                         return pair.first == buffer;
                     });
 
-                    if (it != buffers.end())
+                    if (it != instance_buffers.end())
                         return it->second;
                 }
 
@@ -345,7 +351,7 @@ namespace Spartan
                     buffer_desc.outIndex                       = &index;
                     SP_ASSERT(ffxBrixelizerRegisterBuffers(&context, &buffer_desc, 1) == FFX_OK);
 
-                    buffers.emplace_back(buffer, index);
+                    instance_buffers.emplace_back(buffer, index);
 
                     return index;
                 }
@@ -586,7 +592,7 @@ namespace Spartan
                 for (uint32_t i = 0; i < brixelizer_gi::cascade_count; ++i)
                 {
                     FfxBrixelizerCascadeDescription* cascade_description  = &brixelizer_gi::description_context.cascadeDescs[i];
-                    cascade_description->flags                            = FfxBrixelizerCascadeFlag::FFX_BRIXELIZER_CASCADE_DYNAMIC;
+                    cascade_description->flags                            = static_cast<FfxBrixelizerCascadeFlag>(FFX_BRIXELIZER_CASCADE_DYNAMIC);
                     cascade_description->voxelSize                        = voxel_size;
                     voxel_size                                           *= brixelizer_gi::cascade_size_ratio;
                 }
@@ -831,14 +837,12 @@ namespace Spartan
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/brixelizer.md
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/brixelizer-gi.md
 
-        // add entities (what ffx refers to as instances)
+        // add entities (which ffx refers to as instances)
         {
-            // note 1: instances and buffers can be deleted/unregistered
-            // note 2: instances can be static and/or dynamic
-            static vector<pair<const RHI_GeometryBuffer*, uint32_t>> buffers;
-            static vector<FfxBrixelizerInstanceDescription> instances;
+            brixelizer_gi::instances.clear();
+            brixelizer_gi::instance_ids.clear();
+            brixelizer_gi::instance_id = 0;
 
-            instances.clear();
             for (int64_t i = index_start; i < index_end; i++)
             {
                 shared_ptr<Entity>& entity            = entities[i];
@@ -858,27 +862,27 @@ namespace Spartan
                 set_ffx_float16(desc.transform, entity->GetMatrix());
 
                 // vertex buffer
-                desc.vertexBuffer       = brixelizer_gi::register_geometry_buffer(renderable->GetVertexBuffer(), buffers);
+                desc.vertexBuffer       = brixelizer_gi::register_geometry_buffer(renderable->GetVertexBuffer());
                 desc.vertexStride       = renderable->GetVertexBuffer()->GetStride();
                 desc.vertexBufferOffset = renderable->GetVertexOffset() * desc.vertexStride; // offset in bytes
                 desc.vertexCount        = renderable->GetVertexCount();
                 desc.vertexFormat       = FFX_SURFACE_FORMAT_R32G32B32_FLOAT;
 
                 // index buffer
-                desc.indexBuffer       = brixelizer_gi::register_geometry_buffer(renderable->GetIndexBuffer(), buffers);
+                desc.indexBuffer       = brixelizer_gi::register_geometry_buffer(renderable->GetIndexBuffer());
                 desc.indexBufferOffset = renderable->GetIndexOffset() * renderable->GetIndexBuffer()->GetStride(); // offset in bytes
                 desc.triangleCount     = renderable->GetIndexCount() / 3;
                 desc.indexFormat       = (renderable->GetIndexBuffer()->GetStride() == sizeof(uint16_t)) ? FFX_INDEX_TYPE_UINT16 : FFX_INDEX_TYPE_UINT32;
 
                 // misc
-                uint32_t id        = static_cast<uint32_t>(entity->GetObjectId());
-                desc.outInstanceID = &id;
+                brixelizer_gi::instance_ids.emplace_back(++brixelizer_gi::instance_id);
+                desc.outInstanceID = &brixelizer_gi::instance_ids.back();
                 desc.flags         = FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC;
 
-                instances.push_back(desc);
+                brixelizer_gi::instances.push_back(desc);
             }
 
-            SP_ASSERT(ffxBrixelizerCreateInstances(&brixelizer_gi::context, instances.data(), static_cast<uint32_t>(instances.size())) == FFX_OK);
+            SP_ASSERT(ffxBrixelizerCreateInstances(&brixelizer_gi::context, brixelizer_gi::instances.data(), static_cast<uint32_t>(brixelizer_gi::instances.size())) == FFX_OK);
         }
 
         for (uint32_t i = 0; i < brixelizer_gi::cascade_count; i++)
@@ -989,16 +993,16 @@ namespace Spartan
         brixelizer_gi::description_dispatch_gi.isRoughnessPerceptual   = true;                             // if false, we assume roughness squared was stored in the Gbuffer
         brixelizer_gi::description_dispatch_gi.roughnessChannel        = 0;                                // the channel to read the roughness from the roughness texture
         brixelizer_gi::description_dispatch_gi.roughnessThreshold      = 1.0f;                             // regions with a roughness value greater than this threshold won't spawn specular rays
-        brixelizer_gi::description_dispatch_gi.environmentMapIntensity = 1.0f;                             // value to scale the contribution from the environment map
-        brixelizer_gi::description_dispatch_gi.motionVectorScale.x     = 1.0f;                             // scale factor to apply to motion vectors
-        brixelizer_gi::description_dispatch_gi.motionVectorScale.y     = 1.0f;                             // scale factor to apply to motion vectors
+        brixelizer_gi::description_dispatch_gi.environmentMapIntensity = 0.0f;                             // value to scale the contribution from the environment map
+        brixelizer_gi::description_dispatch_gi.motionVectorScale.x     = 1.0f;
+        brixelizer_gi::description_dispatch_gi.motionVectorScale.y     = 1.0f;
         set_ffx_float3(brixelizer_gi::description_dispatch_gi.cameraPosition, cb_frame->camera_position);  // camera position
 
         // dispatch
         SP_ASSERT(ffxBrixelizerGetRawContext(&brixelizer_gi::context, &brixelizer_gi::description_dispatch_gi.brixelizerContext) == FFX_OK);
         SP_ASSERT(ffxBrixelizerGIContextDispatch(&brixelizer_gi::context_gi, &brixelizer_gi::description_dispatch_gi, to_ffx_cmd_list(cmd_list)) == FFX_OK);
 
-        // blit the dept and the normal so that we can use them in the next frame as "history"
+        // blit the depth and the normal so that we can use them in the next frame as "history"
         cmd_list->Blit(tex_depth,  brixelizer_gi::texture_depth_previous.get(),  false);
         cmd_list->Blit(tex_normal, brixelizer_gi::texture_normal_previous.get(), false);
 
