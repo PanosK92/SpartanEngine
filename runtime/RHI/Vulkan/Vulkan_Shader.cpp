@@ -85,6 +85,8 @@ namespace Spartan
                 );
             }
         };
+
+        bool spriv_cross_registered = false;
     }
 
     RHI_Shader::~RHI_Shader()
@@ -198,7 +200,6 @@ namespace Spartan
         SP_ASSERT(ptr != nullptr);
         SP_ASSERT(size != 0);
 
-        static bool spriv_cross_registered = false;
         if (!spriv_cross_registered)
         {
             unsigned int major         = (SPV_VERSION >> 16) & 0xff; // extract major version
