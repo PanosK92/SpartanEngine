@@ -325,9 +325,10 @@ namespace Spartan
 
             // instances
             vector<pair<const RHI_GeometryBuffer*, uint32_t>> instance_buffers = {};
-            vector<FfxBrixelizerInstanceDescription> instances                 = {};
-            vector<uint32_t> instance_ids                                      = {};
-            uint32_t instance_id                                               = 0;
+            const uint32_t instance_max                                        = 4096;
+            array<FfxBrixelizerInstanceDescription, instance_max> instances    = {};
+            array<uint32_t, instance_max> instance_ids                         = {};
+            uint32_t instance_index                                            = 0;
 
             uint32_t register_geometry_buffer(const RHI_GeometryBuffer* buffer)
             {
@@ -372,7 +373,8 @@ namespace Spartan
             };
             DebugMode debug_mode            = DebugMode::Max;
             bool debug_mode_arrow_switch    = true;
-            bool debug_mode_aabbs_and_stats = false;
+            bool debug_mode_aabbs_and_stats = true;
+            FfxBrixelizerStats debug_stats  = {};
 
             FfxBrixelizerTraceDebugModes to_ffx_debug_mode(const DebugMode debug_mode)
             {
@@ -839,15 +841,20 @@ namespace Spartan
 
         // add entities (which ffx refers to as instances)
         {
-            brixelizer_gi::instances.clear();
-            brixelizer_gi::instance_ids.clear();
-            brixelizer_gi::instance_id = 0;
+            brixelizer_gi::instances.fill({});
+            brixelizer_gi::instance_ids.fill(0);
+            brixelizer_gi::instance_index = 0;
 
             for (int64_t i = index_start; i < index_end; i++)
             {
-                shared_ptr<Entity>& entity            = entities[i];
-                shared_ptr<Renderable> renderable     = entity->GetComponent<Renderable>();
-                FfxBrixelizerInstanceDescription desc = {};
+                shared_ptr<Entity>& entity             = entities[i];
+                shared_ptr<Renderable> renderable      = entity->GetComponent<Renderable>();
+
+                // create instance
+                uint32_t index                         = brixelizer_gi::instance_index++;
+                brixelizer_gi::instance_ids[index]     = index;
+                FfxBrixelizerInstanceDescription& desc = brixelizer_gi::instances[index];
+                desc.outInstanceID                     = &brixelizer_gi::instance_ids[index];
 
                 // aabb: world space, pre-transformed
                 const BoundingBox& aabb = renderable->GetBoundingBox(BoundingBoxType::Transformed);
@@ -875,14 +882,10 @@ namespace Spartan
                 desc.indexFormat       = (renderable->GetIndexBuffer()->GetStride() == sizeof(uint16_t)) ? FFX_INDEX_TYPE_UINT16 : FFX_INDEX_TYPE_UINT32;
 
                 // misc
-                brixelizer_gi::instance_ids.emplace_back(++brixelizer_gi::instance_id);
-                desc.outInstanceID = &brixelizer_gi::instance_ids.back();
-                desc.flags         = FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC;
-
-                brixelizer_gi::instances.push_back(desc);
+                desc.flags = FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC;
             }
 
-            SP_ASSERT(ffxBrixelizerCreateInstances(&brixelizer_gi::context, brixelizer_gi::instances.data(), static_cast<uint32_t>(brixelizer_gi::instances.size())) == FFX_OK);
+            SP_ASSERT(ffxBrixelizerCreateInstances(&brixelizer_gi::context, brixelizer_gi::instances.data(), brixelizer_gi::instance_index) == FFX_OK);
         }
 
         for (uint32_t i = 0; i < brixelizer_gi::cascade_count; i++)
@@ -898,8 +901,7 @@ namespace Spartan
         brixelizer_gi::description_update.maxBricksPerBake     = brixelizer_gi::bricks_per_update_max;
         size_t required_scratch_buffer_size                    = 0;
         brixelizer_gi::description_update.outScratchBufferSize = &required_scratch_buffer_size; // the size of the gpu scratch buffer needed for ffxBrixelizerUpdate()
-        static FfxBrixelizerStats stats                        = {};
-        brixelizer_gi::description_update.outStats             = &stats;                        // statistics for the update, stats read back after ffxBrixelizerUpdate()
+        brixelizer_gi::description_update.outStats             = &brixelizer_gi::debug_stats;   // statistics for the update, stats read back after ffxBrixelizerUpdate()
         set_ffx_float3(brixelizer_gi::description_update.sdfCenter, cb_frame->camera_position); // sdf center in world space
 
         // debug visualization for: distance, uvw, iterations, brick id, cascade id
