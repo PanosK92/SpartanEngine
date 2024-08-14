@@ -103,11 +103,6 @@ namespace ImGuiSp
 
     static const ImVec4 default_tint(1, 1, 1, 1);
 
-    static float GetWindowContentRegionWidth()
-    {
-        return ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x;
-    }
-
     // Collapsing header
     static bool collapsing_header(const char* label, ImGuiTreeNodeFlags flags = 0)
     {

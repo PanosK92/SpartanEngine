@@ -146,7 +146,7 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
 
     // Size slider
     const float slider_width = 200.0f;
-    ImGui::SameLine(ImGuiSp::GetWindowContentRegionWidth() - slider_width);
+    ImGui::SameLine(ImGui::GetContentRegionAvail().x - slider_width);
     ImGui::PushItemWidth(slider_width);
     const float previous_width = m_item_size.x;
     ImGui::SliderFloat("##FileDialogSlider", &m_item_size.x, m_item_size_min, m_item_size_max);

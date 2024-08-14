@@ -455,8 +455,8 @@ namespace Spartan
 
                 // brick aabbs buffer
                 brixelizer_gi::buffer_brick_aabbs = make_shared<RHI_Buffer>(
-                    sizeof(uint32_t),          // stride
-                    brixelizer_gi::bricks_max, // element count
+                    static_cast<uint32_t>(sizeof(uint32_t)), // stride
+                    brixelizer_gi::bricks_max,               // element count
                     0,
                     "ffx_brick_aabbs"
                 );
@@ -467,7 +467,7 @@ namespace Spartan
                 {
                     string name = "ffx_cascade_aabb_tree_" + to_string(i);
                     brixelizer_gi::buffer_cascade_aabb_tree[i] = make_shared<RHI_Buffer>(
-                        sizeof(uint32_t),                          // stride
+                        static_cast<uint32_t>(sizeof(uint32_t)),   // stride
                         cascade_aabb_tree_size / sizeof(uint32_t), // element count
                         0,
                         name.c_str()
@@ -480,7 +480,7 @@ namespace Spartan
                 {
                     string name = "ffx_cascade_brick_map_" + to_string(i);
                     brixelizer_gi::buffer_cascade_brick_map[i] = make_shared<RHI_Buffer>(
-                        sizeof(uint32_t),                          // stride
+                        static_cast<uint32_t>(sizeof(uint32_t)),   // stride
                         cascade_brick_map_size / sizeof(uint32_t), // element count
                         0,
                         name.c_str()

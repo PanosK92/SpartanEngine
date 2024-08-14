@@ -38,7 +38,7 @@ namespace
         const char* name        = time_block.GetName();
         const float duration    = time_block.GetDuration();
         const float fraction    = duration / 10.0f;
-        const float width       = fraction * ImGuiSp::GetWindowContentRegionWidth();
+        const float width       = fraction * ImGui::GetContentRegionAvail().x;
         const auto& color       = ImGui::GetStyle().Colors[ImGuiCol_PlotHistogram];
         const ImVec2 pos_screen = ImGui::GetCursorScreenPos();
         const ImVec2 pos        = ImGui::GetCursorPos();
@@ -186,7 +186,7 @@ void Profiler::OnTickVisible()
         m_plot[m_plot.size() - 1] = time_last;
 
         // show
-        ImGui::PlotLines("", m_plot.data(), static_cast<int>(m_plot.size()), 0, "", m_timings.m_min, m_timings.m_max, ImVec2(ImGuiSp::GetWindowContentRegionWidth(), 80));
+        ImGui::PlotLines("", m_plot.data(), static_cast<int>(m_plot.size()), 0, "", m_timings.m_min, m_timings.m_max, ImVec2(ImGui::GetContentRegionAvail().x, 80));
     }
 
     // vram

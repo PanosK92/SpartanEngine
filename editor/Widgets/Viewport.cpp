@@ -53,8 +53,8 @@ Viewport::Viewport(Editor* editor) : Widget(editor)
 void Viewport::OnTickVisible()
 {
     // get viewport size
-    uint32_t width  = static_cast<uint32_t>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
-    uint32_t height = static_cast<uint32_t>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
+    uint32_t width  = static_cast<uint32_t>(ImGui::GetContentRegionAvail().x);
+    uint32_t height = static_cast<uint32_t>(ImGui::GetContentRegionAvail().y);
 
     // update engine's viewport
     static bool resolution_set = Settings::HasLoadedUserSettingsFromFile();
