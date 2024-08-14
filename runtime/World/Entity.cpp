@@ -145,6 +145,19 @@ namespace Spartan
                 component->OnTick();
             }
         }
+
+        // set state back to static if no transform changes have been made for 2 seconds
+        m_time_since_last_transform_change += Timer::GetDeltaTimeSec();
+        if (m_time_since_last_transform_change >= 2.0f && m_dynamic_state_dirty)
+        {
+            if (shared_ptr<Renderable> renderable = GetComponent<Renderable>())
+            {
+                renderable->SetFlag(RenderableFlags::Dynamic, false);
+            }
+
+            m_time_since_last_transform_change = 0.0f;
+            m_dynamic_state_dirty              = false;
+        }
     }
 
     void Entity::Serialize(FileStream* stream)
@@ -367,7 +380,15 @@ namespace Spartan
             child->UpdateTransform();
         }
 
-        m_transform_changed_frame = Renderer::GetFrameNum();
+        m_transform_changed_frame          = Renderer::GetFrameNum();
+        m_time_since_last_transform_change = 0.0f;
+
+        // set dynamic/static state
+        if (shared_ptr<Renderable> renderable = GetComponent<Renderable>())
+        {
+            renderable->SetFlag(RenderableFlags::Dynamic, true);
+            m_dynamic_state_dirty = true;
+        }
     }
 
     void Entity::SetPosition(const Vector3& position)
