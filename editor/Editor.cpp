@@ -106,9 +106,9 @@ namespace
         colors[ImGuiCol_ResizeGripActive]      = k_palette_color_3;
         colors[ImGuiCol_Tab]                   = k_palette_color_2;
         colors[ImGuiCol_TabHovered]            = k_palette_color_3;
-        colors[ImGuiCol_TabActive]             = k_palette_color_1;
-        colors[ImGuiCol_TabUnfocused]          = k_palette_color_2;
-        colors[ImGuiCol_TabUnfocusedActive]    = k_palette_color_2; // Might be called active, but it's active only because it's it's the only tab available, the user didn't really activate it
+        colors[ImGuiCol_TabSelected]           = k_palette_color_1;
+        colors[ImGuiCol_TabDimmed]             = k_palette_color_2;
+        colors[ImGuiCol_TabDimmedSelected]     = k_palette_color_2; // Might be called active, but it's active only because it's it's the only tab available, the user didn't really activate it
         colors[ImGuiCol_DockingPreview]        = k_palette_color_4; // Preview overlay color when about to docking something
         colors[ImGuiCol_DockingEmptyBg]        = k_palette_color_6; // Background color for empty node (e.g. CentralNode with no window docked into it)
         colors[ImGuiCol_PlotLines]             = k_palette_color_5;
@@ -181,7 +181,7 @@ Editor::Editor(const std::vector<std::string>& args)
     io.FontGlobalScale     = k_font_scale;
 
     // initialise imgui backends
-    SP_ASSERT_MSG(ImGui_ImplSDL2_Init(), "Failed to initialize ImGui's SDL backend");
+    SP_ASSERT_MSG(ImGui_ImplSDL2_InitForOther(static_cast<SDL_Window*>(Spartan::Window::GetHandleSDL())), "Failed to initialize ImGui's SDL backend");
     ImGui::RHI::Initialize();
 
     // apply colors and style

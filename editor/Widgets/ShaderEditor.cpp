@@ -19,15 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============================
+//= INCLUDES =======================
 #include "ShaderEditor.h"
-#include "Rendering/Renderer.h"
 #include <fstream>
 #include "RHI/RHI_Shader.h"
-#include "Rendering/Renderer_Definitions.h"
 #include "../ImGui/ImGuiExtension.h"
-#include "Rendering/Mesh.h"
-//=========================================
+//==================================
 
 //= NAMESPACES =========
 using namespace std;
@@ -36,8 +33,8 @@ using namespace Spartan;
 
 namespace
 {
-    const float k_vertical_split_percentage           = 0.7f;
-    const float k_horizontal_split_offset_from_bottom = 81.0f;
+    const float source_pane_vertical_split_percentage = 0.7f;
+    const float source_pane_bottom_margin             = 30.0f;
 }
 
 ShaderEditor::ShaderEditor(Editor* editor) : Widget(editor)
@@ -52,50 +49,46 @@ ShaderEditor::ShaderEditor(Editor* editor) : Widget(editor)
 
 void ShaderEditor::OnTickVisible()
 {
-    // Source
     ShowShaderSource();
-
-    // Shader list
     ImGui::SameLine();
     ShowShaderList();
-
-    // Controls
     ShowControls();
 }
 
 void ShaderEditor::ShowShaderSource()
 {
-    ImVec2 size = ImVec2(ImGui::GetContentRegionMax().x * k_vertical_split_percentage, ImGui::GetContentRegionMax().y - k_horizontal_split_offset_from_bottom * Spartan::Window::GetDpiScale());
+    ImVec2 content_region = ImGui::GetContentRegionAvail();
+    ImVec2 size           = ImVec2(content_region.x * source_pane_vertical_split_percentage, content_region.y - source_pane_bottom_margin * Spartan::Window::GetDpiScale());
 
     if (ImGui::BeginChild("##shader_editor_source", size, true, ImGuiWindowFlags_NoScrollbar))
     {
-        // Title
+        // title
         ImGui::Text(m_shader ? m_shader_name.c_str() : "Select a shader");
 
-        // Content
+        // content
         if (m_shader)
         {
-            // Shader source
+            // shader source
             if (ImGui::BeginTabBar("##shader_editor_tab_bar", ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_FittingPolicyResizeDown))
             {
-                const std::vector<std::string>& names = m_shader->GetNames();
+                const std::vector<std::string>& names   = m_shader->GetNames();
                 const std::vector<std::string>& sources = m_shader->GetSources();
             
                 for (uint32_t i = 0; i < static_cast<uint32_t>(names.size()); i++)
                 {
                     if (ImGui::BeginTabItem(names[i].c_str()))
                     {
-                        // Set text
+                        // set text
                         if (m_index_displayed != i)
                         {
                             m_text_editor->SetText(sources[i]);
                             m_index_displayed = i;
                         }
             
-                        // Render
+                        // render
                         m_text_editor->Render("##shader_text_editor", ImVec2(0.0f, 0.0f), true);
             
-                        // Update shader
+                        // update shader
                         if (m_text_editor->IsTextChanged())
                         {
                             m_shader->SetSource(i, m_text_editor->GetText());
@@ -115,19 +108,19 @@ void ShaderEditor::ShowShaderList()
 {
     GetShaderInstances();
 
-    ImVec2 size = ImVec2(0.0f, ImGui::GetContentRegionMax().y - k_horizontal_split_offset_from_bottom * Spartan::Window::GetDpiScale());
+    ImVec2 size = ImVec2(0.0f, ImGui::GetContentRegionAvail().y - source_pane_bottom_margin * Spartan::Window::GetDpiScale());
 
     if (ImGui::BeginChild("##shader_editor_list", size, true, ImGuiWindowFlags_HorizontalScrollbar))
     {
-        // Title
+        // title
         ImGui::Text("Shaders");
 
         for (RHI_Shader* shader : m_shaders)
         {
-            // Get name
+            // get name
             string name = shader->GetObjectName();
     
-            // Append stage
+            // append stage
             if (shader->GetShaderStage() == RHI_Shader_Type::Vertex)
             {
                 name += "_Vertex";
@@ -145,7 +138,7 @@ void ShaderEditor::ShowShaderList()
                 name += "_Unknown";
             }
     
-            // Append defines
+            // append defines
             for (const auto& define : shader->GetDefines())
             {
                 if (define.second != "0")
@@ -161,7 +154,7 @@ void ShaderEditor::ShowShaderList()
                 m_index_displayed = -1;
                 m_first_run       = false;
     
-                // Reload in case it has been modified
+                // reload in case it has been modified
                 m_shader->LoadFromDrive(m_shader->GetFilePath());
             }
         }
@@ -171,38 +164,32 @@ void ShaderEditor::ShowShaderList()
 
 void ShaderEditor::ShowControls()
 {
-    if (ImGui::BeginChild("##shader_editor_controls", ImVec2(0.0f, 0.0f), true, ImGuiWindowFlags_NoScrollbar))
+    // compile button
+    if (ImGuiSp::button("Compile"))
     {
-        // compile button
-        if (ImGuiSp::button("Compile"))
+        if (m_index_displayed != -1)
         {
-            if (m_index_displayed != -1)
+            static const std::vector<std::string>& file_paths = m_shader->GetFilePaths();
+            static const std::vector<std::string>& sources = m_shader->GetSources();
+
+            // save all files
+            for (uint32_t i = 0; i < static_cast<uint32_t>(file_paths.size()); i++)
             {
-                static const std::vector<std::string>& file_paths = m_shader->GetFilePaths();
-                static const std::vector<std::string>& sources = m_shader->GetSources();
-
-                // Save all files
-                for (uint32_t i = 0; i < static_cast<uint32_t>(file_paths.size()); i++)
-                {
-                    ofstream out(file_paths[i]);
-                    out << sources[i];
-                    out.flush();
-                    out.close();
-                }
-
-                // Compile synchronously to make it obvious when the first rendered frame (with your changes) shows up
-                bool async = false;
-                m_shader->Compile(m_shader->GetShaderStage(), m_shader->GetFilePath(), async);
+                ofstream out(file_paths[i]);
+                out << sources[i];
+                out.flush();
+                out.close();
             }
-        }
 
-        // Opacity slider
-        ImGui::SameLine();
-        ImGui::PushItemWidth(200.0f * Spartan::Window::GetDpiScale());
-        ImGui::SliderFloat("Opacity", &m_alpha, 0.1f, 1.0f, "%.1f");
-        ImGui::PopItemWidth();
+            // compile synchronously to make the new frame obvious
+            bool async = false;
+            m_shader->Compile(m_shader->GetShaderStage(), m_shader->GetFilePath(), async);
+        }
     }
-    ImGui::EndChild();
+
+    // opacity slider
+    ImGui::SameLine();
+    ImGui::SliderFloat("Opacity", &m_alpha, 0.1f, 1.0f, "%.1f");
 }
 
 void ShaderEditor::GetShaderInstances()

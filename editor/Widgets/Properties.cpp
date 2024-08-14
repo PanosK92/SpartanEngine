@@ -110,7 +110,7 @@ namespace
 
             ImGui::SetCursorPosY(original_pen_y + 5.0f);
             ImGuiSp::image(icon_enum, 15);
-            ImGui::SameLine(ImGuiSp::GetWindowContentRegionWidth() - icon_width + 1.0f); ImGui::SetCursorPosY(original_pen_y);
+            ImGui::SameLine(ImGui::GetContentRegionAvail().x - icon_width + 1.0f); ImGui::SetCursorPosY(original_pen_y);
             uint32_t id = static_cast<uint32_t>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY());
 
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 1.0f, 1.0f, 0.0f));
