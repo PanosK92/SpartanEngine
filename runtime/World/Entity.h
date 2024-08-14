@@ -23,12 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================
 #include <atomic>
+#include <array>
+#include <mutex>
 #include "Components/Component.h"
 #include "../Math/Quaternion.h"
-#include <array>
 #include "../Math/Matrix.h"
-#include <mutex>
-#include "Event.h"
 #include "World.h"
 //===============================
 
@@ -194,6 +193,8 @@ namespace Spartan
         // misc
         std::mutex m_mutex_children;
         std::mutex m_mutex_parent;
-        uint64_t m_transform_changed_frame = 0;
+        uint64_t m_transform_changed_frame       = 0;
+        float m_time_since_last_transform_change = 0.0f;
+        bool m_dynamic_state_dirty               = false;
     };
 }

@@ -57,11 +57,11 @@ namespace Spartan
 {
     namespace
     {
-        const float k_default_deactivation_time = 2000;
-        const float k_default_mass              = 1.0f;
-        const float k_default_restitution       = 0.2f;
-        const float k_default_friction          = 1.0f;
-        const float k_default_friction_rolling  = 0.0f;
+        const float default_deactivation_time = 2000;
+        const float default_mass              = 1.0f;
+        const float default_restitution       = 0.2f;
+        const float default_friction          = 1.0f;
+        const float default_friction_rolling  = 0.0f;
     }
 
     #define shape static_cast<btCollisionShape*>(m_shape)
@@ -99,10 +99,10 @@ namespace Spartan
     PhysicsBody::PhysicsBody(weak_ptr<Entity> entity) : Component(entity)
     {
         m_in_world         = false;
-        m_mass             = k_default_mass;
-        m_restitution      = k_default_restitution;
-        m_friction         = k_default_friction;
-        m_friction_rolling = k_default_friction_rolling;
+        m_mass             = default_mass;
+        m_restitution      = default_restitution;
+        m_friction         = default_friction;
+        m_friction_rolling = default_friction_rolling;
         m_use_gravity      = true;
         m_gravity          = Physics::GetGravity();
         m_is_kinematic     = false;
@@ -599,7 +599,7 @@ namespace Spartan
 
                 rigid_body->setCollisionFlags(flags);
                 rigid_body->forceActivationState((m_is_kinematic || m_body_type == PhysicsBodyType::Vehicle) ? DISABLE_DEACTIVATION : ISLAND_SLEEPING);
-                rigid_body->setDeactivationTime(k_default_deactivation_time);
+                rigid_body->setDeactivationTime(default_deactivation_time);
             }
 
             // gravity

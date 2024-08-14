@@ -46,10 +46,11 @@ namespace Spartan
 
     enum RenderableFlags : uint32_t
     {
-        OccludedCpu  = 1U << 0, // frustum culling
-        OccludedGpu  = 1U << 1, // occlusion culling (depth culling)
-        Occluder     = 1U << 2,
-        CastsShadows = 1U << 3
+        Dynamic      = 1U << 0,
+        OccludedCpu  = 1U << 1, // frustum culling
+        OccludedGpu  = 1U << 2, // occlusion culling (depth culling)
+        Occluder     = 1U << 3,
+        CastsShadows = 1U << 4
     };
 
     class SP_CLASS Renderable : public Component
@@ -106,12 +107,12 @@ namespace Spartan
         uint32_t GetIndexCount() const   { return m_geometry_index_count; }
         uint32_t GetVertexOffset() const { return m_geometry_vertex_offset; }
         uint32_t GetVertexCount() const  { return m_geometry_vertex_count; }
-        bool IsVisible() const           { return !(m_flags & RenderableFlags::OccludedCpu) && !(m_flags & RenderableFlags::OccludedGpu); }
         bool HasMesh() const             { return m_mesh != nullptr; }
 
         // flags
         bool HasFlag(const RenderableFlags flag) { return m_flags & flag; }
         void SetFlag(const RenderableFlags flag, const bool enable = true);
+        bool IsVisible() const { return !(m_flags & RenderableFlags::OccludedCpu) && !(m_flags & RenderableFlags::OccludedGpu); }
 
     private:
         // geometry/mesh
