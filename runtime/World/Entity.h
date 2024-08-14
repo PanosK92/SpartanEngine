@@ -193,8 +193,6 @@ namespace Spartan
         // misc
         std::mutex m_mutex_children;
         std::mutex m_mutex_parent;
-        uint64_t m_transform_changed_frame       = 0;
-        float m_time_since_last_transform_change = 0.0f;
-        bool m_dynamic_state_dirty               = false;
+        uint64_t m_transform_changed_frame = 0;
     };
 }
