@@ -890,19 +890,24 @@ namespace Spartan
             for (auto it = brixelizer_gi::instance_map.begin(); it != brixelizer_gi::instance_map.end();)
             {
                 Entity* entity = it->first;
-                auto entity_it = find_if(entities.begin() + index_start, entities.begin() + index_end,
-                    [entity](const shared_ptr<Entity>& e) { return e.get() == entity; });
 
+                // check if the entity still exists in the current frame's entity list
+                auto entity_it = find_if(entities.begin() + index_start, entities.begin() + index_end,[entity](const shared_ptr<Entity>& e) { return e.get() == entity; });
+                
                 if (entity_it == entities.begin() + index_end)
                 {
+                    // entity no longer exists, mark for deletion
                     instances_to_delete.push_back(it->second.id);
                     it = brixelizer_gi::instance_map.erase(it);
                 }
                 else
                 {
                     bool is_dynamic = (*entity_it)->GetComponent<Renderable>()->HasFlag(RenderableFlags::Dynamic);
+
+                    // check if the entity has changed from static to dynamic or vice versa
                     if (is_dynamic != !it->second.is_static)
                     {
+                        // entity has changed state, mark for deletion and recreation
                         instances_to_delete.push_back(it->second.id);
                         instances_to_create.push_back(brixelizer_gi::create_instance_description(*entity_it));
                         it->second.is_static = !is_dynamic;
@@ -910,17 +915,31 @@ namespace Spartan
                     ++it;
                 }
             }
-
+            
             // deduce which instances to create
             for (int64_t i = index_start; i < index_end; i++)
             {
                 shared_ptr<Entity>& entity = entities[i];
-                if (brixelizer_gi::instance_map.find(entity.get()) == brixelizer_gi::instance_map.end())
+                bool is_dynamic = entity->GetComponent<Renderable>()->HasFlag(RenderableFlags::Dynamic);
+                
+                auto it = brixelizer_gi::instance_map.find(entity.get());
+
+                // create instance if it's dynamic (needs update every frame) or if it's not in the map
+                if (is_dynamic || it == brixelizer_gi::instance_map.end())
                 {
                     FfxBrixelizerInstanceDescription desc = brixelizer_gi::create_instance_description(entity);
                     instances_to_create.push_back(desc);
-                    bool is_dynamic = entity->GetComponent<Renderable>()->HasFlag(RenderableFlags::Dynamic);
-                    brixelizer_gi::instance_map[entity.get()] = {*desc.outInstanceID, !is_dynamic};
+                    
+                    if (it == brixelizer_gi::instance_map.end())
+                    {
+                        // new entity, add to the map
+                        brixelizer_gi::instance_map[entity.get()] = {*desc.outInstanceID, !is_dynamic};
+                    }
+                    else
+                    {
+                        // existing dynamic entity, update its ID
+                        it->second.id = *desc.outInstanceID;
+                    }
                 }
             }
 
