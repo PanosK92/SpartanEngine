@@ -62,6 +62,7 @@ namespace Spartan
         // icomponent
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
+        void OnTick() override;
 
         // geometry
         void SetGeometry(
@@ -137,7 +138,9 @@ namespace Spartan
         std::shared_ptr<RHI_GeometryBuffer> m_instance_buffer;
 
         // misc
-        Math::Matrix m_transform_previous = Math::Matrix::Identity;
-        uint32_t m_flags                  = RenderableFlags::CastsShadows;
+        Math::Matrix m_transform_previous        = Math::Matrix::Identity;
+        uint32_t m_flags                         = RenderableFlags::CastsShadows;
+        float m_time_since_last_transform_change = 0.0f;
+        bool m_dynamic_state_dirty               = false;
     };
 }
