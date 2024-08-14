@@ -181,7 +181,7 @@ Editor::Editor(const std::vector<std::string>& args)
     io.FontGlobalScale     = k_font_scale;
 
     // initialise imgui backends
-    SP_ASSERT_MSG(ImGui_ImplSDL2_InitForOther(static_cast<SDL_Window*>(Spartan::Window::GetHandleSDL())), "Failed to initialize ImGui's SDL backend");
+    SP_ASSERT_MSG(ImGui_ImplSDL2_InitForVulkan(static_cast<SDL_Window*>(Spartan::Window::GetHandleSDL())), "Failed to initialize ImGui's SDL backend");
     ImGui::RHI::Initialize();
 
     // apply colors and style
