@@ -324,11 +324,13 @@ namespace Spartan
             array<shared_ptr<RHI_Buffer>, cascade_count> buffer_cascade_brick_map = {};
 
             // instances
-            vector<pair<const RHI_GeometryBuffer*, uint32_t>> instance_buffers = {};
-            const uint32_t instance_max                                        = 4096;
-            array<FfxBrixelizerInstanceDescription, instance_max> instances    = {};
-            array<uint32_t, instance_max> instance_ids                         = {};
-            uint32_t instance_index                                            = 0;
+            struct BrixelizerInstanceInfo
+            {
+                uint32_t id;
+                bool is_static;
+            };
+            unordered_map<Entity*, BrixelizerInstanceInfo> instance_map;
+            vector<pair<const RHI_GeometryBuffer*, uint32_t>> instance_buffers;
 
             uint32_t register_geometry_buffer(const RHI_GeometryBuffer* buffer)
             {
@@ -356,6 +358,46 @@ namespace Spartan
 
                     return index;
                 }
+            }
+
+            FfxBrixelizerInstanceDescription create_instance_description(const shared_ptr<Entity>& entity)
+            {
+                FfxBrixelizerInstanceDescription desc = {};
+                shared_ptr<Renderable> renderable     = entity->GetComponent<Renderable>();
+            
+                // aabb: world space, pre-transformed
+                const BoundingBox& aabb = renderable->GetBoundingBox(BoundingBoxType::Transformed);
+                desc.aabb.min[0]        = aabb.GetMin().x;
+                desc.aabb.min[1]        = aabb.GetMin().y;
+                desc.aabb.min[2]        = aabb.GetMin().z;
+                desc.aabb.max[0]        = aabb.GetMax().x;
+                desc.aabb.max[1]        = aabb.GetMax().y;
+                desc.aabb.max[2]        = aabb.GetMax().z;
+            
+                // transform: world space, row-major
+                set_ffx_float16(desc.transform, entity->GetMatrix());
+            
+                // vertex buffer
+                desc.vertexBuffer       = register_geometry_buffer(renderable->GetVertexBuffer());
+                desc.vertexStride       = renderable->GetVertexBuffer()->GetStride();
+                desc.vertexBufferOffset = renderable->GetVertexOffset() * desc.vertexStride;
+                desc.vertexCount        = renderable->GetVertexCount();
+                desc.vertexFormat       = FFX_SURFACE_FORMAT_R32G32B32_FLOAT;
+            
+                // index buffer
+                desc.indexBuffer       = register_geometry_buffer(renderable->GetIndexBuffer());
+                desc.indexBufferOffset = renderable->GetIndexOffset() * renderable->GetIndexBuffer()->GetStride();
+                desc.triangleCount     = renderable->GetIndexCount() / 3;
+                desc.indexFormat       = (renderable->GetIndexBuffer()->GetStride() == sizeof(uint16_t)) ? FFX_INDEX_TYPE_UINT16 : FFX_INDEX_TYPE_UINT32;
+            
+                // misc
+                desc.flags = renderable->HasFlag(RenderableFlags::Dynamic) ? FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC : FFX_BRIXELIZER_INSTANCE_FLAG_NONE;
+                
+                static uint32_t next_id = 0;
+                static uint32_t temp_id = next_id++;
+                desc.outInstanceID      = &temp_id;
+            
+                return desc;
             }
 
             // debug visualisation
@@ -594,7 +636,7 @@ namespace Spartan
                 for (uint32_t i = 0; i < brixelizer_gi::cascade_count; ++i)
                 {
                     FfxBrixelizerCascadeDescription* cascade_description  = &brixelizer_gi::description_context.cascadeDescs[i];
-                    cascade_description->flags                            = static_cast<FfxBrixelizerCascadeFlag>(FFX_BRIXELIZER_CASCADE_DYNAMIC);
+                    cascade_description->flags                            = static_cast<FfxBrixelizerCascadeFlag>(FFX_BRIXELIZER_CASCADE_STATIC | FFX_BRIXELIZER_CASCADE_DYNAMIC);
                     cascade_description->voxelSize                        = voxel_size;
                     voxel_size                                           *= brixelizer_gi::cascade_size_ratio;
                 }
@@ -839,53 +881,60 @@ namespace Spartan
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/brixelizer.md
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/brixelizer-gi.md
 
-        // add entities (which ffx refers to as instances)
+        // instances
         {
-            brixelizer_gi::instances.fill({});
-            brixelizer_gi::instance_ids.fill(0);
-            brixelizer_gi::instance_index = 0;
+            vector<uint32_t> instances_to_delete;
+            vector<FfxBrixelizerInstanceDescription> instances_to_create;
 
-            for (int64_t i = index_start; i < index_end; i++)
+            // deduce which instances to delete
+            for (auto it = brixelizer_gi::instance_map.begin(); it != brixelizer_gi::instance_map.end();)
             {
-                shared_ptr<Entity>& entity             = entities[i];
-                shared_ptr<Renderable> renderable      = entity->GetComponent<Renderable>();
+                Entity* entity = it->first;
+                auto entity_it = find_if(entities.begin() + index_start, entities.begin() + index_end,
+                    [entity](const shared_ptr<Entity>& e) { return e.get() == entity; });
 
-                // create instance
-                uint32_t index                         = brixelizer_gi::instance_index++;
-                brixelizer_gi::instance_ids[index]     = index;
-                FfxBrixelizerInstanceDescription& desc = brixelizer_gi::instances[index];
-                desc.outInstanceID                     = &brixelizer_gi::instance_ids[index];
-
-                // aabb: world space, pre-transformed
-                const BoundingBox& aabb = renderable->GetBoundingBox(BoundingBoxType::Transformed);
-                desc.aabb.min[0]        = aabb.GetMin().x;
-                desc.aabb.min[1]        = aabb.GetMin().y;
-                desc.aabb.min[2]        = aabb.GetMin().z;
-                desc.aabb.max[0]        = aabb.GetMax().x;
-                desc.aabb.max[1]        = aabb.GetMax().y;
-                desc.aabb.max[2]        = aabb.GetMax().z;
-
-                // transform: world space, row-major
-                set_ffx_float16(desc.transform, entity->GetMatrix());
-
-                // vertex buffer
-                desc.vertexBuffer       = brixelizer_gi::register_geometry_buffer(renderable->GetVertexBuffer());
-                desc.vertexStride       = renderable->GetVertexBuffer()->GetStride();
-                desc.vertexBufferOffset = renderable->GetVertexOffset() * desc.vertexStride; // offset in bytes
-                desc.vertexCount        = renderable->GetVertexCount();
-                desc.vertexFormat       = FFX_SURFACE_FORMAT_R32G32B32_FLOAT;
-
-                // index buffer
-                desc.indexBuffer       = brixelizer_gi::register_geometry_buffer(renderable->GetIndexBuffer());
-                desc.indexBufferOffset = renderable->GetIndexOffset() * renderable->GetIndexBuffer()->GetStride(); // offset in bytes
-                desc.triangleCount     = renderable->GetIndexCount() / 3;
-                desc.indexFormat       = (renderable->GetIndexBuffer()->GetStride() == sizeof(uint16_t)) ? FFX_INDEX_TYPE_UINT16 : FFX_INDEX_TYPE_UINT32;
-
-                // misc
-                desc.flags = FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC;
+                if (entity_it == entities.begin() + index_end)
+                {
+                    instances_to_delete.push_back(it->second.id);
+                    it = brixelizer_gi::instance_map.erase(it);
+                }
+                else
+                {
+                    bool is_dynamic = (*entity_it)->GetComponent<Renderable>()->HasFlag(RenderableFlags::Dynamic);
+                    if (is_dynamic != !it->second.is_static)
+                    {
+                        instances_to_delete.push_back(it->second.id);
+                        instances_to_create.push_back(brixelizer_gi::create_instance_description(*entity_it));
+                        it->second.is_static = !is_dynamic;
+                    }
+                    ++it;
+                }
             }
 
-            SP_ASSERT(ffxBrixelizerCreateInstances(&brixelizer_gi::context, brixelizer_gi::instances.data(), brixelizer_gi::instance_index) == FFX_OK);
+            // deduce which instances to create
+            for (int64_t i = index_start; i < index_end; i++)
+            {
+                shared_ptr<Entity>& entity = entities[i];
+                if (brixelizer_gi::instance_map.find(entity.get()) == brixelizer_gi::instance_map.end())
+                {
+                    FfxBrixelizerInstanceDescription desc = brixelizer_gi::create_instance_description(entity);
+                    instances_to_create.push_back(desc);
+                    bool is_dynamic = entity->GetComponent<Renderable>()->HasFlag(RenderableFlags::Dynamic);
+                    brixelizer_gi::instance_map[entity.get()] = {*desc.outInstanceID, !is_dynamic};
+                }
+            }
+
+            // delete
+            if (!instances_to_delete.empty())
+            {
+                SP_ASSERT(ffxBrixelizerDeleteInstances(&brixelizer_gi::context, instances_to_delete.data(), static_cast<uint32_t>(instances_to_delete.size())) == FFX_OK);
+            }
+
+            // create
+            if (!instances_to_create.empty())
+            {
+                SP_ASSERT(ffxBrixelizerCreateInstances(&brixelizer_gi::context, instances_to_create.data(), static_cast<uint32_t>(instances_to_create.size())) == FFX_OK);
+            }
         }
 
         for (uint32_t i = 0; i < brixelizer_gi::cascade_count; i++)
@@ -909,7 +958,7 @@ namespace Spartan
         bool debug_update  = brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Radiance && brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Irradiance;
         if (debug_enabled && debug_update)
         {
-            brixelizer_gi::description_update.populateDebugAABBsFlags = static_cast<FfxBrixelizerPopulateDebugAABBsFlags>(FFX_BRIXELIZER_POPULATE_AABBS_DYNAMIC_INSTANCES | FFX_BRIXELIZER_POPULATE_AABBS_CASCADE_AABBS);
+            brixelizer_gi::description_update.populateDebugAABBsFlags = static_cast<FfxBrixelizerPopulateDebugAABBsFlags>(FFX_BRIXELIZER_POPULATE_AABBS_INSTANCES | FFX_BRIXELIZER_POPULATE_AABBS_CASCADE_AABBS);
             brixelizer_gi::description_update.debugVisualizationDesc  = &brixelizer_gi::debug_description;
             brixelizer_gi::debug_description.commandList              = to_ffx_cmd_list(cmd_list);
             brixelizer_gi::debug_description.output                   = to_ffx_resource(tex_debug, L"brixelizer_gi_tex_debug");
