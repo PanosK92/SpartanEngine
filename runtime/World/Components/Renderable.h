@@ -46,11 +46,10 @@ namespace Spartan
 
     enum RenderableFlags : uint32_t
     {
-        Dynamic      = 1U << 0,
-        OccludedCpu  = 1U << 1, // frustum culling
-        OccludedGpu  = 1U << 2, // occlusion culling (depth culling)
-        Occluder     = 1U << 3,
-        CastsShadows = 1U << 4
+        OccludedCpu  = 1U << 0, // frustum culling
+        OccludedGpu  = 1U << 1, // occlusion culling (depth culling)
+        Occluder     = 1U << 2,
+        CastsShadows = 1U << 3
     };
 
     class SP_CLASS Renderable : public Component
@@ -62,7 +61,6 @@ namespace Spartan
         // icomponent
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
-        void OnTick() override;
 
         // geometry
         void SetGeometry(
@@ -138,9 +136,7 @@ namespace Spartan
         std::shared_ptr<RHI_GeometryBuffer> m_instance_buffer;
 
         // misc
-        Math::Matrix m_transform_previous        = Math::Matrix::Identity;
-        uint32_t m_flags                         = RenderableFlags::CastsShadows;
-        float m_time_since_last_transform_change = 0.0f;
-        bool m_dynamic_state_dirty               = false;
+        Math::Matrix m_transform_previous = Math::Matrix::Identity;
+        uint32_t m_flags                  = RenderableFlags::CastsShadows;
     };
 }
