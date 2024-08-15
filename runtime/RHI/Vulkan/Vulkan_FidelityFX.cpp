@@ -324,22 +324,22 @@ namespace Spartan
             array<shared_ptr<RHI_Buffer>, cascade_count> buffer_cascade_brick_map = {};
 
             // instances
-            unordered_map<Entity*, bool> instance_entities;
+            static unordered_set<uint64_t> static_instances;
             vector<pair<const RHI_GeometryBuffer*, uint32_t>> instance_buffers;
            
-            uint32_t& get_or_create_id(Entity* entity)
+            uint32_t& get_or_create_id(uint64_t entity_id)
             {
                 static unordered_map<uint64_t, uint32_t> entity_to_id_map;
                 static uint32_t next_id = 0;
 
                 // return existing
-                auto it = entity_to_id_map.find(entity->GetObjectId());
+                auto it = entity_to_id_map.find(entity_id);
                 if (it != entity_to_id_map.end())
                     return it->second;
 
                 // return a new one
-                entity_to_id_map[entity->GetObjectId()] = next_id++;
-                return entity_to_id_map[entity->GetObjectId()];
+                entity_to_id_map[entity_id] = next_id++;
+                return entity_to_id_map[entity_id];
             }
 
             uint32_t register_geometry_buffer(const RHI_GeometryBuffer* buffer)
@@ -402,7 +402,7 @@ namespace Spartan
             
                 // misc
                 desc.flags         = entity->HasTransformChanged() ? FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC : FFX_BRIXELIZER_INSTANCE_FLAG_NONE;
-                desc.outInstanceID = &get_or_create_id(entity.get());
+                desc.outInstanceID = &get_or_create_id(entity->GetObjectId());
             
                 return desc;
             }
@@ -544,9 +544,6 @@ namespace Spartan
         // brixelizer gi
         if (brixelizer_gi::context_created)
         {
-            brixelizer_gi::instance_entities.clear();
-            brixelizer_gi::instance_buffers.clear();
-
             SP_ASSERT(ffxBrixelizerContextDestroy(&brixelizer_gi::context) == FFX_OK);
             SP_ASSERT(ffxBrixelizerGIContextDestroy(&brixelizer_gi::context_gi) == FFX_OK);
             brixelizer_gi::context_created = false;
@@ -897,69 +894,36 @@ namespace Spartan
 
         // instances
         {
-            static uint32_t static_instance_count = 0;
+            static vector<uint32_t> instances_to_delete;
+            static vector<FfxBrixelizerInstanceDescription> instances_to_create;
 
-            // delete
+            // process all entities
+            for (int64_t i = index_start; i < index_end; i++)
             {
-                static vector<uint32_t> instances_to_delete;
+                shared_ptr<Entity>& entity = entities[i];
+                uint64_t entity_id         = entity->GetObjectId();
+                bool is_dynamic            = entity->HasTransformChanged();
 
-                for (auto it = brixelizer_gi::instance_entities.begin(); it != brixelizer_gi::instance_entities.end();)
+                if (is_dynamic)
                 {
-                    Entity* entity = it->first;
-                    auto entity_it = find_if(entities.begin() + index_start, entities.begin() + index_end,
-                        [entity](const shared_ptr<Entity>& e) { return e.get()->GetObjectId() == entity->GetObjectId(); });
-                    bool entity_exists = entity_it != entities.begin() + index_end;
-                    bool has_become_dynamic = entity_exists && (*entity_it)->HasTransformChanged();
-            
-                    if (it->second && (!entity_exists || has_become_dynamic))
+                    // always create dynamic instances
+                    instances_to_create.push_back(brixelizer_gi::create_instance_description(entity));
+                    
+                    // if it was static before, remove it from static instances and delete the old instance
+                    if (brixelizer_gi::static_instances.erase(entity_id) > 0)
                     {
-                        if (static_instance_count > 0)
-                        {
-                            uint32_t instance_id = brixelizer_gi::get_or_create_id(entity);
-                            instances_to_delete.push_back(instance_id);
-                            static_instance_count--;
-                            SP_LOG_INFO("Marked static instance %d for deletion. Reason: %s", instance_id, entity_exists ? "became dynamic" : "no longer present");
-                        }
-                        else
-                        {
-                            SP_LOG_WARNING("Attempted to delete instance when static_instance_count is 0. Skipping.");
-                        }
-                        it = brixelizer_gi::instance_entities.erase(it);
-                    }
-                    else
-                    {
-                        if (entity_exists)
-                        {
-                            it->second = !has_become_dynamic;
-                        }
-                        ++it;
+                        instances_to_delete.push_back(brixelizer_gi::get_or_create_id(entity_id));
+                        SP_LOG_INFO("Static instance became dynamic: %llu", entity_id);
                     }
                 }
-            
-                if (!instances_to_delete.empty())
+                else // static instance
                 {
-                    SP_ASSERT(ffxBrixelizerDeleteInstances(&brixelizer_gi::context, instances_to_delete.data(), static_cast<uint32_t>(instances_to_delete.size())) == FFX_OK);
-                    instances_to_delete.clear();
-                }
-            }
-
-            // create
-            {
-                static vector<FfxBrixelizerInstanceDescription> instances_to_create;
-
-                for (int64_t i = index_start; i < index_end; i++)
-                {
-                    shared_ptr<Entity>& entity = entities[i];
-                    bool is_dynamic            = entity->HasTransformChanged();
-                    auto it                    = brixelizer_gi::instance_entities.find(entity.get());
-
-                    // dynamic instances get added always, as they don't persist
-                    // static instances get added once (only if they don't already exist in the map), as they persist
-                    if (is_dynamic || it == brixelizer_gi::instance_entities.end())
+                    if (brixelizer_gi::static_instances.find(entity_id) == brixelizer_gi::static_instances.end())
                     {
+                        // new static instance
                         instances_to_create.push_back(brixelizer_gi::create_instance_description(entity));
-                        brixelizer_gi::instance_entities[entity.get()] = !is_dynamic;
-                        static_instance_count += is_dynamic ? 0 : 1;
+                        brixelizer_gi::static_instances.insert(entity_id);
+                        SP_LOG_INFO("Added new static instance: %llu", entity_id);
                     }
                 }
 
@@ -967,6 +931,30 @@ namespace Spartan
                 {
                     SP_ASSERT(ffxBrixelizerCreateInstances(&brixelizer_gi::context, instances_to_create.data(), static_cast<uint32_t>(instances_to_create.size())) == FFX_OK);
                     instances_to_create.clear();
+                }
+            }
+
+            // delete static instances that no longer exist
+            for (auto it = brixelizer_gi::static_instances.begin(); it != brixelizer_gi::static_instances.end();)
+            {
+                uint64_t entity_id = *it;
+                auto entity_it      = std::find_if(entities.begin() + index_start, entities.begin() + index_end, [entity_id](const shared_ptr<Entity>& e) { return e->GetObjectId() == entity_id; });
+                
+                if (entity_it == entities.begin() + index_end)
+                {
+                    instances_to_delete.push_back(brixelizer_gi::get_or_create_id(entity_id));
+                    it = brixelizer_gi::static_instances.erase(it);
+                    SP_LOG_INFO("Deleted non-existent static instance: %llu", entity_id);
+                }
+                else
+                {
+                    ++it;
+                }
+
+                if (!instances_to_delete.empty())
+                {
+                    SP_ASSERT(ffxBrixelizerDeleteInstances(&brixelizer_gi::context, instances_to_delete.data(), static_cast<uint32_t>(instances_to_delete.size())) == FFX_OK);
+                    instances_to_delete.clear();
                 }
             }
         }
