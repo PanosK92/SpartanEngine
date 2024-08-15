@@ -324,13 +324,24 @@ namespace Spartan
             array<shared_ptr<RHI_Buffer>, cascade_count> buffer_cascade_brick_map = {};
 
             // instances
-            struct BrixelizerInstanceInfo
-            {
-                uint32_t id;
-                bool is_static;
-            };
-            unordered_map<Entity*, BrixelizerInstanceInfo> instance_map;
+            unordered_map<Entity*, bool> instance_map;
             vector<pair<const RHI_GeometryBuffer*, uint32_t>> instance_buffers;
+           
+            uint32_t* get_or_create_id(Entity* entity)
+            {
+                static unordered_map<uint64_t, uint32_t> entity_to_id_map;
+                static uint32_t next_id = 0;
+
+                auto it = entity_to_id_map.find(entity->GetObjectId());
+                if (it != entity_to_id_map.end())
+                {
+                    return &it->second;
+                }
+                uint32_t new_id = next_id++;
+                entity_to_id_map[entity->GetObjectId()] = new_id;
+
+                return &new_id;
+            }
 
             uint32_t register_geometry_buffer(const RHI_GeometryBuffer* buffer)
             {
@@ -391,11 +402,8 @@ namespace Spartan
                 desc.indexFormat       = (renderable->GetIndexBuffer()->GetStride() == sizeof(uint16_t)) ? FFX_INDEX_TYPE_UINT16 : FFX_INDEX_TYPE_UINT32;
             
                 // misc
-                desc.flags = renderable->HasFlag(RenderableFlags::Dynamic) ? FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC : FFX_BRIXELIZER_INSTANCE_FLAG_NONE;
-                
-                static uint32_t next_id = 0;
-                static uint32_t temp_id = next_id++;
-                desc.outInstanceID      = &temp_id;
+                desc.flags          = entity->HasTransformChanged() ? FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC : FFX_BRIXELIZER_INSTANCE_FLAG_NONE;
+                desc.outInstanceID = get_or_create_id(entity.get());
             
                 return desc;
             }
@@ -881,10 +889,14 @@ namespace Spartan
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/brixelizer.md
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/brixelizer-gi.md
 
+        // sdk issue #1: the sdk should keep track of static/dynamic instances and decide what needs to be deleted or created, not the user.
+        // sdk issue #2: all the buffers which are needed, should be created and bound internally by the sdk, not the user.
+        // sdk issue #3: instance ids are really indices, using actual ids (a big number) will cause an out of bounds crash, this should be have been clear.
+
         // instances
         {
             vector<uint32_t> instances_to_delete;
-            vector<FfxBrixelizerInstanceDescription> instances_to_create;
+            static vector<FfxBrixelizerInstanceDescription> instances_to_create;
 
             // delete
             {
@@ -894,36 +906,26 @@ namespace Spartan
 
                     // check if the entity still exists in the current frame's entity list
                     auto entity_it = find_if(entities.begin() + index_start, entities.begin() + index_end,[entity](const shared_ptr<Entity>& e) { return e.get() == entity; });
-                    
-                    if (entity_it == entities.begin() + index_end)
-                    {
-                        // entity no longer exists
-                        if (it->second.is_static)
-                        {
-                            // only delete static instances, as dynamic ones don't persist
-                            instances_to_delete.push_back(it->second.id);
-                        }
 
+                    bool entity_exists = entity_it != entities.begin() + index_end;
+                    bool is_dynamic    = entity_exists && (*entity_it)->HasTransformChanged();
+
+                    // delete static instances if they no longer exist or have become dynamic
+                    if (it->second && (!entity_exists || is_dynamic))
+                    {
+                        uint32_t instance_id = *brixelizer_gi::get_or_create_id((*entity_it).get());
+                        instances_to_delete.push_back(instance_id);
+                        SP_LOG_INFO("Deleted static instance %d. Reason: %s", instance_id, entity_exists ? "became dynamic" : "no longer present");
                         it = brixelizer_gi::instance_map.erase(it);
                     }
                     else
                     {
-                        bool is_dynamic = (*entity_it)->GetComponent<Renderable>()->HasFlag(RenderableFlags::Dynamic);
-    
-                        // check if the entity has changed from static to dynamic
-                        if (is_dynamic && it->second.is_static)
+                        // update the dynamic status if the entity still exists
+                        if (entity_exists)
                         {
-                            // entity has changed from static to dynamic, mark for deletion
-                            instances_to_delete.push_back(it->second.id);
-                            it->second.is_static = false;
+                            it->second = !is_dynamic;
                         }
 
-                        // always recreate dynamic instances
-                        if (is_dynamic)
-                        {
-                            instances_to_create.push_back(brixelizer_gi::create_instance_description(*entity_it));
-                        }
-                        
                         ++it;
                     }
                 }
@@ -932,7 +934,6 @@ namespace Spartan
                 {
                     SP_ASSERT(ffxBrixelizerDeleteInstances(&brixelizer_gi::context, instances_to_delete.data(), static_cast<uint32_t>(instances_to_delete.size())) == FFX_OK);
                 }
-
             }
 
             // create
@@ -940,32 +941,22 @@ namespace Spartan
                 for (int64_t i = index_start; i < index_end; i++)
                 {
                     shared_ptr<Entity>& entity = entities[i];
-                    bool is_dynamic = entity->GetComponent<Renderable>()->HasFlag(RenderableFlags::Dynamic);
-                    
-                    auto it = brixelizer_gi::instance_map.find(entity.get());
+                    bool is_dynamic            = entity->HasTransformChanged();
+                    auto it                    = brixelizer_gi::instance_map.find(entity.get());
 
-                    // create instance if it's dynamic (needs update every frame) or if it's not in the map
+                    // dynamic instances get added always, as they don't persist
+                    // static instances get added once (only if they don't already exist in the map), as they persist
                     if (is_dynamic || it == brixelizer_gi::instance_map.end())
                     {
-                        FfxBrixelizerInstanceDescription desc = brixelizer_gi::create_instance_description(entity);
-                        instances_to_create.push_back(desc);
-                        
-                        if (it == brixelizer_gi::instance_map.end())
-                        {
-                            // new entity, add to the map
-                            brixelizer_gi::instance_map[entity.get()] = {*desc.outInstanceID, !is_dynamic};
-                        }
-                        else
-                        {
-                            // existing dynamic entity, update its ID
-                            it->second.id = *desc.outInstanceID;
-                        }
+                        instances_to_create.push_back(brixelizer_gi::create_instance_description(entity)); 
+                        brixelizer_gi::instance_map[entity.get()] = !is_dynamic;
                     }
                 }
 
                 if (!instances_to_create.empty())
                 {
                     SP_ASSERT(ffxBrixelizerCreateInstances(&brixelizer_gi::context, instances_to_create.data(), static_cast<uint32_t>(instances_to_create.size())) == FFX_OK);
+                    instances_to_create.clear();
                 }
             }
         }

@@ -114,29 +114,6 @@ namespace Spartan
         }
     }
 
-    void Renderable::OnTick()
-    {
-        // set dynamic/static state
-        {
-            // on transform change set state to dynamic
-            if (GetEntity()->HasTransformChanged())
-            {
-                SetFlag(RenderableFlags::Dynamic, true);
-                m_time_since_last_transform_change = 0.0f;
-                m_dynamic_state_dirty              = true;
-            }
-
-            // after 2 seconds have passed without a transform change, set state to static
-            m_time_since_last_transform_change += Timer::GetDeltaTimeSec();
-            if (m_time_since_last_transform_change >= 2.0f && m_dynamic_state_dirty)
-            {
-                SetFlag(RenderableFlags::Dynamic, false);
-                m_time_since_last_transform_change = 0.0f;
-                m_dynamic_state_dirty              = false;
-            }
-        }
-    }
-
     void Renderable::SetGeometry(
         Mesh* mesh,
         const Math::BoundingBox aabb /*= Math::BoundingBox::Undefined*/,
