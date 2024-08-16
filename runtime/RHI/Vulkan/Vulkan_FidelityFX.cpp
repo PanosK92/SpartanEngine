@@ -423,7 +423,7 @@ namespace Spartan
             };
             DebugMode debug_mode            = DebugMode::Max;
             bool debug_mode_arrow_switch    = true;
-            bool debug_mode_aabbs_and_stats = true;
+            bool debug_mode_aabbs_and_stats = false;
             FfxBrixelizerStats debug_stats  = {};
 
             FfxBrixelizerTraceDebugModes to_ffx_debug_mode(const DebugMode debug_mode)
@@ -1065,15 +1065,15 @@ namespace Spartan
         brixelizer_gi::description_dispatch_gi.specularSDFSolveEps     = brixelizer_gi::sdf_ray_epsilon;
         brixelizer_gi::description_dispatch_gi.tMin                    = 0.0f;
         brixelizer_gi::description_dispatch_gi.tMax                    = 10000.0f;
-        brixelizer_gi::description_dispatch_gi.normalsUnpackMul        = 1.0f;                             // a multiply factor to transform the normal to the space expected by brixelizer gi
-        brixelizer_gi::description_dispatch_gi.normalsUnpackAdd        = 0.0f;                             // an offset to transform the normal to the space expected by brixelizer gi
-        brixelizer_gi::description_dispatch_gi.isRoughnessPerceptual   = true;                             // if false, we assume roughness squared was stored in the Gbuffer
-        brixelizer_gi::description_dispatch_gi.roughnessChannel        = 0;                                // the channel to read the roughness from the roughness texture
-        brixelizer_gi::description_dispatch_gi.roughnessThreshold      = 1.0f;                             // regions with a roughness value greater than this threshold won't spawn specular rays
-        brixelizer_gi::description_dispatch_gi.environmentMapIntensity = 0.0f;                             // value to scale the contribution from the environment map
-        brixelizer_gi::description_dispatch_gi.motionVectorScale.x     = 1.0f;
-        brixelizer_gi::description_dispatch_gi.motionVectorScale.y     = 1.0f;
-        set_ffx_float3(brixelizer_gi::description_dispatch_gi.cameraPosition, cb_frame->camera_position);  // camera position
+        brixelizer_gi::description_dispatch_gi.normalsUnpackMul        = 1.0f;                                                             // a multiply factor to transform the normal to the space expected by brixelizer gi
+        brixelizer_gi::description_dispatch_gi.normalsUnpackAdd        = 0.0f;                                                             // an offset to transform the normal to the space expected by brixelizer gi
+        brixelizer_gi::description_dispatch_gi.isRoughnessPerceptual   = true;                                                             // if false, we assume roughness squared was stored in the Gbuffer
+        brixelizer_gi::description_dispatch_gi.roughnessChannel        = 0;                                                                // the channel to read the roughness from the roughness texture
+        brixelizer_gi::description_dispatch_gi.roughnessThreshold      = 1.0f;                                                             // regions with a roughness value greater than this threshold won't spawn specular rays
+        brixelizer_gi::description_dispatch_gi.environmentMapIntensity = 0.0f;                                                             // value to scale the contribution from the environment map
+        brixelizer_gi::description_dispatch_gi.motionVectorScale.x     = -1.0f;
+        brixelizer_gi::description_dispatch_gi.motionVectorScale.y     = -1.0f;
+        set_ffx_float3(brixelizer_gi::description_dispatch_gi.cameraPosition, cb_frame->camera_position);                                  // camera position
 
         // dispatch
         SP_ASSERT(ffxBrixelizerGetRawContext(&brixelizer_gi::context, &brixelizer_gi::description_dispatch_gi.brixelizerContext) == FFX_OK);
