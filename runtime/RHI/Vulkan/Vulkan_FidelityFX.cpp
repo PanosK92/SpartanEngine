@@ -293,7 +293,7 @@ namespace Spartan
             const float    voxel_size              = 0.2f;
             const float    cascade_size_ratio      = 2.0f;
             const uint32_t cascade_count           = 8;         // max is 24
-            const uint32_t cascade_offset          = 0;
+            const uint32_t cascade_offset          = 16; // 0 - 8 is for static, 8 - 16 is for dynamic, 16 - 24 is for static + dynamic (merged)
             const uint32_t cascade_resolution      = 64;
             const uint32_t sdf_atlas_size          = 512;
             const float    sdf_ray_normal_offset   = 0.25f;     // distance from a surface along the normal vector to offset the ray origin
@@ -1105,8 +1105,8 @@ namespace Spartan
             }
 
             // set parameters
-            brixelizer_gi::debug_description_gi.startCascade     = brixelizer_gi::cascade_offset + 0;
-            brixelizer_gi::debug_description_gi.endCascade       = brixelizer_gi::cascade_offset + brixelizer_gi::cascade_count - 1;
+            brixelizer_gi::debug_description_gi.startCascade     = brixelizer_gi::description_dispatch_gi.startCascade;
+            brixelizer_gi::debug_description_gi.endCascade       = brixelizer_gi::description_dispatch_gi.endCascade ;
             brixelizer_gi::debug_description_gi.debugMode        = brixelizer_gi::debug_mode == brixelizer_gi::DebugMode::Radiance ? FFX_BRIXELIZER_GI_DEBUG_MODE_RADIANCE_CACHE : FFX_BRIXELIZER_GI_DEBUG_MODE_IRRADIANCE_CACHE;
             brixelizer_gi::debug_description_gi.normalsUnpackMul = brixelizer_gi::description_dispatch_gi.normalsUnpackMul;
             brixelizer_gi::debug_description_gi.normalsUnpackAdd = brixelizer_gi::description_dispatch_gi.normalsUnpackAdd;
