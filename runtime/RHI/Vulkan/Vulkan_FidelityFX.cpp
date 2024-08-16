@@ -658,7 +658,7 @@ namespace Spartan
 
             // context gi
             {
-                brixelizer_gi::description_context_gi.internalResolution = FfxBrixelizerGIInternalResolution::FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_25_PERCENT; // render resolution
+                brixelizer_gi::description_context_gi.internalResolution = FfxBrixelizerGIInternalResolution::FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_50_PERCENT; // render resolution
                 brixelizer_gi::description_context_gi.displaySize.width  = static_cast<uint32_t>(resolution_render.x);                                          // output resolution
                 brixelizer_gi::description_context_gi.displaySize.height = static_cast<uint32_t>(resolution_render.y);                                          // output resolution
                 brixelizer_gi::description_context_gi.flags              = FfxBrixelizerGIFlags::FFX_BRIXELIZER_GI_FLAG_DEPTH_INVERTED;

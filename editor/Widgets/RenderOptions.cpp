@@ -307,7 +307,7 @@ void RenderOptions::OnTickVisible()
             option_check_box("SSR - Screen space reflections", Renderer_Option::ScreenSpaceReflections);
 
             // ssgi
-            option_check_box("SSGI - Screen space global illumination", Renderer_Option::ScreenSpaceGlobalIllumination, "SSAO with a diffuse light bounce");
+            option_check_box("SSAO - Screen space ambient occlusion", Renderer_Option::ScreenSpaceAmbientOcclusion);
 
             // sss
             option_check_box("SSS - Screen space shadows", Renderer_Option::ScreenSpaceShadows, "Requires a light with shadows enabled");

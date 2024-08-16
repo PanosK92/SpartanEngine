@@ -45,7 +45,6 @@ struct Surface
     float  subsurface_scattering;
     float  ior;
     float  occlusion;
-    float3 gi;
     float3 emissive;
     float3 F0;
     uint2  pos;
@@ -114,21 +113,13 @@ struct Surface
         roughness_alpha         = roughness * roughness;
         roughness_alpha_squared = roughness_alpha * roughness_alpha;
 
-        // ssgi
+        // ssao
+        occlusion = 1.0f;
+        if (is_ssao_enabled() && pass_is_opaque())
         {
-            occlusion = 1.0f;
-            gi        = 0.0f;
-
-            if (is_ssgi_enabled() && pass_is_opaque())
-            {
-                float2 uv_unscaled = (position_screen + 0.5f) / resolution_out;
-                float4 ssgi        = tex_ssgi.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp_border), uv_unscaled, 0.0f);
-                occlusion          = ssgi.a;
-                gi                 = ssgi.rgb;
-
-                // combine occlusion with material occlusion
-                occlusion = min(sample_material.a, occlusion);
-            }
+            float2 uv_unscaled = (position_screen + 0.5f) / resolution_out;
+            occlusion          = tex_ssao.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp_border), uv_unscaled, 0.0f).r;
+            occlusion          = min(sample_material.a, occlusion); // combine occlusion with material occlusion
         }
 
         position               = get_position(depth, uv);
@@ -269,9 +260,7 @@ struct Light
         resolution        = compute_resolution();
         texel_size        = 1.0f / resolution;
 
-        // apply occlusion
-        float occlusion_factor = is_ssgi_enabled() ? occlusion : 1.0;
-        radiance               = color * intensity * attenuation * n_dot_l * occlusion_factor;
+        radiance = color * intensity * attenuation * n_dot_l * occlusion;
     }
 
     void Build(Surface surface)

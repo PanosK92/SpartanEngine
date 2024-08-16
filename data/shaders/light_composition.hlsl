@@ -148,7 +148,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         }
         
         // compose
-        float3 light  = (light_diffuse + surface.gi) * surface.albedo + light_specular + emissive;
+        float3 light  = light_diffuse * surface.albedo + light_specular + emissive;
         color.rgb    += lerp(light_refracted_background, light, color.a);
     }
 
