@@ -1052,8 +1052,8 @@ namespace Spartan
         brixelizer_gi::description_dispatch_gi.bricksAABBs      = to_ffx_resource(brixelizer_gi::buffer_brick_aabbs.get(),       L"brixelizer_gi_brick_aabbs");
         for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; i++)
         {
-            brixelizer_gi::description_update.resources.cascadeResources[i].aabbTree = to_ffx_resource(brixelizer_gi::buffer_cascade_aabb_tree[i].get(), L"brixelizer_gi_abbb_tree");
-            brixelizer_gi::description_update.resources.cascadeResources[i].brickMap = to_ffx_resource(brixelizer_gi::buffer_cascade_brick_map[i].get(), L"brixelizer_gi_brick_map");
+            brixelizer_gi::description_dispatch_gi.cascadeAABBTrees[i] = brixelizer_gi::description_update.resources.cascadeResources[i].aabbTree;
+            brixelizer_gi::description_dispatch_gi.cascadeBrickMaps[i] = brixelizer_gi::description_update.resources.cascadeResources[i].brickMap;
         }
         
         // set parameters
