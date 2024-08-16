@@ -53,17 +53,17 @@ namespace Spartan
     namespace
     {
         // shared among all contexts
-        FfxInterface ffx_interface      = {};
-        Matrix view                     = Matrix::Identity;
-        Matrix view_previous            = Matrix::Identity;
-        Matrix projection               = Matrix::Identity;
-        Matrix projection_previous      = Matrix::Identity;
-        Matrix view_projection          = Matrix::Identity;
-        Matrix view_inverted            = Matrix::Identity;
-        Matrix projection_inverted      = Matrix::Identity;
-        Matrix view_projection_previous = Matrix::Identity;
-        Matrix view_projection_inverted = Matrix::Identity;
-        shared_ptr<RHI_Texture> cubemap = nullptr;
+        FfxInterface ffx_interface            = {};
+        Matrix view                           = Matrix::Identity;
+        Matrix view_previous                  = Matrix::Identity;
+        Matrix projection                     = Matrix::Identity;
+        Matrix projection_previous            = Matrix::Identity;
+        Matrix view_projection                = Matrix::Identity;
+        Matrix view_inverted                  = Matrix::Identity;
+        Matrix projection_inverted            = Matrix::Identity;
+        Matrix view_projection_previous       = Matrix::Identity;
+        Matrix view_projection_inverted       = Matrix::Identity;
+        shared_ptr<RHI_Texture> cubemap_empty = nullptr;
 
         void ffx_message_callback(FfxMsgType type, const wchar_t* message)
         {
@@ -485,7 +485,7 @@ namespace Spartan
         {
 
             // shared
-            cubemap = make_unique<RHI_TextureCube>(1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv, "ffx_environment");
+            cubemap_empty = make_unique<RHI_TextureCube>(1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv, "ffx_environment");
 
             // brixelizer gi
             {
@@ -571,7 +571,7 @@ namespace Spartan
 
     void RHI_FidelityFX::Shutdown()
     {
-        cubemap                                = nullptr;
+        cubemap_empty                                = nullptr;
         brixelizer_gi::texture_sdf_atlas       = nullptr;
         brixelizer_gi::buffer_brick_aabbs      = nullptr;
         brixelizer_gi::buffer_scratch          = nullptr;
@@ -842,7 +842,7 @@ namespace Spartan
         sssr::description_dispatch.motionVectors      = to_ffx_resource(tex_velocity,  L"sssr_velocity");
         sssr::description_dispatch.normal             = to_ffx_resource(tex_normal,    L"sssr_normal");
         sssr::description_dispatch.materialParameters = to_ffx_resource(tex_material,  L"sssr_roughness");   // FfxSssrDispatchDescription specifies the channel
-        sssr::description_dispatch.environmentMap     = to_ffx_resource(cubemap.get(), L"sssr_environment"); // dummy/empty as we don't want SSSR to also do IBL
+        sssr::description_dispatch.environmentMap     = to_ffx_resource(cubemap_empty.get(), L"sssr_environment"); // dummy/empty as we don't want SSSR to also do IBL
         sssr::description_dispatch.brdfTexture        = to_ffx_resource(tex_brdf,      L"sssr_brdf");
         sssr::description_dispatch.output             = to_ffx_resource(tex_output,    L"sssr_output");
  
@@ -1045,7 +1045,7 @@ namespace Spartan
         set_ffx_float16(brixelizer_gi::description_dispatch_gi.prevProjection, projection_previous);
 
         // set resources
-        brixelizer_gi::description_dispatch_gi.environmentMap   = to_ffx_resource(cubemap.get(),                                 L"brixelizer_environment");
+        brixelizer_gi::description_dispatch_gi.environmentMap   = to_ffx_resource(cubemap_empty.get(),                           L"brixelizer_environment");
         brixelizer_gi::description_dispatch_gi.prevLitOutput    = to_ffx_resource(tex_color,                                     L"brixelizer_gi_lit_output_previous");
         brixelizer_gi::description_dispatch_gi.depth            = to_ffx_resource(tex_depth,                                     L"brixelizer_gi_depth");
         brixelizer_gi::description_dispatch_gi.historyDepth     = to_ffx_resource(brixelizer_gi::texture_depth_previous.get(),   L"brixelizer_gi_depth_previous");

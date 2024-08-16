@@ -138,7 +138,7 @@ namespace Spartan
         if (!m_is_active)
             return;
 
-        m_time_since_last_transform_sec += Timer::GetDeltaTimeSec();
+        m_time_since_last_transform_sec += static_cast<float>(Timer::GetDeltaTimeSec());
 
         for (shared_ptr<Component>& component : m_components)
         {
