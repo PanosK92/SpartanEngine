@@ -168,7 +168,7 @@ namespace Spartan
         const Math::Matrix& GetLocalMatrix() const         { return m_matrix_local; }
         const Math::Matrix& GetMatrixPrevious() const      { return m_matrix_previous; }
         void SetMatrixPrevious(const Math::Matrix& matrix) { m_matrix_previous = matrix; }
-        bool HasTransformChanged() const;
+        bool IsMoving() const;
 
     private:
         std::atomic<bool> m_is_active = true;
@@ -193,6 +193,6 @@ namespace Spartan
         // misc
         std::mutex m_mutex_children;
         std::mutex m_mutex_parent;
-        uint64_t m_transform_changed_frame = 0;
+        float m_time_since_last_transform_sec = 0.0f;
     };
 }
