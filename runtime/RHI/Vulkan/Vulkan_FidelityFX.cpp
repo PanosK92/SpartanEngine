@@ -293,6 +293,7 @@ namespace Spartan
             const float    voxel_size              = 0.2f;
             const float    cascade_size_ratio      = 2.0f;
             const uint32_t cascade_count           = 8;         // max is 24
+            const uint32_t cascade_offset          = 0;
             const uint32_t cascade_resolution      = 64;
             const uint32_t sdf_atlas_size          = 512;
             const float    sdf_ray_normal_offset   = 0.25f;     // distance from a surface along the normal vector to offset the ray origin
@@ -315,13 +316,13 @@ namespace Spartan
             FfxBrixelizerGIDebugDescription            debug_description_gi     = {};
 
             // resources
-            shared_ptr<RHI_Texture>                      texture_sdf_atlas        = nullptr;
-            shared_ptr<RHI_Texture>                      texture_depth_previous   = nullptr;
-            shared_ptr<RHI_Texture>                      texture_normal_previous  = nullptr;
-            shared_ptr<RHI_Buffer>                       buffer_scratch           = nullptr;
-            shared_ptr<RHI_Buffer>                       buffer_brick_aabbs       = nullptr;
-            array<shared_ptr<RHI_Buffer>, cascade_count> buffer_cascade_aabb_tree = {};
-            array<shared_ptr<RHI_Buffer>, cascade_count> buffer_cascade_brick_map = {};
+            shared_ptr<RHI_Texture>                      texture_sdf_atlas                      = nullptr;
+            shared_ptr<RHI_Texture>                      texture_depth_previous                 = nullptr;
+            shared_ptr<RHI_Texture>                      texture_normal_previous                = nullptr;
+            shared_ptr<RHI_Buffer>                       buffer_scratch                         = nullptr;
+            shared_ptr<RHI_Buffer>                       buffer_brick_aabbs                     = nullptr;
+            array<shared_ptr<RHI_Buffer>, FFX_BRIXELIZER_MAX_CASCADES> buffer_cascade_aabb_tree = {};
+            array<shared_ptr<RHI_Buffer>, FFX_BRIXELIZER_MAX_CASCADES> buffer_cascade_brick_map = {};
 
             // instances
             static unordered_set<uint64_t> static_instances;
@@ -512,7 +513,7 @@ namespace Spartan
 
                 // cascade aabb trees
                 const uint32_t cascade_aabb_tree_size = (16 * 16 * 16) * sizeof(uint32_t) + (4 * 4 * 4 + 1) * sizeof(Vector3) * 2;
-                for (uint32_t i = 0; i < brixelizer_gi::cascade_count; i++)
+                for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; i++)
                 {
                     string name = "ffx_cascade_aabb_tree_" + to_string(i);
                     brixelizer_gi::buffer_cascade_aabb_tree[i] = make_shared<RHI_Buffer>(
@@ -525,7 +526,7 @@ namespace Spartan
 
                 // cascade brick maps
                 const uint32_t cascade_brick_map_size = brixelizer_gi::cascade_resolution * brixelizer_gi::cascade_resolution * brixelizer_gi::cascade_resolution * sizeof(uint32_t);
-                for (uint32_t i = 0; i < brixelizer_gi::cascade_count; i++)
+                for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; i++)
                 {
                     string name = "ffx_cascade_brick_map_" + to_string(i);
                     brixelizer_gi::buffer_cascade_brick_map[i] = make_shared<RHI_Buffer>(
@@ -959,7 +960,7 @@ namespace Spartan
             }
         }
 
-        for (uint32_t i = 0; i < brixelizer_gi::cascade_count; i++)
+        for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; i++)
         {
             brixelizer_gi::description_update.resources.cascadeResources[i].aabbTree = to_ffx_resource(brixelizer_gi::buffer_cascade_aabb_tree[i].get(), L"brixelizer_gi_abbb_tree");
             brixelizer_gi::description_update.resources.cascadeResources[i].brickMap = to_ffx_resource(brixelizer_gi::buffer_cascade_brick_map[i].get(), L"brixelizer_gi_brick_map");
@@ -987,12 +988,12 @@ namespace Spartan
             brixelizer_gi::debug_description.renderWidth              = tex_debug->GetWidth();
             brixelizer_gi::debug_description.renderHeight             = tex_debug->GetHeight();
             brixelizer_gi::debug_description.debugState               = brixelizer_gi::to_ffx_debug_mode(brixelizer_gi::debug_mode);
-            brixelizer_gi::debug_description.startCascadeIndex        = 0;
-            brixelizer_gi::debug_description.endCascadeIndex          = brixelizer_gi::cascade_count - 1;
+            brixelizer_gi::debug_description.startCascadeIndex        = brixelizer_gi::cascade_offset;
+            brixelizer_gi::debug_description.endCascadeIndex          = brixelizer_gi::cascade_offset + brixelizer_gi::cascade_count - 1;
             brixelizer_gi::debug_description.tMin                     = brixelizer_gi::description_dispatch_gi.tMin;
             brixelizer_gi::debug_description.tMax                     = brixelizer_gi::description_dispatch_gi.tMax;
             brixelizer_gi::debug_description.sdfSolveEps              = brixelizer_gi::sdf_ray_epsilon;
-            for (uint32_t i = 0; i < brixelizer_gi::cascade_count; i++)
+            for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; i++)
             {
                 brixelizer_gi::debug_description.cascadeDebugAABB[0] = FFX_BRIXELIZER_CASCADE_DEBUG_AABB_NONE;
             }
@@ -1049,15 +1050,15 @@ namespace Spartan
         brixelizer_gi::description_dispatch_gi.outputSpecularGI = to_ffx_resource(tex_specular_gi,                               L"brixelizer_gi_specular_gi");
         brixelizer_gi::description_dispatch_gi.sdfAtlas         = to_ffx_resource(brixelizer_gi::texture_sdf_atlas.get(),        L"brixelizer_gi_sdf_atlas");
         brixelizer_gi::description_dispatch_gi.bricksAABBs      = to_ffx_resource(brixelizer_gi::buffer_brick_aabbs.get(),       L"brixelizer_gi_brick_aabbs");
-        for (uint32_t i = 0; i < brixelizer_gi::cascade_count; i++)
+        for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; i++)
         {
             brixelizer_gi::description_update.resources.cascadeResources[i].aabbTree = to_ffx_resource(brixelizer_gi::buffer_cascade_aabb_tree[i].get(), L"brixelizer_gi_abbb_tree");
             brixelizer_gi::description_update.resources.cascadeResources[i].brickMap = to_ffx_resource(brixelizer_gi::buffer_cascade_brick_map[i].get(), L"brixelizer_gi_brick_map");
         }
         
         // set parameters
-        brixelizer_gi::description_dispatch_gi.startCascade            = 0;                                // index of the start cascade for use with ray marching with brixelizer
-        brixelizer_gi::description_dispatch_gi.endCascade              = brixelizer_gi::cascade_count - 1; // index of the end cascade for use with ray marching with brixelizer
+        brixelizer_gi::description_dispatch_gi.startCascade            = brixelizer_gi::cascade_offset + 0;                                // index of the start cascade for use with ray marching with brixelizer
+        brixelizer_gi::description_dispatch_gi.endCascade              = brixelizer_gi::cascade_offset + brixelizer_gi::cascade_count - 1; // index of the end cascade for use with ray marching with brixelizer
         brixelizer_gi::description_dispatch_gi.rayPushoff              = brixelizer_gi::sdf_ray_normal_offset;
         brixelizer_gi::description_dispatch_gi.sdfSolveEps             = brixelizer_gi::sdf_ray_epsilon;
         brixelizer_gi::description_dispatch_gi.specularRayPushoff      = brixelizer_gi::sdf_ray_normal_offset;
@@ -1097,15 +1098,15 @@ namespace Spartan
             brixelizer_gi::debug_description_gi.normal        = brixelizer_gi::description_dispatch_gi.normal;
             brixelizer_gi::debug_description_gi.sdfAtlas      = brixelizer_gi::description_dispatch_gi.sdfAtlas;
             brixelizer_gi::debug_description_gi.bricksAABBs   = brixelizer_gi::description_dispatch_gi.bricksAABBs;
-            for (uint32_t i = 0; i < brixelizer_gi::cascade_count; i++)
+            for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; i++)
             {
                 brixelizer_gi::debug_description_gi.cascadeAABBTrees[i] = brixelizer_gi::description_dispatch_gi.cascadeAABBTrees[i];
                 brixelizer_gi::debug_description_gi.cascadeBrickMaps[i] = brixelizer_gi::description_dispatch_gi.cascadeBrickMaps[i];
             }
 
             // set parameters
-            brixelizer_gi::debug_description_gi.startCascade     = 0;
-            brixelizer_gi::debug_description_gi.endCascade       = brixelizer_gi::cascade_count - 1;
+            brixelizer_gi::debug_description_gi.startCascade     = brixelizer_gi::cascade_offset + 0;
+            brixelizer_gi::debug_description_gi.endCascade       = brixelizer_gi::cascade_offset + brixelizer_gi::cascade_count - 1;
             brixelizer_gi::debug_description_gi.debugMode        = brixelizer_gi::debug_mode == brixelizer_gi::DebugMode::Radiance ? FFX_BRIXELIZER_GI_DEBUG_MODE_RADIANCE_CACHE : FFX_BRIXELIZER_GI_DEBUG_MODE_IRRADIANCE_CACHE;
             brixelizer_gi::debug_description_gi.normalsUnpackMul = brixelizer_gi::description_dispatch_gi.normalsUnpackMul;
             brixelizer_gi::debug_description_gi.normalsUnpackAdd = brixelizer_gi::description_dispatch_gi.normalsUnpackAdd;
