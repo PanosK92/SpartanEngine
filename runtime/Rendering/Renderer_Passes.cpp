@@ -459,7 +459,7 @@ namespace Spartan
                 Pass_Depth_Prepass(cmd_list_graphics, false);
                 Pass_GBuffer(cmd_list_graphics);
                 Pass_Ssr(cmd_list_graphics, rt_render);
-                Pass_Ssgi(cmd_list_graphics);
+                Pass_Ssao(cmd_list_graphics);
                 Pass_Sss(cmd_list_graphics);
                 Pass_Light(cmd_list_graphics);                               // compute diffuse and specular buffers
                 Pass_Light_GlobalIllumination(cmd_list_graphics, rt_render); // compute global illumination
@@ -957,31 +957,30 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Ssgi(RHI_CommandList* cmd_list)
+    void Renderer::Pass_Ssao(RHI_CommandList* cmd_list)
     {
-        if (!GetOption<bool>(Renderer_Option::ScreenSpaceGlobalIllumination))
+        if (!GetOption<bool>(Renderer_Option::ScreenSpaceAmbientOcclusion))
             return;
 
         // get resources
-        RHI_Texture* tex_ssgi   = GetRenderTarget(Renderer_RenderTarget::ssgi).get();
-        RHI_Shader* shader_ssgi = GetShader(Renderer_Shader::ssgi_c).get();
-        if (!shader_ssgi->IsCompiled())
+        RHI_Texture* tex_ssao   = GetRenderTarget(Renderer_RenderTarget::ssao).get();
+        RHI_Shader* shader_ssao = GetShader(Renderer_Shader::ssao_c).get();
+        if (!shader_ssao->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("ssgi");
+        cmd_list->BeginTimeblock("ssao");
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.shaders[Compute] = shader_ssgi;
+        pso.shaders[Compute] = shader_ssao;
         cmd_list->SetPipelineState(pso);
 
         // set textures
         SetGbufferTextures(cmd_list);
-        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssgi);
-        cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse, GetRenderTarget(Renderer_RenderTarget::light_diffuse));
+        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssao);
 
         // render
-        cmd_list->Dispatch(tex_ssgi);
+        cmd_list->Dispatch(tex_ssao);
 
         cmd_list->EndTimeblock();
     }
@@ -1177,7 +1176,7 @@ namespace Spartan
         {
             // read from these
             SetGbufferTextures(cmd_list);
-            cmd_list->SetTexture(Renderer_BindingsSrv::ssgi, GetRenderTarget(Renderer_RenderTarget::ssgi));
+            cmd_list->SetTexture(Renderer_BindingsSrv::ssao, GetRenderTarget(Renderer_RenderTarget::ssao));
 
             // write to these
             cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_diffuse);
@@ -1299,7 +1298,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::light_specular_gi, GetRenderTarget(Renderer_RenderTarget::light_specular_gi).get());
         cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric,  GetRenderTarget(Renderer_RenderTarget::light_volumetric));
         cmd_list->SetTexture(Renderer_BindingsSrv::frame,             tex_refraction);
-        cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,              GetRenderTarget(Renderer_RenderTarget::ssgi));
+        cmd_list->SetTexture(Renderer_BindingsSrv::ssao,              GetRenderTarget(Renderer_RenderTarget::ssao));
         cmd_list->SetTexture(Renderer_BindingsSrv::environment,       GetRenderTarget(Renderer_RenderTarget::skysphere));
 
         // render
@@ -1323,7 +1322,7 @@ namespace Spartan
 
         // set textures
         SetGbufferTextures(cmd_list);
-        cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,        GetRenderTarget(Renderer_RenderTarget::ssgi));
+        cmd_list->SetTexture(Renderer_BindingsSrv::ssao,        GetRenderTarget(Renderer_RenderTarget::ssao));
         cmd_list->SetTexture(Renderer_BindingsSrv::ssr,         GetRenderTarget(Renderer_RenderTarget::ssr));
         cmd_list->SetTexture(Renderer_BindingsSrv::sss,         GetRenderTarget(Renderer_RenderTarget::sss));
         cmd_list->SetTexture(Renderer_BindingsSrv::lutIbl,      GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut));

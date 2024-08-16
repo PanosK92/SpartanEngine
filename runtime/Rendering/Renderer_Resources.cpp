@@ -245,7 +245,7 @@ namespace Spartan
             // misc
             render_target(Renderer_RenderTarget::sss)      = make_shared<RHI_Texture2DArray>(width_render, height_render,    RHI_Format::R16_Float, 4,       flags | RHI_Texture_ClearBlit, "sss");
             render_target(Renderer_RenderTarget::ssr)      = make_shared<RHI_Texture2D>(width_render,      height_render, 1, RHI_Format::R16G16B16A16_Float, flags | RHI_Texture_ClearBlit, "ssr");
-            render_target(Renderer_RenderTarget::ssgi)     = make_unique<RHI_Texture2D>(width_render,      height_render, 1, RHI_Format::R16G16B16A16_Float, flags,                         "ssgi");
+            render_target(Renderer_RenderTarget::ssao)     = make_unique<RHI_Texture2D>(width_render,      height_render, 1, RHI_Format::R16_Float,          flags,                         "ssao");
             render_target(Renderer_RenderTarget::reactive) = make_unique<RHI_Texture2D>(width_render,      height_render, 1, RHI_Format::R16_Float,          flags,                         "reactive");
             if (RHI_Device::PropertyIsShadingRateSupported())
             { 
@@ -464,8 +464,8 @@ namespace Spartan
         shader(Renderer_Shader::motion_blur_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "motion_blur.hlsl", async);
 
         // screen space global illumination
-        shader(Renderer_Shader::ssgi_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::ssgi_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ssgi.hlsl", async);
+        shader(Renderer_Shader::ssao_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::ssao_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ssao.hlsl", async);
 
         // screen space shadows
         shader(Renderer_Shader::sss_c_bend) = make_shared<RHI_Shader>();

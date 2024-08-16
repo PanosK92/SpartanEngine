@@ -50,7 +50,7 @@ Texture2DArray tex_light_color : register(t14);
 // misc
 Texture2D tex_lut_ibl            : register(t15);
 Texture2D tex_environment        : register(t16);
-Texture2D tex_ssgi               : register(t17);
+Texture2D tex_ssao               : register(t17);
 Texture2D tex_ssr                : register(t18);
 Texture2D tex_frame              : register(t19);
 Texture2D tex                    : register(t20);
