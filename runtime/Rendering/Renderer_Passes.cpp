@@ -419,9 +419,8 @@ namespace Spartan
         SP_PROFILE_CPU();
 
         // acquire render targets
-        RHI_Texture* rt_render   = GetRenderTarget(Renderer_RenderTarget::frame_render).get();
-        RHI_Texture* rt_render_2 = GetRenderTarget(Renderer_RenderTarget::frame_render_2).get();
-        RHI_Texture* rt_output   = GetRenderTarget(Renderer_RenderTarget::frame_output).get();
+        RHI_Texture* rt_render = GetRenderTarget(Renderer_RenderTarget::frame_render).get();
+        RHI_Texture* rt_output = GetRenderTarget(Renderer_RenderTarget::frame_output).get();
 
         RHI_FidelityFX::Update(&m_cb_frame_cpu);
         dynamic_resolution();
@@ -458,13 +457,13 @@ namespace Spartan
                 Pass_Visibility(cmd_list_graphics);
                 Pass_Depth_Prepass(cmd_list_graphics, false);
                 Pass_GBuffer(cmd_list_graphics);
-                Pass_Ssr(cmd_list_graphics, rt_render);
+                Pass_Ssr(cmd_list_graphics);
                 Pass_Ssao(cmd_list_graphics);
                 Pass_Sss(cmd_list_graphics);
-                Pass_Light(cmd_list_graphics);                               // compute diffuse and specular buffers
-                Pass_Light_GlobalIllumination(cmd_list_graphics, rt_render); // compute global illumination
-                Pass_Light_Composition(cmd_list_graphics, rt_render);        // compose diffuse, specular, ssgi, volumetric etc.
-                Pass_Light_ImageBased(cmd_list_graphics, rt_render);         // apply IBL and SSR
+                Pass_Light(cmd_list_graphics);                        // compute diffuse and specular buffers
+                Pass_Light_GlobalIllumination(cmd_list_graphics);     // compute global illumination
+                Pass_Light_Composition(cmd_list_graphics, rt_render); // compose diffuse, specular, ssgi, volumetric etc.
+                Pass_Light_ImageBased(cmd_list_graphics, rt_render);  // apply IBL and SSR
             }
 
             // used for refraction and to produce a reactive mask for FSR
@@ -985,7 +984,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in)
+    void Renderer::Pass_Ssr(RHI_CommandList* cmd_list)
     {
         if (!GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
             return;
@@ -995,7 +994,7 @@ namespace Spartan
         RHI_FidelityFX::SSSR_Dispatch(
             cmd_list,
             GetOption<float>(Renderer_Option::ResolutionScale),
-            tex_in, // what to reflect from
+            GetRenderTarget(Renderer_RenderTarget::frame_render).get(), // reflect from the previous frame
             GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get(),
@@ -1212,7 +1211,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Light_GlobalIllumination(RHI_CommandList* cmd_list, RHI_Texture* tex_in)
+    void Renderer::Pass_Light_GlobalIllumination(RHI_CommandList* cmd_list)
     {
         if (!GetOption<bool>(Renderer_Option::GlobalIllumination) || !m_initialized_third_party)
             return;
@@ -1252,7 +1251,7 @@ namespace Spartan
             RHI_FidelityFX::BrixelizerGI_Dispatch(
                 cmd_list,
                 &m_cb_frame_cpu,
-                tex_in, // previous lit output
+                GetRenderTarget(Renderer_RenderTarget::frame_render).get(), // previous lit output
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(),
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get(),
