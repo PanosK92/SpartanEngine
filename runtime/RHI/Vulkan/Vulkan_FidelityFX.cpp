@@ -401,7 +401,7 @@ namespace Spartan
                 desc.indexFormat       = (renderable->GetIndexBuffer()->GetStride() == sizeof(uint16_t)) ? FFX_INDEX_TYPE_UINT16 : FFX_INDEX_TYPE_UINT32;
             
                 // misc
-                desc.flags         = entity->HasTransformChanged() ? FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC : FFX_BRIXELIZER_INSTANCE_FLAG_NONE;
+                desc.flags         = entity->IsMoving() ? FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC : FFX_BRIXELIZER_INSTANCE_FLAG_NONE;
                 desc.outInstanceID = &get_or_create_id(entity->GetObjectId());
             
                 return desc;
@@ -902,7 +902,7 @@ namespace Spartan
             {
                 shared_ptr<Entity>& entity = entities[i];
                 uint64_t entity_id         = entity->GetObjectId();
-                bool is_dynamic            = entity->HasTransformChanged();
+                bool is_dynamic            = entity->IsMoving();
 
                 if (is_dynamic)
                 {
@@ -938,7 +938,7 @@ namespace Spartan
             for (auto it = brixelizer_gi::static_instances.begin(); it != brixelizer_gi::static_instances.end();)
             {
                 uint64_t entity_id = *it;
-                auto entity_it      = std::find_if(entities.begin() + index_start, entities.begin() + index_end, [entity_id](const shared_ptr<Entity>& e) { return e->GetObjectId() == entity_id; });
+                auto entity_it     = std::find_if(entities.begin() + index_start, entities.begin() + index_end, [entity_id](const shared_ptr<Entity>& e) { return e->GetObjectId() == entity_id; });
                 
                 if (entity_it == entities.begin() + index_end)
                 {
@@ -992,7 +992,10 @@ namespace Spartan
             brixelizer_gi::debug_description.tMin                     = brixelizer_gi::description_dispatch_gi.tMin;
             brixelizer_gi::debug_description.tMax                     = brixelizer_gi::description_dispatch_gi.tMax;
             brixelizer_gi::debug_description.sdfSolveEps              = brixelizer_gi::sdf_ray_epsilon;
-
+            for (uint32_t i = 0; i < brixelizer_gi::cascade_count; i++)
+            {
+                brixelizer_gi::debug_description.cascadeDebugAABB[0] = FFX_BRIXELIZER_CASCADE_DEBUG_AABB_NONE;
+            }
             set_ffx_float16(brixelizer_gi::debug_description.inverseViewMatrix,       view_inverted);
             set_ffx_float16(brixelizer_gi::debug_description.inverseProjectionMatrix, projection_inverted);
         }

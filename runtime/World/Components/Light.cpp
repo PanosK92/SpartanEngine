@@ -129,10 +129,10 @@ namespace Spartan
     void Light::OnTick()
     {
         // if the light or the camera moves...
-        bool update = GetEntity()->HasTransformChanged();
+        bool update = GetEntity()->IsMoving();
         if (shared_ptr<Camera> camera = Renderer::GetCamera())
         {
-            if (camera->GetEntity()->HasTransformChanged())
+            if (camera->GetEntity()->IsMoving())
             {
                 update = true;
             }

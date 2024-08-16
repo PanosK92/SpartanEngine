@@ -138,6 +138,8 @@ namespace Spartan
         if (!m_is_active)
             return;
 
+        m_time_since_last_transform_sec += Timer::GetDeltaTimeSec();
+
         for (shared_ptr<Component>& component : m_components)
         {
             if (component)
@@ -367,7 +369,7 @@ namespace Spartan
             child->UpdateTransform();
         }
 
-        m_transform_changed_frame = Renderer::GetFrameNum();
+        m_time_since_last_transform_sec = 0.0f;
     }
 
     void Entity::SetPosition(const Vector3& position)
@@ -661,9 +663,10 @@ namespace Spartan
         return nullptr;
     }
 
-    bool Entity::HasTransformChanged() const
+    bool Entity::IsMoving() const
     {
-        return m_transform_changed_frame == Renderer::GetFrameNum();
+        // an entity very rarely moves only for one frame, so we consider it moving if it has moved in the last 2 seconds
+        return m_time_since_last_transform_sec <= 2.0f;
     }
 
     Matrix Entity::GetParentTransformMatrix() const
