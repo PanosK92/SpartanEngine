@@ -45,7 +45,7 @@ namespace Spartan
         float orthographic_extent_near = 12.0f;
         float orthographic_extent_far  = 64.0f;
 
-        float get_sensible_range(const float range, const LightType type)
+        float get_sensible_range(const LightType type)
         {
             if (type == LightType::Directional)
             {
@@ -114,7 +114,7 @@ namespace Spartan
 
         SetColor(get_sensible_color(m_light_type));
         SetIntensity(get_sensible_intensity(m_light_type));
-        SetRange(get_sensible_range(m_range, m_light_type));
+        SetRange(get_sensible_range(m_light_type));
         SetFlag(LightFlags::Shadows);
         SetFlag(LightFlags::ShadowsTransparent);
         SetFlag(LightFlags::ShadowsScreenSpace);
@@ -213,7 +213,7 @@ namespace Spartan
         m_light_type = type;
 
         SetColor(get_sensible_color(m_light_type));
-        SetRange(get_sensible_range(m_range, m_light_type));
+        SetRange(get_sensible_range(m_light_type));
         SetIntensity(get_sensible_intensity(m_light_type));
 
         if (IsFlagSet(Shadows) || IsFlagSet(ShadowsTransparent))

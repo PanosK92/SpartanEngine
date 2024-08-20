@@ -57,14 +57,9 @@ float compute_penumbra(Light light, float vogel_angle, float3 uv, float compare)
     float blocker_depth_avg = 0.0f;
     float blocker_count     = 0.0f;
 
-    // adjust penumbra based on distance
-    float penumbra_factor  = light.far / (light.distance_to_pixel + FLT_MIN);
-    penumbra_factor       *= 20.0f;
-    
-    // compute number of light blockers (shadow casters) around the shaded pixel
     for(uint i = 0; i < g_penumbra_samples; i++)
     {
-        float2 offset = vogel_disk_sample(i, g_penumbra_samples, vogel_angle) * light.texel_size * g_penumbra_filter_size * penumbra_factor;
+        float2 offset = vogel_disk_sample(i, g_penumbra_samples, vogel_angle) * light.texel_size * g_penumbra_filter_size;
         float depth   = light.sample_depth(uv + float3(offset, 0.0f));
 
         if(depth > compare)
@@ -77,13 +72,15 @@ float compute_penumbra(Light light, float vogel_angle, float3 uv, float compare)
     if (blocker_count != 0)
     {
         blocker_depth_avg /= blocker_count;
-
-        penumbra  = (compare - blocker_depth_avg) / (blocker_depth_avg + FLT_MIN);
-        penumbra *= penumbra;
-        penumbra *= penumbra_factor;
+        
+        // calculate depth difference
+        float depth_diff = abs(compare - blocker_depth_avg);
+        
+        // use depth difference to scale penumbra
+        penumbra = depth_diff / (blocker_depth_avg + FLT_MIN);
     }
     
-    return clamp(penumbra, 1.0f, 1024.0f);
+    return clamp(penumbra * 32.0f, 1.0f, 1024.0f);
 }
 
 /*------------------------------------------------------------------------------
@@ -294,5 +291,3 @@ float4 Shadow_Map(Surface surface, Light light)
 
     return shadow;
 }
-
-
