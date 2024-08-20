@@ -158,11 +158,11 @@ struct Light
     bool is_volumetric()            { return flags & uint(1U << 6); }
     uint get_array_index()          { return (uint)pass_get_f3_value2().y; }
 
-    // attenuation over distance
     float compute_attenuation_distance(const float3 surface_position)
     {
         float distance_to_pixel = length(surface_position - position);
         float attenuation       = saturate(1.0f - distance_to_pixel / far);
+
         return attenuation * attenuation;
     }
 

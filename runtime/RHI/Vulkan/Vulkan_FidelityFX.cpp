@@ -1018,7 +1018,7 @@ namespace Spartan
     void RHI_FidelityFX::BrixelizerGI_Dispatch(
         RHI_CommandList* cmd_list,
         Cb_Frame* cb_frame,
-        RHI_Texture* tex_color,
+        RHI_Texture* tex_frame,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
         RHI_Texture* tex_normal,
@@ -1046,7 +1046,7 @@ namespace Spartan
 
         // set resources
         brixelizer_gi::description_dispatch_gi.environmentMap   = to_ffx_resource(cubemap_empty.get(),                           L"brixelizer_environment");
-        brixelizer_gi::description_dispatch_gi.prevLitOutput    = to_ffx_resource(tex_color,                                     L"brixelizer_gi_lit_output_previous");
+        brixelizer_gi::description_dispatch_gi.prevLitOutput    = to_ffx_resource(tex_frame,                                     L"brixelizer_gi_lit_output_previous");
         brixelizer_gi::description_dispatch_gi.depth            = to_ffx_resource(tex_depth,                                     L"brixelizer_gi_depth");
         brixelizer_gi::description_dispatch_gi.historyDepth     = to_ffx_resource(brixelizer_gi::texture_depth_previous.get(),   L"brixelizer_gi_depth_previous");
         brixelizer_gi::description_dispatch_gi.normal           = to_ffx_resource(tex_normal,                                    L"brixelizer_gi_normal");
