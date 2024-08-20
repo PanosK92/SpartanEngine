@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // base shadow
 static const uint   g_shadow_samples                 = 4;
-static const float  g_shadow_filter_size             = 6.0f;
+static const float  g_shadow_filter_size             = 4.0f;
 static const float  g_shadow_cascade_blend_threshold = 0.7f; // above that, you start to see the cascade line
 // penumbra shadow
 static const uint   g_penumbra_samples     = 8;
@@ -55,11 +55,16 @@ float compute_penumbra(Light light, float vogel_angle, float3 uv, float compare)
 {
     float penumbra          = 1.0f;
     float blocker_depth_avg = 0.0f;
-    uint blocker_count      = 0;
+    float blocker_count     = 0.0f;
 
-    for(uint i = 0; i < g_penumbra_samples; i ++)
+    // adjust penumbra based on distance
+    float penumbra_factor  = light.far / (light.distance_to_pixel + FLT_MIN);
+    penumbra_factor       *= 20.0f;
+    
+    // compute number of light blockers (shadow casters) around the shaded pixel
+    for(uint i = 0; i < g_penumbra_samples; i++)
     {
-        float2 offset = vogel_disk_sample(i, g_penumbra_samples, vogel_angle) * light.texel_size * g_penumbra_filter_size;
+        float2 offset = vogel_disk_sample(i, g_penumbra_samples, vogel_angle) * light.texel_size * g_penumbra_filter_size * penumbra_factor;
         float depth   = light.sample_depth(uv + float3(offset, 0.0f));
 
         if(depth > compare)
@@ -71,12 +76,11 @@ float compute_penumbra(Light light, float vogel_angle, float3 uv, float compare)
 
     if (blocker_count != 0)
     {
-        blocker_depth_avg /= (float)blocker_count;
+        blocker_depth_avg /= blocker_count;
 
-        // compute penumbra
-        penumbra = (compare - blocker_depth_avg) / (blocker_depth_avg + FLT_MIN);
+        penumbra  = (compare - blocker_depth_avg) / (blocker_depth_avg + FLT_MIN);
         penumbra *= penumbra;
-        penumbra *= 10.0f;
+        penumbra *= penumbra_factor;
     }
     
     return clamp(penumbra, 1.0f, 1024.0f);
@@ -90,7 +94,7 @@ float Technique_Vogel(Light light, Surface surface, float3 uv, float compare)
     float shadow          = 0.0f;
     float temporal_offset = get_noise_interleaved_gradient(surface.pos, true, true) * 0.5f;
     float temporal_angle  = temporal_offset * PI2;
-    float penumbra        = light.is_directional() ? 1.0f : compute_penumbra(light, temporal_angle, uv, compare);
+    float penumbra        = compute_penumbra(light, temporal_angle, uv, compare);
 
     for (uint i = 0; i < g_shadow_samples; i++)
     {
@@ -255,9 +259,8 @@ float4 Shadow_Map(Surface surface, Light light)
                 shadow.rgb = Technique_Vogel_Color(light, surface, sample_coords);
             }
         }
-        else
+        else // directiona, spot
         {
-            // for non-point lights (directional, spot), use existing logic
             uint slice_index = 0;
             float3 pos_ndc   = world_to_ndc(position_world, light.transform[slice_index]);
             float2 pos_uv    = ndc_to_uv(pos_ndc);
@@ -279,8 +282,8 @@ float4 Shadow_Map(Surface surface, Light light)
                 if (light.is_directional() && cascade_fade > 0.0f)
                 {
                     slice_index = 1;
-                    pos_ndc = world_to_ndc(position_world, light.transform[slice_index]);
-                    pos_uv = ndc_to_uv(pos_ndc);
+                    pos_ndc     = world_to_ndc(position_world, light.transform[slice_index]);
+                    pos_uv      = ndc_to_uv(pos_ndc);
                     float shadow_far = SampleShadowMap(light, surface, float3(pos_uv, slice_index), pos_ndc.z);
 
                     shadow.a = lerp(shadow.a, shadow_far, cascade_fade);
@@ -291,4 +294,5 @@ float4 Shadow_Map(Surface surface, Light light)
 
     return shadow;
 }
+
 
