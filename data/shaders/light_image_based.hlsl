@@ -38,7 +38,7 @@ float3 sample_environment(float2 uv, float mip_level)
 
 float compute_blend_factor(float alpha)
 {
-    const float blend_threshold = 0.0001f;
+    const float blend_threshold = 0.01f;
     const float blend_speed     = 0.01f;
     
     return saturate((alpha - blend_threshold) / blend_speed);
