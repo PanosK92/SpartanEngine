@@ -986,24 +986,33 @@ namespace Spartan
 
     void Renderer::Pass_Ssr(RHI_CommandList* cmd_list)
     {
-        if (!GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
-            return;
+        static bool cleared = true;
 
-        cmd_list->BeginTimeblock("ssr");
+        if (GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
+        { 
+            cmd_list->BeginTimeblock("ssr");
 
-        RHI_FidelityFX::SSSR_Dispatch(
-            cmd_list,
-            GetOption<float>(Renderer_Option::ResolutionScale),
-            GetRenderTarget(Renderer_RenderTarget::frame_render).get(), // reflect from the previous frame
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(),
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get(),
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_material).get(),
-            GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut).get(),
-            GetRenderTarget(Renderer_RenderTarget::ssr).get()
-        );
+            RHI_FidelityFX::SSSR_Dispatch(
+                cmd_list,
+                GetOption<float>(Renderer_Option::ResolutionScale),
+                GetRenderTarget(Renderer_RenderTarget::frame_render).get(), // reflect from the previous frame
+                GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(),
+                GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
+                GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get(),
+                GetRenderTarget(Renderer_RenderTarget::gbuffer_material).get(),
+                GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut).get(),
+                GetRenderTarget(Renderer_RenderTarget::ssr).get()
+            );
 
-        cmd_list->EndTimeblock();
+            cleared = false;
+
+            cmd_list->EndTimeblock();
+        }
+        else if (!cleared)
+        {
+            cmd_list->ClearTexture(GetRenderTarget(Renderer_RenderTarget::ssr).get(), Color::standard_transparent);
+            cleared = true;
+        }
     }
 
     void Renderer::Pass_Sss(RHI_CommandList* cmd_list)
@@ -1214,9 +1223,8 @@ namespace Spartan
     void Renderer::Pass_Light_GlobalIllumination(RHI_CommandList* cmd_list)
     {
         static bool cleared = true;
-        bool render         = GetOption<bool>(Renderer_Option::GlobalIllumination) && m_initialized_third_party;
 
-        if (render)
+        if (GetOption<bool>(Renderer_Option::GlobalIllumination) && m_initialized_third_party)
         { 
             cmd_list->BeginTimeblock("light_global_illumination");
 
