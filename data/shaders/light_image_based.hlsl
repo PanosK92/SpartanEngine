@@ -86,7 +86,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float shadow_mask        = max(tex[thread_id.xy].r, 0.35f);
 
     // combine the diffuse light
-    float3 diffuse_ibl = lerp(diffuse_skysphere * shadow_mask, diffuse_gi, compute_blend_factor(luminance(diffuse_gi)));
+    float3 diffuse_ibl = diffuse_skysphere * shadow_mask + diffuse_gi;
 
     // combine all the specular light, fallback order: ssr -> gi -> skysphere
     float3 specular_ssr_gi = lerp(specular_gi, specular_ssr.rgb, compute_blend_factor(specular_ssr.a));
