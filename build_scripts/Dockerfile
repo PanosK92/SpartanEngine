@@ -41,5 +41,14 @@ RUN cd /deps &&\
     mkdir /usr/include/FreeImage &&\
     cp Source/FreeImage.h Source/Utilities.h /usr/include/FreeImage
 
+# Download and install OpenImageDenoiser
+RUN cd /deps &&\
+    wget https://github.com/RenderKit/oidn/releases/download/v2.3.0/oidn-2.3.0.x86_64.linux.tar.gz &&\
+    tar xvf oidn-2.3.0.x86_64.linux.tar.gz &&\
+    rm oidn-2.3.0.x86_64.linux.tar.gz &&\
+    cd oidn-2.3.0.x86_64.linux &&\
+    cp -r include/OpenImageDenoise/ /usr/include/OpenImageDenoise &&\
+    cp -r lib/*.so* /usr/lib/
+
 # Clean up all the intermediate directories created for building and installing external dependencies
 RUN rm -rf /deps/
