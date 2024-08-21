@@ -36,7 +36,6 @@ static const float  g_penumbra_filter_size = 128.0f;
 static const float g_pcf_filter_size    = (sqrt((float)g_shadow_samples) - 1.0f) / 2.0f;
 static const float g_shadow_samples_rpc = 1.0f / (float) g_shadow_samples;
 
-
 /*------------------------------------------------------------------------------
     PENUMBRA
 ------------------------------------------------------------------------------*/
@@ -80,7 +79,7 @@ float compute_penumbra(Light light, float vogel_angle, float3 uv, float compare)
         penumbra = depth_diff / (blocker_depth_avg + FLT_MIN);
     }
     
-    return clamp(penumbra * 32.0f, 1.0f, 1024.0f);
+    return clamp(penumbra * 16.0f, 1.0f, 1024.0f);
 }
 
 /*------------------------------------------------------------------------------

@@ -1213,57 +1213,69 @@ namespace Spartan
 
     void Renderer::Pass_Light_GlobalIllumination(RHI_CommandList* cmd_list)
     {
-        if (!GetOption<bool>(Renderer_Option::GlobalIllumination) || !m_initialized_third_party)
-            return;
+        static bool cleared = true;
 
-        cmd_list->BeginTimeblock("light_global_illumination");
+        bool render = GetOption<bool>(Renderer_Option::GlobalIllumination) && m_initialized_third_party;
 
-        // update
-        {
-            vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Mesh];
-            int64_t index_start                  = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], false, true);
-            int64_t index_end                    = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], false, false);
+        if (render)
+        { 
+            cmd_list->BeginTimeblock("light_global_illumination");
 
-            RHI_FidelityFX::BrixelizerGI_Update(
-                cmd_list,
-                &m_cb_frame_cpu,
-                entities,
-                index_start,
-                index_end,
-                GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi).get() // use as debug output (if needed)
-            );
-        }
-
-        // dispatch
-        {
-            static array<RHI_Texture*, 8> noise_textures =
+            // update
             {
-                GetStandardTexture(Renderer_StandardTexture::Noise_blue_0).get(),
-                GetStandardTexture(Renderer_StandardTexture::Noise_blue_1).get(),
-                GetStandardTexture(Renderer_StandardTexture::Noise_blue_2).get(),
-                GetStandardTexture(Renderer_StandardTexture::Noise_blue_3).get(),
-                GetStandardTexture(Renderer_StandardTexture::Noise_blue_4).get(),
-                GetStandardTexture(Renderer_StandardTexture::Noise_blue_5).get(),
-                GetStandardTexture(Renderer_StandardTexture::Noise_blue_6).get(),
-                GetStandardTexture(Renderer_StandardTexture::Noise_blue_7).get()
-            };
+                vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Mesh];
+                int64_t index_start                  = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], false, true);
+                int64_t index_end                    = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], false, false);
 
-            RHI_FidelityFX::BrixelizerGI_Dispatch(
-                cmd_list,
-                &m_cb_frame_cpu,
-                GetRenderTarget(Renderer_RenderTarget::frame_render).get(), // previous lit output
-                GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(),
-                GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
-                GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get(),
-                GetRenderTarget(Renderer_RenderTarget::gbuffer_material).get(),
-                noise_textures,
-                GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi).get(),
-                GetRenderTarget(Renderer_RenderTarget::light_specular_gi).get(),
-                GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi).get() // use as debug output (if needed)
-            );
+                RHI_FidelityFX::BrixelizerGI_Update(
+                    cmd_list,
+                    &m_cb_frame_cpu,
+                    entities,
+                    index_start,
+                    index_end,
+                    GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi).get() // use as debug output (if needed)
+                );
+            }
+
+            // dispatch
+            {
+                static array<RHI_Texture*, 8> noise_textures =
+                {
+                    GetStandardTexture(Renderer_StandardTexture::Noise_blue_0).get(),
+                    GetStandardTexture(Renderer_StandardTexture::Noise_blue_1).get(),
+                    GetStandardTexture(Renderer_StandardTexture::Noise_blue_2).get(),
+                    GetStandardTexture(Renderer_StandardTexture::Noise_blue_3).get(),
+                    GetStandardTexture(Renderer_StandardTexture::Noise_blue_4).get(),
+                    GetStandardTexture(Renderer_StandardTexture::Noise_blue_5).get(),
+                    GetStandardTexture(Renderer_StandardTexture::Noise_blue_6).get(),
+                    GetStandardTexture(Renderer_StandardTexture::Noise_blue_7).get()
+                };
+
+                RHI_FidelityFX::BrixelizerGI_Dispatch(
+                    cmd_list,
+                    &m_cb_frame_cpu,
+                    GetRenderTarget(Renderer_RenderTarget::frame_render).get(), // previous lit output
+                    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(),
+                    GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
+                    GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get(),
+                    GetRenderTarget(Renderer_RenderTarget::gbuffer_material).get(),
+                    noise_textures,
+                    GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi).get(),
+                    GetRenderTarget(Renderer_RenderTarget::light_specular_gi).get(),
+                    GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi).get() // use as debug output (if needed)
+                );
+            }
+
+            cleared = false;
+
+            cmd_list->EndTimeblock();
         }
-
-        cmd_list->EndTimeblock();
+        else if (!cleared)
+        {
+            cmd_list->ClearTexture(GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi).get(),  Color::standard_black);
+            cmd_list->ClearTexture(GetRenderTarget(Renderer_RenderTarget::light_specular_gi).get(), Color::standard_black);
+            cleared = true;
+        }
     }
 
     void Renderer::Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass)
