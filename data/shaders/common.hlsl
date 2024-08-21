@@ -500,6 +500,8 @@ float microw_shadowing_cod(float n_dot_l, float visibility)
 ------------------------------------------------------------------------------*/
 float3 compute_diffuse_energy(float3 F, float metallic)
 {
+    // used to town down diffuse such as that only non metals have it
+    
     float3 kS  = F;               // the energy of light that gets reflected - equal to fresnel
     float3 kD  = 1.0f - kS;       // remaining energy, light that gets refracted
     kD        *= 1.0f - metallic; // multiply kD by the inverse metalness such that only non-metals have diffuse lighting
