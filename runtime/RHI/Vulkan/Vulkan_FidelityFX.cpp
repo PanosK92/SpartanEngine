@@ -426,8 +426,9 @@ namespace Spartan
                 Max
             };
             DebugMode debug_mode            = DebugMode::Max;
-            bool debug_mode_arrow_switch    = true;
+            bool debug_mode_arrow_switch    = false;
             bool debug_mode_aabbs_and_stats = false;
+            bool debug_mode_log_instances   = false;
             FfxBrixelizerStats debug_stats  = {};
 
             FfxBrixelizerTraceDebugModes to_ffx_debug_mode(const DebugMode debug_mode)
@@ -918,7 +919,10 @@ namespace Spartan
                     if (brixelizer_gi::static_instances.erase(entity_id) > 0)
                     {
                         instances_to_delete.push_back(brixelizer_gi::get_or_create_id(entity_id));
-                        SP_LOG_INFO("Static instance became dynamic: %llu", entity_id);
+                        if (brixelizer_gi::debug_mode_log_instances)
+                        { 
+                            SP_LOG_INFO("Static instance became dynamic: %llu", entity_id);
+                        }
                     }
                 }
                 else // static instance
@@ -928,7 +932,10 @@ namespace Spartan
                         // new static instance
                         instances_to_create.push_back(brixelizer_gi::create_instance_description(entity));
                         brixelizer_gi::static_instances.insert(entity_id);
-                        SP_LOG_INFO("Added new static instance: %llu", entity_id);
+                        if (brixelizer_gi::debug_mode_log_instances)
+                        { 
+                            SP_LOG_INFO("Added new static instance: %llu", entity_id);
+                        }
                     }
                 }
 
@@ -949,7 +956,10 @@ namespace Spartan
                 {
                     instances_to_delete.push_back(brixelizer_gi::get_or_create_id(entity_id));
                     it = brixelizer_gi::static_instances.erase(it);
-                    SP_LOG_INFO("Deleted non-existent static instance: %llu", entity_id);
+                    if (brixelizer_gi::debug_mode_log_instances)
+                    { 
+                        SP_LOG_INFO("Deleted non-existent static instance: %llu", entity_id);
+                    }
                 }
                 else
                 {
