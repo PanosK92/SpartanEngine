@@ -76,11 +76,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 dominant_specular_direction = get_dominant_specular_direction(surface.normal, reflection, surface.roughness);
         float mip_level                    = lerp(0, mip_count_environment - 1, surface.roughness);
         specular_skysphere                 = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level) * specular_energy;
-        
-        // apply shadow mask
-        float shadow_mask   = tex[thread_id.xy].r;
-        shadow_mask         = max(shadow_mask, 0.35f);
-        specular_skysphere *= shadow_mask;
     }
 
     // sample all the textures
@@ -88,13 +83,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float4 specular_ssr      = tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, 0) * float(is_ssr_enabled());
     float3 diffuse_gi        = tex_light_diffuse_gi[thread_id.xy].rgb;
     float3 specular_gi       = tex_light_specular_gi[thread_id.xy].rgb;
+    float shadow_mask        = max(tex[thread_id.xy].r, 0.35f);
 
     // combine the diffuse light
-    float3 diffuse_ibl = diffuse_skysphere + diffuse_gi;
+    float3 diffuse_ibl = diffuse_skysphere * shadow_mask + diffuse_gi;
 
     // combine all the specular light, fallback order: ssr -> gi -> skysphere
-    float3 specular_ssr_gi = lerp(specular_gi,  specular_ssr.rgb, compute_blend_factor(specular_ssr.a));
-    float3 specular_ibl    = lerp(specular_skysphere, specular_ssr_gi, compute_blend_factor(luminance(specular_ssr_gi)));
+    float3 specular_ssr_gi = lerp(specular_gi, specular_ssr.rgb, compute_blend_factor(specular_ssr.a));
+    float3 specular_ibl    = lerp(specular_skysphere * shadow_mask, specular_ssr_gi, compute_blend_factor(luminance(specular_ssr_gi)));
     
     // combine the diffuse and specular light
     float3 diffuse_energy  = compute_diffuse_energy(specular_energy, surface.metallic);
