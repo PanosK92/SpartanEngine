@@ -51,6 +51,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (early_exit_1 || early_exit_2 || early_exit_3)
         return;
 
+    float3 ibl_diffuse  = 0.0f;
+    float3 ibl_specular = 0.0f;
+    
     // specular energy
     const float n_dot_v          = saturate(dot(-surface.camera_to_pixel, surface.normal));
     const float3 F               = F_Schlick_Roughness(surface.F0, n_dot_v, surface.roughness);
@@ -60,38 +63,44 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // diffuse
     float mip_count_environment = pass_get_f3_value().x;
     float3 diffuse_energy       = compute_diffuse_energy(specular_energy, surface.metallic); // used to town down diffuse such as that only non metals have it
-    float3 ibl_diffuse          = sample_environment(direction_sphere_uv(surface.normal), mip_count_environment) * surface.albedo.rgb * diffuse_energy;
+    ibl_diffuse                 = sample_environment(direction_sphere_uv(surface.normal), mip_count_environment);
 
     // specular
-    const float3 reflection            = reflect(surface.camera_to_pixel, surface.normal);
-    float3 dominant_specular_direction = get_dominant_specular_direction(surface.normal, reflection, surface.roughness);
-    float mip_level                    = lerp(0, mip_count_environment - 1, surface.roughness);
-    float3 ibl_specular                = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level) * specular_energy;
-    
-    // apply shadow mask
-    float shadow_mask  = tex[thread_id.xy].r;
-    shadow_mask        = max(shadow_mask, 0.35f);
-    ibl_specular      *= shadow_mask;
+    {
+        const float3 reflection            = reflect(surface.camera_to_pixel, surface.normal);
+        float3 dominant_specular_direction = get_dominant_specular_direction(surface.normal, reflection, surface.roughness);
+        float mip_level                    = lerp(0, mip_count_environment - 1, surface.roughness);
+        ibl_specular                       = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level) * specular_energy;
+        
+        // apply shadow mas
+        float shadow_mask  = tex[thread_id.xy].r;
+        shadow_mask        = max(shadow_mask, 0.35f);
+        ibl_specular      *= shadow_mask;
+    }
     
     // ssr
+    float3 ssr_color = 0.0f;
+    float ssr_alpha  = 0.0f;
     {
         float4 ssr_sample           = tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, 0) * float(is_ssr_enabled());
         const float blend_threshold = 0.0001f;
         const float blend_speed     = 0.01f;
-        float blend_factor          = saturate((ssr_sample.a - blend_threshold) / blend_speed);
-        float3 ibl_result           = ibl_specular * specular_energy;
-        float3 ssr_result           = ssr_sample.rgb;
-        ibl_specular                = lerp(ibl_result, ssr_result, blend_factor);
+        ssr_alpha                   = saturate((ssr_sample.a - blend_threshold) / blend_speed);
+        ssr_color                   = ssr_sample.rgb;
     }
 
     // global illumination
+    float3 gi_specular = 0.0f;
     {
-        ibl_diffuse  += tex_light_diffuse_gi[thread_id.xy].rgb * surface.albedo;
-        ibl_specular += tex_light_specular_gi[thread_id.xy].rgb * specular_energy;
+        ibl_diffuse += tex_light_diffuse_gi[thread_id.xy].rgb;
+        gi_specular  = tex_light_specular_gi[thread_id.xy].rgb;
     }
+
+    // if ssr has no value, fallback to the specular gi, and then add that to the ibl_specular
+    ibl_specular += lerp(gi_specular,  ssr_color, ssr_alpha);
     
     // combine
-    float3 ibl  = ibl_diffuse + ibl_specular;
+    float3 ibl  = (ibl_diffuse * surface.albedo.rgb * diffuse_energy) + (ibl_specular * specular_energy);
     ibl        *= surface.occlusion;
 
     tex_uav[thread_id.xy] += float4(saturate_16(ibl), 0.0f);
