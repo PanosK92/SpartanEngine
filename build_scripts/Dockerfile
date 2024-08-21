@@ -38,7 +38,8 @@ RUN cd /deps &&\
     git apply ../freeimage.patch &&\
     make -f Makefile.gnu libfreeimage-3.18.0.so -j $(nproc) &&\
     cp libfreeimage-3.18.0.so /usr/lib/libFreeImageLib.so &&\
-    mkdir /usr/include/FreeImage cp Source/FreeImage.h Source/Utilities.h /usr/include/FreeImage
+    mkdir /usr/include/FreeImage &&\
+    cp Source/FreeImage.h Source/Utilities.h /usr/include/FreeImage
 
 # Clean up all the intermediate directories created for building and installing external dependencies
 RUN rm -rf /deps/
