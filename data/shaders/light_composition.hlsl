@@ -126,8 +126,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     else // anything else
     {
         // get light samples
-        float3 light_diffuse  = tex_light_diffuse[thread_id.xy].rgb  + tex_light_diffuse_gi[thread_id.xy].rgb;
-        float3 light_specular = tex_light_specular[thread_id.xy].rgb + tex_light_specular_gi[thread_id.xy].rgb;
+        float3 light_diffuse  = tex_light_diffuse[thread_id.xy].rgb;
+        float3 light_specular = tex_light_specular[thread_id.xy].rgb;
         float3 emissive       = surface.emissive * surface.albedo * 10.0f;
         
         // transparent
