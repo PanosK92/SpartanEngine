@@ -74,8 +74,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 specular_skysphere          = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level);
     float3 diffuse_skysphere           = sample_environment(direction_sphere_uv(surface.normal), mip_count_environment);
     float4 specular_ssr                = tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, 0);
-    float3 diffuse_gi                  = tex_light_diffuse_gi[thread_id.xy].rgb;
-    float3 specular_gi                 = tex_light_specular_gi[thread_id.xy].rgb;
+    float3 diffuse_gi                  = tex_light_diffuse_gi[thread_id.xy].rgb * 1.5f;
+    float3 specular_gi                 = tex_light_specular_gi[thread_id.xy].rgb * 3.0f;
     float shadow_mask                  = max(tex[thread_id.xy].r, 0.2f);
 
     // combine the diffuse light
