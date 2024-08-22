@@ -402,6 +402,10 @@ namespace Spartan
             {
                 format = RHI_Format::BC5_Unorm;
             }
+            else if (format_dxgi == tinyddsloader::DDSFile::DXGIFormat::BC7_UNorm)
+            {
+                format = RHI_Format::BC7_Unorm;
+            }
             SP_ASSERT(format != RHI_Format::Max);
 
             // set properties

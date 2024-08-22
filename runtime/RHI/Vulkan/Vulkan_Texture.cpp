@@ -172,8 +172,8 @@ namespace Spartan
                 for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
                 {
                     uint32_t region_index = mip_index + array_index * mip_count;
-                    uint32_t mip_width    = width >> mip_index;
-                    uint32_t mip_height   = height >> mip_index;
+                    uint32_t mip_width    = max(1u, width >> mip_index);
+                    uint32_t mip_height   = max(1u, height >> mip_index);
                     uint32_t mip_depth    = texture->GetResourceType() == ResourceType::Texture3d ? (texture->GetDepth() >> mip_index) : 1;
 
                     SP_ASSERT(mip_width != 0 && mip_height != 0 && mip_depth != 0);
@@ -207,8 +207,8 @@ namespace Spartan
                     for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
                     {
 
-                        uint32_t mip_width  = width >> mip_index;
-                        uint32_t mip_height = height >> mip_index;
+                        uint32_t mip_width  = max(1u, width >> mip_index);
+                        uint32_t mip_height = max(1u, height >> mip_index);
                         uint32_t mip_depth  = (texture->GetResourceType() == ResourceType::Texture3d) ? (depth >> mip_index) : 1;
                         size_t size = RHI_Texture::CalculateMipSize(mip_width, mip_height, mip_depth, texture->GetFormat(), texture->GetBitsPerChannel(), texture->GetChannelCount());
 

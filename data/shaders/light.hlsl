@@ -156,4 +156,3 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     /* shadow     */ tex_uav3[thread_id.xy]  = saturate(tex_uav3[thread_id.xy] - (1.0f - shadow.a));
     /* volumetric */ tex_uav4[thread_id.xy] += float4(saturate_11(volumetric_fog), 1.0f);
 }
-

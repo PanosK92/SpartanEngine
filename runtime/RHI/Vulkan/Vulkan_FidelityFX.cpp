@@ -897,6 +897,7 @@ namespace Spartan
         // sdk issue #1: the sdk should keep track of static/dynamic instances and decide what needs to be deleted or created, not the user.
         // sdk issue #2: all the buffers which are needed, should be created and bound internally by the sdk, not the user.
         // sdk issue #3: instance ids are really indices, using actual ids (a big number) will cause an out of bounds crash.
+        // sdk issue #4: the previous depth and normal textures, should be created internally using a blit operation, not by the user.
 
         // instances
         {
@@ -997,7 +998,7 @@ namespace Spartan
         {
             FfxBrixelizerPopulateDebugAABBsFlags flags = static_cast<FfxBrixelizerPopulateDebugAABBsFlags>(FFX_BRIXELIZER_POPULATE_AABBS_INSTANCES | FFX_BRIXELIZER_POPULATE_AABBS_CASCADE_AABBS);
 
-             for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; i++)
+            for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; i++)
             {
                 brixelizer_gi::debug_description.cascadeDebugAABB[0] = FFX_BRIXELIZER_CASCADE_DEBUG_AABB_NONE;
             }
