@@ -337,8 +337,8 @@ namespace Spartan
         // allocate memory if requested
         {
             uint32_t mip_index = static_cast<uint32_t>(m_slices[array_index].mips.size()) - 1;
-            uint32_t width     = m_width  >> mip_index;
-            uint32_t height    = m_height >> mip_index;
+            uint32_t width     = max(1u, m_width >> mip_index);
+            uint32_t height    = max(1u, m_height >> mip_index);
             uint32_t depth     = (GetResourceType() == ResourceType::Texture3d) ? (m_depth >> mip_index) : 1;
             size_t size_bytes  = CalculateMipSize(width, height, depth, m_format, m_bits_per_channel, m_channel_count);
 
@@ -380,8 +380,8 @@ namespace Spartan
         {
             for (uint32_t mip_index = 0; mip_index < m_mip_count; mip_index++)
             {
-                const uint32_t mip_width  = m_width  >> mip_index;
-                const uint32_t mip_height = m_height >> mip_index;
+                const uint32_t mip_width  = max(1u, m_width >> mip_index);
+                const uint32_t mip_height = max(1u, m_height >> mip_index);
                 const uint32_t mip_depth  = (GetResourceType() == ResourceType::Texture3d) ? (m_depth  >> mip_index) : 1;
 
                 m_object_size += CalculateMipSize(mip_width, mip_height, m_depth, m_format, m_bits_per_channel, m_channel_count);

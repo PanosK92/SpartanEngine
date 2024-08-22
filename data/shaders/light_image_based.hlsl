@@ -59,22 +59,17 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (early_exit_1 || early_exit_2 || early_exit_3)
         return;
 
-    float mip_count_environment = pass_get_f3_value().x;
-
     // diffuse and specular energy
-    float3 specular_energy    = 0.0f;
-    float3 diffuse_energy     = 0.0f;
-    {
-        const float n_dot_v  = saturate(dot(-surface.camera_to_pixel, surface.normal));
-        const float3 F       = F_Schlick_Roughness(surface.F0, n_dot_v, surface.roughness);
-        const float2 envBRDF = tex_lut_ibl.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, surface.roughness), 0.0f).xy;
-        specular_energy      = F * envBRDF.x + envBRDF.y;
-        diffuse_energy       = compute_diffuse_energy(specular_energy, surface.metallic);
-    }
+    const float n_dot_v          = saturate(dot(-surface.camera_to_pixel, surface.normal));
+    const float3 F               = F_Schlick_Roughness(surface.F0, n_dot_v, surface.roughness);
+    const float2 envBRDF         = tex_lut_ibl.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, surface.roughness), 0.0f).xy;
+    const float3 specular_energy = F * envBRDF.x + envBRDF.y;
+    const float3 diffuse_energy  = compute_diffuse_energy(specular_energy, surface.metallic);
     
     // sample all the textures
     const float3 reflection            = reflect(surface.camera_to_pixel, surface.normal);
     float3 dominant_specular_direction = get_dominant_specular_direction(surface.normal, reflection, surface.roughness);
+    float mip_count_environment        = pass_get_f3_value().x;
     float mip_level                    = lerp(0, mip_count_environment - 1, surface.roughness);
     float3 specular_skysphere          = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level);
     float3 diffuse_skysphere           = sample_environment(direction_sphere_uv(surface.normal), mip_count_environment);
@@ -96,4 +91,3 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] += float4(saturate_16(ibl), 0.0f);
 }
-
