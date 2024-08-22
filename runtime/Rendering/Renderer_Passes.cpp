@@ -1388,6 +1388,21 @@ namespace Spartan
         if (!shader_c || !shader_c->IsCompiled())
             return;
 
+        // this pass is costly and can cause the engine to freeze for a few seconds
+        // so while the light is moving, we don't update the environment map
+        auto& entities = m_renderables[Renderer_Entity::Light];
+        for (shared_ptr<Entity> entity : entities)
+        {
+            if (shared_ptr<Light> light = entity->GetComponent<Light>())
+            {
+                if (light->GetLightType() == LightType::Directional)
+                {
+                    if (light->GetEntity()->IsMoving())
+                        return;
+                }
+            }
+        }
+
         cmd_list->BeginTimeblock("light_integration_environment_filter");
 
         uint32_t mip_count = tex_environment->GetMipCount();
