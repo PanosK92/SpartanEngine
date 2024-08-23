@@ -203,11 +203,13 @@ def main():
     assets_expected_hash = '59cd3b52b0aa84ed3f9bfc9fdef7af945d3f42e134e8bc8bded2bc9519380b8a'
     
     #Download files with hash checking
-    download_file(library_url, library_destination, library_expected_hash)
+    if sys.argv[1] == "vs2022":
+        download_file(library_url, library_destination, library_expected_hash)
     download_file(assets_url, assets_destination, assets_expected_hash)
     
     # Extract the downloaded files
-    extract_third_party_dependencies()
+    if sys.argv[1] == "vs2022":
+        extract_third_party_dependencies()
     extract_assets()
 
     create_binaries_folder()
