@@ -171,9 +171,13 @@ def generate_project_files():
     )
     subprocess.Popen(cmd, shell=True).communicate()
     
-    if not os.path.exists("spartan.sln"):
+    if sys.argv[1] == "vs2022" and not os.path.exists("spartan.sln"):
         print("Error: spartan.sln not generated.")
         sys.exit(1)
+    elif not os.path.exists("Makefile") and not os.path.exists("editor/Makefile") and not os.path.exists("runtime/Makefile"):
+        print("Error: makefiles not generated")
+        sys.exit(1)
+
 
 def print_local_file_hashes():
     local_files = {
@@ -203,11 +207,13 @@ def main():
     assets_expected_hash = '59cd3b52b0aa84ed3f9bfc9fdef7af945d3f42e134e8bc8bded2bc9519380b8a'
     
     #Download files with hash checking
-    download_file(library_url, library_destination, library_expected_hash)
+    if sys.argv[1] == "vs2022":
+        download_file(library_url, library_destination, library_expected_hash)
     download_file(assets_url, assets_destination, assets_expected_hash)
     
     # Extract the downloaded files
-    extract_third_party_dependencies()
+    if sys.argv[1] == "vs2022":
+        extract_third_party_dependencies()
     extract_assets()
 
     create_binaries_folder()

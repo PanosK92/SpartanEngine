@@ -2,8 +2,10 @@ FROM ubuntu:22.04
 
 # Get all the necessary dependencies from the package manager
 RUN apt update -y &&\
-    apt install -y build-essential libassimp-dev librenderdoc-dev libfreetype-dev libbullet-dev libsdl2-dev libspirv-cross-c-shared-dev git python3 libvulkan-dev pkg-config cmake wget unzip &&\
+    apt install -y build-essential libassimp-dev librenderdoc-dev libfreetype-dev libbullet-dev libsdl2-dev libspirv-cross-c-shared-dev git python3 libvulkan-dev pkg-config cmake wget unzip p7zip-full python3-pip &&\
     mkdir /deps
+
+RUN pip install requests
 
 # Download and install premake5
 RUN cd /deps &&\
@@ -38,7 +40,17 @@ RUN cd /deps &&\
     git apply ../freeimage.patch &&\
     make -f Makefile.gnu libfreeimage-3.18.0.so -j $(nproc) &&\
     cp libfreeimage-3.18.0.so /usr/lib/libFreeImageLib.so &&\
-    mkdir /usr/include/FreeImage cp Source/FreeImage.h Source/Utilities.h /usr/include/FreeImage
+    mkdir /usr/include/FreeImage &&\
+    cp Source/FreeImage.h Source/Utilities.h /usr/include/FreeImage
+
+# Download and install OpenImageDenoiser
+RUN cd /deps &&\
+    wget https://github.com/RenderKit/oidn/releases/download/v2.3.0/oidn-2.3.0.x86_64.linux.tar.gz &&\
+    tar xvf oidn-2.3.0.x86_64.linux.tar.gz &&\
+    rm oidn-2.3.0.x86_64.linux.tar.gz &&\
+    cd oidn-2.3.0.x86_64.linux &&\
+    cp -r include/OpenImageDenoise/ /usr/include/OpenImageDenoise &&\
+    cp -r lib/*.so* /usr/lib/
 
 # Clean up all the intermediate directories created for building and installing external dependencies
 RUN rm -rf /deps/
