@@ -33,6 +33,7 @@ namespace Spartan
 {
     enum class ResourceType
     {
+        Unknown,
         Texture,
         Texture2d,
         Texture3d,
