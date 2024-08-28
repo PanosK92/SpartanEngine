@@ -23,27 +23,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-// constants
-static const float BLOOM_THRESHOLD = 1.0;
-static const float BLOOM_SOFT_KNEE = 0.7;
-static const float BLOOM_SCATTER   = 0.8;
-static const float MAX_BRIGHTNESS  = 10.0;
-static const float BLOOM_SPREAD    = 5.0f;
-
 float3 threshold(float3 color)
 {
-    color = min(color, MAX_BRIGHTNESS);
-    float brightness     = max(color.r, max(color.g, color.b));
-    float soft           = brightness - BLOOM_THRESHOLD + BLOOM_SOFT_KNEE;
-    soft                 = clamp(soft, 0, 2 * BLOOM_SOFT_KNEE);
-    soft                 = soft * soft / (4 * BLOOM_SOFT_KNEE + 1e-4);
-    float contribution   = max(soft, brightness - BLOOM_THRESHOLD);
-    contribution        /= max(brightness, 1e-4);
+    const float BLOOM_THRESHOLD = 1.0; // the brightness level at which bloom starts to take effect
+    const float BLOOM_SOFT_KNEE = 0.5; // softens the transition into bloom, reducing harsh cutoffs
+    const float MAX_BRIGHTNESS  = 4.0; // caps the maximum brightness to prevent over-saturation in bloom
+
+    color               = min(color, MAX_BRIGHTNESS);
+    float brightness    = max(color.r, max(color.g, color.b));
+    float soft          = brightness - BLOOM_THRESHOLD + BLOOM_SOFT_KNEE;
+    soft                = clamp(soft, 0, 2 * BLOOM_SOFT_KNEE);
+    soft                = soft * soft / (4 * BLOOM_SOFT_KNEE + 1e-4);
+    float contribution  = max(soft, brightness - BLOOM_THRESHOLD);
+    contribution       /= max(brightness, 1e-4);
     return color * contribution;
 }
 
 float3 upsample_filter(Texture2D<float4> src, float2 uv, float2 texel_size)
 {
+    const float BLOOM_SPREAD = 3.0f;
+
     float4 offset = texel_size.xyxy * float4(-1, -1, 1, 1) * BLOOM_SPREAD;
 
     // 13-tap filter with extended reach
@@ -59,7 +58,7 @@ float3 upsample_filter(Texture2D<float4> src, float2 uv, float2 texel_size)
     float3 j = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + offset.zw, 0).rgb;
     float3 k = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + offset.zw * 2, 0).rgb;
 
-    // Apply weights (gaussian-like)
+    // apply weights (gaussian-like)
     float3 result = f * 0.25;
     result += (c + e + g + i) * 0.125;
     result += (b + d + h + j) * 0.0625;
@@ -78,9 +77,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= resolution_out))
         return;
     
-    float2 uv            = (thread_id.xy + 0.5) / resolution_out;
-    float3 color         = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).rgb;
-    float3 filtered      = threshold(color);
+    float2 uv             = (thread_id.xy + 0.5) / resolution_out;
+    float3 color          = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).rgb;
+    float3 filtered       = threshold(color);
     tex_uav[thread_id.xy] = float4(saturate_16(filtered), 1.0);
 }
 #endif
@@ -100,12 +99,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 low_mip       = upsample_filter(tex, uv, texel_size);
     float3 high_mip      = tex_uav[thread_id.xy].rgb;
     
-    // Blend with emphasis on the low mip to encourage spread
-    float blend_factor   = 0.7; // Increased weight for low mip
+    float blend_factor   = 0.5; // weight for low mip
     float3 result        = lerp(high_mip, low_mip, blend_factor);
-    
-    // Add a small amount of the high mip back to preserve some local detail
-    result += high_mip * 0.3;
 
     // Soft clamp to prevent over-brightening
     float max_value = max(max(result.r, result.g), result.b);
@@ -133,4 +128,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     tex_uav[thread_id.xy] = float4(saturate_16(result), color_frame.a);
 }
 #endif
+
+
 
