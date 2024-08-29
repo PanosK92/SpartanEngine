@@ -57,8 +57,6 @@ namespace Spartan
 {
     enum class EventType
     {
-        // Engine
-        EngineShutdown,                // The engine is about to shutdown
         // Renderer                    
         RendererOnInitialized,         // The renderer has been initialized
         RendererOnFirstFrameCompleted, // The renderer has completed the first frame

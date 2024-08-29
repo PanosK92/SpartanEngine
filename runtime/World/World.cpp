@@ -34,10 +34,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/FileStream.h"
 #include "../Profiling/Profiler.h"
 #include "../Physics/Car.h"
-#include "../RHI/RHI_Texture2D.h"
 #include "../Rendering/Mesh.h"
 #include "../Rendering/Renderer.h"
-#include "../Physics/Physics.h"
 //====================================
 
 //= NAMESPACES ================
@@ -165,8 +163,12 @@ namespace Spartan
     {
         Clear();
 
+        m_default_terrain               = nullptr;
+        m_default_cube                  = nullptr;
+        m_default_physics_body_camera   = nullptr;
         m_default_environment           = nullptr;
         m_default_model_floor           = nullptr;
+        m_default_light_directional     = nullptr;
         m_default_model                 = nullptr;
         m_default_model_sponza_curtains = nullptr;
         m_default_model_car             = nullptr;
@@ -174,10 +176,6 @@ namespace Spartan
         m_default_model_helmet_flight   = nullptr;
         m_default_model_helmet_damaged  = nullptr;
         m_default_model_material_ball   = nullptr;
-        m_default_cube                  = nullptr;
-        m_default_physics_body_camera   = nullptr;
-        m_default_terrain               = nullptr;
-        m_default_light_directional     = nullptr;
     }
 
     void World::Tick()
@@ -1328,6 +1326,41 @@ namespace Spartan
                 if (Material* material = renderable->GetMaterial())
                 {
                     material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                }
+            }
+
+            // make the windows double sided
+            if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("WhitePaint")->GetComponent<Renderable>())
+            {
+                if (Material* material = renderable->GetMaterial())
+                {
+                    material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                }
+            }
+
+             // make the windows blinds double sided
+            {
+                if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("Mesh_45")->GetComponent<Renderable>())
+                {
+                    if (Material* material = renderable->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                    }
+                }
+                if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("Mesh_55")->GetComponent<Renderable>())
+                {
+                    if (Material* material = renderable->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                    }
+                }
+
+                if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("Mesh_95")->GetComponent<Renderable>())
+                {
+                    if (Material* material = renderable->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                    }
                 }
             }
         }

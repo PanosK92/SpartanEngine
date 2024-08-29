@@ -96,8 +96,6 @@ namespace Spartan
 
     void Engine::Shutdown()
     {
-        SP_FIRE_EVENT(EventType::EngineShutdown);
-
         ResourceCache::Shutdown();
         World::Shutdown();
         Renderer::Shutdown();
