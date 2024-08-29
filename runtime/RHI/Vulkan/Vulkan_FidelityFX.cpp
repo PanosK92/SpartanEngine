@@ -329,8 +329,11 @@ namespace Spartan
             array<shared_ptr<RHI_Buffer>, FFX_BRIXELIZER_MAX_CASCADES> buffer_cascade_brick_map = {};
 
             // instances
-            static unordered_set<uint64_t> static_instances;
+            unordered_set<uint64_t> static_instances;
             vector<pair<const RHI_GeometryBuffer*, uint32_t>> instance_buffers;
+            unordered_map<uint64_t, shared_ptr<Entity>> entity_map;
+            vector<FfxBrixelizerInstanceDescription> instances_to_create;
+            vector<uint32_t> instances_to_delete;
            
             uint32_t& get_or_create_id(uint64_t entity_id)
             {
@@ -899,66 +902,58 @@ namespace Spartan
         // sdk issue #3: instance ids are really indices, using actual ids (a big number) will cause an out of bounds crash.
         // sdk issue #4: the previous depth and normal textures, should be created internally using a blit operation, not by the user.
 
-        // instances
+       // instances
         {
-            static vector<uint32_t> instances_to_delete;
-            static vector<FfxBrixelizerInstanceDescription> instances_to_create;
-
-            // process all entities
+            brixelizer_gi::instances_to_create.clear();
+            brixelizer_gi::instances_to_delete.clear();
+            brixelizer_gi::entity_map.clear();
+        
+            // update entity_map and process entities
             for (int64_t i = index_start; i < index_end; i++)
             {
-                shared_ptr<Entity>& entity = entities[i];
-                uint64_t entity_id         = entity->GetObjectId();
-                bool is_dynamic            = entity->IsMoving();
-
+                auto& entity = entities[i];
+                uint64_t entity_id = entity->GetObjectId();
+                brixelizer_gi::entity_map[entity_id] = entity;
+        
+                bool is_dynamic = entity->IsMoving();
+                auto static_it  = brixelizer_gi::static_instances.find(entity_id);
+                bool was_static = static_it != brixelizer_gi::static_instances.end();
+        
                 if (is_dynamic)
                 {
-                    // always create dynamic instances
-                    instances_to_create.push_back(brixelizer_gi::create_instance_description(entity));
+                    brixelizer_gi::instances_to_create.push_back(brixelizer_gi::create_instance_description(entity));
                     
-                    // if it was static before, remove it from static instances and delete the old instance
-                    if (brixelizer_gi::static_instances.erase(entity_id) > 0)
+                    if (was_static)
                     {
-                        instances_to_delete.push_back(brixelizer_gi::get_or_create_id(entity_id));
+                        brixelizer_gi::instances_to_delete.push_back(brixelizer_gi::get_or_create_id(entity_id));
+                        brixelizer_gi::static_instances.erase(static_it);
                         if (brixelizer_gi::debug_mode_log_instances)
-                        { 
+                        {
                             SP_LOG_INFO("Static instance became dynamic: %llu", entity_id);
                         }
                     }
                 }
-                else // static instance
+                else if (!was_static)
                 {
-                    if (brixelizer_gi::static_instances.find(entity_id) == brixelizer_gi::static_instances.end())
+                    brixelizer_gi::instances_to_create.push_back(brixelizer_gi::create_instance_description(entity));
+                    brixelizer_gi::static_instances.insert(entity_id);
+                    if (brixelizer_gi::debug_mode_log_instances)
                     {
-                        // new static instance
-                        instances_to_create.push_back(brixelizer_gi::create_instance_description(entity));
-                        brixelizer_gi::static_instances.insert(entity_id);
-                        if (brixelizer_gi::debug_mode_log_instances)
-                        { 
-                            SP_LOG_INFO("Added new static instance: %llu", entity_id);
-                        }
+                        SP_LOG_INFO("Added new static instance: %llu", entity_id);
                     }
                 }
-
-                if (!instances_to_create.empty())
-                {
-                    SP_ASSERT(ffxBrixelizerCreateInstances(&brixelizer_gi::context, instances_to_create.data(), static_cast<uint32_t>(instances_to_create.size())) == FFX_OK);
-                    instances_to_create.clear();
-                }
             }
-
+        
             // delete static instances that no longer exist
             for (auto it = brixelizer_gi::static_instances.begin(); it != brixelizer_gi::static_instances.end();)
             {
                 uint64_t entity_id = *it;
-                auto entity_it     = std::find_if(entities.begin() + index_start, entities.begin() + index_end, [entity_id](const shared_ptr<Entity>& e) { return e->GetObjectId() == entity_id; });
-                
-                if (entity_it == entities.begin() + index_end)
+                if (brixelizer_gi::entity_map.find(entity_id) == brixelizer_gi::entity_map.end())
                 {
-                    instances_to_delete.push_back(brixelizer_gi::get_or_create_id(entity_id));
+                    brixelizer_gi::instances_to_delete.push_back(brixelizer_gi::get_or_create_id(entity_id));
                     it = brixelizer_gi::static_instances.erase(it);
                     if (brixelizer_gi::debug_mode_log_instances)
-                    { 
+                    {
                         SP_LOG_INFO("Deleted non-existent static instance: %llu", entity_id);
                     }
                 }
@@ -966,12 +961,18 @@ namespace Spartan
                 {
                     ++it;
                 }
-
-                if (!instances_to_delete.empty())
-                {
-                    SP_ASSERT(ffxBrixelizerDeleteInstances(&brixelizer_gi::context, instances_to_delete.data(), static_cast<uint32_t>(instances_to_delete.size())) == FFX_OK);
-                    instances_to_delete.clear();
-                }
+            }
+        
+            // batch create instances
+            if (!brixelizer_gi::instances_to_create.empty())
+            {
+                SP_ASSERT(ffxBrixelizerCreateInstances(&brixelizer_gi::context, brixelizer_gi::instances_to_create.data(), static_cast<uint32_t>(brixelizer_gi::instances_to_create.size())) == FFX_OK);
+            }
+        
+            // batch delete instances
+            if (!brixelizer_gi::instances_to_delete.empty())
+            {
+                SP_ASSERT(ffxBrixelizerDeleteInstances(&brixelizer_gi::context, brixelizer_gi::instances_to_delete.data(), static_cast<uint32_t>(brixelizer_gi::instances_to_delete.size())) == FFX_OK);
             }
         }
 
