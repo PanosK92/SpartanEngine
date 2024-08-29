@@ -82,8 +82,7 @@ namespace Spartan
                 else
                 {
                     shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                    BoundingBoxType type              = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                    Vector3 position                  = renderable->GetBoundingBox(type).GetCenter();
+                    Vector3 position                  = renderable->GetBoundingBox(BoundingBoxType::Transformed).GetCenter();
                     float distance_squared            = (position - camera_position).LengthSquared();
                     distances_squared[entity_id]      = distance_squared;
 
@@ -200,8 +199,7 @@ namespace Spartan
                         continue;
 
                     // compute screen space rectangle
-                    BoundingBoxType box_type          = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                    BoundingBox box                   = renderable->GetBoundingBox(box_type);
+                    BoundingBox box                   = renderable->GetBoundingBox(BoundingBoxType::Transformed);
                     Rectangle rectangle               = Renderer::GetCamera()->WorldToScreenCoordinates(box);
                     boxes[entity->GetObjectId()]      = box;
                     rectangles[entity->GetObjectId()] = rectangle;

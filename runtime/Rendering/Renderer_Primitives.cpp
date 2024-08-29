@@ -327,8 +327,7 @@ namespace Spartan
                 {
                     if (auto renderable = entity->GetComponent<Renderable>())
                     {
-                        BoundingBoxType bounding_box_type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                        DrawBox(renderable->GetBoundingBox(bounding_box_type), get_color(renderable));
+                        DrawBox(renderable->GetBoundingBox(BoundingBoxType::Transformed), get_color(renderable));
                     }
                 }
             };

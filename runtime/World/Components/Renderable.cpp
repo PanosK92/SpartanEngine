@@ -47,7 +47,7 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_offset,     uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_count,      uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,                       Mesh*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box_untransformed, BoundingBox);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box, BoundingBox);
     }
 
     Renderable::~Renderable()
@@ -62,7 +62,7 @@ namespace Spartan
         stream->Write(m_geometry_index_count);
         stream->Write(m_geometry_vertex_offset);
         stream->Write(m_geometry_vertex_count);
-        stream->Write(m_bounding_box_untransformed);
+        stream->Write(m_bounding_box);
         MeshType mesh_type = m_mesh ? m_mesh->GetType() : MeshType::Max;
         stream->Write(static_cast<uint32_t>(mesh_type));
         if (mesh_type == MeshType::Custom)
@@ -86,7 +86,7 @@ namespace Spartan
         m_geometry_index_count   = stream->ReadAs<uint32_t>();
         m_geometry_vertex_offset = stream->ReadAs<uint32_t>();
         m_geometry_vertex_count  = stream->ReadAs<uint32_t>();
-        stream->Read(&m_bounding_box_untransformed);
+        stream->Read(&m_bounding_box);
         MeshType mesh_type = static_cast<MeshType>(stream->ReadAs<uint32_t>());
         if (mesh_type == MeshType::Custom)
         {
@@ -122,7 +122,7 @@ namespace Spartan
     )
     {
         m_mesh                       = mesh;
-        m_bounding_box_untransformed = aabb;
+        m_bounding_box = aabb;
         m_geometry_index_offset      = index_offset;
         m_geometry_index_count       = index_count;
         m_geometry_vertex_offset     = vertex_offset;
@@ -138,14 +138,14 @@ namespace Spartan
             m_geometry_vertex_count = m_mesh->GetVertexCount();
         }
 
-        if (m_bounding_box_untransformed == BoundingBox::Undefined)
+        if (m_bounding_box == BoundingBox::Undefined)
         {
-            m_bounding_box_untransformed = m_mesh->GetAabb();
+            m_bounding_box = m_mesh->GetAabb();
         }
 
         SP_ASSERT(m_geometry_index_count       != 0);
         SP_ASSERT(m_geometry_vertex_count      != 0);
-        SP_ASSERT(m_bounding_box_untransformed != BoundingBox::Undefined);
+        SP_ASSERT(m_bounding_box != BoundingBox::Undefined);
     }
 
     void Renderable::SetGeometry(const MeshType type)
@@ -166,25 +166,25 @@ namespace Spartan
         {
             Matrix transform = GetEntity()->GetMatrix();
 
-            // transformed
+            // bounding box that contains all instances
+            if (m_instances.empty())
             {
-                m_bounding_box = m_bounding_box_untransformed.Transform(transform);
+                m_bounding_box_transformed = m_bounding_box.Transform(transform);
             }
-
-            // transformed instances
+            else // transformed instances
             {
                 // loop through each instance and expand the bounding box
-                m_bounding_box_instances = BoundingBox::Undefined;
+                m_bounding_box_transformed = BoundingBox::Undefined;
                 for (const Matrix& instance_transform : m_instances)
                 {
                     // transform * instance_transform, this is not the order of operation the engine is using but in this case it works
                     // possibly due to how the transform is calculated, the space it's in and relative to what
-                    BoundingBox bounding_box_instance = m_bounding_box_untransformed.Transform(transform * instance_transform);
-                    m_bounding_box_instances.Merge(bounding_box_instance);
+                    BoundingBox bounding_box_instance = m_bounding_box.Transform(transform * instance_transform);
+                    m_bounding_box_transformed.Merge(bounding_box_instance);
                 }
             }
 
-            // transformed instance groups
+            // bounding boxes of instance groups
             {
                 // loop through each group end index
                 m_bounding_box_instance_group.clear();
@@ -195,7 +195,7 @@ namespace Spartan
                     BoundingBox bounding_box_group = BoundingBox::Undefined;
                     for (uint32_t i = start_index; i < group_end_index; i++)
                     {
-                        BoundingBox bounding_box_instance = m_bounding_box_untransformed.Transform(transform * m_instances[i]);
+                        BoundingBox bounding_box_instance = m_bounding_box.Transform(transform * m_instances[i]);
                         bounding_box_group.Merge(bounding_box_instance);
                     }
 
@@ -209,17 +209,13 @@ namespace Spartan
         }
 
         // return
-        if (type == BoundingBoxType::Untransformed)
-        {
-            return m_bounding_box_untransformed;
-        }
-        else if (type == BoundingBoxType::Transformed)
+        if (type == BoundingBoxType::Mesh)
         {
             return m_bounding_box;
         }
-        else if (type == BoundingBoxType::TransformedInstances)
-        {        
-            return m_bounding_box_instances;
+        else if (type == BoundingBoxType::Transformed)
+        {
+            return m_bounding_box_transformed;
         }
         else if (type == BoundingBoxType::TransformedInstanceGroup)
         {
