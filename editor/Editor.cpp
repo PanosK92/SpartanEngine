@@ -95,7 +95,7 @@ namespace
         colors[ImGuiCol_Button]                = k_palette_color_3;
         colors[ImGuiCol_ButtonHovered]         = k_palette_color_4;
         colors[ImGuiCol_ButtonActive]          = k_palette_color_2;
-        colors[ImGuiCol_Header]                = k_palette_color_0; // Header colors are used for CollapsingHeader, TreeNode, Selectable, MenuItem
+        colors[ImGuiCol_Header]                = k_palette_color_4;
         colors[ImGuiCol_HeaderHovered]         = k_palette_color_3;
         colors[ImGuiCol_HeaderActive]          = k_palette_color_0;
         colors[ImGuiCol_Separator]             = k_palette_color_5;
