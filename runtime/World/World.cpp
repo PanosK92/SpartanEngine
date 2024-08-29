@@ -1157,6 +1157,8 @@ namespace Spartan
             // disable door (so we can go through)
             entity->GetDescendantByName("dOORS_2")->SetActive(false);
             entity->GetDescendantByName("Bistro_Research_Exterior_Paris_Building_01_paris_building_01_bottom_4825")->SetActive(false);
+            // disable the glass windows as the interior also has them
+            entity->GetDescendantByName("Bistro_Research_Exterior_Paris_Building_01_paris_building_01_bottom_4873")->SetActive(false);
 
             // enable physics for all meshes
             vector<Entity*> entities;
