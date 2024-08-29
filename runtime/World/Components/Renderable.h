@@ -21,27 +21,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================================
+//= INCLUDES ======================
 #include "Component.h"
 #include <vector>
-#include "../Rendering/Renderer_Definitions.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/BoundingBox.h"
 #include "../Rendering/Mesh.h"
-//============================================
+//=================================
 
 namespace Spartan
 {
     class Material;
-    class RHI_VertexBuffer;
-    class RHI_IndexBuffer;
 
     enum class BoundingBoxType
     {
-        Untransformed,            // the bounding box of the mesh
-        Transformed,              // the transformed bounding box of the mesh
-        TransformedInstances,     // the transformed bounding box of all the instances
-        TransformedInstanceGroup, // the transformed bounding box of an instance group
+        Mesh,
+        Transformed,              // includes all instances (if any)
+        TransformedInstanceGroup, // bounding box of an instance group - instance group index is provided in GetBoundingBox()
     };
 
     enum RenderableFlags : uint32_t
@@ -96,9 +92,10 @@ namespace Spartan
         const std::string& GetMeshName() const;
 
         // instancing
-        bool HasInstancing() const                    { return !m_instances.empty(); }
-        RHI_GeometryBuffer* GetInstanceBuffer() const { return m_instance_buffer.get(); }
-        uint32_t GetInstanceCount()  const            { return static_cast<uint32_t>(m_instances.size()); }
+        bool HasInstancing() const                              { return !m_instances.empty(); }
+        RHI_GeometryBuffer* GetInstanceBuffer() const           { return m_instance_buffer.get(); }
+        Math::Matrix GetInstanceTransform(const uint32_t index) { return m_instances[index]; }
+        uint32_t GetInstanceCount()  const                      { return static_cast<uint32_t>(m_instances.size()); }
         void SetInstances(const std::vector<Math::Matrix>& instances);
 
         // misc
@@ -115,15 +112,14 @@ namespace Spartan
 
     private:
         // geometry/mesh
-        uint32_t m_geometry_index_offset  = 0;
-        uint32_t m_geometry_index_count   = 0;
-        uint32_t m_geometry_vertex_offset = 0;
-        uint32_t m_geometry_vertex_count  = 0;
-        Mesh* m_mesh                      = nullptr;
-        bool m_bounding_box_dirty         = true;
-        Math::BoundingBox m_bounding_box_untransformed;
-        Math::BoundingBox m_bounding_box;
-        Math::BoundingBox m_bounding_box_instances;
+        uint32_t m_geometry_index_offset             = 0;
+        uint32_t m_geometry_index_count              = 0;
+        uint32_t m_geometry_vertex_offset            = 0;
+        uint32_t m_geometry_vertex_count             = 0;
+        Mesh* m_mesh                                 = nullptr;
+        bool m_bounding_box_dirty                    = true;
+        Math::BoundingBox m_bounding_box             = Math::BoundingBox::Undefined;
+        Math::BoundingBox m_bounding_box_transformed = Math::BoundingBox::Undefined;
         std::vector<Math::BoundingBox> m_bounding_box_instance_group;
 
         // material

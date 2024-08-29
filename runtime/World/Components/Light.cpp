@@ -473,8 +473,7 @@ namespace Spartan
 
     bool Light::IsInViewFrustum(Renderable* renderable, uint32_t index) const
     {
-        BoundingBoxType type   = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-        const BoundingBox& box = renderable->GetBoundingBox(type);
+        const BoundingBox& box = renderable->GetBoundingBox(BoundingBoxType::Transformed);
 
         if (box == BoundingBox::Undefined)
         {

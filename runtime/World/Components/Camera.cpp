@@ -151,9 +151,7 @@ namespace Spartan
 
     bool Camera::IsInViewFrustum(shared_ptr<Renderable> renderable) const
     {
-        BoundingBoxType type   = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-        const BoundingBox& box = renderable->GetBoundingBox(type);
-
+        const BoundingBox& box = renderable->GetBoundingBox(BoundingBoxType::Transformed);
         return IsInViewFrustum(box);
     }
 
@@ -644,8 +642,7 @@ namespace Spartan
             // ...otherwise we apply a simple offset so that the rotation vector doesn't suffer
             if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
             {
-                BoundingBoxType bounding_box_type = renderable->HasInstancing() ? BoundingBoxType::TransformedInstances : BoundingBoxType::Transformed;
-                m_lerp_to_target_position -= target_direction * renderable->GetBoundingBox(bounding_box_type).GetExtents().Length() * 2.0f;
+                m_lerp_to_target_position -= target_direction * renderable->GetBoundingBox(BoundingBoxType::Transformed).GetExtents().Length() * 2.0f;
             }
             else
             {

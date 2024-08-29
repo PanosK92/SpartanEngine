@@ -378,42 +378,44 @@ namespace Spartan
                 }
             }
 
-            FfxBrixelizerInstanceDescription create_instance_description(const shared_ptr<Entity>& entity)
-            {
-                FfxBrixelizerInstanceDescription desc = {};
-                shared_ptr<Renderable> renderable     = entity->GetComponent<Renderable>();
-            
-                // aabb: world space, pre-transformed
-                const BoundingBox& aabb = renderable->GetBoundingBox(BoundingBoxType::Transformed);
-                desc.aabb.min[0]        = aabb.GetMin().x;
-                desc.aabb.min[1]        = aabb.GetMin().y;
-                desc.aabb.min[2]        = aabb.GetMin().z;
-                desc.aabb.max[0]        = aabb.GetMax().x;
-                desc.aabb.max[1]        = aabb.GetMax().y;
-                desc.aabb.max[2]        = aabb.GetMax().z;
-            
-                // transform: world space, row-major
-                set_ffx_float16(desc.transform, entity->GetMatrix());
-            
-                // vertex buffer
-                desc.vertexBuffer       = register_geometry_buffer(renderable->GetVertexBuffer());
-                desc.vertexStride       = renderable->GetVertexBuffer()->GetStride();
-                desc.vertexBufferOffset = renderable->GetVertexOffset() * desc.vertexStride;
-                desc.vertexCount        = renderable->GetVertexCount();
-                desc.vertexFormat       = FFX_SURFACE_FORMAT_R32G32B32_FLOAT;
-            
-                // index buffer
-                desc.indexBuffer       = register_geometry_buffer(renderable->GetIndexBuffer());
-                desc.indexBufferOffset = renderable->GetIndexOffset() * renderable->GetIndexBuffer()->GetStride();
-                desc.triangleCount     = renderable->GetIndexCount() / 3;
-                desc.indexFormat       = (renderable->GetIndexBuffer()->GetStride() == sizeof(uint16_t)) ? FFX_INDEX_TYPE_UINT16 : FFX_INDEX_TYPE_UINT32;
-            
-                // misc
-                desc.flags         = entity->IsMoving() ? FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC : FFX_BRIXELIZER_INSTANCE_FLAG_NONE;
-                desc.outInstanceID = &get_or_create_id(entity->GetObjectId());
-            
-                return desc;
-            }
+           FfxBrixelizerInstanceDescription create_instance_description(const shared_ptr<Entity>& entity, uint32_t instance_index = 0)
+           {
+               FfxBrixelizerInstanceDescription desc = {};
+               shared_ptr<Renderable> renderable     = entity->GetComponent<Renderable>();
+           
+               // aabb: world space, pre-transformed
+               const BoundingBox& aabb = renderable->HasInstancing() ? renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, instance_index) : renderable->GetBoundingBox(BoundingBoxType::Transformed);
+               desc.aabb.min[0] = aabb.GetMin().x;
+               desc.aabb.min[1] = aabb.GetMin().y;
+               desc.aabb.min[2] = aabb.GetMin().z;
+               desc.aabb.max[0] = aabb.GetMax().x;
+               desc.aabb.max[1] = aabb.GetMax().y;
+               desc.aabb.max[2] = aabb.GetMax().z;
+           
+               // transform: world space, row-major
+               Matrix transform = renderable->HasInstancing() ? renderable->GetInstanceTransform(instance_index) : entity->GetMatrix();
+               set_ffx_float16(desc.transform, transform);
+           
+               // vertex buffer
+               desc.vertexBuffer       = register_geometry_buffer(renderable->GetVertexBuffer());
+               desc.vertexStride       = renderable->GetVertexBuffer()->GetStride();
+               desc.vertexBufferOffset = renderable->GetVertexOffset() * desc.vertexStride;
+               desc.vertexCount        = renderable->GetVertexCount();
+               desc.vertexFormat       = FFX_SURFACE_FORMAT_R32G32B32_FLOAT;
+           
+               // index buffer
+               desc.indexBuffer       = register_geometry_buffer(renderable->GetIndexBuffer());
+               desc.indexBufferOffset = renderable->GetIndexOffset() * renderable->GetIndexBuffer()->GetStride();
+               desc.triangleCount     = renderable->GetIndexCount() / 3;
+               desc.indexFormat       = (renderable->GetIndexBuffer()->GetStride() == sizeof(uint16_t)) ? FFX_INDEX_TYPE_UINT16 : FFX_INDEX_TYPE_UINT32;
+           
+               // misc
+               desc.flags = entity->IsMoving() ? FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC : FFX_BRIXELIZER_INSTANCE_FLAG_NONE;
+               uint64_t instance_id = renderable->HasInstancing() ? (entity->GetObjectId() | (static_cast<uint64_t>(instance_index) << 32)) : entity->GetObjectId();
+               desc.outInstanceID = &get_or_create_id(instance_id);
+           
+               return desc;
+           }
 
             // debug visualisation
             enum class DebugMode
@@ -902,7 +904,7 @@ namespace Spartan
         // sdk issue #3: instance ids are really indices, using actual ids (a big number) will cause an out of bounds crash.
         // sdk issue #4: the previous depth and normal textures, should be created internally using a blit operation, not by the user.
 
-       // instances
+        // instances
         {
             brixelizer_gi::instances_to_create.clear();
             brixelizer_gi::instances_to_delete.clear();
@@ -911,13 +913,12 @@ namespace Spartan
             // update entity_map and process entities
             for (int64_t i = index_start; i < index_end; i++)
             {
-                auto& entity = entities[i];
-                uint64_t entity_id = entity->GetObjectId();
-                brixelizer_gi::entity_map[entity_id] = entity;
-        
-                bool is_dynamic = entity->IsMoving();
-                auto static_it  = brixelizer_gi::static_instances.find(entity_id);
-                bool was_static = static_it != brixelizer_gi::static_instances.end();
+                auto& entity                         = entities[i];
+                uint64_t entity_id                   = entity->GetObjectId();
+                brixelizer_gi::entity_map[entity_id] = entity;     
+                bool is_dynamic                      = entity->IsMoving();
+                auto static_it                       = brixelizer_gi::static_instances.find(entity_id);
+                bool was_static                      = static_it != brixelizer_gi::static_instances.end();
         
                 if (is_dynamic)
                 {
@@ -963,19 +964,20 @@ namespace Spartan
                 }
             }
         
-            // batch create instances
+            // create instances
             if (!brixelizer_gi::instances_to_create.empty())
             {
                 SP_ASSERT(ffxBrixelizerCreateInstances(&brixelizer_gi::context, brixelizer_gi::instances_to_create.data(), static_cast<uint32_t>(brixelizer_gi::instances_to_create.size())) == FFX_OK);
             }
         
-            // batch delete instances
+            // delete instances
             if (!brixelizer_gi::instances_to_delete.empty())
             {
                 SP_ASSERT(ffxBrixelizerDeleteInstances(&brixelizer_gi::context, brixelizer_gi::instances_to_delete.data(), static_cast<uint32_t>(brixelizer_gi::instances_to_delete.size())) == FFX_OK);
             }
         }
 
+        // fill in the update description
         for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; i++)
         {
             brixelizer_gi::description_update.resources.cascadeResources[i].aabbTree = to_ffx_resource(brixelizer_gi::buffer_cascade_aabb_tree[i].get(), L"brixelizer_gi_abbb_tree");
@@ -1077,23 +1079,23 @@ namespace Spartan
         }
         
         // set parameters
-        brixelizer_gi::description_dispatch_gi.startCascade            = brixelizer_gi::cascade_index_start;   // index of the start cascade for use with ray marching with brixelizer
-        brixelizer_gi::description_dispatch_gi.endCascade              = brixelizer_gi::cascade_index_end;     // index of the end cascade for use with ray marching with brixelizer
-        brixelizer_gi::description_dispatch_gi.rayPushoff              = brixelizer_gi::sdf_ray_normal_offset; 
-        brixelizer_gi::description_dispatch_gi.sdfSolveEps             = brixelizer_gi::sdf_ray_epsilon;       
-        brixelizer_gi::description_dispatch_gi.specularRayPushoff      = brixelizer_gi::sdf_ray_normal_offset; 
-        brixelizer_gi::description_dispatch_gi.specularSDFSolveEps     = brixelizer_gi::sdf_ray_epsilon;       
-        brixelizer_gi::description_dispatch_gi.tMin                    = brixelizer_gi::t_min;                 
-        brixelizer_gi::description_dispatch_gi.tMax                    = brixelizer_gi::t_max;                 
-        brixelizer_gi::description_dispatch_gi.normalsUnpackMul        = 1.0f;                                 // a multiply factor to transform the normal to the space expected by brixelizer gi
-        brixelizer_gi::description_dispatch_gi.normalsUnpackAdd        = 0.0f;                                 // an offset to transform the normal to the space expected by brixelizer gi
-        brixelizer_gi::description_dispatch_gi.isRoughnessPerceptual   = true;                                 // if false, we assume roughness squared was stored in the Gbuffer
-        brixelizer_gi::description_dispatch_gi.roughnessChannel        = 0;                                    // the channel to read the roughness from the roughness texture
-        brixelizer_gi::description_dispatch_gi.roughnessThreshold      = 1.0f;                                 // regions with a roughness value greater than this threshold won't spawn specular rays
-        brixelizer_gi::description_dispatch_gi.environmentMapIntensity = 0.0f;                                 // value to scale the contribution from the environment map
-        brixelizer_gi::description_dispatch_gi.motionVectorScale.x     = -1.0f;                                
-        brixelizer_gi::description_dispatch_gi.motionVectorScale.y     = -1.0f;                                
-        set_ffx_float3(brixelizer_gi::description_dispatch_gi.cameraPosition, cb_frame->camera_position);      // camera position
+        brixelizer_gi::description_dispatch_gi.startCascade            = brixelizer_gi::cascade_index_start;
+        brixelizer_gi::description_dispatch_gi.endCascade              = brixelizer_gi::cascade_index_end;
+        brixelizer_gi::description_dispatch_gi.rayPushoff              = brixelizer_gi::sdf_ray_normal_offset;
+        brixelizer_gi::description_dispatch_gi.sdfSolveEps             = brixelizer_gi::sdf_ray_epsilon;
+        brixelizer_gi::description_dispatch_gi.specularRayPushoff      = brixelizer_gi::sdf_ray_normal_offset;
+        brixelizer_gi::description_dispatch_gi.specularSDFSolveEps     = brixelizer_gi::sdf_ray_epsilon;
+        brixelizer_gi::description_dispatch_gi.tMin                    = brixelizer_gi::t_min;
+        brixelizer_gi::description_dispatch_gi.tMax                    = brixelizer_gi::t_max;
+        brixelizer_gi::description_dispatch_gi.normalsUnpackMul        = 1.0f;                            // a multiply factor to transform the normal to the space expected by brixelizer gi
+        brixelizer_gi::description_dispatch_gi.normalsUnpackAdd        = 0.0f;                            // an offset to transform the normal to the space expected by brixelizer gi
+        brixelizer_gi::description_dispatch_gi.isRoughnessPerceptual   = true;                            // if false, we assume roughness squared was stored in the Gbuffer
+        brixelizer_gi::description_dispatch_gi.roughnessChannel        = 0;                               // the channel to read the roughness from the roughness texture
+        brixelizer_gi::description_dispatch_gi.roughnessThreshold      = 1.0f;                            // regions with a roughness value greater than this threshold won't spawn specular rays
+        brixelizer_gi::description_dispatch_gi.environmentMapIntensity = 0.0f;                            // value to scale the contribution from the environment map
+        brixelizer_gi::description_dispatch_gi.motionVectorScale.x     = -1.0f;
+        brixelizer_gi::description_dispatch_gi.motionVectorScale.y     = -1.0f;
+        set_ffx_float3(brixelizer_gi::description_dispatch_gi.cameraPosition, cb_frame->camera_position); // camera position
 
         // dispatch
         SP_ASSERT(ffxBrixelizerGetRawContext(&brixelizer_gi::context, &brixelizer_gi::description_dispatch_gi.brixelizerContext) == FFX_OK);
