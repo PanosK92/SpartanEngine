@@ -431,7 +431,7 @@ namespace Spartan
                 Max
             };
             DebugMode debug_mode            = DebugMode::Max;
-            bool debug_mode_arrow_switch    = true;
+            bool debug_mode_arrow_switch    = false;
             bool debug_mode_aabbs_and_stats = false;
             bool debug_mode_log_instances   = false;
             FfxBrixelizerStats debug_stats  = {};
@@ -507,7 +507,7 @@ namespace Spartan
 
                 // scratch buffer
                 brixelizer_gi::buffer_scratch = make_shared<RHI_Buffer>(
-                    1 << 30, // stride - 1024 MB (will grow if needed)
+                    1 << 30, // stride - 1024 MB (will assert if not enough)
                     1,       // element count
                     RHI_Buffer_Transfer_Src | RHI_Buffer_Transfer_Dst,
                     "ffx_brixelizer_gi_scratch"
@@ -527,8 +527,8 @@ namespace Spartan
                 {
                     string name = "ffx_cascade_aabb_tree_" + to_string(i);
                     brixelizer_gi::buffer_cascade_aabb_tree[i] = make_shared<RHI_Buffer>(
-                        static_cast<uint32_t>(sizeof(uint32_t)),   // stride
-                        cascade_aabb_tree_size / sizeof(uint32_t), // element count
+                        static_cast<uint32_t>(sizeof(uint32_t)),                          // stride
+                        static_cast<uint32_t>(cascade_aabb_tree_size / sizeof(uint32_t)), // element count
                         0,
                         name.c_str()
                     );
@@ -540,8 +540,8 @@ namespace Spartan
                 {
                     string name = "ffx_cascade_brick_map_" + to_string(i);
                     brixelizer_gi::buffer_cascade_brick_map[i] = make_shared<RHI_Buffer>(
-                        static_cast<uint32_t>(sizeof(uint32_t)),   // stride
-                        cascade_brick_map_size / sizeof(uint32_t), // element count
+                        static_cast<uint32_t>(sizeof(uint32_t)),                          // stride
+                        static_cast<uint32_t>(cascade_brick_map_size / sizeof(uint32_t)), // element count
                         0,
                         name.c_str()
                     );

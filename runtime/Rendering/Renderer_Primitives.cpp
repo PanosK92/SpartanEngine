@@ -309,7 +309,7 @@ namespace Spartan
         
         if (GetOption<bool>(Renderer_Option::Aabb))
         {
-            auto get_color = [](shared_ptr<Renderable>& renderable)
+            auto get_color = [](Renderable* renderable)
             {
                 static const Color color_visible        = Color::standard_renderer_lines;
                 static const Color color_occluded       = Color(1.0f, 0.0f, 0.0f, 1.0f);
@@ -327,7 +327,7 @@ namespace Spartan
                 {
                     if (auto renderable = entity->GetComponent<Renderable>())
                     {
-                        DrawBox(renderable->GetBoundingBox(BoundingBoxType::Transformed), get_color(renderable));
+                        DrawBox(renderable->GetBoundingBox(BoundingBoxType::Transformed), get_color(renderable.get()));
                     }
                 }
             };
@@ -342,7 +342,7 @@ namespace Spartan
                         for (uint32_t group_index = 0; group_index < group_count; group_index++)
                         {
                             const BoundingBox& bounding_box_group = renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
-                            DrawBox(bounding_box_group, get_color(renderable));
+                            DrawBox(bounding_box_group, get_color(renderable.get()));
                         }
                     }
                 }

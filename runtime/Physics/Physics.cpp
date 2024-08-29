@@ -131,12 +131,25 @@ namespace Spartan
     void Physics::Shutdown()
     {
         delete world;
+        world = nullptr;
+    
         delete constraint_solver;
+        constraint_solver = nullptr;
+    
         delete collision_dispatcher;
+        collision_dispatcher = nullptr;
+    
         delete collision_configuration;
+        collision_configuration = nullptr;
+    
         delete broadphase;
+        broadphase = nullptr;
+    
         delete world_info;
+        world_info = nullptr;
+    
         delete debug_draw;
+        debug_draw = nullptr;
     }
 
     void Physics::Tick()
