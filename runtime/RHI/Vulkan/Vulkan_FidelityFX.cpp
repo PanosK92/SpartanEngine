@@ -384,13 +384,13 @@ namespace Spartan
                shared_ptr<Renderable> renderable     = entity->GetComponent<Renderable>();
            
                // aabb: world space, pre-transformed
-               const BoundingBox& aabb = renderable->HasInstancing() ? renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, instance_index) : renderable->GetBoundingBox(BoundingBoxType::Transformed);
-               desc.aabb.min[0] = aabb.GetMin().x;
-               desc.aabb.min[1] = aabb.GetMin().y;
-               desc.aabb.min[2] = aabb.GetMin().z;
-               desc.aabb.max[0] = aabb.GetMax().x;
-               desc.aabb.max[1] = aabb.GetMax().y;
-               desc.aabb.max[2] = aabb.GetMax().z;
+               const BoundingBox& aabb = renderable->HasInstancing() ? renderable->GetBoundingBox(BoundingBoxType::TransformedInstance, instance_index) : renderable->GetBoundingBox(BoundingBoxType::Transformed);
+               desc.aabb.min[0]        = aabb.GetMin().x;
+               desc.aabb.min[1]        = aabb.GetMin().y;
+               desc.aabb.min[2]        = aabb.GetMin().z;
+               desc.aabb.max[0]        = aabb.GetMax().x;
+               desc.aabb.max[1]        = aabb.GetMax().y;
+               desc.aabb.max[2]        = aabb.GetMax().z;
            
                // transform: world space, row-major
                Matrix transform = renderable->HasInstancing() ? renderable->GetInstanceTransform(instance_index) : entity->GetMatrix();
@@ -410,9 +410,9 @@ namespace Spartan
                desc.indexFormat       = (renderable->GetIndexBuffer()->GetStride() == sizeof(uint16_t)) ? FFX_INDEX_TYPE_UINT16 : FFX_INDEX_TYPE_UINT32;
            
                // misc
-               desc.flags = entity->IsMoving() ? FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC : FFX_BRIXELIZER_INSTANCE_FLAG_NONE;
+               desc.flags           = entity->IsMoving() ? FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC : FFX_BRIXELIZER_INSTANCE_FLAG_NONE;
                uint64_t instance_id = renderable->HasInstancing() ? (entity->GetObjectId() | (static_cast<uint64_t>(instance_index) << 32)) : entity->GetObjectId();
-               desc.outInstanceID = &get_or_create_id(instance_id);
+               desc.outInstanceID   = &get_or_create_id(instance_id);
            
                return desc;
            }
@@ -431,7 +431,7 @@ namespace Spartan
                 Max
             };
             DebugMode debug_mode            = DebugMode::Max;
-            bool debug_mode_arrow_switch    = false;
+            bool debug_mode_arrow_switch    = true;
             bool debug_mode_aabbs_and_stats = false;
             bool debug_mode_log_instances   = false;
             FfxBrixelizerStats debug_stats  = {};
@@ -910,37 +910,76 @@ namespace Spartan
             brixelizer_gi::instances_to_delete.clear();
             brixelizer_gi::entity_map.clear();
         
-            // update entity_map and process entities
+            // process entities
             for (int64_t i = index_start; i < index_end; i++)
             {
                 auto& entity                         = entities[i];
                 uint64_t entity_id                   = entity->GetObjectId();
-                brixelizer_gi::entity_map[entity_id] = entity;     
+                brixelizer_gi::entity_map[entity_id] = entity;
                 bool is_dynamic                      = entity->IsMoving();
                 auto static_it                       = brixelizer_gi::static_instances.find(entity_id);
                 bool was_static                      = static_it != brixelizer_gi::static_instances.end();
-        
+                shared_ptr<Renderable> renderable    = entity->GetComponent<Renderable>();
+
                 if (is_dynamic)
                 {
-                    brixelizer_gi::instances_to_create.push_back(brixelizer_gi::create_instance_description(entity));
-                    
-                    if (was_static)
+                    if (renderable->HasInstancing())
                     {
-                        brixelizer_gi::instances_to_delete.push_back(brixelizer_gi::get_or_create_id(entity_id));
-                        brixelizer_gi::static_instances.erase(static_it);
-                        if (brixelizer_gi::debug_mode_log_instances)
+                        for (uint32_t instance_index = 0; instance_index < renderable->GetInstanceCount(); instance_index++)
                         {
-                            SP_LOG_INFO("Static instance became dynamic: %llu", entity_id);
+                            uint64_t instance_id = entity_id | (static_cast<uint64_t>(instance_index) << 32);
+                            brixelizer_gi::instances_to_create.push_back(brixelizer_gi::create_instance_description(entity, instance_index));
+                            
+                            auto static_instance_it = brixelizer_gi::static_instances.find(instance_id);
+                            if (static_instance_it != brixelizer_gi::static_instances.end())
+                            {
+                                brixelizer_gi::instances_to_delete.push_back(brixelizer_gi::get_or_create_id(instance_id));
+                                brixelizer_gi::static_instances.erase(static_instance_it);
+                                if (brixelizer_gi::debug_mode_log_instances)
+                                {
+                                    SP_LOG_INFO("Static instance became dynamic: %llu (instance %u)", entity_id, instance_index);
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        brixelizer_gi::instances_to_create.push_back(brixelizer_gi::create_instance_description(entity));
+                        
+                        if (was_static)
+                        {
+                            brixelizer_gi::instances_to_delete.push_back(brixelizer_gi::get_or_create_id(entity_id));
+                            brixelizer_gi::static_instances.erase(static_it);
+                            if (brixelizer_gi::debug_mode_log_instances)
+                            {
+                                SP_LOG_INFO("Static instance became dynamic: %llu", entity_id);
+                            }
                         }
                     }
                 }
                 else if (!was_static)
                 {
-                    brixelizer_gi::instances_to_create.push_back(brixelizer_gi::create_instance_description(entity));
-                    brixelizer_gi::static_instances.insert(entity_id);
-                    if (brixelizer_gi::debug_mode_log_instances)
+                    if (renderable->HasInstancing())
                     {
-                        SP_LOG_INFO("Added new static instance: %llu", entity_id);
+                        for (uint32_t instance_index = 0; instance_index < renderable->GetInstanceCount(); instance_index++)
+                        {
+                            uint64_t instance_id = entity_id | (static_cast<uint64_t>(instance_index) << 32);
+                            brixelizer_gi::instances_to_create.push_back(brixelizer_gi::create_instance_description(entity, instance_index));
+                            brixelizer_gi::static_instances.insert(instance_id);
+                            if (brixelizer_gi::debug_mode_log_instances)
+                            {
+                                SP_LOG_INFO("Added new static instance: %llu (instance %u)", entity_id, instance_index);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        brixelizer_gi::instances_to_create.push_back(brixelizer_gi::create_instance_description(entity));
+                        brixelizer_gi::static_instances.insert(entity_id);
+                        if (brixelizer_gi::debug_mode_log_instances)
+                        {
+                            SP_LOG_INFO("Added new static instance: %llu", entity_id);
+                        }
                     }
                 }
             }

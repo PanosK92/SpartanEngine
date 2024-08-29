@@ -159,8 +159,8 @@ namespace Spartan
         m_mesh->GetGeometry(m_geometry_index_offset, m_geometry_index_count, m_geometry_vertex_offset, m_geometry_vertex_count, indices, vertices);
     }
 
-	const BoundingBox& Renderable::GetBoundingBox(const BoundingBoxType type, const uint32_t instance_group_index)
-	{
+    const BoundingBox& Renderable::GetBoundingBox(const BoundingBoxType type, const uint32_t index)
+    {
         // compute if dirty
         if (m_bounding_box_dirty || m_transform_previous != GetEntity()->GetMatrix())
         {
@@ -173,34 +173,35 @@ namespace Spartan
             }
             else // transformed instances
             {
-                // loop through each instance and expand the bounding box
                 m_bounding_box_transformed = BoundingBox::Undefined;
-                for (const Matrix& instance_transform : m_instances)
+                m_bounding_box_instances.clear();
+                m_bounding_box_instances.reserve(m_instances.size());
+                m_bounding_box_instances.resize(m_instances.size());
+                for (uint32_t i = 0; i < static_cast<uint32_t>(m_instances.size()); i++)
                 {
-                    // transform * instance_transform, this is not the order of operation the engine is using but in this case it works
-                    // possibly due to how the transform is calculated, the space it's in and relative to what
-                    BoundingBox bounding_box_instance = m_bounding_box.Transform(transform * instance_transform);
-                    m_bounding_box_transformed.Merge(bounding_box_instance);
+                    const Matrix& instance_transform = m_instances[i];
+                    m_bounding_box_instances[i]      = m_bounding_box.Transform(transform * instance_transform ); // 1. bounding box of the instance
+                    m_bounding_box_transformed.Merge(m_bounding_box_instances[i]);                                // 2. bounding box of all instances
                 }
-            }
 
-            // bounding boxes of instance groups
-            {
-                // loop through each group end index
-                m_bounding_box_instance_group.clear();
-                uint32_t start_index = 0;
-                for (const uint32_t group_end_index : m_instance_group_end_indices)
+                // 3. bounding boxes of instance groups
                 {
-                    // loop through the instances in this group
-                    BoundingBox bounding_box_group = BoundingBox::Undefined;
-                    for (uint32_t i = start_index; i < group_end_index; i++)
+                    // loop through each group end index
+                    m_bounding_box_instance_group.clear();
+                    uint32_t start_index = 0;
+                    for (const uint32_t group_end_index : m_instance_group_end_indices)
                     {
-                        BoundingBox bounding_box_instance = m_bounding_box.Transform(transform * m_instances[i]);
-                        bounding_box_group.Merge(bounding_box_instance);
-                    }
+                        // loop through the instances in this group
+                        BoundingBox bounding_box_group = BoundingBox::Undefined;
+                        for (uint32_t i = start_index; i < group_end_index; i++)
+                        {
+                            BoundingBox bounding_box_instance = m_bounding_box.Transform(transform * m_instances[i]);
+                            bounding_box_group.Merge(bounding_box_instance);
+                        }
 
-                    m_bounding_box_instance_group.push_back(bounding_box_group);
-                    start_index = group_end_index;
+                        m_bounding_box_instance_group.push_back(bounding_box_group);
+                        start_index = group_end_index;
+                    }
                 }
             }
 
@@ -217,9 +218,13 @@ namespace Spartan
         {
             return m_bounding_box_transformed;
         }
+         else if (type == BoundingBoxType::TransformedInstance)
+        {
+            return m_bounding_box_instances[index];
+        }
         else if (type == BoundingBoxType::TransformedInstanceGroup)
         {
-            return m_bounding_box_instance_group[instance_group_index];
+            return m_bounding_box_instance_group[index];
         }
 
         return BoundingBox::Undefined;
