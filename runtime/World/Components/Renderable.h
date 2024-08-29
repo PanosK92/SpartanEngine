@@ -36,7 +36,8 @@ namespace Spartan
     enum class BoundingBoxType
     {
         Mesh,
-        Transformed,              // includes all instances (if any)
+        Transformed,              // includes all instances            - if there no instances it's just the mesh bounding box
+        TransformedInstance,      // bounding box of an instance       - instance index is provided in GetBoundingBox()
         TransformedInstanceGroup, // bounding box of an instance group - instance group index is provided in GetBoundingBox()
     };
 
@@ -71,7 +72,7 @@ namespace Spartan
         // bounding box
         const std::vector<uint32_t>& GetBoundingBoxGroupEndIndices() const { return m_instance_group_end_indices; }
         uint32_t GetInstancePartitionCount() const                         { return static_cast<uint32_t>(m_instance_group_end_indices.size()); }
-        const Math::BoundingBox& GetBoundingBox(const BoundingBoxType type, const uint32_t instance_group_index = 0);
+        const Math::BoundingBox& GetBoundingBox(const BoundingBoxType type, const uint32_t index = 0);
 
         //= MATERIAL ====================================================================
         // Sets a material from memory (adds it to the resource cache by default)
@@ -120,6 +121,7 @@ namespace Spartan
         bool m_bounding_box_dirty                    = true;
         Math::BoundingBox m_bounding_box             = Math::BoundingBox::Undefined;
         Math::BoundingBox m_bounding_box_transformed = Math::BoundingBox::Undefined;
+        std::vector<Math::BoundingBox> m_bounding_box_instances;
         std::vector<Math::BoundingBox> m_bounding_box_instance_group;
 
         // material
