@@ -58,7 +58,7 @@ namespace Spartan
         SP_ASSERT(vk_usage != 0);
 
         // create buffer
-        VkMemoryPropertyFlags memory_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
+        VkMemoryPropertyFlags memory_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // mappable and no need to flush
         RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, vk_usage, memory_flags, nullptr, name);
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::Buffer, name);
 
