@@ -1815,47 +1815,34 @@ namespace Spartan
         return nullptr;
     }
 
-    void RHI_Device::MemoryBufferCreate(void*& resource, const uint64_t size, uint32_t usage, uint32_t memory_property_flags, const void* data_initial, const char* name)
+    void RHI_Device::MemoryBufferCreate(void*& resource, const uint64_t size, uint32_t flags_usage, uint32_t flags_memory, const void* data_initial, const char* name)
     {
-        // Deduce some memory properties
-        bool is_buffer_storage       = (usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0; // aka structured buffer
-        bool is_buffer_constant      = (usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) != 0;
-        bool is_buffer_index         = (usage & VK_BUFFER_USAGE_INDEX_BUFFER_BIT) != 0;
-        bool is_buffer_vertex        = (usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) != 0;
-        bool is_buffer_staging       = (usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) != 0;
-        bool is_mappable             = (memory_property_flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
-        bool is_transfer_source      = (usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) != 0;
-        bool is_transfer_destination = (usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) != 0;
-        bool is_transfer_buffer      = is_transfer_source || is_transfer_destination;
-        bool map_on_creation         = is_buffer_storage || is_buffer_constant || is_buffer_index || is_buffer_vertex;
+        // deduce memory properties
+        bool is_buffer_storage  = (flags_usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)   != 0;
+        bool is_buffer_constant = (flags_usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)   != 0;
+        bool is_buffer_index    = (flags_usage & VK_BUFFER_USAGE_INDEX_BUFFER_BIT)     != 0;
+        bool is_buffer_vertex   = (flags_usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)    != 0;
+        bool is_buffer_staging  = (flags_usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT)     != 0;
+        bool is_mappable        = (flags_memory & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
 
-        // Buffer info
+        // buffer info
         VkBufferCreateInfo buffer_create_info = {};
         buffer_create_info.sType              = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         buffer_create_info.size               = size;
-        buffer_create_info.usage              = usage;
+        buffer_create_info.usage              = flags_usage;
         buffer_create_info.sharingMode        = VK_SHARING_MODE_EXCLUSIVE;
 
-        // Allocation info
+        // allocation info
         VmaAllocationCreateInfo allocation_create_info = {};
         allocation_create_info.usage                   = VMA_MEMORY_USAGE_AUTO;
-        allocation_create_info.requiredFlags           = memory_property_flags;
+        allocation_create_info.requiredFlags           = flags_memory;
         allocation_create_info.flags                   = 0;
 
-        if (is_buffer_staging)
+        if (is_mappable)
         {
-            allocation_create_info.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-        }
-        else
-        {
-            // can it be mapped ? buffers that use Map()/Unmap() need this, persistent buffers also need this.
-            allocation_create_info.flags |= is_mappable ? VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT : 0;
-
-            // can it be mapped upon creation ? this is what a persistent buffer would use
-            allocation_create_info.flags |= (map_on_creation && !is_transfer_buffer) ? VMA_ALLOCATION_CREATE_MAPPED_BIT : 0;
-
-            // make everything immediately available on the GPU
-            allocation_create_info.flags |= (is_buffer_constant || is_buffer_storage) ? VK_MEMORY_PROPERTY_HOST_COHERENT_BIT : 0;
+            allocation_create_info.flags         |= is_buffer_staging ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT : VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+            allocation_create_info.flags         |= VMA_ALLOCATION_CREATE_MAPPED_BIT;     // mappable
+            allocation_create_info.requiredFlags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // no need to flush
         }
 
         // create the buffer
