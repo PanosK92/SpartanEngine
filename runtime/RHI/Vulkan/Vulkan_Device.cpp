@@ -1817,13 +1817,10 @@ namespace Spartan
 
     void RHI_Device::MemoryBufferCreate(void*& resource, const uint64_t size, uint32_t flags_usage, uint32_t flags_memory, const void* data_initial, const char* name)
     {
-        // deduce memory properties
-        bool is_buffer_storage  = (flags_usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)   != 0;
-        bool is_buffer_constant = (flags_usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)   != 0;
-        bool is_buffer_index    = (flags_usage & VK_BUFFER_USAGE_INDEX_BUFFER_BIT)     != 0;
-        bool is_buffer_vertex   = (flags_usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)    != 0;
-        bool is_buffer_staging  = (flags_usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT)     != 0;
-        bool is_mappable        = (flags_memory & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
+        // deduce properties
+        bool is_storage   = (flags_usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)   != 0;
+        bool is_constant  = (flags_usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)   != 0;
+        bool is_mappable  = (flags_memory & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
 
         // buffer info
         VkBufferCreateInfo buffer_create_info = {};
@@ -1840,7 +1837,7 @@ namespace Spartan
 
         if (is_mappable)
         {
-            allocation_create_info.flags         |= is_buffer_staging ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT : VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+            allocation_create_info.flags         |= VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
             allocation_create_info.flags         |= VMA_ALLOCATION_CREATE_MAPPED_BIT;     // mappable
             allocation_create_info.requiredFlags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // no need to flush
         }
