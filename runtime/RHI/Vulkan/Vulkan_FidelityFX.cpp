@@ -510,7 +510,7 @@ namespace Spartan
                     1 << 30, // stride - 1024 MB (will assert if not enough)
                     1,       // element count
                     nullptr,
-                    true,
+                    false,   // mappable
                     "ffx_brixelizer_gi_scratch"
                 );
 
@@ -520,7 +520,7 @@ namespace Spartan
                     static_cast<uint32_t>(sizeof(uint32_t)), // stride
                     brixelizer_gi::bricks_max,               // element count
                     nullptr,
-                    true,
+                    false,                                   // mappable
                     "ffx_brick_aabbs"
                 );
 
@@ -534,7 +534,7 @@ namespace Spartan
                         static_cast<uint32_t>(sizeof(uint32_t)),                          // stride
                         static_cast<uint32_t>(cascade_aabb_tree_size / sizeof(uint32_t)), // element count
                         nullptr,
-                        true,
+                        false,                                                            // mappable
                         name.c_str()
                     );
                 }
@@ -549,7 +549,7 @@ namespace Spartan
                         static_cast<uint32_t>(sizeof(uint32_t)),                          // stride
                         static_cast<uint32_t>(cascade_brick_map_size / sizeof(uint32_t)), // element count
                         nullptr,
-                        true,
+                        false,                                                            // mappable
                         name.c_str()
                     );
                 }

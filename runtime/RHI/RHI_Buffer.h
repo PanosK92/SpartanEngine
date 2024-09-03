@@ -41,16 +41,16 @@ namespace Spartan
     {
     public:
         RHI_Buffer() = default;
-        RHI_Buffer(const RHI_Buffer_Type type, const size_t stride, const uint32_t element_count, const void* data, const bool is_mappable, const char* name)
+        RHI_Buffer(const RHI_Buffer_Type type, const size_t stride, const uint32_t element_count, const void* data, const bool mappable, const char* name)
         {
             // do checks
             SP_ASSERT(type != RHI_Buffer_Type::Max);
             SP_ASSERT(stride != 0);
             SP_ASSERT(element_count != 0);
             SP_ASSERT_MSG(name != nullptr, "Name the buffer to aid the validation layer");
-            if (m_type == RHI_Buffer_Type::Storage || m_type == RHI_Buffer_Type::Constant)
+            if (m_type == RHI_Buffer_Type::Constant)
             {
-                SP_ASSERT_MSG(m_is_mappable, "Storage and constant buffers must be mappable");
+                SP_ASSERT_MSG(m_mappable, "Storage and constant buffers must be mappable");
             }
 
             // set properties
@@ -59,7 +59,7 @@ namespace Spartan
             m_stride           = m_stride_unaligned;
             m_element_count    = element_count;
             m_object_size      = stride * element_count;
-            m_is_mappable      = is_mappable;
+            m_mappable         = mappable;
             m_object_name      = name;
 
             // allocate the buffer
@@ -86,7 +86,7 @@ namespace Spartan
         uint32_t m_element_count    = 0;
         uint32_t m_offset           = 0;
         void* m_data_gpu            = nullptr;
-        bool m_is_mappable          = false;
+        bool m_mappable             = false;
         bool first_update           = true;
 
         // rhi

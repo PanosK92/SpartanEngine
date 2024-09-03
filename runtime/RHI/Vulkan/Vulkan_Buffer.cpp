@@ -46,12 +46,12 @@ namespace Spartan
     {
         RHI_DestroyResource();
 
-        if (m_type != RHI_Buffer_Type::Storage)
+        if (m_type == RHI_Buffer_Type::Vertex || m_type == RHI_Buffer_Type::Index || m_type == RHI_Buffer_Type::Instance)
         {
             bool vertex                = m_type == RHI_Buffer_Type::Vertex || m_type == RHI_Buffer_Type::Instance;
             VkBufferUsageFlagBits type = vertex ? VK_BUFFER_USAGE_VERTEX_BUFFER_BIT : VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
-            if (m_is_mappable)
+            if (m_mappable)
             {
                 uint32_t flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // mappable and no need to flush
                 RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, type, flags_memory, nullptr, m_object_name.c_str());
@@ -88,7 +88,15 @@ namespace Spartan
 
             // create
             VkBufferUsageFlags flags_usage     = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-            VkMemoryPropertyFlags flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // mappable and flushless
+            VkMemoryPropertyFlags flags_memory = 0;
+            if (m_mappable)
+            {
+                flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // mappable and flushless
+            }
+            else
+            {
+                flags_memory = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+            }
             RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, flags_usage, flags_memory, nullptr, m_object_name.c_str());
         }
         else if (m_type == RHI_Buffer_Type::Constant)
@@ -98,7 +106,7 @@ namespace Spartan
 
         SP_ASSERT_MSG(m_rhi_resource != nullptr, "Failed to create buffer");
 
-        if (m_is_mappable)
+        if (m_mappable)
         {
             m_data_gpu = RHI_Device::MemoryGetMappedDataFromBuffer(m_rhi_resource);
         }
