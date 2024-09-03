@@ -27,31 +27,88 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    enum RHI_Buffer_Usage : uint32_t
+    enum class RHI_Buffer_Type
     {
-        RHI_Buffer_Transfer_Src = 1 << 0,
-        RHI_Buffer_Transfer_Dst = 1 << 1
+        Vertex,
+        Index,
+        Instance,
+        Storage,
+        Max
     };
 
     class RHI_Buffer : public SpartanObject
     {
     public:
-        RHI_Buffer(const uint32_t stride, const uint32_t element_count, const uint32_t usage, const char* name);
-        ~RHI_Buffer();
+        RHI_Buffer() = default;
+        RHI_Buffer(const RHI_Buffer_Type type, const uint32_t stride, const uint32_t element_count, const bool is_mappable, const char* name)
+        {
+            m_type          = type;
+            m_stride        = stride;
+            m_element_count = element_count;
+            m_object_size   = stride * element_count;
+            m_is_mappable   = is_mappable;
+            m_object_name   = name;
 
-        void Update(void* data, const uint32_t update_size = 0);
-        void ResetOffset()           { m_offset = 0; first_update = true; }
-        uint32_t GetStride()   const { return m_stride; }
-        uint32_t GetOffset()   const { return m_offset; }
-        void* GetRhiResource() const { return m_rhi_resource; }
+            if (m_type == RHI_Buffer_Type::Storage)
+            {
+                SP_ASSERT_MSG(m_is_mappable, "Storage buffers must be mappable")
+                RHI_CreateResource(nullptr);
+            }
+        }
+        ~RHI_Buffer() { RHI_DestroyResource(); }
+
+        template<typename T>
+        void Create(const std::vector<T>& data)
+        {
+            m_stride        = sizeof(T);
+            m_element_count = static_cast<uint32_t>(data.size());
+            m_object_size   = static_cast<uint64_t>(m_stride * m_element_count);
+
+            RHI_CreateResource(static_cast<const void*>(data.data()));
+        }
+
+        template<typename T>
+        void Create(const T* indices, const uint32_t index_count)
+        {
+            m_stride        = sizeof(T);
+            m_element_count = index_count;
+            m_object_size   = static_cast<uint64_t>(m_stride * m_element_count);
+
+            RHI_CreateResource(static_cast<const void*>(indices));
+        }
+
+        template<typename T>
+        void CreateDynamic(const uint32_t index_count)
+        {
+            m_stride        = sizeof(T);
+            m_element_count = index_count;
+            m_object_size   = static_cast<uint64_t>(m_stride * m_element_count);
+
+            RHI_CreateResource(nullptr);
+        }
+
+        void Update(void* data_cpu, const uint32_t size = 0);
+        void ResetOffset() { m_offset = 0; first_update = true; }
+
+        // propeties
+        void* GetMappedData() const      { return m_data; }
+        void* GetRhiResource() const     { return m_rhi_resource; }
+        uint32_t GetElementCount() const { return m_element_count; }
+        uint32_t GetStride() const       { return m_stride; }
+        uint32_t GetOffset()   const     { return m_offset; }
 
     private:
+        RHI_Buffer_Type m_type   = RHI_Buffer_Type::Max;
         uint32_t m_stride        = 0;
-        uint32_t m_offset        = 0;
         uint32_t m_element_count = 0;
-        uint32_t m_usage         = 0;
+        uint32_t m_offset        = 0;
+        void* m_data             = nullptr;
+        bool m_is_mappable       = false;
         bool first_update        = true;
-        void* m_mapped_data      = nullptr;
-        void* m_rhi_resource     = nullptr;
+
+        // rhi
+        void RHI_DestroyResource();
+        void RHI_CreateResource(const void* indices);
+        void* m_rhi_resource = nullptr;
     };
 }

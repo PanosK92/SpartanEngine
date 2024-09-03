@@ -24,10 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Font.h"
 #include "../Renderer.h"
 #include "../../Core/Stopwatch.h"
-#include "../../Resource/ResourceCache.h"
 #include "../../Resource/Import/FontImporter.h"
 #include "../../RHI/RHI_Vertex.h"
-#include "../../RHI/RHI_GeometryBuffer.h"
+#include "../../RHI/RHI_Buffer.h"
 //=============================================
 
 //= NAMESPACES ===============
@@ -46,8 +45,8 @@ namespace Spartan
 
     Font::Font(const string& file_path, const uint32_t font_size, const Color& color) : IResource(ResourceType::Font)
     {
-        m_vertex_buffer   = make_shared<RHI_GeometryBuffer>(RHI_Buffer_Type::Vertex, true, "font");
-        m_index_buffer    = make_shared<RHI_GeometryBuffer>(RHI_Buffer_Type::Index, true, "font");
+        m_vertex_buffer   = make_shared<RHI_Buffer>(RHI_Buffer_Type::Vertex, 0, 0, true, "font");
+        m_index_buffer    = make_shared<RHI_Buffer>(RHI_Buffer_Type::Index, 0, 0, true, "font");
         m_char_max_width  = 0;
         m_char_max_height = 0;
         m_color           = color;

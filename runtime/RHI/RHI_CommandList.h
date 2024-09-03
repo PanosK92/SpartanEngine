@@ -100,10 +100,10 @@ namespace Spartan
         void SetCullMode(const RHI_CullMode cull_mode);
         
         // vertex buffer
-        void SetBufferVertex(const RHI_GeometryBuffer* buffer, const uint32_t binding = 0);
+        void SetBufferVertex(const RHI_Buffer* buffer, const uint32_t binding = 0);
         
         // index buffer
-        void SetBufferIndex(const RHI_GeometryBuffer* buffer);
+        void SetBufferIndex(const RHI_Buffer* buffer);
 
         // constant buffer
         void SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer) const;

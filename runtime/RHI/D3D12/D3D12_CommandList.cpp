@@ -23,17 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
-#include "../RHI_Pipeline.h"
 #include "../RHI_Device.h"
 #include "../RHI_Sampler.h"
 #include "../RHI_Texture.h"
-#include "../RHI_Shader.h"
 #include "../RHI_ConstantBuffer.h"
-#include "../RHI_GeometryBuffer.h"
-#include "../RHI_BlendState.h"
-#include "../RHI_DepthStencilState.h"
-#include "../RHI_RasterizerState.h"
-#include "../RHI_InputLayout.h"
+#include "../RHI_Buffer.h"
 #include "../RHI_SwapChain.h"
 #include "../RHI_PipelineState.h"
 #include "../../Profiling/Profiler.h"
@@ -231,7 +225,7 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
     }
 
-    void RHI_CommandList::SetBufferVertex(const RHI_GeometryBuffer* buffer, const uint32_t binding /*= 0*/)
+    void RHI_CommandList::SetBufferVertex(const RHI_Buffer* buffer, const uint32_t binding /*= 0*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
@@ -254,7 +248,7 @@ namespace Spartan
         Profiler::m_rhi_bindings_buffer_vertex++;
     }
     
-    void RHI_CommandList::SetBufferIndex(const RHI_GeometryBuffer* buffer)
+    void RHI_CommandList::SetBufferIndex(const RHI_Buffer* buffer)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 

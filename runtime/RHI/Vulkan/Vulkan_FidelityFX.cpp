@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Texture3D.h"
 #include "../RHI_TextureCube.h"
 #include "../RHI_Buffer.h"
-#include "../RHI_GeometryBuffer.h"
 #include "../Input/Input.h"
 #include "../Rendering/Renderer_Buffers.h"
 #include "../World/Components/Renderable.h"
@@ -193,7 +192,7 @@ namespace Spartan
                 description.stride = resource->GetStride();
                 state              = FFX_RESOURCE_STATE_UNORDERED_ACCESS;
             }
-            else if constexpr (is_same_v<remove_const_t<T>, RHI_GeometryBuffer>)
+            else if constexpr (is_same_v<remove_const_t<T>, RHI_Buffer>)
             {
                 description.type   = FFX_RESOURCE_TYPE_BUFFER;
                 description.usage  = FFX_RESOURCE_USAGE_UAV;
@@ -203,7 +202,7 @@ namespace Spartan
             }
             else
             {
-                static_assert(is_same_v<T, RHI_Texture> || is_same_v<T, RHI_Buffer> || is_same_v<T, RHI_GeometryBuffer>, "Unsupported resource type");
+                static_assert(is_same_v<T, RHI_Texture> || is_same_v<T, RHI_Buffer> || is_same_v<T, RHI_Buffer>, "Unsupported resource type");
             }
 
             return ffxGetResourceVK(rhi_resource, description, const_cast<wchar_t*>(name), state);
@@ -330,7 +329,7 @@ namespace Spartan
 
             // instances
             unordered_set<uint64_t> static_instances;
-            vector<pair<const RHI_GeometryBuffer*, uint32_t>> instance_buffers;
+            vector<pair<const RHI_Buffer*, uint32_t>> instance_buffers;
             unordered_map<uint64_t, shared_ptr<Entity>> entity_map;
             vector<FfxBrixelizerInstanceDescription> instances_to_create;
             vector<uint32_t> instances_to_delete;
@@ -350,7 +349,7 @@ namespace Spartan
                 return entity_to_id_map[entity_id];
             }
 
-            uint32_t register_geometry_buffer(const RHI_GeometryBuffer* buffer)
+            uint32_t register_geometry_buffer(const RHI_Buffer* buffer)
             {
                 // return existing
                 {
@@ -507,17 +506,19 @@ namespace Spartan
 
                 // scratch buffer
                 brixelizer_gi::buffer_scratch = make_shared<RHI_Buffer>(
+                    RHI_Buffer_Type::Storage,
                     1 << 30, // stride - 1024 MB (will assert if not enough)
                     1,       // element count
-                    RHI_Buffer_Transfer_Src | RHI_Buffer_Transfer_Dst,
+                    true,
                     "ffx_brixelizer_gi_scratch"
                 );
 
                 // brick aabbs buffer
                 brixelizer_gi::buffer_brick_aabbs = make_shared<RHI_Buffer>(
+                    RHI_Buffer_Type::Storage,
                     static_cast<uint32_t>(sizeof(uint32_t)), // stride
                     brixelizer_gi::bricks_max,               // element count
-                    0,
+                    true,
                     "ffx_brick_aabbs"
                 );
 
@@ -527,9 +528,10 @@ namespace Spartan
                 {
                     string name = "ffx_cascade_aabb_tree_" + to_string(i);
                     brixelizer_gi::buffer_cascade_aabb_tree[i] = make_shared<RHI_Buffer>(
+                        RHI_Buffer_Type::Storage,
                         static_cast<uint32_t>(sizeof(uint32_t)),                          // stride
                         static_cast<uint32_t>(cascade_aabb_tree_size / sizeof(uint32_t)), // element count
-                        0,
+                        true,
                         name.c_str()
                     );
                 }
@@ -540,9 +542,10 @@ namespace Spartan
                 {
                     string name = "ffx_cascade_brick_map_" + to_string(i);
                     brixelizer_gi::buffer_cascade_brick_map[i] = make_shared<RHI_Buffer>(
+                        RHI_Buffer_Type::Storage,
                         static_cast<uint32_t>(sizeof(uint32_t)),                          // stride
                         static_cast<uint32_t>(cascade_brick_map_size / sizeof(uint32_t)), // element count
-                        0,
+                        true,
                         name.c_str()
                     );
                 }
