@@ -21,13 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ===============
 #include "Widget.h"
-#include "Profiling/Profiler.h"
 #include "Math/MathHelper.h"
-#include "Core/Timer.h"
 #include <array>
-//=============================
+//==========================
 
 struct Timings
 {
@@ -44,11 +42,11 @@ struct Timings
 
     void Clear()
     {
-        m_min           = FLT_MAX;
-        m_max           = FLT_MIN;
-        m_avg           = 0.0f;
-        m_sum           = 0.0f;
-        m_sample_count  = 0;
+        m_min          = FLT_MAX;
+        m_max          = FLT_MIN;
+        m_avg          = 0.0f;
+        m_sum          = 0.0f;
+        m_sample_count = 0;
     }
 
     float m_min;
