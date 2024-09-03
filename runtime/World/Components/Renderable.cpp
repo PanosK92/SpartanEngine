@@ -310,8 +310,14 @@ namespace Spartan
             instances_transposed.push_back(instance.Transposed());
         }
 
-        m_instance_buffer = make_shared<RHI_Buffer>(RHI_Buffer_Type::Instance, 0, 0, false, "instance_buffer");
-        m_instance_buffer->Create<Matrix>(instances_transposed);
+        m_instance_buffer = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Instance,
+            sizeof(instances_transposed[0]),
+            static_cast<uint32_t>(instances_transposed.size()),
+            static_cast<void*>(&instances_transposed[0]),
+            false,
+            "instance_buffer"
+        );
 
         m_bounding_box_dirty = true;
     }

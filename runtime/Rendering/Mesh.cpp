@@ -253,13 +253,21 @@ namespace Spartan
     }
     void Mesh::CreateGpuBuffers()
     {
-        SP_ASSERT_MSG(!m_indices.empty(), "There are no indices");
-        m_index_buffer = make_shared<RHI_Buffer>(RHI_Buffer_Type::Index, 0, 0, false, (string("mesh_index_buffer_") + m_object_name).c_str());
-        m_index_buffer->Create(m_indices);
+        m_vertex_buffer = make_shared<RHI_Buffer>(RHI_Buffer_Type::Vertex,
+            sizeof(m_vertices[0]),
+            static_cast<uint32_t>(m_vertices.size()),
+            static_cast<void*>(&m_vertices[0]),
+            false,
+            (string("mesh_vertex_buffer_") + m_object_name).c_str()
+        );
 
-        SP_ASSERT_MSG(!m_vertices.empty(), "There are no vertices");
-        m_vertex_buffer = make_shared<RHI_Buffer>(RHI_Buffer_Type::Vertex, 0, 0, false, (string("mesh_vertex_buffer_") + m_object_name).c_str());
-        m_vertex_buffer->Create(m_vertices);
+        m_index_buffer = make_shared<RHI_Buffer>(RHI_Buffer_Type::Index,
+            sizeof(m_indices[0]),
+            static_cast<uint32_t>(m_indices.size()),
+            static_cast<void*>(&m_indices[0]),
+            false,
+            (string("mesh_index_buffer_") + m_object_name).c_str()
+        );
     }
 
     void Mesh::SetMaterial(shared_ptr<Material>& material, Entity* entity) const

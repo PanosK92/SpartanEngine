@@ -2142,7 +2142,7 @@ namespace Spartan
             uint32_t vertex_count = static_cast<uint32_t>(m_line_vertices.size());
             if (vertex_count > m_vertex_buffer_lines->GetElementCount())
             {
-                m_vertex_buffer_lines->CreateDynamic<RHI_Vertex_PosCol>(vertex_count);
+                m_vertex_buffer_lines = make_shared<RHI_Buffer>(RHI_Buffer_Type::Vertex, sizeof(m_line_vertices[0]), vertex_count, static_cast<void*>(&m_line_vertices[0]), true, "lines");
             }
 
             if (vertex_count != 0)

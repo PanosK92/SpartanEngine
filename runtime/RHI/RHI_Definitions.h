@@ -45,7 +45,6 @@ namespace Spartan
     class RHI_DepthStencilState;
     class RHI_InputLayout;
     class RHI_Buffer;
-    class RHI_Buffer;
     class RHI_ConstantBuffer;
     class RHI_Sampler;
     class RHI_Viewport;
