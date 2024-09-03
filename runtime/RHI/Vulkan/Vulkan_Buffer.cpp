@@ -42,7 +42,7 @@ namespace Spartan
         }
     }
 
-    void RHI_Buffer::RHI_CreateResource(const void* indices)
+    void RHI_Buffer::RHI_CreateResource(const void* data)
     {
         RHI_DestroyResource();
 
@@ -60,7 +60,7 @@ namespace Spartan
             {
                 // create staging buffer, it's slower but we can copy data in and out of it
                 void* staging_buffer = nullptr;
-                RHI_Device::MemoryBufferCreate(staging_buffer, m_object_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indices, m_object_name.c_str());
+                RHI_Device::MemoryBufferCreate(staging_buffer, m_object_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, data, m_object_name.c_str());
 
                 // create destination buffer, it's faster but we can only copy data into it
                 RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | type, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, m_object_name.c_str());
@@ -88,13 +88,13 @@ namespace Spartan
 
             // create
             VkBufferUsageFlags flags_usage     = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-            VkMemoryPropertyFlags flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // mappable and no need to flush
+            VkMemoryPropertyFlags flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // mappable and flushless
             RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, flags_usage, flags_memory, nullptr, m_object_name.c_str());
         }
 
         if (m_is_mappable)
         {
-            m_data = RHI_Device::MemoryGetMappedDataFromBuffer(m_rhi_resource);
+            m_data_gpu = RHI_Device::MemoryGetMappedDataFromBuffer(m_rhi_resource);
         }
 
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::Buffer, m_object_name);
@@ -102,7 +102,8 @@ namespace Spartan
 
     void RHI_Buffer::Update(void* data_cpu, const uint32_t size)
     {
-        SP_ASSERT_MSG(m_data != nullptr,                    "Invalid mapped data");
+        SP_ASSERT_MSG(data_cpu != nullptr,                  "Invalid cpu data");
+        SP_ASSERT_MSG(m_data_gpu != nullptr,                "Invalid gpu data");
         SP_ASSERT_MSG(m_offset + m_stride <= m_object_size, "Out of memory");
 
         // advance offset
@@ -117,6 +118,6 @@ namespace Spartan
 
         // persistently mapped so no need to map/unmap/flush
         uint32_t size_final = size != 0 ? size : m_stride;
-        memcpy(reinterpret_cast<std::byte*>(m_data) + m_offset, reinterpret_cast<std::byte*>(data_cpu), size);
+        memcpy(reinterpret_cast<std::byte*>(m_data_gpu) + m_offset, reinterpret_cast<std::byte*>(data_cpu), size);
     }
 }

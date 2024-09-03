@@ -45,8 +45,8 @@ namespace Spartan
 
     Font::Font(const string& file_path, const uint32_t font_size, const Color& color) : IResource(ResourceType::Font)
     {
-        m_vertex_buffer   = make_shared<RHI_Buffer>(RHI_Buffer_Type::Vertex, 0, 0, true, "font");
-        m_index_buffer    = make_shared<RHI_Buffer>(RHI_Buffer_Type::Index, 0, 0, true, "font");
+        m_vertex_buffer   = make_shared<RHI_Buffer>();
+        m_index_buffer    = make_shared<RHI_Buffer>();
         m_char_max_width  = 0;
         m_char_max_height = 0;
         m_color           = color;
@@ -197,8 +197,21 @@ namespace Spartan
         // create/grow buffers
         if (vertices.size() > m_vertex_buffer->GetElementCount())
         {
-            m_vertex_buffer->CreateDynamic<RHI_Vertex_PosTex>(static_cast<uint32_t>(vertices.size()));
-            m_index_buffer->CreateDynamic<uint32_t>(static_cast<uint32_t>(indices.size()));
+            m_vertex_buffer = make_shared<RHI_Buffer>(RHI_Buffer_Type::Vertex,
+                sizeof(vertices[0]),
+                static_cast<uint32_t>(vertices.size()),
+                static_cast<void*>(&vertices[0]),
+                true,
+                "font"
+            );
+
+            m_index_buffer = make_shared<RHI_Buffer>(RHI_Buffer_Type::Index,
+                sizeof(indices[0]),
+                static_cast<uint32_t>(indices.size()),
+                static_cast<void*>(&indices[0]),
+                true,
+                "font"
+            );
         }
 
         // copy the data over to the gpu

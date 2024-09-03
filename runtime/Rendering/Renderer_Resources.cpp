@@ -81,7 +81,7 @@ namespace Spartan
         {
             uint32_t times_used_in_frame = 12; // safe to tweak this, if it's not enough the engine will assert
             uint32_t stride              = static_cast<uint32_t>(sizeof(uint32_t));
-            buffer(Renderer_Buffer::Spd) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, element_count * times_used_in_frame, true, "spd_counter");
+            buffer(Renderer_Buffer::Spd) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, element_count * times_used_in_frame, nullptr, true, "spd_counter");
 
             // only needs to be set once, then after each use SPD resets it itself
             uint32_t counter_value = 0;
@@ -89,10 +89,10 @@ namespace Spartan
         }
 
         uint32_t stride = static_cast<uint32_t>(sizeof(Sb_Material)) * rhi_max_array_size;
-        buffer(Renderer_Buffer::Materials) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, 1, true, "materials");
+        buffer(Renderer_Buffer::Materials) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, 1, nullptr, true, "materials");
 
         stride = static_cast<uint32_t>(sizeof(Sb_Light)) * rhi_max_array_size_lights;
-        buffer(Renderer_Buffer::Lights) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, 1, true, "lights");
+        buffer(Renderer_Buffer::Lights) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, 1, nullptr, true, "lights");
     }
 
     void Renderer::CreateDepthStencilStates()
@@ -545,7 +545,7 @@ namespace Spartan
         create_mesh(MeshType::Grid);
 
         // this buffers holds all debug primitives that can be drawn
-        m_vertex_buffer_lines = make_shared<RHI_Buffer>(RHI_Buffer_Type::Vertex, 0, 0, true, "lines");
+        m_vertex_buffer_lines = make_shared<RHI_Buffer>();
     }
 
     void Renderer::CreateStandardTextures()

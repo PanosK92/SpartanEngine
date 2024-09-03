@@ -68,11 +68,8 @@ namespace ImGui::RHI
                 // allocate buffers
                 for (uint32_t i = 0; i < buffer_count; i++)
                 {
-                    vertex_buffers[i] = make_unique<RHI_Buffer>(RHI_Buffer_Type::Vertex, 0, 0, true, name);
-                    vertex_buffers[i]->CreateDynamic<ImDrawVert>(50000);
-
-                    index_buffers[i] = make_unique<RHI_Buffer>(RHI_Buffer_Type::Index, 0, 0, true, name);
-                    index_buffers[i]->CreateDynamic<ImDrawIdx>(100000);
+                    vertex_buffers[i] = make_unique<RHI_Buffer>(RHI_Buffer_Type::Vertex, sizeof(ImDrawVert), 50000, nullptr, true, name);
+                    index_buffers[i]  = make_unique<RHI_Buffer>(RHI_Buffer_Type::Index, sizeof(ImDrawIdx), 100000, nullptr, true, name);
                 }
             }
         };
@@ -199,8 +196,8 @@ namespace ImGui::RHI
         RHI_SwapChain* swapchain            = is_main_window ? Renderer::GetSwapChain() : window_data->swapchain.get();
         uint32_t buffer_index               = rhi_resources->buffer_index;
         rhi_resources->buffer_index         = (rhi_resources->buffer_index + 1) % buffer_count;
-        RHI_Buffer* vertex_buffer   = rhi_resources->vertex_buffers[buffer_index].get();
-        RHI_Buffer* index_buffer    = rhi_resources->index_buffers[buffer_index].get();
+        RHI_Buffer* vertex_buffer           = rhi_resources->vertex_buffers[buffer_index].get();
+        RHI_Buffer* index_buffer            = rhi_resources->index_buffers[buffer_index].get();
         RHI_Queue* queue                    = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
 
         // get command list
@@ -218,26 +215,26 @@ namespace ImGui::RHI
             // grow vertex buffer as needed
             if (vertex_buffer->GetElementCount() < static_cast<uint32_t>(draw_data->TotalVtxCount))
             {
-                const uint32_t vertex_count     = vertex_buffer->GetElementCount();
-                const uint32_t vertex_count_new = draw_data->TotalVtxCount + 15000;
-                vertex_buffer->CreateDynamic<ImDrawVert>(vertex_count_new);
+                const uint32_t count                        = vertex_buffer->GetElementCount();
+                const uint32_t count_new                    = draw_data->TotalVtxCount + 15000;
+                rhi_resources->vertex_buffers[buffer_index] = make_unique<RHI_Buffer>(RHI_Buffer_Type::Vertex, sizeof(ImDrawVert), count_new, nullptr, true, vertex_buffer->GetObjectName().c_str());
 
-                if (vertex_count != 0)
+                if (count != 0)
                 {
-                    SP_LOG_INFO("Vertex buffer has been re-allocated to fit %d vertices", vertex_count_new);
+                    SP_LOG_INFO("Vertex buffer has been re-allocated to fit %d vertices", count_new);
                 }
             }
 
             // grow index buffer as needed
             if (index_buffer->GetElementCount() < static_cast<uint32_t>(draw_data->TotalIdxCount))
             {
-                const uint32_t index_count     = index_buffer->GetElementCount();
-                const uint32_t index_count_new = draw_data->TotalIdxCount + 30000;
-                index_buffer->CreateDynamic<ImDrawIdx>(index_count_new);
+                const uint32_t count                       = index_buffer->GetElementCount();
+                const uint32_t count_new                   = draw_data->TotalIdxCount + 30000;
+                rhi_resources->index_buffers[buffer_index] = make_unique<RHI_Buffer>(RHI_Buffer_Type::Index, sizeof(ImDrawIdx), count_new, nullptr, true, index_buffer->GetObjectName().c_str());
 
-                if (index_count != 0)
+                if (count != 0)
                 {
-                    SP_LOG_INFO("Index buffer has been re-allocated to fit %d indices", index_count_new);
+                    SP_LOG_INFO("Index buffer has been re-allocated to fit %d indices", count_new);
                 }
             }
 
