@@ -297,7 +297,7 @@ namespace Spartan
             const uint32_t cascade_index_end       = cascade_offset + cascade_count - 1;
             const uint32_t cascade_resolution      = 64;
             const uint32_t sdf_atlas_size          = 512;
-            const float    sdf_ray_normal_offset   = 0.25f;     // distance from a surface along the normal vector to offset the ray origin
+            const float    sdf_ray_normal_offset   = 0.5f;      // distance from a surface along the normal vector to offset the ray origin - below 0.5 I see artifacts
             const float    sdf_ray_epsilon         = 0.5f;      // epsilon value for ray marching to be used with brixelizer for rays
             const uint32_t bricks_max              = 262144;
             const uint32_t bricks_per_update_max   = 16384;     // maximum number of bricks to be updated

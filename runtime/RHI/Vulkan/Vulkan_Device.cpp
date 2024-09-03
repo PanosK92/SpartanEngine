@@ -1839,7 +1839,7 @@ namespace Spartan
         {
             allocation_create_info.flags         |= VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
             allocation_create_info.flags         |= VMA_ALLOCATION_CREATE_MAPPED_BIT;     // mappable
-            allocation_create_info.requiredFlags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // no need to flush
+            allocation_create_info.requiredFlags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // flushless
         }
 
         // create the buffer
