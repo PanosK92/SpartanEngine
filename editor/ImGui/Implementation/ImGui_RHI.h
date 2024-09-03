@@ -31,15 +31,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Rendering/Renderer.h"
 #include "RHI/RHI_Device.h"
 #include "RHI/RHI_Shader.h"
-#include "RHI/RHI_Semaphore.h"
 #include "RHI/RHI_Texture2D.h"
 #include "RHI/RHI_SwapChain.h"
 #include "RHI/RHI_BlendState.h"
 #include "RHI/RHI_Queue.h"
 #include "RHI/RHI_CommandList.h"
-#include "RHI/RHI_GeometryBuffer.h"
+#include "RHI/RHI_Buffer.h"
 #include "RHI/RHI_PipelineState.h"
-#include "RHI/RHI_ConstantBuffer.h"
 #include "RHI/RHI_RasterizerState.h"
 #include "RHI/RHI_DepthStencilState.h"
 #include "Profiling/Profiler.h"
@@ -59,8 +57,8 @@ namespace ImGui::RHI
 
         struct ViewportRhiResources
         {
-            array<unique_ptr<RHI_GeometryBuffer>, buffer_count> index_buffers;
-            array<unique_ptr<RHI_GeometryBuffer>, buffer_count> vertex_buffers;
+            array<unique_ptr<RHI_Buffer>, buffer_count> index_buffers;
+            array<unique_ptr<RHI_Buffer>, buffer_count> vertex_buffers;
             Pcb_Pass push_constant_buffer_pass;
             uint32_t buffer_index = 0;
 
@@ -70,10 +68,10 @@ namespace ImGui::RHI
                 // allocate buffers
                 for (uint32_t i = 0; i < buffer_count; i++)
                 {
-                    vertex_buffers[i] = make_unique<RHI_GeometryBuffer>(RHI_Buffer_Type::Vertex, true, name);
+                    vertex_buffers[i] = make_unique<RHI_Buffer>(RHI_Buffer_Type::Vertex, 0, 0, true, name);
                     vertex_buffers[i]->CreateDynamic<ImDrawVert>(50000);
 
-                    index_buffers[i] = make_unique<RHI_GeometryBuffer>(RHI_Buffer_Type::Index, true, name);
+                    index_buffers[i] = make_unique<RHI_Buffer>(RHI_Buffer_Type::Index, 0, 0, true, name);
                     index_buffers[i]->CreateDynamic<ImDrawIdx>(100000);
                 }
             }
@@ -201,8 +199,8 @@ namespace ImGui::RHI
         RHI_SwapChain* swapchain            = is_main_window ? Renderer::GetSwapChain() : window_data->swapchain.get();
         uint32_t buffer_index               = rhi_resources->buffer_index;
         rhi_resources->buffer_index         = (rhi_resources->buffer_index + 1) % buffer_count;
-        RHI_GeometryBuffer* vertex_buffer   = rhi_resources->vertex_buffers[buffer_index].get();
-        RHI_GeometryBuffer* index_buffer    = rhi_resources->index_buffers[buffer_index].get();
+        RHI_Buffer* vertex_buffer   = rhi_resources->vertex_buffers[buffer_index].get();
+        RHI_Buffer* index_buffer    = rhi_resources->index_buffers[buffer_index].get();
         RHI_Queue* queue                    = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
 
         // get command list

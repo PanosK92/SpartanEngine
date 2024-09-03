@@ -201,7 +201,7 @@ namespace Spartan
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>> m_renderables;
         static Cb_Frame m_cb_frame_cpu;
         static Pcb_Pass m_pcb_pass_cpu;
-        static std::shared_ptr<RHI_GeometryBuffer> m_vertex_buffer_lines;
+        static std::shared_ptr<RHI_Buffer> m_vertex_buffer_lines;
         static std::vector<RHI_Vertex_PosCol> m_line_vertices;
         static std::vector<float> m_lines_duration;
         static uint32_t m_lines_index_depth_off;

@@ -102,8 +102,8 @@ namespace Spartan
 
         // properties
         void SetSize(uint32_t size);
-        RHI_GeometryBuffer* GetIndexBuffer() const  { return m_index_buffer.get(); }
-        RHI_GeometryBuffer* GetVertexBuffer() const { return m_vertex_buffer.get(); }
+        RHI_Buffer* GetIndexBuffer() const  { return m_index_buffer.get(); }
+        RHI_Buffer* GetVertexBuffer() const { return m_vertex_buffer.get(); }
         uint32_t GetSize() const                    { return m_font_size; }
         Font_Hinting_Type GetHinting() const        { return m_hinting; }
         auto GetForceAutohint() const               { return m_force_autohint; }
@@ -121,8 +121,8 @@ namespace Spartan
         uint32_t m_char_max_height;
         std::unordered_map<uint32_t, Glyph> m_glyphs;
         std::vector<TextData> m_text_data;
-        std::shared_ptr<RHI_GeometryBuffer> m_vertex_buffer;
-        std::shared_ptr<RHI_GeometryBuffer> m_index_buffer;
+        std::shared_ptr<RHI_Buffer> m_vertex_buffer;
+        std::shared_ptr<RHI_Buffer> m_index_buffer;
         std::shared_ptr<RHI_Texture> m_atlas;
         std::shared_ptr<RHI_Texture> m_atlas_outline;
     };

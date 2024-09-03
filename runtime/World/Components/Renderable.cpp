@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderable.h"
 #include "../Entity.h"
 #include "../Rendering/Renderer.h"
-#include "../RHI/RHI_GeometryBuffer.h"
+#include "../RHI/RHI_Buffer.h"
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../Rendering/GridPartitioning.h"
@@ -39,15 +39,15 @@ namespace Spartan
 {
     Renderable::Renderable(weak_ptr<Entity> entity) : Component(entity)
     {
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,           bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,                   Material*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flags,                      uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_offset,      uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_count,       uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_offset,     uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_count,      uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,                       Mesh*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box, BoundingBox);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,       bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,               Material*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flags,                  uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_offset,  uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_count,   uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_offset, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_count,  uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,                   Mesh*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,           BoundingBox);
     }
 
     Renderable::~Renderable()
@@ -270,7 +270,7 @@ namespace Spartan
         return m_material ? m_material->GetObjectName() : "";
     }
 
-    RHI_GeometryBuffer* Renderable::GetIndexBuffer() const
+    RHI_Buffer* Renderable::GetIndexBuffer() const
 	{
         if (!m_mesh)
             return nullptr;
@@ -278,7 +278,7 @@ namespace Spartan
         return m_mesh->GetIndexBuffer();
 	}
 
-    RHI_GeometryBuffer* Renderable::GetVertexBuffer() const
+    RHI_Buffer* Renderable::GetVertexBuffer() const
     {
         if (!m_mesh)
             return nullptr;
@@ -310,7 +310,7 @@ namespace Spartan
             instances_transposed.push_back(instance.Transposed());
         }
 
-        m_instance_buffer = make_shared<RHI_GeometryBuffer>(RHI_Buffer_Type::Instance, false, "instance_buffer");
+        m_instance_buffer = make_shared<RHI_Buffer>(RHI_Buffer_Type::Instance, 0, 0, false, "instance_buffer");
         m_instance_buffer->Create<Matrix>(instances_transposed);
 
         m_bounding_box_dirty = true;
