@@ -43,7 +43,7 @@ namespace Spartan
         RHI_Buffer() = default;
         RHI_Buffer(const RHI_Buffer_Type type, const size_t stride, const uint32_t element_count, const void* data, const bool mappable, const char* name)
         {
-            // do checks
+            // check everything
             SP_ASSERT(type != RHI_Buffer_Type::Max);
             SP_ASSERT(stride != 0);
             SP_ASSERT(element_count != 0);

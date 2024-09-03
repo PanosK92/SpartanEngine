@@ -53,7 +53,7 @@ namespace Spartan
 
             if (m_mappable)
             {
-                uint32_t flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // mappable and no need to flush
+                uint32_t flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // mappable and flushless
                 RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, type, flags_memory, nullptr, m_object_name.c_str());
             }
             else
@@ -116,6 +116,7 @@ namespace Spartan
 
     void RHI_Buffer::Update(void* data_cpu, const uint32_t size)
     {
+        SP_ASSERT_MSG(m_mappable,                           "Can't update unmappable buffer");
         SP_ASSERT_MSG(data_cpu != nullptr,                  "Invalid cpu data");
         SP_ASSERT_MSG(m_data_gpu != nullptr,                "Invalid gpu data");
         SP_ASSERT_MSG(m_offset + m_stride <= m_object_size, "Out of memory");
