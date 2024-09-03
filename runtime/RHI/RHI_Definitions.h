@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include <cstdint>
 #include <cassert>
-#include <string>
 #include <limits>
 #include "../Rendering/Color.h"
 //=============================
