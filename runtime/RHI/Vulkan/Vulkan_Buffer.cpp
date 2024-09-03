@@ -22,9 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "pch.h"
 #include "../RHI_Buffer.h"
-#include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
 #include "../RHI_CommandList.h"
+#include "../RHI_Implementation.h"
 //================================
 
 //= NAMESPACES =====
@@ -76,7 +76,7 @@ namespace Spartan
                 RHI_Device::MemoryBufferDestroy(staging_buffer);
             }
         }
-        else // storage
+        else if (m_type == RHI_Buffer_Type::Storage)
         {
             // calculate required alignment based on minimum device offset alignment
             size_t min_alignment = RHI_Device::PropertyGetMinStorageBufferOffsetAllignment();
@@ -91,6 +91,12 @@ namespace Spartan
             VkMemoryPropertyFlags flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // mappable and flushless
             RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, flags_usage, flags_memory, nullptr, m_object_name.c_str());
         }
+        else if (m_type == RHI_Buffer_Type::Constant)
+        {
+
+        }
+
+        SP_ASSERT_MSG(m_rhi_resource != nullptr, "Failed to create buffer");
 
         if (m_is_mappable)
         {

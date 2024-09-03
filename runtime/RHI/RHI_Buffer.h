@@ -33,6 +33,7 @@ namespace Spartan
         Index,
         Instance,
         Storage,
+        Constant,
         Max
     };
 
@@ -46,43 +47,47 @@ namespace Spartan
             SP_ASSERT(type != RHI_Buffer_Type::Max);
             SP_ASSERT(stride != 0);
             SP_ASSERT(element_count != 0);
-            SP_ASSERT_MSG(name != nullptr, "Name the buffer to aid the validation layer")
-            if (m_type == RHI_Buffer_Type::Storage)
+            SP_ASSERT_MSG(name != nullptr, "Name the buffer to aid the validation layer");
+            if (m_type == RHI_Buffer_Type::Storage || m_type == RHI_Buffer_Type::Constant)
             {
-                SP_ASSERT_MSG(m_is_mappable, "Storage buffers must be mappable")
+                SP_ASSERT_MSG(m_is_mappable, "Storage and constant buffers must be mappable");
             }
 
             // set properties
-            m_type          = type;
-            m_stride        = static_cast<uint32_t>(stride);
-            m_element_count = element_count;
-            m_object_size   = stride * element_count;
-            m_is_mappable   = is_mappable;
-            m_object_name   = name;
+            m_type             = type;
+            m_stride_unaligned = static_cast<uint32_t>(stride);
+            m_stride           = m_stride_unaligned;
+            m_element_count    = element_count;
+            m_object_size      = stride * element_count;
+            m_is_mappable      = is_mappable;
+            m_object_name      = name;
 
             // allocate the buffer
             RHI_CreateResource(data);
         }
         ~RHI_Buffer() { RHI_DestroyResource(); }
 
+        // storage and constant buffer updating
         void Update(void* data_cpu, const uint32_t size = 0);
         void ResetOffset() { m_offset = 0; first_update = true; }
 
         // propeties
-        void* GetMappedData() const      { return m_data_gpu; }
-        void* GetRhiResource() const     { return m_rhi_resource; }
-        uint32_t GetElementCount() const { return m_element_count; }
-        uint32_t GetStride() const       { return m_stride; }
-        uint32_t GetOffset()   const     { return m_offset; }
+        uint32_t GetStrideUnaligned() const { return m_stride_unaligned; }
+        uint32_t GetStride() const          { return m_stride; }
+        uint32_t GetElementCount() const    { return m_element_count; }
+        uint32_t GetOffset()   const        { return m_offset; }
+        void* GetMappedData() const         { return m_data_gpu; }
+        void* GetRhiResource() const        { return m_rhi_resource; }
 
     private:
-        RHI_Buffer_Type m_type   = RHI_Buffer_Type::Max;
-        uint32_t m_stride        = 0;
-        uint32_t m_element_count = 0;
-        uint32_t m_offset        = 0;
-        void* m_data_gpu         = nullptr;
-        bool m_is_mappable       = false;
-        bool first_update        = true;
+        RHI_Buffer_Type m_type      = RHI_Buffer_Type::Max;
+        uint32_t m_stride_unaligned = 0;
+        uint32_t m_stride           = 0;
+        uint32_t m_element_count    = 0;
+        uint32_t m_offset           = 0;
+        void* m_data_gpu            = nullptr;
+        bool m_is_mappable          = false;
+        bool first_update           = true;
 
         // rhi
         void RHI_DestroyResource();
