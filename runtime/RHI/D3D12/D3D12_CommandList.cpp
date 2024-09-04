@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_Sampler.h"
 #include "../RHI_Texture.h"
-#include "../RHI_ConstantBuffer.h"
 #include "../RHI_Buffer.h"
 #include "../RHI_SwapChain.h"
 #include "../RHI_PipelineState.h"
@@ -271,7 +270,7 @@ namespace Spartan
         Profiler::m_rhi_bindings_buffer_index++;
     }
     
-    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer) const
+    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, RHI_Buffer* constant_buffer) const
     {
         SP_ASSERT_MSG(false, "Function is not implemented");
     }
