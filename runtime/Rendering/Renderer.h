@@ -119,7 +119,6 @@ namespace Spartan
         static std::shared_ptr<RHI_Texture> GetRenderTarget(const Renderer_RenderTarget type);
         static std::shared_ptr<RHI_Shader> GetShader(const Renderer_Shader type);
         static std::shared_ptr<RHI_Sampler> GetSampler(const Renderer_Sampler type);
-        static std::shared_ptr<RHI_ConstantBuffer>& GetConstantBufferFrame();
         static std::shared_ptr<RHI_Buffer> GetBuffer(const Renderer_Buffer type);
         static std::shared_ptr<RHI_Texture> GetStandardTexture(const Renderer_StandardTexture type);
         static std::shared_ptr<Mesh> GetStandardMesh(const MeshType type);

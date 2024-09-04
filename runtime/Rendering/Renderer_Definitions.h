@@ -263,9 +263,10 @@ namespace Spartan
 
     enum class Renderer_Buffer
     {
-        Spd,
-        Materials,
-        Lights,
+        ConstantFrame,
+        StorageSpd,
+        StorageMaterials,
+        StorageLights,
         Max
     };
 

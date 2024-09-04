@@ -19,17 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES =====================
 #include "pch.h"
 #include "../RHI_Device.h"
 #include "../RHI_DescriptorSet.h"
 #include "../RHI_Implementation.h"
-#include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Sampler.h"
-#include "../RHI_ConstantBuffer.h"
 #include "../RHI_Buffer.h"
 #include "../Rendering/Renderer.h"
-//=====================================
+//================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -143,15 +141,7 @@ namespace Spartan
                     descriptor_count = descriptor.mip_range != 0 ? descriptor.mip_range : descriptor_count;
                 }
             }
-            else if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
-            {
-                info_buffers[index].buffer = static_cast<VkBuffer>(static_cast<RHI_ConstantBuffer*>(descriptor.data)->GetRhiResource());
-                info_buffers[index].offset = 0;
-                info_buffers[index].range  = descriptor.range;
-
-                descriptor_index_start = index;
-            }
-            else if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer)
+            else if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer || descriptor.type == RHI_Descriptor_Type::StructuredBuffer)
             {
                 info_buffers[index].buffer = static_cast<VkBuffer>(static_cast<RHI_Buffer*>(descriptor.data)->GetRhiResource());
                 info_buffers[index].offset = 0;
