@@ -31,7 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_SwapChain.h"
 #include "../RHI/RHI_Queue.h"
-#include "../RHI/RHI_ConstantBuffer.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_FidelityFX.h"
@@ -438,8 +437,7 @@ namespace Spartan
         m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Fog),                         1 << 2);
 
         // set
-        shared_ptr<RHI_ConstantBuffer>& buffer = GetConstantBufferFrame();
-        buffer->Update(&m_cb_frame_cpu);
+        GetBuffer(Renderer_Buffer::ConstantFrame)->Update(&m_cb_frame_cpu);
     }
 
     void Renderer::SetEntities(unordered_map<uint64_t, shared_ptr<Entity>>& entities)
@@ -558,8 +556,8 @@ namespace Spartan
             }
 
             // reset dynamic buffer offsets
-            GetBuffer(Renderer_Buffer::Spd)->ResetOffset();
-            GetConstantBufferFrame()->ResetOffset();
+            GetBuffer(Renderer_Buffer::StorageSpd)->ResetOffset();
+            GetBuffer(Renderer_Buffer::ConstantFrame)->ResetOffset();
 
             if (bindless_materials_dirty)
             {
@@ -943,9 +941,9 @@ namespace Spartan
         // gpu
         {
             // material properties
-            Renderer::GetBuffer(Renderer_Buffer::Materials)->ResetOffset();
+            Renderer::GetBuffer(Renderer_Buffer::StorageMaterials)->ResetOffset();
             uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Material)) * index;
-            Renderer::GetBuffer(Renderer_Buffer::Materials)->Update(&properties[0], update_size);
+            Renderer::GetBuffer(Renderer_Buffer::StorageMaterials)->Update(&properties[0], update_size);
 
             // material textures
             bindless_materials_dirty = true;
@@ -1014,7 +1012,7 @@ namespace Spartan
 
         // cpu to gpu
         uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Light)) * index;
-        RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::Lights).get();
+        RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::StorageLights).get();
         buffer->ResetOffset();
         buffer->Update(&properties[0], update_size);
     }

@@ -31,7 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_Sampler.h"
 #include "../RHI/RHI_BlendState.h"
-#include "../RHI/RHI_ConstantBuffer.h"
 #include "../RHI/RHI_RasterizerState.h"
 #include "../RHI/RHI_DepthStencilState.h"
 #include "../RHI/RHI_Buffer.h"
@@ -54,11 +53,10 @@ namespace Spartan
         array<shared_ptr<RHI_BlendState>, 3>                                                             blend_states;
 
         // renderer resources
-        array<shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTarget::max)>    render_targets;
-        array<shared_ptr<RHI_Shader>,  static_cast<uint32_t>(Renderer_Shader::max)>          shaders;
-        array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>         samplers;
-        shared_ptr<RHI_ConstantBuffer>                                                       constant_buffer_frame;
-        array<shared_ptr<RHI_Buffer>, static_cast<uint32_t>(Renderer_Buffer::Max)> buffers;
+        array<shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTarget::max)> render_targets;
+        array<shared_ptr<RHI_Shader>,  static_cast<uint32_t>(Renderer_Shader::max)>       shaders;
+        array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>      samplers;
+        array<shared_ptr<RHI_Buffer>, static_cast<uint32_t>(Renderer_Buffer::Max)>        buffers;
 
         // asset resources
         array<shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_StandardTexture::Max)> standard_textures;
@@ -70,29 +68,27 @@ namespace Spartan
     void Renderer::CreateBuffers()
     {
         uint32_t element_count = resources_frame_lifetime;
+        #define buffer(x) buffers[static_cast<uint8_t>(x)]
 
         // frame constant buffer - updates once per frame
-        constant_buffer_frame = make_shared<RHI_ConstantBuffer>(string("frame"));
-        constant_buffer_frame->Create<Cb_Frame>(element_count);
-
-        #define buffer(x) buffers[static_cast<uint8_t>(x)]
+        buffer(Renderer_Buffer::ConstantFrame) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Constant, sizeof(Cb_Frame), element_count, nullptr, true, "frame");
 
         // single dispatch downsample buffer
         {
             uint32_t times_used_in_frame = 12; // safe to tweak this, if it's not enough the engine will assert
             uint32_t stride              = static_cast<uint32_t>(sizeof(uint32_t));
-            buffer(Renderer_Buffer::Spd) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, element_count * times_used_in_frame, nullptr, true, "spd_counter");
+            buffer(Renderer_Buffer::StorageSpd) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, element_count * times_used_in_frame, nullptr, true, "spd_counter");
 
             // only needs to be set once, then after each use SPD resets it itself
             uint32_t counter_value = 0;
-            buffer(Renderer_Buffer::Spd)->Update(&counter_value);
+            buffer(Renderer_Buffer::StorageSpd)->Update(&counter_value);
         }
 
         uint32_t stride = static_cast<uint32_t>(sizeof(Sb_Material)) * rhi_max_array_size;
-        buffer(Renderer_Buffer::Materials) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, 1, nullptr, true, "materials");
+        buffer(Renderer_Buffer::StorageMaterials) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, 1, nullptr, true, "materials");
 
         stride = static_cast<uint32_t>(sizeof(Sb_Light)) * rhi_max_array_size_lights;
-        buffer(Renderer_Buffer::Lights) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, 1, nullptr, true, "lights");
+        buffer(Renderer_Buffer::StorageLights) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, 1, nullptr, true, "lights");
     }
 
     void Renderer::CreateDepthStencilStates()
@@ -628,9 +624,8 @@ namespace Spartan
         standard_textures.fill(nullptr);
         standard_meshes.fill(nullptr);
         buffers.fill(nullptr);
-        standard_font = nullptr;
+        standard_font     = nullptr;
         standard_material = nullptr;
-        constant_buffer_frame = nullptr;
     }
 
     array<shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTarget::max)>& Renderer::GetRenderTargets()
@@ -676,11 +671,6 @@ namespace Spartan
     shared_ptr<RHI_Sampler> Renderer::GetSampler(const Renderer_Sampler type)
     {
         return samplers[static_cast<uint8_t>(type)];
-    }
-
-    shared_ptr<RHI_ConstantBuffer>& Renderer::GetConstantBufferFrame()
-    {
-        return constant_buffer_frame;
     }
 
     shared_ptr<RHI_Buffer> Renderer::GetBuffer(const Renderer_Buffer type)

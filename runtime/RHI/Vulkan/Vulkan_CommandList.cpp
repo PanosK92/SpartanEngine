@@ -26,8 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Buffer.h"
-#include "../RHI_ConstantBuffer.h"
-#include "../RHI_Buffer.h"
 #include "../RHI_Sampler.h"
 #include "../RHI_DescriptorSet.h"
 #include "../RHI_DescriptorSetLayout.h"
@@ -1371,7 +1369,7 @@ namespace Spartan
         );
     }
 
-    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer) const
+    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, RHI_Buffer* constant_buffer) const
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 

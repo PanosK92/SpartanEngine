@@ -21,8 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======================
 #include "pch.h"
-#include "RHI_DescriptorSetLayout.h"
-#include "RHI_ConstantBuffer.h"
+#include "RHI_DescriptorSetLayout.h""
 #include "RHI_Buffer.h"
 #include "RHI_Texture.h"
 #include "RHI_DescriptorSet.h"
@@ -49,7 +48,7 @@ namespace Spartan
         }
     }
 
-    void RHI_DescriptorSetLayout::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer)
+    void RHI_DescriptorSetLayout::SetConstantBuffer(const uint32_t slot, RHI_Buffer* constant_buffer)
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
@@ -59,8 +58,8 @@ namespace Spartan
                 descriptor.range          = constant_buffer->GetStride();        // needed for vkUpdateDescriptorSets()
                 descriptor.dynamic_offset = constant_buffer->GetOffset();        // needed for vkCmdBindDescriptorSets
 
-                SP_ASSERT_MSG(constant_buffer->GetStructSize() == descriptor.struct_size, "Size mismatch between CPU and GPU side constant buffer");
-                SP_ASSERT_MSG(descriptor.dynamic_offset % descriptor.range == 0,          "Incorrect dynamic offset");
+                SP_ASSERT_MSG(constant_buffer->GetStrideUnaligned() == descriptor.struct_size, "Size mismatch between CPU and GPU side constant buffer");
+                SP_ASSERT_MSG(descriptor.dynamic_offset % descriptor.range == 0,               "Incorrect dynamic offset");
 
                 return;
             }

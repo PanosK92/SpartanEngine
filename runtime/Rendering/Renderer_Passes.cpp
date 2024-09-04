@@ -398,15 +398,10 @@ namespace Spartan
 
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
     {
-        // these will only bind if needed
-
-        // constant buffers
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetConstantBufferFrame());
-
-        // structure buffers
-        cmd_list->SetBuffer(Renderer_BindingsUav::sb_materials, GetBuffer(Renderer_Buffer::Materials));
-        cmd_list->SetBuffer(Renderer_BindingsUav::sb_lights,    GetBuffer(Renderer_Buffer::Lights));
-        cmd_list->SetBuffer(Renderer_BindingsUav::sb_spd,       GetBuffer(Renderer_Buffer::Spd));
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetBuffer(Renderer_Buffer::ConstantFrame));
+        cmd_list->SetBuffer(Renderer_BindingsUav::sb_materials, GetBuffer(Renderer_Buffer::StorageMaterials));
+        cmd_list->SetBuffer(Renderer_BindingsUav::sb_lights,    GetBuffer(Renderer_Buffer::StorageLights));
+        cmd_list->SetBuffer(Renderer_BindingsUav::sb_spd,       GetBuffer(Renderer_Buffer::StorageSpd));
     }
 
     void Renderer::ProduceFrame(RHI_CommandList* cmd_list_graphics, RHI_CommandList* cmd_list_compute)

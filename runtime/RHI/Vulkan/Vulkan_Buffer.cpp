@@ -87,30 +87,31 @@ namespace Spartan
             }
 
             // create
-            VkBufferUsageFlags flags_usage     = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-            VkMemoryPropertyFlags flags_memory = 0;
+            VkMemoryPropertyFlags flags_memory = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
             if (m_mappable)
             {
                 flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // mappable and flushless
             }
-            else
-            {
-                flags_memory = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-            }
+            VkBufferUsageFlags flags_usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
             RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, flags_usage, flags_memory, nullptr, m_object_name.c_str());
         }
         else if (m_type == RHI_Buffer_Type::Constant)
         {
+            // calculate required alignment based on minimum device offset alignment
+            size_t min_alignment = RHI_Device::PropertyGetMinUniformBufferOffsetAllignment();
+            if (min_alignment > 0 && min_alignment != m_stride)
+            {
+                m_stride      = static_cast<uint32_t>(static_cast<uint64_t>((m_stride + min_alignment - 1) & ~(min_alignment - 1)));
+                m_object_size = m_stride * m_element_count;
+            }
 
+            // create
+            VkMemoryPropertyFlags flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // mappable and flushless
+            RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags_memory, nullptr, m_object_name.c_str());
         }
 
         SP_ASSERT_MSG(m_rhi_resource != nullptr, "Failed to create buffer");
-
-        if (m_mappable)
-        {
-            m_data_gpu = RHI_Device::MemoryGetMappedDataFromBuffer(m_rhi_resource);
-        }
-
+        m_data_gpu = m_mappable ? RHI_Device::MemoryGetMappedDataFromBuffer(m_rhi_resource) : nullptr;
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::Buffer, m_object_name);
     }
 
@@ -131,8 +132,11 @@ namespace Spartan
             m_offset += m_stride;
         }
 
-        // persistently mapped so no need to map/unmap/flush
-        uint32_t size_final = size != 0 ? size : m_stride;
-        memcpy(reinterpret_cast<std::byte*>(m_data_gpu) + m_offset, reinterpret_cast<std::byte*>(data_cpu), size);
-    }
+        // persistently mapped so a memcpy is enough
+        memcpy(
+            reinterpret_cast<std::byte*>(m_data_gpu) + m_offset, // destination
+            reinterpret_cast<std::byte*>(data_cpu),              // source
+            size != 0 ? size : m_stride                          // size
+        );
+    } 
 }

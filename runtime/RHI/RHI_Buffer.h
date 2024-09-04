@@ -43,7 +43,7 @@ namespace Spartan
         RHI_Buffer() = default;
         RHI_Buffer(const RHI_Buffer_Type type, const size_t stride, const uint32_t element_count, const void* data, const bool mappable, const char* name)
         {
-            // check everything
+            // check
             SP_ASSERT(type != RHI_Buffer_Type::Max);
             SP_ASSERT(stride != 0);
             SP_ASSERT(element_count != 0);
@@ -53,7 +53,7 @@ namespace Spartan
                 SP_ASSERT_MSG(m_mappable, "Storage and constant buffers must be mappable");
             }
 
-            // set properties
+            // set
             m_type             = type;
             m_stride_unaligned = static_cast<uint32_t>(stride);
             m_stride           = m_stride_unaligned;
@@ -62,7 +62,7 @@ namespace Spartan
             m_mappable         = mappable;
             m_object_name      = name;
 
-            // allocate the buffer
+            // allocate
             RHI_CreateResource(data);
         }
         ~RHI_Buffer() { RHI_DestroyResource(); }
