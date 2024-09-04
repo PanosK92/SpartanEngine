@@ -50,7 +50,7 @@ namespace Spartan
             SP_ASSERT_MSG(name != nullptr, "Name the buffer to aid the validation layer");
             if (m_type == RHI_Buffer_Type::Constant)
             {
-                SP_ASSERT_MSG(m_mappable, "Storage and constant buffers must be mappable");
+                SP_ASSERT_MSG(mappable, "Constant buffers must be mappable");
             }
 
             // set
