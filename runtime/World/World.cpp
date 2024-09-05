@@ -98,7 +98,6 @@ namespace Spartan
             {
                 m_default_light_directional = World::CreateEntity();
                 m_default_light_directional->SetObjectName("light_directional");
-
                 m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(35.0f, 90.0f, 0.0f));
 
                 shared_ptr<Light> light = m_default_light_directional->AddComponent<Light>();
@@ -123,8 +122,7 @@ namespace Spartan
             // floor
             if (load_floor)
             {
-                // the scale of the entity and the UV tiling is adjusted so that it each square represents 1 unit
-                // the default cube has 1 unit dimensions, this what can be used as a reference
+                // the scale of the entity and the UV tiling is adjusted so that it each square represents 1 unit (cube size)
 
                 shared_ptr<Entity> entity = World::CreateEntity();
                 entity->SetObjectName("floor");
