@@ -133,14 +133,14 @@ namespace Spartan
         void Rotate(const Math::Quaternion& delta);
         //=========================================
 
-        //= DIRECTIONS ==========================
-        const Math::Vector3& GetUp() const;
-        const Math::Vector3& GetDown() const;
-        const Math::Vector3& GetForward() const;
-        const Math::Vector3& GetBackward() const;
-        const Math::Vector3& GetRight() const;
-        const Math::Vector3& GetLeft() const;
-        //=======================================
+        //= DIRECTIONS ================================================
+        const Math::Vector3& GetUp() const       { return m_up; }
+        const Math::Vector3& GetDown() const     { return m_down; }
+        const Math::Vector3& GetForward() const  { return m_forward; }
+        const Math::Vector3& GetBackward() const { return m_backward; }
+        const Math::Vector3& GetRight() const    { return m_right; }
+        const Math::Vector3& GetLeft() const     { return m_left; }
+        //=============================================================
 
         //= HIERARCHY ===================================================================================
         void SetParent(std::weak_ptr<Entity> new_parent);

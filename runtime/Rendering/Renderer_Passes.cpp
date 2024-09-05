@@ -48,7 +48,6 @@ namespace Spartan
     {
         bool light_integration_brdf_speculat_lut_completed = false;
         int64_t mesh_index_transparent                     = 0;
-        int64_t mesh_index_non_instanced_opaque            = 0;
         int64_t mesh_index_non_instanced_transparent       = 0;
 
         // The code below is a work in progress, that's why its here
@@ -154,20 +153,10 @@ namespace Spartan
                 auto non_instanced_opaque_start = find_if(renderables.begin(), renderables.end(), [&](const shared_ptr<Entity>& entity)
                 {
                     shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                    bool is_transparent = renderable->GetMaterial()->IsTransparent();
-                    bool is_instanced = renderable->HasInstancing();
+                    bool is_transparent               = renderable->GetMaterial()->IsTransparent();
+                    bool is_instanced                 = renderable->HasInstancing();
                     return !is_transparent && !is_instanced;
                 });
-
-                // check if any non-instanced opaque object was found
-                if (non_instanced_opaque_start == renderables.end())
-                {
-                    mesh_index_non_instanced_opaque = -1;
-                }
-                else
-                {
-                    mesh_index_non_instanced_opaque = distance(renderables.begin(), non_instanced_opaque_start);
-                }
 
                 // find non-instanced index for transparent objects
                 auto non_instanced_transparent_start = find_if(transparent_start, renderables.end(), [&](const shared_ptr<Entity>& entity)

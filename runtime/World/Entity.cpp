@@ -366,12 +366,17 @@ namespace Spartan
         }
 
         // update directions
-        m_forward  = GetRotation() * Vector3::Forward;
-        m_backward = -m_forward;
-        m_up       = GetRotation() * Vector3::Up;
-        m_down     = -m_up;
-        m_right    = GetRotation() * Vector3::Right;
-        m_left     = -m_right;
+        {
+            // z
+            m_forward  = GetRotation() * Vector3::Forward;
+            m_backward = -m_forward;
+            // y
+            m_up       = GetRotation() * Vector3::Up;
+            m_down     = -m_up;
+            // x
+            m_right    = GetRotation() * Vector3::Right;
+            m_left     = -m_right;
+        }
 
         m_time_since_last_transform_sec = 0.0f;
     }
@@ -455,36 +460,6 @@ namespace Spartan
         {
             SetRotationLocal(delta * m_rotation_local * GetRotation().Inverse() * delta * GetRotation());
         }
-    }
-
-    const Vector3& Entity::GetUp() const
-    {
-        return m_up;
-    }
-    
-    const Vector3& Entity::GetDown() const
-    {
-        return m_down;
-    }
-    
-    const Vector3& Entity::GetForward() const
-    {
-        return m_forward;
-    }
-    
-    const Vector3& Entity::GetBackward() const
-    {
-        return m_backward;
-    }
-    
-    const Vector3& Entity::GetRight() const
-    {
-        return m_right;
-    }
-    
-    const Vector3& Entity::GetLeft() const
-    {
-        return m_left;
     }
 
     Entity* Entity::GetChildByIndex(const uint32_t index)
