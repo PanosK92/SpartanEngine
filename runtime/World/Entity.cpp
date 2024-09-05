@@ -50,7 +50,6 @@ namespace Spartan
             clone->SetObjectId(SpartanObject::GenerateObjectId());
             clone->SetObjectName(entity->GetObjectName());
             clone->SetActive(entity->IsActive());
-            clone->SetHierarchyVisibility(entity->IsVisibleInHierarchy());
             clone->SetPosition(entity->GetPositionLocal());
             clone->SetRotation(entity->GetRotationLocal());
             clone->SetScale(entity->GetScaleLocal());
@@ -89,9 +88,8 @@ namespace Spartan
 
     Entity::Entity()
     {
-        m_object_name          = "Entity";
-        m_is_active            = true;
-        m_hierarchy_visibility = true;
+        m_object_name = "Entity";
+        m_is_active   = true;
 
         m_components.fill(nullptr);
     }
@@ -154,7 +152,6 @@ namespace Spartan
         // BASIC DATA
         {
             stream->Write(m_is_active);
-            stream->Write(m_hierarchy_visibility);
             stream->Write(m_object_id);
             stream->Write(m_object_name);
             stream->Write(m_position_local);
@@ -216,7 +213,6 @@ namespace Spartan
         // BASIC DATA
         {
             stream->Read(&m_is_active);
-            stream->Read(&m_hierarchy_visibility);
             stream->Read(&m_object_id);
             stream->Read(&m_object_name);
             stream->Read(&m_position_local);

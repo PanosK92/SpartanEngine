@@ -58,10 +58,6 @@ namespace Spartan
         bool IsActive() const;
         void SetActive(const bool active) { m_is_active = active; }
 
-        // visible
-        bool IsVisibleInHierarchy() const                            { return m_hierarchy_visibility; }
-        void SetHierarchyVisibility(const bool hierarchy_visibility) { m_hierarchy_visibility = hierarchy_visibility; }
-
         // adds a component of type T
         template <class T>
         std::shared_ptr<T> AddComponent()
@@ -172,7 +168,6 @@ namespace Spartan
 
     private:
         std::atomic<bool> m_is_active = true;
-        bool m_hierarchy_visibility   = true;
         std::array<std::shared_ptr<Component>, 13> m_components;
 
         void UpdateTransform();
