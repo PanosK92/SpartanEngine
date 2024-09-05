@@ -199,19 +199,23 @@ void WorldViewer::TreeAddEntity(shared_ptr<Spartan::Entity> entity)
     node_flags                               |= has_children ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf; 
 
     // flag - is it selected?
-    if (shared_ptr<Spartan::Camera> camera = Spartan::Renderer::GetCamera())
-    {
-        if (shared_ptr<Spartan::Entity> selected_entity = camera->GetSelectedEntity())
+    bool is_in_game_mode = Spartan::Engine::IsFlagSet(Spartan::EngineMode::Game);
+    if (!is_in_game_mode)
+    { 
+        if (shared_ptr<Spartan::Camera> camera = Spartan::Renderer::GetCamera())
         {
-            node_flags |= selected_entity->GetObjectId() == entity->GetObjectId() ? ImGuiTreeNodeFlags_Selected : node_flags;
-
-            if (m_expand_to_selection)
+            if (shared_ptr<Spartan::Entity> selected_entity = camera->GetSelectedEntity())
             {
-                // if the selected entity is a descendant of the this entity, start expanding (this can happen if an entity is selected in the viewport)
-                if (selected_entity->IsDescendantOf(entity.get()))
+                node_flags |= selected_entity->GetObjectId() == entity->GetObjectId() ? ImGuiTreeNodeFlags_Selected : node_flags;
+
+                if (m_expand_to_selection)
                 {
-                    ImGui::SetNextItemOpen(true);
-                    m_expanded_to_selection = true;
+                    // if the selected entity is a descendant of the this entity, start expanding (this can happen if an entity is selected in the viewport)
+                    if (selected_entity->IsDescendantOf(entity.get()))
+                    {
+                        ImGui::SetNextItemOpen(true);
+                        m_expanded_to_selection = true;
+                    }
                 }
             }
         }
