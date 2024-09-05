@@ -34,7 +34,7 @@ namespace Spartan
     class SP_CLASS AudioSource : public Component
     {
     public:
-        AudioSource(std::weak_ptr<Entity> entity);
+        AudioSource(Entity* entity);
         ~AudioSource();
 
         // IComponent

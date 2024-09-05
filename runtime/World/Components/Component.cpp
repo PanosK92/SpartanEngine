@@ -37,9 +37,9 @@ using namespace std;
 
 namespace Spartan
 {
-    Component::Component(weak_ptr<Entity> entity)
+    Component::Component(Entity* entity)
     {
-        m_entity_ptr = entity.lock().get();
+        m_entity_ptr = entity;
         m_enabled    = true;
     }
 

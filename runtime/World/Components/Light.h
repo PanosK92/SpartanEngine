@@ -72,7 +72,7 @@ namespace Spartan
     class SP_CLASS Light : public Component
     {
     public:
-        Light(std::weak_ptr<Entity> entity);
+        Light(Entity* entity);
         ~Light() = default;
 
         //= COMPONENT ================================

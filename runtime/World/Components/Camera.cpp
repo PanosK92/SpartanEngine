@@ -40,7 +40,7 @@ using namespace std;
 
 namespace Spartan
 {
-    Camera::Camera(weak_ptr<Entity> entity) : Component(entity)
+    Camera::Camera(Entity* entity) : Component(entity)
     {
         m_entity_ptr->SetPosition(Vector3(0.0f, 3.0f, -5.0f));
     }

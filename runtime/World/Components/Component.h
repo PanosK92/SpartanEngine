@@ -59,7 +59,7 @@ namespace Spartan
     class SP_CLASS Component : public SpartanObject
     {
     public:
-        Component(std::weak_ptr<Entity> entity);
+        Component(Entity* entity);
         virtual ~Component() = default;
 
         // runs when the component gets added

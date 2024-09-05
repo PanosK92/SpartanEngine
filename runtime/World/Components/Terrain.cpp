@@ -522,7 +522,7 @@ namespace Spartan
         }
     }
 
-    Terrain::Terrain(weak_ptr<Entity> entity) : Component(entity)
+    Terrain::Terrain(Entity* entity) : Component(entity)
     {
         m_material = make_shared<Material>();
         m_material->SetObjectName("terrain");

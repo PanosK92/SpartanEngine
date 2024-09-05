@@ -21,18 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =========================
+//= INCLUDES ======================
 #include "Component.h"
 #include <memory>
-#include "../../RHI/RHI_Definitions.h"
 #include "../../RHI/RHI_Viewport.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Ray.h"
 #include "../../Math/Frustum.h"
 #include "../../Math/Vector2.h"
 #include "../../Math/Rectangle.h"
-#include "../../Rendering/Color.h"
-//====================================
+//=================================
 
 namespace Spartan
 {
@@ -56,7 +54,7 @@ namespace Spartan
     class SP_CLASS Camera : public Component
     {
     public:
-        Camera(std::weak_ptr<Entity> entity);
+        Camera(Entity* entity);
         ~Camera() = default;
 
         // component

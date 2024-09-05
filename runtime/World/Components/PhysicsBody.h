@@ -63,7 +63,7 @@ namespace Spartan
     class SP_CLASS PhysicsBody : public Component
     {
     public:
-        PhysicsBody(std::weak_ptr<Entity> entity);
+        PhysicsBody(Entity* entity);
         ~PhysicsBody();
 
         // component

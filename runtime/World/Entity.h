@@ -36,7 +36,7 @@ namespace Spartan
     class FileStream;
     class Renderable;
     
-    class SP_CLASS Entity : public SpartanObject, public std::enable_shared_from_this<Entity>
+    class SP_CLASS Entity : public SpartanObject
     {
     public:
         Entity();
@@ -73,7 +73,7 @@ namespace Spartan
                 return component;
 
             // create a new component
-            std::shared_ptr<T> component = std::make_shared<T>(this->shared_from_this());
+            std::shared_ptr<T> component = std::make_shared<T>(this);
 
             // save new component
             m_components[static_cast<uint32_t>(type)] = std::static_pointer_cast<Component>(component);

@@ -100,7 +100,7 @@ namespace Spartan
         }
     }
 
-    Light::Light(weak_ptr<Entity> entity) : Component(entity)
+    Light::Light(Entity* entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flags, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_range, float);

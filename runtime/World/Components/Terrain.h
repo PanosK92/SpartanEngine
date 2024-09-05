@@ -46,7 +46,7 @@ namespace Spartan
     class SP_CLASS Terrain : public Component
     {
     public:
-        Terrain(std::weak_ptr<Entity> entity);
+        Terrain(Entity* entity);
         ~Terrain();
 
         //= Component ================================
