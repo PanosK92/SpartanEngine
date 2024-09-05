@@ -25,10 +25,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <atomic>
 #include <array>
 #include <mutex>
+#include "World.h"
 #include "Components/Component.h"
 #include "../Math/Quaternion.h"
 #include "../Math/Matrix.h"
-#include "World.h"
 //===============================
 
 namespace Spartan
