@@ -166,7 +166,7 @@ namespace Spartan
     void PhysicsBody::OnTick()
     {
         // when the rigid body is inactive or we are in editor mode, allow the user to move/rotate it
-        if (!Engine::IsFlagSet(EngineMode::IsPlaying))
+        if (!Engine::IsFlagSet(EngineMode::Playing))
         {
             if (GetPosition() != GetEntity()->GetPosition())
             {

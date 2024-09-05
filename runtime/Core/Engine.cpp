@@ -67,7 +67,7 @@ namespace Spartan
         arguments = args;
 
         SetFlag(EngineMode::EditorVisible, true);
-        SetFlag(EngineMode::IsPlaying,   true);
+        SetFlag(EngineMode::Playing,   true);
 
         Stopwatch timer_initialize;
         {

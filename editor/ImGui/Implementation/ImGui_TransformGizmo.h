@@ -65,7 +65,7 @@ namespace ImGui::TransformGizmo
 
     static void tick()
     {
-        if (Spartan::Engine::IsFlagSet(Spartan::EngineMode::IsPlaying))
+        if (Spartan::Engine::IsFlagSet(Spartan::EngineMode::Playing))
             return;
 
         std::shared_ptr<Spartan::Camera> camera = Spartan::Renderer::GetCamera();
