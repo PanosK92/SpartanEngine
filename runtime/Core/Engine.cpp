@@ -66,9 +66,8 @@ namespace Spartan
     {
         arguments = args;
 
-        SetFlag(EngineMode::Editor, true);
-        SetFlag(EngineMode::Physics, true);
-        SetFlag(EngineMode::Game, true);
+        SetFlag(EngineMode::EditorVisible, true);
+        SetFlag(EngineMode::IsPlaying,   true);
 
         Stopwatch timer_initialize;
         {
@@ -90,7 +89,7 @@ namespace Spartan
             Settings::Initialize();
         }
 
-        SP_LOG_INFO("Initialization took %.1f ms", timer_initialize.GetElapsedTimeMs());
+        SP_LOG_INFO("Initialization took %.1f sec", timer_initialize.GetElapsedTimeSec());
         SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnFirstFrameCompleted, SP_EVENT_HANDLER_EXPRESSION_STATIC(write_ci_test_file(0);));
     }
 

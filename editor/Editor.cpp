@@ -232,7 +232,7 @@ void Editor::Tick()
     // main loop
     while (!Spartan::Window::WantsToClose())
     {
-        bool render_editor = Spartan::Engine::IsFlagSet(Spartan::EngineMode::Editor);
+        bool render_editor = Spartan::Engine::IsFlagSet(Spartan::EngineMode::EditorVisible);
 
         // logic
         {

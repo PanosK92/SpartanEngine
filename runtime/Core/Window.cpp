@@ -271,7 +271,7 @@ namespace Spartan
 
         if (was_windowed)
         {
-            Engine::SetFlag(EngineMode::Editor, false);
+            Engine::SetFlag(EngineMode::EditorVisible, false);
             SP_FIRE_EVENT(EventType::WindowFullScreenToggled);
         }
     }
@@ -288,7 +288,7 @@ namespace Spartan
 
         if (was_fullscreen)
         {
-            Engine::SetFlag(EngineMode::Editor, true);
+            Engine::SetFlag(EngineMode::EditorVisible, true);
             SP_FIRE_EVENT(EventType::WindowFullScreenToggled);
         }
     }
