@@ -133,14 +133,14 @@ namespace Spartan
         void Rotate(const Math::Quaternion& delta);
         //=========================================
 
-        //= DIRECTIONS ===================
-        Math::Vector3 GetUp() const;
-        Math::Vector3 GetDown() const;
-        Math::Vector3 GetForward() const;
-        Math::Vector3 GetBackward() const;
-        Math::Vector3 GetRight() const;
-        Math::Vector3 GetLeft() const;
-        //================================
+        //= DIRECTIONS ==========================
+        const Math::Vector3& GetUp() const;
+        const Math::Vector3& GetDown() const;
+        const Math::Vector3& GetForward() const;
+        const Math::Vector3& GetBackward() const;
+        const Math::Vector3& GetRight() const;
+        const Math::Vector3& GetLeft() const;
+        //=======================================
 
         //= HIERARCHY ===================================================================================
         void SetParent(std::weak_ptr<Entity> new_parent);
@@ -181,6 +181,14 @@ namespace Spartan
         Math::Matrix m_matrix          = Math::Matrix::Identity;
         Math::Matrix m_matrix_previous = Math::Matrix::Identity;
         Math::Matrix m_matrix_local    = Math::Matrix::Identity;
+
+        // computed during UpdateTransform() and cached for performance
+        Math::Vector3 m_forward  = Math::Vector3::Zero;
+        Math::Vector3 m_backward = Math::Vector3::Zero;
+        Math::Vector3 m_up       = Math::Vector3::Zero;
+        Math::Vector3 m_down     = Math::Vector3::Zero;
+        Math::Vector3 m_right    = Math::Vector3::Zero;
+        Math::Vector3 m_left     = Math::Vector3::Zero;
 
         std::weak_ptr<Entity> m_parent;  // the parent of this entity
         std::vector<Entity*> m_children; // the children of this entity

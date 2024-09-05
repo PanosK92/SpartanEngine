@@ -160,7 +160,7 @@ namespace Spartan
         if (ProgressTracker::IsLoading())
             return;
 
-        if (Engine::IsFlagSet(EngineMode::IsPlaying))
+        if (Engine::IsFlagSet(EngineMode::Playing))
         {
             // Picking
             {

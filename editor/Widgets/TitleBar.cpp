@@ -433,8 +433,8 @@ namespace
 
                toolbar_button(
                    IconType::Button_Play, "Play",
-                   []() { return Spartan::Engine::IsFlagSet(Spartan::EngineMode::IsPlaying);  },
-                   []() { return Spartan::Engine::ToggleFlag(Spartan::EngineMode::IsPlaying); },
+                   []() { return Spartan::Engine::IsFlagSet(Spartan::EngineMode::Playing);  },
+                   []() { return Spartan::Engine::ToggleFlag(Spartan::EngineMode::Playing); },
                    cursor_pos_x
                );
 
@@ -537,7 +537,7 @@ TitleBar::TitleBar(Editor* _editor) : Widget(_editor)
     buttons_toolbar::widgets[IconType::Component_Options]      = editor->GetWidget<RenderOptions>();
     buttons_toolbar::widgets[IconType::Directory_File_Texture] = editor->GetWidget<TextureViewer>();
 
-    Spartan::Engine::SetFlag(Spartan::EngineMode::IsPlaying, false);
+    Spartan::Engine::SetFlag(Spartan::EngineMode::Playing, false);
 }
 
 void TitleBar::OnTick()

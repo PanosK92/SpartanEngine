@@ -247,7 +247,7 @@ namespace Spartan
     void Renderer::AddLinesToBeRendered()
     {
         // only render debug lines when not in game mode
-        if (Engine::IsFlagSet(EngineMode::IsPlaying))
+        if (Engine::IsFlagSet(EngineMode::Playing))
             return;
 
         if (GetOption<bool>(Renderer_Option::PickingRay))

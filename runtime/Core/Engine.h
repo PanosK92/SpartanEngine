@@ -30,7 +30,7 @@ namespace Spartan
     enum class EngineMode : uint32_t
     {
         EditorVisible = 1 << 0,
-        IsPlaying     = 1 << 1
+        Playing       = 1 << 1
     };
 
     class SP_CLASS Engine
