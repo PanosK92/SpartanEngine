@@ -132,7 +132,7 @@ void WorldViewer::TreeShow()
 {
     OnTreeBegin();
 
-    bool is_in_game_mode = Spartan::Engine::IsFlagSet(Spartan::EngineMode::Game);
+    bool is_in_game_mode = Spartan::Engine::IsFlagSet(Spartan::EngineMode::IsPlaying);
     ImGui::BeginDisabled(is_in_game_mode);
     {
         if (ImGui::TreeNodeEx("Root", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth))
@@ -199,7 +199,7 @@ void WorldViewer::TreeAddEntity(shared_ptr<Spartan::Entity> entity)
     node_flags                               |= has_children ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf; 
 
     // flag - is it selected?
-    bool is_in_game_mode = Spartan::Engine::IsFlagSet(Spartan::EngineMode::Game);
+    bool is_in_game_mode = Spartan::Engine::IsFlagSet(Spartan::EngineMode::IsPlaying);
     if (!is_in_game_mode)
     { 
         if (shared_ptr<Spartan::Camera> camera = Spartan::Renderer::GetCamera())
@@ -317,7 +317,7 @@ void WorldViewer::EntityHandleDragDrop(shared_ptr<Spartan::Entity> entity_ptr) c
 void WorldViewer::SetSelectedEntity(const std::shared_ptr<Spartan::Entity> entity)
 {
     // while in game mode the tree is not interactive, so don't allow selection
-    bool is_in_game_mode = Spartan::Engine::IsFlagSet(Spartan::EngineMode::Game);
+    bool is_in_game_mode = Spartan::Engine::IsFlagSet(Spartan::EngineMode::IsPlaying);
     if (is_in_game_mode)
         return;
 

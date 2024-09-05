@@ -269,7 +269,7 @@ namespace Spartan
         ProduceFrame(cmd_list_graphics, cmd_list_compute);
 
         // blit to back buffer when not in editor mode
-        bool is_standalone = !Engine::IsFlagSet(EngineMode::Editor);
+        bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
         if (is_standalone)
         {
             BlitToBackBuffer(cmd_list_graphics, GetRenderTarget(Renderer_RenderTarget::frame_output).get());

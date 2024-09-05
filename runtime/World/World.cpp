@@ -169,9 +169,9 @@ namespace Spartan
         // tick entities
         {
             // detect game toggling
-            const bool started =  Engine::IsFlagSet(EngineMode::Game) &&  was_in_editor_mode;
-            const bool stopped = !Engine::IsFlagSet(EngineMode::Game) && !was_in_editor_mode;
-            was_in_editor_mode = !Engine::IsFlagSet(EngineMode::Game);
+            const bool started =  Engine::IsFlagSet(EngineMode::IsPlaying) &&  was_in_editor_mode;
+            const bool stopped = !Engine::IsFlagSet(EngineMode::IsPlaying) && !was_in_editor_mode;
+            was_in_editor_mode = !Engine::IsFlagSet(EngineMode::IsPlaying);
 
             // start
             if (started)
@@ -346,7 +346,7 @@ namespace Spartan
             ProgressTracker::SetLoadingStateGlobal(false);
 
             // simulate physics and play music
-            Engine::SetFlag(EngineMode::Game, true);
+            Engine::SetFlag(EngineMode::IsPlaying, true);
         });
     }
 

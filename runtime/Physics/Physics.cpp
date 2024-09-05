@@ -155,17 +155,12 @@ namespace Spartan
     void Physics::Tick()
     {
         SP_PROFILE_CPU();
-
-        bool is_in_editor_mode = !Engine::IsFlagSet(EngineMode::Game);
-        bool physics_enabled   = Engine::IsFlagSet(EngineMode::Physics);
-        bool debug_draw        = Renderer::GetOption<bool>(Renderer_Option::Physics);
-        bool simulate_physics  = physics_enabled && !is_in_editor_mode;
-
+;
         // don't simulate or debug draw when loading a world (a different thread could be creating physics objects)
         if (ProgressTracker::IsLoading())
             return;
 
-        if (simulate_physics)
+        if (Engine::IsFlagSet(EngineMode::IsPlaying))
         {
             // Picking
             {
@@ -192,7 +187,7 @@ namespace Spartan
             }
         }
 
-        if (debug_draw)
+        if (Renderer::GetOption<bool>(Renderer_Option::Physics))
         {
             world->debugDrawWorld();
         }

@@ -29,9 +29,8 @@ namespace Spartan
 {
     enum class EngineMode : uint32_t
     {
-        Editor  = 1 << 0,
-        Physics = 1 << 1,
-        Game    = 1 << 2
+        EditorVisible = 1 << 0,
+        IsPlaying     = 1 << 1
     };
 
     class SP_CLASS Engine
