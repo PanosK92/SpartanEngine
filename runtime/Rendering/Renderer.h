@@ -24,11 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====================
 #include "Renderer_Definitions.h"
 #include "../RHI/RHI_Texture.h"
-#include "../Math/Rectangle.h"
 #include "../Math/Vector3.h"
-#include "../Math/Vector4.h"
 #include "../Math/Plane.h"
-#include "Event.h"
 #include "Mesh.h"
 #include "Renderer_Buffers.h"
 #include "Font/Font.h"
@@ -127,7 +124,6 @@ namespace Spartan
         //======================================================================================================================
 
     private:
-        // constant and push constant buffers
         static void UpdateConstantBufferFrame(RHI_CommandList* cmd_list);
 
         // resource creation
