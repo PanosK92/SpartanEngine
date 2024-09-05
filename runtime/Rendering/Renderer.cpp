@@ -384,7 +384,7 @@ namespace Spartan
 
             if (dirty_orthographic_projection)
             { 
-                // near clip does not affect depth accuracy in orthographic projection, so set it to 0 to avoid problems which can result an infinitely small [3,2] (NaN) after the multiplication below.
+                // near clip does not affect depth accuracy in orthographic projection, so set it to 0 to avoid problems which can result an infinitely small [3,2] (NaN) after the multiplication below
                 Matrix projection_ortho              = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, far_plane);
                 m_cb_frame_cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vector3(0, 0, -near_plane), Vector3::Forward, Vector3::Up) * projection_ortho;
                 dirty_orthographic_projection        = false;
@@ -461,7 +461,6 @@ namespace Spartan
                     if (material->IsVisible())
                     {
                         // a mesh can be uninitialized if it's currently loading in a different thread
-                        // but we don't keep anything uninitialized in what the renderer is processing
                         if (renderable->GetVertexBuffer() && renderable->GetIndexBuffer())
                         { 
                             m_renderables[Renderer_Entity::Mesh].emplace_back(entity);

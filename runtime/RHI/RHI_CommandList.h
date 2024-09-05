@@ -105,6 +105,10 @@ namespace Spartan
         // index buffer
         void SetBufferIndex(const RHI_Buffer* buffer);
 
+        // buffer
+        void SetBuffer(const uint32_t slot, RHI_Buffer* buffer) const;
+        void SetBuffer(const Renderer_BindingsUav slot, const std::shared_ptr<RHI_Buffer>& buffer) const { SetBuffer(static_cast<uint32_t>(slot), buffer.get()); }
+
         // constant buffer
         void SetConstantBuffer(const uint32_t slot, RHI_Buffer* constant_buffer) const;
         void SetConstantBuffer(const Renderer_BindingsCb slot, const std::shared_ptr<RHI_Buffer>& constant_buffer) const { SetConstantBuffer(static_cast<uint32_t>(slot), constant_buffer.get()); }
@@ -124,10 +128,6 @@ namespace Spartan
         void SetTexture(const Renderer_BindingsUav slot, const std::shared_ptr<RHI_Texture>& texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0) { SetTexture(static_cast<uint32_t>(slot), texture.get(), mip_index, mip_range, true); }
         void SetTexture(const Renderer_BindingsSrv slot,                       RHI_Texture* texture,  const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0) { SetTexture(static_cast<uint32_t>(slot), texture,       mip_index, mip_range, false); }
         void SetTexture(const Renderer_BindingsSrv slot, const std::shared_ptr<RHI_Texture>& texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0) { SetTexture(static_cast<uint32_t>(slot), texture.get(), mip_index, mip_range, false); }
-
-        // buffer
-        void SetBuffer(const uint32_t slot, RHI_Buffer* buffer) const;
-        void SetBuffer(const Renderer_BindingsUav slot, const std::shared_ptr<RHI_Buffer>& buffer) const { SetBuffer(static_cast<uint32_t>(slot), buffer.get()); }
 
         // markers
         void BeginMarker(const char* name);

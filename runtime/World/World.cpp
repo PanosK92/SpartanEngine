@@ -56,18 +56,12 @@ namespace Spartan
 
         // default worlds resources
         shared_ptr<Entity> m_default_terrain             = nullptr;
-        shared_ptr<Entity> m_default_cube                = nullptr;
         shared_ptr<Entity> m_default_physics_body_camera = nullptr;
         shared_ptr<Entity> m_default_environment         = nullptr;
-        shared_ptr<Entity> m_default_model_floor         = nullptr;
         shared_ptr<Entity> m_default_light_directional   = nullptr;
         shared_ptr<Mesh> m_default_model                 = nullptr;
-        shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
         shared_ptr<Mesh> m_default_model_car             = nullptr;
         shared_ptr<Mesh> m_default_model_wheel           = nullptr;
-        shared_ptr<Mesh> m_default_model_helmet_flight   = nullptr;
-        shared_ptr<Mesh> m_default_model_helmet_damaged  = nullptr;
-        shared_ptr<Mesh> m_default_model_material_ball   = nullptr;
 
         void create_default_world_common(
             const Math::Vector3& camera_position = Vector3(0.0f, 2.0f, -10.0f),
@@ -134,20 +128,20 @@ namespace Spartan
                 // the scale of the entity and the UV tiling is adjusted so that it each square represents 1 unit
                 // the default cube has 1 unit dimensions, this what can be used as a reference
 
-                m_default_model_floor = World::CreateEntity();
-                m_default_model_floor->SetObjectName("floor");
-                m_default_model_floor->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise it a bit to avoid z-fighting with world grid
-                m_default_model_floor->SetScale(Vector3(1000.0f, 1.0f, 1000.0f));
+                shared_ptr<Entity> entity = World::CreateEntity();
+                entity->SetObjectName("floor");
+                entity->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise it a bit to avoid z-fighting with world grid
+                entity->SetScale(Vector3(1000.0f, 1.0f, 1000.0f));
 
                 // add a renderable component
-                shared_ptr<Renderable> renderable = m_default_model_floor->AddComponent<Renderable>();
+                shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>();
                 renderable->SetGeometry(Renderer::GetStandardMesh(MeshType::Quad).get());
                 renderable->SetDefaultMaterial();
                 renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingX, 170.0f);
                 renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingY, 170.0f);
 
                 // add physics components
-                shared_ptr<PhysicsBody> rigid_body = m_default_model_floor->AddComponent<PhysicsBody>();
+                shared_ptr<PhysicsBody> rigid_body = entity->AddComponent<PhysicsBody>();
                 rigid_body->SetMass(0.0f); // static
                 rigid_body->SetShapeType(PhysicsShape::StaticPlane);
             }
@@ -164,18 +158,12 @@ namespace Spartan
         Clear();
 
         m_default_terrain               = nullptr;
-        m_default_cube                  = nullptr;
         m_default_physics_body_camera   = nullptr;
         m_default_environment           = nullptr;
-        m_default_model_floor           = nullptr;
         m_default_light_directional     = nullptr;
         m_default_model                 = nullptr;
-        m_default_model_sponza_curtains = nullptr;
         m_default_model_car             = nullptr;
         m_default_model_wheel           = nullptr;
-        m_default_model_helmet_flight   = nullptr;
-        m_default_model_helmet_damaged  = nullptr;
-        m_default_model_material_ball   = nullptr;
     }
 
     void World::Tick()
@@ -492,9 +480,9 @@ namespace Spartan
         // cube
         {
             // create entity
-            m_default_cube = World::CreateEntity();
-            m_default_cube->SetObjectName("cube");
-            m_default_cube->SetPosition(Vector3(-2.0f, y, 0.0f));
+            shared_ptr<Entity> entity = World::CreateEntity();
+            entity->SetObjectName("cube");
+            entity->SetPosition(Vector3(-2.0f, y, 0.0f));
 
             // create material
             shared_ptr<Material> material = make_shared<Material>();
@@ -510,29 +498,29 @@ namespace Spartan
             material->SetResourceFilePath(file_path);
 
             // add a renderable component
-            shared_ptr<Renderable> renderable = m_default_cube->AddComponent<Renderable>();
+            shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>();
             renderable->SetGeometry(Renderer::GetStandardMesh(MeshType::Cube).get());
             renderable->SetMaterial(material);
 
             // add physics components
-            shared_ptr<PhysicsBody> rigid_body = m_default_cube->AddComponent<PhysicsBody>();
+            shared_ptr<PhysicsBody> rigid_body = entity->AddComponent<PhysicsBody>();
             rigid_body->SetMass(15.0f);
             rigid_body->SetShapeType(PhysicsShape::Box);
         }
 
         // flight helmet
-        if (m_default_model_helmet_flight = ResourceCache::Load<Mesh>("project\\models\\flight_helmet\\FlightHelmet.gltf"))
+        if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\flight_helmet\\FlightHelmet.gltf"))
         {
-            shared_ptr<Entity> entity = m_default_model_helmet_flight->GetRootEntity().lock();
+            shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
             entity->SetObjectName("flight_helmet");
             entity->SetPosition(Vector3(0.0f, 0.1f, 0.0f));
             entity->SetScale(Vector3(1.7f, 1.7f, 1.7f));
         }
 
         // damaged helmet
-        if (m_default_model_helmet_damaged = ResourceCache::Load<Mesh>("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
+        if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
         {
-            shared_ptr<Entity> entity = m_default_model_helmet_damaged->GetRootEntity().lock();
+            shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
             entity->SetObjectName("damaged_helmet");
             entity->SetPosition(Vector3(2.0f, y, 0.0f));
             entity->SetScale(Vector3(0.3f, 0.3f, 0.3f));
@@ -542,9 +530,9 @@ namespace Spartan
         }
 
         // material ball
-        if (m_default_model_material_ball = ResourceCache::Load<Mesh>("project\\models\\material_ball_in_3d-coat\\scene.gltf"))
+        if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\material_ball_in_3d-coat\\scene.gltf"))
         {
-            shared_ptr<Entity> entity = m_default_model_material_ball->GetRootEntity().lock();
+            shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
             entity->SetObjectName("material_ball");
             entity->SetPosition(Vector3(4.0f, y, 0.0f));
             entity->SetRotation(Quaternion::Identity);
@@ -1049,9 +1037,9 @@ namespace Spartan
         float scale = 2.0f; // I actually walked in sponza, it's that big
 
         // 3d model - Sponza
-        if (m_default_model = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
+        if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
         {
-            shared_ptr<Entity> entity = m_default_model->GetRootEntity().lock();
+            shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
             entity->SetObjectName("sponza");
             entity->SetPosition(Vector3(0.0f, 1.5f, 0.0f));
             entity->SetScale(scale);
@@ -1083,9 +1071,9 @@ namespace Spartan
         }
 
         // 3d model - sponza curtains
-        if (m_default_model_sponza_curtains = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
+        if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
         {
-            shared_ptr<Entity> entity = m_default_model_sponza_curtains->GetRootEntity().lock();
+            shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
             entity->SetObjectName("sponza_curtains");
             entity->SetPosition(Vector3(0.0f, 0.15f, 0.0f));
             entity->SetScale(scale);
