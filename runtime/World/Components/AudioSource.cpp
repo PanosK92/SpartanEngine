@@ -34,7 +34,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    AudioSource::AudioSource(weak_ptr<Entity> entity) : Component(entity)
+    AudioSource::AudioSource(Entity* entity) : Component(entity)
     {
 
     }

@@ -59,9 +59,7 @@ namespace Spartan
         shared_ptr<Entity> m_default_physics_body_camera = nullptr;
         shared_ptr<Entity> m_default_environment         = nullptr;
         shared_ptr<Entity> m_default_light_directional   = nullptr;
-        shared_ptr<Mesh> m_default_model                 = nullptr;
         shared_ptr<Mesh> m_default_model_car             = nullptr;
-        shared_ptr<Mesh> m_default_model_wheel           = nullptr;
 
         void create_default_world_common(
             const Math::Vector3& camera_position = Vector3(0.0f, 2.0f, -10.0f),
@@ -157,13 +155,11 @@ namespace Spartan
     {
         Clear();
 
-        m_default_terrain               = nullptr;
-        m_default_physics_body_camera   = nullptr;
-        m_default_environment           = nullptr;
-        m_default_light_directional     = nullptr;
-        m_default_model                 = nullptr;
-        m_default_model_car             = nullptr;
-        m_default_model_wheel           = nullptr;
+        m_default_terrain             = nullptr;
+        m_default_physics_body_camera = nullptr;
+        m_default_environment         = nullptr;
+        m_default_light_directional   = nullptr;
+        m_default_model_car           = nullptr;
     }
 
     void World::Tick()
@@ -677,9 +673,9 @@ namespace Spartan
                     }
 
                     // load our own wheel
-                    if (m_default_model_wheel = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend"))
+                    if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend"))
                     {
-                        shared_ptr<Entity> entity_wheel_root = m_default_model_wheel->GetRootEntity().lock();
+                        shared_ptr<Entity> entity_wheel_root = mesh->GetRootEntity().lock();
                         entity_wheel_root->SetScale(Vector3(wheel_scale));
                     
                         if (Entity* entity_wheel = entity_wheel_root->GetDescendantByName("wheel Low"))
@@ -1107,9 +1103,9 @@ namespace Spartan
         Vector3 camera_rotation = Vector3(0.0f, 90.0f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\doom_e1m1.mp3", false, false);
 
-        if (m_default_model = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
+        if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
         {
-            shared_ptr<Entity> entity = m_default_model->GetRootEntity().lock();
+            shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
             entity->SetObjectName("doom_e1m1");
             entity->SetPosition(Vector3(0.0f, 14.0f, -355.5300f));
             entity->SetScale(Vector3(0.1f, 0.1f, 0.1f));
@@ -1135,9 +1131,9 @@ namespace Spartan
         Vector3 camera_rotation = Vector3(0.0f, -180.0f, 0.0f);
         create_default_world_common(camera_position, camera_rotation, LightIntensity::bulb_150_watt, "project\\music\\jake_chudnow_shona.mp3", false);
 
-        if (m_default_model = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroExterior.fbx"))
+        if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroExterior.fbx"))
         {
-            shared_ptr<Entity> entity = m_default_model->GetRootEntity().lock();
+            shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
             entity->SetObjectName("bistro_exterior");
             entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
             entity->SetScale(Vector3(1.0f, 1.0f, 1.0f));
@@ -1162,7 +1158,7 @@ namespace Spartan
             }
         }
 
-        if (m_default_model = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroInterior.fbx"))
+        if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroInterior.fbx"))
         {
             shared_ptr<Entity> light = World::CreateEntity();
             light->SetObjectName("light_point");
@@ -1173,7 +1169,7 @@ namespace Spartan
             light->GetComponent<Light>()->SetLightType(LightType::Point);
             light->GetComponent<Light>()->SetRange(20.0f);
 
-            shared_ptr<Entity> entity = m_default_model->GetRootEntity().lock();
+            shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
             entity->SetObjectName("bistro_interior");
             entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
             entity->SetScale(Vector3(1.6f, 1.6f, 1.6f)); // interior has a different scale (for some reason)
@@ -1207,9 +1203,9 @@ namespace Spartan
         Vector3 camera_rotation = Vector3(11.3991f, 30.6026f, 0.0f);
         create_default_world_common(camera_position, camera_rotation);
 
-        if (m_default_model = ResourceCache::Load<Mesh>("project\\models\\vokselia_spawn\\vokselia_spawn.obj"))
+        if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\vokselia_spawn\\vokselia_spawn.obj"))
         {
-            shared_ptr<Entity> entity = m_default_model->GetRootEntity().lock();
+            shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
             entity->SetObjectName("minecraft");
             entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
             entity->SetScale(Vector3(100.0f, 100.0f, 100.0f));
@@ -1235,9 +1231,9 @@ namespace Spartan
         Vector3 camera_rotation = Vector3(3.9999f, -12.1947f, 0.0f);
         create_default_world_common(camera_position, camera_rotation);
 
-        if (m_default_model = ResourceCache::Load<Mesh>("project\\models\\living_room\\living_room.obj"))
+        if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\living_room\\living_room.obj"))
         {
-            shared_ptr<Entity> entity = m_default_model->GetRootEntity().lock();
+            shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
             entity->SetObjectName("living_Room");
             entity->SetPosition(Vector3(0.0f, 0.03f, 0.0f));
             entity->SetScale(Vector3(2.5f, 2.5f, 2.5f));

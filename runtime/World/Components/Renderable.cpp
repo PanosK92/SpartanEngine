@@ -37,7 +37,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Renderable::Renderable(weak_ptr<Entity> entity) : Component(entity)
+    Renderable::Renderable(Entity* entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,       bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,               Material*);

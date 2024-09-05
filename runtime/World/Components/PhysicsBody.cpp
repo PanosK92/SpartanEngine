@@ -96,7 +96,7 @@ namespace Spartan
         PhysicsBody* m_rigidBody;
     };
 
-    PhysicsBody::PhysicsBody(weak_ptr<Entity> entity) : Component(entity)
+    PhysicsBody::PhysicsBody(Entity* entity) : Component(entity)
     {
         m_in_world         = false;
         m_mass             = default_mass;

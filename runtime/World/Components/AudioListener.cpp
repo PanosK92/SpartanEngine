@@ -31,7 +31,7 @@ using namespace std;
 
 namespace Spartan
 {
-    AudioListener::AudioListener(weak_ptr<Entity> entity) : Component(entity)
+    AudioListener::AudioListener(Entity* entity) : Component(entity)
     {
 
     }

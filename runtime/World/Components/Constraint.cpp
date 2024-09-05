@@ -43,7 +43,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Constraint::Constraint(weak_ptr<Entity> entity) : Component(entity)
+    Constraint::Constraint(Entity* entity) : Component(entity)
     {
         m_constraint              = nullptr;
         m_enabledEffective        = true;
