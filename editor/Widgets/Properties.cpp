@@ -213,7 +213,7 @@ void Properties::ShowTransform(shared_ptr<Entity> entity) const
         ImGui::SameLine();
         ImGuiSp::vector3("Rotation (degrees)", rotation);
         ImGui::SameLine();
-        ImGuiSp::vector3("Scale (m)", scale);
+        ImGuiSp::vector3("Scale", scale);
 
         //= MAP ========================================================
         entity->SetPositionLocal(position);
