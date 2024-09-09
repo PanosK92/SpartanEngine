@@ -34,7 +34,6 @@ struct Surface
     float  alpha;
     float  roughness;
     float  roughness_alpha;
-    float  roughness_alpha_squared;
     float  metallic;
     float  clearcoat;
     float  clearcoat_roughness;
@@ -110,8 +109,7 @@ struct Surface
         diffuse_energy        = 1.0f;
 
         // roughness is authored as perceptual roughness, as is convention
-        roughness_alpha         = roughness * roughness;
-        roughness_alpha_squared = roughness_alpha * roughness_alpha;
+        roughness_alpha       = roughness * roughness;
 
         // ssao
         occlusion = 1.0f;

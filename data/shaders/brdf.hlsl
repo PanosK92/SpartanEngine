@@ -85,6 +85,15 @@ float V_Neubelt(float n_dot_v, float n_dot_l)
     return saturate_16(1.0 / (4.0 * (n_dot_l + n_dot_v - n_dot_l * n_dot_v)));
 }
 
+float D_GGX_Alpha(float roughess)
+{
+    // call of duty: WWII GGX gloss parameterization method
+    // https://www.activision.com/cdn/research/siggraph_2018_opt.pdf
+    // provides a wider roughness range
+    float gloss = 1.0f - roughess;
+    return sqrt(2.0) / (1.0 + 218.0 * gloss);
+}
+
 // GGX / Trowbridge-Reitz
 // [Walter et al. 2007, "Microfacet models for refraction through rough surfaces"]
 float D_GGX(float n_dot_h, float roughness_alpha_squared)
@@ -153,8 +162,9 @@ float3 BRDF_Diffuse(Surface surface, AngularInfo angular_info)
 
 float3 BRDF_Specular_Isotropic(inout Surface surface, AngularInfo angular_info)
 {
+     // compute ggx_alpha using the call of duty method
     float  V = V_SmithJointApprox(surface.roughness_alpha, angular_info.n_dot_v, angular_info.n_dot_l);
-    float  D = D_GGX(angular_info.n_dot_h, surface.roughness_alpha_squared);
+    float  D = D_GGX(angular_info.n_dot_h, D_GGX_Alpha(surface.roughness));
     float3 F = F_Schlick(surface.F0, angular_info.v_dot_h);
 
     surface.diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
