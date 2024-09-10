@@ -257,8 +257,8 @@ namespace
                     ImGui::BeginGroup();
                     {
                         ImGui::Text("Title explanations");
-                        ImGui::Text("Spartan: Made code contributions that fixed or added significant new functionality.");
-                        ImGui::Text("Hoplite: Provided valuable insights, suggestions, or minor code contributions that improved the project.");
+                        ImGui::Text("Spartan: Made code contributions that fixed/added functionality. Typically industry people.");
+                        ImGui::Text("Hoplite: Provided insights, suggestions, or other minor contributions that improved the project. Typically younger people.");
                     }
                     ImGui::EndGroup();
                 }

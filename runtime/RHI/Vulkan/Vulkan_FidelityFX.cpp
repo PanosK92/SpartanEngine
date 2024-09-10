@@ -564,6 +564,11 @@ namespace Spartan
         {
             SP_ASSERT(ffxBrixelizerContextDestroy(&brixelizer_gi::context) == FFX_OK);
             SP_ASSERT(ffxBrixelizerGIContextDestroy(&brixelizer_gi::context_gi) == FFX_OK);
+            brixelizer_gi::static_instances.clear();
+            brixelizer_gi::instance_buffers.clear();
+            brixelizer_gi::entity_map.clear();
+            brixelizer_gi::instances_to_create.clear();
+            brixelizer_gi::instances_to_delete.clear();
             brixelizer_gi::context_created = false;
         }
 
@@ -584,7 +589,7 @@ namespace Spartan
 
     void RHI_FidelityFX::Shutdown()
     {
-        cubemap_empty                                = nullptr;
+        cubemap_empty                          = nullptr;
         brixelizer_gi::texture_sdf_atlas       = nullptr;
         brixelizer_gi::buffer_brick_aabbs      = nullptr;
         brixelizer_gi::buffer_scratch          = nullptr;
