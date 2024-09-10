@@ -85,13 +85,15 @@ float V_Neubelt(float n_dot_v, float n_dot_l)
     return saturate_16(1.0 / (4.0 * (n_dot_l + n_dot_v - n_dot_l * n_dot_v)));
 }
 
-float D_GGX_Alpha(float roughess)
+float D_GGX_Alpha(float roughness)
 {
     // call of duty: WWII GGX gloss parameterization method
     // https://www.activision.com/cdn/research/siggraph_2018_opt.pdf
     // provides a wider roughness range
-    float gloss = 1.0f - roughess;
-    return sqrt(2.0) / (1.0 + 218.0 * gloss);
+    
+    float gloss       = 1.0 - roughness;
+    float denominator = (1.0 + pow(2, 18 * gloss));
+    return sqrt(2.0 / denominator);
 }
 
 // GGX / Trowbridge-Reitz
