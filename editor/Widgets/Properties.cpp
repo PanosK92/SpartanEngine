@@ -151,33 +151,39 @@ Properties::Properties(Editor* editor) : Widget(editor)
 
 void Properties::OnTickVisible()
 {
-    ImGui::PushItemWidth(item_width);
-
-    if (!m_inspected_entity.expired())
+    bool is_in_game_mode = Spartan::Engine::IsFlagSet(Spartan::EngineMode::Playing);
+    ImGui::BeginDisabled(is_in_game_mode);
     {
-        shared_ptr<Entity> entity_ptr     = m_inspected_entity.lock();
-        shared_ptr<Renderable> renderable = entity_ptr->GetComponent<Renderable>();
-        Material* material                = renderable ? renderable->GetMaterial() : nullptr;
+        ImGui::PushItemWidth(item_width);
+        {
+            if (!m_inspected_entity.expired())
+            {
+                shared_ptr<Entity> entity_ptr     = m_inspected_entity.lock();
+                shared_ptr<Renderable> renderable = entity_ptr->GetComponent<Renderable>();
+                Material* material                = renderable ? renderable->GetMaterial() : nullptr;
 
-        ShowTransform(entity_ptr);
-        ShowLight(entity_ptr->GetComponent<Light>());
-        ShowCamera(entity_ptr->GetComponent<Camera>());
-        ShowTerrain(entity_ptr->GetComponent<Terrain>());
-        ShowAudioSource(entity_ptr->GetComponent<AudioSource>());
-        ShowAudioListener(entity_ptr->GetComponent<AudioListener>());
-        ShowRenderable(renderable);
-        ShowMaterial(material);
-        ShowPhysicsBody(entity_ptr->GetComponent<PhysicsBody>());
-        ShowConstraint(entity_ptr->GetComponent<Constraint>());
+                ShowTransform(entity_ptr);
+                ShowLight(entity_ptr->GetComponent<Light>());
+                ShowCamera(entity_ptr->GetComponent<Camera>());
+                ShowTerrain(entity_ptr->GetComponent<Terrain>());
+                ShowAudioSource(entity_ptr->GetComponent<AudioSource>());
+                ShowAudioListener(entity_ptr->GetComponent<AudioListener>());
+                ShowRenderable(renderable);
+                ShowMaterial(material);
+                ShowPhysicsBody(entity_ptr->GetComponent<PhysicsBody>());
+                ShowConstraint(entity_ptr->GetComponent<Constraint>());
 
-        ShowAddComponentButton();
+                ShowAddComponentButton();
+            }
+            else if (!m_inspected_material.expired())
+            {
+                ShowMaterial(m_inspected_material.lock().get());
+            }
+
+            ImGui::PopItemWidth();
+        }
     }
-    else if (!m_inspected_material.expired())
-    {
-        ShowMaterial(m_inspected_material.lock().get());
-    }
-
-    ImGui::PopItemWidth();
+    ImGui::EndDisabled();
 }
 
 void Properties::Inspect(const shared_ptr<Entity> entity)
