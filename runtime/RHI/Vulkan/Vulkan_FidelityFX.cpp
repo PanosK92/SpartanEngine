@@ -807,7 +807,7 @@ namespace Spartan
 
         // upscale
         {
-            // set resources
+            // set resources (todo: add transparency and composition mask)
             fsr3::description_dispatch.commandList   = to_ffx_cmd_list(cmd_list);
             fsr3::description_dispatch.color         = to_ffx_resource(tex_color,    L"fsr3_color");
             fsr3::description_dispatch.depth         = to_ffx_resource(tex_depth,    L"fsr3_depth");
