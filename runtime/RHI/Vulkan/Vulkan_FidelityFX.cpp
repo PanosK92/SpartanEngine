@@ -796,9 +796,9 @@ namespace Spartan
             // configure
             fsr3::description_reactive_mask.renderSize.width  = static_cast<uint32_t>(tex_velocity->GetWidth() * resolution_scale);
             fsr3::description_reactive_mask.renderSize.height = static_cast<uint32_t>(tex_velocity->GetHeight() * resolution_scale);
-            fsr3::description_reactive_mask.scale             = 1.0f; // global multiplier for reactivity, higher values increase overall reactivity
-            fsr3::description_reactive_mask.cutoffThreshold   = 0.8f; // difference threshold, lower values make more pixels reactive
+            fsr3::description_reactive_mask.scale             = 1.0f; // global multiplier for reactivity
             fsr3::description_reactive_mask.binaryValue       = 1.0f; // value assigned to reactive pixels in the mask (typically 1.0)
+            fsr3::description_reactive_mask.cutoffThreshold   = 0.8f; // difference threshold, lower values make more pixels reactive
             fsr3::description_reactive_mask.flags             = 0;
 
             // dispatch
@@ -818,7 +818,7 @@ namespace Spartan
             // configure
             fsr3::description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth());
             fsr3::description_dispatch.motionVectorScale.y    = -static_cast<float>(tex_velocity->GetHeight());
-            fsr3::description_dispatch.enableSharpening       = sharpness != 0.0f;
+            fsr3::description_dispatch.enableSharpening       = sharpness != 0.0f;           // sdk issue: redundant paramter
             fsr3::description_dispatch.sharpness              = sharpness;
             fsr3::description_dispatch.frameTimeDelta         = delta_time_sec * 1000.0f;    // seconds to milliseconds
             fsr3::description_dispatch.preExposure            = exposure;                    // the exposure value if not using FFX_FSR3_ENABLE_AUTO_EXPOSURE
@@ -855,14 +855,14 @@ namespace Spartan
 
         // set resources
         sssr::description_dispatch.commandList        = to_ffx_cmd_list(cmd_list);
-        sssr::description_dispatch.color              = to_ffx_resource(tex_color,     L"sssr_color");
-        sssr::description_dispatch.depth              = to_ffx_resource(tex_depth,     L"sssr_depth");
-        sssr::description_dispatch.motionVectors      = to_ffx_resource(tex_velocity,  L"sssr_velocity");
-        sssr::description_dispatch.normal             = to_ffx_resource(tex_normal,    L"sssr_normal");
-        sssr::description_dispatch.materialParameters = to_ffx_resource(tex_material,  L"sssr_roughness");   // FfxSssrDispatchDescription specifies the channel
+        sssr::description_dispatch.color              = to_ffx_resource(tex_color,           L"sssr_color");
+        sssr::description_dispatch.depth              = to_ffx_resource(tex_depth,           L"sssr_depth");
+        sssr::description_dispatch.motionVectors      = to_ffx_resource(tex_velocity,        L"sssr_velocity");
+        sssr::description_dispatch.normal             = to_ffx_resource(tex_normal,          L"sssr_normal");
+        sssr::description_dispatch.materialParameters = to_ffx_resource(tex_material,        L"sssr_roughness");   // FfxSssrDispatchDescription specifies the channel
         sssr::description_dispatch.environmentMap     = to_ffx_resource(cubemap_empty.get(), L"sssr_environment"); // dummy/empty as we don't want SSSR to also do IBL
-        sssr::description_dispatch.brdfTexture        = to_ffx_resource(tex_brdf,      L"sssr_brdf");
-        sssr::description_dispatch.output             = to_ffx_resource(tex_output,    L"sssr_output");
+        sssr::description_dispatch.brdfTexture        = to_ffx_resource(tex_brdf,            L"sssr_brdf");
+        sssr::description_dispatch.output             = to_ffx_resource(tex_output,          L"sssr_output");
  
         // set render size
         sssr::description_dispatch.renderSize.width  = static_cast<uint32_t>(tex_color->GetWidth()  * resolution_scale);

@@ -310,7 +310,7 @@ namespace Spartan
                 transform(name.begin(), name.end(), name.begin(), ::tolower);
 
                 // detect transparency
-                bool is_transparent = opacity.r < 1.0f;
+                bool is_transparent  = opacity.r < 1.0f;
                 if (!is_transparent)
                 {
                     is_transparent =
@@ -319,8 +319,11 @@ namespace Spartan
                         name.find("bottle")      != string::npos;
                 }
 
-                // set appropriate properties for transparents
-                if (is_transparent)
+                // set appropriate properties for transparents which are not PBR (aka badly set materials)
+                bool has_roughness   = material->HasTexture(MaterialTexture::Roughness);
+                bool has_metalness   = material->HasTexture(MaterialTexture::Metalness);
+                bool is_pbr_material = has_roughness && has_metalness;
+                if (is_transparent && !is_pbr_material)
                 {
                     opacity.r = 0.5f;
                     material->SetProperty(MaterialProperty::Roughness, 0.0f);
