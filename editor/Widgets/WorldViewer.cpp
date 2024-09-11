@@ -264,7 +264,7 @@ void WorldViewer::HandleClicking()
 
     // Since we are handling clicking manually, we must ensure we are inside the window
     if (!is_window_hovered)
-        return;    
+        return;
 
     // Left click on item - Don't select yet
     if (left_click && entity_hovered.lock())
