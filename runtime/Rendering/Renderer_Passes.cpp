@@ -471,6 +471,7 @@ namespace Spartan
                 Pass_Light_ImageBased(cmd_list_graphics, rt_render, true);
             }
 
+            Pass_Upscale(cmd_list_graphics, rt_render, rt_output);
             Pass_PostProcess(cmd_list_graphics);
             Pass_Grid(cmd_list_graphics, rt_output);
             Pass_Lines(cmd_list_graphics, rt_output);
@@ -1422,101 +1423,72 @@ namespace Spartan
     void Renderer::Pass_PostProcess(RHI_CommandList* cmd_list)
     {
         // acquire render targets
-        RHI_Texture* rt_frame_render         = GetRenderTarget(Renderer_RenderTarget::frame_render).get();
-        RHI_Texture* rt_frame_render_scratch = GetRenderTarget(Renderer_RenderTarget::frame_render_2).get();
         RHI_Texture* rt_frame_output         = GetRenderTarget(Renderer_RenderTarget::frame_output).get();
         RHI_Texture* rt_frame_output_scratch = GetRenderTarget(Renderer_RenderTarget::frame_output_2).get();
 
         cmd_list->BeginMarker("post_proccess");
 
         // macros which allows us to keep track of which texture is an input/output for each pass
-        bool swap_render = true;
-        #define get_render_in  swap_render ? rt_frame_render_scratch : rt_frame_render
-        #define get_render_out swap_render ? rt_frame_render : rt_frame_render_scratch
         bool swap_output = true;
         #define get_output_in  swap_output ? rt_frame_output_scratch : rt_frame_output
         #define get_output_out swap_output ? rt_frame_output : rt_frame_output_scratch
 
-        // deduce some information
-        Renderer_Upsampling upsampling_mode = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling);
-        Renderer_Antialiasing antialiasing  = GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing);
-        bool taa_enabled                    = antialiasing == Renderer_Antialiasing::Taa  || antialiasing == Renderer_Antialiasing::TaaFxaa;
-        bool fxaa_enabled                   = antialiasing == Renderer_Antialiasing::Fxaa || antialiasing == Renderer_Antialiasing::TaaFxaa;
-
-        // RENDER RESOLUTION -> OUTPUT RESOLUTION
+        // depth of field
+        if (GetOption<bool>(Renderer_Option::DepthOfField))
         {
-            // if render resolution equals output resolution, FSR 2 will act as TAA
-
-            swap_render = !swap_render;
-
-            // use FSR 2 for different resolutions if enabled, otherwise blit
-            if (upsampling_mode == Renderer_Upsampling::Fsr3 && m_initialized_third_party)
-            {
-                Pass_Upscale(cmd_list, get_render_in, rt_frame_output);
-            }
-            else
-            {
-                cmd_list->Blit(get_render_in, rt_frame_output, false, GetOption<float>(Renderer_Option::ResolutionScale));
-            }
-        }
-
-        // OUTPUT RESOLUTION
-        {
-            // Depth of Field
-            if (GetOption<bool>(Renderer_Option::DepthOfField))
-            {
-                swap_output = !swap_output;
-                Pass_DepthOfField(cmd_list, get_output_in, get_output_out);
-            }
-
-            // motion Blur
-            if (GetOption<bool>(Renderer_Option::MotionBlur))
-            {
-                swap_output = !swap_output;
-                Pass_MotionBlur(cmd_list, get_output_in, get_output_out);
-            }
-
-            // bloom
-            if (GetOption<bool>(Renderer_Option::Bloom))
-            {
-                swap_output = !swap_output;
-                Pass_Bloom(cmd_list, get_output_in, get_output_out);
-            }
-
-            // tone-mapping & gamma correction
             swap_output = !swap_output;
-            Pass_Output(cmd_list, get_output_in, get_output_out);
-
-            // sharpening
-            if (GetOption<bool>(Renderer_Option::Sharpness) && upsampling_mode != Renderer_Upsampling::Fsr3)
-            {
-                swap_output = !swap_output;
-                Pass_Sharpening(cmd_list, get_output_in, get_output_out);
-            }
-
-            // fxaa
-            if (fxaa_enabled)
-            {
-                swap_output = !swap_output;
-                Pass_Fxaa(cmd_list, get_output_in, get_output_out);
-            }
-
-            // chromatic aberration
-            if (GetOption<bool>(Renderer_Option::ChromaticAberration))
-            {
-                swap_output = !swap_output;
-                Pass_ChromaticAberration(cmd_list, get_output_in, get_output_out);
-            }
-
-            // film grain
-            if (GetOption<bool>(Renderer_Option::FilmGrain))
-            {
-                swap_output = !swap_output;
-                Pass_FilmGrain(cmd_list, get_output_in, get_output_out);
-            }
+            Pass_DepthOfField(cmd_list, get_output_in, get_output_out);
+        }
+        
+        // motion Blur
+        if (GetOption<bool>(Renderer_Option::MotionBlur))
+        {
+            swap_output = !swap_output;
+            Pass_MotionBlur(cmd_list, get_output_in, get_output_out);
+        }
+        
+        // bloom
+        if (GetOption<bool>(Renderer_Option::Bloom))
+        {
+            swap_output = !swap_output;
+            Pass_Bloom(cmd_list, get_output_in, get_output_out);
+        }
+        
+        // tone-mapping & gamma correction
+        swap_output = !swap_output;
+        Pass_Output(cmd_list, get_output_in, get_output_out);
+        
+        // sharpening
+        if (GetOption<bool>(Renderer_Option::Sharpness) && GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) != Renderer_Upsampling::Fsr3)
+        {
+            swap_output = !swap_output;
+            Pass_Sharpening(cmd_list, get_output_in, get_output_out);
+        }
+        
+        // fxaa
+        Renderer_Antialiasing antialiasing  = GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing);
+        bool fxaa_enabled                   = antialiasing == Renderer_Antialiasing::Fxaa || antialiasing == Renderer_Antialiasing::TaaFxaa;
+        if (fxaa_enabled)
+        {
+            swap_output = !swap_output;
+            Pass_Fxaa(cmd_list, get_output_in, get_output_out);
+        }
+        
+        // chromatic aberration
+        if (GetOption<bool>(Renderer_Option::ChromaticAberration))
+        {
+            swap_output = !swap_output;
+            Pass_ChromaticAberration(cmd_list, get_output_in, get_output_out);
+        }
+        
+        // film grain
+        if (GetOption<bool>(Renderer_Option::FilmGrain))
+        {
+            swap_output = !swap_output;
+            Pass_FilmGrain(cmd_list, get_output_in, get_output_out);
         }
 
-        // if the last written texture is not the output one, then make sure it is.
+        // if the last written texture is not the output one, then make sure it is
         if (!swap_output)
         {
             cmd_list->Copy(rt_frame_output_scratch, rt_frame_output, false);
@@ -1792,19 +1764,26 @@ namespace Spartan
     {
         cmd_list->BeginTimeblock("upscale");
 
-        RHI_FidelityFX::FSR3_Dispatch(
-            cmd_list,
-            GetCamera().get(),
-            m_cb_frame_cpu.delta_time,
-            GetOption<float>(Renderer_Option::Sharpness),
-            GetOption<float>(Renderer_Option::Exposure),
-            GetOption<float>(Renderer_Option::ResolutionScale),
-            tex_in,
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(),
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
-            GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get(),
-            tex_out
-        );
+        if (GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::Fsr3 && m_initialized_third_party)
+        {
+            RHI_FidelityFX::FSR3_Dispatch(
+                cmd_list,
+                GetCamera().get(),
+                m_cb_frame_cpu.delta_time,
+                GetOption<float>(Renderer_Option::Sharpness),
+                GetOption<float>(Renderer_Option::Exposure),
+                GetOption<float>(Renderer_Option::ResolutionScale),
+                tex_in,
+                GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(),
+                GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
+                GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get(),
+                tex_out
+            );
+        }
+        else
+        {
+            cmd_list->Blit(tex_in, tex_out, false, GetOption<float>(Renderer_Option::ResolutionScale));
+        }
 
         cmd_list->EndTimeblock();
     }
