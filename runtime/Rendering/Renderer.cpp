@@ -140,6 +140,7 @@ namespace Spartan
             Window::GetWidth(),
             Window::GetHeight(),
             // present mode: for v-sync, we could mailbox for lower latency, but fifo is always supported, so we'll assume that
+            // note: fifo is not supported on linux, it will be ignored
             GetOption<bool>(Renderer_Option::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
             swap_chain_buffer_count,
             Display::GetHdr(),
