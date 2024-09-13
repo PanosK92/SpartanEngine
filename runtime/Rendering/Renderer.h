@@ -153,8 +153,8 @@ namespace Spartan
         // passes - lighting
         static void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
         static void Pass_Light_GlobalIllumination(RHI_CommandList* cmd_list);
-        static void Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass = false);
-        static void Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass = false);
+        static void Pass_Light_Composition(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
+        static void Pass_Light_ImageBased(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
         static void Pass_Light_Integration_BrdfSpecularLut(RHI_CommandList* cmd_list);
         static void Pass_Light_Integration_EnvironmentPrefilter(RHI_CommandList* cmd_list);
         // passes - debug/editor
@@ -173,7 +173,7 @@ namespace Spartan
         static void Pass_DepthOfField(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Sharpening(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_Upscale(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
+        static void Pass_Upscale(RHI_CommandList* cmd_list);
         // passes - utility
         static void Pass_Blur(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const float radius, const uint32_t mip = rhi_all_mips);
         static void Pass_Downsample(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter);
