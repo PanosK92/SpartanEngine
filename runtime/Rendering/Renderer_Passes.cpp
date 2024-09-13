@@ -1803,7 +1803,6 @@ namespace Spartan
             GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
             GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get(),
-            GetRenderTarget(Renderer_RenderTarget::reactive).get(),
             tex_out
         );
 
