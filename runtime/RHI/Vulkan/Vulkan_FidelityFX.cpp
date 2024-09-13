@@ -268,6 +268,7 @@ namespace Spartan
             FfxFsr3UpscalerDispatchDescription         description_dispatch      = {};
             FfxFsr3UpscalerGenerateReactiveDescription description_reactive_mask = {};
             uint32_t                                   jitter_index              = 0;
+            unique_ptr<RHI_Texture> texture_reactive                             = nullptr;
         }
 
         namespace sssr
@@ -575,7 +576,8 @@ namespace Spartan
         if (fsr3::context_created)
         {
             SP_ASSERT(ffxFsr3UpscalerContextDestroy(&fsr3::context) == FFX_OK);
-            fsr3::context_created = false;
+            fsr3::context_created  = false;
+            fsr3::texture_reactive = nullptr;
         }
     }
 
@@ -629,6 +631,9 @@ namespace Spartan
 
             // reset jitter index
             fsr3::jitter_index = 0;
+
+            // resources
+            fsr3::texture_reactive = make_unique<RHI_Texture2D>(width, height, 1, RHI_Format::R8_Unorm, RHI_Texture_Uav | RHI_Texture_Srv, "reactive");
         }
 
         // sssr
@@ -766,7 +771,6 @@ namespace Spartan
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
         RHI_Texture* tex_color_opaque,
-        RHI_Texture* tex_reactive,
         RHI_Texture* tex_output
     )
     {
@@ -781,9 +785,9 @@ namespace Spartan
         {
             // set resources
             fsr3::description_reactive_mask.commandList       = to_ffx_cmd_list(cmd_list);
-            fsr3::description_reactive_mask.colorOpaqueOnly   = to_ffx_resource(tex_color_opaque, L"fsr3_color_opaque");
-            fsr3::description_reactive_mask.colorPreUpscale   = to_ffx_resource(tex_color,        L"fsr3_color");
-            fsr3::description_reactive_mask.outReactive       = to_ffx_resource(tex_reactive,     L"fsr3_reactive");
+            fsr3::description_reactive_mask.colorOpaqueOnly   = to_ffx_resource(tex_color_opaque,             L"fsr3_color_opaque");
+            fsr3::description_reactive_mask.colorPreUpscale   = to_ffx_resource(tex_color,                    L"fsr3_color");
+            fsr3::description_reactive_mask.outReactive       = to_ffx_resource(fsr3::texture_reactive.get(), L"fsr3_reactive");
 
             // configure
             fsr3::description_reactive_mask.renderSize.width  = static_cast<uint32_t>(tex_velocity->GetWidth() * resolution_scale);
@@ -801,11 +805,11 @@ namespace Spartan
         {
             // set resources (todo: add transparency and composition mask)
             fsr3::description_dispatch.commandList   = to_ffx_cmd_list(cmd_list);
-            fsr3::description_dispatch.color         = to_ffx_resource(tex_color,    L"fsr3_color");
-            fsr3::description_dispatch.depth         = to_ffx_resource(tex_depth,    L"fsr3_depth");
-            fsr3::description_dispatch.motionVectors = to_ffx_resource(tex_velocity, L"fsr3_velocity");
-            fsr3::description_dispatch.reactive      = to_ffx_resource(tex_reactive, L"fsr3_reactive");
-            fsr3::description_dispatch.output        = to_ffx_resource(tex_output,   L"fsr3_output");
+            fsr3::description_dispatch.color         = to_ffx_resource(tex_color,                    L"fsr3_color");
+            fsr3::description_dispatch.depth         = to_ffx_resource(tex_depth,                    L"fsr3_depth");
+            fsr3::description_dispatch.motionVectors = to_ffx_resource(tex_velocity,                 L"fsr3_velocity");
+            fsr3::description_dispatch.reactive      = to_ffx_resource(fsr3::texture_reactive.get(), L"fsr3_reactive");
+            fsr3::description_dispatch.output        = to_ffx_resource(tex_output,                   L"fsr3_output");
 
             // configure
             fsr3::description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth());
