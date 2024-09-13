@@ -192,17 +192,9 @@ namespace Spartan
                 description.stride = resource->GetStride();
                 state              = FFX_RESOURCE_STATE_UNORDERED_ACCESS;
             }
-            else if constexpr (is_same_v<remove_const_t<T>, RHI_Buffer>)
-            {
-                description.type   = FFX_RESOURCE_TYPE_BUFFER;
-                description.usage  = FFX_RESOURCE_USAGE_UAV;
-                description.size   = static_cast<uint32_t>(resource->GetObjectSize());
-                description.stride = resource->GetStride();
-                state              = FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ;
-            }
             else
             {
-                static_assert(is_same_v<T, RHI_Texture> || is_same_v<T, RHI_Buffer> || is_same_v<T, RHI_Buffer>, "Unsupported resource type");
+                static_assert(is_same_v<T, RHI_Texture> || is_same_v<T, RHI_Buffer>, "Unsupported resource type");
             }
 
             return ffxGetResourceVK(rhi_resource, description, const_cast<wchar_t*>(name), state);
