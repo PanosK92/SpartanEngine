@@ -397,10 +397,6 @@ namespace Spartan
     {
         SP_PROFILE_CPU();
 
-        // acquire render targets
-        RHI_Texture* rt_render = GetRenderTarget(Renderer_RenderTarget::frame_render).get();
-        RHI_Texture* rt_output = GetRenderTarget(Renderer_RenderTarget::frame_output).get();
-
         RHI_FidelityFX::Update(&m_cb_frame_cpu);
         dynamic_resolution();
         Pass_VariableRateShading(cmd_list_graphics);
@@ -420,6 +416,10 @@ namespace Spartan
             }
         }
 
+        // acquire render targets
+        RHI_Texture* rt_render = GetRenderTarget(Renderer_RenderTarget::frame_render).get();
+        RHI_Texture* rt_output = GetRenderTarget(Renderer_RenderTarget::frame_output).get();
+
         if (shared_ptr<Camera> camera = GetCamera())
         { 
             // shadow maps
@@ -430,48 +430,52 @@ namespace Spartan
                     Pass_ShadowMaps(cmd_list_graphics, true);
                 }
             }
- 
-            // opaque
-            {
-                Pass_Visibility(cmd_list_graphics);
-                Pass_Depth_Prepass(cmd_list_graphics, false);
-                Pass_GBuffer(cmd_list_graphics);
-                Pass_Ssr(cmd_list_graphics);
-                Pass_Ssao(cmd_list_graphics);
-                Pass_Sss(cmd_list_graphics);
-                Pass_Light(cmd_list_graphics);                        // compute diffuse and specular buffers
-                Pass_Light_GlobalIllumination(cmd_list_graphics);     // compute global illumination
-                Pass_Light_Composition(cmd_list_graphics, rt_render); // compose diffuse, specular, ssgi, volumetric etc.
-                Pass_Light_ImageBased(cmd_list_graphics, rt_render);  // apply IBL and SSR
-            }
 
-            // used for refraction and to produce a reactive mask for FSR
-            cmd_list_graphics->BeginTimeblock("frame_opaque");
+            // render resolution
             {
-                RHI_Texture* tex_render_opaque = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get();
-                cmd_list_graphics->Blit(rt_render, tex_render_opaque, false); 
-                Pass_Downsample(cmd_list_graphics, tex_render_opaque, Renderer_DownsampleFilter::Average); // generate mips to simulate roughness
-
-                // blur the smaller mips to reduce blockiness/flickering
-                for (uint32_t i = 1; i < tex_render_opaque->GetMipCount(); i++)
+                // opaque
                 {
-                    const float radius = 1.0f;
-                    Pass_Blur(cmd_list_graphics, tex_render_opaque, radius, i);
+                    bool is_transparent = false;
+
+                    Pass_Visibility(cmd_list_graphics);
+                    Pass_Depth_Prepass(cmd_list_graphics, is_transparent);
+                    Pass_GBuffer(cmd_list_graphics);
+                    Pass_Ssr(cmd_list_graphics);
+                    Pass_Ssao(cmd_list_graphics);
+                    Pass_Sss(cmd_list_graphics);
+                    Pass_Light(cmd_list_graphics);                    // compute diffuse and specular buffers
+                    Pass_Light_GlobalIllumination(cmd_list_graphics); // compute global illumination
+                    Pass_Light_Composition(cmd_list_graphics);        // compose all light (diffuse, specular, etc.)
+                    Pass_Light_ImageBased(cmd_list_graphics);         // apply IBL (skysphere, ssr, global illumination etc.)
+                }
+
+                // used for refraction and to produce a reactive mask for FSR
+                cmd_list_graphics->BeginTimeblock("frame_opaque");
+                {
+                    RHI_Texture* tex_render_opaque = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get();
+                    cmd_list_graphics->Blit(rt_render, tex_render_opaque, false);
+                    // generate mips to simulate roughness
+                    Pass_Downsample(cmd_list_graphics, tex_render_opaque, Renderer_DownsampleFilter::Average);
+                }
+                cmd_list_graphics->EndTimeblock();
+                
+                // transparent
+                if (mesh_index_transparent != -1)
+                {
+                    bool is_transparent = true;
+
+                    Pass_Depth_Prepass(cmd_list_graphics, is_transparent);
+                    Pass_GBuffer(cmd_list_graphics, is_transparent);
+                    Pass_Light(cmd_list_graphics, is_transparent);
+                    Pass_Light_Composition(cmd_list_graphics, is_transparent);
+                    Pass_Light_ImageBased(cmd_list_graphics, is_transparent);
                 }
             }
-            cmd_list_graphics->EndTimeblock();
-            
-            // transparent
-            if (mesh_index_transparent != -1)
-            {
-                Pass_Depth_Prepass(cmd_list_graphics, true);
-                Pass_GBuffer(cmd_list_graphics, true);
-                Pass_Light(cmd_list_graphics, true);
-                Pass_Light_Composition(cmd_list_graphics, rt_render, true);
-                Pass_Light_ImageBased(cmd_list_graphics, rt_render, true);
-            }
 
-            Pass_Upscale(cmd_list_graphics, rt_render, rt_output);
+            // render to output resolution
+            Pass_Upscale(cmd_list_graphics);
+
+            // output resolution
             Pass_PostProcess(cmd_list_graphics);
             Pass_Grid(cmd_list_graphics, rt_output);
             Pass_Lines(cmd_list_graphics, rt_output);
@@ -1265,11 +1269,12 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass)
+    void Renderer::Pass_Light_Composition(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // acquire resources
         RHI_Shader* shader_c        = GetShader(Renderer_Shader::light_composition_c).get();
         RHI_Texture* tex_refraction = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get();
+        RHI_Texture* tex_out        = GetRenderTarget(Renderer_RenderTarget::frame_render).get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -1302,10 +1307,11 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass)
+    void Renderer::Pass_Light_ImageBased(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
-        // acquire shader
-        RHI_Shader* shader = GetShader(Renderer_Shader::light_image_based_c).get();
+        // acquire resources
+        RHI_Shader* shader   = GetShader(Renderer_Shader::light_image_based_c).get();
+        RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::frame_render).get();
         if (!shader->IsCompiled())
             return;
 
@@ -1760,8 +1766,12 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Upscale(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
+    void Renderer::Pass_Upscale(RHI_CommandList* cmd_list)
     {
+        // acquire render targets
+        RHI_Texture* tex_in  = GetRenderTarget(Renderer_RenderTarget::frame_render).get();
+        RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::frame_output).get();
+
         cmd_list->BeginTimeblock("upscale");
 
         if (GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::Fsr3 && m_initialized_third_party)
