@@ -81,7 +81,6 @@ namespace Spartan
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
         RHI_Texture* tex_color_opaque,
-        RHI_Texture* tex_reactive,
         RHI_Texture* tex_output
     )
     {
