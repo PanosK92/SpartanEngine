@@ -282,22 +282,23 @@ namespace Spartan
         namespace brixelizer_gi
         {
             // parameters
-            const float    voxel_size              = 0.05f;
-            const float    cascade_size_ratio      = 2.0f;
-            const uint32_t cascade_count           = 8;         // max is 24
-            const uint32_t cascade_offset          = 16;        // 0 - 8 is for static, 8 - 16 is for dynamic, 16 - 24 is for static + dynamic (merged)
-            const uint32_t cascade_index_start     = cascade_offset + 0;
-            const uint32_t cascade_index_end       = cascade_offset + cascade_count - 1;
-            const uint32_t cascade_resolution      = 64;
-            const uint32_t sdf_atlas_size          = 512;
-            const float    sdf_ray_normal_offset   = 0.5f;      // distance from a surface along the normal vector to offset the ray origin - below 0.5 I see artifacts
-            const float    sdf_ray_epsilon         = 0.5f;      // epsilon value for ray marching to be used with brixelizer for rays
-            const uint32_t bricks_max              = 262144;
-            const uint32_t bricks_per_update_max   = 16384;     // maximum number of bricks to be updated
-            const uint32_t triangle_references_max = 33554432;  // maximum number of triangle voxel references to be stored in the update
-            const uint32_t triangle_swap_size      = 314572800; // size of the swap space available to be used for storing triangles in the update
-            const float t_min                      = 0.0f;
-            const float t_max                      = 10000.0f;
+            const float    voxel_size               = 0.05f;
+            const float    cascade_size_ratio       = 2.0f;
+            const uint32_t cascade_count            = 8;         // max is 24
+            const uint32_t cascade_offset           = 16;        // 0 - 8 is for static, 8 - 16 is for dynamic, 16 - 24 is for static + dynamic (merged)
+            const uint32_t cascade_index_start      = cascade_offset + 0;
+            const uint32_t cascade_index_end        = cascade_offset + cascade_count - 1;
+            const uint32_t cascade_resolution       = 64;
+            const uint32_t sdf_atlas_size           = 512;
+            const bool     sdf_center_around_camera = false;
+            const float    sdf_ray_normal_offset    = 0.5f;      // distance from a surface along the normal vector to offset the ray origin - below 0.5 I see artifacts
+            const float    sdf_ray_epsilon          = 0.5f;      // epsilon value for ray marching to be used with brixelizer for rays
+            const uint32_t bricks_max               = 262144;
+            const uint32_t bricks_per_update_max    = 16384;     // maximum number of bricks to be updated
+            const uint32_t triangle_references_max  = 33554432;  // maximum number of triangle voxel references to be stored in the update
+            const uint32_t triangle_swap_size       = 314572800; // size of the swap space available to be used for storing triangles in the update
+            const float t_min                       = 0.0f;
+            const float t_max                       = 10000.0f;
 
             // structs
             bool                                       context_created          = false;
@@ -481,7 +482,6 @@ namespace Spartan
 
         // assets
         {
-
             // shared
             cubemap_empty = make_unique<RHI_TextureCube>(1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv, "ffx_environment");
 
@@ -1039,7 +1039,7 @@ namespace Spartan
         size_t required_scratch_buffer_size                    = 0;
         brixelizer_gi::description_update.outScratchBufferSize = &required_scratch_buffer_size; // the size of the gpu scratch buffer needed for ffxBrixelizerUpdate()
         brixelizer_gi::description_update.outStats             = &brixelizer_gi::debug_stats;   // statistics for the update, stats read back after ffxBrixelizerUpdate()
-        set_ffx_float3(brixelizer_gi::description_update.sdfCenter, cb_frame->camera_position); // sdf center in world space
+        set_ffx_float3(brixelizer_gi::description_update.sdfCenter, brixelizer_gi::sdf_center_around_camera ? cb_frame->camera_position : Vector3::Zero); // sdf center in world space
 
         // debug visualization for: distance, uvw, iterations, brick id, cascade id
         bool debug_enabled = brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Max;

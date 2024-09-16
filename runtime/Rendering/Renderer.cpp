@@ -108,6 +108,31 @@ namespace Spartan
 
             return intensity;
         }
+
+        void dynamic_resolution()
+        {
+            if (Renderer::GetOption<float>(Renderer_Option::DynamicResolution) != 0.0f)
+            {
+                float gpu_time_target   = 16.67f;                                               // target for 60 FPS
+                float adjustment_factor = static_cast<float>(0.05f * Timer::GetDeltaTimeSec()); // how aggressively to adjust screen percentage
+                float screen_percentage = Renderer::GetOption<float>(Renderer_Option::ResolutionScale);
+                float gpu_time          = Profiler::GetTimeGpuLast();
+
+                if (gpu_time < gpu_time_target) // gpu is under target, increase resolution
+                {
+                    screen_percentage += adjustment_factor * (gpu_time_target - gpu_time);
+                }
+                else // gpu is over target, decrease resolution
+                {
+                    screen_percentage -= adjustment_factor * (gpu_time - gpu_time_target);
+                }
+
+                // clamp screen_percentage to a reasonable range
+                screen_percentage = clamp(screen_percentage, 0.5f, 1.0f);
+
+                Renderer::SetOption(Renderer_Option::ResolutionScale, screen_percentage);
+            }
+        }
     }
 
     void Renderer::Initialize()
@@ -247,39 +272,45 @@ namespace Spartan
         if (Window::IsMinimized() || !m_initialized_resources)
             return;
 
-        if (frame_num == 1)
+        // logic
         {
-            SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
+            if (frame_num == 1)
+            {
+                SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
+            }
+
+            RHI_Device::Tick(frame_num);
+            RHI_FidelityFX::Update(&m_cb_frame_cpu);
+            dynamic_resolution();
         }
 
-        RHI_Device::Tick(frame_num);
-
-        // get queues
-        RHI_Queue* queue_graphics = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
-        RHI_Queue* queue_compute  = RHI_Device::GetQueue(RHI_Queue_Type::Compute);
-
-        // get command lists
-        RHI_CommandList* cmd_list_graphics = queue_graphics->GetCommandList();
-        RHI_CommandList* cmd_list_compute  = queue_compute->GetCommandList();
-
-        // begin command lists
-        cmd_list_graphics->Begin(queue_graphics);
-        //cmd_list_compute->Begin(queue_compute);
-
-        OnSyncPoint(cmd_list_graphics);
-        ProduceFrame(cmd_list_graphics, cmd_list_compute);
-
-        // blit to back buffer when not in editor mode
-        bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
-        if (is_standalone)
+        // rendering
         {
-            BlitToBackBuffer(cmd_list_graphics, GetRenderTarget(Renderer_RenderTarget::frame_output).get());
-        }
+            // get resources
+            RHI_Queue* queue_graphics          = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
+            RHI_Queue* queue_compute           = RHI_Device::GetQueue(RHI_Queue_Type::Compute);
+            RHI_CommandList* cmd_list_graphics = queue_graphics->GetCommandList();
+            RHI_CommandList* cmd_list_compute  = queue_compute->GetCommandList();
 
-        // present
-        if (is_standalone)
-        {
-            Present();
+            // begin command lists
+            cmd_list_graphics->Begin(queue_graphics);
+            //cmd_list_compute->Begin(queue_compute);
+
+            OnSyncPoint(cmd_list_graphics);
+            ProduceFrame(cmd_list_graphics, cmd_list_compute);
+
+            // blit to back buffer when not in editor mode
+            bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
+            if (is_standalone)
+            {
+                BlitToBackBuffer(cmd_list_graphics, GetRenderTarget(Renderer_RenderTarget::frame_output).get());
+            }
+
+            // present
+            if (is_standalone)
+            {
+                Present();
+            }
         }
 
         frame_num++;

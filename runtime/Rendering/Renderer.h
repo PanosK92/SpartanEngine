@@ -142,19 +142,19 @@ namespace Spartan
         // passes - core
         static void ProduceFrame(RHI_CommandList* cmd_list_graphics, RHI_CommandList* cmd_list_compute);
         static void Pass_VariableRateShading(RHI_CommandList* cmd_list);
-        static void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
+        static void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_Visibility(RHI_CommandList* cmd_list);
-        static void Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
-        static void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
+        static void Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass);
+        static void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_Ssao(RHI_CommandList* cmd_list);
         static void Pass_Ssr(RHI_CommandList* cmd_list);
         static void Pass_Sss(RHI_CommandList* cmd_list);
         static void Pass_Skysphere(RHI_CommandList* cmd_list);
         // passes - lighting
-        static void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
+        static void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_Light_GlobalIllumination(RHI_CommandList* cmd_list);
-        static void Pass_Light_Composition(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
-        static void Pass_Light_ImageBased(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
+        static void Pass_Light_Composition(RHI_CommandList* cmd_list, const bool is_transparent_pass);
+        static void Pass_Light_ImageBased(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_Light_Integration_BrdfSpecularLut(RHI_CommandList* cmd_list);
         static void Pass_Light_Integration_EnvironmentPrefilter(RHI_CommandList* cmd_list);
         // passes - debug/editor
