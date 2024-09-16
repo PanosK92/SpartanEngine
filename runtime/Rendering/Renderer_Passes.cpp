@@ -50,7 +50,7 @@ namespace Spartan
         int64_t mesh_index_transparent                     = 0;
         int64_t mesh_index_non_instanced_transparent       = 0;
 
-        // The code below is a work in progress, that's why its here
+        // note: the code below is a work in progress, that's why its here
 
         namespace visibility
         {
@@ -336,31 +336,6 @@ namespace Spartan
             cmd_list->SetIgnoreClearValues(true);
         }
 
-        void dynamic_resolution()
-        {
-            if (Renderer::GetOption<float>(Renderer_Option::DynamicResolution) != 0.0f)
-            {
-                float gpu_time_target   = 16.67f;                                               // target for 60 FPS
-                float adjustment_factor = static_cast<float>(0.05f * Timer::GetDeltaTimeSec()); // how aggressively to adjust screen percentage
-                float screen_percentage = Renderer::GetOption<float>(Renderer_Option::ResolutionScale);
-                float gpu_time          = Profiler::GetTimeGpuLast();
-
-                if (gpu_time < gpu_time_target) // gpu is under target, increase resolution
-                {
-                    screen_percentage += adjustment_factor * (gpu_time_target - gpu_time);
-                }
-                else // gpu is over target, decrease resolution
-                {
-                    screen_percentage -= adjustment_factor * (gpu_time - gpu_time_target);
-                }
-
-                // clamp screen_percentage to a reasonable range
-                screen_percentage = clamp(screen_percentage, 0.5f, 1.0f);
-
-                Renderer::SetOption(Renderer_Option::ResolutionScale, screen_percentage);
-            }
-        }
-
         int64_t get_mesh_indices(vector<shared_ptr<Entity>>& renderables, bool is_transparent, bool get_start)
         {
             int64_t index_start, index_end;
@@ -397,8 +372,10 @@ namespace Spartan
     {
         SP_PROFILE_CPU();
 
-        RHI_FidelityFX::Update(&m_cb_frame_cpu);
-        dynamic_resolution();
+        // acquire render targets
+        RHI_Texture* rt_render = GetRenderTarget(Renderer_RenderTarget::frame_render).get();
+        RHI_Texture* rt_output = GetRenderTarget(Renderer_RenderTarget::frame_output).get();
+
         Pass_VariableRateShading(cmd_list_graphics);
         Pass_Skysphere(cmd_list_graphics);
 
@@ -415,10 +392,6 @@ namespace Spartan
                 Pass_Light_Integration_EnvironmentPrefilter(cmd_list_graphics);
             }
         }
-
-        // acquire render targets
-        RHI_Texture* rt_render = GetRenderTarget(Renderer_RenderTarget::frame_render).get();
-        RHI_Texture* rt_output = GetRenderTarget(Renderer_RenderTarget::frame_output).get();
 
         if (shared_ptr<Camera> camera = GetCamera())
         { 
@@ -439,17 +412,17 @@ namespace Spartan
 
                     Pass_Visibility(cmd_list_graphics);
                     Pass_Depth_Prepass(cmd_list_graphics, is_transparent);
-                    Pass_GBuffer(cmd_list_graphics);
+                    Pass_GBuffer(cmd_list_graphics, is_transparent);
                     Pass_Ssr(cmd_list_graphics);
                     Pass_Ssao(cmd_list_graphics);
                     Pass_Sss(cmd_list_graphics);
-                    Pass_Light(cmd_list_graphics);                    // compute diffuse and specular buffers
-                    Pass_Light_GlobalIllumination(cmd_list_graphics); // compute global illumination
-                    Pass_Light_Composition(cmd_list_graphics);        // compose all light (diffuse, specular, etc.)
-                    Pass_Light_ImageBased(cmd_list_graphics);         // apply IBL (skysphere, ssr, global illumination etc.)
+                    Pass_Light(cmd_list_graphics, is_transparent);             // compute diffuse and specular buffers
+                    Pass_Light_GlobalIllumination(cmd_list_graphics);          // compute global illumination
+                    Pass_Light_Composition(cmd_list_graphics, is_transparent); // compose all light (diffuse, specular, etc.)
+                    Pass_Light_ImageBased(cmd_list_graphics, is_transparent);  // apply IBL (skysphere, ssr, global illumination etc.)
                 }
 
-                // used for refraction and to produce a reactive mask for FSR
+                // used for refraction and to produce a reactive mask for fsr
                 cmd_list_graphics->BeginTimeblock("frame_opaque");
                 {
                     RHI_Texture* tex_render_opaque = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get();
