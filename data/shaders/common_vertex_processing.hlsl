@@ -427,10 +427,10 @@ gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex)
     vertex.position_previous = vertex_processing::ambient_animation(surface, vertex.position_previous, extract_position(vertex.transform_previous), vertex.instance_id, (float)buffer_frame.time - buffer_frame.delta_time);
 #endif
     
-    vertex.position_clip          = mul(float4(vertex.position, 1.0f), buffer_frame.view_projection);
+    vertex.position_clip          = mul(float4(vertex.position, 1.0f), pass_is_transparent() ? buffer_frame.view_projection_unjittered : buffer_frame.view_projection);
     vertex.position_clip_current  = vertex.position_clip;
 #ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
-    vertex.position_clip_previous = mul(float4(vertex.position_previous, 1.0f), buffer_frame.view_projection_previous);
+    vertex.position_clip_previous = mul(float4(vertex.position_previous, 1.0f), pass_is_transparent() ? buffer_frame.view_projection_previous_unjittered : buffer_frame.view_projection_previous);
 #endif
 
     return vertex;

@@ -114,47 +114,60 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (early_exit_1 || early_exit_2 || early_exit_3)
         return;
 
-    float4 color               = float4(0.0f, 0.0f, 0.0f, surface.alpha); // maintain surface alpha, in case FSR benefits when generating the masks
-    float distance_from_camera = surface.camera_to_pixel_length;
-    
+    float3 light_diffuse       = 0.0f;
+    float3 light_specular      = 0.0f;
+    float3 light_refraction    = 0.0f;
+    float3 light_emissive      = 0.0f;
+    float3 color               = 0.0f;
+    float alpha                = 0.0f;
+    float distance_from_camera = 0.0f;
+
+    // compute light based on if this is the sky or any other surface
     if (surface.is_sky())
     {
-        color.rgb            += tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(surface.camera_to_pixel), 0).rgb;
-        color.a               = 1.0f;
-        distance_from_camera  = FLT_MAX_10;
+        light_emissive       = tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(surface.camera_to_pixel), 0).rgb;
+        alpha                = 1.0f;
+        distance_from_camera = FLT_MAX_10;
     }
-    else // anything else
+    else
     {
-        // get light samples
-        float3 light_diffuse  = tex_light_diffuse[thread_id.xy].rgb;
-        float3 light_specular = tex_light_specular[thread_id.xy].rgb;
-        float3 emissive       = surface.emissive * surface.albedo * 10.0f;
+        light_diffuse        = tex_light_diffuse[thread_id.xy].rgb;
+        light_specular       = tex_light_specular[thread_id.xy].rgb;
+        light_emissive       = surface.emissive * surface.albedo * 10.0f;
+        alpha                = surface.alpha;
+        distance_from_camera = surface.camera_to_pixel_length;
         
         // transparent
-        float3 light_refracted_background = 0.0f;
         if (surface.is_transparent())
         {
             // refraction
-            light_refracted_background = translucency::refraction::get_color(surface);
+            light_refraction = translucency::refraction::get_color(surface);
 
             // water
             if (surface.is_water())
             {
-                light_refracted_background *= translucency::water::get_color(surface, color.a);
-
+                light_refraction *= translucency::water::get_color(surface, alpha);
                 // override g-buffer albedo alpha, for the IBL pass, right after
-                tex_uav2[thread_id.xy]  = float4(surface.albedo, color.a);
+                tex_uav2[thread_id.xy]  = float4(surface.albedo, alpha);
             }
         }
-        
-        // compose
-        float3 light  = light_diffuse * surface.albedo + light_specular + emissive;
-        color.rgb    += lerp(light_refracted_background, light, color.a);
     }
 
-    // fog
-    float3 volumetric_fog  = tex_light_volumetric[thread_id.xy].rgb;
-    color.rgb             += got_fog_radial(distance_from_camera, buffer_frame.camera_position.xyz, buffer_frame.directional_light_intensity) + volumetric_fog;
-
-    tex_uav[thread_id.xy] = saturate_16(color);
+    // compose
+    {
+        // if the surface is fully opaque (alpha == 1.0), use only the direct lighting (diffuse, specular, etc.)
+        if (surface.alpha == 1.0f)
+        {
+            color = light_diffuse * surface.albedo + light_specular + light_emissive;
+        }
+        else // for transparent objects (glass, water, etc.), use only the refracted light
+        {
+            color = light_refraction + light_emissive;
+        }
+    
+        // add radial and volumetric fog to both cases
+        color += got_fog_radial(distance_from_camera, buffer_frame.camera_position.xyz, buffer_frame.directional_light_intensity) + tex_light_volumetric[thread_id.xy].rgb;
+    }
+    
+    tex_uav[thread_id.xy] = saturate_16(float4(color, alpha));
 }

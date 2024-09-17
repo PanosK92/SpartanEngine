@@ -202,6 +202,7 @@ namespace Spartan
         ffx_cas_c,
         ffx_spd_average_c,
         ffx_spd_max_c,
+        additive_transparent_c,
         max
     };
     
@@ -224,7 +225,6 @@ namespace Spartan
         light_volumetric,
         frame_render,
         frame_render_2,
-        frame_render_opaque,
         frame_output,
         frame_output_2,
         ssao,

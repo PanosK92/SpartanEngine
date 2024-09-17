@@ -19,37 +19,22 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// = INCLUDES ========
+//= INCLUDES =========
 #include "common.hlsl"
 //====================
-
-struct vertex
-{
-    float4 position : SV_POSITION;
-    float2 uv       : TEXCOORD0;
-};
-
-vertex main_vs(vertex input)
-{
-    input.position.w = 1.0f;
-    input.position   = mul(input.position, buffer_pass.transform);
-    input.position   = mul(input.position, buffer_frame.view_projection_unjittered);
-
-    return input;
-}
- 
-float4 main_ps(vertex input) : SV_Target
-{
-    // just a color
-    return pass_get_f4_value();
-}
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    float4 silhouette = tex[thread_id.xy];
-    float3 color      = silhouette.rgb;
-    float alpha       = silhouette.a;
-
-    tex_uav[thread_id.xy] += float4(color * (1.0f - alpha), 0.0f);
+    // sample
+    float2 resolution_out;
+    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
+    float2 uv    = (thread_id.xy + 0.5f) / resolution_out;
+    float4 color = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0);
+    
+    // accumulate only non opaque pixels
+    if (color.a < 1.0f)
+    {
+        tex_uav[thread_id.xy] = float4(color.rgb, 1.0f);
+    }
 }

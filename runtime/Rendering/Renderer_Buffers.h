@@ -44,6 +44,7 @@ namespace Spartan
         Math::Matrix view_projection_ortho;
         Math::Matrix view_projection_unjittered;
         Math::Matrix view_projection_previous;
+        Math::Matrix view_projection_previous_unjittered;
 
         Math::Vector2 resolution_render;
         Math::Vector2 resolution_output;
