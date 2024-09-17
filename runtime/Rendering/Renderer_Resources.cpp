@@ -207,9 +207,8 @@ namespace Spartan
         {
             // frame
             {
-                render_target(Renderer_RenderTarget::frame_render)        = make_shared<RHI_Texture2D>(width_render, height_render, 1,         RHI_Format::R16G16B16A16_Float, flags_rt_clearable, "frame_render");
-                render_target(Renderer_RenderTarget::frame_render_2)      = make_shared<RHI_Texture2D>(width_render, height_render, 1,         RHI_Format::R16G16B16A16_Float, flags_rt_clearable, "frame_render_2");
-                render_target(Renderer_RenderTarget::frame_render_opaque) = make_shared<RHI_Texture2D>(width_render, height_render, mip_count, RHI_Format::R16G16B16A16_Float, flags_rt_clearable | RHI_Texture_PerMipViews, "frame_render_opaque");
+                render_target(Renderer_RenderTarget::frame_render)   = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_rt_clearable, "frame_render");
+                render_target(Renderer_RenderTarget::frame_render_2) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_rt_clearable, "frame_render_2");
             }
 
             // g-buffer
@@ -249,7 +248,7 @@ namespace Spartan
         if (create_output)
         {
             // frame
-            render_target(Renderer_RenderTarget::frame_output)   = make_shared<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, flags_rt | RHI_Texture_ClearBlit, "frame_output");
+            render_target(Renderer_RenderTarget::frame_output)   = make_shared<RHI_Texture2D>(width_output, height_output, mip_count, RHI_Format::R16G16B16A16_Float, flags_rt | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "frame_output");
             render_target(Renderer_RenderTarget::frame_output_2) = make_shared<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, flags_rt | RHI_Texture_ClearBlit, "frame_output_2");
 
             // misc
@@ -470,6 +469,10 @@ namespace Spartan
         // variable rate shading
         shader(Renderer_Shader::variable_rate_shading_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::variable_rate_shading_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "variable_rate_shading.hlsl", async);
+
+        // additive transparent
+        shader(Renderer_Shader::additive_transparent_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::additive_transparent_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "additive_transparent.hlsl", async);
     }
 
     void Renderer::CreateFonts()

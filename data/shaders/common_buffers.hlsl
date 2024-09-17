@@ -36,6 +36,7 @@ struct FrameBufferData
     matrix view_projection_orthographic;
     matrix view_projection_unjittered;
     matrix view_projection_previous;
+    matrix view_projection_previous_unjittered;
 
     float2 resolution_render;
     float2 resolution_output;

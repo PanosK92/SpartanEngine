@@ -409,7 +409,6 @@ namespace Spartan
                 // opaque
                 {
                     bool is_transparent = false;
-
                     Pass_Visibility(cmd_list_graphics);
                     Pass_Depth_Prepass(cmd_list_graphics, is_transparent);
                     Pass_GBuffer(cmd_list_graphics, is_transparent);
@@ -421,39 +420,34 @@ namespace Spartan
                     Pass_Light_Composition(cmd_list_graphics, is_transparent); // compose all light (diffuse, specular, etc.)
                     Pass_Light_ImageBased(cmd_list_graphics, is_transparent);  // apply IBL (skysphere, ssr, global illumination etc.)
                 }
-
-                // used for refraction and to produce a reactive mask for fsr
-                cmd_list_graphics->BeginTimeblock("frame_opaque");
-                {
-                    RHI_Texture* tex_render_opaque = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get();
-                    cmd_list_graphics->Blit(rt_render, tex_render_opaque, false);
-                    // generate mips to simulate roughness
-                    Pass_Downsample(cmd_list_graphics, tex_render_opaque, Renderer_DownsampleFilter::Average);
-                }
-                cmd_list_graphics->EndTimeblock();
-                
-                // transparent
-                if (mesh_index_transparent != -1)
-                {
-                    bool is_transparent = true;
-
-                    Pass_Depth_Prepass(cmd_list_graphics, is_transparent);
-                    Pass_GBuffer(cmd_list_graphics, is_transparent);
-                    Pass_Light(cmd_list_graphics, is_transparent);
-                    Pass_Light_Composition(cmd_list_graphics, is_transparent);
-                    Pass_Light_ImageBased(cmd_list_graphics, is_transparent);
-                }
             }
 
             // render to output resolution
             Pass_Upscale(cmd_list_graphics);
 
             // output resolution
-            Pass_PostProcess(cmd_list_graphics);
-            Pass_Grid(cmd_list_graphics, rt_output);
-            Pass_Lines(cmd_list_graphics, rt_output);
-            Pass_Outline(cmd_list_graphics, rt_output);
-            Pass_Icons(cmd_list_graphics, rt_output);
+            {
+                // transparent
+                if (mesh_index_transparent != -1)
+                {
+                    // note: transparents sampler the render resolution texture to emulate refraction as on
+                    // so when TAA/FSR is active, pre-upscale, everything jitters, therefore we need to render here
+
+                    bool is_transparent = true;
+                    Pass_Depth_Prepass(cmd_list_graphics, is_transparent);
+                    Pass_GBuffer(cmd_list_graphics, is_transparent);
+                    Pass_Light(cmd_list_graphics, is_transparent);
+                    Pass_Light_Composition(cmd_list_graphics, is_transparent);
+                    Pass_Light_ImageBased(cmd_list_graphics, is_transparent);
+                    Pass_AdditiveTransaparent(cmd_list_graphics, rt_render, rt_output);
+                }
+
+                Pass_PostProcess(cmd_list_graphics);
+                Pass_Grid(cmd_list_graphics, rt_output);
+                Pass_Lines(cmd_list_graphics, rt_output);
+                Pass_Outline(cmd_list_graphics, rt_output);
+                Pass_Icons(cmd_list_graphics, rt_output);
+            }
         }
         else
         {
@@ -832,10 +826,10 @@ namespace Spartan
         pso.render_target_color_textures[2]   = tex_material;
         pso.render_target_color_textures[3]   = tex_velocity;
         pso.render_target_depth_texture       = tex_depth;
-        pso.clear_color[0]                    = !is_transparent_pass ? Color::standard_transparent : rhi_color_load;
-        pso.clear_color[1]                    = !is_transparent_pass ? Color::standard_transparent : rhi_color_load;
-        pso.clear_color[2]                    = !is_transparent_pass ? Color::standard_transparent : rhi_color_load;
-        pso.clear_color[3]                    = !is_transparent_pass ? Color::standard_transparent : rhi_color_load;
+        pso.clear_color[0]                    = Color::standard_transparent;
+        pso.clear_color[1]                    = Color::standard_transparent;
+        pso.clear_color[2]                    = Color::standard_transparent;
+        pso.clear_color[3]                    = Color::standard_transparent;
         cmd_list->SetIgnoreClearValues(false);
         cmd_list->SetPipelineState(pso);
 
@@ -1246,7 +1240,7 @@ namespace Spartan
     {
         // acquire resources
         RHI_Shader* shader_c        = GetShader(Renderer_Shader::light_composition_c).get();
-        RHI_Texture* tex_refraction = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get();
+        RHI_Texture* tex_refraction = GetRenderTarget(Renderer_RenderTarget::frame_output).get();
         RHI_Texture* tex_out        = GetRenderTarget(Renderer_RenderTarget::frame_render).get();
         if (!shader_c->IsCompiled())
             return;
@@ -1434,9 +1428,11 @@ namespace Spartan
         }
         
         // tone-mapping & gamma correction
-        swap_output = !swap_output;
-        Pass_Output(cmd_list, get_output_in, get_output_out);
-        
+        {
+            swap_output = !swap_output;
+            Pass_Output(cmd_list, get_output_in, get_output_out);
+        }
+
         // sharpening
         if (GetOption<bool>(Renderer_Option::Sharpness) && GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) != Renderer_Upsampling::Fsr3)
         {
@@ -1759,7 +1755,6 @@ namespace Spartan
                 tex_in,
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get(),
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
-                GetRenderTarget(Renderer_RenderTarget::frame_render_opaque).get(),
                 tex_out
             );
         }
@@ -1767,6 +1762,9 @@ namespace Spartan
         {
             cmd_list->Blit(tex_in, tex_out, false, GetOption<float>(Renderer_Option::ResolutionScale));
         }
+
+        // used for refraction by the transparent passes, so generate mips to emulate roughness
+        Pass_Downsample(cmd_list, tex_out, Renderer_DownsampleFilter::Average);
 
         cmd_list->EndTimeblock();
     }
@@ -1849,6 +1847,30 @@ namespace Spartan
             cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
         }
         cmd_list->EndMarker();
+    }
+
+    void Renderer::Pass_AdditiveTransaparent(RHI_CommandList* cmd_list, RHI_Texture* tex_source, RHI_Texture* tex_destination)
+    {
+        // acquire resources
+        RHI_Shader* shader_c = GetShader(Renderer_Shader::additive_transparent_c).get();
+        if (!shader_c->IsCompiled())
+            return;
+        
+        cmd_list->BeginTimeblock("additive_transparent");
+        {
+            // set pipeline state
+            static RHI_PipelineState pso;
+            pso.shaders[Compute] = shader_c;
+            cmd_list->SetPipelineState(pso);
+           
+            // set textures
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_destination);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_source);
+            
+            // render
+            cmd_list->Dispatch(tex_destination);
+        }
+        cmd_list->EndTimeblock();
     }
 
     void Renderer::Pass_Blur(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const float radius, const uint32_t mip /*= rhi_all_mips*/)

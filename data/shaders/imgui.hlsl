@@ -101,6 +101,6 @@ float4 main_ps(vertex input) : SV_Target
         float white_point = 400.0f;
         color.rgb = linear_to_hdr10(color.rgb, white_point);
     }
-    
+
     return color;
  }

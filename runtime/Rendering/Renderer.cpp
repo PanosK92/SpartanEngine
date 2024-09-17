@@ -441,13 +441,14 @@ namespace Spartan
         m_cb_frame_cpu.view_projection_inv      = Matrix::Invert(m_cb_frame_cpu.view_projection);
         if (shared_ptr<Camera> camera = GetCamera())
         {
-            m_cb_frame_cpu.view_projection_unjittered = m_cb_frame_cpu.view * camera->GetProjectionMatrix();
-            m_cb_frame_cpu.camera_near                = camera->GetNearPlane();
-            m_cb_frame_cpu.camera_far                 = camera->GetFarPlane();
-            m_cb_frame_cpu.camera_position_previous   = m_cb_frame_cpu.camera_position;
-            m_cb_frame_cpu.camera_position            = camera->GetEntity()->GetPosition();
-            m_cb_frame_cpu.camera_direction           = camera->GetEntity()->GetForward();
-            m_cb_frame_cpu.camera_last_movement_time  = (m_cb_frame_cpu.camera_position - m_cb_frame_cpu.camera_position_previous).LengthSquared() != 0.0f
+            m_cb_frame_cpu.view_projection_previous_unjittered =  m_cb_frame_cpu.view_projection_unjittered;
+            m_cb_frame_cpu.view_projection_unjittered          = m_cb_frame_cpu.view * camera->GetProjectionMatrix();
+            m_cb_frame_cpu.camera_near                         = camera->GetNearPlane();
+            m_cb_frame_cpu.camera_far                          = camera->GetFarPlane();
+            m_cb_frame_cpu.camera_position_previous            = m_cb_frame_cpu.camera_position;
+            m_cb_frame_cpu.camera_position                     = camera->GetEntity()->GetPosition();
+            m_cb_frame_cpu.camera_direction                    = camera->GetEntity()->GetForward();
+            m_cb_frame_cpu.camera_last_movement_time           = (m_cb_frame_cpu.camera_position - m_cb_frame_cpu.camera_position_previous).LengthSquared() != 0.0f
                 ? static_cast<float>(Timer::GetTimeSec()) : m_cb_frame_cpu.camera_last_movement_time;
         }
         m_cb_frame_cpu.resolution_output           = m_resolution_output;

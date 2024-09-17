@@ -24,20 +24,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // constants
-static const int BLUR_RADIUS                = 10;  // maximum radius of the blur
-static const int BLUR_SAMPLE_COUNT          = (2 * BLUR_RADIUS + 1);
-static const float BASE_FOCAL_LENGTH        = 50.0; // in mm, base focal length
-static const float SENSOR_HEIGHT            = 24.0; // in mm, assuming full-frame sensor
-static const float EDGE_DETECTION_THRESHOLD = 0.1; // adjust to control edge sensitivity
-static const float HEXAGON_STRENGTH         = 0.2; // strength of hexagonal bokeh shape
+static const float BLUR_RADIUS                = 10.0f; // maximum radius of the blur
+static const float BASE_FOCAL_LENGTH          = 50.0;  // in mm, base focal length
+static const float SENSOR_HEIGHT              = 24.0;  // in mm, assuming full-frame sensor
+static const float EDGE_DETECTION_THRESHOLD   = 0.1f;  // adjust to control edge sensitivity
+static const uint  AVERAGE_DEPTH_SAMPLE_COUNT = 10;
+static const float AVERAGE_DEPTH_RADIUS       = 0.1f;
 
 float compute_coc(float2 uv, float focus_distance, float aperture)
 {
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
     float2 texel_size = 1.0 / resolution_out;
-
-    float depth = get_linear_depth(uv);
+    float depth       = get_linear_depth(uv);
     
     // edge detection
     float depth_diff = 0;
@@ -45,10 +44,12 @@ float compute_coc(float2 uv, float focus_distance, float aperture)
     {
         for (int j = -1; j <= 1; j++)
         {
-            if (i == 0 && j == 0) continue;
-            float2 offset = float2(i, j) * texel_size;
-            float neighbor_depth = get_linear_depth(uv + offset);
-            depth_diff += abs(depth - neighbor_depth);
+            if (i == 0 && j == 0)
+                continue;
+            
+            float2 offset         = float2(i, j) * texel_size;
+            float neighbor_depth  = get_linear_depth(uv + offset);
+            depth_diff           += abs(depth - neighbor_depth);
         }
     }
     float edge_factor = saturate(depth_diff / EDGE_DETECTION_THRESHOLD);
@@ -56,7 +57,7 @@ float compute_coc(float2 uv, float focus_distance, float aperture)
     // adjust focal length based on focus distance
     float focal_length = BASE_FOCAL_LENGTH * (1.0 + saturate(focus_distance / 100.0));
     
-    float f = focal_length * 0.001; // convert to meters
+    float f  = focal_length * 0.001; // convert to meters
     float s1 = focus_distance;
     float s2 = depth;
     
@@ -67,8 +68,8 @@ float compute_coc(float2 uv, float focus_distance, float aperture)
     float coc_pixels = coc_diameter * (resolution_out.y / SENSOR_HEIGHT);
     
     // adjust coc based on focus distance to enhance the effect
-    float distance_factor = saturate(focus_distance / 50.0);
-    coc_pixels *= lerp(2.0, 0.5, distance_factor);
+    float distance_factor  = saturate(focus_distance / 50.0);
+    coc_pixels            *= lerp(2.0, 0.5, distance_factor);
     
     // enhance coc for edges
     coc_pixels *= (1.0 + edge_factor);
@@ -85,50 +86,44 @@ float3 gaussian_blur(float2 uv, float coc, float2 resolution_out)
 {
     float2 texel_size = 1.0f / resolution_out;
     float sigma       = max(1.0, coc * BLUR_RADIUS);
-    float3 color      = float3(0.0, 0.0, 0.0);
-    
-    // adaptive sampling
-    int samples = clamp(int(sigma * 0.5), 1, BLUR_RADIUS);
-    
+    int samples       = clamp(int(sigma * 0.5), 1, BLUR_RADIUS); // adaptive sampling
+
+    float3 color      = 0.0f;
     float total_weight = 0.0;
     for (int i = -samples; i <= samples; i++)
     {
         for (int j = -samples; j <= samples; j++)
         {
-            float2 offset = float2(i, j) * texel_size;
+            float2 offset  = float2(i, j) * texel_size;
             float distance = length(float2(i, j));
-            
-            // hexagonal shape function
-            float angle = atan2(j, i);
-            float hexagon = cos(angle * 3.0) * HEXAGON_STRENGTH + (1 - HEXAGON_STRENGTH);
-            
-            if (distance <= sigma * hexagon)
+           
+            if (distance <= sigma)
             {
-                float weight = gaussian_weight(distance, sigma) * hexagon;
-                color += tex.Sample(samplers[sampler_bilinear_clamp], uv + offset).rgb * weight;
+                float weight  = gaussian_weight(distance, sigma);
+                color        += tex.Sample(samplers[sampler_bilinear_clamp], uv + offset).rgb * weight;
                 total_weight += weight;
             }
         }
     }
 
-    return color / max(total_weight, 0.001); // prevent division by zero
+    return color / (total_weight + FLT_MIN); 
 }
 
-float get_average_depth_circle(float2 center, float radius, uint sample_count, float2 resolution_out)
+float get_average_depth_circle(float2 center, float2 resolution_out)
 {
-    float average_depth = 0.0f;
-    float2 texel_size   = 1.0f / resolution_out;
-    float angle_step    = PI2 / (float)sample_count;
+    float2 texel_size = 1.0f / resolution_out;
+    float angle_step  = PI2 / (float)AVERAGE_DEPTH_SAMPLE_COUNT;
 
-    for (int i = 0; i < sample_count; i++)
+    float average_depth = 0.0f;
+    for (int i = 0; i < AVERAGE_DEPTH_SAMPLE_COUNT; i++)
     {
         float angle           = i * angle_step;
-        float2 sample_offset  = float2(cos(angle), sin(angle)) * radius * texel_size;
+        float2 sample_offset  = float2(cos(angle), sin(angle)) * AVERAGE_DEPTH_RADIUS * texel_size;
         float2 sample_uv      = center + sample_offset;
         average_depth        += get_linear_depth(sample_uv);
     }
 
-    return average_depth / sample_count;
+    return average_depth / (float)AVERAGE_DEPTH_SAMPLE_COUNT;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -136,16 +131,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
-    if (any(int2(thread_id.xy) >= resolution_out))
-        return;
-
     const float2 uv = (thread_id.xy + 0.5f) / resolution_out;
 
     // get focal depth from camera
-    const float circle_radius = 0.1f;
-    const uint  sample_count  = 10;
-    float focal_depth         = get_average_depth_circle(float2(0.5, 0.5f), circle_radius, sample_count, resolution_out);
-    float aperture            = pass_get_f3_value().x;
+    float focal_depth = get_average_depth_circle(float2(0.5, 0.5f), resolution_out);
+    float aperture    = pass_get_f3_value().x;
 
     // do the actual blurring
     float coc             = compute_coc(uv, focal_depth, aperture);

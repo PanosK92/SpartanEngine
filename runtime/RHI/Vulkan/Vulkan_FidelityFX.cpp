@@ -770,7 +770,6 @@ namespace Spartan
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
-        RHI_Texture* tex_color_opaque,
         RHI_Texture* tex_output
     )
     {
@@ -781,11 +780,11 @@ namespace Spartan
         cmd_list->InsertBarrierTextureReadWrite(tex_output);
         cmd_list->InsertPendingBarrierGroup();
 
-        // generate reactive mask
+        // generate reactive mask - not used but if it's not generated we get a gpu crash, why?
         {
             // set resources
             fsr3::description_reactive_mask.commandList       = to_ffx_cmd_list(cmd_list);
-            fsr3::description_reactive_mask.colorOpaqueOnly   = to_ffx_resource(tex_color_opaque,             L"fsr3_color_opaque");
+            fsr3::description_reactive_mask.colorOpaqueOnly   = to_ffx_resource(tex_color,                    L"fsr3_color_opaque");
             fsr3::description_reactive_mask.colorPreUpscale   = to_ffx_resource(tex_color,                    L"fsr3_color");
             fsr3::description_reactive_mask.outReactive       = to_ffx_resource(fsr3::texture_reactive.get(), L"fsr3_reactive");
 
@@ -803,13 +802,12 @@ namespace Spartan
 
         // upscale
         {
-            // set resources (no need for the transparency mask as they are rendered later)
+            // set resources (no need for the transparency or reactive masks as we do them later, full res)
             fsr3::description_dispatch.commandList   = to_ffx_cmd_list(cmd_list);
-            fsr3::description_dispatch.color         = to_ffx_resource(tex_color,                    L"fsr3_color");
-            fsr3::description_dispatch.depth         = to_ffx_resource(tex_depth,                    L"fsr3_depth");
-            fsr3::description_dispatch.motionVectors = to_ffx_resource(tex_velocity,                 L"fsr3_velocity");
-            fsr3::description_dispatch.reactive      = to_ffx_resource(fsr3::texture_reactive.get(), L"fsr3_reactive");
-            fsr3::description_dispatch.output        = to_ffx_resource(tex_output,                   L"fsr3_output");
+            fsr3::description_dispatch.color         = to_ffx_resource(tex_color,    L"fsr3_color");
+            fsr3::description_dispatch.depth         = to_ffx_resource(tex_depth,    L"fsr3_depth");
+            fsr3::description_dispatch.motionVectors = to_ffx_resource(tex_velocity, L"fsr3_velocity");
+            fsr3::description_dispatch.output        = to_ffx_resource(tex_output,   L"fsr3_output");
 
             // configure
             fsr3::description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth());
