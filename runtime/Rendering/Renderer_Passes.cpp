@@ -29,7 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_Shader.h"
+#ifdef _MSC_VER
 #include "../RHI/RHI_FidelityFX.h"
+#endif
 #include "../RHI/RHI_RasterizerState.h"
 SP_WARNINGS_OFF
 #include "bend_sss_cpu.h"
@@ -943,6 +945,7 @@ namespace Spartan
 
     void Renderer::Pass_Ssr(RHI_CommandList* cmd_list)
     {
+        #ifdef _MSC_VER
         static bool cleared = true;
 
         if (GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
@@ -970,6 +973,7 @@ namespace Spartan
             cmd_list->ClearTexture(GetRenderTarget(Renderer_RenderTarget::ssr).get(), Color::standard_transparent);
             cleared = true;
         }
+        #endif
     }
 
     void Renderer::Pass_Sss(RHI_CommandList* cmd_list)
@@ -1179,6 +1183,7 @@ namespace Spartan
 
     void Renderer::Pass_Light_GlobalIllumination(RHI_CommandList* cmd_list)
     {
+        #ifdef _MSC_VER
         static bool cleared = true;
 
         if (GetOption<bool>(Renderer_Option::GlobalIllumination) && m_initialized_third_party)
@@ -1240,6 +1245,7 @@ namespace Spartan
             cmd_list->ClearTexture(GetRenderTarget(Renderer_RenderTarget::light_specular_gi).get(), Color::standard_black);
             cleared = true;
         }
+        #endif
     }
 
     void Renderer::Pass_Light_Composition(RHI_CommandList* cmd_list, const bool is_transparent_pass)
@@ -1741,6 +1747,7 @@ namespace Spartan
 
     void Renderer::Pass_Upscale(RHI_CommandList* cmd_list)
     {
+        #ifdef _MSC_VER
         // acquire render targets
         RHI_Texture* tex_in  = GetRenderTarget(Renderer_RenderTarget::frame_render).get();
         RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::frame_output).get();
@@ -1769,6 +1776,7 @@ namespace Spartan
         }
 
         cmd_list->EndTimeblock();
+        #endif
     }
 
     void Renderer::Pass_Sharpening(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
