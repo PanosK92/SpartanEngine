@@ -34,7 +34,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_RasterizerState.h"
 #include "../RHI/RHI_DepthStencilState.h"
 #include "../RHI/RHI_Buffer.h"
+#ifdef _MSC_VER
 #include "../RHI/RHI_FidelityFX.h"
+#endif
 #include "../RHI/RHI_Device.h"
 //=======================================
 
@@ -268,7 +270,9 @@ namespace Spartan
         
 
         RHI_Device::QueueWaitAll();
+        #ifdef _MSC_VER
         RHI_FidelityFX::Resize(GetResolutionRender(), GetResolutionOutput());
+        #endif
     }
 
     void Renderer::CreateShaders()
