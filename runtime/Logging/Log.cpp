@@ -19,11 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============
+//= INCLUDES =====================
 #include "pch.h"
 #include "ILogger.h"
 #include "../World/Entity.h"
-//==========================
+#include "../Profiling/Profiler.h"
+//================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -112,8 +113,8 @@ namespace Spartan
         oss << put_time(&tm, "[%H:%M:%S]");
         const string final_text = oss.str() + ": " + string(text);
 
-        // log to file if requested or if an in-engine logger is not available.
-        if (log_to_file || !logger)
+        // log to file if requested or if an in-engine logger is not available
+        if (log_to_file || !logger || Profiler::IsLoggingToFileEnabled())
         {
             logs.emplace_back(final_text, type);
             write_to_file(final_text, type);

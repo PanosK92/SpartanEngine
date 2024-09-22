@@ -108,6 +108,7 @@ namespace Spartan
         static void SetGpuTimingEnabled(const bool enabled);
         static bool IsRenderdocEnabled();
         static bool IsShaderOptimizationEnabled();
+        static bool IsLoggingToFileEnabled();
 
     private:
         static void SwapBuffers();
