@@ -99,7 +99,7 @@ float3 gaussian_blur(float2 uv, float coc, float2 texel_size)
         }
     }
 
-    return color / total_weight; 
+    return color / total_weight;
 }
 
 float get_average_depth_circle(float2 center, float2 resolution_out)
