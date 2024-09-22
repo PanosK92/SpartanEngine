@@ -37,7 +37,7 @@ struct translucency
         
         static float3 refract_vector(float3 i, float3 n, float eta)
         {
-            // Snell's Law
+            // snell's Law
             float cosi  = dot(-i, n);
             float cost2 = 1.0f - eta * eta * (1.0f - cosi * cosi);
             return eta * i + (eta * cosi - sqrt(abs(cost2))) * n;
@@ -154,20 +154,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
 
     // compose
-    {
-        // if the surface is fully opaque (alpha == 1.0), use only the direct lighting (diffuse, specular, etc.)
-        if (surface.alpha == 1.0f)
-        {
-            color = light_diffuse * surface.albedo + light_specular + light_emissive;
-        }
-        else // for transparent objects (glass, water, etc.), use only the refracted light
-        {
-            color = light_refraction + light_emissive;
-        }
-    
-        // add radial and volumetric fog to both cases
-        color += got_fog_radial(distance_from_camera, buffer_frame.camera_position.xyz, buffer_frame.directional_light_intensity) + tex_light_volumetric[thread_id.xy].rgb;
-    }
+    color  = light_diffuse * surface.albedo + light_specular + light_emissive + light_refraction;
+    color += got_fog_radial(distance_from_camera, buffer_frame.camera_position.xyz, buffer_frame.directional_light_intensity) + tex_light_volumetric[thread_id.xy].rgb;
     
     tex_uav[thread_id.xy] = saturate_16(float4(color, alpha));
 }
