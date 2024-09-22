@@ -150,9 +150,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     {
         volumetric_fog = compute_volumetric_fog(surface, light, thread_id.xy);
     }
-    
+
+    // mulitple ligts can go through this shader, so we accumulate the results
     /* diffuse    */ tex_uav[thread_id.xy]  += float4(saturate_11(light_diffuse  * light.radiance + light_subsurface), 1.0f);
     /* specular   */ tex_uav2[thread_id.xy] += float4(saturate_11(light_specular * light.radiance), 1.0f);
-    /* shadow     */ tex_uav3[thread_id.xy] += saturate(tex_uav3[thread_id.xy] - (1.0f - shadow.a));
+    /* shadow     */ tex_uav3[thread_id.xy]  = saturate(tex_uav3[thread_id.xy] - (1.0f - shadow.a));
     /* volumetric */ tex_uav4[thread_id.xy] += float4(saturate_11(volumetric_fog), 1.0f);
 }
