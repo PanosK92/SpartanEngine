@@ -78,8 +78,9 @@ namespace Spartan
     namespace
     {
         //= DEBUGGING OPTIONS ========================================================================================================
-        bool is_validation_layer_enabled        = false; // cpu cost: high - per draw cost, especially high with large bindless arrays
-        bool is_gpu_assisted_validation_enabled = false; // cpu cost: high - per draw cost
+        bool is_validation_layer_enabled        = false;  // cpu cost: high - per draw cost, especially high with large bindless arrays
+        bool is_gpu_assisted_validation_enabled = false;  // cpu cost: high - per draw cost
+        bool is_logging_to_file_enabled         = false;  // cpu cost: hihg - it's an I/O operation
         bool is_renderdoc_enabled               = false; // cpu cost: high - intercepts every API call and wraps it
         bool is_gpu_marking_enabled             = true;  // cpu cost: imperceptible
         bool is_gpu_timing_enabled              = true;  // cpu cost: imperceptible
@@ -566,5 +567,10 @@ namespace Spartan
     bool Profiler::IsShaderOptimizationEnabled()
     {
         return is_shader_optimization_enabled;
+    }
+
+    bool Profiler::IsLoggingToFileEnabled()
+    {
+        return is_logging_to_file_enabled;
     }
 }
