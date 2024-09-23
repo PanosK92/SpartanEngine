@@ -268,7 +268,6 @@ namespace Spartan
             FfxFsr3UpscalerDispatchDescription         description_dispatch      = {};
             FfxFsr3UpscalerGenerateReactiveDescription description_reactive_mask = {};
             uint32_t                                   jitter_index              = 0;
-            unique_ptr<RHI_Texture> texture_reactive                             = nullptr;
         }
 
         namespace sssr
@@ -577,7 +576,6 @@ namespace Spartan
         {
             SP_ASSERT(ffxFsr3UpscalerContextDestroy(&fsr3::context) == FFX_OK);
             fsr3::context_created  = false;
-            fsr3::texture_reactive = nullptr;
         }
     }
 
@@ -631,9 +629,6 @@ namespace Spartan
 
             // reset jitter index
             fsr3::jitter_index = 0;
-
-            // resources
-            fsr3::texture_reactive = make_unique<RHI_Texture2D>(width, height, 1, RHI_Format::R8_Unorm, RHI_Texture_Uav | RHI_Texture_Srv, "reactive");
         }
 
         // sssr
@@ -780,26 +775,6 @@ namespace Spartan
         cmd_list->InsertBarrierTextureReadWrite(tex_output);
         cmd_list->InsertPendingBarrierGroup();
 
-        // generate reactive mask - not used but if it's not generated we get a gpu crash, why?
-        {
-            // set resources
-            fsr3::description_reactive_mask.commandList       = to_ffx_cmd_list(cmd_list);
-            fsr3::description_reactive_mask.colorOpaqueOnly   = to_ffx_resource(tex_color,                    L"fsr3_color_opaque");
-            fsr3::description_reactive_mask.colorPreUpscale   = to_ffx_resource(tex_color,                    L"fsr3_color");
-            fsr3::description_reactive_mask.outReactive       = to_ffx_resource(fsr3::texture_reactive.get(), L"fsr3_reactive");
-
-            // configure
-            fsr3::description_reactive_mask.renderSize.width  = static_cast<uint32_t>(tex_velocity->GetWidth() * resolution_scale);
-            fsr3::description_reactive_mask.renderSize.height = static_cast<uint32_t>(tex_velocity->GetHeight() * resolution_scale);
-            fsr3::description_reactive_mask.scale             = 1.0f; // global multiplier for reactivity
-            fsr3::description_reactive_mask.binaryValue       = 1.0f; // value assigned to reactive pixels in the mask (typically 1.0)
-            fsr3::description_reactive_mask.cutoffThreshold   = 0.8f; // difference threshold, lower values make more pixels reactive
-            fsr3::description_reactive_mask.flags             = 0;
-
-            // dispatch
-            SP_ASSERT(ffxFsr3UpscalerContextGenerateReactiveMask(&fsr3::context, &fsr3::description_reactive_mask) == FFX_OK);
-        }
-
         // upscale
         {
             // set resources (no need for the transparency or reactive masks as we do them later, full res)
@@ -816,8 +791,8 @@ namespace Spartan
             fsr3::description_dispatch.sharpness              = sharpness;
             fsr3::description_dispatch.frameTimeDelta         = delta_time_sec * 1000.0f;    // seconds to milliseconds
             fsr3::description_dispatch.preExposure            = exposure;                    // the exposure value if not using FFX_FSR3_ENABLE_AUTO_EXPOSURE
-            fsr3::description_dispatch.renderSize.width       = fsr3::description_reactive_mask.renderSize.width;
-            fsr3::description_dispatch.renderSize.height      = fsr3::description_reactive_mask.renderSize.height;
+            fsr3::description_dispatch.renderSize.width       = tex_velocity->GetWidth();
+            fsr3::description_dispatch.renderSize.height      = tex_velocity->GetHeight();
             fsr3::description_dispatch.cameraNear             = camera->GetFarPlane();       // far as near because we are using reverse-z
             fsr3::description_dispatch.cameraFar              = camera->GetNearPlane();      // near as far because we are using reverse-z
             fsr3::description_dispatch.cameraFovAngleVertical = camera->GetFovVerticalRad();
