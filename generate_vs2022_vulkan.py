@@ -8,7 +8,7 @@ def main():
     os.chdir(script_dir)
 
     script = script_dir / "build_scripts" / "generate_project_files.py"
-    subprocess.Popen([sys.executable, str(script), "vs2022", "vulkan"]).communicate()
+    subprocess.Popen([sys.executable, str(script), "vs2022", "vulkan_windows"]).communicate()
     sys.exit(0)
 
 if __name__ == "__main__":
