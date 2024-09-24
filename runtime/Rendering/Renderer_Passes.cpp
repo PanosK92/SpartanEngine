@@ -813,23 +813,23 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.name                              = is_transparent_pass ? "g_buffer_transparent" : "g_buffer";
-        pso.shaders[RHI_Shader_Type::Vertex]  = shader_v;
-        pso.shaders[RHI_Shader_Type::Pixel]   = shader_p;
-        pso.blend_state                       = GetBlendState(Renderer_BlendState::Off).get();
-        pso.rasterizer_state                  = rasterizer_state;
-        pso.depth_stencil_state               = GetDepthStencilState(Renderer_DepthStencilState::Read).get();
-        pso.vrs_input_texture                 = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
-        pso.resolution_scale                  = true;
-        pso.render_target_color_textures[0]   = tex_color;
-        pso.render_target_color_textures[1]   = tex_normal;
-        pso.render_target_color_textures[2]   = tex_material;
-        pso.render_target_color_textures[3]   = tex_velocity;
-        pso.render_target_depth_texture       = tex_depth;
-        pso.clear_color[0]                    = Color::standard_transparent;
-        pso.clear_color[1]                    = Color::standard_transparent;
-        pso.clear_color[2]                    = Color::standard_transparent;
-        pso.clear_color[3]                    = Color::standard_transparent;
+        pso.name                             = is_transparent_pass ? "g_buffer_transparent" : "g_buffer";
+        pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
+        pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
+        pso.blend_state                      = GetBlendState(Renderer_BlendState::Off).get();
+        pso.rasterizer_state                 = rasterizer_state;
+        pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Read).get();
+        pso.vrs_input_texture                = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate).get() : nullptr;
+        pso.resolution_scale                 = true;
+        pso.render_target_color_textures[0]  = tex_color;
+        pso.render_target_color_textures[1]  = tex_normal;
+        pso.render_target_color_textures[2]  = tex_material;
+        pso.render_target_color_textures[3]  = tex_velocity;
+        pso.render_target_depth_texture      = tex_depth;
+        pso.clear_color[0]                   = is_transparent_pass ? rhi_color_load : Color::standard_black;
+        pso.clear_color[1]                   = is_transparent_pass ? rhi_color_load : Color::standard_black;
+        pso.clear_color[2]                   = is_transparent_pass ? rhi_color_load : Color::standard_black;
+        pso.clear_color[3]                   = is_transparent_pass ? rhi_color_load : Color::standard_black;
         cmd_list->SetIgnoreClearValues(false);
         cmd_list->SetPipelineState(pso);
 
@@ -870,7 +870,7 @@ namespace Spartan
                     {
                         pso.shaders[RHI_Shader_Type::Hull]   = is_tessellated ? shader_h : nullptr;
                         pso.shaders[RHI_Shader_Type::Domain] = is_tessellated ? shader_d : nullptr;
-                        toggled           = true;
+                        toggled                              = true;
                     }
                 }
 
