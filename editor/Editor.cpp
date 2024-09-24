@@ -45,10 +45,11 @@ using namespace std;
 
 namespace
 {
-    float k_font_size         = 18.0f;
-    float k_font_scale        = 1.0f;
-    TitleBar* widget_menu_bar = nullptr;
-    Widget* widget_world      = nullptr;
+    float font_size             = 18.0f;
+    float font_scale            = 1.0f;
+    TitleBar* widget_menu_bar   = nullptr;
+    Widget* widget_world        = nullptr;
+    bool window_sponsor_visible = true;
 
     void process_event(Spartan::sp_variant data)
     {
@@ -154,7 +155,6 @@ namespace
         style.ScaleAllSizes(Spartan::Window::GetDpiScale());
     }
 
-    bool window_sponsor_visible = true;
     void window_sponsor()
     {
         if (!window_sponsor_visible)
@@ -190,20 +190,18 @@ Editor::Editor(const std::vector<std::string>& args)
     io.ConfigFlags                  |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags                  |= ImGuiConfigFlags_DockingEnable;
     io.ConfigFlags                  |= ImGuiConfigFlags_ViewportsEnable;
-    io.ConfigFlags                  |= ImGuiConfigFlags_NoMouseCursorChange; // cursor visibility is handled by the engine
+    io.ConfigFlags                  |= ImGuiConfigFlags_NoMouseCursorChange; // cursor control is given to ImGui, but dynamically, from the engine
     io.ConfigWindowsResizeFromEdges  = true;
-    io.ConfigViewportsNoTaskBarIcon  = true;
-    io.ConfigViewportsNoDecoration   = true; // borderless child windows but with ImGui min, max and close buttons
     io.IniFilename                   = "editor.ini";
 
-    // load font
-    ImFontConfig config; // Config for bold font (mainly for use in headers)
+    // font_bold configuration
+    ImFontConfig config; // config for bold font (mainly for use in headers)
     config.GlyphOffset.y = -2.0f;
 
     const string dir_fonts = Spartan::ResourceCache::GetResourceDirectory(Spartan::ResourceDirectory::Fonts) + "/";
-    font_normal            = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Medium.ttf").c_str(), k_font_size * Spartan::Window::GetDpiScale());
-    font_bold              = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Bold.ttf").c_str(), k_font_size * Spartan::Window::GetDpiScale(), &config);
-    io.FontGlobalScale     = k_font_scale;
+    font_normal            = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Medium.ttf").c_str(), font_size * Spartan::Window::GetDpiScale());
+    font_bold              = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Bold.ttf").c_str(), font_size * Spartan::Window::GetDpiScale(), &config);
+    io.FontGlobalScale     = font_scale;
 
     // initialise imgui backends
     SP_ASSERT_MSG(ImGui_ImplSDL2_InitForVulkan(static_cast<SDL_Window*>(Spartan::Window::GetHandleSDL())), "Failed to initialize ImGui's SDL backend");
