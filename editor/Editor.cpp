@@ -153,6 +153,31 @@ namespace
 
         style.ScaleAllSizes(Spartan::Window::GetDpiScale());
     }
+
+    bool window_sponsor_visible = true;
+    void window_sponsor()
+    {
+        if (!window_sponsor_visible)
+            return;
+
+        ImGui::SetNextWindowSize(ImVec2(600, 300), ImGuiCond_FirstUseEver);
+    
+        if (ImGui::Begin("Support Spartan Engine", &window_sponsor_visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize))
+        {
+            ImGui::TextWrapped(
+                "I'm covering the costs for hosting the Spartan Engine's assets on my personal Dropbox, "
+                "as well as running a dedicated website. If you enjoy the convenience of downloading the engine, "
+                "running a single script, and getting all the necessary assets without hassle, "
+                "please consider sponsoring me. Your support will help keep everything smooth and accessible!"
+            );
+        
+            if (ImGui::Button("Sponsor"))
+            {
+                Spartan::FileSystem::OpenUrl("https://github.com/sponsors/PanosK92");
+            }
+        }
+        ImGui::End();
+    }
 }
 
 Editor::Editor(const std::vector<std::string>& args)
@@ -213,6 +238,9 @@ Editor::Editor(const std::vector<std::string>& args)
 
     // register imgui as a third party library (will show up in the about window)
     Spartan::Settings::RegisterThirdPartyLib("ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
+
+    // determine if the sponsor window should be visible, shoudl only happen once
+    window_sponsor_visible = !Spartan::FileSystem::Exists("editor.ini");
 }
 
 Editor::~Editor()
@@ -245,6 +273,8 @@ void Editor::Tick()
 
             // engine
             Spartan::Engine::Tick();
+
+            window_sponsor();
 
             // editor
             if (render_editor)
