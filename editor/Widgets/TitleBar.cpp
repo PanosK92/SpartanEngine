@@ -664,6 +664,11 @@ void TitleBar::EntryHelp()
     {
         ImGui::MenuItem("About", nullptr, &show_about_window);
 
+        if (ImGui::MenuItem("Sponsor", nullptr, nullptr))
+        {
+            Spartan::FileSystem::OpenUrl("https://github.com/sponsors/PanosK92");
+        }
+
         if (ImGui::MenuItem("Contributing", nullptr, nullptr))
         {
             Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/blob/master/contributing.md");
