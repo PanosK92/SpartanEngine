@@ -239,8 +239,8 @@ Editor::Editor(const std::vector<std::string>& args)
     // register imgui as a third party library (will show up in the about window)
     Spartan::Settings::RegisterThirdPartyLib("ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
 
-    // determine if the sponsor window should be visible, shoudl only happen once
-    window_sponsor_visible = !Spartan::FileSystem::Exists("editor.ini");
+    // the sponsor window only shows up if the editor.ini file doesn't exist, which means that this is the first ever run
+    window_sponsor_visible = !Spartan::FileSystem::Exists(io.IniFilename);
 }
 
 Editor::~Editor()
