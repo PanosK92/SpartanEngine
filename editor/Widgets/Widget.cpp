@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Editor.h"
 #include "../ImGui/Source/imgui_internal.h"
 #include "Profiling/Profiler.h"
-#include "Display/Display.h"
 #include "Viewport.h"
 //=========================================
 
