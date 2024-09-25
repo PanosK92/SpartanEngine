@@ -160,8 +160,18 @@ namespace
         if (!window_sponsor_visible)
             return;
 
-        ImGui::SetNextWindowSize(ImVec2(600, 300), ImGuiCond_FirstUseEver);
-    
+        const float width  = 600.0f;
+        const float height = 300.0f;
+
+        // set position
+        ImVec2 display_size = ImGui::GetIO().DisplaySize;
+        ImVec2 window_pos   = ImVec2((display_size.x - width) * 0.5f, (display_size.y - height) * 0.5f);
+        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
+        // set size
+        ImGui::SetNextWindowSize(ImVec2(width, height), ImGuiCond_Always);
+        // set focus
+        ImGui::SetNextWindowFocus();
+
         if (ImGui::Begin("Support Spartan Engine", &window_sponsor_visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize))
         {
             ImGui::TextWrapped(
@@ -170,7 +180,9 @@ namespace
                 "running a single script, and getting all the necessary assets without hassle, "
                 "please consider sponsoring me. Your support will help keep everything smooth and accessible!"
             );
-        
+
+            ImGui::Separator();
+
             if (ImGui::Button("Sponsor"))
             {
                 Spartan::FileSystem::OpenUrl("https://github.com/sponsors/PanosK92");
