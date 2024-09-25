@@ -211,10 +211,7 @@ namespace Spartan
         if (create_render)
         {
             // frame
-            {
-                render_target(Renderer_RenderTarget::frame_render)   = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_rt_clearable, "frame_render");
-                render_target(Renderer_RenderTarget::frame_render_2) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_rt_clearable, "frame_render_2");
-            }
+            render_target(Renderer_RenderTarget::frame_render) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_rt_clearable, "frame_render");
 
             // g-buffer
             {
