@@ -155,8 +155,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // in which case we detect movement and clamp extreme specular values
     if (surface.is_transparent())
     {
-        float velocity     = length(tex_velocity[thread_id.xy].xy) * 250.0f;
-        float max_specular = saturate(1.0f - velocity);
+        float2 velocity    = tex_velocity[thread_id.xy].xy;
+        float max_specular = 1.0f / (length(velocity) * 10000.0f);
         light_specular     = clamp(light_specular, 0.0f, max_specular);
     }
 
@@ -166,3 +166,4 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     /* shadow     */ tex_uav3[thread_id.xy]  = saturate(tex_uav3[thread_id.xy] - (1.0f - shadow.a));
     /* volumetric */ tex_uav4[thread_id.xy] += float4(saturate_11(volumetric_fog), 1.0f);
 }
+
