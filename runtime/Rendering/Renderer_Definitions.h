@@ -224,7 +224,6 @@ namespace Spartan
         light_shadow,
         light_volumetric,
         frame_render,
-        frame_render_2,
         frame_output,
         frame_output_2,
         ssao,
