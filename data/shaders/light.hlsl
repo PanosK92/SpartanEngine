@@ -151,6 +151,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         volumetric_fog = compute_volumetric_fog(surface, light, thread_id.xy);
     }
 
+    // transparents don't use TAA, so specular flickering can be an issue
+    // in which case we detect movement and clamp extreme specular values
+    if (surface.is_transparent())
+    {
+        float velocity     = length(tex_velocity[thread_id.xy].xy) * 250.0f;
+        float max_specular = saturate(1.0f - velocity);
+        light_specular     = clamp(light_specular, 0.0f, max_specular);
+    }
+
     // mulitple ligts can go through this shader, so we accumulate the results
     /* diffuse    */ tex_uav[thread_id.xy]  += float4(saturate_11(light_diffuse  * light.radiance + light_subsurface), 1.0f);
     /* specular   */ tex_uav2[thread_id.xy] += float4(saturate_11(light_specular * light.radiance), 1.0f);
