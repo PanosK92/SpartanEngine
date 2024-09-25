@@ -79,7 +79,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float mip_level                    = lerp(0, mip_count_environment - 1, surface.roughness);
     float3 specular_skysphere          = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level, mip_count_environment);
     float3 diffuse_skysphere           = sample_environment(direction_sphere_uv(surface.normal), mip_count_environment, mip_count_environment);
-    float4 specular_ssr                = tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, 0);
+    float4 specular_ssr                = tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, 0) * (float)surface.is_opaque();
     float3 diffuse_gi                  = tex_light_diffuse_gi[thread_id.xy].rgb  * (float)surface.is_opaque() * 1.5f; // gi is only done for opaque objects
     float3 specular_gi                 = tex_light_specular_gi[thread_id.xy].rgb * (float)surface.is_opaque() * 1.5f; // gi is only done for opaque objects
     float shadow_mask                  = max(tex[thread_id.xy].r, 0.2f);
@@ -97,3 +97,4 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] += float4(saturate_16(ibl), 0.0f);
 }
+
