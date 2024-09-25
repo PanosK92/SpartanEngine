@@ -9,6 +9,7 @@ on:
       - '.gitattributes'
       - '.github/images'
       - '.github/ISSUE_TEMPLATE'
+      - '**/*.hlsl'
   pull_request:
     paths-ignore:
       - '**.md'
@@ -17,6 +18,7 @@ on:
       - '.gitattributes'
       - '.github/images'
       - '.github/ISSUE_TEMPLATE'
+      - '**/*.hlsl'
 
 jobs:
   build:
