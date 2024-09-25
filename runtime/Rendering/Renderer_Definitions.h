@@ -292,9 +292,11 @@ namespace Spartan
     enum class Renderer_RasterizerState
     {
         Solid,
+        Solid_Transparent,
         Wireframe,
         Light_point_spot,
-        Light_directional
+        Light_directional,
+        Max
     };
 
     enum class Renderer_DepthStencilState
