@@ -270,9 +270,7 @@ namespace Spartan
         
 
         RHI_Device::QueueWaitAll();
-        #ifdef _MSC_VER
         RHI_FidelityFX::Resize(GetResolutionRender(), GetResolutionOutput());
-        #endif
     }
 
     void Renderer::CreateShaders()
