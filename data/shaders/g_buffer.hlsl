@@ -98,7 +98,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
     {
         albedo.a = 1.0f;
     }
-    
+
     // compute pixel distance
     float3 camera_to_pixel_world = buffer_frame.camera_position - vertex.position.xyz;
     float pixel_distance         = length(camera_to_pixel_world);

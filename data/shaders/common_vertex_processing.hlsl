@@ -382,7 +382,6 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     bool is_instanced         = instance_id != 0; // not ideal as you can have instancing with instance_id = 0, however it's very performant branching due to predictability
     matrix transform_instance = is_instanced ? input.instance_transform : matrix_identity;
     transform                 = mul(transform, transform_instance);
-#ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
     // clip the last row as it has encoded data in the first two elements
     matrix full              = pass_get_transform_previous();
     matrix<float, 3, 3> temp = (float3x3)full;
@@ -394,24 +393,18 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
         0.0f,      0.0f,      0.0f,      1.0f
     );
     transform_previous = is_instanced ? mul(transform_previous, transform_instance) : full;
-#endif
 
     // transform to world space
     vertex.position          = mul(input.position, transform).xyz;
-#ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
     vertex.position_previous = mul(input.position, transform_previous).xyz;
-#endif
-#ifndef TRANSFORM_IGNORE_NORMALS
     vertex.normal            = normalize(mul(input.normal, (float3x3)transform));
     vertex.tangent           = normalize(mul(input.tangent, (float3x3)transform));
-#endif
 
     // save some things into the vertex
     vertex.instance_id        = instance_id;
     vertex.transform          = transform;
-#ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
     vertex.transform_previous = transform_previous;
-#endif
+
     return vertex;
 }
 
