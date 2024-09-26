@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Shader.h"
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Pipeline.h"
+#include "../Core/Debugging.h"
 SP_WARNINGS_OFF
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -181,16 +182,13 @@ namespace Spartan
 
         void get_pointers()
         {
-            const bool validation_enabled  = Profiler::IsValidationLayerEnabled();
-            const bool gpu_markers_enabled = Profiler::IsGpuMarkingEnabled();
-
             #define get_func(var, def)\
             var = reinterpret_cast<PFN_##def>(vkGetInstanceProcAddr(static_cast<VkInstance>(RHI_Context::instance), #def));\
             if (!var) SP_LOG_ERROR("Failed to get function pointer for %s", #def);\
 
             /* VK_EXT_debug_utils */
             {
-                if (validation_enabled)
+                if (Debugging::IsValidationLayerEnabled())
                 {
                     get_func(create_messenger, vkCreateDebugUtilsMessengerEXT);
                     get_func(destroy_messenger, vkDestroyDebugUtilsMessengerEXT);
@@ -198,7 +196,7 @@ namespace Spartan
                     SP_ASSERT(create_messenger && destroy_messenger);
                 }
 
-                if (gpu_markers_enabled)
+                if (Debugging::IsGpuMarkingEnabled())
                 {
                     get_func(marker_begin, vkCmdBeginDebugUtilsLabelEXT);
                     get_func(marker_end, vkCmdEndDebugUtilsLabelEXT);
@@ -208,7 +206,7 @@ namespace Spartan
             }
 
             /* VK_EXT_debug_marker */
-            if (validation_enabled)
+            if (Debugging::IsValidationLayerEnabled())
             {
                 get_func(set_object_tag, vkSetDebugUtilsObjectTagEXT);
                 get_func(set_object_name, vkSetDebugUtilsObjectNameEXT);
@@ -303,13 +301,13 @@ namespace Spartan
         vector<const char*> get_extensions_instance()
         {
             // validation layer messaging/logging
-            if (Profiler::IsValidationLayerEnabled())
+            if (Debugging::IsValidationLayerEnabled())
             {
                 extensions_instance.emplace_back("VK_EXT_debug_report");
             }
 
             // object naming (for the validation messages) and gpu markers
-            if (Profiler::IsGpuMarkingEnabled())
+            if (Debugging::IsGpuMarkingEnabled())
             {
                 extensions_instance.emplace_back("VK_EXT_debug_utils");
             }
@@ -350,7 +348,7 @@ namespace Spartan
 
         vector<VkLayerSettingEXT> get_settings()
         {
-            SP_ASSERT(Profiler::IsValidationLayerEnabled());
+            SP_ASSERT(Debugging::IsValidationLayerEnabled());
 
             // check layer availability
             {
@@ -389,8 +387,8 @@ namespace Spartan
                 { name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_vendor_nvidia }            // enable Nvidia-specific best practices
             };
 
-            // enable GPU-assisted validation
-            if (Profiler::IsGpuAssistedValidationEnabled())
+            // enable gpu-assisted validation
+            if (Debugging::IsGpuAssistedValidationEnabled())
             {
                 const char* setting_enable_gpu_assisted = "VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT";
                 settings.push_back({ name, "enables", VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_enable_gpu_assisted });
@@ -1239,7 +1237,7 @@ namespace Spartan
             vector<const char*> extensions_instance = extensions::get_extensions_instance();
             info_instance.enabledExtensionCount     = static_cast<uint32_t>(extensions_instance.size());
             info_instance.ppEnabledExtensionNames   = extensions_instance.data();
-            info_instance.enabledLayerCount         = Profiler::IsValidationLayerEnabled() ? 1 : 0;
+            info_instance.enabledLayerCount         = Debugging::IsValidationLayerEnabled() ? 1 : 0;
             info_instance.ppEnabledLayerNames       = &validation_layer::name;
 
             // settings
@@ -1247,7 +1245,7 @@ namespace Spartan
             info_settings.sType                        = VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT;
             info_instance.pNext                        = &info_settings;
             vector<VkLayerSettingEXT> settings;
-            if (Profiler::IsValidationLayerEnabled())
+            if (Debugging::IsValidationLayerEnabled())
             { 
                 settings = validation_layer::get_settings();
             }
@@ -1321,7 +1319,7 @@ namespace Spartan
                 m_optimal_buffer_copy_offset_alignment = properties_device.properties.limits.optimalBufferCopyOffsetAlignment;
 
                 // disable profiler if timestamps are not supported
-                if (Profiler::IsGpuTimingEnabled())
+                if (Debugging::IsGpuTimingEnabled())
                 {
                     SP_ASSERT_MSG(properties_device.properties.limits.timestampComputeAndGraphics, "Device doesn't support timestamps");
                 }
@@ -1400,7 +1398,7 @@ namespace Spartan
         descriptors::descriptor_pool = nullptr;
 
         // debug messenger
-        if (Profiler::IsValidationLayerEnabled())
+        if (Debugging::IsValidationLayerEnabled())
         {
             validation_layer::logging::shutdown(RHI_Context::instance);
         }
@@ -2126,7 +2124,7 @@ namespace Spartan
 
     void RHI_Device::SetResourceName(void* resource, const RHI_Resource_Type resource_type, const std::string name)
     {
-        if (Profiler::IsValidationLayerEnabled()) // function pointers are not initialized if validation disabled 
+        if (Debugging::IsValidationLayerEnabled()) // function pointers are not initialized if validation disabled 
         {
             SP_ASSERT(resource != nullptr);
             SP_ASSERT(functions::set_object_name != nullptr);

@@ -101,14 +101,6 @@ namespace Spartan
         // misc
         static uint32_t m_descriptor_set_count;
         static ProfilerGranularity GetGranularity();
-        static bool IsValidationLayerEnabled();
-        static bool IsGpuAssistedValidationEnabled();
-        static bool IsGpuMarkingEnabled();
-        static bool IsGpuTimingEnabled();
-        static void SetGpuTimingEnabled(const bool enabled);
-        static bool IsRenderdocEnabled();
-        static bool IsShaderOptimizationEnabled();
-        static bool IsLoggingToFileEnabled();
 
     private:
         static void SwapBuffers();
