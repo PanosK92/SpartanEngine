@@ -206,7 +206,6 @@ void Profiler::OnTickVisible()
 
 void Profiler::OnVisible()
 {
-    m_is_gpu_timing_enabled = Spartan::Debugging::IsGpuTimingEnabled();
     Spartan::Debugging::SetGpuTimingEnabled(true);
 }
 
