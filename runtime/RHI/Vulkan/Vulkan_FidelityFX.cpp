@@ -751,7 +751,9 @@ namespace Spartan
 
     void RHI_FidelityFX::FSR3_ResetHistory()
     {
+    #ifdef _MSC_VER
         fsr3::description_dispatch.reset = true;
+    #endif
     }
 
     void RHI_FidelityFX::FSR3_GenerateJitterSample(float* x, float* y)
