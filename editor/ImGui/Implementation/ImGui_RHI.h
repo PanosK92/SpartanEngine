@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include <array>
-#include "ImGui_RHI.h"
 #include "../Source/imgui.h"
 #include "../../Widgets/TextureViewer.h"
 #include "Core/Event.h"
@@ -40,7 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_PipelineState.h"
 #include "RHI/RHI_RasterizerState.h"
 #include "RHI/RHI_DepthStencilState.h"
-#include "Profiling/Profiler.h"
+#include <Debugging.h>
 //======================================
 
 namespace ImGui::RHI
@@ -274,7 +273,7 @@ namespace ImGui::RHI
         }
         const char* name = is_main_window ? "imgui_window_main" : "imgui_window_child";
         bool gpu_timing  = is_main_window; // profiler requires more work when windows enter the main window and their command pool is destroyed
-        cmd_list->BeginTimeblock(name, true, Spartan::Profiler::IsGpuTimingEnabled() && gpu_timing);
+        cmd_list->BeginTimeblock(name, true, Spartan::Debugging::IsGpuTimingEnabled() && gpu_timing);
         cmd_list->SetPipelineState(pso);
         cmd_list->SetBufferVertex(vertex_buffer);
         cmd_list->SetBufferIndex(index_buffer);

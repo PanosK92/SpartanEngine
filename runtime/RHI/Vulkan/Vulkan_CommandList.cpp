@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_DepthStencilState.h"
 #include "../Rendering/Renderer.h"
 #include "../../Profiling/Profiler.h"
+#include "../Core/Debugging.h"
 //=====================================
 
 //= NAMESPACES ===============
@@ -437,7 +438,7 @@ namespace Spartan
 
             void update(void* query_pool)
             {
-                if (Profiler::IsGpuTimingEnabled())
+                if (Debugging::IsGpuTimingEnabled())
                 {
                     vkGetQueryPoolResults(
                         RHI_Context::device,                  // device
@@ -454,7 +455,7 @@ namespace Spartan
 
             void reset(void* cmd_list, void*& query_pool)
             {
-                if (Profiler::IsGpuTimingEnabled())
+                if (Debugging::IsGpuTimingEnabled())
                 {
                     vkCmdResetQueryPool(static_cast<VkCommandBuffer>(cmd_list), static_cast<VkQueryPool>(query_pool), 0, query_count);
                 }
@@ -493,7 +494,7 @@ namespace Spartan
         void initialize(void*& pool_timestamp, void*& pool_occlusion, void*& pool_pipeline_statistics)
         {
             // timestamps
-            if (Profiler::IsGpuTimingEnabled())
+            if (Debugging::IsGpuTimingEnabled())
             {
                 VkQueryPoolCreateInfo query_pool_info = {};
                 query_pool_info.sType                 = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
@@ -1496,7 +1497,7 @@ namespace Spartan
 
     void RHI_CommandList::BeginMarker(const char* name)
     {
-        if (Profiler::IsGpuMarkingEnabled())
+        if (Debugging::IsGpuMarkingEnabled())
         {
             RHI_Device::MarkerBegin(this, name, Vector4::Zero);
         }
@@ -1504,7 +1505,7 @@ namespace Spartan
 
     void RHI_CommandList::EndMarker()
     {
-        if (Profiler::IsGpuMarkingEnabled())
+        if (Debugging::IsGpuMarkingEnabled())
         {
             RHI_Device::MarkerEnd(this);
         }
@@ -1617,7 +1618,7 @@ namespace Spartan
             Profiler::TimeBlockStart(name, TimeBlockType::Cpu, this);
 
             // gpu
-            if (Profiler::IsGpuTimingEnabled() && gpu_timing)
+            if (Debugging::IsGpuTimingEnabled() && gpu_timing)
             {
                
                 Profiler::TimeBlockStart(name, TimeBlockType::Gpu, this);
@@ -1625,7 +1626,7 @@ namespace Spartan
         }
 
         // allowed marking ?
-        if (Profiler::IsGpuMarkingEnabled() && gpu_marker)
+        if (Debugging::IsGpuMarkingEnabled() && gpu_marker)
         {
             RHI_Device::MarkerBegin(this, name, Vector4::Zero);
         }
@@ -1638,14 +1639,14 @@ namespace Spartan
         SP_ASSERT_MSG(m_timeblock_active != nullptr, "A time block wasn't started");
 
         // allowed markers ?
-        if (Profiler::IsGpuTimingEnabled())
+        if (Debugging::IsGpuTimingEnabled())
         {
             RHI_Device::MarkerEnd(this);
         }
 
         // allowed timing
         {
-            if (Profiler::IsGpuTimingEnabled())
+            if (Debugging::IsGpuTimingEnabled())
             {
                 Profiler::TimeBlockEnd(); // gpu
             }

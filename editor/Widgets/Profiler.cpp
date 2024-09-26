@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Profiler.h"
 #include "../ImGui/ImGuiExtension.h"
 #include "Profiling/Profiler.h"
+#include <Debugging.h>
 //==================================
 
 //= NAMESPACES ===============
@@ -205,11 +206,11 @@ void Profiler::OnTickVisible()
 
 void Profiler::OnVisible()
 {
-    m_is_gpu_timing_enabled = Spartan::Profiler::IsGpuTimingEnabled();
-    Spartan::Profiler::SetGpuTimingEnabled(true);
+    m_is_gpu_timing_enabled = Spartan::Debugging::IsGpuTimingEnabled();
+    Spartan::Debugging::SetGpuTimingEnabled(true);
 }
 
 void Profiler::OnInvisible()
 {
-    Spartan::Profiler::SetGpuTimingEnabled(true);
+    Spartan::Debugging::SetGpuTimingEnabled(true);
 }

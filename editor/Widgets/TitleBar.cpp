@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../WidgetsDeferred/FileDialog.h"
 #include "Engine.h"
 #include "Profiling/RenderDoc.h"
-#include "Profiling/Profiler.h"
+#include <Debugging.h>
 //========================================
 
 //= NAMESPACES =====
@@ -459,7 +459,7 @@ namespace
                     []() { return false; },
                     []()
                     {
-                        if (Spartan::Profiler::IsRenderdocEnabled())
+                        if (Spartan::Debugging::IsRenderdocEnabled())
                         {
                             Spartan::RenderDoc::FrameCapture();
                         }

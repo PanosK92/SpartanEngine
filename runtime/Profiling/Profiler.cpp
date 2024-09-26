@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_SwapChain.h"
 #include "../Core/ThreadPool.h"
+#include "../Core/Debugging.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
 #include "../Display/Display.h"
@@ -77,16 +78,6 @@ namespace Spartan
 
     namespace
     {
-        //= DEBUGGING OPTIONS =========================================================================================================
-        bool is_validation_layer_enabled        = false;  // cpu cost: high - per draw cost, especially high with large bindless arrays
-        bool is_gpu_assisted_validation_enabled = false;  // cpu cost: high - per draw cost
-        bool is_logging_to_file_enabled         = false;  // cpu cost: high - it's an I/O operation
-        bool is_renderdoc_enabled               = false; // cpu cost: high - intercepts every API call and wraps it
-        bool is_gpu_marking_enabled             = true;  // cpu cost: imperceptible
-        bool is_gpu_timing_enabled              = true;  // cpu cost: imperceptible
-        bool is_shader_optimization_enabled     = true;  // gpu cost: high (when disabled)
-        //=============================================================================================================================
-
         // profiling options
         const uint32_t initial_capacity = 256;
         bool profile_cpu                = true;
@@ -157,7 +148,7 @@ namespace Spartan
         m_time_blocks_write.reserve(initial_capacity);
         m_time_blocks_write.resize(initial_capacity);
 
-        if (IsRenderdocEnabled())
+        if (Debugging::IsRenderdocEnabled())
         {
             RenderDoc::OnPreDeviceCreation();
         }
@@ -171,7 +162,7 @@ namespace Spartan
 
     void Profiler::PreTick()
     {
-        if (!Profiler::IsGpuTimingEnabled())
+        if (!Debugging::IsGpuTimingEnabled())
             return;
 
         if (increase_capacity)
@@ -253,7 +244,7 @@ namespace Spartan
             poll = false;
         }
 
-        if (poll && Profiler::IsGpuTimingEnabled())
+        if (poll && Debugging::IsGpuTimingEnabled())
         {
             AcquireGpuData();
             SwapBuffers();
@@ -301,7 +292,7 @@ namespace Spartan
 
     void Profiler::TimeBlockStart(const char* func_name, TimeBlockType type, RHI_CommandList* cmd_list /*= nullptr*/)
     {
-        if (!Profiler::IsGpuTimingEnabled() || !poll)
+        if (!Debugging::IsGpuTimingEnabled() || !poll)
             return;
 
         const bool can_profile_cpu = (type == TimeBlockType::Cpu) && profile_cpu;
@@ -532,45 +523,5 @@ namespace Spartan
     ProfilerGranularity Profiler::GetGranularity()
     {
         return granularity;
-    }
-
-    bool Profiler::IsValidationLayerEnabled()
-    {
-        return is_validation_layer_enabled;
-    }
-
-    bool Profiler::IsGpuAssistedValidationEnabled()
-    {
-        return is_gpu_assisted_validation_enabled;
-    }
-
-    bool Profiler::IsGpuMarkingEnabled()
-    {
-        return is_gpu_marking_enabled;
-    }
-
-    bool Profiler::IsGpuTimingEnabled()
-    {
-        return is_gpu_timing_enabled;
-    }
-
-    void Profiler::SetGpuTimingEnabled(const bool enabled)
-    {
-        is_gpu_timing_enabled = enabled;
-    }
-
-    bool Profiler::IsRenderdocEnabled()
-    {
-        return is_renderdoc_enabled;
-    }
-
-    bool Profiler::IsShaderOptimizationEnabled()
-    {
-        return is_shader_optimization_enabled;
-    }
-
-    bool Profiler::IsLoggingToFileEnabled()
-    {
-        return is_logging_to_file_enabled;
     }
 }

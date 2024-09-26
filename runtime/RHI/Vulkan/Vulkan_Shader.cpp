@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "pch.h"
+#include "../Core/Debugging.h"
 #include "../Profiling/Profiler.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
@@ -136,7 +137,7 @@ namespace Spartan
             }
 
             // debug: disable optimizations and embed HLSL source in the shaders
-            if (!Profiler::IsShaderOptimizationEnabled())
+            if (!Debugging::IsShaderOptimizationEnabled())
             {
                 arguments.emplace_back("-Od");           // disable optimizations
                 arguments.emplace_back("-Zi");           // enable debug information
