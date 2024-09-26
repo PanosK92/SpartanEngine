@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2024 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,16 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES =====================
 #include "pch.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_SwapChain.h"
 #include "../RHI_Device.h"
 #include "../RHI_CommandList.h"
-#include "../../Rendering/Renderer.h"
-#include "../../Profiling/Profiler.h"
+#include "../Core/Debugging.h"
 #include <wrl/client.h>
-//===================================
+//================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -82,7 +81,7 @@ namespace Spartan
         Microsoft::WRL::ComPtr<IDXGIFactory4> factory;
         {
             INT dxgiFactoryFlags = 0;
-            if (!Profiler::IsValidationLayerEnabled())
+            if (!Debugging::IsValidationLayerEnabled())
             {
                 dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
             }
