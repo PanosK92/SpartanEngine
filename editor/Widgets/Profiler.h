@@ -68,5 +68,4 @@ public:
 private:
     std::array<float, 400> m_plot;
     Timings m_timings;
-    bool m_is_gpu_timing_enabled = false;
 };
