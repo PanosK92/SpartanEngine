@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================================
 #include "pch.h"
-#ifdef _MSC_VER
 #include "../RHI_FidelityFX.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
@@ -35,7 +34,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Renderable.h"
 #include "../World/Components/Camera.h"
 #include "../World/Entity.h"
-#endif
 SP_WARNINGS_OFF
 #ifdef _MSC_VER
 #include <FidelityFX/host/backends/vk/ffx_vk.h>
@@ -47,12 +45,10 @@ SP_WARNINGS_OFF
 SP_WARNINGS_ON
 //=============================================
 
-#ifdef _MSC_VER
 //= NAMESPACES ===============
 using namespace Spartan::Math;
 using namespace std;
 //============================
-#endif
 
 namespace Spartan
 {
