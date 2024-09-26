@@ -156,6 +156,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // compose
     color  = light_diffuse * surface.albedo + light_specular + light_emissive + light_refraction;
     color += got_fog_radial(distance_from_camera, buffer_frame.camera_position.xyz, buffer_frame.directional_light_intensity) + tex_light_volumetric[thread_id.xy].rgb;
-    
+
     tex_uav[thread_id.xy] = saturate_16(float4(color, alpha));
 }
