@@ -19,18 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================
+//= INCLUDES =====================
 #include "pch.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
-#include "../RHI_BlendState.h"
-#include "../RHI_RasterizerState.h"
-#include "../RHI_Shader.h"
-#include "../RHI_InputLayout.h"
 #include <wrl/client.h>
 #include "../RHI_Queue.h"
-#include "../Profiling/Profiler.h"
-//=================================
+#include "../Core/Debugging.h"
+//================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -66,7 +62,7 @@ namespace Spartan
 
         // Debug layer
         UINT dxgi_factory_flags = 0;
-        if (Profiler::IsValidationLayerEnabled())
+        if (Debugging::IsValidationLayerEnabled())
         {
             Microsoft::WRL::ComPtr<ID3D12Debug1> debug_interface;
             if (d3d12_utility::error::check(D3D12GetDebugInterface(IID_PPV_ARGS(&debug_interface))))
