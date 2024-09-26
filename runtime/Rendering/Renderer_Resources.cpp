@@ -107,8 +107,8 @@ namespace Spartan
         float bias                          = Light::GetBias();
         float bias_clamp                    = 0.0f;
         float bias_slope_scaled             = Light::GetBiasSlopeScaled();
-        float bias_transparent              = 0.005f;
-        float bias_slope_scaled_transparent = 0.005f;
+        float bias_transparent              = 0.002f;
+        float bias_slope_scaled_transparent = 0.002f;
         float line_width                    = 2.0f;
 
         // Solid_Transparent: The transparents are rendered at output resolution, without taa/jitter, therefore we need to bias them to avoid z-fighting from the opaque depth
