@@ -77,25 +77,28 @@ gbuffer main_ps(gbuffer_vertex vertex)
     float alpha_mask = 1.0f;
     if (surface.has_texture_alpha_mask())
     {
-        alpha_mask = GET_TEXTURE(material_mask).Sample(samplers[sampler_point_wrap], vertex.uv).r;
+        alpha_mask = GET_TEXTURE(material_mask).Sample(samplers[sampler_point_clamp_edge], vertex.uv).r;
     }
 
     // albedo
     if (surface.has_texture_albedo())
     {
-        float4 albedo_sample = sampling::smart(surface, vertex, material_albedo);
-
-        // read albedo's alpha channel as an alpha mask as well
-        alpha_mask = min(alpha_mask, albedo_sample.a);
-        
-        albedo_sample.rgb  = srgb_to_linear(albedo_sample.rgb);
-        albedo            *= albedo_sample;
+        float4 albedo_sample  = sampling::smart(surface, vertex, material_albedo);
+        alpha_mask            = min(alpha_mask, albedo_sample.a); // treat the albedo as an alpha mask as well
+        albedo_sample.rgb     = srgb_to_linear(albedo_sample.rgb);
+        albedo               *= albedo_sample;
     }
 
     // discard masked pixels
     if (alpha_mask <= get_alpha_threshold(vertex.position))
         discard;
 
+    // opaque objects should always have a full alpha (subsequent passes rely on this assumption)
+    if (pass_is_opaque() && alpha_mask < 1.0f)
+    {
+        albedo.a = 1.0f;
+    }
+    
     // compute pixel distance
     float3 camera_to_pixel_world = buffer_frame.camera_position - vertex.position.xyz;
     float pixel_distance         = length(camera_to_pixel_world);
