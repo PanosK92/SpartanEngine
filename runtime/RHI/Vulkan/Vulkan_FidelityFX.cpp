@@ -19,8 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+
 //= INCLUDES ==================================
 #include "pch.h"
+#ifdef _MSC_VER
 #include "../RHI_FidelityFX.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
@@ -33,22 +35,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Renderable.h"
 #include "../World/Components/Camera.h"
 #include "../World/Entity.h"
+#endif
 SP_WARNINGS_OFF
+#ifdef _MSC_VER
 #include <FidelityFX/host/backends/vk/ffx_vk.h>
 #include <FidelityFX/host/ffx_fsr3.h>
 #include <FidelityFX/host/ffx_sssr.h>
 #include <FidelityFX/host/ffx_brixelizer.h>
 #include <FidelityFX/host/ffx_brixelizergi.h>
+#endif
 SP_WARNINGS_ON
 //=============================================
 
+#ifdef _MSC_VER
 //= NAMESPACES ===============
 using namespace Spartan::Math;
 using namespace std;
 //============================
+#endif
 
 namespace Spartan
 {
+    #ifdef _MSC_VER
     namespace
     {
         // shared among all contexts
@@ -455,9 +463,11 @@ namespace Spartan
             }
         }
     }
+    #endif 
 
     void RHI_FidelityFX::Initialize()
     {
+    #ifdef _MSC_VER
         // ffx interface
         {
             // all used contexts need to be accounted for here
@@ -547,10 +557,12 @@ namespace Spartan
                 }
             }
         }
+    #endif
     }
 
     void RHI_FidelityFX::DestroyContexts()
     {
+    #ifdef _MSC_VER
         // brixelizer gi
         if (brixelizer_gi::context_created)
         {
@@ -577,10 +589,12 @@ namespace Spartan
             SP_ASSERT(ffxFsr3UpscalerContextDestroy(&fsr3::context) == FFX_OK);
             fsr3::context_created  = false;
         }
+    #endif
     }
 
     void RHI_FidelityFX::Shutdown()
     {
+    #ifdef _MSC_VER
         cubemap_empty                          = nullptr;
         brixelizer_gi::texture_sdf_atlas       = nullptr;
         brixelizer_gi::buffer_brick_aabbs      = nullptr;
@@ -597,10 +611,12 @@ namespace Spartan
         {
             free(ffx_interface.scratchBuffer);
         }
+    #endif
     }
 
     void RHI_FidelityFX::Resize(const Vector2& resolution_render, const Vector2& resolution_output)
     {
+    #ifdef _MSC_VER
         // contexts are resolution dependent, so we destroy and (re)create them when resizing
         DestroyContexts();
 
@@ -690,10 +706,12 @@ namespace Spartan
 
             brixelizer_gi::context_created = true;
         }
+    #endif
     }
  
     void RHI_FidelityFX::Update(Cb_Frame* cb_frame)
     {
+    #ifdef _MSC_VER
         // matrices - ffx is right-handed
         {
             view_previous            = view;
@@ -728,6 +746,7 @@ namespace Spartan
             }
 
         }
+    #endif
     }
 
     void RHI_FidelityFX::FSR3_ResetHistory()
@@ -737,6 +756,7 @@ namespace Spartan
 
     void RHI_FidelityFX::FSR3_GenerateJitterSample(float* x, float* y)
     {
+    #ifdef _MSC_VER
         // get jitter phase count
         const uint32_t resolution_render_x = static_cast<uint32_t>(fsr3::description_context.maxRenderSize.width);
         const uint32_t resolution_render_y = static_cast<uint32_t>(fsr3::description_context.maxRenderSize.height);
@@ -752,6 +772,7 @@ namespace Spartan
         // adjust the jitter offset for the projection matrix, based on the function comments
         *x =  2.0f * fsr3::description_dispatch.jitterOffset.x / resolution_render_x;
         *y = -2.0f * fsr3::description_dispatch.jitterOffset.y / resolution_render_y;
+    #endif
     }
 
     void RHI_FidelityFX::FSR3_Dispatch
@@ -768,6 +789,7 @@ namespace Spartan
         RHI_Texture* tex_output
     )
     {
+    #ifdef _MSC_VER
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/super-resolution-upscaler.md
         // requires:      VK_KHR_get_memory_requirements2
 
@@ -801,6 +823,7 @@ namespace Spartan
             SP_ASSERT(ffxFsr3UpscalerContextDispatch(&fsr3::context, &fsr3::description_dispatch) == FFX_OK);
             fsr3::description_dispatch.reset = false;
         }
+    #endif
     }
 
     void RHI_FidelityFX::SSSR_Dispatch(
@@ -815,6 +838,7 @@ namespace Spartan
         RHI_Texture* tex_output
     )
     {
+    #ifdef _MSC_VER
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/stochastic-screen-space-reflections.md
 
         // transition the depth to shader read, to avoid validation errors caused by ffx
@@ -866,6 +890,7 @@ namespace Spartan
         // dispatch
         FfxErrorCode error_code = ffxSssrContextDispatch(&sssr::context, &sssr::description_dispatch);
         SP_ASSERT(error_code == FFX_OK);
+    #endif
     }
 
     void RHI_FidelityFX::BrixelizerGI_Update(
@@ -877,6 +902,7 @@ namespace Spartan
         RHI_Texture* tex_debug
     )
     {
+    #ifdef _MSC_VER
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/brixelizer.md
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/brixelizer-gi.md
 
@@ -1047,6 +1073,7 @@ namespace Spartan
         SP_ASSERT(ffxBrixelizerBakeUpdate(&brixelizer_gi::context, &brixelizer_gi::description_update, &brixelizer_gi::description_update_baked) == FFX_OK);
         SP_ASSERT_MSG(required_scratch_buffer_size <= brixelizer_gi::buffer_scratch->GetObjectSize(), "Create a larger scratch buffer");
         SP_ASSERT(ffxBrixelizerUpdate(&brixelizer_gi::context, &brixelizer_gi::description_update_baked, to_ffx_resource(brixelizer_gi::buffer_scratch.get(), L"ffx_brixelizer_gi_scratch"), to_ffx_cmd_list(cmd_list)) == FFX_OK);
+    #endif
     }
 
     void RHI_FidelityFX::BrixelizerGI_Dispatch(
@@ -1063,6 +1090,7 @@ namespace Spartan
         RHI_Texture* tex_debug
     )
     {
+    #ifdef _MSC_VER
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/brixelizer.md
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/brixelizer-gi.md
 
@@ -1157,5 +1185,6 @@ namespace Spartan
             brixelizer_gi::debug_description_gi.brixelizerContext = brixelizer_gi::description_dispatch_gi.brixelizerContext;
             SP_ASSERT(ffxBrixelizerGIContextDebugVisualization(&brixelizer_gi::context_gi, &brixelizer_gi::debug_description_gi, to_ffx_cmd_list(cmd_list)) == FFX_OK);
         }
+    #endif
     }
 }

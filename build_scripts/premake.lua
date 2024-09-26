@@ -31,7 +31,7 @@ API_CPP_DEFINE		 = ""
 ARG_API_GRAPHICS     = _ARGS[1]
 
 API_INCLUDES = {
-	vulkan = {
+	vulkan_windows = {
         "../third_party/spirv_cross",
         "../third_party/vulkan",
         "../third_party/amd_fidelityfx"
@@ -41,7 +41,8 @@ API_INCLUDES = {
 API_EXCLUDES = 
 {
     d3d12  = { RUNTIME_DIR .. "/RHI/Vulkan/**" },
-    vulkan = { RUNTIME_DIR .. "/RHI/D3D12/**" },
+    vulkan_linux = { RUNTIME_DIR .. "/RHI/D3D12/**" },
+    vulkan_windows = { RUNTIME_DIR .. "/RHI/D3D12/**" },
 }
 
 API_LIBRARIES = {
@@ -53,7 +54,7 @@ API_LIBRARIES = {
             -- No specific D3D12 debug libraries
         }
     },
-    vulkan = {
+    vulkan_windows = {
         release = {
             "spirv-cross-c",
             "spirv-cross-core",
@@ -86,6 +87,22 @@ API_LIBRARIES = {
 			"ffx_brixelizer_x64d",
 			"ffx_brixelizergi_x64d"
         }
+    },
+    vulkan_linux = {
+        release = {
+            "spirv-cross-c",
+            "spirv-cross-core",
+            "spirv-cross-cpp",
+            "spirv-cross-glsl",
+            "spirv-cross-hlsl"
+        },
+        debug = {
+            "spirv-cross-c_debug",
+            "spirv-cross-core_debug",
+            "spirv-cross-cpp_debug",
+            "spirv-cross-glsl_debug",
+            "spirv-cross-hlsl_debug"
+        }
     }
 }
 
@@ -93,7 +110,7 @@ function configure_graphics_api()
     if ARG_API_GRAPHICS == "d3d12" then
         API_CPP_DEFINE  = "API_GRAPHICS_D3D12"
         EXECUTABLE_NAME = EXECUTABLE_NAME .. "_d3d12"
-    elseif ARG_API_GRAPHICS == "vulkan" then
+    elseif ARG_API_GRAPHICS == "vulkan_windows" or ARG_API_GRAPHICS == "vulkan_linux" then
         API_CPP_DEFINE  = "API_GRAPHICS_VULKAN"
         EXECUTABLE_NAME = EXECUTABLE_NAME .. "_vulkan"
     end

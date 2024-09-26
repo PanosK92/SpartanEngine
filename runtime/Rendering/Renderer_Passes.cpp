@@ -29,7 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_Shader.h"
+#ifdef _MSC_VER
 #include "../RHI/RHI_FidelityFX.h"
+#endif
 #include "../RHI/RHI_RasterizerState.h"
 SP_WARNINGS_OFF
 #include "bend_sss_cpu.h"
