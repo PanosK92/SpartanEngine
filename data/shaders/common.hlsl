@@ -51,43 +51,10 @@ static const uint  THREAD_GROUP_COUNT_Y = 8;
 static const uint  THREAD_GROUP_COUNT   = 64;
 static const float DEG_TO_RAD           = PI / 180.0f;
 
-/*------------------------------------------------------------------------------
-    MATH
-------------------------------------------------------------------------------*/
-float min2(float2 value)                                { return min(value.x, value.y); }
-float min3(float3 value)                                { return min(min(value.x, value.y), value.z); }
-float min3(float a, float b, float c)                   { return min(min(a, b), c); }
-float min4(float a, float b, float c, float d)          { return min(min(min(a, b), c), d); }
-float min5(float a, float b, float c, float d, float e) { return min(min(min(min(a, b), c), d), e); }
-
-float max2(float2 value)                                { return max(value.x, value.y); }
-float max3(float3 value)                                { return max(max(value.x, value.y), value.z); }
-float max4(float a, float b, float c, float d)          { return max(max(max(a, b), c), d); }
-float max5(float a, float b, float c, float d, float e) { return max(max(max(max(a, b), c), d), e); }
-
-float pow2(float x)
-{
-    return x * x;
-}
-
-float pow3(float x)
-{
-    float xx = x*x;
-    return xx * x;
-}
-
-float pow4(float x)
-{
-    float xx = x*x;
-    return xx * xx;
-}
-
-bool is_valid_uv(float2 value) { return (value.x >= 0.0f && value.x <= 1.0f) && (value.y >= 0.0f && value.y <= 1.0f); }
-
-static const matrix matrix_identity = {1, 0, 0, 0,
-                                       0, 1, 0, 0,
-                                       0, 0, 1, 0,
-                                       0, 0, 0, 1};
+static const matrix matrix_identity = { 1, 0, 0, 0,
+                                        0, 1, 0, 0,
+                                        0, 0, 1, 0,
+                                        0, 0, 0, 1 };
 
 /*------------------------------------------------------------------------------
     SATURATE
@@ -107,40 +74,6 @@ float2 pack(float2 value)   { return value * 0.5f + 0.5f; }
 float  unpack(float value)  { return value * 2.0f - 1.0f; }
 float  pack(float value)    { return value * 0.5f + 0.5f; }
 
-float pack_uint32_to_float16(uint i)    { return (float)i / FLT_MAX_16; }
-uint  unpack_float16_to_uint32(float f) { return round(f * FLT_MAX_16); }
-
-float pack_float_int(float f, uint i, uint numBitI, uint numBitTarget)
-{
-    // Constant optimize by compiler
-    float precision         = float(1U << numBitTarget);
-    float maxi              = float(1U << numBitI);
-    float precisionMinusOne = precision - 1.0;
-    float t1                = ((precision / maxi) - 1.0) / precisionMinusOne;
-    float t2                = (precision / maxi) / precisionMinusOne;
-
-    // Code
-    return t1 * f + t2 * float(i);
-}
-
-void unpack_float_int(float val, uint numBitI, uint numBitTarget, out float f, out uint i)
-{
-    // Constant optimize by compiler
-    float precision         = float(1U << numBitTarget);
-    float maxi              = float(1U << numBitI);
-    float precisionMinusOne = precision - 1.0;
-    float t1                = ((precision / maxi) - 1.0) / precisionMinusOne;
-    float t2                = (precision / maxi) / precisionMinusOne;
-
-    // Code
-    // extract integer part
-    // + rcp(precisionMinusOne) to deal with precision issue
-    i = int((val / t2) + rcp(precisionMinusOne));
-    // Now that we have i, solve formula in PackFloatInt for f
-    //f = (val - t2 * float(i)) / t1 => convert in mads form
-    f = saturate((-t2 * float(i) + val) / t1); // Saturate in case of precision issue
-}
-
 /*------------------------------------------------------------------------------
     FAST MATH APPROXIMATIONS
 ------------------------------------------------------------------------------*/
@@ -151,12 +84,14 @@ float fast_sqrt(float x)
 {
     int i = asint(x);
     i = 0x1FBD1DF5 + (i >> 1);
+    
     return asfloat(i);
 }
 
 float fast_length(float3 v)
 {
     float length_squared = dot(v, v);
+    
     return fast_sqrt(length_squared);
 }
 
@@ -168,12 +103,13 @@ float fast_sin(float x)
 
     float y = B * x + C * x * abs(x);
     y = P * (y * abs(y) - y) + y;
+    
     return y;
 }
 
 float fast_cos(float x)
 {
-   return abs(abs(x)  /PI2 % 4 - 2) - 1;
+   return abs(abs(x) / PI2 % 4 - 2) - 1;
 }
 
 /*------------------------------------------------------------------------------
@@ -251,7 +187,7 @@ float3 project_onto_paraboloid(float3 light_to_vertex_view, float near_plane, fl
 /*------------------------------------------------------------------------------
     NORMAL
 ------------------------------------------------------------------------------*/
-// Reconstruct normal Z, X and Y components have to be in a -1 to 1 range.
+// reconstruct normal z, x and y components have to be in a -1 to 1 range.
 float3 reconstruct_normal_z(float2 normal)
 {
     float z = sqrt(saturate(1.0f - dot(normal, normal)));
@@ -260,7 +196,7 @@ float3 reconstruct_normal_z(float2 normal)
 
 float3 get_normal(uint2 pos)
 {
-    // Load returns 0 for any value accessed out of bounds, so clamp.
+    // load returns 0 for any value accessed out of bounds, so clamp.
     pos.x = clamp(pos.x, 0, buffer_frame.resolution_render.x);
     pos.y = clamp(pos.y, 0, buffer_frame.resolution_render.y);
     
@@ -458,7 +394,7 @@ float get_random(float2 uv)
     return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
 }
 
-// An expansion on the interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
+// an expansion on the interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
 float get_noise_interleaved_gradient(float2 screen_pos, bool animate, bool animate_even_with_taa_off)
 {
     // temporal factor
@@ -493,6 +429,8 @@ float microw_shadowing_cod(float n_dot_l, float visibility)
 /*------------------------------------------------------------------------------
     MISC
 ------------------------------------------------------------------------------*/
+bool is_valid_uv(float2 value) { return (value.x >= 0.0f && value.x <= 1.0f) && (value.y >= 0.0f && value.y <= 1.0f); }
+
 float3 compute_diffuse_energy(float3 F, float metallic)
 {
     // used to town down diffuse such as that only non metals have it
@@ -510,8 +448,7 @@ float screen_fade(float2 uv)
     return saturate(1.0f - dot(fade, fade));
 }
 
-// Find good arbitrary axis vectors to represent U and V axes of a plane,
-// given just the normal. Ported from UnMath.h
+// find good arbitrary axis vectors to represent U and V axes of a plane, given just the normal. ported from UnMath.h
 void find_best_axis_vectors(float3 In, out float3 Axis1, out float3 Axis2)
 {
     const float3 N = abs(In);
