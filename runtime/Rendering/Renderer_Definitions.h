@@ -129,19 +129,18 @@ namespace Spartan
         light_color = 14,
     
         // misc
-        lutIbl           = 15,
-        environment      = 16,
-        ssao             = 17,
-        ssr              = 18,
-        frame            = 19,
-        tex              = 20,
-        tex2             = 21,
-        font_atlas       = 22,
-        reflection_probe = 23,
-        sss              = 24,
+        lutIbl      = 15,
+        environment = 16,
+        ssao        = 17,
+        ssr         = 18,
+        frame       = 19,
+        tex         = 20,
+        tex2        = 21,
+        font_atlas  = 22,
+        sss         = 23,
 
         // bindless
-        materials = 25
+        materials = 24
     };
 
     enum class Renderer_BindingsUav
@@ -196,6 +195,7 @@ namespace Spartan
         ssao_c,
         sss_c_bend,
         skysphere_c,
+        skysphere_to_skybox_c,
         blur_gaussian_c,
         blur_gaussian_bilaterial_c,
         variable_rate_shading_c,
@@ -230,6 +230,7 @@ namespace Spartan
         ssr,
         sss,
         skysphere,
+        skybox,
         bloom,
         blur,
         outline,

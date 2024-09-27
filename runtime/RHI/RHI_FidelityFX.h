@@ -65,6 +65,7 @@ namespace Spartan
             RHI_Texture* tex_normal,
             RHI_Texture* tex_material,
             RHI_Texture* tex_brdf,
+            RHI_Texture* tex_skybox,
             RHI_Texture* tex_output
         );
 
@@ -85,6 +86,7 @@ namespace Spartan
             RHI_Texture* tex_velocity,
             RHI_Texture* tex_normal,
             RHI_Texture* tex_material,
+            RHI_Texture* tex_skybox,
             std::array< RHI_Texture*, 8>& tex_noise,
             RHI_Texture* tex_diffuse_gi,
             RHI_Texture* tex_specular_gi,

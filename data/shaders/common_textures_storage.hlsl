@@ -48,16 +48,15 @@ Texture2DArray tex_light_depth : register(t13);
 Texture2DArray tex_light_color : register(t14);
 
 // misc
-Texture2D tex_lut_ibl            : register(t15);
-Texture2D tex_environment        : register(t16);
-Texture2D tex_ssao               : register(t17);
-Texture2D tex_ssr                : register(t18);
-Texture2D tex_frame              : register(t19);
-Texture2D tex                    : register(t20);
-Texture2D tex2                   : register(t21);
-Texture2D tex_font_atlas         : register(t22);
-TextureCube tex_reflection_probe : register(t23);
-Texture2DArray tex_sss           : register(t24);
+Texture2D tex_lut_ibl     : register(t15);
+Texture2D tex_environment : register(t16);
+Texture2D tex_ssao        : register(t17);
+Texture2D tex_ssr         : register(t18);
+Texture2D tex_frame       : register(t19);
+Texture2D tex             : register(t20);
+Texture2D tex2            : register(t21);
+Texture2D tex_font_atlas  : register(t22);
+Texture2DArray tex_sss    : register(t23);
 
 //= MATERIALS ===============================================================================
 // texture array containing all material present int the world
@@ -71,7 +70,7 @@ static const uint material_emission  = material_texture_slots * 5;
 static const uint material_height    = material_texture_slots * 6;
 static const uint material_mask      = material_texture_slots * 7;
 
-Texture2D tex_materials[] : register(t25, space1);
+Texture2D tex_materials[] : register(t24, space1);
 #define GET_TEXTURE(index_texture) tex_materials[pass_get_material_index() + index_texture]
 
 // property buffer containg all materials present in the world
