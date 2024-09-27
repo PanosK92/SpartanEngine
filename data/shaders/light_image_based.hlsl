@@ -95,6 +95,5 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 ibl             = (diffuse_ibl * diffuse_energy * surface.albedo.rgb) + (specular_ibl * specular_energy);
     ibl                   *= surface.occlusion;
 
-    tex_uav[thread_id.xy] += float4(saturate_16(ibl), 0.0f);
+    tex_uav[thread_id.xy] += float4(ibl, 0.0f);
 }
-
