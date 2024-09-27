@@ -92,10 +92,10 @@ static const matrix matrix_identity = {1, 0, 0, 0,
 /*------------------------------------------------------------------------------
     SATURATE
 ------------------------------------------------------------------------------*/
-float  saturate_16(float x)  { return clamp(x, 0.0f, FLT_MAX_16); }
-float2 saturate_16(float2 x) { return clamp(x, 0.0f, FLT_MAX_16); }
-float3 saturate_16(float3 x) { return clamp(x, 0.0f, FLT_MAX_16); }
-float4 saturate_16(float4 x) { return clamp(x, 0.0f, FLT_MAX_16); }
+float  saturate_16(float x)  { return clamp(x, 0.0f, FLT_MAX_16U); }
+float2 saturate_16(float2 x) { return clamp(x, 0.0f, FLT_MAX_16U); }
+float3 saturate_16(float3 x) { return clamp(x, 0.0f, FLT_MAX_16U); }
+float4 saturate_16(float4 x) { return clamp(x, 0.0f, FLT_MAX_16U); }
 
 /*------------------------------------------------------------------------------
     PACKING/UNPACKING
