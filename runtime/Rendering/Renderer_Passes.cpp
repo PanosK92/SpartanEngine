@@ -956,6 +956,7 @@ namespace Spartan
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get(),
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_material).get(),
                 GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut).get(),
+                GetRenderTarget(Renderer_RenderTarget::skybox).get(),
                 GetRenderTarget(Renderer_RenderTarget::ssr).get()
             );
 
@@ -1057,16 +1058,19 @@ namespace Spartan
 
     void Renderer::Pass_Skysphere(RHI_CommandList* cmd_list)
     {
-        // acquire shader
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::skysphere_c).get();
-        if (!shader_c->IsCompiled())
+        // acquire resources
+        RHI_Shader* shader_skysphere           = GetShader(Renderer_Shader::skysphere_c).get();
+        RHI_Shader* shader_skysphere_to_skybox = GetShader(Renderer_Shader::skysphere_to_skybox_c).get();
+        RHI_Texture* tex_skysphere             = GetRenderTarget(Renderer_RenderTarget::skysphere).get();
+        RHI_Texture* tex_skybox                = GetRenderTarget(Renderer_RenderTarget::skybox).get();
+        if (!shader_skysphere->IsCompiled() || !shader_skysphere_to_skybox->IsCompiled())
             return;
 
         // get directional light
         shared_ptr<Light> light = nullptr;
         {
             const vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Light];
-            for (size_t i = 0; i < entities.size(); ++i)
+            for (size_t i = 0; i < entities.size(); i++)
             {
                 if (shared_ptr<Light> light_ = entities[i]->GetComponent<Light>())
                 {
@@ -1082,22 +1086,34 @@ namespace Spartan
                 return;
         }
 
-        RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere).get();
-
         cmd_list->BeginTimeblock("skysphere");
         {
-            // set pipeline state
-            static RHI_PipelineState pso;
-            pso.shaders[Compute] = shader_c;
-            cmd_list->SetPipelineState(pso);
+            // atmospheric scattering
+            {
+                // set pipeline state
+                static RHI_PipelineState pso_skysphere;
+                pso_skysphere.shaders[Compute] = shader_skysphere;
+                cmd_list->SetPipelineState(pso_skysphere);
 
-            // set pass constants
-            m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), 0.0f, 0.0f);
-            cmd_list->PushConstants(m_pcb_pass_cpu);
+                // set pass constants
+                m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), 0.0f, 0.0f);
+                cmd_list->PushConstants(m_pcb_pass_cpu);
 
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
-            cmd_list->Dispatch(tex_skysphere);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
+                cmd_list->Dispatch(tex_skysphere);
+            }
 
+            // write the skysphere to a small cubemap because fidelityfx requires it
+            {
+                //// set pipeline state
+                //static RHI_PipelineState pso_skysphere_to_skybox;
+                //pso_skysphere_to_skybox.shaders[Compute] = shader_skysphere;
+                //cmd_list->SetPipelineState(pso_skysphere_to_skybox);
+                //
+                //cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_skybox);
+                //cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
+                //cmd_list->Dispatch(tex_skybox);
+            }
         }
         cmd_list->EndTimeblock();
     }
@@ -1218,6 +1234,7 @@ namespace Spartan
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get(),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get(),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_material).get(),
+                    GetRenderTarget(Renderer_RenderTarget::skybox).get(),
                     noise_textures,
                     GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi).get(),
                     GetRenderTarget(Renderer_RenderTarget::light_specular_gi).get(),

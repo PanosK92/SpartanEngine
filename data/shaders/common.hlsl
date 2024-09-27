@@ -50,11 +50,10 @@ static const uint  THREAD_GROUP_COUNT_X = 8;
 static const uint  THREAD_GROUP_COUNT_Y = 8;
 static const uint  THREAD_GROUP_COUNT   = 64;
 static const float DEG_TO_RAD           = PI / 180.0f;
-
-static const matrix matrix_identity = { 1, 0, 0, 0,
-                                        0, 1, 0, 0,
-                                        0, 0, 1, 0,
-                                        0, 0, 0, 1 };
+static const matrix matrix_identity     = { 1, 0, 0, 0,
+                                            0, 1, 0, 0,
+                                            0, 0, 1, 0,
+                                            0, 0, 0, 1 };
 
 /*------------------------------------------------------------------------------
     SATURATE
@@ -65,7 +64,7 @@ float3 saturate_16(float3 x) { return clamp(x, 0.0f, FLT_MAX_16U); }
 float4 saturate_16(float4 x) { return clamp(x, 0.0f, FLT_MAX_16U); }
 
 /*------------------------------------------------------------------------------
-    PACKING/UNPACKING
+    PACK/UNPACK
 ------------------------------------------------------------------------------*/
 float3 unpack(float3 value) { return value * 2.0f - 1.0f; }
 float3 pack(float3 value)   { return value * 0.5f + 0.5f; }
@@ -77,9 +76,6 @@ float  pack(float value)    { return value * 0.5f + 0.5f; }
 /*------------------------------------------------------------------------------
     FAST MATH APPROXIMATIONS
 ------------------------------------------------------------------------------*/
-// Relative error : < 0.7% over full
-// Precise format : ~small float
-// 1 ALU
 float fast_sqrt(float x)
 {
     int i = asint(x);
@@ -421,7 +417,7 @@ float microw_shadowing_nt(float n_dot_l, float ao)
 // Chan 2018, "Material Advances in Call of Duty: WWII"
 float microw_shadowing_cod(float n_dot_l, float visibility)
 {
-    float aperture = rsqrt(1.0 - visibility);
+    float aperture    = rsqrt(1.0 - visibility);
     float microShadow = saturate(n_dot_l * aperture);
     return microShadow * microShadow;
 }

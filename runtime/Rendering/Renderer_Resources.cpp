@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture2D.h"
 #include "../RHI/RHI_Texture2DArray.h"
+#include "../RHI/RHI_TextureCube.h"
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_Sampler.h"
 #include "../RHI/RHI_BlendState.h"
@@ -207,7 +208,7 @@ namespace Spartan
         uint32_t flags              = RHI_Texture_Uav | RHI_Texture_Srv;
         uint32_t flags_rt           = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv;
         uint32_t flags_rt_clearable = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit;
-        uint32_t flags_rt_depth     = RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit; // GPUs are picky about wihch features are supported for depth
+        uint32_t flags_rt_depth     = RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit; // gpus are picky about which features are supported for depth
 
         // resolution - render
         if (create_render)
@@ -264,11 +265,13 @@ namespace Spartan
         // resolution - fixed (created once)
         if (!render_target(Renderer_RenderTarget::brdf_specular_lut))
         {
-            render_target(Renderer_RenderTarget::brdf_specular_lut) = make_shared<RHI_Texture2D>(512,  512,  1,         RHI_Format::R8G8_Unorm,         flags,                           "brdf_specular_lut");
-            render_target(Renderer_RenderTarget::skysphere)         = make_shared<RHI_Texture2D>(4096, 4096, mip_count, RHI_Format::R11G11B10_Float,    flags | RHI_Texture_PerMipViews, "skysphere");
-            render_target(Renderer_RenderTarget::blur)              = make_shared<RHI_Texture2D>(4096, 4096, 1,         RHI_Format::R16G16B16A16_Float, flags,                           "blur");
+            render_target(Renderer_RenderTarget::brdf_specular_lut) = make_shared<RHI_Texture2D>(512,  512,  1, RHI_Format::R8G8_Unorm,         flags, "brdf_specular_lut");
+            render_target(Renderer_RenderTarget::blur)              = make_shared<RHI_Texture2D>(4096, 4096, 1, RHI_Format::R16G16B16A16_Float, flags, "blur"); // scratch
+
+            // sky
+            render_target(Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture2D>(4096, 4096, mip_count, RHI_Format::R11G11B10_Float, flags | RHI_Texture_PerMipViews, "skysphere");
+            render_target(Renderer_RenderTarget::skybox)    = make_shared<RHI_TextureCube>(256, 256, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Uav, "skybox"); // for fidelityfx
         }
-        
 
         RHI_Device::QueueWaitAll();
         RHI_FidelityFX::Resize(GetResolutionRender(), GetResolutionOutput());
@@ -428,13 +431,18 @@ namespace Spartan
             }
         }
 
+        // sky
+        {
+            shader(Renderer_Shader::skysphere_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::skysphere_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "skysphere.hlsl", async);
+
+            shader(Renderer_Shader::skysphere_to_skybox_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::skysphere_to_skybox_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "skysphere_to_skybox.hlsl", async);
+        }
+
         // fxaa
         shader(Renderer_Shader::fxaa_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::fxaa_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "fxaa\\fxaa.hlsl", async);
-
-        // skysphere
-        shader(Renderer_Shader::skysphere_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::skysphere_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "skysphere.hlsl", async);
 
         // font
         shader(Renderer_Shader::font_v) = make_shared<RHI_Shader>();
