@@ -119,10 +119,9 @@ namespace Spartan
     {
         m_layout.fill(RHI_Image_Layout::Max);
         m_rhi_srv_mips.fill(nullptr);
-        m_rhi_uav_mips.fill(nullptr);
+        m_rhi_uav.fill(nullptr);
         m_rhi_rtv.fill(nullptr);
         m_rhi_dsv.fill(nullptr);
-        m_rhi_dsv_read_only.fill(nullptr);
 
         if (!compressonator::registered)
         {
@@ -136,13 +135,7 @@ namespace Spartan
     {
         m_slices.clear();
         m_slices.shrink_to_fit();
-
-        if (m_rhi_resource != nullptr)
-        { 
-            bool destroy_main     = true;
-            bool destroy_per_view = true;
-            RHI_DestroyResource(destroy_main, destroy_per_view);
-        }
+        RHI_DestroyResource();
     }
 
     bool RHI_Texture::SaveToFile(const string& file_path)

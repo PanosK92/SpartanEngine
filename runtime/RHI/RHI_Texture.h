@@ -136,13 +136,11 @@ namespace Spartan
         // rhi
         void*& GetRhiResource()                             { return m_rhi_resource; }
         void* GetRhiSrv()                             const { return m_rhi_srv; }
-        void* GetRhiUav()                             const { return m_rhi_uav; }
         void* GetRhiSrvMip(const uint32_t i)          const { return m_rhi_srv_mips[i]; }
-        void* GetRhiUavMip(const uint32_t i)          const { return m_rhi_uav_mips[i]; }
-        void* GetRhiDsv(const uint32_t i = 0)         const { return i < m_rhi_dsv.size()           ? m_rhi_dsv[i]           : nullptr; }
-        void* GetRhiDsvReadOnly(const uint32_t i = 0) const { return i < m_rhi_dsv_read_only.size() ? m_rhi_dsv_read_only[i] : nullptr; }
-        void* GetRhiRtv(const uint32_t i = 0)         const { return i < m_rhi_rtv.size()           ? m_rhi_rtv[i]           : nullptr; }
-        void RHI_DestroyResource(const bool destroy_main, const bool destroy_per_view);
+        void* GetRhiUav(const uint32_t i)             const { return m_rhi_uav[i]; }
+        void* GetRhiDsv(const uint32_t i = 0)         const { return m_rhi_dsv[i]; }
+        void* GetRhiRtv(const uint32_t i = 0)         const { return m_rhi_rtv[i]; }
+        void RHI_DestroyResource();
         void*& GetMappedData() { return m_mapped_data; }
 
     protected:
@@ -163,13 +161,11 @@ namespace Spartan
         // api resources
         void* m_rhi_resource        = nullptr;
         void* m_rhi_srv             = nullptr;
-        void* m_rhi_uav             = nullptr;
         void* m_rhi_external_memory = nullptr;
         std::array<void*, rhi_max_mip_count> m_rhi_srv_mips;
-        std::array<void*, rhi_max_mip_count> m_rhi_uav_mips;
+        std::array<void*, rhi_max_mip_count> m_rhi_uav;
         std::array<void*, rhi_max_render_target_count> m_rhi_rtv;
         std::array<void*, rhi_max_render_target_count> m_rhi_dsv;
-        std::array<void*, rhi_max_render_target_count> m_rhi_dsv_read_only;
         void* m_mapped_data = nullptr;
 
     private:
