@@ -44,17 +44,22 @@ namespace Spartan
             bool has_shader_compute  = pso.shaders[RHI_Shader_Type::Compute] ? pso.shaders[RHI_Shader_Type::Compute]->IsCompiled() : false;
             bool has_shader_vertex   = pso.shaders[RHI_Shader_Type::Vertex]  ? pso.shaders[RHI_Shader_Type::Vertex]->IsCompiled()  : false;
             bool has_shader_pixel    = pso.shaders[RHI_Shader_Type::Pixel]   ? pso.shaders[RHI_Shader_Type::Pixel]->IsCompiled()   : false;
-            bool has_render_target   = pso.render_target_color_textures[0] || pso.render_target_depth_texture; // check that there is at least one render target
-            bool has_backbuffer      = pso.render_target_swapchain;                                            // check that no both the swapchain and the color render target are active
-            bool has_graphics_states = pso.rasterizer_state && pso.blend_state && pso.depth_stencil_state;
+
             bool is_graphics         = (has_shader_vertex || has_shader_pixel) && !has_shader_compute;
             bool is_compute          = has_shader_compute && (!has_shader_vertex && !has_shader_pixel);
 
             SP_ASSERT_MSG(has_shader_compute || has_shader_vertex || has_shader_pixel, "There must be at least one shader");
             if (is_graphics)
             {
-                SP_ASSERT_MSG(has_graphics_states, "Graphics states are missing");
+                bool has_render_target   = pso.render_target_color_textures[0] || pso.render_target_depth_texture; // ensure at least one render target
+                bool has_backbuffer      = pso.render_target_swapchain;                                            // check that no both the swapchain and the color render target are active
+                bool has_graphics_states = pso.rasterizer_state && pso.blend_state && pso.depth_stencil_state;
+
+                SP_ASSERT_MSG(has_graphics_states,                 "Graphics states are missing");
                 SP_ASSERT_MSG(has_render_target || has_backbuffer, "A render target is missing");
+                SP_ASSERT_MSG(pso.blend_state,                     "You need to define a blend state");
+                SP_ASSERT_MSG(pso.depth_stencil_state,             "You need to define a depth-stencil state");
+                SP_ASSERT_MSG(pso.rasterizer_state,                "You need to define a rasterizer state");
                 SP_ASSERT(pso.GetWidth() != 0 && pso.GetHeight() != 0);
             }
         }

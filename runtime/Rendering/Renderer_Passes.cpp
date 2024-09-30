@@ -1105,15 +1105,18 @@ namespace Spartan
 
             // write the skysphere to a small cubemap because fidelityfx requires it
             {
-                //// set pipeline state
-                //static RHI_PipelineState pso_skysphere_to_skybox;
-                //pso_skysphere_to_skybox.shaders[Compute] = shader_skysphere;
-                //cmd_list->SetPipelineState(pso_skysphere_to_skybox);
-                //
-                //cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_skybox);
+                // set pipeline state
+                static RHI_PipelineState pso_skysphere_to_skybox;
+                pso_skysphere_to_skybox.shaders[Compute] = shader_skysphere;
+                cmd_list->SetPipelineState(pso_skysphere_to_skybox);
+
                 //cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
-                //cmd_list->Dispatch(tex_skybox);
-            }
+                //for (uint32_t i = 0; i < 6; i++)
+                //{
+                //    cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_skybox->GetRhiUav());
+                //    cmd_list->Dispatch(tex_skybox);
+                //}
+            }   //
         }
         cmd_list->EndTimeblock();
     }
@@ -1383,7 +1386,7 @@ namespace Spartan
         // generate mips as light_integration.hlsl expects them
         if (mip_level == 0)
         { 
-            Pass_Downsample(cmd_list, tex_environment, Renderer_DownsampleFilter::Average);
+            Pass_Downscale(cmd_list, tex_environment, Renderer_DownsampleFilter::Average);
         }
 
         // set pipeline state
@@ -1522,7 +1525,7 @@ namespace Spartan
         cmd_list->EndMarker();
 
         // generate mips
-        Pass_Downsample(cmd_list, tex_bloom, Renderer_DownsampleFilter::Average);
+        Pass_Downscale(cmd_list, tex_bloom, Renderer_DownsampleFilter::Average);
 
         // starting from the lowest mip, upsample and blend with the higher one
         cmd_list->BeginMarker("upsample_and_blend_with_higher_mip");
@@ -1782,40 +1785,12 @@ namespace Spartan
         }
 
         // used for refraction by the transparent passes, so generate mips to emulate roughness
-        Pass_Downsample(cmd_list, tex_out, Renderer_DownsampleFilter::Average);
+        Pass_Downscale(cmd_list, tex_out, Renderer_DownsampleFilter::Average);
 
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Sharpening(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
-    {
-        // acquire resources
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::ffx_cas_c).get();
-        if (!shader_c->IsCompiled() || !m_initialized_third_party)
-            return;
-
-        cmd_list->BeginTimeblock("sharpening");
-        {
-            // set pipeline state
-            static RHI_PipelineState pso;
-            pso.shaders[Compute] = shader_c;
-            cmd_list->SetPipelineState(pso);
-            
-            // set pass constants
-            m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Sharpness), 0.0f, 0.0f);
-            cmd_list->PushConstants(m_pcb_pass_cpu);
-            
-            // set textures
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
-            
-            // render
-            cmd_list->Dispatch(tex_out);
-        }
-        cmd_list->EndTimeblock();
-    }
-
-    void Renderer::Pass_Downsample(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter)
+    void Renderer::Pass_Downscale(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter)
     {
         // AMD FidelityFX Single Pass Downsampler.
         // Provides an RDNA™-optimized solution for generating up to 12 MIP levels of a texture.
@@ -1865,6 +1840,34 @@ namespace Spartan
             cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
         }
         cmd_list->EndMarker();
+    }
+
+    void Renderer::Pass_Sharpening(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
+    {
+        // acquire resources
+        RHI_Shader* shader_c = GetShader(Renderer_Shader::ffx_cas_c).get();
+        if (!shader_c->IsCompiled() || !m_initialized_third_party)
+            return;
+
+        cmd_list->BeginTimeblock("sharpening");
+        {
+            // set pipeline state
+            static RHI_PipelineState pso;
+            pso.shaders[Compute] = shader_c;
+            cmd_list->SetPipelineState(pso);
+            
+            // set pass constants
+            m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Sharpness), 0.0f, 0.0f);
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+            
+            // set textures
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
+            
+            // render
+            cmd_list->Dispatch(tex_out);
+        }
+        cmd_list->EndTimeblock();
     }
 
     void Renderer::Pass_AdditiveTransaparent(RHI_CommandList* cmd_list, RHI_Texture* tex_source, RHI_Texture* tex_destination)
