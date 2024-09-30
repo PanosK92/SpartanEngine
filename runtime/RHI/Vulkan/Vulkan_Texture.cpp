@@ -374,37 +374,35 @@ namespace Spartan
         return true;
     }
 
-    void RHI_Texture::RHI_DestroyResource(const bool destroy_main, const bool destroy_per_view)
+    void RHI_Texture::RHI_DestroyResource()
     {
-        // de-allocate everything
-        if (destroy_main)
+        // srv and uav
         {
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::TextureView, m_rhi_srv);
             m_rhi_srv = nullptr;
 
-            for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
-            {
-                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::TextureView, m_rhi_dsv[i]);
-                m_rhi_dsv[i] = nullptr;
-
-                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::TextureView, m_rhi_rtv[i]);
-                m_rhi_rtv[i] = nullptr;
-            }
-        }
-
-        if (destroy_per_view)
-        {
             for (uint32_t i = 0; i < m_mip_count; i++)
             {
                 RHI_Device::DeletionQueueAdd(RHI_Resource_Type::TextureView, m_rhi_srv_mips[i]);
                 m_rhi_srv_mips[i] = nullptr;
+
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::TextureView, m_rhi_uav[i]);
+                m_rhi_uav[i] = nullptr;
             }
         }
 
-        if (destroy_main)
+        // rtv and dsv
+        for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
         {
-            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Texture, m_rhi_resource);
-            m_rhi_resource = nullptr;
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::TextureView, m_rhi_dsv[i]);
+            m_rhi_dsv[i] = nullptr;
+
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::TextureView, m_rhi_rtv[i]);
+            m_rhi_rtv[i] = nullptr;
         }
+
+        // rhi resource
+        RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Texture, m_rhi_resource);
+        m_rhi_resource = nullptr;
     }
 }

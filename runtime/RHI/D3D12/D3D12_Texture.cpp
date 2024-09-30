@@ -39,7 +39,7 @@ namespace Spartan
         return false;
     }
 
-    void RHI_Texture::RHI_DestroyResource(const bool destroy_main, const bool destroy_per_view)
+    void RHI_Texture::RHI_DestroyResource()
     {
 
     }
