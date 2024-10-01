@@ -383,9 +383,6 @@ namespace Spartan
             {
                 RHI_Device::DeletionQueueAdd(RHI_Resource_Type::TextureView, m_rhi_srv_mips[i]);
                 m_rhi_srv_mips[i] = nullptr;
-
-                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::TextureView, m_rhi_uav[i]);
-                m_rhi_uav[i] = nullptr;
             }
         }
 

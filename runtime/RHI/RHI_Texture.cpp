@@ -119,7 +119,6 @@ namespace Spartan
     {
         m_layout.fill(RHI_Image_Layout::Max);
         m_rhi_srv_mips.fill(nullptr);
-        m_rhi_uav.fill(nullptr);
         m_rhi_rtv.fill(nullptr);
         m_rhi_dsv.fill(nullptr);
 
