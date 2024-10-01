@@ -174,7 +174,7 @@ def generate_project_files():
     if sys.argv[1] == "vs2022" and not os.path.exists("spartan.sln"):
         print("Error: spartan.sln not generated.")
         sys.exit(1)
-    elif not os.path.exists("Makefile") and not os.path.exists("editor/Makefile") and not os.path.exists("runtime/Makefile"):
+    elif sys.argv[1] != "vs2022" and not os.path.exists("Makefile") and not os.path.exists("editor/Makefile") and not os.path.exists("runtime/Makefile"):
         print("Error: makefiles not generated")
         sys.exit(1)
 
