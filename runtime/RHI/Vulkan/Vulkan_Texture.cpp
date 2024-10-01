@@ -338,13 +338,11 @@ namespace Spartan
             }
 
             // render target views
-            if (m_resource_type != ResourceType::Texture3d)
+            if (m_resource_type == ResourceType::Texture2d || m_resource_type == ResourceType::Texture2dArray || m_resource_type == ResourceType::TextureCube)
             {
+                // both cube map slices/faces and array length is encoded into m_array_length
                 for (uint32_t i = 0; i < m_array_length; i++)
                 {
-                    // both cube map slices/faces and array length is encoded into m_array_length.
-                    // they are rendered on individually, hence why the resource type is ResourceType::Texture2d
-
                     if (IsRtv())
                     {
                         create_image_view(m_rhi_resource, m_rhi_rtv[i], this, ResourceType::Texture2d, i, 1, 0, 1, false, false);
@@ -356,13 +354,19 @@ namespace Spartan
                     }
                 }
             }
-            else
+            else if (m_resource_type == ResourceType::Texture3d)
             {
                 // for 3d textures, we create a single rtv for the entire volume
+
                 if (IsRtv())
                 {
                     create_image_view(m_rhi_resource, m_rhi_rtv[0], this, ResourceType::Texture3d, 0, 1, 0, 1, false, false);
                 }
+            }
+            else
+
+            {
+                SP_ASSERT_MSG(false, "Unknown resource type")
             }
 
             // name the image and image view(s)
