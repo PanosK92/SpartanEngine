@@ -69,7 +69,8 @@ API_LIBRARIES = {
 			"ffx_denoiser_x64",
 			"ffx_sssr_x64",
 			"ffx_brixelizer_x64",
-			"ffx_brixelizergi_x64"
+			"ffx_brixelizergi_x64",
+			"ffx_breadcrumbs_x64"
         },
         debug = {
             "spirv-cross-c_debug",
@@ -86,6 +87,7 @@ API_LIBRARIES = {
 			"ffx_sssr_x64d",
 			"ffx_brixelizer_x64d",
 			"ffx_brixelizergi_x64d"
+			"ffx_breadcrumbs_x64d"
         }
     },
     vulkan_linux = {

@@ -305,7 +305,8 @@ typedef enum FfxSurfaceFormat {
     FFX_SURFACE_FORMAT_R8_UNORM,                    ///<  8 bit per channel, 1 channel unsigned normalized format
     FFX_SURFACE_FORMAT_R8G8_UNORM,                  ///<  8 bit per channel, 2 channel unsigned normalized format
     FFX_SURFACE_FORMAT_R8G8_UINT,                   ///<  8 bit per channel, 2 channel unsigned integer format
-    FFX_SURFACE_FORMAT_R32_FLOAT                    ///< 32 bit per channel, 1 channel float format
+    FFX_SURFACE_FORMAT_R32_FLOAT,                   ///< 32 bit per channel, 1 channel float format
+    FFX_SURFACE_FORMAT_R9G9B9E5_SHAREDEXP,          ///<  9 bit per channel, 5 bit exponent format
 } FfxSurfaceFormat;
 
 typedef enum FfxIndexFormat
@@ -325,6 +326,7 @@ typedef enum FfxResourceUsage {
     FFX_RESOURCE_USAGE_DEPTHTARGET = (1<<2),            ///< Indicates a resource will be used as depth target.
     FFX_RESOURCE_USAGE_INDIRECT = (1<<3),               ///< Indicates a resource will be used as indirect argument buffer
     FFX_RESOURCE_USAGE_ARRAYVIEW = (1<<4),              ///< Indicates a resource that will generate array views. Works on 2D and cubemap textures
+    FFX_RESOURCE_USAGE_DCC_RENDERTARGET = (1<<5),       ///< Indicates a resource that should specify optimal render target memory access flags (for console use)
 } FfxResourceUsage;
 
 /// An enumeration of resource states.
@@ -451,10 +453,12 @@ typedef enum FfxHeapType {
 /// @ingroup SDKTypes
 typedef enum FfxGpuJobType {
 
-    FFX_GPU_JOB_CLEAR_FLOAT = 0,                 ///< The GPU job is performing a floating-point clear.
-    FFX_GPU_JOB_COPY = 1,                        ///< The GPU job is performing a copy.
-    FFX_GPU_JOB_COMPUTE = 2,                     ///< The GPU job is performing a compute dispatch.
-    FFX_GPU_JOB_BARRIER = 3,                     ///< The GPU job is performing a barrier.
+    FFX_GPU_JOB_CLEAR_FLOAT = 0,                    ///< The GPU job is performing a floating-point clear.
+    FFX_GPU_JOB_COPY = 1,                           ///< The GPU job is performing a copy.
+    FFX_GPU_JOB_COMPUTE = 2,                        ///< The GPU job is performing a compute dispatch.
+    FFX_GPU_JOB_BARRIER = 3,                        ///< The GPU job is performing a barrier.
+
+    FFX_GPU_JOB_DISCARD = 4,                        ///< The GPU job is performing a floating-point clear.
 
 } FfxGpuJobType;
 
@@ -529,6 +533,8 @@ typedef enum FfxEffect
     FFX_EFFECT_FRAMEINTERPOLATION,     ///< FidelityFX Frame Interpolation, part of FidelityFX Super Resolution v3
     FFX_EFFECT_OPTICALFLOW,            ///< FidelityFX Optical Flow, part of FidelityFX Super Resolution v3
 
+    FFX_EFFECT_SHAREDRESOURCES = 127,  ///< FidelityFX Shared resources effect ID
+    FFX_EFFECT_SHAREDAPIBACKEND = 128  ///< FidelityFX Shared backend context used with DLL API
 } FfxEffect;
 
 typedef enum FfxBackbufferTransferFunction {
@@ -884,6 +890,7 @@ typedef struct FfxResourceBinding
 typedef struct FfxPipelineState {
 
     FfxRootSignature                rootSignature;                                      ///< The pipelines rootSignature
+    uint32_t                        passId;                                             ///< The id of the effect pass this pipeline corresponds to
     FfxCommandSignature             cmdSignature;                                       ///< The command signature used for indirect workloads
     FfxPipeline                     pipeline;                                           ///< The pipeline object
     uint32_t                        uavTextureCount;                                    ///< Count of Texture UAVs used in this pipeline
@@ -1099,6 +1106,11 @@ typedef struct FfxCopyJobDescription
     uint32_t                                size;                                   ///< Number of bytes to copy (Set to 0 to copy entire buffer).
 } FfxCopyJobDescription;
 
+typedef struct FfxDiscardJobDescription {
+
+    FfxResourceInternal                     target;                                 ///< The resource to be discarded.
+} FfxDiscardJobDescription;
+
 /// A structure describing a single render job.
 ///
 /// @ingroup SDKTypes
@@ -1113,6 +1125,7 @@ typedef struct FfxGpuJobDescription{
         FfxComputeJobDescription    computeJobDescriptor;                   ///< Compute job descriptor. Valid when <c><i>jobType</i></c> is <c><i>FFX_RENDER_JOB_COMPUTE</i></c>.
         FfxRasterJobDescription     rasterJobDescriptor;
         FfxBarrierDescription       barrierDescriptor;
+        FfxDiscardJobDescription    discardJobDescriptor;
     };
 } FfxGpuJobDescription;
 
