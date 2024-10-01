@@ -184,7 +184,7 @@
 /// The size of the context specified in 32bit values.
 ///
 /// @ingroup FfxCacao
-#define FFX_CACAO_CONTEXT_SIZE (300988)
+#define FFX_CACAO_CONTEXT_SIZE (301054)
 
 /// FidelityFX CACAO context count.
 ///

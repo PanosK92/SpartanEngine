@@ -200,7 +200,7 @@ def main():
     
     library_url = 'https://www.dropbox.com/scl/fi/yqr39cvcvrerub5gs54ie/libraries.7z?rlkey=rout3xcnjzcvo4g0a6rbx1mtq&st=pdccng0r&dl=1'
     library_destination = 'third_party/libraries/libraries.7z'
-    library_expected_hash = '08499c56e3bcae4d59cf22e988b5188eb2e4e75f5061a234b6af540048b59eaa'
+    library_expected_hash = '1a531e36bb216ac9f23a48ca4bf7f416b7a1846ffc0ede289884003e89970f5e'
 
     assets_url = 'https://www.dropbox.com/scl/fi/hagxxndy0dnq7pu0ufkxh/assets.7z?rlkey=gmwlxlhf6q3eubh7r50q2xp27&st=60lavvyz&dl=1'
     assets_destination = 'assets/assets.7z'

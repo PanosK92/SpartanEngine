@@ -121,6 +121,16 @@ typedef struct FfxFrameInterpolationContextDescription {
     FfxInterface                    backendInterface;       ///< A set of pointers to the backend implementation for FidelityFX SDK
 } FfxFrameInterpolationContextDescription;
 
+/// A structure encapsulating the resource descriptions for shared resources for this effect.
+///
+/// @ingroup FRAMEINTERPOLATION
+typedef struct FfxFrameInterpolationSharedResourceDescriptions
+{
+    FfxCreateResourceDescription    reconstructedPrevNearestDepth;  ///< The <c><i>FfxCreateResourceDescription</i></c> for allocating the <c><i>reconstructedPrevNearestDepth</i></c> shared resource.
+    FfxCreateResourceDescription    dilatedDepth;  ///< The <c><i>FfxCreateResourceDescription</i></c> for allocating the <c><i>dilatedDepth</i></c> shared resource.
+    FfxCreateResourceDescription    dilatedMotionVectors;  ///< The <c><i>FfxCreateResourceDescription</i></c> for allocating the <c><i>dilatedMotionVectors</i></c> shared resource.
+} FfxFrameInterpolationSharedResourceDescriptions;
+
 /// A structure encapsulating the FidelityFX Super Resolution 2 context.
 ///
 /// This sets up an object which contains all persistent internal data and
@@ -187,6 +197,8 @@ FFX_API FfxErrorCode ffxFrameInterpolationContextCreate(FfxFrameInterpolationCon
 
 FFX_API FfxErrorCode ffxFrameInterpolationContextGetGpuMemoryUsage(FfxFrameInterpolationContext* pContext, FfxEffectMemoryUsage* vramUsage);
 
+FFX_API FfxErrorCode ffxFrameInterpolationGetSharedResourceDescriptions(FfxFrameInterpolationContext* pContext, FfxFrameInterpolationSharedResourceDescriptions* SharedResources);
+
 typedef struct FfxFrameInterpolationPrepareDescription
 {
     uint32_t            flags;                      ///< combination of FfxFrameInterpolationDispatchFlags
@@ -204,6 +216,10 @@ typedef struct FfxFrameInterpolationPrepareDescription
     FfxResource         depth;                      ///< The depth buffer data
     FfxResource         motionVectors;              ///< The motion vector data
     uint64_t            frameID;
+
+    FfxResource         dilatedDepth;                       ///< The dilated depth buffer data
+    FfxResource         dilatedMotionVectors;               ///< The dilated motion vector data
+    FfxResource         reconstructedPrevDepth;             ///< The reconstructed depth buffer data
 } FfxFrameInterpolationPrepareDescription;
 
 FFX_API FfxErrorCode ffxFrameInterpolationPrepare(FfxFrameInterpolationContext* context, const FfxFrameInterpolationPrepareDescription* params);
@@ -245,6 +261,9 @@ typedef struct FfxFrameInterpolationDispatchDescription {
     float                               minMaxLuminance[2];                 ///< Min and max luminance values, used when converting HDR colors to linear RGB
     uint64_t                            frameID;                            ///< Identifier used to select internal resources when async support is enabled. Must increment by exactly one (1) for each frame. Any non-exactly-one difference will reset the frame generation logic.
 
+    FfxResource                         dilatedDepth;                       ///< The dilated depth buffer data
+    FfxResource                         dilatedMotionVectors;               ///< The dilated motion vector data
+    FfxResource                         reconstructedPrevDepth;             ///< The reconstructed depth buffer data
 } FfxFrameInterpolationDispatchDescription;
 
 FFX_API FfxErrorCode ffxFrameInterpolationDispatch(FfxFrameInterpolationContext* context, const FfxFrameInterpolationDispatchDescription* params);
