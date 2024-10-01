@@ -137,7 +137,6 @@ namespace Spartan
         void*& GetRhiResource()                     { return m_rhi_resource; }
         void* GetRhiSrv()                     const { return m_rhi_srv; }
         void* GetRhiSrvMip(const uint32_t i)  const { return m_rhi_srv_mips[i]; }
-        void* GetRhiUav(const uint32_t i = 0) const { return m_rhi_uav[i]; }
         void* GetRhiDsv(const uint32_t i = 0) const { return m_rhi_dsv[i]; }
         void* GetRhiRtv(const uint32_t i = 0) const { return m_rhi_rtv[i]; }
         void RHI_DestroyResource();
@@ -161,7 +160,6 @@ namespace Spartan
         // api resources
         void* m_rhi_srv = nullptr;                           // an srv with all mips
         std::array<void*, rhi_max_mip_count> m_rhi_srv_mips; // an srv for each mip
-        std::array<void*, rhi_max_mip_count> m_rhi_uav;
         std::array<void*, rhi_max_render_target_count> m_rhi_rtv;
         std::array<void*, rhi_max_render_target_count> m_rhi_dsv;
         void* m_rhi_resource        = nullptr;

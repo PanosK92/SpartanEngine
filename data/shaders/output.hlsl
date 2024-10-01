@@ -87,7 +87,6 @@ float3 aces(float3 color)
 
 float3 nautilus(float3 c)
 {
-
     // Nautilus fit of ACES
     // By Nolram
     
@@ -98,6 +97,7 @@ float3 nautilus(float3 c)
     float e = 0.14f;
     return clamp((c * (a * c + b)) / (c * (y * c + d) + e), 0.0, 1.0);
 }
+
 //==========================================================================================
 // ENTRY
 //==========================================================================================
@@ -108,8 +108,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // get cpu data
     float3 f3_value    = pass_get_f3_value();
     float tone_mapping = f3_value.y;
-
-    float4 color  = tex[thread_id.xy];
+    float4 color       = tex[thread_id.xy];
 
     if (buffer_frame.hdr_enabled == 0.0f) // SDR
     {
