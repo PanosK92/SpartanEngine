@@ -335,8 +335,6 @@ namespace Spartan
                         create_image_view(m_rhi_resource, m_rhi_srv_mips[i], this, m_resource_type, 0, m_array_length, i, 1, IsDepthFormat(), false);
                     }
                 }
-
-                // stencil requires a separate view
             }
 
             // render target views
