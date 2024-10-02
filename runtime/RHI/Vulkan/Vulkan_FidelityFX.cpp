@@ -800,7 +800,7 @@ namespace Spartan
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/super-resolution-upscaler.md
         // requires:      VK_KHR_get_memory_requirements2
 
-        // output is displayed in the viewport via imgui so we add a barrier to ensure FSR has done whatever it needs to do
+        // output is displayed in the viewport, so add a barrier to ensure any work is done before writting to it
         cmd_list->InsertBarrierTextureReadWrite(tex_output);
         cmd_list->InsertPendingBarrierGroup();
 
@@ -1119,7 +1119,7 @@ namespace Spartan
         set_ffx_float16(brixelizer_gi::description_dispatch_gi.prevProjection, projection_previous);
 
         // set resources
-        brixelizer_gi::description_dispatch_gi.environmentMap   = to_ffx_resource(tex_material,                                  L"brixelizer_environment");
+        brixelizer_gi::description_dispatch_gi.environmentMap   = to_ffx_resource(tex_skybox,                                    L"brixelizer_environment");
         brixelizer_gi::description_dispatch_gi.prevLitOutput    = to_ffx_resource(tex_frame,                                     L"brixelizer_gi_lit_output_previous");
         brixelizer_gi::description_dispatch_gi.depth            = to_ffx_resource(tex_depth,                                     L"brixelizer_gi_depth");
         brixelizer_gi::description_dispatch_gi.historyDepth     = to_ffx_resource(brixelizer_gi::texture_depth_previous.get(),   L"brixelizer_gi_depth_previous");
