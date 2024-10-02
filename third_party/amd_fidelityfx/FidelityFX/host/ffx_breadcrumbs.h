@@ -20,11 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-/// @defgroup ffxBreadcrumbs FidelityFX Breadcrumbs
-/// FidelityFX Breadcrumbs runtime library
-///
-/// @ingroup SDKComponents
-
+// @defgroup BREADCRUMBS
 
 #pragma once
 
@@ -33,39 +29,39 @@
 
 /// FidelityFX Breadcrumbs major version.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 #define FFX_BREADCRUMBS_VERSION_MAJOR      (1)
 
 /// FidelityFX Breadcrumbs minor version.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 #define FFX_BREADCRUMBS_VERSION_MINOR      (0)
 
 /// FidelityFX Breadcrumbs patch version.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 #define FFX_BREADCRUMBS_VERSION_PATCH      (0)
 
 /// FidelityFX Breadcrumbs context count
 /// 
 /// Defines the number of internal effect contexts required by Breadcrumbs
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 #define FFX_BREADCRUMBS_CONTEXT_COUNT   1
 
 /// The size of the context specified in 32bit values.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 #define FFX_BREADCRUMBS_CONTEXT_SIZE (128)
 
 /// Maximal number of markers that can be written into single memory block.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 #define FFX_BREADCRUMBS_MAX_MARKERS_PER_BLOCK ((1U << 31) - 1U)
 
 /// List of marker types to be used in X() macro.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 #define FFX_BREADCRUMBS_MARKER_LIST \
 	X(BEGIN_EVENT) \
 	X(BEGIN_QUERY) \
@@ -185,7 +181,7 @@ extern "C" {
 /// An enumeration of bit flags used when creating a
 /// <c><i>FfxBreadcrumbsContext</i></c>. See <c><i>FfxBreadcrumbsContextDescription</i></c>.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 typedef enum FfxBreadcrumbsInitializationFlagBits {
 
     FFX_BREADCRUMBS_PRINT_FINISHED_LISTS          = (1<<0),   ///< A bit indicating that fully finished command lists will be expanded during status printing (otherwise their entries will be collapsed).
@@ -205,7 +201,7 @@ typedef enum FfxBreadcrumbsInitializationFlagBits {
 /// be left out as <c><i>NULL</i></c> and the Breadcrumbs will use default tag for this marker. It can be useful when recording multiple similar
 /// commands in a row. Breadcrumbs will automatically add numbering to them so it's not needed to create your own numbered dynamic string.
 /// 
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 typedef enum FfxBreadcrumbsMarkerType {
 
     FFX_BREADCRUMBS_MARKER_PASS, ///< Marker for grouping sets of commands. It is required to supply custom name for this type.
@@ -216,7 +212,7 @@ typedef enum FfxBreadcrumbsMarkerType {
 
 /// A structure encapsulating the parameters required to initialize FidelityFX Breadcrumbs.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 typedef struct FfxBreadcrumbsContextDescription {
 
     uint32_t                    flags;                     ///< A collection of <c><i>FfxBreadcrumbsInitializationFlagBits</i></c>.
@@ -234,7 +230,7 @@ typedef struct FfxBreadcrumbsContextDescription {
 /// When custom name is supplied <c><i>isNameExternallyOwned</i></c> field controls whether to perform copy on the string.
 /// If string memory is managed by the application (ex. static string) the copy can be omitted to save memory.
 /// 
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 typedef struct FfxBreadcrumbsNameTag
 {
     const char*                 pName;                     ///< Custom name for the object. By default optional, can be left to <c><i>NULL</i></c>.
@@ -243,7 +239,7 @@ typedef struct FfxBreadcrumbsNameTag
 
 /// Description for new command list to be enabled for writing AMD FidelityFX Breadcrumbs Library markers.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 typedef struct FfxBreadcrumbsCommandListDescription {
 
     FfxCommandList              commandList;               ///< Handle to the command list that will be used with breadcrumbs operations.
@@ -255,7 +251,7 @@ typedef struct FfxBreadcrumbsCommandListDescription {
 
 /// Description for pipeline state that will be used to tag breadcrumbs markers.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 typedef struct FfxBreadcrumbsPipelineStateDescription
 {
     FfxPipeline                 pipeline;                  ///< Pipeline state that will be associated with set of Breadcrumbs markers.
@@ -273,7 +269,7 @@ typedef struct FfxBreadcrumbsPipelineStateDescription
 
 /// Output with current AMD FidelityFX Breadcrumbs Library markers log for post-mortem analysis.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 typedef struct FfxBreadcrumbsMarkersStatus
 {
     size_t                      bufferSize;                ///< Size of the status buffer.
@@ -291,7 +287,7 @@ typedef struct FfxBreadcrumbsMarkersStatus
 /// It is therefore recommended that the GPU is idle before destroying the
 /// Breadcrumbs context.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 typedef struct FfxBreadcrumbsContext
 {
     uint32_t                    data[FFX_BREADCRUMBS_CONTEXT_SIZE];  ///< An opaque set of <c>uint32_t</c> which contain the data for the context.
@@ -333,7 +329,7 @@ typedef struct FfxBreadcrumbsContext
 /// @retval
 /// FFX_ERROR_BACKEND_API_ERROR         The operation failed because of an error returned from the backend.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 FFX_API FfxErrorCode ffxBreadcrumbsContextCreate(FfxBreadcrumbsContext* pContext, const FfxBreadcrumbsContextDescription* pContextDescription);
 
 /// Destroy the FidelityFX Breadcrumbs context.
@@ -347,7 +343,7 @@ FFX_API FfxErrorCode ffxBreadcrumbsContextCreate(FfxBreadcrumbsContext* pContext
 /// @retval
 /// FFX_ERROR_INVALID_POINTER           The operation failed because either <c><i>pContext</i></c> was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 FFX_API FfxErrorCode ffxBreadcrumbsContextDestroy(FfxBreadcrumbsContext* pContext);
 
 /// Begins new frame of execution for FidelityFX Breadcrumbs.
@@ -361,7 +357,7 @@ FFX_API FfxErrorCode ffxBreadcrumbsContextDestroy(FfxBreadcrumbsContext* pContex
 /// @retval
 /// FFX_ERROR_INVALID_POINTER           The operation failed because either <c><i>pContext</i></c> was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 FFX_API FfxErrorCode ffxBreadcrumbsStartFrame(FfxBreadcrumbsContext* pContext);
 
 /// Register new command list for current frame FidelityFX Breadcrumbs operations.
@@ -378,7 +374,7 @@ FFX_API FfxErrorCode ffxBreadcrumbsStartFrame(FfxBreadcrumbsContext* pContext);
 /// @retval
 /// FFX_ERROR_INVALID_ARGUMENT          The operation failed because given command list has been already registered.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 FFX_API FfxErrorCode ffxBreadcrumbsRegisterCommandList(FfxBreadcrumbsContext* pContext, const FfxBreadcrumbsCommandListDescription* pCommandListDescription);
 
 /// Register new pipeline state to associate later with FidelityFX Breadcrumbs operations.
@@ -395,7 +391,7 @@ FFX_API FfxErrorCode ffxBreadcrumbsRegisterCommandList(FfxBreadcrumbsContext* pC
 /// @retval
 /// FFX_ERROR_INVALID_ARGUMENT          The operation failed because given pipeline has been already registered or <c><i>pPipelineDescription</i></c> contains incorrect data.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 FFX_API FfxErrorCode ffxBreadcrumbsRegisterPipeline(FfxBreadcrumbsContext* pContext, const FfxBreadcrumbsPipelineStateDescription* pPipelineDescription);
 
 /// Associate specific pipeline state with following FidelityFX Breadcrumbs markers.
@@ -415,7 +411,7 @@ FFX_API FfxErrorCode ffxBreadcrumbsRegisterPipeline(FfxBreadcrumbsContext* pCont
 /// @retval
 /// FFX_ERROR_INVALID_ARGUMENT          The operation failed because given pipeline or command list has not been registered yet.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 FFX_API FfxErrorCode ffxBreadcrumbsSetPipeline(FfxBreadcrumbsContext* pContext, FfxCommandList commandList, FfxPipeline pipeline);
 
 /// Begin new FidelityFX Breadcrumbs marker section.
@@ -437,7 +433,7 @@ FFX_API FfxErrorCode ffxBreadcrumbsSetPipeline(FfxBreadcrumbsContext* pContext, 
 /// @retval
 /// FFX_ERROR_BACKEND_API_ERROR         The operation failed because of an error returned from the backend.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 FFX_API FfxErrorCode ffxBreadcrumbsBeginMarker(FfxBreadcrumbsContext* pContext, FfxCommandList commandList, FfxBreadcrumbsMarkerType type, const FfxBreadcrumbsNameTag* pName);
 
 /// End FidelityFX Breadcrumbs marker section.
@@ -454,7 +450,7 @@ FFX_API FfxErrorCode ffxBreadcrumbsBeginMarker(FfxBreadcrumbsContext* pContext, 
 /// @retval
 /// FFX_ERROR_INVALID_ARGUMENT          The operation failed because given command list has not been registered yet.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 FFX_API FfxErrorCode ffxBreadcrumbsEndMarker(FfxBreadcrumbsContext* pContext, FfxCommandList commandList);
 
 /// Gather information about current FidelityFX Breadcrumbs markers status.
@@ -471,7 +467,7 @@ FFX_API FfxErrorCode ffxBreadcrumbsEndMarker(FfxBreadcrumbsContext* pContext, Ff
 /// @retval
 /// FFX_ERROR_INVALID_POINTER           The operation failed because either <c><i>pContext</i></c> or <c><i>pMarkersStatus</i></c> was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 FFX_API FfxErrorCode ffxBreadcrumbsPrintStatus(FfxBreadcrumbsContext* pContext, FfxBreadcrumbsMarkersStatus* pMarkersStatus);
 
 /// Queries the effect version number.
@@ -479,7 +475,7 @@ FFX_API FfxErrorCode ffxBreadcrumbsPrintStatus(FfxBreadcrumbsContext* pContext, 
 /// @returns
 /// The SDK version the effect was built with.
 ///
-/// @ingroup ffxBreadcrumbs
+/// @ingroup BREADCRUMBS
 FFX_API FfxVersionNumber ffxBreadcrumbsGetEffectVersion();
 
 #if defined(__cplusplus)

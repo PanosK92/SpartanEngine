@@ -57,7 +57,7 @@
 /// The size of the context specified in 32bit values.
 ///
 /// @ingroup ffxCas
-#define FFX_CAS_CONTEXT_SIZE (9206)
+#define FFX_CAS_CONTEXT_SIZE (9204)
 
 #if defined(__cplusplus)
 extern "C" {

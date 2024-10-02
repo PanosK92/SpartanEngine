@@ -22,41 +22,35 @@
 
 #pragma once
 
-/// @defgroup ffxBrixelizer FidelityFX Brixelizer
-/// FidelityFX Brixelizer runtime library
-///
-/// @ingroup SDKComponents
-
-
 // Include the interface for the backend of the Brixelizer API.
 #include <FidelityFX/host/ffx_interface.h>
 #include <FidelityFX/gpu/brixelizer/ffx_brixelizer_host_gpu_shared.h>
 
 /// FidelityFX Brixelizer major version.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 #define FFX_BRIXELIZER_VERSION_MAJOR (1)
 
 /// FidelityFX Brixelizer minor version.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 #define FFX_BRIXELIZER_VERSION_MINOR (0)
 
 /// FidelityFX Brixelizer patch version.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 #define FFX_BRIXELIZER_VERSION_PATCH (0)
 
 /// FidelityFX Brixelizer context count
 /// 
 /// Defines the number of internal effect contexts required by Brixelizer
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 #define FFX_BRIXELIZER_CONTEXT_COUNT 1
 
 /// The size of the raw context specified in 32bit values.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 #define FFX_BRIXELIZER_RAW_CONTEXT_SIZE (2924058)
 
 #ifdef __cplusplus
@@ -72,7 +66,7 @@ extern "C" {
 /// more comprehensive description of each pass, please refer to the Brixelizer
 /// reference documentation.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 typedef enum FfxBrixelizerPass
 {
     
@@ -113,12 +107,12 @@ typedef enum FfxBrixelizerPass
 
 /// An ID value for an instance created with Brixelizer.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 typedef uint32_t FfxBrixelizerInstanceID;
 
 ///  A structure representing the external resources needed for a Brixelizer cascade.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 typedef struct FfxBrixelizerCascadeResources
 {
     FfxResource aabbTree;       ///< An FfxResource for storing the AABB tree of the cascade. This should be a structured buffer of size FFX_BRIXELIZER_CASCADE_AABB_TREE_SIZE and stride FFX_BRIXELIZER_CASCADE_AABB_TREE_STRIDE.
@@ -127,7 +121,7 @@ typedef struct FfxBrixelizerCascadeResources
 
 /// A structure representing all external resources for use with Brixelizer.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 typedef struct FfxBrixelizerResources
 {
     FfxResource                   sdfAtlas;                                      ///< An FfxResource for storing the SDF atlas. This should be a 512x512x512 3D texture of 8-bit unorm values.
@@ -138,7 +132,7 @@ typedef struct FfxBrixelizerResources
 /// A structure encapsulating the parameters necessary to register a buffer with
 /// the Brixelizer API.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 typedef struct FfxBrixelizerBufferDescription {
     FfxResource  buffer;        ///< An <c><i>FfxResource</i></c> of the buffer.
     uint32_t    *outIndex;      ///< A pointer to a <c><i>uint32_t</i></c> to receive the index assigned to the buffer.
@@ -146,7 +140,7 @@ typedef struct FfxBrixelizerBufferDescription {
 
 /// Flags used for specifying debug drawing of AABBs.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 typedef enum FfxBrixelizerCascadeDebugAABB {
     FFX_BRIXELIZER_CASCADE_DEBUG_AABB_NONE,
     FFX_BRIXELIZER_CASCADE_DEBUG_AABB_BOUNDING_BOX,
@@ -155,7 +149,7 @@ typedef enum FfxBrixelizerCascadeDebugAABB {
 
 /// A structure encapsulating the parameters for drawing a debug visualization.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 typedef struct FfxBrixelizerDebugVisualizationDescription
 {
     float                             inverseViewMatrix[16];                         ///< Inverse view matrix for the scene in row major order.
@@ -178,7 +172,7 @@ typedef struct FfxBrixelizerDebugVisualizationDescription
 
 /// Flags for options for Brixelizer context creation.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 typedef enum FfxBrixelizerContextFlags
 {
     FFX_BRIXELIZER_CONTEXT_FLAG_DEBUG_CONTEXT_READBACK_BUFFERS = (1 << 0), ///< Create a context with context readback buffers enabled. Needed to use <c><i>ffxBrixelizerContextGetDebugCounters</i></c>.
@@ -190,7 +184,7 @@ typedef enum FfxBrixelizerContextFlags
 /// Flags used for creating Brixelizer jobs. Determines whether a job is a submission of geometry or invalidating
 /// an area described by an AABB.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 typedef enum FfxBrixelizerRawJobFlags {
     FFX_BRIXELIZER_RAW_JOB_FLAG_NONE       = 0u,
     FFX_BRIXELIZER_RAW_JOB_FLAG_INVALIDATE = 1u << 2u,
@@ -198,7 +192,7 @@ typedef enum FfxBrixelizerRawJobFlags {
 
 /// Flags used for creating Brixelizer instances.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 typedef enum FfxBrixelizerRawInstanceFlags {
     FFX_BRIXELIZER_RAW_INSTANCE_FLAG_NONE = 0u,
     FFX_BRIXELIZER_RAW_INSTANCE_FLAG_USE_INDEXLESS_QUAD_LIST = 1u << 1u,
@@ -215,7 +209,7 @@ typedef enum FfxBrixelizerRawInstanceFlags {
 /// or used by Brixelizer. It is therefore recommended that the GPU is idle
 /// before destroying the Brixelizer context.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 typedef struct FfxBrixelizerRawContext
 {
     uint32_t data[FFX_BRIXELIZER_RAW_CONTEXT_SIZE];
@@ -223,7 +217,7 @@ typedef struct FfxBrixelizerRawContext
 
 /// A structure encapsulating the parameters for creating a Brixelizer context.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 typedef struct FfxBrixelizerRawContextDescription
 {
     size_t                        maxDebugAABBs;    ///< The maximum number of AABBs that can be drawn in debug mode. Note to use debug AABBs the flag <c><i>FFX_BRIXELIZER_CONTEXT_FLAG</i></c> must be passed at context creation.
@@ -234,7 +228,7 @@ typedef struct FfxBrixelizerRawContextDescription
 
 /// A structure encapsulating the parameters for creating a Brixelizer cascade.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 typedef struct FfxBrixelizerRawCascadeDescription
 {
     float       brickSize;      ///< The edge size of a brick in world units.
@@ -244,7 +238,7 @@ typedef struct FfxBrixelizerRawCascadeDescription
 
 /// A structure describing a Brixelizer job.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 typedef struct FfxBrixelizerRawJobDescription
 {
     float    aabbMin[3];      ///< The mimimum corner of the AABB of the job.
@@ -255,7 +249,7 @@ typedef struct FfxBrixelizerRawJobDescription
 
 /// A structure encapsulating the parameters for updating a Brixelizer cascade.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 typedef struct FfxBrixelizerRawCascadeUpdateDescription
 {
     uint32_t                              maxReferences;                 ///< storage for triangle->voxel references
@@ -272,7 +266,7 @@ typedef struct FfxBrixelizerRawCascadeUpdateDescription
 /// A structure encapsulating the parameters for an instance to be added to a
 /// Brixelizer context.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 typedef struct FfxBrixelizerRawInstanceDescription
 {
     float                     aabbMin[3];           ///< The minimum coordinates of an AABB surrounding the instance.
@@ -302,7 +296,7 @@ typedef struct FfxBrixelizerRawInstanceDescription
 ///
 /// @return  The size in bytes of an <c><i>FfxBrixelizerRawContext</i></c> struct.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 inline size_t ffxBrixelizerRawGetContextSize()
 {
     return sizeof(FfxBrixelizerRawContext);
@@ -336,7 +330,7 @@ inline size_t ffxBrixelizerRawGetContextSize()
 /// @retval
 /// FFX_ERROR_BACKEND_API_ERROR        The operation failed because of an error from the backend.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextCreate(FfxBrixelizerRawContext* context, const FfxBrixelizerRawContextDescription* contextDescription);
 
 /// Destroy the FidelityFX Brixelizer context.
@@ -348,7 +342,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextCreate(FfxBrixelizerRawContext* cont
 /// @retval
 /// FFX_ERROR_INVALID_POINTER   The <c><i>context</i></c> pointer provided was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextDestroy(FfxBrixelizerRawContext* context);
 
 /// Get an <c><i>FfxBrixelizerContextInfo</i></c> structure with the details for <c><i>context</i></c>.
@@ -363,7 +357,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextDestroy(FfxBrixelizerRawContext* con
 /// @retval
 /// FFX_ERROR_INVALID_POINTER   The <c><i>context</i></c> pointer provided was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextGetInfo(FfxBrixelizerRawContext* context, FfxBrixelizerContextInfo* contextInfo);
 
 /// Create a cascade for use with Brixelizer.
@@ -378,7 +372,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextGetInfo(FfxBrixelizerRawContext* con
 /// @retval
 /// FFX_ERROR_BACKEND_API_ERROR        The operation encountered an error in the backend.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextCreateCascade(FfxBrixelizerRawContext* context, const FfxBrixelizerRawCascadeDescription* cascadeDescription);
 
 /// Destroy a cascade previously created with <c><i>ffxBrixelizerContextCreateCascade</i></c>.
@@ -391,7 +385,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextCreateCascade(FfxBrixelizerRawContex
 /// @retval
 /// FFX_ERROR_INVALID_POINTER          The operation failed because <c><i>context</i></c> was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextDestroyCascade(FfxBrixelizerRawContext* context, uint32_t cascadeIndex);
 
 /// Reset a cascade previously created with <c><i>ffxBrixelizerContextCreateCascade</i></c>.
@@ -406,7 +400,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextDestroyCascade(FfxBrixelizerRawConte
 /// @retval
 /// FFX_ERROR_INVALID_ARGUMENT         No cascade with index <c><i>cascadeIndex</i></c> exists.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextResetCascade(FfxBrixelizerRawContext* context, uint32_t cascadeIndex);
 
 /// Begin constructing GPU commands for updating SDF acceleration structures with Brixelizer.
@@ -421,7 +415,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextResetCascade(FfxBrixelizerRawContext
 /// @retval
 /// FFX_ERROR_NULL_DEVICE              The operation failed because the <c><i>FfxDevice</i></c> provided to the <c><i>context</i></c> was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextBegin(FfxBrixelizerRawContext* context, FfxBrixelizerResources resources);
 
 /// End construcring GPU commands for updating the SDF acceleration structures with Brixelizer.
@@ -435,7 +429,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextBegin(FfxBrixelizerRawContext* conte
 /// @retval
 /// FFX_ERROR_NULL_DEVICE              The operation failed because the <c><i>FfxDevice</i></c> provided to the <c><i>context</i></c> was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextEnd(FfxBrixelizerRawContext* context);
 
 /// Record GPU commands to a <c><i>FfxCommandList</i></c> for updating acceleration structures with Brixelizer.
@@ -450,7 +444,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextEnd(FfxBrixelizerRawContext* context
 /// @retval
 /// FFX_ERROR_NULL_DEVICE              The operation failed because the <c><i>FfxDevice</i></c> provided to the <c><i>context</i></c> was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextSubmit(FfxBrixelizerRawContext* context, FfxCommandList cmdList);
 
 /// Get the size in bytes needed from a <c><i>FfxResource</i></c> to be used as a scratch buffer in a cascade update.
@@ -466,7 +460,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextSubmit(FfxBrixelizerRawContext* cont
 /// @retval
 /// FFX_ERROR_NULL_DEVICE                  The operation failed because the <c><i>FfxDevice</i></c> provided to the <c><i>context</i></c> was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextGetScratchMemorySize(FfxBrixelizerRawContext* context, const FfxBrixelizerRawCascadeUpdateDescription* cascadeUpdateDescription, size_t* size);
 
 /// Update a cascade in a Brixelizer context.
@@ -481,7 +475,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextGetScratchMemorySize(FfxBrixelizerRa
 /// @retval
 /// FFX_ERROR_NULL_DEVICE                  The operation failed because the <c><i>FfxDevice</i></c> provided to the <c><i>context</i></c> was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextUpdateCascade(FfxBrixelizerRawContext* context, const FfxBrixelizerRawCascadeUpdateDescription* cascadeUpdateDescription);
 
 /// Merge two cascades in a Brixelizer context.
@@ -499,7 +493,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextUpdateCascade(FfxBrixelizerRawContex
 /// @retval
 /// FFX_ERROR_NULL_DEVICE                  The operation failed because the <c><i>FfxDevice</i></c> provided to the <c><i>context</i></c> was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextMergeCascades(FfxBrixelizerRawContext* context, uint32_t src_cascade_A_idx, uint32_t src_cascade_B_idx, uint32_t dst_cascade_idx);
 
 /// Build an AABB tree for a cascade in a Brixelizer context.
@@ -515,7 +509,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextMergeCascades(FfxBrixelizerRawContex
 /// @retval
 /// FFX_ERROR_NULL_DEVICE                  The operation failed because the <c><i>FfxDevice</i></c> provided to the <c><i>context</i></c> was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextBuildAABBTree(FfxBrixelizerRawContext* context, uint32_t cascadeIndex);
 
 /// Create a debug visualization output of a Brixelizer context.
@@ -531,7 +525,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextBuildAABBTree(FfxBrixelizerRawContex
 /// @retval
 /// FFX_ERROR_NULL_DEVICE                       The operation failed because the <c><i>FfxDevice</i></c> provided to the <c><i>context</i></c> was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextDebugVisualization(FfxBrixelizerRawContext* context, const FfxBrixelizerDebugVisualizationDescription* debugVisualizationDescription);
 
 /// Get the debug counters from a Brixelizer context.
@@ -546,7 +540,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextDebugVisualization(FfxBrixelizerRawC
 /// @retval
 /// FFX_ERROR_INVALID_POINTER                   The operation failed because <c><i>context</i></c> or <c><i>debugCounters</i></c> was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextGetDebugCounters(FfxBrixelizerRawContext* context, FfxBrixelizerDebugCounters* debugCounters);
 
 /// Get the cascade counters from a Brixelizer context.
@@ -562,7 +556,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextGetDebugCounters(FfxBrixelizerRawCon
 /// @retval
 /// FFX_ERROR_INVALID_POINTER                   The operation failed because <c><i>context</i></c> or <c><i>counters</i></c> was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextGetCascadeCounters(FfxBrixelizerRawContext* context, uint32_t cascadeIndex, FfxBrixelizerScratchCounters* counters);
 
 /// Create an instance in a Brixelizer context.
@@ -576,7 +570,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextGetCascadeCounters(FfxBrixelizerRawC
 /// @retval
 /// FFX_ERROR_INVALID_POINTER                   The operation failed because <c><i>context</i></c> or <c><i>instanceDescription</i></c> was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextCreateInstances(FfxBrixelizerRawContext* context, const FfxBrixelizerRawInstanceDescription* instanceDescriptions, uint32_t numInstanceDescriptions);
 
 /// Destroy an instance in a Brixelizer context.
@@ -589,7 +583,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextCreateInstances(FfxBrixelizerRawCont
 /// @retval
 /// FFX_ERROR_INVALID_POINTER                   The operation failed because <c><i>context</i></c> was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextDestroyInstances(FfxBrixelizerRawContext* context, const FfxBrixelizerInstanceID* instanceIDs, uint32_t numInstanceIDs);
 
 /// Flush all instances added to the Brixelizer context with <c><i>ffxBrixelizerRawContextCreateInstance</i></c> to the GPU.
@@ -602,7 +596,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextDestroyInstances(FfxBrixelizerRawCon
 /// @retval
 /// FFX_ERROR_INVALID_POINTER                   The operation failed because <c><i>context</i></c> was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextFlushInstances(FfxBrixelizerRawContext* context, FfxCommandList cmdList);
 
 /// Register a vertex or index buffer for use with Brixelizer.
@@ -616,7 +610,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextFlushInstances(FfxBrixelizerRawConte
 /// @retval
 /// FFX_ERROR_INVALID_POINTER                   The operation failed because <c><i>context</i></c> was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextRegisterBuffers(FfxBrixelizerRawContext* context, const FfxBrixelizerBufferDescription* bufferDescs, uint32_t numBufferDescs);
 
 /// Unregister a previously registered vertex or index buffer.
@@ -629,7 +623,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextRegisterBuffers(FfxBrixelizerRawCont
 /// @retval
 /// FFX_ERROR_INVALID_POINTER                   The operation failed because <c><i>context</i></c> was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextUnregisterBuffers(FfxBrixelizerRawContext* context, const uint32_t* indices, uint32_t numIndices);
 
 /// Get the index of the recommended cascade to update given the total number of cascades and current frame.
@@ -644,7 +638,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextUnregisterBuffers(FfxBrixelizerRawCo
 /// @retval
 /// FFX_ERROR_INVALID_POINTER                   The operation failed because <c><i>context</i></c> was <c><i>NULL</i></c>.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxErrorCode ffxBrixelizerRawContextRegisterScratchBuffer(FfxBrixelizerRawContext* context, FfxResource scratchBuffer);
 
 /// Get the index of the recommended cascade to update given the total number of cascades and current frame.
@@ -656,7 +650,7 @@ FFX_API FfxErrorCode ffxBrixelizerRawContextRegisterScratchBuffer(FfxBrixelizerR
 ///
 /// @retval                                     The index of the cascade to update.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API uint32_t     ffxBrixelizerRawGetCascadeToUpdate(uint32_t frameIndex, uint32_t maxCascades);
 
 /// Check whether an <c><i>FfxResource</i></c> is <c><i>NULL</i></c>.
@@ -665,7 +659,7 @@ FFX_API uint32_t     ffxBrixelizerRawGetCascadeToUpdate(uint32_t frameIndex, uin
 ///
 /// @retval                                     <c><i>true</c></i> if <c><i>resource</i></c> is <c><i>NULL</i></c> else <c><i>false</i></c>.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API bool         ffxBrixelizerRawResourceIsNull(FfxResource resource);
 
 /// Queries the effect version number.
@@ -673,7 +667,7 @@ FFX_API bool         ffxBrixelizerRawResourceIsNull(FfxResource resource);
 /// @returns
 /// The SDK version the effect was built with.
 ///
-/// @ingroup ffxBrixelizer
+/// @ingroup Brixelizer
 FFX_API FfxVersionNumber ffxBrixelizerGetEffectVersion();
 
 #ifdef __cplusplus
