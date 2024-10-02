@@ -184,7 +184,6 @@ namespace Spartan
                 description.depth    = resource->GetDepth();
                 description.mipCount = resource->GetMipCount();
                 description.format   = to_ffx_surface_format(resource->GetFormat());
-                description.flags    = FfxResourceFlags::FFX_RESOURCE_FLAGS_NONE;
                 description.usage    = static_cast<FfxResourceUsage>(usage);
             }
             else if constexpr (is_same_v<remove_const_t<T>, RHI_Buffer>)
@@ -201,6 +200,21 @@ namespace Spartan
             }
 
             return ffxGetResourceVK(rhi_resource, description, const_cast<wchar_t*>(name), state);
+        }
+
+        // overload for nullptr
+        FfxResource to_ffx_resource(nullptr_t, const wchar_t* name)
+        {
+            FfxResourceDescription description = {};
+            description.type                   = FFX_RESOURCE_TYPE_TEXTURE1D;
+            description.width                  = 0;
+            description.height                 = 0;
+            description.depth                  = 0;
+            description.mipCount               = 0;
+            description.format                 = FFX_SURFACE_FORMAT_UNKNOWN;
+            description.usage                  = static_cast<FfxResourceUsage>(FFX_RESOURCE_USAGE_READ_ONLY);
+        
+            return ffxGetResourceVK(nullptr, description, const_cast<wchar_t*>(name), FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ);
         }
 
         FfxCommandList to_ffx_cmd_list(RHI_CommandList* cmd_list)
@@ -793,23 +807,26 @@ namespace Spartan
         // upscale
         {
             // set resources (no need for the transparency or reactive masks as we do them later, full res)
-            fsr3::description_dispatch.commandList   = to_ffx_cmd_list(cmd_list);
-            fsr3::description_dispatch.color         = to_ffx_resource(tex_color,    L"fsr3_color");
-            fsr3::description_dispatch.depth         = to_ffx_resource(tex_depth,    L"fsr3_depth");
-            fsr3::description_dispatch.motionVectors = to_ffx_resource(tex_velocity, L"fsr3_velocity");
-            fsr3::description_dispatch.output        = to_ffx_resource(tex_output,   L"fsr3_output");
+            fsr3::description_dispatch.commandList                = to_ffx_cmd_list(cmd_list);
+            fsr3::description_dispatch.color                      = to_ffx_resource(tex_color,    L"fsr3_color");
+            fsr3::description_dispatch.depth                      = to_ffx_resource(tex_depth,    L"fsr3_depth");
+            fsr3::description_dispatch.motionVectors              = to_ffx_resource(tex_velocity, L"fsr3_velocity");
+            fsr3::description_dispatch.exposure                   = to_ffx_resource(nullptr,      L"fsr3_exposure");
+            fsr3::description_dispatch.reactive                   = to_ffx_resource(nullptr,      L"fsr3_reactive");
+            fsr3::description_dispatch.transparencyAndComposition = to_ffx_resource(nullptr,      L"fsr3_transaprency_and_composition");
+            fsr3::description_dispatch.output                     = to_ffx_resource(tex_output,   L"fsr3_output");
 
             // configure
             fsr3::description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth());
             fsr3::description_dispatch.motionVectorScale.y    = -static_cast<float>(tex_velocity->GetHeight());
-            fsr3::description_dispatch.enableSharpening       = sharpness != 0.0f;           // sdk issue: redundant paramter
-            fsr3::description_dispatch.sharpness              = sharpness;
-            fsr3::description_dispatch.frameTimeDelta         = delta_time_sec * 1000.0f;    // seconds to milliseconds
-            fsr3::description_dispatch.preExposure            = exposure;                    // the exposure value if not using FFX_FSR3_ENABLE_AUTO_EXPOSURE
-            fsr3::description_dispatch.renderSize.width       = tex_velocity->GetWidth();
-            fsr3::description_dispatch.renderSize.height      = tex_velocity->GetHeight();
-            fsr3::description_dispatch.cameraNear             = camera->GetFarPlane();       // far as near because we are using reverse-z
-            fsr3::description_dispatch.cameraFar              = camera->GetNearPlane();      // near as far because we are using reverse-z
+            fsr3::description_dispatch.enableSharpening       = sharpness != 0.0f;         // sdk issue: redundant paramter
+            fsr3::description_dispatch.sharpness              = sharpness;                 
+            fsr3::description_dispatch.frameTimeDelta         = delta_time_sec * 1000.0f;  // seconds to milliseconds
+            fsr3::description_dispatch.preExposure            = exposure;                  // the exposure value if not using FFX_FSR3_ENABLE_AUTO_EXPOSURE
+            fsr3::description_dispatch.renderSize.width       = tex_velocity->GetWidth();  
+            fsr3::description_dispatch.renderSize.height      = tex_velocity->GetHeight(); 
+            fsr3::description_dispatch.cameraNear             = camera->GetFarPlane();     // far as near because we are using reverse-z
+            fsr3::description_dispatch.cameraFar              = camera->GetNearPlane();    // near as far because we are using reverse-z
             fsr3::description_dispatch.cameraFovAngleVertical = camera->GetFovVerticalRad();
 
             // dispatch
