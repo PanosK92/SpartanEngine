@@ -110,17 +110,17 @@ namespace Spartan
         static std::array<std::shared_ptr<RHI_Buffer>, static_cast<uint32_t>(Renderer_Buffer::Max)>& GetStructuredBuffers();
 
         // get individual
-        static std::shared_ptr<RHI_RasterizerState> GetRasterizerState(const Renderer_RasterizerState type);
-        static std::shared_ptr<RHI_DepthStencilState> GetDepthStencilState(const Renderer_DepthStencilState type);
-        static std::shared_ptr<RHI_BlendState> GetBlendState(const Renderer_BlendState type);
-        static std::shared_ptr<RHI_Texture> GetRenderTarget(const Renderer_RenderTarget type);
-        static std::shared_ptr<RHI_Shader> GetShader(const Renderer_Shader type);
-        static std::shared_ptr<RHI_Sampler> GetSampler(const Renderer_Sampler type);
-        static std::shared_ptr<RHI_Buffer> GetBuffer(const Renderer_Buffer type);
-        static std::shared_ptr<RHI_Texture> GetStandardTexture(const Renderer_StandardTexture type);
-        static std::shared_ptr<Mesh> GetStandardMesh(const MeshType type);
+        static std::shared_ptr<RHI_RasterizerState>& GetRasterizerState(const Renderer_RasterizerState type);
+        static std::shared_ptr<RHI_DepthStencilState>& GetDepthStencilState(const Renderer_DepthStencilState type);
+        static std::shared_ptr<RHI_BlendState>& GetBlendState(const Renderer_BlendState type);
+        static std::shared_ptr<RHI_Texture>& GetRenderTarget(const Renderer_RenderTarget type);
+        static std::shared_ptr<RHI_Shader>& GetShader(const Renderer_Shader type);
+        static std::shared_ptr<RHI_Sampler>& GetSampler(const Renderer_Sampler type);
+        static std::shared_ptr<RHI_Buffer>& GetBuffer(const Renderer_Buffer type);
+        static std::shared_ptr<RHI_Texture>& GetStandardTexture(const Renderer_StandardTexture type);
+        static std::shared_ptr<Mesh>& GetStandardMesh(const MeshType type);
         static std::shared_ptr<Font>& GetFont();
-        static std::shared_ptr<Material> GetStandardMaterial();
+        static std::shared_ptr<Material>& GetStandardMaterial();
         //======================================================================================================================
 
     private:
