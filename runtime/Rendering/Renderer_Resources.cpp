@@ -657,44 +657,44 @@ namespace Spartan
         return buffers;
     }
 
-    shared_ptr<RHI_RasterizerState>& Renderer::GetRasterizerState(const Renderer_RasterizerState type)
+    RHI_RasterizerState* Renderer::GetRasterizerState(const Renderer_RasterizerState type)
     {
-        return rasterizer_states[static_cast<uint8_t>(type)];
+        return rasterizer_states[static_cast<uint8_t>(type)].get();
     }
 
-    shared_ptr<RHI_DepthStencilState>& Renderer::GetDepthStencilState(const Renderer_DepthStencilState type)
+    RHI_DepthStencilState* Renderer::GetDepthStencilState(const Renderer_DepthStencilState type)
     {
-        return depth_stencil_states[static_cast<uint8_t>(type)];
+        return depth_stencil_states[static_cast<uint8_t>(type)].get();
     }
 
-    shared_ptr<RHI_BlendState>& Renderer::GetBlendState(const Renderer_BlendState type)
+    RHI_BlendState* Renderer::GetBlendState(const Renderer_BlendState type)
     {
-        return blend_states[static_cast<uint8_t>(type)];
+        return blend_states[static_cast<uint8_t>(type)].get();
     }
 
-    shared_ptr<RHI_Texture>& Renderer::GetRenderTarget(const Renderer_RenderTarget type)
+    RHI_Texture* Renderer::GetRenderTarget(const Renderer_RenderTarget type)
     {
-        return render_targets[static_cast<uint8_t>(type)];
+        return render_targets[static_cast<uint8_t>(type)].get();
     }
 
-    shared_ptr<RHI_Shader>& Renderer::GetShader(const Renderer_Shader type)
+    RHI_Shader* Renderer::GetShader(const Renderer_Shader type)
     {
-        return shaders[static_cast<uint8_t>(type)];
+        return shaders[static_cast<uint8_t>(type)].get();
     }
 
-    shared_ptr<RHI_Sampler>& Renderer::GetSampler(const Renderer_Sampler type)
+    RHI_Sampler* Renderer::GetSampler(const Renderer_Sampler type)
     {
-        return samplers[static_cast<uint8_t>(type)];
+        return samplers[static_cast<uint8_t>(type)].get();
     }
 
-    shared_ptr<RHI_Buffer>& Renderer::GetBuffer(const Renderer_Buffer type)
+    RHI_Buffer* Renderer::GetBuffer(const Renderer_Buffer type)
     {
-        return buffers[static_cast<uint8_t>(type)];
+        return buffers[static_cast<uint8_t>(type)].get();
     }
 
-    shared_ptr<RHI_Texture>& Renderer::GetStandardTexture(const Renderer_StandardTexture type)
+    RHI_Texture* Renderer::GetStandardTexture(const Renderer_StandardTexture type)
     {
-        return standard_textures[static_cast<uint8_t>(type)];
+        return standard_textures[static_cast<uint8_t>(type)].get();
     }
 
     shared_ptr<Mesh>& Renderer::GetStandardMesh(const MeshType type)

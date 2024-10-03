@@ -98,8 +98,7 @@ namespace Spartan
         static void SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources = true);
         //===============================================================================================
   
-        //= RESOURCES ==========================================================================================================
-        static RHI_Texture* GetFrameTexture();
+        //= RESOURCES =========================================================================================================
         static std::shared_ptr<Camera> GetCamera();
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
         static std::vector<std::shared_ptr<Entity>> GetEntitiesLights();
@@ -110,18 +109,18 @@ namespace Spartan
         static std::array<std::shared_ptr<RHI_Buffer>, static_cast<uint32_t>(Renderer_Buffer::Max)>& GetStructuredBuffers();
 
         // get individual
-        static std::shared_ptr<RHI_RasterizerState>& GetRasterizerState(const Renderer_RasterizerState type);
-        static std::shared_ptr<RHI_DepthStencilState>& GetDepthStencilState(const Renderer_DepthStencilState type);
-        static std::shared_ptr<RHI_BlendState>& GetBlendState(const Renderer_BlendState type);
-        static std::shared_ptr<RHI_Texture>& GetRenderTarget(const Renderer_RenderTarget type);
-        static std::shared_ptr<RHI_Shader>& GetShader(const Renderer_Shader type);
-        static std::shared_ptr<RHI_Sampler>& GetSampler(const Renderer_Sampler type);
-        static std::shared_ptr<RHI_Buffer>& GetBuffer(const Renderer_Buffer type);
-        static std::shared_ptr<RHI_Texture>& GetStandardTexture(const Renderer_StandardTexture type);
+        static RHI_RasterizerState* GetRasterizerState(const Renderer_RasterizerState type);
+        static RHI_DepthStencilState* GetDepthStencilState(const Renderer_DepthStencilState type);
+        static RHI_BlendState* GetBlendState(const Renderer_BlendState type);
+        static RHI_Texture* GetRenderTarget(const Renderer_RenderTarget type);
+        static RHI_Shader* GetShader(const Renderer_Shader type);
+        static RHI_Sampler* GetSampler(const Renderer_Sampler type);
+        static RHI_Buffer* GetBuffer(const Renderer_Buffer type);
+        static RHI_Texture* GetStandardTexture(const Renderer_StandardTexture type);
         static std::shared_ptr<Mesh>& GetStandardMesh(const MeshType type);
         static std::shared_ptr<Font>& GetFont();
         static std::shared_ptr<Material>& GetStandardMaterial();
-        //======================================================================================================================
+        //=====================================================================================================================
 
     private:
         static void UpdateConstantBufferFrame(RHI_CommandList* cmd_list);

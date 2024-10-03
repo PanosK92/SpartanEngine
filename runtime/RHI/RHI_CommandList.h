@@ -107,11 +107,11 @@ namespace Spartan
 
         // buffer
         void SetBuffer(const uint32_t slot, RHI_Buffer* buffer) const;
-        void SetBuffer(const Renderer_BindingsUav slot, const std::shared_ptr<RHI_Buffer>& buffer) const { SetBuffer(static_cast<uint32_t>(slot), buffer.get()); }
+        void SetBuffer(const Renderer_BindingsUav slot, RHI_Buffer* buffer) const { SetBuffer(static_cast<uint32_t>(slot), buffer); }
 
         // constant buffer
         void SetConstantBuffer(const uint32_t slot, RHI_Buffer* constant_buffer) const;
-        void SetConstantBuffer(const Renderer_BindingsCb slot, const std::shared_ptr<RHI_Buffer>& constant_buffer) const { SetConstantBuffer(static_cast<uint32_t>(slot), constant_buffer.get()); }
+        void SetConstantBuffer(const Renderer_BindingsCb slot, RHI_Buffer* constant_buffer) const { SetConstantBuffer(static_cast<uint32_t>(slot), constant_buffer); }
 
         // push constant buffer
         void PushConstants(const uint32_t offset, const uint32_t size, const void* data);
