@@ -657,47 +657,47 @@ namespace Spartan
         return buffers;
     }
 
-    shared_ptr<RHI_RasterizerState> Renderer::GetRasterizerState(const Renderer_RasterizerState type)
+    shared_ptr<RHI_RasterizerState>& Renderer::GetRasterizerState(const Renderer_RasterizerState type)
     {
         return rasterizer_states[static_cast<uint8_t>(type)];
     }
 
-    shared_ptr<RHI_DepthStencilState> Renderer::GetDepthStencilState(const Renderer_DepthStencilState type)
+    shared_ptr<RHI_DepthStencilState>& Renderer::GetDepthStencilState(const Renderer_DepthStencilState type)
     {
         return depth_stencil_states[static_cast<uint8_t>(type)];
     }
 
-    shared_ptr<RHI_BlendState> Renderer::GetBlendState(const Renderer_BlendState type)
+    shared_ptr<RHI_BlendState>& Renderer::GetBlendState(const Renderer_BlendState type)
     {
         return blend_states[static_cast<uint8_t>(type)];
     }
 
-    shared_ptr<RHI_Texture> Renderer::GetRenderTarget(const Renderer_RenderTarget type)
+    shared_ptr<RHI_Texture>& Renderer::GetRenderTarget(const Renderer_RenderTarget type)
     {
         return render_targets[static_cast<uint8_t>(type)];
     }
 
-    shared_ptr<RHI_Shader> Renderer::GetShader(const Renderer_Shader type)
+    shared_ptr<RHI_Shader>& Renderer::GetShader(const Renderer_Shader type)
     {
         return shaders[static_cast<uint8_t>(type)];
     }
 
-    shared_ptr<RHI_Sampler> Renderer::GetSampler(const Renderer_Sampler type)
+    shared_ptr<RHI_Sampler>& Renderer::GetSampler(const Renderer_Sampler type)
     {
         return samplers[static_cast<uint8_t>(type)];
     }
 
-    shared_ptr<RHI_Buffer> Renderer::GetBuffer(const Renderer_Buffer type)
+    shared_ptr<RHI_Buffer>& Renderer::GetBuffer(const Renderer_Buffer type)
     {
         return buffers[static_cast<uint8_t>(type)];
     }
 
-    shared_ptr<RHI_Texture> Renderer::GetStandardTexture(const Renderer_StandardTexture type)
+    shared_ptr<RHI_Texture>& Renderer::GetStandardTexture(const Renderer_StandardTexture type)
     {
         return standard_textures[static_cast<uint8_t>(type)];
     }
 
-    shared_ptr<Mesh> Renderer::GetStandardMesh(const MeshType type)
+    shared_ptr<Mesh>& Renderer::GetStandardMesh(const MeshType type)
     {
         return standard_meshes[static_cast<uint8_t>(type)];
     }
@@ -707,7 +707,7 @@ namespace Spartan
         return standard_font;
     }
 
-    shared_ptr<Material> Renderer::GetStandardMaterial()
+    shared_ptr<Material>& Renderer::GetStandardMaterial()
     {
         return standard_material;
     }

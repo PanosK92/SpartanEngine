@@ -991,8 +991,8 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // set textures
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)); // read
-            cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, tex_sss);                                               // write
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get()); // read
+            cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, tex_sss);                                                     // write
 
             // iterate through all the lights
             static float array_slice_index = 0.0f;
@@ -1155,7 +1155,7 @@ namespace Spartan
         {
             // read from these
             SetGbufferTextures(cmd_list);
-            cmd_list->SetTexture(Renderer_BindingsSrv::ssao, GetRenderTarget(Renderer_RenderTarget::ssao));
+            cmd_list->SetTexture(Renderer_BindingsSrv::ssao, GetRenderTarget(Renderer_RenderTarget::ssao).get());
 
             // write to these
             cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_diffuse);
@@ -1175,7 +1175,7 @@ namespace Spartan
 
                     cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, tex_depth);
                     cmd_list->SetTexture(Renderer_BindingsSrv::light_color, tex_color);
-                    cmd_list->SetTexture(Renderer_BindingsSrv::sss,         GetRenderTarget(Renderer_RenderTarget::sss));
+                    cmd_list->SetTexture(Renderer_BindingsSrv::sss,         GetRenderTarget(Renderer_RenderTarget::sss).get());
                 }
 
                 // push pass constants
@@ -1281,14 +1281,14 @@ namespace Spartan
         // set textures
         SetGbufferTextures(cmd_list);
         cmd_list->SetTexture(Renderer_BindingsUav::tex,              tex_out);
-        cmd_list->SetTexture(Renderer_BindingsUav::tex2,             GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex,              GetStandardTexture(Renderer_StandardTexture::Foam));
+        cmd_list->SetTexture(Renderer_BindingsUav::tex2,             GetRenderTarget(Renderer_RenderTarget::gbuffer_color).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex,              GetStandardTexture(Renderer_StandardTexture::Foam).get());
         cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,    GetRenderTarget(Renderer_RenderTarget::light_diffuse).get());
         cmd_list->SetTexture(Renderer_BindingsSrv::light_specular,   GetRenderTarget(Renderer_RenderTarget::light_specular).get());
-        cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric, GetRenderTarget(Renderer_RenderTarget::light_volumetric));
+        cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric, GetRenderTarget(Renderer_RenderTarget::light_volumetric).get());
         cmd_list->SetTexture(Renderer_BindingsSrv::frame,            tex_refraction);
-        cmd_list->SetTexture(Renderer_BindingsSrv::ssao,             GetRenderTarget(Renderer_RenderTarget::ssao));
-        cmd_list->SetTexture(Renderer_BindingsSrv::environment,      GetRenderTarget(Renderer_RenderTarget::skysphere));
+        cmd_list->SetTexture(Renderer_BindingsSrv::ssao,             GetRenderTarget(Renderer_RenderTarget::ssao).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::environment,      GetRenderTarget(Renderer_RenderTarget::skysphere).get());
 
         // render
         cmd_list->Dispatch(tex_out);
@@ -1314,12 +1314,12 @@ namespace Spartan
         SetGbufferTextures(cmd_list);
         cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse_gi,  GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi).get());
         cmd_list->SetTexture(Renderer_BindingsSrv::light_specular_gi, GetRenderTarget(Renderer_RenderTarget::light_specular_gi).get());
-        cmd_list->SetTexture(Renderer_BindingsSrv::ssao,              GetRenderTarget(Renderer_RenderTarget::ssao));
-        cmd_list->SetTexture(Renderer_BindingsSrv::ssr,               GetRenderTarget(Renderer_RenderTarget::ssr));
-        cmd_list->SetTexture(Renderer_BindingsSrv::sss,               GetRenderTarget(Renderer_RenderTarget::sss));
-        cmd_list->SetTexture(Renderer_BindingsSrv::lutIbl,            GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut));
-        cmd_list->SetTexture(Renderer_BindingsSrv::environment,       GetRenderTarget(Renderer_RenderTarget::skysphere));
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex,               GetRenderTarget(Renderer_RenderTarget::light_shadow));
+        cmd_list->SetTexture(Renderer_BindingsSrv::ssao,              GetRenderTarget(Renderer_RenderTarget::ssao).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::ssr,               GetRenderTarget(Renderer_RenderTarget::ssr).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::sss,               GetRenderTarget(Renderer_RenderTarget::sss).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::lutIbl,            GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::environment,       GetRenderTarget(Renderer_RenderTarget::skysphere).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex,               GetRenderTarget(Renderer_RenderTarget::light_shadow).get());
         cmd_list->SetTexture(Renderer_BindingsUav::tex,               tex_out);
 
         // set pass constants
@@ -2296,7 +2296,7 @@ namespace Spartan
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             // draw
-            cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlasOutline());
+            cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlasOutline().get());
             cmd_list->DrawIndexed(font->GetIndexCount());
         }
         cmd_list->EndTimeblock();
@@ -2309,7 +2309,7 @@ namespace Spartan
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             // draw
-            cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlas());
+            cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlas().get());
             cmd_list->DrawIndexed(font->GetIndexCount());
         }
         cmd_list->EndTimeblock();

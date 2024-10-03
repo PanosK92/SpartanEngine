@@ -854,13 +854,13 @@ namespace Spartan
     
     void Renderer::SetGbufferTextures(RHI_CommandList* cmd_list)
     {
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,         GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,         GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material,       GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity,       GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,          GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth_backface, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_backface));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth_opaque,   GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,         GetRenderTarget(Renderer_RenderTarget::gbuffer_color).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,         GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material,       GetRenderTarget(Renderer_RenderTarget::gbuffer_material).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity,       GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,          GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth_backface, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_backface).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth_opaque,   GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque).get());
     }
     
     void Renderer::BindlessUpdateMaterials()
