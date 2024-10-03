@@ -68,9 +68,7 @@ namespace Spartan
             const uint32_t array_index,
             const uint32_t array_length,
             const uint32_t mip_index,
-            const uint32_t mip_count,
-            const bool only_depth,
-            const bool only_stencil
+            const uint32_t mip_count
         )
         {
             VkImageViewType view_type = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
@@ -324,15 +322,15 @@ namespace Spartan
         // create image views
         {
             // shader resource views
-            if (IsSrv())
+            if (IsSrv() || IsUav())
             {
-                create_image_view(m_rhi_resource, m_rhi_srv, this, m_resource_type, 0, m_array_length, 0, m_mip_count, IsDepthFormat(), false);
+                create_image_view(m_rhi_resource, m_rhi_srv, this, m_resource_type, 0, m_array_length, 0, m_mip_count);
 
                 if (HasPerMipViews())
                 {
                     for (uint32_t i = 0; i < m_mip_count; i++)
                     {
-                        create_image_view(m_rhi_resource, m_rhi_srv_mips[i], this, m_resource_type, 0, m_array_length, i, 1, IsDepthFormat(), false);
+                        create_image_view(m_rhi_resource, m_rhi_srv_mips[i], this, m_resource_type, 0, m_array_length, i, 1);
                     }
                 }
             }
@@ -345,12 +343,12 @@ namespace Spartan
                 {
                     if (IsRtv())
                     {
-                        create_image_view(m_rhi_resource, m_rhi_rtv[i], this, ResourceType::Texture2d, i, 1, 0, 1, false, false);
+                        create_image_view(m_rhi_resource, m_rhi_rtv[i], this, ResourceType::Texture2d, i, 1, 0, 1);
                     }
 
                     if (IsDsv())
                     {
-                        create_image_view(m_rhi_resource, m_rhi_dsv[i], this, ResourceType::Texture2d, i, 1, 0, 1, true, false);
+                        create_image_view(m_rhi_resource, m_rhi_dsv[i], this, ResourceType::Texture2d, i, 1, 0, 1);
                     }
                 }
             }
@@ -360,7 +358,7 @@ namespace Spartan
 
                 if (IsRtv())
                 {
-                    create_image_view(m_rhi_resource, m_rhi_rtv[0], this, ResourceType::Texture3d, 0, 1, 0, 1, false, false);
+                    create_image_view(m_rhi_resource, m_rhi_rtv[0], this, ResourceType::Texture3d, 0, 1, 0, 1);
                 }
             }
             else
