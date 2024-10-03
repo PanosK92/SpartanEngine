@@ -303,7 +303,7 @@ namespace Spartan
             bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
             if (is_standalone)
             {
-                BlitToBackBuffer(cmd_list_graphics, GetRenderTarget(Renderer_RenderTarget::frame_output).get());
+                BlitToBackBuffer(cmd_list_graphics, GetRenderTarget(Renderer_RenderTarget::frame_output));
             }
 
             // present
@@ -824,11 +824,6 @@ namespace Spartan
         return RHI_Context::api_type;
     }
 
-    RHI_Texture* Renderer::GetFrameTexture()
-    {
-        return GetRenderTarget(Renderer_RenderTarget::frame_output).get();
-    }
-
     uint64_t Renderer::GetFrameNum()
     {
         return frame_num;
@@ -854,13 +849,13 @@ namespace Spartan
     
     void Renderer::SetGbufferTextures(RHI_CommandList* cmd_list)
     {
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,         GetRenderTarget(Renderer_RenderTarget::gbuffer_color).get());
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,         GetRenderTarget(Renderer_RenderTarget::gbuffer_normal).get());
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material,       GetRenderTarget(Renderer_RenderTarget::gbuffer_material).get());
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity,       GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity).get());
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,          GetRenderTarget(Renderer_RenderTarget::gbuffer_depth).get());
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth_backface, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_backface).get());
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth_opaque,   GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque).get());
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,         GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,         GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material,       GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity,       GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,          GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth_backface, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_backface));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth_opaque,   GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque));
     }
     
     void Renderer::BindlessUpdateMaterials()
@@ -1044,13 +1039,13 @@ namespace Spartan
 
         // cpu to gpu
         uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Light)) * index;
-        RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::StorageLights).get();
+        RHI_Buffer* buffer   = GetBuffer(Renderer_Buffer::StorageLights);
         buffer->ResetOffset();
         buffer->Update(&properties[0], update_size);
     }
 
     void Renderer::Screenshot(const string& file_path)
     {
-        GetFrameTexture()->SaveAsImage(file_path);
+        GetRenderTarget(Renderer_RenderTarget::frame_output)->SaveAsImage(file_path);
     }
 }
