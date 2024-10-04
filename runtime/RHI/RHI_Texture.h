@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include <memory>
 #include <array>
 #include "RHI_Viewport.h"
 #include "RHI_Definitions.h"
@@ -31,6 +30,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
+    enum class RHI_Texture_Type
+    {
+        Type2D,
+        Type2DArray,
+        Type3D,
+        TypeCube,
+        Max
+    };
+
     enum RHI_Texture_Flags : uint32_t
     {
         RHI_Texture_Srv            = 1U << 0,
@@ -63,6 +71,7 @@ namespace Spartan
     {
     public:
         RHI_Texture();
+        RHI_Texture(const RHI_Texture_Type type, const uint32_t width, const uint32_t height, const uint32_t depth, const RHI_Format format, const uint32_t flags, const char* name = nullptr);
         ~RHI_Texture();
 
         //= IResource ===========================================
@@ -152,6 +161,7 @@ namespace Spartan
         uint32_t m_bits_per_channel = 0;
         uint32_t m_channel_count    = 0;
         RHI_Format m_format         = RHI_Format::Max;
+        RHI_Texture_Type m_type     = RHI_Texture_Type::Max;
         RHI_Viewport m_viewport;
         std::vector<RHI_Texture_Slice> m_slices;
         std::array<RHI_Image_Layout, rhi_max_mip_count> m_layout;
