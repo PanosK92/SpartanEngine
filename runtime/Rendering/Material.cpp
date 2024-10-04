@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderer.h"
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture2D.h"
-#include "../RHI/RHI_TextureCube.h"
 #include "../World/World.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
@@ -220,11 +219,6 @@ namespace Spartan
     }
 
     void Material::SetTexture(const MaterialTexture type, shared_ptr<RHI_Texture2D> texture)
-    {
-        SetTexture(type, static_pointer_cast<RHI_Texture>(texture));
-    }
-
-    void Material::SetTexture(const MaterialTexture type, shared_ptr<RHI_TextureCube> texture)
     {
         SetTexture(type, static_pointer_cast<RHI_Texture>(texture));
     }

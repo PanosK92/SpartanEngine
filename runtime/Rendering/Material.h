@@ -105,7 +105,6 @@ namespace Spartan
         void SetTexture(const MaterialTexture texture_type, RHI_Texture* texture);
         void SetTexture(const MaterialTexture texture_type, std::shared_ptr<RHI_Texture> texture);
         void SetTexture(const MaterialTexture texture_type, std::shared_ptr<RHI_Texture2D> texture);
-        void SetTexture(const MaterialTexture texture_type, std::shared_ptr<RHI_TextureCube> texture);
         void SetTexture(const MaterialTexture texture_type, const std::string& file_path);
         bool HasTexture(const std::string& path) const;
         bool HasTexture(const MaterialTexture texture_type) const;

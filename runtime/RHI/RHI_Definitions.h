@@ -50,7 +50,6 @@ namespace Spartan
     class RHI_Texture;
     class RHI_Texture2D;
     class RHI_Texture2DArray;
-    class RHI_TextureCube;
     class RHI_Shader;
     class RHI_Semaphore;
     class RHI_Fence;
