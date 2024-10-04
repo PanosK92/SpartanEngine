@@ -512,11 +512,11 @@ namespace Spartan
 
         // create a texture with of font atlas and a texture of the font outline atlas
         {
-            font->SetAtlas(make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, atlas_width, atlas_height, 1, 1, 1, RHI_Format::R8_Unorm, RHI_Texture_Srv, "font_atlas", texture_data_atlas));
+            font->SetAtlas(make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, atlas_width, atlas_height, 1, 1, RHI_Format::R8_Unorm, RHI_Texture_Srv, "font_atlas", texture_data_atlas));
 
             if (outline_size != 0)
             {
-                font->SetAtlasOutline(make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, atlas_width, atlas_height, 1, 1, 1, RHI_Format::R8_Unorm, RHI_Texture_Srv, "font_atlas_outline", texture_data_atlas_outline));
+                font->SetAtlasOutline(make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, atlas_width, atlas_height, 1, 1, RHI_Format::R8_Unorm, RHI_Texture_Srv, "font_atlas_outline", texture_data_atlas_outline));
             }
         }
 

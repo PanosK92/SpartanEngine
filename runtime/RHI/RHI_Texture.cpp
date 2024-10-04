@@ -122,17 +122,7 @@ namespace Spartan
 
     RHI_Texture::RHI_Texture() : IResource(ResourceType::Texture)
     {
-        m_layout.fill(RHI_Image_Layout::Max);
-        m_rhi_srv_mips.fill(nullptr);
-        m_rhi_rtv.fill(nullptr);
-        m_rhi_dsv.fill(nullptr);
 
-        if (!compressonator::registered)
-        {
-            string version = to_string(AMD_COMPRESS_VERSION_MAJOR) + "." + to_string(AMD_COMPRESS_VERSION_MINOR);
-            Settings::RegisterThirdPartyLib("Compressonator", version, "https://github.com/GPUOpen-Tools/compressonator");
-            compressonator::registered = true;
-        }
     }
 
     RHI_Texture::RHI_Texture(
@@ -140,7 +130,6 @@ namespace Spartan
         const uint32_t width,
         const uint32_t height,
         const uint32_t depth,
-        const uint32_t array_length,
         const uint32_t mip_count,
         const RHI_Format format,
         const uint32_t flags,
@@ -152,7 +141,6 @@ namespace Spartan
         m_width            = width;
         m_height           = height;
         m_depth            = depth;
-        m_array_length     = array_length;
         m_mip_count        = mip_count;
         m_format           = format;
         m_flags            = flags;
@@ -209,10 +197,10 @@ namespace Spartan
         {
             file->Skip
             (
-                sizeof(m_object_size)  + // byte count
-                sizeof(m_array_length) + // array length
-                sizeof(m_mip_count)    + // mip count
-                m_object_size            // bytes
+                sizeof(m_object_size) + // byte count
+                sizeof(m_depth)       + // array length
+                sizeof(m_mip_count)   + // mip count
+                m_object_size           // bytes
             );
         }
         else
@@ -221,7 +209,7 @@ namespace Spartan
 
             // write mip info
             file->Write(m_object_size);
-            file->Write(m_array_length);
+            file->Write(m_depth);
             file->Write(m_mip_count);
 
             // write mip data
@@ -254,11 +242,10 @@ namespace Spartan
 
     bool RHI_Texture::LoadFromFile(const string& file_path)
     {
-        m_type         = RHI_Texture_Type::Type2D;
-        m_depth        = 1;
-        m_array_length = 1;
-        m_flags        = RHI_Texture_Srv;
-        m_object_name  = FileSystem::GetFileNameFromFilePath(file_path);
+        m_type        = RHI_Texture_Type::Type2D;
+        m_depth       = 1;
+        m_flags       = RHI_Texture_Srv;
+        m_object_name = FileSystem::GetFileNameFromFilePath(file_path);
 
         if (!FileSystem::IsFile(file_path))
         {
@@ -285,11 +272,11 @@ namespace Spartan
 
                 // read mip info
                 file->Read(&m_object_size);
-                file->Read(&m_array_length);
+                file->Read(&m_depth);
                 file->Read(&m_mip_count);
 
                 // read mip data
-                m_slices.resize(m_array_length);
+                m_slices.resize(m_depth);
                 for (RHI_Texture_Slice& slice : m_slices)
                 {
                     slice.mips.resize(m_mip_count);
@@ -377,7 +364,7 @@ namespace Spartan
 
         // add the mip
         RHI_Texture_Mip& mip = m_slices[array_index].mips.emplace_back();
-        m_array_length       = static_cast<uint32_t>(m_slices.size());
+        m_depth              = static_cast<uint32_t>(m_slices.size());
         m_mip_count          = static_cast<uint32_t>(m_slices[0].mips.size());
 
         // allocate memory if requested
@@ -422,7 +409,7 @@ namespace Spartan
     {
         m_object_size = 0;
 
-        for (uint32_t array_index = 0; array_index < m_array_length; array_index++)
+        for (uint32_t array_index = 0; array_index < m_depth; array_index++)
         {
             for (uint32_t mip_index = 0; mip_index < m_mip_count; mip_index++)
             {
@@ -477,7 +464,7 @@ namespace Spartan
             }
 
             // transition
-            cmd_list->InsertBarrierTexture(this, mip_index, mip_range, m_array_length, m_layout[mip_index], new_layout);
+            cmd_list->InsertBarrierTexture(this, mip_index, mip_range, m_depth, m_layout[mip_index], new_layout);
         }
 
         // update layout

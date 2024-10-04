@@ -75,7 +75,6 @@ namespace Spartan
             const uint32_t width,
             const uint32_t height,
             const uint32_t depth,
-            const uint32_t array_length,
             const uint32_t mip_count,
             const RHI_Format format,
             const uint32_t flags,
@@ -120,7 +119,6 @@ namespace Spartan
         static size_t CalculateMipSize(uint32_t width, uint32_t height, uint32_t depth, RHI_Format format, uint32_t bits_per_channel, uint32_t channel_count);
 
         // data
-        uint32_t GetArrayLength()                 const { return m_array_length; }
         uint32_t GetMipCount()                    const { return m_mip_count; }
         uint32_t GetDepth()                       const { return m_depth; }
         bool HasData()                            const { return !m_slices.empty() && !m_slices[0].mips.empty() && !m_slices[0].mips[0].bytes.empty(); };
@@ -172,7 +170,6 @@ namespace Spartan
         uint32_t m_height           = 0;
         uint32_t m_depth            = 1;
         uint32_t m_mip_count        = 1;
-        uint32_t m_array_length     = 1;
         uint32_t m_bits_per_channel = 0;
         uint32_t m_channel_count    = 0;
         RHI_Format m_format         = RHI_Format::Max;
@@ -182,8 +179,8 @@ namespace Spartan
         std::array<RHI_Image_Layout, rhi_max_mip_count> m_layout = { RHI_Image_Layout::Max };
 
         // api resources
-        void* m_rhi_srv                                          = nullptr;      // an srv with all mips
-        std::array<void*, rhi_max_mip_count> m_rhi_srv_mips      = { nullptr };  // an srv for each mip
+        void* m_rhi_srv                                          = nullptr;     // an srv with all mips
+        std::array<void*, rhi_max_mip_count> m_rhi_srv_mips      = { nullptr }; // an srv for each mip
         std::array<void*, rhi_max_render_target_count> m_rhi_rtv = { nullptr }; 
         std::array<void*, rhi_max_render_target_count> m_rhi_dsv = { nullptr }; 
         void* m_rhi_resource                                     = nullptr;

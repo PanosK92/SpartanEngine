@@ -507,7 +507,6 @@ namespace Spartan
                     brixelizer_gi::sdf_atlas_size,
                     brixelizer_gi::sdf_atlas_size,
                     1,
-                    1,
                     RHI_Format::R8_Unorm,
                     RHI_Texture_Srv | RHI_Texture_Uav,
                     "ffx_sdf_atlas"
@@ -706,8 +705,8 @@ namespace Spartan
             // resources
             {
                 uint32_t flags = RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit;
-                brixelizer_gi::texture_depth_previous  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, 1, RHI_Format::D32_Float,          flags, "ffx_depth_previous");
-                brixelizer_gi::texture_normal_previous = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ffx_normal_previous");
+                brixelizer_gi::texture_depth_previous  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::D32_Float,          flags, "ffx_depth_previous");
+                brixelizer_gi::texture_normal_previous = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ffx_normal_previous");
             }
 
             brixelizer_gi::context_created = true;

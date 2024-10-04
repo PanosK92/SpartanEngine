@@ -173,13 +173,13 @@ void TextureViewer::OnTickVisible()
         }
 
         // array level control
-        if (texture_current->GetArrayLength() > 1)
+        if (texture_current->GetDepth() > 1)
         {
             ImGui::SameLine();
             ImGui::PushItemWidth(85 * Spartan::Window::GetDpiScale());
             ImGui::InputInt("Array", &array_level);
             ImGui::PopItemWidth();
-            array_level = Math::Helper::Clamp(array_level, 0, static_cast<int>(texture_current->GetArrayLength()) - 1);
+            array_level = Math::Helper::Clamp(array_level, 0, static_cast<int>(texture_current->GetDepth()) - 1);
         }
 
         ImGui::BeginGroup();
@@ -191,7 +191,7 @@ void TextureViewer::OnTickVisible()
             ImGui::Text("Channels: %d",      texture_current->GetChannelCount());
             ImGui::Text("Format: %s",        rhi_format_to_string(texture_current->GetFormat()));
             ImGui::Text("Mips: %d",          texture_current->GetMipCount());
-            ImGui::Text("Array: %d",         texture_current->GetArrayLength());
+            ImGui::Text("Array: %d",         texture_current->GetDepth());
             ImGui::EndGroup();
         
             // channels

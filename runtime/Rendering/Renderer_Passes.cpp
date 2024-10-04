@@ -540,7 +540,7 @@ namespace Spartan
             }
 
             // iterate over light cascade/faces
-            for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetArrayLength(); array_index++)
+            for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetDepth(); array_index++)
             {
                 pso.render_target_array_index = array_index;
                 cmd_list->SetIgnoreClearValues(is_transparent_pass);
@@ -1003,7 +1003,7 @@ namespace Spartan
                     if (!light->IsFlagSet(LightFlags::ShadowsScreenSpace) || light->GetIntensityWatt() == 0.0f)
                         continue;
 
-                    if (array_slice_index == tex_sss->GetArrayLength())
+                    if (array_slice_index == tex_sss->GetDepth())
                     {
                         SP_LOG_WARNING("Render target has reached the maximum number of lights it can hold");
                         break;
