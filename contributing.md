@@ -30,6 +30,9 @@ This platform offers you the freedom to explore, experiment, and excel. Make the
 - You can use tabs or spaces. The project will replace all tabs with 4 spaces to maintain a consistent look across IDEs.
 - Use comments, but if you can name your code well enough that it doesn't need comments, that's ideal.
 - If a class doesn't need multiple instances, make it static. Don't invite unnecessary complexity.
+- With massive and complex projects like this, simplicity is your friend, observe the image below.
+
+<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/simplicity.jpg"/>
 
 ## Naming
 Variables should be named using the snake_case naming convention.
