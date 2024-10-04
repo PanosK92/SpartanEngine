@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Properties.h"
 #include "Window.h"
 #include "../ImGui/ImGuiExtension.h"
+#include "../ImGui/Implementation/ImGui_Style.h"
 #include "../ImGui/Source/imgui_stdlib.h"
 #include "../ImGui/Source/imgui_internal.h"
 #include "../WidgetsDeferred/ButtonColorPicker.h"
@@ -109,7 +110,7 @@ namespace
             const auto original_pen_y = ImGui::GetCursorPosY();
 
             ImGui::SetCursorPosY(original_pen_y + 5.0f);
-            ImGuiSp::image(icon_enum, 15);
+            ImGuiSp::image(icon_enum, 15,ImGui::Style::color_accent_1);
             ImGui::SameLine(ImGui::GetContentRegionAvail().x - icon_width + 1.0f); ImGui::SetCursorPosY(original_pen_y);
             uint32_t id = static_cast<uint32_t>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY());
 

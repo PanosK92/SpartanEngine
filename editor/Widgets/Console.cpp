@@ -84,9 +84,7 @@ void Console::OnTickVisible()
 
     // text filter
     const float label_width = 37.0f * Spartan::Window::GetDpiScale();
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12);
     m_log_filter.Draw("Filter", ImGui::GetContentRegionAvail().x - label_width);
-    ImGui::PopStyleVar();
     ImGui::Separator();
 
     // safety first
@@ -108,7 +106,7 @@ void Console::OnTickVisible()
         for (uint32_t row = 0; row < m_logs.size(); row++)
         {
             LogPackage& log = m_logs[row];
-    
+
             // text and visibility filters
             if (m_log_filter.PassFilter(log.text.c_str()) && m_log_type_visibility[log.error_level])
             {

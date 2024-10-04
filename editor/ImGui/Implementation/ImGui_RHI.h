@@ -337,7 +337,7 @@ namespace ImGui::RHI
                                         // update texture viewer parameters
                                         is_texture_visualised = TextureViewer::GetVisualisedTextureId() == texture->GetObjectId();
                                         mip_level             = static_cast<float>(is_texture_visualised ? TextureViewer::GetMipLevel() : 0);
-                    
+
                                         if (is_texture_visualised)
                                         {
                                             m_channel_r      = TextureViewer::GetVisualisationFlags() & Visualise_Channel_R;

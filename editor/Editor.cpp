@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ImGui/ImGuiExtension.h"
 #include "ImGui/Implementation/ImGui_RHI.h"
 #include "ImGui/Implementation/imgui_impl_sdl2.h"
+#include "ImGui/Implementation/ImGui_Style.h"
 #include "Widgets/AssetBrowser.h"
 #include "Widgets/Console.h"
 #include "Widgets/TitleBar.h"
@@ -57,102 +58,34 @@ namespace
         ImGui_ImplSDL2_ProcessEvent(event_sdl);
     }
 
-    void apply_colors()
+    void window_theme()
     {
-        // use default dark style as a base
-        ImGui::StyleColorsDark();
-        ImVec4* colors = ImGui::GetStyle().Colors;
+        const float width  = 600.0f;
+        const float height = 300.0f;
 
-        // color
-        const ImVec4 k_palette_color_0 = { 10.0f / 255.0f, 12.0f / 255.0f, 17.0f / 255.0f, 1.0f };
-        const ImVec4 k_palette_color_1 = { 18.0f / 255.0f, 20.0f / 255.0f, 25.0f / 255.0f, 1.0f };
-        const ImVec4 k_palette_color_2 = { 22.0f / 255.0f, 30.0f / 255.0f, 45.0f / 255.0f, 1.0f };
-        const ImVec4 k_palette_color_3 = { 35.0f / 255.0f, 48.0f / 255.0f, 76.0f / 255.0f, 1.0f };
-        const ImVec4 k_palette_color_4 = { 65.0f / 255.0f, 90.0f / 255.0f, 119.0f / 255.0f, 1.0f };
-        const ImVec4 k_palette_color_5 = { 119.0f / 255.0f, 141.0f / 255.0f, 169.0f / 255.0f, 1.0f };
-        const ImVec4 k_palette_color_6 = { 224.0f / 255.0f, 225.0f / 255.0f, 221.0f / 255.0f, 1.0f };
+        // set position
+        ImVec2 display_size = ImGui::GetIO().DisplaySize;
+        ImVec2 window_pos   = ImVec2((display_size.x - width) * 0.25f, (display_size.y - height) * 0.25f);
+        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
 
-        colors[ImGuiCol_Text]                  = k_palette_color_6;
-        colors[ImGuiCol_TextDisabled]          = k_palette_color_6;
-        colors[ImGuiCol_WindowBg]              = k_palette_color_1;
-        colors[ImGuiCol_ChildBg]               = k_palette_color_1;
-        colors[ImGuiCol_PopupBg]               = k_palette_color_1;
-        colors[ImGuiCol_Border]                = k_palette_color_3;
-        colors[ImGuiCol_BorderShadow]          = k_palette_color_0;
-        colors[ImGuiCol_FrameBg]               = k_palette_color_2; // Background of checkbox, radio button, plot, slider, text input
-        colors[ImGuiCol_FrameBgHovered]        = k_palette_color_3;
-        colors[ImGuiCol_FrameBgActive]         = k_palette_color_4;
-        colors[ImGuiCol_TitleBg]               = k_palette_color_1;
-        colors[ImGuiCol_TitleBgActive]         = k_palette_color_1;
-        colors[ImGuiCol_TitleBgCollapsed]      = k_palette_color_1;
-        colors[ImGuiCol_MenuBarBg]             = k_palette_color_0;
-        colors[ImGuiCol_ScrollbarBg]           = k_palette_color_0;
-        colors[ImGuiCol_ScrollbarGrab]         = k_palette_color_3;
-        colors[ImGuiCol_ScrollbarGrabHovered]  = k_palette_color_4;
-        colors[ImGuiCol_ScrollbarGrabActive]   = k_palette_color_2;
-        colors[ImGuiCol_CheckMark]             = k_palette_color_6;
-        colors[ImGuiCol_SliderGrab]            = k_palette_color_4;
-        colors[ImGuiCol_SliderGrabActive]      = k_palette_color_3;
-        colors[ImGuiCol_Button]                = k_palette_color_3;
-        colors[ImGuiCol_ButtonHovered]         = k_palette_color_4;
-        colors[ImGuiCol_ButtonActive]          = k_palette_color_2;
-        colors[ImGuiCol_Header]                = k_palette_color_4;
-        colors[ImGuiCol_HeaderHovered]         = k_palette_color_3;
-        colors[ImGuiCol_HeaderActive]          = k_palette_color_0;
-        colors[ImGuiCol_Separator]             = k_palette_color_5;
-        colors[ImGuiCol_SeparatorHovered]      = k_palette_color_6;
-        colors[ImGuiCol_SeparatorActive]       = k_palette_color_6;
-        colors[ImGuiCol_ResizeGrip]            = k_palette_color_4;
-        colors[ImGuiCol_ResizeGripHovered]     = k_palette_color_5;
-        colors[ImGuiCol_ResizeGripActive]      = k_palette_color_3;
-        colors[ImGuiCol_Tab]                   = k_palette_color_2;
-        colors[ImGuiCol_TabHovered]            = k_palette_color_3;
-        colors[ImGuiCol_TabSelected]           = k_palette_color_1;
-        colors[ImGuiCol_TabDimmed]             = k_palette_color_2;
-        colors[ImGuiCol_TabDimmedSelected]     = k_palette_color_2; // Might be called active, but it's active only because it's it's the only tab available, the user didn't really activate it
-        colors[ImGuiCol_DockingPreview]        = k_palette_color_4; // Preview overlay color when about to docking something
-        colors[ImGuiCol_DockingEmptyBg]        = k_palette_color_6; // Background color for empty node (e.g. CentralNode with no window docked into it)
-        colors[ImGuiCol_PlotLines]             = k_palette_color_5;
-        colors[ImGuiCol_PlotLinesHovered]      = k_palette_color_6;
-        colors[ImGuiCol_PlotHistogram]         = k_palette_color_5;
-        colors[ImGuiCol_PlotHistogramHovered]  = k_palette_color_6;
-        colors[ImGuiCol_TextSelectedBg]        = k_palette_color_4;
-        colors[ImGuiCol_DragDropTarget]        = k_palette_color_4; // Color when hovering over target
-        colors[ImGuiCol_NavHighlight]          = k_palette_color_3; // Gamepad/keyboard: current highlighted item
-        colors[ImGuiCol_NavWindowingHighlight] = k_palette_color_2; // Highlight window when using CTRL+TAB
-        colors[ImGuiCol_NavWindowingDimBg]     = k_palette_color_2; // Darken/colorize entire screen behind the CTRL+TAB window list, when active
-        colors[ImGuiCol_ModalWindowDimBg]      = k_palette_color_2;
-    }
+        if (ImGui::Begin("Theme"))
+        {
+            ImGui::Text("Test");
 
-    void apply_style()
-    {
-        ImGuiStyle& style = ImGui::GetStyle();
+            ImGui::ColorEdit4("Background 1",&ImGui::Style::bg_1.x);
+            ImGui::ColorEdit4("Background 2",&ImGui::Style::bg_2.x);
 
-        style.WindowPadding     = ImVec2(8.0f, 8.0f);
-        style.FramePadding      = ImVec2(5.0f, 5.0f);
-        style.CellPadding       = ImVec2(6.0f, 5.0f);
-        style.ItemSpacing       = ImVec2(6.0f, 5.0f);
-        style.ItemInnerSpacing  = ImVec2(6.0f, 6.0f);
-        style.TouchExtraPadding = ImVec2(0.0f, 0.0f);
-        style.IndentSpacing     = 25.0f;
-        style.ScrollbarSize     = 13.0f;
-        style.GrabMinSize       = 10.0f;
-        style.WindowBorderSize  = 1.0f;
-        style.ChildBorderSize   = 1.0f;
-        style.PopupBorderSize   = 1.0f;
-        style.FrameBorderSize   = 1.0f;
-        style.TabBorderSize     = 1.0f;
-        style.WindowRounding    = 2.0f;
-        style.ChildRounding     = 3.0f;
-        style.FrameRounding     = 0.0f;
-        style.PopupRounding     = 3.0f;
-        style.ScrollbarRounding = 9.0f;
-        style.GrabRounding      = 3.0f;
-        style.LogSliderDeadzone = 4.0f;
-        style.TabRounding       = 3.0f;
-        style.Alpha             = 1.0f;
+            ImGui::ColorEdit4("Highlight 1",&ImGui::Style::h_1.x);
+            ImGui::ColorEdit4("Highlight 2",&ImGui::Style::h_2.x);
 
-        style.ScaleAllSizes(Spartan::Window::GetDpiScale());
+            ImGui::ColorEdit4("Accent 1",&ImGui::Style::color_accent_1.x);
+            ImGui::ColorEdit4("Accent 2",&ImGui::Style::color_accent_2.x);
+
+            if(ImGui::Button("Apply")){
+                ImGui::Style::SetupImGuiStyle();
+            }
+        }
+        ImGui::End();
     }
 
     void window_sponsor()
@@ -220,8 +153,8 @@ Editor::Editor(const std::vector<std::string>& args)
     ImGui::RHI::Initialize();
 
     // apply colors and style
-    apply_colors();
-    apply_style();
+    ImGui::Style::SetupImGuiStyle();
+    // ImGui::Style::SetupImGuiStyleClassic();
 
     // initialization of some helper static classes
     IconLoader::Initialize();
@@ -285,6 +218,7 @@ void Editor::Tick()
             Spartan::Engine::Tick();
 
             window_sponsor();
+            window_theme();
 
             // editor
             if (render_editor)
@@ -295,6 +229,7 @@ void Editor::Tick()
                 {
                     widget->Tick();
                 }
+
 
                 ImGui::End();
             }
@@ -347,7 +282,7 @@ void Editor::BeginWindow()
 
     // set window style
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding,   0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,    ImVec2(0.0f, 0.0f));
     ImGui::SetNextWindowBgAlpha(0.0f);
 
