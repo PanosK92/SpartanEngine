@@ -36,7 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/Car.h"
 #include "../Rendering/Mesh.h"
 #include "../Rendering/Renderer.h"
-#include "../RHI/RHI_Texture2D.h"
+#include "../RHI/RHI_Texture.h"
 //====================================
 
 //= NAMESPACES ================
@@ -890,7 +890,7 @@ namespace Spartan
             }
             
             // generate a height field
-            shared_ptr<RHI_Texture2D> height_map = ResourceCache::Load<RHI_Texture2D>("project\\terrain\\height_map.png");
+            shared_ptr<RHI_Texture> height_map = ResourceCache::Load<RHI_Texture>("project\\terrain\\height_map.png");
             terrain->SetHeightMap(height_map.get());
             terrain->Generate();
 

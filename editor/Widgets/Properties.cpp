@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Window.h"
 #include "../ImGui/ImGuiExtension.h"
 #include "../ImGui/Source/imgui_stdlib.h"
-#include "../ImGui/Source/imgui_internal.h"
 #include "../WidgetsDeferred/ButtonColorPicker.h"
 #include "Core/Engine.h"
 #include "World/Entity.h"
@@ -35,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/AudioSource.h"
 #include "World/Components/AudioListener.h"
 #include "World/Components/Terrain.h"
+#include "World/Components/Camera.h"
 #include "Rendering/Mesh.h"
 //===============================================
 

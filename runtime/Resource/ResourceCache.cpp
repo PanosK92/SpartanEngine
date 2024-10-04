@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ResourceCache.h"
 #include "../World/World.h"
 #include "../IO/FileStream.h"
-#include "../RHI/RHI_Texture2D.h"
+#include "../RHI/RHI_Texture.h"
 #include "../Audio/AudioClip.h"
 #include "../Rendering/Mesh.h"
 //===============================

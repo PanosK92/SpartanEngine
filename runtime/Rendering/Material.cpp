@@ -22,9 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "pch.h"
 #include "Material.h"
-#include "Renderer.h"
 #include "../Resource/ResourceCache.h"
-#include "../RHI/RHI_Texture2D.h"
+#include "../RHI/RHI_Texture.h"
 #include "../World/World.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
@@ -132,11 +131,11 @@ namespace Spartan
             string tex_path         = node_texture.attribute("texture_path").as_string();
 
             // If the texture happens to be loaded, get a reference to it
-            auto texture = ResourceCache::GetByName<RHI_Texture2D>(tex_name);
+            auto texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
             // If there is not texture (it's not loaded yet), load it
             if (!texture)
             {
-                texture = ResourceCache::Load<RHI_Texture2D>(tex_path);
+                texture = ResourceCache::Load<RHI_Texture>(tex_path);
             }
 
             SetTexture(tex_type, texture);
@@ -218,14 +217,9 @@ namespace Spartan
         SetTexture(texture_type, texture.get());
     }
 
-    void Material::SetTexture(const MaterialTexture type, shared_ptr<RHI_Texture2D> texture)
-    {
-        SetTexture(type, static_pointer_cast<RHI_Texture>(texture));
-    }
-
     void Material::SetTexture(const MaterialTexture texture_type, const string& file_path)
     {
-        SetTexture(texture_type, ResourceCache::Load<RHI_Texture2D>(file_path, RHI_Texture_Srv));
+        SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv));
     }
  
     bool Material::HasTexture(const string& path) const

@@ -24,17 +24,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =============================
 #include <string>
 #include <variant>
-#include <chrono>
 #include "Window.h"
 #include "RHI/RHI_Texture.h"
-#include "RHI/RHI_Texture2D.h"
 #include "Rendering/Renderer.h"
 #include "Rendering/Mesh.h"
 #include "World/World.h"
-#include "World/Components/Camera.h"
 #include "Resource/ResourceCache.h"
 #include "Core/ThreadPool.h"
-#include "Input/Input.h"
 #include "Display/Display.h"
 #include "Source/imgui_internal.h"
 #include "../Editor.h"
@@ -310,7 +306,7 @@ namespace ImGuiSp
         {
             try
             {
-                if (const auto tex = Spartan::ResourceCache::Load<Spartan::RHI_Texture2D>(std::get<const char*>(payload->data)).get())
+                if (const auto tex = Spartan::ResourceCache::Load<Spartan::RHI_Texture>(std::get<const char*>(payload->data)).get())
                 {
                     setter(tex);
                 }

@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "IResource.h"
 #include "../Audio/AudioClip.h"
-#include "../RHI/RHI_Texture2D.h"
+#include "../RHI/RHI_Texture.h"
 #include "../Rendering/Font/Font.h"
 #include "../Rendering/Animation.h"
 #include "../Rendering/Mesh.h"
@@ -49,10 +49,9 @@ inline constexpr void validate_resource_type() { static_assert(std::is_base_of<I
 #define INSTANTIATE_TO_RESOURCE_TYPE(T, enumT) template<> SP_CLASS ResourceType IResource::TypeToEnum<T>() { validate_resource_type<T>(); return enumT; }
 
 // To add a new resource to the engine, simply register it here
-INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture,   ResourceType::Texture)
-INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture2D, ResourceType::Texture)
-INSTANTIATE_TO_RESOURCE_TYPE(AudioClip,     ResourceType::Audio)
-INSTANTIATE_TO_RESOURCE_TYPE(Material,      ResourceType::Material)
-INSTANTIATE_TO_RESOURCE_TYPE(Animation,     ResourceType::Animation)
-INSTANTIATE_TO_RESOURCE_TYPE(Font,          ResourceType::Font)
-INSTANTIATE_TO_RESOURCE_TYPE(Mesh,          ResourceType::Mesh)
+INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture, ResourceType::Texture)
+INSTANTIATE_TO_RESOURCE_TYPE(AudioClip,   ResourceType::Audio)
+INSTANTIATE_TO_RESOURCE_TYPE(Material,    ResourceType::Material)
+INSTANTIATE_TO_RESOURCE_TYPE(Animation,   ResourceType::Animation)
+INSTANTIATE_TO_RESOURCE_TYPE(Font,        ResourceType::Font)
+INSTANTIATE_TO_RESOURCE_TYPE(Mesh,        ResourceType::Mesh)
