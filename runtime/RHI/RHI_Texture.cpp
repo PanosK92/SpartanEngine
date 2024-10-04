@@ -165,27 +165,6 @@ namespace Spartan
         m_bits_per_channel = rhi_format_to_bits_per_channel(m_format);
         m_object_name      = name;
 
-        if (type == RHI_Texture_Type::Type2D)
-        {
-            m_resource_type = ResourceType::Texture2d;
-        }
-        else if (type == RHI_Texture_Type::Type2DArray)
-        {
-            m_resource_type = ResourceType::Texture2dArray;
-        }
-        else if (type == RHI_Texture_Type::TypeCube)
-        {
-            m_resource_type = ResourceType::TextureCube;
-        }
-        else if (type == RHI_Texture_Type::TypeCube)
-        {
-            m_resource_type = ResourceType::Cubemap;
-        }
-        else if (type == RHI_Texture_Type::Type3D)
-        {
-            m_resource_type = ResourceType::Texture3d;
-        }
-
         RHI_Texture::RHI_CreateResource();
         m_is_ready_for_use = true;
     }
@@ -257,6 +236,7 @@ namespace Spartan
         file->Write(m_height);
         file->Write(m_channel_count);
         file->Write(m_bits_per_channel);
+        file->Write(static_cast<uint32_t>(m_type));
         file->Write(static_cast<uint32_t>(m_format));
         file->Write(m_flags);
         file->Write(GetObjectId());
@@ -311,6 +291,7 @@ namespace Spartan
                 file->Read(&m_height);
                 file->Read(&m_channel_count);
                 file->Read(&m_bits_per_channel);
+                file->Read(reinterpret_cast<uint32_t*>(&m_type));
                 file->Read(reinterpret_cast<uint32_t*>(&m_format));
                 file->Read(&m_flags);
                 SetObjectId(file->ReadAs<uint64_t>());
@@ -321,7 +302,7 @@ namespace Spartan
                 vector<string> file_paths = { file_path };
 
                 // if this is an array, try to find all the textures
-                if (m_resource_type == ResourceType::Texture2dArray)
+                if (m_type == RHI_Texture_Type::Type2DArray)
                 {
                     string file_path_extension    = FileSystem::GetExtensionFromFilePath(file_path);
                     string file_path_no_extension = FileSystem::GetFilePathWithoutExtension(file_path);
@@ -391,7 +372,7 @@ namespace Spartan
             uint32_t mip_index = static_cast<uint32_t>(m_slices[array_index].mips.size()) - 1;
             uint32_t width     = max(1u, m_width >> mip_index);
             uint32_t height    = max(1u, m_height >> mip_index);
-            uint32_t depth     = (GetResourceType() == ResourceType::Texture3d) ? (m_depth >> mip_index) : 1;
+            uint32_t depth     = (GetType() == RHI_Texture_Type::Type3D) ? (m_depth >> mip_index) : 1;
             size_t size_bytes  = CalculateMipSize(width, height, depth, m_format, m_bits_per_channel, m_channel_count);
 
             mip.bytes.resize(size_bytes);
@@ -434,7 +415,7 @@ namespace Spartan
             {
                 const uint32_t mip_width  = max(1u, m_width >> mip_index);
                 const uint32_t mip_height = max(1u, m_height >> mip_index);
-                const uint32_t mip_depth  = (GetResourceType() == ResourceType::Texture3d) ? (m_depth  >> mip_index) : 1;
+                const uint32_t mip_depth  = (GetType() == RHI_Texture_Type::Type3D) ? (m_depth  >> mip_index) : 1;
 
                 m_object_size += CalculateMipSize(mip_width, mip_height, m_depth, m_format, m_bits_per_channel, m_channel_count);
             }

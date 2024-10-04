@@ -208,9 +208,6 @@ namespace Spartan
             case ResourceType::Texture:
                 Load<RHI_Texture>(file_path);
                 break;
-            case ResourceType::Texture2d:
-                Load<RHI_Texture2D>(file_path);
-                break;
             case ResourceType::Audio:
                 Load<AudioClip>(file_path);
                 break;

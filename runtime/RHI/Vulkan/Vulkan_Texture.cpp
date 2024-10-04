@@ -171,7 +171,7 @@ namespace Spartan
                     uint32_t region_index = mip_index + array_index * mip_count;
                     uint32_t mip_width    = max(1u, width >> mip_index);
                     uint32_t mip_height   = max(1u, height >> mip_index);
-                    uint32_t mip_depth    = texture->GetResourceType() == ResourceType::Texture3d ? (texture->GetDepth() >> mip_index) : 1;
+                    uint32_t mip_depth    = texture->GetType() == RHI_Texture_Type::Type3D ? (texture->GetDepth() >> mip_index) : 1;
 
                     SP_ASSERT(mip_width != 0 && mip_height != 0 && mip_depth != 0);
 
@@ -206,7 +206,7 @@ namespace Spartan
 
                         uint32_t mip_width  = max(1u, width >> mip_index);
                         uint32_t mip_height = max(1u, height >> mip_index);
-                        uint32_t mip_depth  = (texture->GetResourceType() == ResourceType::Texture3d) ? (depth >> mip_index) : 1;
+                        uint32_t mip_depth  = (texture->GetType() == RHI_Texture_Type::Type3D) ? (depth >> mip_index) : 1;
                         size_t size = RHI_Texture::CalculateMipSize(mip_width, mip_height, mip_depth, texture->GetFormat(), texture->GetBitsPerChannel(), texture->GetChannelCount());
 
                         if (texture->GetMip(array_index, mip_index).bytes.size() != 0)
@@ -280,24 +280,6 @@ namespace Spartan
 
     bool RHI_Texture::RHI_CreateResource()
     {
-        // temp
-        if (m_resource_type == ResourceType::Texture2d)
-        {
-            m_type = RHI_Texture_Type::Type2D;
-        }
-        else if (m_resource_type == ResourceType::Texture2dArray)
-        {
-            m_type = RHI_Texture_Type::Type2DArray;
-        }
-        else if (m_resource_type == ResourceType::Texture3d)
-        {
-            m_type = RHI_Texture_Type::Type3D;
-        }
-        else if (m_resource_type == ResourceType::TextureCube)
-        {
-            m_type = RHI_Texture_Type::TypeCube;
-        }
-
         SP_ASSERT_MSG(m_width  != 0, "Width can't be zero");
         SP_ASSERT_MSG(m_height != 0, "Height can't be zero");
 
@@ -353,7 +335,7 @@ namespace Spartan
             }
 
             // render target views
-            if (m_resource_type == ResourceType::Texture2d || m_resource_type == ResourceType::Texture2dArray || m_resource_type == ResourceType::TextureCube)
+            if (m_type == RHI_Texture_Type::Type2D || m_type == RHI_Texture_Type::Type2DArray || m_type == RHI_Texture_Type::TypeCube)
             {
                 // both cube map slices/faces and array length is encoded into m_array_length
                 for (uint32_t i = 0; i < m_array_length; i++)
@@ -369,7 +351,7 @@ namespace Spartan
                     }
                 }
             }
-            else if (m_resource_type == ResourceType::Texture3d)
+            else if (m_type == RHI_Texture_Type::Type3D)
             {
                 // for 3d textures, we create a single rtv for the entire volume
 
