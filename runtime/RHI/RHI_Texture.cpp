@@ -242,10 +242,10 @@ namespace Spartan
 
     bool RHI_Texture::LoadFromFile(const string& file_path)
     {
-        m_type        = RHI_Texture_Type::Type2D;
-        m_depth       = 1;
-        m_flags       = RHI_Texture_Srv;
-        m_object_name = FileSystem::GetFileNameFromFilePath(file_path);
+        m_type         = RHI_Texture_Type::Type2D;
+        m_depth        = 1;
+        m_flags       |= RHI_Texture_Srv;
+        m_object_name  = FileSystem::GetFileNameFromFilePath(file_path);
 
         if (!FileSystem::IsFile(file_path))
         {
