@@ -26,8 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_Texture2D.h"
-#include "../RHI_Texture3D.h"
-#include "../RHI_TextureCube.h"
 #include "../RHI_Buffer.h"
 #include "../Input/Input.h"
 #include "../Rendering/Renderer_Buffers.h"
@@ -503,7 +501,8 @@ namespace Spartan
             // brixelizer gi
             {
                 // sdf atlas texture
-                brixelizer_gi::texture_sdf_atlas = make_unique<RHI_Texture3D>(
+                brixelizer_gi::texture_sdf_atlas = make_unique<RHI_Texture>(
+                    RHI_Texture_Type::Type3D,
                     brixelizer_gi::sdf_atlas_size,
                     brixelizer_gi::sdf_atlas_size,
                     brixelizer_gi::sdf_atlas_size,
