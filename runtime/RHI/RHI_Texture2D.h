@@ -34,7 +34,7 @@ namespace Spartan
         // creates a texture without data (intended for manual loading)
         RHI_Texture2D(const uint32_t flags = RHI_Texture_Srv, const char* name = nullptr)
         {
-            m_resource_type = ResourceType::Texture2d;
+            m_type          = RHI_Texture_Type::Type2D;
             m_flags         = flags;
             m_object_name   = name ? name : m_object_name;
         }
@@ -42,7 +42,7 @@ namespace Spartan
         // creates a texture from data (intended for sampling)
         RHI_Texture2D(const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t flags, const std::vector<RHI_Texture_Slice>& data, const char* name = nullptr)
         {
-            m_resource_type    = ResourceType::Texture2d;
+            m_type             = RHI_Texture_Type::Type2D;
             m_width            = width;
             m_height           = height;
             m_viewport         = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
@@ -61,7 +61,7 @@ namespace Spartan
         // creates a texture without any data (intended for usage as a render target)
         RHI_Texture2D(const uint32_t width, const uint32_t height, const uint32_t mip_count, const RHI_Format format, const uint32_t flags, const char* name = nullptr)
         {
-            m_resource_type    = ResourceType::Texture2d;
+            m_type             = RHI_Texture_Type::Type2D;
             m_width            = width;
             m_height           = height;
             m_viewport         = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));

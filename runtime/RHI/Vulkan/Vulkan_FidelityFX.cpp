@@ -156,20 +156,20 @@ namespace Spartan
                     usage |= FFX_RESOURCE_USAGE_DEPTHTARGET;
                 if (resource->IsUav())
                     usage |= FFX_RESOURCE_USAGE_UAV;
-                if (resource->GetResourceType() == ResourceType::Texture2dArray || resource->GetResourceType() == ResourceType::TextureCube)
+                if (resource->GetType() == RHI_Texture_Type::Type2DArray || resource->GetType() == RHI_Texture_Type::TypeCube)
                     usage |= FFX_RESOURCE_USAGE_ARRAYVIEW;
                 if (resource->IsRtv())
                     usage |= FFX_RESOURCE_USAGE_RENDERTARGET;
 
-                switch (resource->GetResourceType())
+                switch (resource->GetType())
                 {
-                case ResourceType::Texture2d:
+                case RHI_Texture_Type::Type2D:
                     description.type = FFX_RESOURCE_TYPE_TEXTURE2D;
                     break;
-                case ResourceType::Texture3d:
+                case RHI_Texture_Type::Type3D:
                     description.type = FFX_RESOURCE_TYPE_TEXTURE3D;
                     break;
-                case ResourceType::TextureCube:
+                case RHI_Texture_Type::TypeCube:
                     description.type = FFX_RESOURCE_TYPE_TEXTURE_CUBE;
                     break;
                 default:

@@ -445,7 +445,7 @@ namespace Spartan
         }
         metrics_time_since_last_update = 0.0f;
         
-        const uint32_t texture_count  = ResourceCache::GetResourceCount(ResourceType::Texture) + ResourceCache::GetResourceCount(ResourceType::Texture2d) + ResourceCache::GetResourceCount(ResourceType::TextureCube);
+        const uint32_t texture_count  = ResourceCache::GetResourceCount(ResourceType::Texture);
         const uint32_t material_count = ResourceCache::GetResourceCount(ResourceType::Material);
         const uint32_t pipeline_count = RHI_Device::GetPipelineCount();
 
