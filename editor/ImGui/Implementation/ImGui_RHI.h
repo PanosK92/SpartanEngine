@@ -166,7 +166,7 @@ namespace ImGui::RHI
             memcpy(&mip[0], reinterpret_cast<std::byte*>(pixels), size);
 
             // upload texture to graphics system
-            g_font_atlas = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, atlas_width, atlas_height, 1, 1, 1, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv, "imgui_font_atlas", texture_data);
+            g_font_atlas = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, atlas_width, atlas_height, 1, 1, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv, "imgui_font_atlas", texture_data);
             io.Fonts->TexID = static_cast<ImTextureID>(g_font_atlas.get());
         }
 

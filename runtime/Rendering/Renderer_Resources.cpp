@@ -212,38 +212,38 @@ namespace Spartan
         if (create_render)
         {
             // frame
-            render_target(Renderer_RenderTarget::frame_render) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, 1, RHI_Format::R16G16B16A16_Float, flags_rt_clearable, "frame_render");
+            render_target(Renderer_RenderTarget::frame_render) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags_rt_clearable, "frame_render");
 
             // g-buffer
             {
-                render_target(Renderer_RenderTarget::gbuffer_color)          = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, 1, RHI_Format::R8G8B8A8_Unorm,     flags_rt_clearable, "gbuffer_color");
-                render_target(Renderer_RenderTarget::gbuffer_normal)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, 1, RHI_Format::R16G16B16A16_Float, flags_rt_clearable, "gbuffer_normal");
-                render_target(Renderer_RenderTarget::gbuffer_material)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, 1, RHI_Format::R8G8B8A8_Unorm,     flags_rt_clearable, "gbuffer_material");
-                render_target(Renderer_RenderTarget::gbuffer_velocity)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, 1, RHI_Format::R16G16_Float,       flags_rt_clearable, "gbuffer_velocity");
-                render_target(Renderer_RenderTarget::gbuffer_depth)          = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth");
-                render_target(Renderer_RenderTarget::gbuffer_depth_opaque)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth_opaque");
-                render_target(Renderer_RenderTarget::gbuffer_depth_backface) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth_backface");
+                render_target(Renderer_RenderTarget::gbuffer_color)          = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8G8B8A8_Unorm,     flags_rt_clearable, "gbuffer_color");
+                render_target(Renderer_RenderTarget::gbuffer_normal)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags_rt_clearable, "gbuffer_normal");
+                render_target(Renderer_RenderTarget::gbuffer_material)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8G8B8A8_Unorm,     flags_rt_clearable, "gbuffer_material");
+                render_target(Renderer_RenderTarget::gbuffer_velocity)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16_Float,       flags_rt_clearable, "gbuffer_velocity");
+                render_target(Renderer_RenderTarget::gbuffer_depth)          = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth");
+                render_target(Renderer_RenderTarget::gbuffer_depth_opaque)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth_opaque");
+                render_target(Renderer_RenderTarget::gbuffer_depth_backface) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth_backface");
             }
 
             // light
             {
                 uint32_t light_flags = flags | RHI_Texture_ClearBlit;
 
-                render_target(Renderer_RenderTarget::light_diffuse)     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, 1, RHI_Format::R16G16B16A16_Float, light_flags, "light_diffuse");
-                render_target(Renderer_RenderTarget::light_diffuse_gi)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, 1, RHI_Format::R16G16B16A16_Float, light_flags, "light_diffuse_gi");
-                render_target(Renderer_RenderTarget::light_specular)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, 1, RHI_Format::R16G16B16A16_Float, light_flags, "light_specular");
-                render_target(Renderer_RenderTarget::light_specular_gi) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, 1, RHI_Format::R16G16B16A16_Float, light_flags, "light_specular_gi");
-                render_target(Renderer_RenderTarget::light_shadow)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, 1, RHI_Format::R8_Unorm,           light_flags, "light_shadow");
-                render_target(Renderer_RenderTarget::light_volumetric)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, 1, RHI_Format::R11G11B10_Float,    light_flags, "light_volumetric");
+                render_target(Renderer_RenderTarget::light_diffuse)     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, light_flags, "light_diffuse");
+                render_target(Renderer_RenderTarget::light_diffuse_gi)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, light_flags, "light_diffuse_gi");
+                render_target(Renderer_RenderTarget::light_specular)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, light_flags, "light_specular");
+                render_target(Renderer_RenderTarget::light_specular_gi) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, light_flags, "light_specular_gi");
+                render_target(Renderer_RenderTarget::light_shadow)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8_Unorm,           light_flags, "light_shadow");
+                render_target(Renderer_RenderTarget::light_volumetric)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R11G11B10_Float,    light_flags, "light_volumetric");
             }
 
             // misc
-            render_target(Renderer_RenderTarget::sss)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_render, height_render, 1, 4, 1, RHI_Format::R16_Float,          flags | RHI_Texture_ClearBlit, "sss");
-            render_target(Renderer_RenderTarget::ssr)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, 1, RHI_Format::R16G16B16A16_Float, flags | RHI_Texture_ClearBlit, "ssr");
-            render_target(Renderer_RenderTarget::ssao) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, 1, RHI_Format::R16_Float,          flags,                         "ssao"); 
+            render_target(Renderer_RenderTarget::sss)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_render, height_render, 4, 1, RHI_Format::R16_Float,          flags | RHI_Texture_ClearBlit, "sss");
+            render_target(Renderer_RenderTarget::ssr)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags | RHI_Texture_ClearBlit, "ssr");
+            render_target(Renderer_RenderTarget::ssao) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16_Float,          flags,                         "ssao"); 
             if (RHI_Device::PropertyIsShadingRateSupported())
             { 
-                render_target(Renderer_RenderTarget::shading_rate) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render / 4, height_render / 4, 1, 1, 1, RHI_Format::R8_Uint, RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_Rtv | RHI_Texture_Vrs, "shading_rate");
+                render_target(Renderer_RenderTarget::shading_rate) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render / 4, height_render / 4, 1, 1, RHI_Format::R8_Uint, RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_Rtv | RHI_Texture_Vrs, "shading_rate");
             }
         }
 
@@ -251,24 +251,24 @@ namespace Spartan
         if (create_output)
         {
             // frame
-            render_target(Renderer_RenderTarget::frame_output)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1, mip_count, RHI_Format::R16G16B16A16_Float, flags_rt | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "frame_output");
-            render_target(Renderer_RenderTarget::frame_output_2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1, 1,         RHI_Format::R16G16B16A16_Float, flags_rt | RHI_Texture_ClearBlit, "frame_output_2");
+            render_target(Renderer_RenderTarget::frame_output)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, mip_count, RHI_Format::R16G16B16A16_Float, flags_rt | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "frame_output");
+            render_target(Renderer_RenderTarget::frame_output_2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::R16G16B16A16_Float, flags_rt | RHI_Texture_ClearBlit, "frame_output_2");
 
             // misc
-            render_target(Renderer_RenderTarget::bloom)                = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1, mip_count, RHI_Format::R11G11B10_Float, flags | RHI_Texture_PerMipViews, "bloom");
-            render_target(Renderer_RenderTarget::outline)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1, 1,         RHI_Format::R8G8B8A8_Unorm,  flags_rt,                        "outline");
-            render_target(Renderer_RenderTarget::gbuffer_depth_output) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1, 1,         RHI_Format::D32_Float,       flags_rt_depth,                  "gbuffer_depth_output");
+            render_target(Renderer_RenderTarget::bloom)                = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, mip_count, RHI_Format::R11G11B10_Float, flags | RHI_Texture_PerMipViews, "bloom");
+            render_target(Renderer_RenderTarget::outline)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::R8G8B8A8_Unorm,  flags_rt,                        "outline");
+            render_target(Renderer_RenderTarget::gbuffer_depth_output) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::D32_Float,       flags_rt_depth,                  "gbuffer_depth_output");
         }
 
         // resolution - fixed (created once)
         if (!render_target(Renderer_RenderTarget::brdf_specular_lut))
         {
-            render_target(Renderer_RenderTarget::brdf_specular_lut) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512,  512,  1, 1, 1, RHI_Format::R8G8_Unorm,         flags, "brdf_specular_lut");
-            render_target(Renderer_RenderTarget::blur)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 4096, 1, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "blur"); // scratch
+            render_target(Renderer_RenderTarget::brdf_specular_lut) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512,  512,  1, 1, RHI_Format::R8G8_Unorm,         flags, "brdf_specular_lut");
+            render_target(Renderer_RenderTarget::blur)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 4096, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "blur"); // scratch
 
             // sky
-            render_target(Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 4096, 1, 1, mip_count, RHI_Format::R11G11B10_Float, flags | RHI_Texture_PerMipViews, "skysphere");
-            render_target(Renderer_RenderTarget::skybox)    = make_shared<RHI_Texture>(RHI_Texture_Type::TypeCube, 256, 256, 1, 6, 1,         RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Uav, "skybox"); // for fidelityfx
+            render_target(Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 4096, 1, mip_count, RHI_Format::R11G11B10_Float, flags | RHI_Texture_PerMipViews, "skysphere");
+            render_target(Renderer_RenderTarget::skybox)    = make_shared<RHI_Texture>(RHI_Texture_Type::TypeCube, 256, 256, 6, 1,         RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Uav, "skybox"); // for fidelityfx
         }
 
         RHI_Device::QueueWaitAll();

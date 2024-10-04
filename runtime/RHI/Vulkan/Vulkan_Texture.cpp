@@ -151,20 +151,19 @@ namespace Spartan
         {
             SP_ASSERT_MSG(texture->HasData(), "No data to stage");
 
-            const uint32_t width        = texture->GetWidth();
-            const uint32_t height       = texture->GetHeight();
-            const uint32_t depth        = texture->GetDepth();
-            const uint32_t array_length = texture->GetArrayLength();
-            const uint32_t mip_count    = texture->GetMipCount();
+            const uint32_t width     = texture->GetWidth();
+            const uint32_t height    = texture->GetHeight();
+            const uint32_t depth     = texture->GetDepth();
+            const uint32_t mip_count = texture->GetMipCount();
 
-            const uint32_t region_count = array_length * mip_count;
+            const uint32_t region_count = depth * mip_count;
             regions.resize(region_count);
             regions.reserve(region_count);
 
             VkDeviceSize buffer_offset    = 0;
             VkDeviceSize buffer_alignment = RHI_Device::PropertyGetOptimalBufferCopyOffsetAlignment();
 
-            for (uint32_t array_index = 0; array_index < array_length; array_index++)
+            for (uint32_t array_index = 0; array_index < depth; array_index++)
             {
                 for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
                 {
@@ -199,7 +198,7 @@ namespace Spartan
             buffer_offset = 0;
             RHI_Device::MemoryMap(staging_buffer, mapped_data);
             {
-                for (uint32_t array_index = 0; array_index < array_length; array_index++)
+                for (uint32_t array_index = 0; array_index < depth; array_index++)
                 {
                     for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
                     {
@@ -236,7 +235,7 @@ namespace Spartan
                 RHI_Image_Layout layout = RHI_Image_Layout::Transfer_Destination;
 
                 // insert memory barrier
-                cmd_list->InsertBarrierTexture(texture, 0, texture->GetMipCount(), texture->GetArrayLength(), texture->GetLayout(0), layout);
+                cmd_list->InsertBarrierTexture(texture, 0, texture->GetMipCount(), texture->GetDepth(), texture->GetLayout(0), layout);
 
                 // copy the staging buffer to the image
                 vkCmdCopyBufferToImage(
@@ -306,7 +305,7 @@ namespace Spartan
             RHI_Image_Layout target_layout = GetAppropriateLayout(this);
 
             // transition to the final layout
-            cmd_list->InsertBarrierTexture(this, 0, m_mip_count, m_array_length, m_layout[0], target_layout);
+            cmd_list->InsertBarrierTexture(this, 0, m_mip_count, m_depth, m_layout[0], target_layout);
         
             // flush
             RHI_Device::CmdImmediateSubmit(cmd_list);
@@ -323,13 +322,13 @@ namespace Spartan
             // shader resource views
             if (IsSrv() || IsUav())
             {
-                create_image_view(m_rhi_resource, m_rhi_srv, this, 0, m_array_length, 0, m_mip_count);
+                create_image_view(m_rhi_resource, m_rhi_srv, this, 0, m_depth, 0, m_mip_count);
 
                 if (HasPerMipViews())
                 {
                     for (uint32_t i = 0; i < m_mip_count; i++)
                     {
-                        create_image_view(m_rhi_resource, m_rhi_srv_mips[i], this, 0, m_array_length, i, 1);
+                        create_image_view(m_rhi_resource, m_rhi_srv_mips[i], this, 0, m_depth, i, 1);
                     }
                 }
             }
@@ -337,8 +336,8 @@ namespace Spartan
             // render target views
             if (m_type == RHI_Texture_Type::Type2D || m_type == RHI_Texture_Type::Type2DArray || m_type == RHI_Texture_Type::TypeCube)
             {
-                // both cube map slices/faces and array length is encoded into m_array_length
-                for (uint32_t i = 0; i < m_array_length; i++)
+                // both cube map slices/faces and array length is encoded into m_depth
+                for (uint32_t i = 0; i < m_depth; i++)
                 {
                     if (IsRtv())
                     {

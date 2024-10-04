@@ -1002,7 +1002,7 @@ namespace Spartan
                     // set light properties
                     if (RHI_Texture* texture = light->GetDepthTexture())
                     {
-                        for (uint32_t i = 0; i < texture->GetArrayLength(); i++)
+                        for (uint32_t i = 0; i < texture->GetDepth(); i++)
                         {
                             if (light->GetLightType() == LightType::Point)
                             {
