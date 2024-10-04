@@ -64,7 +64,6 @@ namespace Spartan
             void* image,
             void*& image_view,
             const RHI_Texture* texture,
-            const ResourceType resource_type,
             const uint32_t array_index,
             const uint32_t array_length,
             const uint32_t mip_index,
@@ -73,19 +72,19 @@ namespace Spartan
         {
             VkImageViewType view_type = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
             {
-                if (resource_type == ResourceType::Texture2d)
+                if (texture->GetType() == RHI_Texture_Type::Type2D)
                 {
                     view_type = VkImageViewType::VK_IMAGE_VIEW_TYPE_2D;
                 }
-                else if (resource_type == ResourceType::Texture3d)
-                {
-                    view_type = VkImageViewType::VK_IMAGE_VIEW_TYPE_3D;
-                }
-                else if (resource_type == ResourceType::Texture2dArray)
+                else if (texture->GetType() == RHI_Texture_Type::Type2DArray)
                 {
                     view_type = VkImageViewType::VK_IMAGE_VIEW_TYPE_2D_ARRAY;
                 }
-                else if (resource_type == ResourceType::TextureCube)
+                else if (texture->GetType() == RHI_Texture_Type::Type3D)
+                {
+                    view_type = VkImageViewType::VK_IMAGE_VIEW_TYPE_3D;
+                }
+                else if (texture->GetType() == RHI_Texture_Type::TypeCube)
                 {
                     view_type = VkImageViewType::VK_IMAGE_VIEW_TYPE_CUBE;
                 }
@@ -281,6 +280,24 @@ namespace Spartan
 
     bool RHI_Texture::RHI_CreateResource()
     {
+        // temp
+        if (m_resource_type == ResourceType::Texture2d)
+        {
+            m_type = RHI_Texture_Type::Type2D;
+        }
+        else if (m_resource_type == ResourceType::Texture2dArray)
+        {
+            m_type = RHI_Texture_Type::Type2DArray;
+        }
+        else if (m_resource_type == ResourceType::Texture3d)
+        {
+            m_type = RHI_Texture_Type::Type3D;
+        }
+        else if (m_resource_type == ResourceType::TextureCube)
+        {
+            m_type = RHI_Texture_Type::TypeCube;
+        }
+
         SP_ASSERT_MSG(m_width  != 0, "Width can't be zero");
         SP_ASSERT_MSG(m_height != 0, "Height can't be zero");
 
@@ -324,13 +341,13 @@ namespace Spartan
             // shader resource views
             if (IsSrv() || IsUav())
             {
-                create_image_view(m_rhi_resource, m_rhi_srv, this, m_resource_type, 0, m_array_length, 0, m_mip_count);
+                create_image_view(m_rhi_resource, m_rhi_srv, this, 0, m_array_length, 0, m_mip_count);
 
                 if (HasPerMipViews())
                 {
                     for (uint32_t i = 0; i < m_mip_count; i++)
                     {
-                        create_image_view(m_rhi_resource, m_rhi_srv_mips[i], this, m_resource_type, 0, m_array_length, i, 1);
+                        create_image_view(m_rhi_resource, m_rhi_srv_mips[i], this, 0, m_array_length, i, 1);
                     }
                 }
             }
@@ -343,12 +360,12 @@ namespace Spartan
                 {
                     if (IsRtv())
                     {
-                        create_image_view(m_rhi_resource, m_rhi_rtv[i], this, ResourceType::Texture2d, i, 1, 0, 1);
+                        create_image_view(m_rhi_resource, m_rhi_rtv[i], this, i, 1, 0, 1);
                     }
 
                     if (IsDsv())
                     {
-                        create_image_view(m_rhi_resource, m_rhi_dsv[i], this, ResourceType::Texture2d, i, 1, 0, 1);
+                        create_image_view(m_rhi_resource, m_rhi_dsv[i], this, i, 1, 0, 1);
                     }
                 }
             }
@@ -358,7 +375,7 @@ namespace Spartan
 
                 if (IsRtv())
                 {
-                    create_image_view(m_rhi_resource, m_rhi_rtv[0], this, ResourceType::Texture3d, 0, 1, 0, 1);
+                    create_image_view(m_rhi_resource, m_rhi_rtv[0], this, 0, 1, 0, 1);
                 }
             }
             else

@@ -70,8 +70,15 @@ namespace Spartan
     class SP_CLASS RHI_Texture : public IResource
     {
     public:
+        RHI_Texture(
+            const RHI_Texture_Type type,
+            const uint32_t width,
+            const uint32_t height,
+            const uint32_t depth,
+            const RHI_Format format,
+            const uint32_t flags, const char* name = nullptr
+        );
         RHI_Texture();
-        RHI_Texture(const RHI_Texture_Type type, const uint32_t width, const uint32_t height, const uint32_t depth, const RHI_Format format, const uint32_t flags, const char* name = nullptr);
         ~RHI_Texture();
 
         //= IResource ===========================================
@@ -106,11 +113,11 @@ namespace Spartan
         static size_t CalculateMipSize(uint32_t width, uint32_t height, uint32_t depth, RHI_Format format, uint32_t bits_per_channel, uint32_t channel_count);
 
         // data
-        uint32_t GetArrayLength()                          const { return m_array_length; }
-        uint32_t GetMipCount()                             const { return m_mip_count; }
-        uint32_t GetDepth()                                const { return m_depth; }
-        bool HasData()                                     const { return !m_slices.empty() && !m_slices[0].mips.empty() && !m_slices[0].mips[0].bytes.empty(); };
-        std::vector<RHI_Texture_Slice>& GetData()                { return m_slices; }
+        uint32_t GetArrayLength()                 const { return m_array_length; }
+        uint32_t GetMipCount()                    const { return m_mip_count; }
+        uint32_t GetDepth()                       const { return m_depth; }
+        bool HasData()                            const { return !m_slices.empty() && !m_slices[0].mips.empty() && !m_slices[0].mips[0].bytes.empty(); };
+        std::vector<RHI_Texture_Slice>& GetData()       { return m_slices; }
         RHI_Texture_Mip& CreateMip(const uint32_t array_index);
         RHI_Texture_Mip& GetMip(const uint32_t array_index, const uint32_t mip_index);
         RHI_Texture_Slice& GetSlice(const uint32_t array_index);
@@ -142,6 +149,7 @@ namespace Spartan
         const auto& GetViewport() const { return m_viewport; }
 
         // rhi
+        RHI_Texture_Type GetType()            const { return m_type; }
         void*& GetRhiResource()                     { return m_rhi_resource; }
         void* GetRhiSrv()                     const { return m_rhi_srv; }
         void* GetRhiSrvMip(const uint32_t i)  const { return m_rhi_srv_mips[i]; }
