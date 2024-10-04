@@ -233,6 +233,18 @@ namespace ImGuiSp
         );
     }
 
+    static void image(const IconType icon, const float size,const ImVec4 tint)
+    {
+        ImGui::Image(
+            static_cast<void*>(IconLoader::GetTextureByType(icon)),
+            ImVec2(size, size),
+            ImVec2(0, 0),
+            ImVec2(1, 1),
+            tint,       // tint
+            ImColor(0, 0, 0, 0) // border
+        );
+    }
+
     struct DragDropPayload
     {
         using DataVariant = std::variant<const char*, uint64_t>;
