@@ -1538,6 +1538,9 @@ namespace Spartan
 
     void RHI_Device::DeletionQueueAdd(const RHI_Resource_Type resource_type, void* resource)
     {
+        if (!resource)
+            return;
+
         lock_guard<mutex> guard(mutex_deletion_queue);
         deletion_queue[resource_type].emplace_back(resource);
     }

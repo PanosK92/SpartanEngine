@@ -63,6 +63,13 @@ namespace Spartan
 
         void compress(RHI_Texture* texture, const uint32_t mip_index, const RHI_Format destination_format)
         {
+            if (!compressonator::registered)
+            {
+                string version = to_string(AMD_COMPRESS_VERSION_MAJOR) + "." + to_string(AMD_COMPRESS_VERSION_MINOR);
+                Settings::RegisterThirdPartyLib("Compressonator", version, "https://github.com/GPUOpen-Tools/compressonator");
+                compressonator::registered = true;
+            }
+
             // source texture
             CMP_Texture source_texture = {};
             source_texture.format      = to_cmp_format(texture->GetFormat());
@@ -141,31 +148,19 @@ namespace Spartan
         vector<RHI_Texture_Slice> data
     ) : IResource(ResourceType::Texture)
     {
-        m_type = type;
-        m_layout.fill(RHI_Image_Layout::Max);
-        m_rhi_srv_mips.fill(nullptr);
-        m_rhi_rtv.fill(nullptr);
-        m_rhi_dsv.fill(nullptr);
-
-        if (!compressonator::registered)
-        {
-            string version = to_string(AMD_COMPRESS_VERSION_MAJOR) + "." + to_string(AMD_COMPRESS_VERSION_MINOR);
-            Settings::RegisterThirdPartyLib("Compressonator", version, "https://github.com/GPUOpen-Tools/compressonator");
-            compressonator::registered = true;
-        }
-
+        m_type             = type;
         m_width            = width;
         m_height           = height;
         m_depth            = depth;
         m_array_length     = array_length;
         m_mip_count        = mip_count;
-        m_viewport         = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
         m_format           = format;
         m_flags            = flags;
-        m_channel_count    = rhi_to_format_channel_count(format);
-        m_bits_per_channel = rhi_format_to_bits_per_channel(m_format);
         m_object_name      = name;
         m_slices           = data;
+        m_viewport         = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
+        m_channel_count    = rhi_to_format_channel_count(format);
+        m_bits_per_channel = rhi_format_to_bits_per_channel(m_format);
 
         RHI_Texture::RHI_CreateResource();
         m_is_ready_for_use = true;

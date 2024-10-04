@@ -179,16 +179,16 @@ namespace Spartan
         RHI_Texture_Type m_type     = RHI_Texture_Type::Max;
         RHI_Viewport m_viewport;
         std::vector<RHI_Texture_Slice> m_slices;
-        std::array<RHI_Image_Layout, rhi_max_mip_count> m_layout;
+        std::array<RHI_Image_Layout, rhi_max_mip_count> m_layout = { RHI_Image_Layout::Max };
 
         // api resources
-        void* m_rhi_srv = nullptr;                           // an srv with all mips
-        std::array<void*, rhi_max_mip_count> m_rhi_srv_mips; // an srv for each mip
-        std::array<void*, rhi_max_render_target_count> m_rhi_rtv;
-        std::array<void*, rhi_max_render_target_count> m_rhi_dsv;
-        void* m_rhi_resource        = nullptr;
-        void* m_rhi_external_memory = nullptr;
-        void* m_mapped_data         = nullptr;
+        void* m_rhi_srv                                          = nullptr;      // an srv with all mips
+        std::array<void*, rhi_max_mip_count> m_rhi_srv_mips      = { nullptr };  // an srv for each mip
+        std::array<void*, rhi_max_render_target_count> m_rhi_rtv = { nullptr }; 
+        std::array<void*, rhi_max_render_target_count> m_rhi_dsv = { nullptr }; 
+        void* m_rhi_resource                                     = nullptr;
+        void* m_rhi_external_memory                              = nullptr;
+        void* m_mapped_data                                      = nullptr;
 
     private:
         void ComputeMemoryUsage();
