@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture2D.h"
 #include "../RHI/RHI_Texture2DArray.h"
-#include "../RHI/RHI_TextureCube.h"
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_Sampler.h"
 #include "../RHI/RHI_BlendState.h"
@@ -270,7 +269,7 @@ namespace Spartan
 
             // sky
             render_target(Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture2D>(4096, 4096, mip_count, RHI_Format::R11G11B10_Float, flags | RHI_Texture_PerMipViews, "skysphere");
-            render_target(Renderer_RenderTarget::skybox)    = make_shared<RHI_TextureCube>(256, 256, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Uav, "skybox"); // for fidelityfx
+            render_target(Renderer_RenderTarget::skybox)    = make_shared<RHI_Texture>(RHI_Texture_Type::TypeCube, 256, 256, 1, 6, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Uav, "skybox"); // for fidelityfx
         }
 
         RHI_Device::QueueWaitAll();

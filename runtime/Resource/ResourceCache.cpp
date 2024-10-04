@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/FileStream.h"
 #include "../RHI/RHI_Texture2D.h"
 #include "../RHI/RHI_Texture2DArray.h"
-#include "../RHI/RHI_TextureCube.h"
 #include "../Audio/AudioClip.h"
 #include "../Rendering/Mesh.h"
 //====================================
@@ -216,8 +215,6 @@ namespace Spartan
             case ResourceType::Texture2dArray:
                 Load<RHI_Texture2DArray>(file_path);
                 break;
-            case ResourceType::TextureCube:
-                Load<RHI_TextureCube>(file_path);
                 break;
             case ResourceType::Audio:
                 Load<AudioClip>(file_path);

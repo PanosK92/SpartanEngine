@@ -506,6 +506,8 @@ namespace Spartan
                     brixelizer_gi::sdf_atlas_size,
                     brixelizer_gi::sdf_atlas_size,
                     brixelizer_gi::sdf_atlas_size,
+                    1,
+                    1,
                     RHI_Format::R8_Unorm,
                     RHI_Texture_Srv | RHI_Texture_Uav,
                     "ffx_sdf_atlas"

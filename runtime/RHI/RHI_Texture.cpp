@@ -128,7 +128,17 @@ namespace Spartan
         }
     }
 
-    RHI_Texture::RHI_Texture(const RHI_Texture_Type type, const uint32_t width, const uint32_t height, const uint32_t depth, const RHI_Format format, const uint32_t flags, const char* name) : IResource(ResourceType::Texture)
+    RHI_Texture::RHI_Texture(
+        const RHI_Texture_Type type,
+        const uint32_t width,
+        const uint32_t height,
+        const uint32_t depth,
+        const uint32_t array_length,
+        const uint32_t mip_count,
+        const RHI_Format format,
+        const uint32_t flags,
+        const char* name
+    ) : IResource(ResourceType::Texture)
     {
         m_type = type;
         m_layout.fill(RHI_Image_Layout::Max);
@@ -143,20 +153,37 @@ namespace Spartan
             compressonator::registered = true;
         }
 
-        if (type == RHI_Texture_Type::Type3D)
+        m_width            = width;
+        m_height           = height;
+        m_depth            = depth;
+        m_array_length     = array_length;
+        m_mip_count        = mip_count;
+        m_viewport         = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
+        m_format           = format;
+        m_flags            = flags;
+        m_channel_count    = rhi_to_format_channel_count(format);
+        m_bits_per_channel = rhi_format_to_bits_per_channel(m_format);
+        m_object_name      = name;
+
+        if (type == RHI_Texture_Type::Type2D)
         {
-            m_resource_type    = ResourceType::Texture3d;
-            m_width            = width;
-            m_height           = height;
-            m_depth            = depth;
-            m_mip_count        = 1;
-            m_array_length     = 1;
-            m_viewport         = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
-            m_format           = format;
-            m_flags            = flags;
-            m_channel_count    = rhi_to_format_channel_count(format);
-            m_bits_per_channel = rhi_format_to_bits_per_channel(m_format);
-            m_object_name      = name ? name : m_object_name;
+            m_resource_type = ResourceType::Texture2d;
+        }
+        else if (type == RHI_Texture_Type::Type2DArray)
+        {
+            m_resource_type = ResourceType::Texture2dArray;
+        }
+        else if (type == RHI_Texture_Type::TypeCube)
+        {
+            m_resource_type = ResourceType::TextureCube;
+        }
+        else if (type == RHI_Texture_Type::TypeCube)
+        {
+            m_resource_type = ResourceType::Cubemap;
+        }
+        else if (type == RHI_Texture_Type::Type3D)
+        {
+            m_resource_type = ResourceType::Texture3d;
         }
 
         RHI_Texture::RHI_CreateResource();
