@@ -78,7 +78,8 @@ namespace Spartan
             const uint32_t array_length,
             const uint32_t mip_count,
             const RHI_Format format,
-            const uint32_t flags, const char* name = nullptr
+            const uint32_t flags,
+            const char* name = nullptr
         );
         RHI_Texture();
         ~RHI_Texture();
