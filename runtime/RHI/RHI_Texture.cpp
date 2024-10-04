@@ -22,11 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================================
 #include "pch.h"
 #include "RHI_Texture.h"
-#include "RHI_Device.h"
 #include "ThreadPool.h"
 #include "RHI_CommandList.h"
 #include "../IO/FileStream.h"
-#include "../Rendering/Renderer.h"
 #include "../Resource/Import/ImageImporterExporter.h"
 SP_WARNINGS_OFF
 #include "compressonator.h"
@@ -159,10 +157,10 @@ namespace Spartan
             m_channel_count    = rhi_to_format_channel_count(format);
             m_bits_per_channel = rhi_format_to_bits_per_channel(m_format);
             m_object_name      = name ? name : m_object_name;
-            
-            RHI_Texture::RHI_CreateResource();
-            m_is_ready_for_use = true;
         }
+
+        RHI_Texture::RHI_CreateResource();
+        m_is_ready_for_use = true;
     }
 
     RHI_Texture::~RHI_Texture()
