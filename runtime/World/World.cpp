@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/Car.h"
 #include "../Rendering/Mesh.h"
 #include "../Rendering/Renderer.h"
+#include "../RHI/RHI_Texture2D.h"
 //====================================
 
 //= NAMESPACES ================
@@ -645,7 +646,7 @@ namespace Spartan
                     {
                         material->SetColor(Color::material_glass);
                         material->SetProperty(MaterialProperty::Roughness, 0.2f);
-                        material->SetTexture(MaterialTexture::Emission, material->GetTexture_PtrShared(MaterialTexture::Color));
+                        material->SetTexture(MaterialTexture::Emission, material->GetTexture(MaterialTexture::Color));
                     }
 
                     // plastic covers
@@ -889,7 +890,8 @@ namespace Spartan
             }
             
             // generate a height field
-            terrain->SetHeightMap("project\\terrain\\height_map.png");
+            shared_ptr<RHI_Texture2D> height_map = ResourceCache::Load<RHI_Texture2D>("project\\terrain\\height_map.png");
+            terrain->SetHeightMap(height_map.get());
             terrain->Generate();
 
             // add water and vegetation

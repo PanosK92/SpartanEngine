@@ -185,8 +185,7 @@ namespace Spartan
 
         if (texture)
         {
-            // cache the texture to ensure scene serialization/deserialization
-            m_textures[type_int] = ResourceCache::Cache(texture->GetSharedPtr());
+            m_textures[type_int] = texture;
         }
         else
         {
@@ -215,7 +214,7 @@ namespace Spartan
         SP_FIRE_EVENT(EventType::MaterialOnChanged);
     }
 
-    void Material::SetTexture(const MaterialTexture texture_type, shared_ptr<RHI_Texture> texture)
+    void Material::SetTexture(const MaterialTexture texture_type, std::shared_ptr<RHI_Texture> texture)
     {
         SetTexture(texture_type, texture.get());
     }
@@ -278,13 +277,7 @@ namespace Spartan
 
     RHI_Texture* Material::GetTexture(const MaterialTexture texture_type)
     {
-        return GetTexture_PtrShared(texture_type).get();
-    }
-
-    shared_ptr<RHI_Texture>& Material::GetTexture_PtrShared(const MaterialTexture texture_type)
-    {
-        static shared_ptr<RHI_Texture> texture_empty;
-        return HasTexture(texture_type) ? m_textures[static_cast<uint32_t>(texture_type)] : texture_empty;
+        return m_textures[static_cast<uint32_t>(texture_type)];
     }
 
     uint32_t Material::GetArraySize()

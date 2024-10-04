@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Engine.h"
 #include "Profiling/RenderDoc.h"
 #include <Debugging.h>
+#include <Input/Input.h>
 //========================================
 
 //= NAMESPACES =====

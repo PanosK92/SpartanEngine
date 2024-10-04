@@ -59,7 +59,7 @@ namespace Spartan
         uint32_t GetMipCount() { return static_cast<uint32_t>(mips.size()); }
     };
 
-    class SP_CLASS RHI_Texture : public IResource, public std::enable_shared_from_this<RHI_Texture>
+    class SP_CLASS RHI_Texture : public IResource
     {
     public:
         RHI_Texture();
@@ -92,7 +92,6 @@ namespace Spartan
         void SetExternalMemoryHandle(void* handle) { m_rhi_external_memory = handle; }
 
         // misc
-        std::shared_ptr<RHI_Texture> GetSharedPtr() { return shared_from_this(); }
         void SaveAsImage(const std::string& file_path);
         static bool IsCompressedFormat(const RHI_Format format);
         static size_t CalculateMipSize(uint32_t width, uint32_t height, uint32_t depth, RHI_Format format, uint32_t bits_per_channel, uint32_t channel_count);

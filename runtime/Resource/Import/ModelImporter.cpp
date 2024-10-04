@@ -258,7 +258,7 @@ namespace Spartan
             // FIX: Some models pass a normal map as a height map and vice versa, we correct that
             if (texture_type == MaterialTexture::Normal || texture_type == MaterialTexture::Height)
             {
-                if (shared_ptr<RHI_Texture> texture = material->GetTexture_PtrShared(texture_type))
+                if (RHI_Texture* texture = material->GetTexture(texture_type))
                 {
                     MaterialTexture proper_type = texture_type;
                     proper_type = (proper_type == MaterialTexture::Normal && texture->IsGrayscale()) ? MaterialTexture::Height : proper_type;
@@ -266,7 +266,7 @@ namespace Spartan
 
                     if (proper_type != texture_type)
                     {
-                        material->SetTexture(texture_type, shared_ptr<RHI_Texture>(nullptr));
+                        material->SetTexture(texture_type, nullptr);
                         material->SetTexture(proper_type, texture);
                     }
                 }
