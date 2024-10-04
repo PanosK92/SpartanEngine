@@ -112,7 +112,6 @@ namespace Spartan
         std::string GetTexturePathByType(const MaterialTexture texture_type);
         std::vector<std::string> GetTexturePaths();
         RHI_Texture* GetTexture(const MaterialTexture texture_type);
-        std::shared_ptr<RHI_Texture>& GetTexture_PtrShared(const MaterialTexture texturtexture_type);
         uint32_t GetArraySize();
 
         // index of refraction
@@ -141,7 +140,7 @@ namespace Spartan
         uint32_t GetIndex() const           { return m_index; }
 
     private:
-        std::array<std::shared_ptr<RHI_Texture>, static_cast<uint32_t>(MaterialTexture::Max)> m_textures;
+        std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTexture::Max)> m_textures;
         std::array<float, static_cast<uint32_t>(MaterialProperty::Max)> m_properties;
         uint32_t m_index = 0;
     };

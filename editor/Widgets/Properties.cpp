@@ -723,14 +723,14 @@ void Properties::ShowMaterial(Material* material) const
                         for (uint32_t i = 0; i < material->GetArraySize(); ++i)
                         {
                             MaterialTexture textureType = static_cast<MaterialTexture>(static_cast<uint32_t>(mat_tex) + i);
-                            auto setter = [&, textureType](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(textureType, texture); };
+                            auto setter = [&, textureType](Spartan::RHI_Texture* texture) { material->SetTexture(textureType, texture); };
 
                             if (i > 0)
                             {
                                 ImGui::SameLine();
                             }
 
-                            ImGuiSp::image_slot(material->GetTexture_PtrShared(textureType), setter);
+                            ImGuiSp::image_slot(material->GetTexture(textureType), setter);
                         }
 
                         if (show_modifier)
@@ -946,9 +946,9 @@ void Properties::ShowTerrain(shared_ptr<Terrain> terrain) const
         {
             ImGui::Text("Height Map");
 
-            ImGuiSp::image_slot(terrain->GetHeightMap(), [&terrain](const shared_ptr<RHI_Texture>& texture)
+            ImGuiSp::image_slot(terrain->GetHeightMap(), [&terrain](RHI_Texture* texture)
             {
-                terrain->SetHeightMap(static_pointer_cast<RHI_Texture2D>(texture));
+                terrain->SetHeightMap(texture);
             });
 
             if (ImGuiSp::button("Generate", ImVec2(82.0f * Spartan::Window::GetDpiScale(), 0)))
