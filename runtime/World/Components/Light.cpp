@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================
+//= INCLUDES ========================
 #include "pch.h"
 #include "Light.h"
 #include "Camera.h"
@@ -27,8 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Entity.h"
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
-#include "../../RHI/RHI_Texture2DArray.h"
-//=======================================
+//===================================
 
 //= NAMESPACES ===============
 using namespace Spartan::Math;
@@ -496,10 +495,10 @@ namespace Spartan
         // directional light: 2 slices for cascades
         // point light:       2 slices for front and back paraboloid
 
-        m_texture_depth = make_unique<RHI_Texture2DArray>(resolution, resolution, format_depth, 2, flags, "light_depth");
+        m_texture_depth = make_unique<RHI_Texture>(RHI_Texture_Type::Type2DArray, resolution, resolution, 1, array_length, 1, format_depth, flags, "light_depth");
         if (IsFlagSet(LightFlags::ShadowsTransparent))
         {
-            m_texture_color = make_unique<RHI_Texture2DArray>(resolution, resolution, format_color, 2, flags, "light_color");
+            m_texture_color = make_unique<RHI_Texture>(RHI_Texture_Type::Type2DArray,resolution, resolution, 1, array_length, 1, format_color, flags, "light_color");
         }
     }
 }  
