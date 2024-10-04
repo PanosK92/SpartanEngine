@@ -137,7 +137,8 @@ namespace Spartan
         const uint32_t mip_count,
         const RHI_Format format,
         const uint32_t flags,
-        const char* name
+        const char* name,
+        vector<RHI_Texture_Slice> data
     ) : IResource(ResourceType::Texture)
     {
         m_type = type;
@@ -164,9 +165,20 @@ namespace Spartan
         m_channel_count    = rhi_to_format_channel_count(format);
         m_bits_per_channel = rhi_format_to_bits_per_channel(m_format);
         m_object_name      = name;
+        m_slices           = data;
 
         RHI_Texture::RHI_CreateResource();
         m_is_ready_for_use = true;
+    }
+
+    RHI_Texture::RHI_Texture(const char* file_path) : IResource(ResourceType::Texture)
+    {
+        LoadFromFile(file_path);
+    }
+
+    RHI_Texture::RHI_Texture(const std::string& file_path) : IResource(ResourceType::Texture)
+    {
+         LoadFromFile(file_path);
     }
 
     RHI_Texture::~RHI_Texture()
@@ -247,6 +259,12 @@ namespace Spartan
 
     bool RHI_Texture::LoadFromFile(const string& file_path)
     {
+        m_type         = RHI_Texture_Type::Type2D;
+        m_depth        = 1;
+        m_array_length = 1;
+        m_flags        = RHI_Texture_Srv;
+        m_object_name  = FileSystem::GetFileNameFromFilePath(file_path);
+
         if (!FileSystem::IsFile(file_path))
         {
             SP_LOG_ERROR("Invalid file path \"%s\".", file_path.c_str());

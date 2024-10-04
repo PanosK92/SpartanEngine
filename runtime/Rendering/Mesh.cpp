@@ -22,9 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================================
 #include "pch.h"
 #include "Mesh.h"
-#include "Renderer.h"
 #include "../RHI/RHI_Buffer.h"
-#include "../RHI/RHI_Texture2D.h"
+#include "../RHI/RHI_Texture.h"
 #include "../World/Components/Renderable.h"
 #include "../World/Entity.h"
 #include "../Resource/ResourceCache.h"
@@ -290,7 +289,7 @@ namespace Spartan
 
         // Try to get the texture
         const auto tex_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-        shared_ptr<RHI_Texture> texture = ResourceCache::GetByName<RHI_Texture2D>(tex_name);
+        shared_ptr<RHI_Texture> texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
 
         if (texture)
         {
@@ -299,7 +298,7 @@ namespace Spartan
         else // if we didn't get a texture, it's not cached, hence we have to load it and cache it now
         {
             // load texture
-            texture = ResourceCache::Load<RHI_Texture2D>(file_path, RHI_Texture_Srv | RHI_Texture_Compress);
+            texture = ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv | RHI_Texture_Compress);
 
             // set the texture to the provided material
             material->SetTexture(texture_type, texture);

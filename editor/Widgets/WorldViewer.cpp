@@ -31,7 +31,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/PhysicsBody.h"
 #include "World/Components/Constraint.h"
 #include "World/Components/Terrain.h"
+#include "World/Components/Camera.h"
 #include "Commands/CommandStack.h"
+#include <Input/Input.h>
 #include "FileSystem.h"
 #include "Resource/ResourceCache.h"
 #include "Core/Engine.h"

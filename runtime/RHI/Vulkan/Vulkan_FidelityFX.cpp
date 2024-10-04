@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_FidelityFX.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
-#include "../RHI_Texture2D.h"
+#include "../RHI_Texture.h"
 #include "../RHI_Buffer.h"
 #include "../Input/Input.h"
 #include "../Rendering/Renderer_Buffers.h"
@@ -706,8 +706,8 @@ namespace Spartan
             // resources
             {
                 uint32_t flags = RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit;
-                brixelizer_gi::texture_depth_previous  = make_shared<RHI_Texture2D>(width, height, 1, RHI_Format::D32_Float,          flags, "ffx_depth_previous");
-                brixelizer_gi::texture_normal_previous = make_shared<RHI_Texture2D>(width, height, 1, RHI_Format::R16G16B16A16_Float, flags, "ffx_normal_previous");
+                brixelizer_gi::texture_depth_previous  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, 1, RHI_Format::D32_Float,          flags, "ffx_depth_previous");
+                brixelizer_gi::texture_normal_previous = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ffx_normal_previous");
             }
 
             brixelizer_gi::context_created = true;

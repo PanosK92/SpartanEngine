@@ -1546,11 +1546,13 @@ namespace Spartan
     {
         lock_guard<mutex> guard(mutex_deletion_queue);
        
-        for (const auto& it : deletion_queue)
+        for (auto& it : deletion_queue)
         {
-            for (void* resource : it.second)
+            RHI_Resource_Type resource_type = it.first;
+
+            for (uint32_t i = 0; i < static_cast<uint32_t>(it.second.size()); i++)
             {
-                RHI_Resource_Type resource_type = it.first;
+                void* resource = it.second[i];
 
                 switch (resource_type)
                 {
