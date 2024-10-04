@@ -23,7 +23,7 @@ This platform offers you the freedom to explore, experiment, and excel. Make the
 # Coding style
 
 ## General advice
-- Try to adhere to the [KISS](https://en.wikipedia.org/wiki/KISS_principle) principle whenever possible.
+- Try to adhere to the [KISS](https://en.wikipedia.org/wiki/KISS_principle) principle whenever possible. A term coined by the lead engineer of the SR-71 Blackbird.
 - Avoid [defensive programming](https://en.wikipedia.org/wiki/Defensive_programming). Instead, use asserts everywhere (offensive). If an assert pops up, it should be fixed ASAP.
 - If **auto** is used, the type must be deducible at a glance. Long iterator types can also be replaced with auto.
 - Choose the right tool for the job. Refrain from dogmas like "Only use orthodox C++" or "Only use modern C++".
