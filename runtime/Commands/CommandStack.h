@@ -39,9 +39,9 @@ public:
         // could be solved by using linked lists instead of dynamic arrays (vectors)
         // optimal solution may be to preallocate an array instead, and use a cursor to manage undo/redo <-- probably do this
         // luckily we only store pointers so should be decent performance for now (as long as max_undo_steps doesn't grow too large)
-        /*if (m_undo_buffer.size() >= max_undo_steps) {
-            m_undo_buffer.erase(m_undo_buffer.begin());
-        }*/
+        //
+        // CircularStack author: not sure I fully made optimal solution
+        // I suppose we can store it all in single stack, I will look into it
 
         std::shared_ptr<Command> new_command = std::make_shared<CommandType>(std::forward<Args>(args)...);
         m_undo_buffer.Push(new_command);
