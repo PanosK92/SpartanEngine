@@ -30,38 +30,39 @@ using namespace std;
 
 namespace Spartan
 {
+    Spartan::CircularStack<shared_ptr<Command>> CommandStack::m_undo_buffer = Spartan::CircularStack<shared_ptr<Command>>(Spartan::max_undo_steps);
+    Spartan::CircularStack<shared_ptr<Command>> CommandStack::m_redo_buffer = Spartan::CircularStack<shared_ptr<Command>>(Spartan::max_undo_steps);
+
     void CommandStack::Undo()
     {
-        if (m_undo_buffer.size() == 0)
-            return;
-
         // fetch
-        shared_ptr<Command> undo_command = m_undo_buffer.back();
-        m_undo_buffer.pop_back();
+        optional<shared_ptr<Command>> optional_undo_command = m_undo_buffer.Pop();
+        if (!optional_undo_command.has_value()) {
+            return;
+        }
+        shared_ptr<Command> undo_command = optional_undo_command.value();
 
         // undo
         undo_command->OnRevert();
 
         // push it to the top of the redo stack
-        m_redo_buffer.push_back(undo_command);
+        m_redo_buffer.Push(undo_command);
     }
 
     void CommandStack::Redo()
     {
-        if (m_redo_buffer.size() == 0)
-            return;
-
         // fetch
-        shared_ptr<Command> redo_command = m_redo_buffer.back();
-        m_redo_buffer.pop_back();
+        optional<shared_ptr<Command>> optional_redo_command = m_redo_buffer.Pop();
+        if (!optional_redo_command.has_value()) {
+            return;
+        }
+        shared_ptr<Command> redo_command = optional_redo_command.value();
 
         // redo
         redo_command->OnApply();
 
         // push it to the top of the undo stack
-        m_undo_buffer.push_back(redo_command);
+        m_undo_buffer.Push(redo_command);
     }
 
-    vector<shared_ptr<Spartan::Command>> CommandStack::m_undo_buffer;
-    vector<shared_ptr<Spartan::Command>> CommandStack::m_redo_buffer;
 }
