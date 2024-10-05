@@ -25,10 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <optional>
 //==============================
 
-//= NAMESPACES =====
-using namespace std;
-//==================
-
 namespace Spartan
 {
     template <typename T>
@@ -45,7 +41,7 @@ namespace Spartan
         ~CircularStack();
 
         void Push(T item);
-        optional<T> Pop();
+        std::optional<T> Pop();
         void Clear();
     };
 
@@ -75,9 +71,9 @@ namespace Spartan
     }
 
     template <typename T>
-    optional<T> CircularStack<T>::Pop() {
+    std::optional<T> CircularStack<T>::Pop() {
         if (items_count == 0) {
-            return nullopt;
+            return std::nullopt;
         }
 
         T item = buffer_start[top_item_index];
