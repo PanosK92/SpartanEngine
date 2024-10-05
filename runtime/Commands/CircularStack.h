@@ -69,9 +69,8 @@ namespace Spartan
 
         buffer_start[top_item_index] = item;
 
-        items_count += 1;
-        if (items_count > buffer_capacity) {
-            items_count = buffer_capacity;
+        if (items_count < buffer_capacity) {
+            items_count += 1;
         }
     }
 
@@ -83,9 +82,11 @@ namespace Spartan
 
         T item = buffer_start[top_item_index];
 
-        top_item_index -= 1;
-        if (top_item_index < 0) {
+        if (top_item_index == 0) {
             top_item_index = buffer_capacity - 1;
+        }
+        else {
+            top_item_index -= 1;
         }
 
         items_count -= 1;
