@@ -21,12 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
+//= INCLUDES =========
 #include <string>
 #include <vector>
 #include "TimeBlock.h"
-#include "../Core/Definitions.h"
-//==============================
+//====================
 
 #define SP_PROFILE_CPU_START(name) Spartan::Profiler::TimeBlockStart(name, Spartan::TimeBlockType::Cpu, nullptr);
 #define SP_PROFILE_CPU_END()       Spartan::Profiler::TimeBlockEnd();
@@ -40,7 +39,7 @@ namespace Spartan
         Full
     };
 
-    class SP_CLASS Profiler
+    class Profiler
     {
     public:
         static void Initialize();

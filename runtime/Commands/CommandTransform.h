@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class SP_CLASS CommandTransform : public Spartan::Command
+    class CommandTransform : public Spartan::Command
     {
     public:
         CommandTransform(Spartan::Entity* entity, Math::Vector3 old_position, Math::Quaternion old_rotation, Math::Vector3 old_scale);

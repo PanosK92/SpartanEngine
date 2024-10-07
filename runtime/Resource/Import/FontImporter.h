@@ -30,7 +30,7 @@ namespace Spartan
 {
     class Font;
 
-    class SP_CLASS FontImporter
+    class  FontImporter
     {
     public:
         static void Initialize();

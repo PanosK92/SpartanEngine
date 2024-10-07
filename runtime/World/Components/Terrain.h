@@ -43,7 +43,7 @@ namespace Spartan
         Grass
     };
 
-    class SP_CLASS Terrain : public Component
+    class Terrain : public Component
     {
     public:
         Terrain(Entity* entity);

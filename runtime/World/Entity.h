@@ -36,7 +36,7 @@ namespace Spartan
     class FileStream;
     class Renderable;
     
-    class SP_CLASS Entity : public SpartanObject
+    class Entity : public SpartanObject
     {
     public:
         Entity();

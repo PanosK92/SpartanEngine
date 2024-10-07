@@ -21,16 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES ====
 #include <string>
-#include "../../Core/Definitions.h"
-//=================================
+//===============
 
 namespace Spartan
 {
     class RHI_Texture;
 
-    class SP_CLASS ImageImporterExporter
+    class ImageImporterExporter
     {
     public:
         static void Initialize();

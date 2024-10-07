@@ -41,7 +41,7 @@ namespace Spartan
         Failed
     };
 
-    class SP_CLASS RHI_Shader : public SpartanObject
+    class RHI_Shader : public SpartanObject
     {
     public:
         RHI_Shader();

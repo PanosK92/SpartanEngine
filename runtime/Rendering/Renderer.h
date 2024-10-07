@@ -46,7 +46,7 @@ namespace Spartan
     }
     //====================
 
-    class SP_CLASS Renderer
+    class Renderer
     {
     public:
         // core

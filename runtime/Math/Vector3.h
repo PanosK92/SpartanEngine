@@ -21,17 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
-#include <string>               
-#include "MathHelper.h"         
-#include "../Core/Definitions.h"
-//==============================
+//= INCLUDE ===========
+#include "MathHelper.h"
+//=====================
 
 namespace Spartan::Math
 {
     class Vector4;
 
-    class SP_CLASS Vector3
+    class Vector3
     {
     public:
         // Constructor
@@ -301,5 +299,5 @@ namespace Spartan::Math
     };
 
     // Reverse order operators
-    inline SP_CLASS Vector3 operator*(float lhs, const Vector3& rhs) { return rhs * lhs; }
+    inline  Vector3 operator*(float lhs, const Vector3& rhs) { return rhs * lhs; }
 }

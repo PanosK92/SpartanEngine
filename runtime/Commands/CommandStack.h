@@ -31,7 +31,7 @@ namespace Spartan {
 // @todo make editor setting instead of compile time constant expression
 constexpr uint64_t max_undo_steps = 128;
 
-class SP_CLASS CommandStack {
+class CommandStack {
 public:
     template<typename CommandType, typename... Args>
     static void Add(Args&&... args) {

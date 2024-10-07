@@ -21,10 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES ====
 #include <string>
-#include "../../Core/Definitions.h"
-//=================================
+//===============
 
 struct aiNode;
 struct aiMesh;
@@ -34,7 +33,7 @@ namespace Spartan
     class Entity;
     class Mesh;
 
-    class SP_CLASS ModelImporter
+    class ModelImporter
     {
     public:
         static void Initialize();

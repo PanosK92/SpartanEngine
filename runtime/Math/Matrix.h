@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan::Math
 {
-    class SP_CLASS Matrix
+    class Matrix
     {
     public:
         Matrix()
@@ -448,6 +448,6 @@ namespace Spartan::Math
     };
 
     // reverse order operators
-    inline SP_CLASS Vector3 operator*(const Vector3& lhs, const Matrix& rhs) { return rhs * lhs; }
-    inline SP_CLASS Vector4 operator*(const Vector4& lhs, const Matrix& rhs) { return rhs * lhs; }
+    inline  Vector3 operator*(const Vector3& lhs, const Matrix& rhs) { return rhs * lhs; }
+    inline  Vector4 operator*(const Vector4& lhs, const Matrix& rhs) { return rhs * lhs; }
 }

@@ -41,7 +41,7 @@ namespace Spartan
         std::string url;
     };
 
-    class SP_CLASS Settings
+    class Settings
     {
     public:
         static void Initialize();

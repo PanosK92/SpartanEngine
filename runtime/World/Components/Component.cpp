@@ -50,7 +50,7 @@ namespace Spartan
     inline constexpr void validate_component_type() { static_assert(is_base_of<Component, T>::value, "Provided type does not implement IComponent"); }
 
     // explicit template instantiation
-    #define REGISTER_COMPONENT(T, enumT) template<> SP_CLASS ComponentType Component::TypeToEnum<T>() { validate_component_type<T>(); return enumT; }
+    #define REGISTER_COMPONENT(T, enumT) template<>  ComponentType Component::TypeToEnum<T>() { validate_component_type<T>(); return enumT; }
 
     // to add a new component to the engine, simply register it here
     REGISTER_COMPONENT(AudioListener,   ComponentType::AudioListener)

@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class SP_CLASS Command
+    class Command
     {
     public:
         virtual void OnApply()  = 0;

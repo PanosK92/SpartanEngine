@@ -91,7 +91,7 @@ namespace Spartan
         Max
     };
 
-    class SP_CLASS Material : public IResource
+    class Material : public IResource
     {
     public:
         Material();

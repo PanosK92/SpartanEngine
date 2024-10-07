@@ -54,7 +54,7 @@ namespace Spartan
         bool is_depth               = false;
     };
 
-    class SP_CLASS RHI_CommandList
+    class RHI_CommandList
     {
     public:
         RHI_CommandList(void* cmd_pool, const char* name);

@@ -69,7 +69,7 @@ namespace Spartan
         Volumetric         = 1U << 3
     };
 
-    class SP_CLASS Light : public Component
+    class Light : public Component
     {
     public:
         Light(Entity* entity);

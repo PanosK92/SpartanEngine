@@ -88,7 +88,7 @@ namespace Spartan
     >;
     using subscriber = std::function<void(const sp_variant&)>;
 
-    class SP_CLASS Event
+    class Event
     {
     public:
         static void Shutdown();
