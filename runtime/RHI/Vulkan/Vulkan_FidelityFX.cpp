@@ -39,6 +39,7 @@ SP_WARNINGS_OFF
 #include <FidelityFX/host/ffx_sssr.h>
 #include <FidelityFX/host/ffx_brixelizer.h>
 #include <FidelityFX/host/ffx_brixelizergi.h>
+#include <FidelityFX/host/ffx_breadcrumbs.h>
 #endif
 SP_WARNINGS_ON
 //=============================================
@@ -469,6 +470,12 @@ namespace Spartan
                 return "Disabled";
             }
         }
+
+        namespace breadcrumbs
+        {
+            bool                  context_created = false;
+            FfxBreadcrumbsContext context         = {};
+        }
     }
     #endif 
 
@@ -479,10 +486,11 @@ namespace Spartan
         {
             // all used contexts need to be accounted for here
             const size_t countext_count =
-                FFX_FSR3_CONTEXT_COUNT       +
-                FFX_SSSR_CONTEXT_COUNT       +
-                FFX_BRIXELIZER_CONTEXT_COUNT +
-                FFX_BRIXELIZER_GI_CONTEXT_COUNT;
+                FFX_FSR3_CONTEXT_COUNT          +
+                FFX_SSSR_CONTEXT_COUNT          +
+                FFX_BRIXELIZER_CONTEXT_COUNT    +
+                FFX_BRIXELIZER_GI_CONTEXT_COUNT +
+                FFX_EFFECT_BREADCRUMBS;
             
             VkDeviceContext device_context  = {};
             device_context.vkDevice         = RHI_Context::device;
@@ -569,6 +577,12 @@ namespace Spartan
     void RHI_FidelityFX::DestroyContexts()
     {
     #ifdef _MSC_VER
+        if (breadcrumbs::context_created)
+        {
+            SP_ASSERT(ffxBreadcrumbsContextDestroy(&breadcrumbs::context) == FFX_OK);
+            breadcrumbs::context_created = false;
+        }
+
         // brixelizer gi
         if (brixelizer_gi::context_created)
         {
@@ -710,6 +724,27 @@ namespace Spartan
             }
 
             brixelizer_gi::context_created = true;
+        }
+
+        // breacrumbs
+        {#
+            /*
+             FfxBreadcrumbsContextDescription context_description = {};
+             context_description.maxMarkersPerMemoryBlock         = 3;
+             context_description.usedGpuQueuesCount               = 1;
+             context_description.pUsedGpuQueues                   = &m_GpuQueue;
+             context_description.allocCallbacks.fpAlloc           = malloc;
+             context_description.allocCallbacks.fpRealloc         = realloc;
+             context_description.allocCallbacks.fpFree            = free;
+             context_description.frameHistoryLength               = 6; // double the swapchain's backbuffer count
+             context_description.flags                            = FFX_BREADCRUMBS_PRINT_FINISHED_LISTS    |
+                                                                    FFX_BREADCRUMBS_PRINT_NOT_STARTED_LISTS |
+                                                                    FFX_BREADCRUMBS_PRINT_FINISHED_NODES    |
+                                                                    FFX_BREADCRUMBS_PRINT_NOT_STARTED_NODES;
+
+             SP_ASSERT(ffxBreadcrumbsContextCreate(&breadcrumbs::context, &context_description) == FFX_OK);
+             breadcrumbs::context_created = true;
+             */
         }
     #endif
     }
