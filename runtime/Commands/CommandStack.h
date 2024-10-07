@@ -24,43 +24,40 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================
 #include "Definitions.h"
 #include "../Commands/Command.h"
+#include "../Commands/CircularStack.h"
 //==============================
 
-namespace Spartan
-{
-    // @todo make editor setting instead of compile time constant expression
-    constexpr uint64_t max_undo_steps = 128;
+namespace Spartan {
+// @todo make editor setting instead of compile time constant expression
+constexpr uint64_t max_undo_steps = 128;
 
-    class SP_CLASS CommandStack
-    {
-    public: 
-        template<typename CommandType, typename... Args>
-        static void Add(Args&&... args)
-        {
-            // @todo this is garbage for performance, as it has to copy the entire buffer when it's full
-            // could be solved by using linked lists instead of dynamic arrays (vectors)
-            // optimal solution may be to preallocate an array instead, and use a cursor to manage undo/redo <-- probably do this
-            // luckily we only store pointers so should be decent performance for now (as long as max_undo_steps doesn't grow too large)
-            if (m_undo_buffer.size() >= max_undo_steps)
-            {
-                m_undo_buffer.erase(m_undo_buffer.begin());
-            }
+class SP_CLASS CommandStack {
+public:
+    template<typename CommandType, typename... Args>
+    static void Add(Args&&... args) {
+        // @todo this is garbage for performance, as it has to copy the entire buffer when it's full
+        // could be solved by using linked lists instead of dynamic arrays (vectors)
+        // optimal solution may be to preallocate an array instead, and use a cursor to manage undo/redo <-- probably do this
+        // luckily we only store pointers so should be decent performance for now (as long as max_undo_steps doesn't grow too large)
+        //
+        // CircularStack author: not sure I fully made optimal solution
+        // I suppose we can store it all in single stack, I will look into it
 
-            std::shared_ptr<Command> new_command = std::make_shared<CommandType>(std::forward<Args>(args)...);
-            m_undo_buffer.push_back(new_command);
+        std::shared_ptr<Command> new_command = std::make_shared<CommandType>(std::forward<Args>(args)...);
+        m_undo_buffer.Push(new_command);
 
-            // Make sure to clear the redo buffer if you apply a new command, to preserve the time continuum.
-            m_redo_buffer.clear();
-        }
+        // Make sure to clear the redo buffer if you apply a new command, to preserve the time continuum.
+        m_redo_buffer.Clear();
+    }
 
-        /** Undoes the latest applied command */
-        static void Undo();
+    /** Undoes the latest applied command */
+    static void Undo();
 
-        /** Redoes the latest undone command */
-        static void Redo();
+    /** Redoes the latest undone command */
+    static void Redo();
 
-    protected:
-        static std::vector<std::shared_ptr<Command>> m_undo_buffer;
-        static std::vector<std::shared_ptr<Command>> m_redo_buffer;
-    };
+protected:
+    static Spartan::CircularStack<std::shared_ptr<Command>> m_undo_buffer;
+    static Spartan::CircularStack<std::shared_ptr<Command>> m_redo_buffer;
+};
 }
