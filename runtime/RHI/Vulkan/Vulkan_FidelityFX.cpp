@@ -489,23 +489,22 @@ namespace Spartan
         // ffx interface
         {
             // all used contexts need to be accounted for here
-            const size_t countext_count =
+            const size_t max_contexts =
                 FFX_FSR3_CONTEXT_COUNT          +
                 FFX_SSSR_CONTEXT_COUNT          +
                 FFX_BRIXELIZER_CONTEXT_COUNT    +
-                FFX_BRIXELIZER_GI_CONTEXT_COUNT +
-                FFX_EFFECT_BREADCRUMBS;
+                FFX_BRIXELIZER_GI_CONTEXT_COUNT;
+                Debugging::IsBreadcrumbsEnabled() ? FFX_BREADCRUMBS_CONTEXT_COUNT : 0;
             
             VkDeviceContext device_context  = {};
             device_context.vkDevice         = RHI_Context::device;
             device_context.vkPhysicalDevice = RHI_Context::device_physical;
             device_context.vkDeviceProcAddr = vkGetDeviceProcAddr;
             
-            const size_t scratch_buffer_size = ffxGetScratchMemorySizeVK(RHI_Context::device_physical, countext_count);
+            const size_t scratch_buffer_size = ffxGetScratchMemorySizeVK(RHI_Context::device_physical, max_contexts);
             void* scratch_buffer             = calloc(1, scratch_buffer_size);
             
-            FfxErrorCode error_code = ffxGetInterfaceVK(&ffx_interface, ffxGetDeviceVK(&device_context), scratch_buffer, scratch_buffer_size, countext_count);
-            SP_ASSERT(error_code == FFX_OK);
+            SP_ASSERT(ffxGetInterfaceVK(&ffx_interface, ffxGetDeviceVK(&device_context), scratch_buffer, scratch_buffer_size, max_contexts)== FFX_OK);
         }
 
         // assets
