@@ -727,7 +727,7 @@ namespace Spartan
         }
 
         // breacrumbs
-        {#
+        {
             /*
              FfxBreadcrumbsContextDescription context_description = {};
              context_description.maxMarkersPerMemoryBlock         = 3;
