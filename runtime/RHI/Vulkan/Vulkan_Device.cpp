@@ -1483,7 +1483,7 @@ namespace Spartan
 
     // queues
 
-    uint32_t RHI_Device::QueueGetIndex(const RHI_Queue_Type type)
+    uint32_t RHI_Device::GetQueueIndex(const RHI_Queue_Type type)
     {
         if (type == RHI_Queue_Type::Graphics)
         {

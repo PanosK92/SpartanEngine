@@ -231,7 +231,7 @@ namespace Spartan
             VkBool32 present_support = false;
             SP_ASSERT_VK_MSG(vkGetPhysicalDeviceSurfaceSupportKHR(
                 RHI_Context::device_physical,
-                RHI_Device::QueueGetIndex(RHI_Queue_Type::Graphics),
+                RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics),
                 surface,
                 &present_support),
                 "Failed to get physical device surface support");
@@ -264,7 +264,7 @@ namespace Spartan
             create_info.imageUsage                = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // fer rendering on it
             create_info.imageUsage               |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;     // for blitting to it
 
-            uint32_t queueFamilyIndices[] = { RHI_Device::QueueGetIndex(RHI_Queue_Type::Compute), RHI_Device::QueueGetIndex(RHI_Queue_Type::Graphics) };
+            uint32_t queueFamilyIndices[] = { RHI_Device::GetQueueIndex(RHI_Queue_Type::Compute), RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics) };
             if (queueFamilyIndices[0] != queueFamilyIndices[1])
             {
                 create_info.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;

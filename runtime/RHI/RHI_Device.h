@@ -41,7 +41,7 @@ namespace Spartan
 
         // queues
         static void QueueWaitAll();
-        static uint32_t QueueGetIndex(const RHI_Queue_Type type);
+        static uint32_t GetQueueIndex(const RHI_Queue_Type type);
         static RHI_Queue* GetQueue(const RHI_Queue_Type type);
         static void* GetQueueRhiResource(const RHI_Queue_Type type);
 

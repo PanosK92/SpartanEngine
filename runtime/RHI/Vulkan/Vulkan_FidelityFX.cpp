@@ -27,11 +27,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_CommandList.h"
 #include "../RHI_Texture.h"
 #include "../RHI_Buffer.h"
+#include "../RHI_Device.h"
+#include "../RHI_Swapchain.h"
 #include "../Input/Input.h"
 #include "../Rendering/Renderer_Buffers.h"
+#include "../Rendering/Renderer.h"
 #include "../World/Components/Renderable.h"
 #include "../World/Components/Camera.h"
 #include "../World/Entity.h"
+#include "../Core/Debugging.h"
 SP_WARNINGS_OFF
 #ifdef _MSC_VER
 #include <FidelityFX/host/backends/vk/ffx_vk.h>
@@ -727,16 +731,23 @@ namespace Spartan
         }
 
         // breacrumbs
+        if (!breadcrumbs::context_created && Debugging::IsBreadcrumbsEnabled())
         {
-            /*
+            uint32_t gpu_queue_indices[3] =
+            {
+                RHI_Device::GetQueueIndex(RHI_Queue_Type::Copy),
+                RHI_Device::GetQueueIndex(RHI_Queue_Type::Compute),
+                RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics)
+            };
+
              FfxBreadcrumbsContextDescription context_description = {};
              context_description.maxMarkersPerMemoryBlock         = 3;
-             context_description.usedGpuQueuesCount               = 1;
-             context_description.pUsedGpuQueues                   = &m_GpuQueue;
+             context_description.usedGpuQueuesCount               = 3;
+             context_description.pUsedGpuQueues                   = &gpu_queue_indices[0];
              context_description.allocCallbacks.fpAlloc           = malloc;
              context_description.allocCallbacks.fpRealloc         = realloc;
              context_description.allocCallbacks.fpFree            = free;
-             context_description.frameHistoryLength               = 6; // double the swapchain's backbuffer count
+             context_description.frameHistoryLength               = Renderer::GetSwapChain()->GetBufferCount() * 2; // double the swapchain's backbuffer count
              context_description.flags                            = FFX_BREADCRUMBS_PRINT_FINISHED_LISTS    |
                                                                     FFX_BREADCRUMBS_PRINT_NOT_STARTED_LISTS |
                                                                     FFX_BREADCRUMBS_PRINT_FINISHED_NODES    |
@@ -744,7 +755,6 @@ namespace Spartan
 
              SP_ASSERT(ffxBreadcrumbsContextCreate(&breadcrumbs::context, &context_description) == FFX_OK);
              breadcrumbs::context_created = true;
-             */
         }
     #endif
     }
