@@ -56,7 +56,7 @@ namespace Spartan
         std::function<void(std::any)> setter;
     };
 
-    class SP_CLASS Component : public SpartanObject
+    class Component : public SpartanObject
     {
     public:
         Component(Entity* entity);

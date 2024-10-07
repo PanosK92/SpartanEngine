@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
+//= INCLUDES =======
 #include <memory>
-#include "../Core/Definitions.h"
-//==============================
+#include "Vector3.h"
+//==================
 
 namespace Spartan
 {
@@ -32,13 +32,13 @@ namespace Spartan
 
     namespace Math
     {
-        class SP_CLASS RayHit
+        class RayHit
         {
         public:
             RayHit(const std::shared_ptr<Entity>& entity, const Vector3& position, float distance, bool is_inside)
-                :m_entity{entity}
-                , m_position{position}
             {
+                m_entity   = entity;
+                m_position = position;
                 m_distance = distance;
                 m_inside   = is_inside;
             };

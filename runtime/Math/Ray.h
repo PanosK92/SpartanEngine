@@ -21,10 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
+//= INCLUDES =======
 #include "Vector3.h"
-#include "../Core/Definitions.h"
-//==============================
+//==================
 
 namespace Spartan
 {
@@ -35,7 +34,7 @@ namespace Spartan
         class Plane;
         class Sphere;
 
-        class SP_CLASS Ray
+        class Ray
         {
         public:
             Ray() = default;

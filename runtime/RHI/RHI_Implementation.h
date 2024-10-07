@@ -390,7 +390,7 @@ static const char* vkresult_to_string(const VkResult result)
 #include "RHI_Definitions.h"
 namespace Spartan
 {
-    class SP_CLASS RHI_Context
+    class RHI_Context
     {
     public:
         // api specific

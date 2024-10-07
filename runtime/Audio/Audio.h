@@ -33,7 +33,7 @@ namespace Spartan
     class Entity;
     //====================
 
-    class SP_CLASS Audio
+    class Audio
     {
     public:
         static void Initialize();

@@ -41,7 +41,7 @@ namespace Spartan
         FileStream_Append = 1 << 2,
     };
 
-    class SP_CLASS FileStream
+    class FileStream
     {
     public:
         FileStream(const std::string& path, uint32_t flags);

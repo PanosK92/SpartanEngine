@@ -67,7 +67,7 @@ namespace Spartan
         uint32_t GetMipCount() { return static_cast<uint32_t>(mips.size()); }
     };
 
-    class SP_CLASS RHI_Texture : public IResource
+    class RHI_Texture : public IResource
     {
     public:
         RHI_Texture(

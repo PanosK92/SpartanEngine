@@ -66,7 +66,7 @@ namespace Spartan
         LogType type;
     };
 
-    class SP_CLASS Log
+    class Log
     {
         friend class ILogger;
     public:

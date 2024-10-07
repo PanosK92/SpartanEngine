@@ -41,7 +41,7 @@ namespace Spartan
         Max
     };
 
-    class SP_CLASS World
+    class World
     {
     public:
         // system

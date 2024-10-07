@@ -39,7 +39,7 @@ namespace Spartan
         Textures
     };
 
-    class SP_CLASS ResourceCache
+    class ResourceCache
     {
     public:
         static void Initialize();

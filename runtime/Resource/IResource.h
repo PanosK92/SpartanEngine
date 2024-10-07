@@ -44,7 +44,7 @@ namespace Spartan
         Max,
     };
 
-    class SP_CLASS IResource : public SpartanObject
+    class IResource : public SpartanObject
     {
     public:
         IResource(ResourceType type);
