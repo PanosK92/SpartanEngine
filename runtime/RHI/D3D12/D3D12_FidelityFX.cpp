@@ -64,7 +64,7 @@ namespace Spartan
 
     }
 
-    void RHI_FidelityFX::Update(Cb_Frame* cb_frame)
+    void RHI_FidelityFX::Tick(Cb_Frame* cb_frame)
     {
 
     }
