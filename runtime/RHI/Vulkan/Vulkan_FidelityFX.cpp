@@ -868,7 +868,7 @@ namespace Spartan
     #endif
     }
  
-    void RHI_FidelityFX::Update(Cb_Frame* cb_frame)
+    void RHI_FidelityFX::Tick(Cb_Frame* cb_frame)
     {
     #ifdef _MSC_VER
         // matrices - ffx is right-handed
@@ -904,6 +904,12 @@ namespace Spartan
                 SP_LOG_INFO("Debug mode: %s", brixelizer_gi::debug_mode_to_string(brixelizer_gi::debug_mode));
             }
 
+        }
+
+        // breadcrumbs
+        if (breadcrumbs::context_created)
+        {
+             SP_ASSERT(ffxBreadcrumbsStartFrame(&breadcrumbs::context) == FFX_OK);
         }
     #endif
     }
@@ -1356,5 +1362,34 @@ namespace Spartan
             SP_ASSERT(ffxBrixelizerGIContextDebugVisualization(&brixelizer_gi::context_gi, &brixelizer_gi::debug_description_gi, to_ffx_cmd_list(cmd_list)) == FFX_OK);
         }
     #endif
+    }
+
+    void RHI_FidelityFX::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list)
+    {
+        FfxBreadcrumbsCommandListDescription description = {};
+        description.commandList                          = to_ffx_cmd_list(cmd_list);
+        description.queueType                            = 0; // todo
+        description.name                                 = { "Sample command list", true };
+        description.pipeline                             = nullptr;
+        description.submissionIndex                      = 0;
+
+        SP_ASSERT(ffxBreadcrumbsRegisterCommandList(&breadcrumbs::context, &description) == FFX_OK);
+    }
+
+    void RHI_FidelityFX::Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_PipelineState& pso)
+    {
+        FfxPipeline pipeline; // todo
+        SP_ASSERT(ffxBreadcrumbsSetPipeline(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), pipeline) == FFX_OK);
+    }
+
+    void RHI_FidelityFX::Breadcrumbs_MarkerBegind(RHI_CommandList* cmd_list)
+    {
+        const FfxBreadcrumbsNameTag name_tag = { "Reset current backbuffer contents", true };
+        SP_ASSERT(ffxBreadcrumbsBeginMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), FFX_BREADCRUMBS_MARKER_CLEAR_RENDER_TARGET, &name_tag) == FFX_OK);
+    }
+
+    void RHI_FidelityFX::Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list)
+    {
+        SP_ASSERT(ffxBreadcrumbsEndMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list)) == FFX_OK);
     }
 }

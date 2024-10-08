@@ -131,4 +131,24 @@ namespace Spartan
     {
 
     }
+
+    void RHI_FidelityFX::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list)
+    {
+
+    }
+
+    void RHI_FidelityFX::Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_PipelineState& pso)
+    {
+
+    }
+
+    void RHI_FidelityFX::Breadcrumbs_MarkerBegind(RHI_CommandList* cmd_list)
+    {
+
+    }
+
+    void RHI_FidelityFX::Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list)
+    {
+
+    }
 }
