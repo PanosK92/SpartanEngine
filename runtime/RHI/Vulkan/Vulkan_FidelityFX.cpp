@@ -849,6 +849,7 @@ namespace Spartan
             };
 
              FfxBreadcrumbsContextDescription context_description = {};
+             context_description.backendInterface                 = ffx_interface;
              context_description.maxMarkersPerMemoryBlock         = 3;
              context_description.usedGpuQueuesCount               = 3;
              context_description.pUsedGpuQueues                   = &gpu_queue_indices[0];
