@@ -280,7 +280,7 @@ namespace Spartan
             }
 
             RHI_Device::Tick(frame_num);
-            RHI_FidelityFX::Update(&m_cb_frame_cpu);
+            RHI_FidelityFX::Tick(&m_cb_frame_cpu);
             dynamic_resolution();
         }
 
