@@ -1366,6 +1366,11 @@ namespace Spartan
 
     void RHI_FidelityFX::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name)
     {
+        // during engine startup this can happen, this is from immediate command lists
+        // that are used to initialize certain resources, we don't track them
+        if (!breadcrumbs::context_created)
+            return;
+
         FfxBreadcrumbsCommandListDescription description = {};
         description.commandList                          = to_ffx_cmd_list(cmd_list);
         description.queueType                            = queue->GetType() == RHI_Queue_Type::Graphics ? 0 : 1;
