@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Buffer.h"
 #include "../RHI_Device.h"
 #include "../RHI_Swapchain.h"
+#include "../RHI_Queue.h"
 #include "../Input/Input.h"
 #include "../Rendering/Renderer_Buffers.h"
 #include "../Rendering/Renderer.h"
@@ -841,17 +842,16 @@ namespace Spartan
         // breacrumbs
         if (!breadcrumbs::context_created && Debugging::IsBreadcrumbsEnabled())
         {
-            uint32_t gpu_queue_indices[3] =
+            uint32_t gpu_queue_indices[2] =
             {
-                RHI_Device::GetQueueIndex(RHI_Queue_Type::Copy),
-                RHI_Device::GetQueueIndex(RHI_Queue_Type::Compute),
-                RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics)
+                RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics),
+                RHI_Device::GetQueueIndex(RHI_Queue_Type::Compute)
             };
 
              FfxBreadcrumbsContextDescription context_description = {};
              context_description.backendInterface                 = ffx_interface;
              context_description.maxMarkersPerMemoryBlock         = 3;
-             context_description.usedGpuQueuesCount               = 3;
+             context_description.usedGpuQueuesCount               = 2;
              context_description.pUsedGpuQueues                   = &gpu_queue_indices[0];
              context_description.allocCallbacks.fpAlloc           = malloc;
              context_description.allocCallbacks.fpRealloc         = realloc;
@@ -1364,11 +1364,11 @@ namespace Spartan
     #endif
     }
 
-    void RHI_FidelityFX::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const char* name)
+    void RHI_FidelityFX::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name)
     {
         FfxBreadcrumbsCommandListDescription description = {};
         description.commandList                          = to_ffx_cmd_list(cmd_list);
-        description.queueType                            = 2; // todo
+        description.queueType                            = queue->GetType() == RHI_Queue_Type::Graphics ? 0 : 1;
         description.name                                 = { name, true};
         description.pipeline                             = nullptr;
         description.submissionIndex                      = 0;

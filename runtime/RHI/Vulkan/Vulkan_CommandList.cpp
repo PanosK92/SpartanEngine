@@ -556,12 +556,6 @@ namespace Spartan
         m_rendering_complete_semaphore_timeline = make_shared<RHI_Semaphore>(true, name);
 
         queries::initialize(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion, m_rhi_query_pool_pipeline_statistics);
-
-        // enable breadcrumbs for this commannd list
-        if (Debugging::IsBreadcrumbsEnabled())
-        {
-            RHI_FidelityFX::Breadcrumbs_RegisterCommandList(this, name);
-        }
     }
 
     RHI_CommandList::~RHI_CommandList()
@@ -580,6 +574,13 @@ namespace Spartan
         VkCommandBufferBeginInfo begin_info = {};
         begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         SP_ASSERT_MSG(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource), &begin_info) == VK_SUCCESS, "Failed to begin command buffer");
+
+        // enable breadcrumbs for this commannd list
+        if (Debugging::IsBreadcrumbsEnabled() && (queue->GetType() != RHI_Queue_Type::Copy) && !m_breadcrumbs_enabled)
+        {
+            RHI_FidelityFX::Breadcrumbs_RegisterCommandList(this, queue, m_rendering_complete_semaphore_timeline->GetObjectName().c_str());
+            m_breadcrumbs_enabled = true;
+        }
 
         // set states
         m_state        = RHI_CommandListState::Recording;
