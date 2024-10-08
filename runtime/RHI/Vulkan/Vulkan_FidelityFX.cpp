@@ -1373,7 +1373,7 @@ namespace Spartan
 
         FfxBreadcrumbsCommandListDescription description = {};
         description.commandList                          = to_ffx_cmd_list(cmd_list);
-        description.queueType                            = queue->GetType() == RHI_Queue_Type::Graphics ? 0 : 1;
+        description.queueType                            = RHI_Device::GetQueueIndex(queue->GetType());
         description.name                                 = { name, true};
         description.pipeline                             = nullptr;
         description.submissionIndex                      = 0;
@@ -1383,14 +1383,15 @@ namespace Spartan
 
     void RHI_FidelityFX::Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_PipelineState& pso)
     {
-        FfxPipeline pipeline; // todo
+        // todo
+        FfxPipeline pipeline = {};
         SP_ASSERT(ffxBreadcrumbsSetPipeline(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), pipeline) == FFX_OK);
     }
 
     void RHI_FidelityFX::Breadcrumbs_MarkerBegind(RHI_CommandList* cmd_list, const char* name)
     {
         const FfxBreadcrumbsNameTag name_tag = { name, true };
-        SP_ASSERT(ffxBreadcrumbsBeginMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), FFX_BREADCRUMBS_MARKER_CLEAR_RENDER_TARGET, &name_tag) == FFX_OK);
+        SP_ASSERT(ffxBreadcrumbsBeginMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), FFX_BREADCRUMBS_MARKER_BEGIN_RENDER_PASS, &name_tag) == FFX_OK);
     }
 
     void RHI_FidelityFX::Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list)
