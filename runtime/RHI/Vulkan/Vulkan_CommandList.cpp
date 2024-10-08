@@ -560,7 +560,7 @@ namespace Spartan
         // enable breadcrumbs for this commannd list
         if (Debugging::IsBreadcrumbsEnabled())
         {
-            RHI_FidelityFX::Breadcrumbs_RegisterCommandList(this);
+            RHI_FidelityFX::Breadcrumbs_RegisterCommandList(this, name);
         }
     }
 

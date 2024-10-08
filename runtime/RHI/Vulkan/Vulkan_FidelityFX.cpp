@@ -1364,12 +1364,12 @@ namespace Spartan
     #endif
     }
 
-    void RHI_FidelityFX::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list)
+    void RHI_FidelityFX::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const char* name)
     {
         FfxBreadcrumbsCommandListDescription description = {};
         description.commandList                          = to_ffx_cmd_list(cmd_list);
         description.queueType                            = 2; // todo
-        description.name                                 = { "Sample command list", true };
+        description.name                                 = { name, true};
         description.pipeline                             = nullptr;
         description.submissionIndex                      = 0;
 

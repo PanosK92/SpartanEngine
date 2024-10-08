@@ -94,7 +94,7 @@ namespace Spartan
         );
 
         // breadcrumbs
-        static void Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list);
+        static void Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const char* name);
         static void Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_PipelineState& pso);
         static void Breadcrumbs_MarkerBegind(RHI_CommandList* cmd_list, const char* name);
         static void Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list);
