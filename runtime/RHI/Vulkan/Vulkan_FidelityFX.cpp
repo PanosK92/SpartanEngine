@@ -343,7 +343,7 @@ namespace Spartan
             FfxFsr3UpscalerGenerateReactiveDescription description_reactive_mask    = {};
             FfxFsr3UpscalerSharedResourceDescriptions  description_shared_resources = {};
             uint32_t                                   jitter_index                 = 0;
-            float velocity_factor                                                   = 0.0f; // controls temporal stability of bright pixels [0.0f, 1.0f]
+            float velocity_factor                                                   = 1.0f; // controls temporal stability of bright pixels [0.0f, 1.0f]
 
             // resources
             shared_ptr<RHI_Texture> texture_depth_previous_nearest_reconstructed = nullptr;
@@ -730,7 +730,7 @@ namespace Spartan
             SP_ASSERT(ffxFsr3UpscalerContextCreate(&fsr3::context, &fsr3::description_context) == FFX_OK);
             fsr3::context_created = true;
 
-            // create shared resources (between upscale and interpolator)
+            // create shared resources (between upscaler and interpolator)
             {
                 ffxFsr3UpscalerGetSharedResourceDescriptions(&fsr3::context, &fsr3::description_shared_resources);
 
