@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SwapChain.h"
 #include "../RHI_RasterizerState.h"
 #include "../RHI_DepthStencilState.h"
+#include "../RHI_FidelityFX.h"
 #include "../Rendering/Renderer.h"
 #include "../../Profiling/Profiler.h"
 #include "../Core/Debugging.h"
@@ -555,6 +556,12 @@ namespace Spartan
         m_rendering_complete_semaphore_timeline = make_shared<RHI_Semaphore>(true, name);
 
         queries::initialize(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion, m_rhi_query_pool_pipeline_statistics);
+
+        // enable breadcrumbs for this commannd list
+        if (Debugging::IsBreadcrumbsEnabled())
+        {
+            RHI_FidelityFX::Breadcrumbs_RegisterCommandList(this);
+        }
     }
 
     RHI_CommandList::~RHI_CommandList()
@@ -1501,6 +1508,11 @@ namespace Spartan
         {
             RHI_Device::MarkerBegin(this, name, Vector4::Zero);
         }
+
+        if (Debugging::IsBreadcrumbsEnabled())
+        {
+            RHI_FidelityFX::Breadcrumbs_MarkerBegind(this, name);
+        }
     }
 
     void RHI_CommandList::EndMarker()
@@ -1508,6 +1520,11 @@ namespace Spartan
         if (Debugging::IsGpuMarkingEnabled())
         {
             RHI_Device::MarkerEnd(this);
+        }
+
+        if (Debugging::IsBreadcrumbsEnabled())
+        {
+            RHI_FidelityFX::Breadcrumbs_MarkerEnd(this);
         }
     }
     
