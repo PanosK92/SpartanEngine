@@ -1368,7 +1368,7 @@ namespace Spartan
     {
         FfxBreadcrumbsCommandListDescription description = {};
         description.commandList                          = to_ffx_cmd_list(cmd_list);
-        description.queueType                            = 0; // todo
+        description.queueType                            = 2; // todo
         description.name                                 = { "Sample command list", true };
         description.pipeline                             = nullptr;
         description.submissionIndex                      = 0;
@@ -1382,9 +1382,9 @@ namespace Spartan
         SP_ASSERT(ffxBreadcrumbsSetPipeline(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), pipeline) == FFX_OK);
     }
 
-    void RHI_FidelityFX::Breadcrumbs_MarkerBegind(RHI_CommandList* cmd_list)
+    void RHI_FidelityFX::Breadcrumbs_MarkerBegind(RHI_CommandList* cmd_list, const char* name)
     {
-        const FfxBreadcrumbsNameTag name_tag = { "Reset current backbuffer contents", true };
+        const FfxBreadcrumbsNameTag name_tag = { name, true };
         SP_ASSERT(ffxBreadcrumbsBeginMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), FFX_BREADCRUMBS_MARKER_CLEAR_RENDER_TARGET, &name_tag) == FFX_OK);
     }
 
