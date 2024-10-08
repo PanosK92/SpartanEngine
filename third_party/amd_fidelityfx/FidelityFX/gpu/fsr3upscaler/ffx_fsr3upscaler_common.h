@@ -99,7 +99,7 @@ FfxFloat32 SceneAverageLuma()
 #endif
 
 // Auto exposure
-FFX_STATIC const FfxFloat32 resetAutoExposureAverageSmoothing = 1e8f;
+FFX_STATIC const FfxFloat32 resetAutoExposureAverageSmoothing = 1e4f;
 
 struct AccumulationPassCommonParams
 {
@@ -123,7 +123,7 @@ struct AccumulationPassCommonParams
 
 FfxFloat32 Get4KVelocity(FfxFloat32x2 fMotionVector)
 {
-    return length(fMotionVector * FfxFloat32x2(3840.0f, 2160.0f));
+    return length(fMotionVector * FfxFloat32x2(3840.0f, 2160.0f)) * VelocityFactor();
 }
 
 struct RectificationBox

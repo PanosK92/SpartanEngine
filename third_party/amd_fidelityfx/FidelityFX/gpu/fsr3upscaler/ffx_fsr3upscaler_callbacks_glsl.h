@@ -59,6 +59,8 @@
         FfxFloat32    fDeltaPreExposure;
         FfxFloat32    fViewSpaceToMetersFactor;
         FfxFloat32    fFrameIndex;
+
+        FfxFloat32    fVelocityFactor;
 	} cbFSR3Upscaler;
 
 
@@ -150,6 +152,11 @@ FfxFloat32 ViewSpaceToMetersFactor()
 FfxFloat32 FrameIndex()
 {
     return cbFSR3Upscaler.fFrameIndex;
+}
+
+FfxFloat32 VelocityFactor()
+{
+    return cbFSR3Upscaler.fVelocityFactor;
 }
 
 #endif // #if defined(FSR3UPSCALER_BIND_CB_FSR3UPSCALER)
