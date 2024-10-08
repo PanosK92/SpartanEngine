@@ -82,7 +82,7 @@ namespace Spartan
             }
         }
 
-        FfxSurfaceFormat to_ffx_surface_format(const RHI_Format format)
+        FfxSurfaceFormat to_ffx_format(const RHI_Format format)
         {
             switch (format)
             {
@@ -120,6 +120,46 @@ namespace Spartan
             default:
                 SP_ASSERT_MSG(false, "Unsupported format");
                 return FFX_SURFACE_FORMAT_UNKNOWN;
+            }
+        }
+
+        RHI_Format to_rhi_format(const FfxSurfaceFormat format)
+        {
+            switch (format)
+            {
+            case FFX_SURFACE_FORMAT_R32G32B32A32_FLOAT:
+                return RHI_Format::R32G32B32A32_Float;
+            case FFX_SURFACE_FORMAT_R16G16B16A16_FLOAT:
+                return RHI_Format::R16G16B16A16_Float;
+            case FFX_SURFACE_FORMAT_R32G32_FLOAT:
+                return RHI_Format::R32G32_Float;
+            case FFX_SURFACE_FORMAT_R8_UINT:
+                return RHI_Format::R8_Uint;
+            case FFX_SURFACE_FORMAT_R32_UINT:
+                return RHI_Format::R32_Uint;
+            case FFX_SURFACE_FORMAT_R8G8B8A8_UNORM:
+                return RHI_Format::R8G8B8A8_Unorm;
+            case FFX_SURFACE_FORMAT_R11G11B10_FLOAT:
+                return RHI_Format::R11G11B10_Float;
+            case FFX_SURFACE_FORMAT_R16G16_FLOAT:
+                return RHI_Format::R16G16_Float;
+            case FFX_SURFACE_FORMAT_R16_UINT:
+                return RHI_Format::R16_Uint;
+            case FFX_SURFACE_FORMAT_R16_FLOAT:
+                return RHI_Format::R16_Float;
+            case FFX_SURFACE_FORMAT_R16_UNORM:
+                return RHI_Format::R16_Unorm;
+            case FFX_SURFACE_FORMAT_R8_UNORM:
+                return RHI_Format::R8_Unorm;
+            case FFX_SURFACE_FORMAT_R8G8_UNORM:
+                return RHI_Format::R8G8_Unorm;
+            case FFX_SURFACE_FORMAT_R32_FLOAT:
+                return RHI_Format::R32_Float;
+            case FFX_SURFACE_FORMAT_UNKNOWN:
+                return RHI_Format::Max;
+            default:
+                SP_ASSERT_MSG(false, "Unsupported FFX format");
+                return RHI_Format::Max;
             }
         }
 
@@ -186,7 +226,7 @@ namespace Spartan
                 description.height   = resource->GetHeight();
                 description.depth    = resource->GetDepth();
                 description.mipCount = resource->GetMipCount();
-                description.format   = to_ffx_surface_format(resource->GetFormat());
+                description.format   = to_ffx_format(resource->GetFormat());
                 description.usage    = static_cast<FfxResourceUsage>(usage);
             }
             else if constexpr (is_same_v<remove_const_t<T>, RHI_Buffer>)
@@ -280,14 +320,35 @@ namespace Spartan
             return adjusted;
         }
 
+        const char* convert_wchar_to_char(const wchar_t* wchar_str)
+        {
+            // get the required size for the multibyte string
+            size_t size_needed = wcstombs(nullptr, wchar_str, 0) + 1;
+        
+            // allocate memory for the multibyte string
+            char* char_str = new char[size_needed];
+        
+            // convert the wchar_t string to a multibyte string
+            wcstombs(char_str, wchar_str, size_needed);
+        
+            return char_str;
+        }
+
         namespace fsr3
         {
-            bool                                       context_created           = false;
-            FfxFsr3UpscalerContext                     context                   = {};
-            FfxFsr3UpscalerContextDescription          description_context       = {};
-            FfxFsr3UpscalerDispatchDescription         description_dispatch      = {};
-            FfxFsr3UpscalerGenerateReactiveDescription description_reactive_mask = {};
-            uint32_t                                   jitter_index              = 0;
+            bool                                       context_created              = false;
+            FfxFsr3UpscalerContext                     context                      = {};
+            FfxFsr3UpscalerContextDescription          description_context          = {};
+            FfxFsr3UpscalerDispatchDescription         description_dispatch         = {};
+            FfxFsr3UpscalerGenerateReactiveDescription description_reactive_mask    = {};
+            FfxFsr3UpscalerSharedResourceDescriptions  description_shared_resources = {};
+            uint32_t                                   jitter_index                 = 0;
+            float velocity_factor                                                   = 0.0f; // controls temporal stability of bright pixels [0.0f, 1.0f]
+
+            // resources
+            shared_ptr<RHI_Texture> texture_depth_previous_nearest_reconstructed = nullptr;
+            shared_ptr<RHI_Texture> texture_depth_dilated                        = nullptr;
+            shared_ptr<RHI_Texture> texture_motion_vectors_dilated               = nullptr;
         }
 
         namespace sssr
@@ -512,7 +573,7 @@ namespace Spartan
             // brixelizer gi
             {
                 // sdf atlas texture
-                brixelizer_gi::texture_sdf_atlas = make_unique<RHI_Texture>(
+                brixelizer_gi::texture_sdf_atlas = make_shared<RHI_Texture>(
                     RHI_Texture_Type::Type3D,
                     brixelizer_gi::sdf_atlas_size,
                     brixelizer_gi::sdf_atlas_size,
@@ -610,7 +671,11 @@ namespace Spartan
         if (fsr3::context_created)
         {
             SP_ASSERT(ffxFsr3UpscalerContextDestroy(&fsr3::context) == FFX_OK);
-            fsr3::context_created  = false;
+            fsr3::context_created = false;
+
+            fsr3::texture_depth_previous_nearest_reconstructed = nullptr;
+            fsr3::texture_depth_dilated                        = nullptr;
+            fsr3::texture_motion_vectors_dilated               = nullptr;
         }
     #endif
     }
@@ -639,7 +704,7 @@ namespace Spartan
     void RHI_FidelityFX::Resize(const Vector2& resolution_render, const Vector2& resolution_output)
     {
     #ifdef _MSC_VER
-        // contexts are resolution dependent, so we destroy and (re)create them when resizing
+        // some contexts are resolution dependent, so we destroy and (re)create them here
         DestroyContexts();
 
         uint32_t width  = static_cast<uint32_t>(resolution_render.x);
@@ -665,6 +730,50 @@ namespace Spartan
             SP_ASSERT(ffxFsr3UpscalerContextCreate(&fsr3::context, &fsr3::description_context) == FFX_OK);
             fsr3::context_created = true;
 
+            // create shared resources (between upscale and interpolator)
+            {
+                ffxFsr3UpscalerGetSharedResourceDescriptions(&fsr3::context, &fsr3::description_shared_resources);
+
+                FfxCreateResourceDescription resource = fsr3::description_shared_resources.reconstructedPrevNearestDepth;
+                fsr3::texture_depth_previous_nearest_reconstructed = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type2D,
+                    resource.resourceDescription.width,
+                    resource.resourceDescription.height,
+                    resource.resourceDescription.depth,
+                    resource.resourceDescription.mipCount,
+                    to_rhi_format(resource.resourceDescription.format),
+                    RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_ClearBlit,
+                    convert_wchar_to_char(resource.name)
+                );
+
+                resource = fsr3::description_shared_resources.dilatedDepth;
+                fsr3::texture_depth_dilated = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type2D,
+                    resource.resourceDescription.width,
+                    resource.resourceDescription.height,
+                    resource.resourceDescription.depth,
+                    resource.resourceDescription.mipCount,
+                    to_rhi_format(resource.resourceDescription.format),
+                    RHI_Texture_Srv | RHI_Texture_Uav,
+                    convert_wchar_to_char(resource.name)
+                );
+
+                resource = fsr3::description_shared_resources.dilatedMotionVectors;
+                fsr3::texture_motion_vectors_dilated = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type2D,
+                    resource.resourceDescription.width,
+                    resource.resourceDescription.height,
+                    resource.resourceDescription.depth,
+                    resource.resourceDescription.mipCount, 
+                    to_rhi_format(resource.resourceDescription.format),
+                    RHI_Texture_Srv | RHI_Texture_Uav,
+                    convert_wchar_to_char(resource.name)
+                );
+            }
+
+            // set velocity factor [0, 1], this controls the temporal stability of bright pixels
+            ffxFsr3UpscalerSetConstant(&fsr3::context, FFX_FSR3UPSCALER_CONFIGURE_UPSCALE_KEY_FVELOCITYFACTOR, static_cast<void*>(&fsr3::velocity_factor));
+
             // reset jitter index
             fsr3::jitter_index = 0;
         }
@@ -674,7 +783,7 @@ namespace Spartan
         {
              sssr::description_context.renderSize.width           = width;
              sssr::description_context.renderSize.height          = height;
-             sssr::description_context.normalsHistoryBufferFormat = to_ffx_surface_format(RHI_Format::R16G16B16A16_Float);
+             sssr::description_context.normalsHistoryBufferFormat = to_ffx_format(RHI_Format::R16G16B16A16_Float);
              sssr::description_context.flags                      = FFX_SSSR_ENABLE_DEPTH_INVERTED;
              sssr::description_context.backendInterface           = ffx_interface;
 
@@ -851,14 +960,17 @@ namespace Spartan
         // upscale
         {
             // set resources (no need for the transparency or reactive masks as we do them later, full res)
-            fsr3::description_dispatch.commandList                = to_ffx_cmd_list(cmd_list);
-            fsr3::description_dispatch.color                      = to_ffx_resource(tex_color,    L"fsr3_color");
-            fsr3::description_dispatch.depth                      = to_ffx_resource(tex_depth,    L"fsr3_depth");
-            fsr3::description_dispatch.motionVectors              = to_ffx_resource(tex_velocity, L"fsr3_velocity");
-            fsr3::description_dispatch.exposure                   = to_ffx_resource(nullptr,      L"fsr3_exposure");
-            fsr3::description_dispatch.reactive                   = to_ffx_resource(nullptr,      L"fsr3_reactive");
-            fsr3::description_dispatch.transparencyAndComposition = to_ffx_resource(nullptr,      L"fsr3_transaprency_and_composition");
-            fsr3::description_dispatch.output                     = to_ffx_resource(tex_output,   L"fsr3_output");
+            fsr3::description_dispatch.commandList                   = to_ffx_cmd_list(cmd_list);
+            fsr3::description_dispatch.color                         = to_ffx_resource(tex_color,                                                L"fsr3_color");
+            fsr3::description_dispatch.depth                         = to_ffx_resource(tex_depth,                                                L"fsr3_depth");
+            fsr3::description_dispatch.motionVectors                 = to_ffx_resource(tex_velocity,                                             L"fsr3_velocity");
+            fsr3::description_dispatch.exposure                      = to_ffx_resource(nullptr,                                                  L"fsr3_exposure");
+            fsr3::description_dispatch.reactive                      = to_ffx_resource(nullptr,                                                  L"fsr3_reactive");
+            fsr3::description_dispatch.transparencyAndComposition    = to_ffx_resource(nullptr,                                                  L"fsr3_transaprency_and_composition");
+            fsr3::description_dispatch.dilatedDepth                  = to_ffx_resource(fsr3::texture_depth_dilated.get(),                        L"fsr3_depth_dilated");
+            fsr3::description_dispatch.dilatedMotionVectors          = to_ffx_resource(fsr3::texture_motion_vectors_dilated.get(),               L"fsr3_motion_vectors_dilated");
+            fsr3::description_dispatch.reconstructedPrevNearestDepth = to_ffx_resource(fsr3::texture_depth_previous_nearest_reconstructed.get(), L"fsr3_depth_nearest_previous_reconstructed");
+            fsr3::description_dispatch.output                        = to_ffx_resource(tex_output,                                               L"fsr3_output");
 
             // configure
             fsr3::description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth());
@@ -872,6 +984,7 @@ namespace Spartan
             fsr3::description_dispatch.cameraNear             = camera->GetFarPlane();     // far as near because we are using reverse-z
             fsr3::description_dispatch.cameraFar              = camera->GetNearPlane();    // near as far because we are using reverse-z
             fsr3::description_dispatch.cameraFovAngleVertical = camera->GetFovVerticalRad();
+
 
             // dispatch
             SP_ASSERT(ffxFsr3UpscalerContextDispatch(&fsr3::context, &fsr3::description_dispatch) == FFX_OK);
@@ -929,7 +1042,7 @@ namespace Spartan
         sssr::description_dispatch.temporalStabilityFactor              = 0.8f;  // the accumulation of history values, higher values reduce noise, but are more likely to exhibit ghosting artifacts
         sssr::description_dispatch.temporalVarianceGuidedTracingEnabled = true;  // whether a ray should be spawned on pixels where a temporal variance is detected or not
         sssr::description_dispatch.samplesPerQuad                       = 1;     // the minimum number of rays per quad, variance guided tracing can increase this up to a maximum of 4
-        sssr::description_dispatch.iblFactor                            = 0.0f;
+        sssr::description_dispatch.iblFactor                            = 1.0f;
         sssr::description_dispatch.roughnessChannel                     = 0;
         sssr::description_dispatch.isRoughnessPerceptual                = true;
         sssr::description_dispatch.roughnessThreshold                   = 1.0f;  // regions with a roughness value greater than this threshold won't spawn rays
