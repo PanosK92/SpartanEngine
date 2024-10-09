@@ -61,20 +61,20 @@ namespace
     {
         vector<string> contributors =
         {
-            // role,  name,                country,       button text,   button url,                                               contribution,                               steam key
-            "Spartan, Iker Galardi,        Basque Country,   LinkedIn,   https://www.linkedin.com/in/iker-galardi/,                Linux port (WIP),                           N/A",
-            "Spartan, Jesse Guerrero,      United States,    LinkedIn,   https://www.linkedin.com/in/jguer,                        UX improvements,                            N/A",
-            "Spartan, Konstantinos Benos,  Greece,           X,          https://twitter.com/deg3x,                                Bug fixes & editor theme improvements,      N/A",
-            "Spartan, Nick Polyderopoulos, Greece,           LinkedIn,   https://www.linkedin.com/in/nick-polyderopoulos-21742397, UX improvements,                            N/A",
-            "Spartan, Panos Kolyvakis,     Greece,           LinkedIn,   https://www.linkedin.com/in/panos-kolyvakis-66863421a/,   Improved water buoyancy,                    N/A",
-            "Spartan, Tri Tran,            Belgium,          LinkedIn,   https://www.linkedin.com/in/mtrantr/,                     Days Gone screen space shadows,             Starfield",
-            "Spartan, Ege,                 Turkey,           X,          https://x.com/egedq,                                      Editor theme & ability to save/load themes, N/A",
-                                                                                                                                                                            
-            "Hoplite, Apostolos Bouzalas,  Greece,           LinkedIn,   https://www.linkedin.com/in/apostolos-bouzalas,           Performance reports,                        N/A",
-            "Hoplite, Marlon Wolfersdorf,  Northern Germany, Google,     https://www.google.com/search?q=Marlon+Wolfersdorf,       Author of the Nautilus ACES,                N/A",
-            "Hoplite, Nikolas Pattakos,    Greece,           LinkedIn,   https://www.linkedin.com/in/nikolaspattakos/,             GCC compile fixes,                          N/A",
-            "Hoplite, Sandro Mtchedlidze,  Georgia,          Artstation, https://www.artstation.com/sandromch,                     Lighting & performance issues,              N/A",
-            "Hoplite, Roman  Koshchei,     Ukraine,          X,          https://x.com/roman_koshchei,                             Circular stack for the undo/redo system,    N/A",
+            // role,  name,                country,       button text,   button url,                                               contribution,                                    steam key
+            "Spartan, Iker Galardi,        Basque Country,   LinkedIn,   https://www.linkedin.com/in/iker-galardi/,                Linux port (WIP),                                N/A",
+            "Spartan, Jesse Guerrero,      United States,    LinkedIn,   https://www.linkedin.com/in/jguer,                        UX improvements,                                 N/A",
+            "Spartan, Konstantinos Benos,  Greece,           X,          https://twitter.com/deg3x,                                Bug fixes & editor theme improvements,           N/A",
+            "Spartan, Nick Polyderopoulos, Greece,           LinkedIn,   https://www.linkedin.com/in/nick-polyderopoulos-21742397, UX improvements,                                 N/A",
+            "Spartan, Panos Kolyvakis,     Greece,           LinkedIn,   https://www.linkedin.com/in/panos-kolyvakis-66863421a/,   Improved water buoyancy,                         N/A",
+            "Spartan, Tri Tran,            Belgium,          LinkedIn,   https://www.linkedin.com/in/mtrantr/,                     Days Gone screen space shadows,                  Starfield",
+            "Spartan, Ege,                 Turkey,           X,          https://x.com/egedq,                                      Editor theme & ability to save/load themes,      N/A",
+                                                                                                                                                                                    
+            "Hoplite, Apostolos Bouzalas,  Greece,           LinkedIn,   https://www.linkedin.com/in/apostolos-bouzalas,           Performance reports,                             N/A",
+            "Hoplite, Marlon Wolfersdorf,  Northern Germany, Google,     https://www.google.com/search?q=Marlon+Wolfersdorf,       Author of the Nautilus ACES,                     N/A",
+            "Hoplite, Nikolas Pattakos,    Greece,           LinkedIn,   https://www.linkedin.com/in/nikolaspattakos/,             GCC compile fixes,                               N/A",
+            "Hoplite, Sandro Mtchedlidze,  Georgia,          Artstation, https://www.artstation.com/sandromch,                     Identification of lighting & performance issues, N/A",
+            "Hoplite, Roman  Koshchei,     Ukraine,          X,          https://x.com/roman_koshchei,                             Circular stack for the undo/redo system,         N/A",
         };
 
         vector<string> comma_seperate_contributors(const vector<string>& contributors)
