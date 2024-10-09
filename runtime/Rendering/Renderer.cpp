@@ -726,7 +726,6 @@ namespace Spartan
                     if (taa_enabled)
                     {
                         m_options[Renderer_Option::Antialiasing] = static_cast<float>(Renderer_Antialiasing::Disabled);
-                        SP_LOG_INFO("Disabled TAA since it's done by FSR 3.0.");
                     }
                 }
                 else if (value == static_cast<float>(Renderer_Upsampling::Fsr3))
@@ -735,7 +734,6 @@ namespace Spartan
                     {
                         m_options[Renderer_Option::Antialiasing] = static_cast<float>(Renderer_Antialiasing::Taa);
                         RHI_FidelityFX::FSR3_ResetHistory();
-                        SP_LOG_INFO("Enabled TAA since FSR 3.0 does it.");
                     }
                 }
             }

@@ -686,6 +686,14 @@ namespace Spartan
     void RHI_FidelityFX::Shutdown()
     {
     #ifdef _MSC_VER
+        DestroyContexts();
+
+        // ffx interface
+        if (ffx_interface.scratchBuffer != nullptr)
+        {
+            free(ffx_interface.scratchBuffer);
+        }
+
         brixelizer_gi::texture_sdf_atlas       = nullptr;
         brixelizer_gi::buffer_brick_aabbs      = nullptr;
         brixelizer_gi::buffer_scratch          = nullptr;
@@ -694,13 +702,6 @@ namespace Spartan
         brixelizer_gi::buffer_cascade_aabb_tree.fill(nullptr);
         brixelizer_gi::buffer_cascade_brick_map.fill(nullptr);
 
-        DestroyContexts();
-
-        // ffx interface
-        if (ffx_interface.scratchBuffer != nullptr)
-        {
-            free(ffx_interface.scratchBuffer);
-        }
     #endif
     }
 
@@ -1392,6 +1393,8 @@ namespace Spartan
 
     void RHI_FidelityFX::Breadcrumbs_MarkerBegind(RHI_CommandList* cmd_list, const char* name)
     {
+        // requires: VK_KHR_synchronization2 because of vkCmdWriteBufferMarkerAMD and vkCmdWriteBufferMarker2AMD 
+
         const FfxBreadcrumbsNameTag name_tag = { name, true };
         SP_ASSERT(ffxBreadcrumbsBeginMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), FFX_BREADCRUMBS_MARKER_BEGIN_RENDER_PASS, &name_tag) == FFX_OK);
     }

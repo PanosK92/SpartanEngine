@@ -87,7 +87,7 @@ namespace Spartan
             }
         };
 
-        bool spriv_cross_registered = false;
+        atomic<bool> spriv_cross_registered = false;
     }
 
     RHI_Shader::~RHI_Shader()
