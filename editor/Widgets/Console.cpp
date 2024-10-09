@@ -67,7 +67,7 @@ void Console::OnTickVisible()
     {
         bool& visibility = m_log_type_visibility[index];
         ImGui::PushStyleColor(ImGuiCol_Button, visibility ? ImGui::GetStyle().Colors[ImGuiCol_Button] : ImGui::GetStyle().Colors[ImGuiCol_FrameBg]);
-        if (ImGuiSp::image_button(0, nullptr, icon, 15.0f * Spartan::Window::GetDpiScale(), false))
+        if (ImGuiSp::image_button(0, nullptr, icon, 15.0f * Spartan::Window::GetDpiScale(), false,m_log_type_color[index]))
         {
             visibility = !visibility;
         }
@@ -117,9 +117,13 @@ void Console::OnTickVisible()
                 // log
                 ImGui::PushID(row);
                 {
-                    ImGui::PushStyleColor(ImGuiCol_Text, color_to_imvec4(m_log_type_color[log.error_level]));
+                    if(log.error_level != 0) // dont style info text's color
+                        ImGui::PushStyleColor(ImGuiCol_Text, m_log_type_color[log.error_level]);
+
                     ImGui::TextUnformatted(log.text.c_str());
-                    ImGui::PopStyleColor(1);
+
+                    if(log.error_level != 0)
+                        ImGui::PopStyleColor(1);
 
                     // context menu
                     if (ImGui::BeginPopupContextItem("##widget_console_contextMenu"))

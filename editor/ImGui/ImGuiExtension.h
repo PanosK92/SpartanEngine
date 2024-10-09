@@ -139,7 +139,7 @@ namespace ImGuiSp
         return ImGui::Button(label);
     }
 
-    static bool image_button(uint64_t id, Spartan::RHI_Texture* texture, const IconType icon, const Spartan::Math::Vector2& size, bool border)
+    static bool image_button(uint64_t id, Spartan::RHI_Texture* texture, const IconType icon, const Spartan::Math::Vector2& size, bool border, ImVec4 tint = {1,1,1,1})
     {
         if (!border)
         {
@@ -164,7 +164,7 @@ namespace ImGuiSp
             ImVec2(0, 0),                      // uv0
             ImVec2(1, 1),                      // uv1
             ImColor(0, 0, 0, 0),               // bg_col
-            default_tint                       // tint_col
+            tint                               // tint_col
         );
 
         if (!border)

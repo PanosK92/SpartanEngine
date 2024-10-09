@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <atomic>
 #include <mutex>
 #include "Logging/ILogger.h"
-#include "Rendering/Color.h"
+#include "../ImGui/Implementation/ImGui_Style.h"
 //==========================
 
 struct LogPackage
@@ -77,11 +77,11 @@ private:
     bool m_log_type_visibility[3] = { true, true, true };
     uint32_t m_log_type_count[3]  = { 0, 0, 0 };
 
-    const std::vector<Spartan::Color> m_log_type_color =
+    const std::vector<ImVec4> m_log_type_color =
     {
-        Spartan::Color(0.76f, 0.77f, 0.8f, 1.0f), // Info
-        Spartan::Color(0.7f, 0.75f, 0.0f, 1.0f),  // Warning
-        Spartan::Color(0.7f, 0.3f, 0.3f, 1.0f)    // Error
+        ImGui::Style::color_info,
+        ImGui::Style::color_warning,
+        ImGui::Style::color_error,
     };
 
     std::shared_ptr<EngineLogger> m_logger;
