@@ -37,13 +37,13 @@ namespace Spartan
         static bool IsBreadcrumbsEnabled()                  { return m_breadcrumbs_enabled; }
 
     private:
-        inline static bool m_validation_layer_enabled        = false;  // cpu cost: high - per draw cost, especially high with large bindless arrays
-        inline static bool m_gpu_assisted_validation_enabled = false;  // cpu cost: high - per draw cost
-        inline static bool m_breadcrumbs_enabled             = false;
-        inline static bool m_logging_to_file_enabled         = false;  // cpu cost: high - it's an I/O operation
-        inline static bool m_renderdoc_enabled               = false;  // cpu cost: high - intercepts every API call and wraps it
-        inline static bool m_gpu_marking_enabled             = true;   // cpu cost: imperceptible
-        inline static bool m_gpu_timing_enabled              = true;   // cpu cost: imperceptible
-        inline static bool m_shader_optimization_enabled     = true;   // gpu cost: high (when disabled)
+        inline static bool m_validation_layer_enabled        = false; // enables vulkan validation, high cpu overhead per draw
+        inline static bool m_gpu_assisted_validation_enabled = false; // gpu-based validation, significant cpu and gpu cost
+        inline static bool m_breadcrumbs_enabled             = false; // tracks gpu crashes, minimal overhead
+        inline static bool m_logging_to_file_enabled         = false; // logs to file, high cpu cost due to disk i/o
+        inline static bool m_renderdoc_enabled               = false; // integrates renderdoc, high cpu overhead from api wrapping
+        inline static bool m_gpu_marking_enabled             = true;  // gpu markers for debugging, no performance impact
+        inline static bool m_gpu_timing_enabled              = true;  // measures gpu timings, negligible cost
+        inline static bool m_shader_optimization_enabled     = true;  // enables shader optimizations, high cost when off
     };
 }

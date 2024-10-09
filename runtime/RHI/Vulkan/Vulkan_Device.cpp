@@ -226,15 +226,16 @@ namespace Spartan
         vector<const char*> extensions_instance = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_swapchain_colorspace", };
         vector<const char*> extensions_device   = {
             "VK_KHR_swapchain",
-            "VK_EXT_memory_budget",           // to obtain precise memory usage information from Vulkan Memory Allocator
+            "VK_EXT_memory_budget",            // to obtain precise memory usage information from Vulkan Memory Allocator
             "VK_KHR_fragment_shading_rate",
             "VK_EXT_hdr_metadata",
             "VK_EXT_robustness2",
-            "VK_KHR_external_memory",         // to share images with Intel Open Image Denoise
+            "VK_KHR_external_memory",          // to share images with Intel Open Image Denoise
             #if defined(_MSC_VER)
-            "VK_KHR_external_memory_win32",   // external memory handle type, linux alternative: VK_KHR_external_memory_fd
+            "VK_KHR_external_memory_win32",    // external memory handle type, linux alternative: VK_KHR_external_memory_fd
             #endif
-            "VK_KHR_get_memory_requirements2" // needed by AMD FidelityFX
+            "VK_KHR_synchronization2",        // needed by AMD FidelityFX - Breadcrumbs
+            "VK_KHR_get_memory_requirements2" // needed by AMD FidelityFX - FSR 3
         };
 
         bool is_present_device(const char* extension_name, VkPhysicalDevice device_physical)
@@ -282,7 +283,7 @@ namespace Spartan
                 }
                 else
                 {
-                    SP_LOG_ERROR("Device extension \"%s\" is not supported", extension);
+                    SP_LOG_WARNING("Device extension \"%s\" is not supported", extension);
                 }
             }
 
