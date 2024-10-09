@@ -21,17 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
+//= INCLUDES ====
 #include <string>
-#include "Definitions.h"
-//======================
+//===============
 
 namespace Spartan
 {
     // globals
     extern uint64_t g_id;
 
-    class SP_CLASS SpartanObject
+    class SpartanObject
     {
     public:
         SpartanObject();

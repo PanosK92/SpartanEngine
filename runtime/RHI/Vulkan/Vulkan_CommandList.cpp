@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SwapChain.h"
 #include "../RHI_RasterizerState.h"
 #include "../RHI_DepthStencilState.h"
+#include "../RHI_FidelityFX.h"
 #include "../Rendering/Renderer.h"
 #include "../../Profiling/Profiler.h"
 #include "../Core/Debugging.h"
@@ -573,6 +574,13 @@ namespace Spartan
         VkCommandBufferBeginInfo begin_info = {};
         begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         SP_ASSERT_MSG(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource), &begin_info) == VK_SUCCESS, "Failed to begin command buffer");
+
+        // enable breadcrumbs for this commannd list
+        if (Debugging::IsBreadcrumbsEnabled() && (queue->GetType() != RHI_Queue_Type::Copy) && !m_breadcrumbs_enabled)
+        {
+            RHI_FidelityFX::Breadcrumbs_RegisterCommandList(this, queue, m_rendering_complete_semaphore_timeline->GetObjectName().c_str());
+            m_breadcrumbs_enabled = true;
+        }
 
         // set states
         m_state        = RHI_CommandListState::Recording;
@@ -1501,6 +1509,11 @@ namespace Spartan
         {
             RHI_Device::MarkerBegin(this, name, Vector4::Zero);
         }
+
+        if (Debugging::IsBreadcrumbsEnabled())
+        {
+            RHI_FidelityFX::Breadcrumbs_MarkerBegind(this, name);
+        }
     }
 
     void RHI_CommandList::EndMarker()
@@ -1508,6 +1521,11 @@ namespace Spartan
         if (Debugging::IsGpuMarkingEnabled())
         {
             RHI_Device::MarkerEnd(this);
+        }
+
+        if (Debugging::IsBreadcrumbsEnabled())
+        {
+            RHI_FidelityFX::Breadcrumbs_MarkerEnd(this);
         }
     }
     

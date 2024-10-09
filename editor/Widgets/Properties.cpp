@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui/ImGuiExtension.h"
 #include "../ImGui/Implementation/ImGui_Style.h"
 #include "../ImGui/Source/imgui_stdlib.h"
-#include "../ImGui/Source/imgui_internal.h"
 #include "../WidgetsDeferred/ButtonColorPicker.h"
 #include "Core/Engine.h"
 #include "World/Entity.h"
@@ -36,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/AudioSource.h"
 #include "World/Components/AudioListener.h"
 #include "World/Components/Terrain.h"
+#include "World/Components/Camera.h"
 #include "Rendering/Mesh.h"
 //===============================================
 
@@ -724,14 +724,14 @@ void Properties::ShowMaterial(Material* material) const
                         for (uint32_t i = 0; i < material->GetArraySize(); ++i)
                         {
                             MaterialTexture textureType = static_cast<MaterialTexture>(static_cast<uint32_t>(mat_tex) + i);
-                            auto setter = [&, textureType](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(textureType, texture); };
+                            auto setter = [&, textureType](Spartan::RHI_Texture* texture) { material->SetTexture(textureType, texture); };
 
                             if (i > 0)
                             {
                                 ImGui::SameLine();
                             }
 
-                            ImGuiSp::image_slot(material->GetTexture_PtrShared(textureType), setter);
+                            ImGuiSp::image_slot(material->GetTexture(textureType), setter);
                         }
 
                         if (show_modifier)
@@ -947,9 +947,9 @@ void Properties::ShowTerrain(shared_ptr<Terrain> terrain) const
         {
             ImGui::Text("Height Map");
 
-            ImGuiSp::image_slot(terrain->GetHeightMap(), [&terrain](const shared_ptr<RHI_Texture>& texture)
+            ImGuiSp::image_slot(terrain->GetHeightMap(), [&terrain](RHI_Texture* texture)
             {
-                terrain->SetHeightMap(static_pointer_cast<RHI_Texture2D>(texture));
+                terrain->SetHeightMap(texture);
             });
 
             if (ImGuiSp::button("Generate", ImVec2(82.0f * Spartan::Window::GetDpiScale(), 0)))

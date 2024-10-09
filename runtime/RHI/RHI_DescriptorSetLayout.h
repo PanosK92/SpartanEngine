@@ -37,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  
 namespace Spartan
 {
-    class SP_CLASS RHI_DescriptorSetLayout : public SpartanObject
+    class RHI_DescriptorSetLayout : public SpartanObject
     {
     public:
         RHI_DescriptorSetLayout() = default;

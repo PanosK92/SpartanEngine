@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include <memory>
 #include <atomic>
 #include "../Core/FileSystem.h"
 #include "../Core/SpartanObject.h"
@@ -35,10 +34,6 @@ namespace Spartan
     {
         Unknown,
         Texture,
-        Texture2d,
-        Texture3d,
-        Texture2dArray,
-        TextureCube,
         Audio,
         Material,
         Mesh,
@@ -49,7 +44,7 @@ namespace Spartan
         Max,
     };
 
-    class SP_CLASS IResource : public SpartanObject
+    class IResource : public SpartanObject
     {
     public:
         IResource(ResourceType type);

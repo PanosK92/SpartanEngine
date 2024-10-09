@@ -22,9 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "pch.h"
 #include "../RHI_Implementation.h"
-#include "../RHI_Texture2D.h"
-#include "../RHI_TextureCube.h"
-#include "../RHI_CommandList.h"
 //================================
 
 //= NAMESPACES ===============

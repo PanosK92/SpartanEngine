@@ -21,10 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
-#include "Definitions.h"
-//======================
-
 namespace Spartan
 {
     enum class EngineMode : uint32_t
@@ -33,7 +29,7 @@ namespace Spartan
         Playing       = 1 << 1
     };
 
-    class SP_CLASS Engine
+    class Engine
     {
     public:
         static void Initialize(const std::vector<std::string>& args);

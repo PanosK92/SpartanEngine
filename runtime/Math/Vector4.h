@@ -21,18 +21,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
+//= INCLUDES ==========
 #include <string>
 #include "MathHelper.h"
-#include "../Core/Definitions.h"
-//==============================
+//=====================
 
 namespace Spartan::Math
 {
     class Vector3;
     class Matrix;
 
-    class SP_CLASS Vector4
+    class Vector4
     {
     public:
         Vector4()

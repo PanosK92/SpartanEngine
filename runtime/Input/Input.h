@@ -99,7 +99,7 @@ namespace Spartan
         ControllerType type = ControllerType::Max;
     };
 
-    class SP_CLASS Input
+    class Input
     {
     public:
         static void Initialize();

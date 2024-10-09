@@ -29,7 +29,7 @@ namespace Spartan
 {
     class RHI_Texture;
 
-    class SP_CLASS RHI_OpenImageDenoise
+    class RHI_OpenImageDenoise
     {
     public:
         static void Initialize();

@@ -21,14 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
+//= INCLUDES ====
 #include <string>
-#include "../Core/Definitions.h"
-//==============================
+//===============
 
 namespace Spartan
 {
-    class SP_CLASS ILogger
+    class ILogger
     {
     public:
         virtual ~ILogger() = default;

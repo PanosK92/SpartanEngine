@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
+//= INCLUDES ===========
 #include "Definitions.h"
-#include "../Math/Vector3.h"
-//==========================
+#include <unordered_map>
+//======================
 
 namespace Spartan
 {
@@ -41,7 +41,7 @@ namespace Spartan
         Max
     };
 
-    class SP_CLASS World
+    class World
     {
     public:
         // system

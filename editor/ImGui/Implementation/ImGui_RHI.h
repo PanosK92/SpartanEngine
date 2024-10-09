@@ -28,9 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Event.h"
 #include "Rendering/Renderer_Buffers.h"
 #include "Rendering/Renderer.h"
+#include "Math/Rectangle.h"
 #include "RHI/RHI_Device.h"
 #include "RHI/RHI_Shader.h"
-#include "RHI/RHI_Texture2D.h"
+#include "RHI/RHI_Texture.h"
 #include "RHI/RHI_SwapChain.h"
 #include "RHI/RHI_BlendState.h"
 #include "RHI/RHI_Queue.h"
@@ -165,7 +166,7 @@ namespace ImGui::RHI
             memcpy(&mip[0], reinterpret_cast<std::byte*>(pixels), size);
 
             // upload texture to graphics system
-            g_font_atlas = make_shared<RHI_Texture2D>(atlas_width, atlas_height, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv, texture_data, "imgui_font_atlas");
+            g_font_atlas = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, atlas_width, atlas_height, 1, 1, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv, "imgui_font_atlas", texture_data);
             io.Fonts->TexID = static_cast<ImTextureID>(g_font_atlas.get());
         }
 
@@ -327,7 +328,7 @@ namespace ImGui::RHI
 
                                 if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
                                 {
-                                    is_frame_texture = Renderer::GetFrameTexture()->GetObjectId() == texture->GetObjectId();
+                                    is_frame_texture = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output)->GetObjectId() == texture->GetObjectId();
 
                                     // during engine startup, some textures might be loading in different threads
                                     if (texture->IsReadyForUse())

@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include <memory>
 #include <array>
 #include "RHI_Viewport.h"
 #include "RHI_Definitions.h"
@@ -31,6 +30,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
+    enum class RHI_Texture_Type
+    {
+        Type2D,
+        Type2DArray,
+        Type3D,
+        TypeCube,
+        Max
+    };
+
     enum RHI_Texture_Flags : uint32_t
     {
         RHI_Texture_Srv            = 1U << 0,
@@ -59,9 +67,23 @@ namespace Spartan
         uint32_t GetMipCount() { return static_cast<uint32_t>(mips.size()); }
     };
 
-    class SP_CLASS RHI_Texture : public IResource, public std::enable_shared_from_this<RHI_Texture>
+    class RHI_Texture : public IResource
     {
     public:
+        RHI_Texture(
+            const RHI_Texture_Type type,
+            const uint32_t width,
+            const uint32_t height,
+            const uint32_t depth,
+            const uint32_t mip_count,
+            const RHI_Format format,
+            const uint32_t flags,
+            const char* name                    = nullptr,
+            std::vector<RHI_Texture_Slice> data = {}
+        );
+
+        RHI_Texture(const char* file_path);
+        RHI_Texture(const std::string& file_path);
         RHI_Texture();
         ~RHI_Texture();
 
@@ -92,17 +114,15 @@ namespace Spartan
         void SetExternalMemoryHandle(void* handle) { m_rhi_external_memory = handle; }
 
         // misc
-        std::shared_ptr<RHI_Texture> GetSharedPtr() { return shared_from_this(); }
         void SaveAsImage(const std::string& file_path);
         static bool IsCompressedFormat(const RHI_Format format);
         static size_t CalculateMipSize(uint32_t width, uint32_t height, uint32_t depth, RHI_Format format, uint32_t bits_per_channel, uint32_t channel_count);
 
         // data
-        uint32_t GetArrayLength()                          const { return m_array_length; }
-        uint32_t GetMipCount()                             const { return m_mip_count; }
-        uint32_t GetDepth()                                const { return m_depth; }
-        bool HasData()                                     const { return !m_slices.empty() && !m_slices[0].mips.empty() && !m_slices[0].mips[0].bytes.empty(); };
-        std::vector<RHI_Texture_Slice>& GetData()                { return m_slices; }
+        uint32_t GetMipCount()                    const { return m_mip_count; }
+        uint32_t GetDepth()                       const { return m_depth; }
+        bool HasData()                            const { return !m_slices.empty() && !m_slices[0].mips.empty() && !m_slices[0].mips[0].bytes.empty(); };
+        std::vector<RHI_Texture_Slice>& GetData()       { return m_slices; }
         RHI_Texture_Mip& CreateMip(const uint32_t array_index);
         RHI_Texture_Mip& GetMip(const uint32_t array_index, const uint32_t mip_index);
         RHI_Texture_Slice& GetSlice(const uint32_t array_index);
@@ -134,6 +154,7 @@ namespace Spartan
         const auto& GetViewport() const { return m_viewport; }
 
         // rhi
+        RHI_Texture_Type GetType()            const { return m_type; }
         void*& GetRhiResource()                     { return m_rhi_resource; }
         void* GetRhiSrv()                     const { return m_rhi_srv; }
         void* GetRhiSrvMip(const uint32_t i)  const { return m_rhi_srv_mips[i]; }
@@ -149,22 +170,22 @@ namespace Spartan
         uint32_t m_height           = 0;
         uint32_t m_depth            = 1;
         uint32_t m_mip_count        = 1;
-        uint32_t m_array_length     = 1;
         uint32_t m_bits_per_channel = 0;
         uint32_t m_channel_count    = 0;
         RHI_Format m_format         = RHI_Format::Max;
+        RHI_Texture_Type m_type     = RHI_Texture_Type::Max;
         RHI_Viewport m_viewport;
         std::vector<RHI_Texture_Slice> m_slices;
-        std::array<RHI_Image_Layout, rhi_max_mip_count> m_layout;
+        std::array<RHI_Image_Layout, rhi_max_mip_count> m_layout = { RHI_Image_Layout::Max };
 
         // api resources
-        void* m_rhi_srv = nullptr;                           // an srv with all mips
-        std::array<void*, rhi_max_mip_count> m_rhi_srv_mips; // an srv for each mip
-        std::array<void*, rhi_max_render_target_count> m_rhi_rtv;
-        std::array<void*, rhi_max_render_target_count> m_rhi_dsv;
-        void* m_rhi_resource        = nullptr;
-        void* m_rhi_external_memory = nullptr;
-        void* m_mapped_data         = nullptr;
+        void* m_rhi_srv                                          = nullptr;     // an srv with all mips
+        std::array<void*, rhi_max_mip_count> m_rhi_srv_mips      = { nullptr }; // an srv for each mip
+        std::array<void*, rhi_max_render_target_count> m_rhi_rtv = { nullptr }; 
+        std::array<void*, rhi_max_render_target_count> m_rhi_dsv = { nullptr }; 
+        void* m_rhi_resource                                     = nullptr;
+        void* m_rhi_external_memory                              = nullptr;
+        void* m_mapped_data                                      = nullptr;
 
     private:
         void ComputeMemoryUsage();

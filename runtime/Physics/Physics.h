@@ -41,7 +41,7 @@ class btRaycastVehicle;
 
 namespace Spartan
 {
-    class SP_CLASS Physics
+    class Physics
     {
     public:
         static void Initialize();

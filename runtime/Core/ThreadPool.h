@@ -30,7 +30,7 @@ namespace Spartan
 {
     using Task = std::function<void()>;
 
-    class SP_CLASS ThreadPool
+    class ThreadPool
     {
     public:
         static void Initialize();

@@ -309,6 +309,26 @@ FFX_API FfxResource ffxGetFrameinterpolationTextureDX12(FfxSwapchain gameSwapCha
 /// @ingroup DX12FrameInterpolation
 FFX_API FfxErrorCode ffxSetFrameGenerationConfigToSwapchainDX12(FfxFrameGenerationConfig const* config);
 
+//enum values should match enum FfxApiConfigureFrameGenerationSwapChainKeyDX12
+typedef enum FfxFrameInterpolationSwapchainConfigureKey
+{
+    FFX_FI_SWAPCHAIN_CONFIGURE_KEY_WAITCALLBACK = 0
+} FfxFrameInterpolationSwapchainConfigureKey;
+
+/// Configures <c><i>FfxSwapchain</i></c> via KeyValue API post <c><i>FfxSwapchain</i></c> context creation
+///
+/// @param [in] gameSwapChain           The <c><i>FfxSwapchain</i></c> to configure via KeyValue API
+/// @param [in] key                     The <c><i>FfxFrameInterpolationSwapchainConfigureKey</i></c> is key
+/// @param [in] valuePtr                The <c><i><void *></i></c> pointer to value. What this pointer deference to depends on key.
+/// 
+/// @retval
+/// FFX_OK                              The operation completed successfully.
+/// @retval
+/// FFX_ERROR_INVALID_ARGUMENT          Could not query the interface for the frame interpolation swap chain.
+///
+/// @ingroup DX12FrameInterpolation
+FFX_API FfxErrorCode ffxConfigureFrameInterpolationSwapchainDX12(FfxSwapchain gameSwapChain, FfxFrameInterpolationSwapchainConfigureKey key, void* valuePtr);
+
 struct FfxFrameInterpolationContext;
 typedef FfxErrorCode (*FfxCreateFiSwapchain)(FfxFrameInterpolationContext* fiContext, FfxDevice device, FfxCommandQueue gameQueue, FfxSwapchain& swapchain);
 typedef FfxErrorCode (*FfxReleaseFiSwapchain)(FfxFrameInterpolationContext* fiContext, FfxSwapchain* outRealSwapchain);

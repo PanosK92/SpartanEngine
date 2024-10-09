@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class SP_CLASS AudioListener : public Component
+    class AudioListener : public Component
     {
     public:
         AudioListener(Entity* entity);

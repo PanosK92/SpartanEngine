@@ -60,7 +60,7 @@ namespace Spartan
         Mesh
     };
 
-    class SP_CLASS PhysicsBody : public Component
+    class PhysicsBody : public Component
     {
     public:
         PhysicsBody(Entity* entity);

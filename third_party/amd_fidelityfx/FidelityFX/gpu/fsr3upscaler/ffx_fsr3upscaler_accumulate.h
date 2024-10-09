@@ -161,6 +161,8 @@ void Accumulate(FfxInt32x2 iPxHrPos)
 
     data.fHistoryColor /= Exposure();
 
+    data.fHistoryColor = ffxMax(data.fHistoryColor, FfxFloat32x3(0.0f, 0.0f, 0.0f));
+
     StoreInternalColorAndWeight(iPxHrPos, FfxFloat32x4(data.fHistoryColor, data.fLock));
 
     // Output final color when RCAS is disabled

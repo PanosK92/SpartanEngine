@@ -49,7 +49,7 @@ namespace Spartan
         CastsShadows = 1U << 3
     };
 
-    class SP_CLASS Renderable : public Component
+    class Renderable : public Component
     {
     public:
         Renderable(Entity* entity);

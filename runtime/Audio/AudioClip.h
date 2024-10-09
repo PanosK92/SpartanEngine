@@ -34,7 +34,7 @@ namespace Spartan
         Stream
     };
 
-    class SP_CLASS AudioClip : public IResource
+    class AudioClip : public IResource
     {
     public:
         AudioClip();

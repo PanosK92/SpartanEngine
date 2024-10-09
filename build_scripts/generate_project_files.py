@@ -198,9 +198,9 @@ def print_local_file_hashes():
 def main():
     #print_local_file_hashes()
     
-    library_url = 'https://www.dropbox.com/scl/fi/duz0vcj0qnjwke1kmncqc/libraries.7z?rlkey=wyhjrexedbq8y8giswq22wn9m&st=5fe01u26&dl=1'
+    library_url = 'https://www.dropbox.com/scl/fi/atz3wme09pn9g66z1j4cd/libraries.7z?rlkey=wc06j1q95ba9p4cj3a33zqgat&st=22d49j5o&dl=1'
     library_destination = 'third_party/libraries/libraries.7z'
-    library_expected_hash = '8a9320c11c27332e707cda7142c84c8f98b6441a16f71da26def46592bcf0b5a'
+    library_expected_hash = '1cc6abdb2d3feed4469301fcdc45df34809ea497486747edbade75ad0cc2bead'
 
     assets_url = 'https://www.dropbox.com/scl/fi/hagxxndy0dnq7pu0ufkxh/assets.7z?rlkey=gmwlxlhf6q3eubh7r50q2xp27&st=60lavvyz&dl=1'
     assets_destination = 'assets/assets.7z'
