@@ -83,6 +83,9 @@ void Icon::SetTexture(shared_ptr<RHI_Texture> texture)
 
 string Icon::GetFilePath() const
 {
+    if (!m_texture)
+        return "";
+
     return m_texture->GetResourceFilePath();
 }
 
