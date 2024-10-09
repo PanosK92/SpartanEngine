@@ -37,8 +37,8 @@ namespace Spartan
         static bool IsBreadcrumbsEnabled()                  { return m_breadcrumbs_enabled; }
 
     private:
-        inline static bool m_validation_layer_enabled        = false; // enables vulkan validation, high cpu overhead per draw
-        inline static bool m_gpu_assisted_validation_enabled = false; // gpu-based validation, significant cpu and gpu cost
+        inline static bool m_validation_layer_enabled        = true; // enables vulkan validation, high cpu overhead per draw
+        inline static bool m_gpu_assisted_validation_enabled = true; // gpu-based validation, significant cpu and gpu cost
         inline static bool m_breadcrumbs_enabled             = false; // tracks gpu crashes, minimal overhead
         inline static bool m_logging_to_file_enabled         = false; // logs to file, high cpu cost due to disk i/o
         inline static bool m_renderdoc_enabled               = false; // integrates renderdoc, high cpu overhead from api wrapping
