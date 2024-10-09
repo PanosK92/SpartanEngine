@@ -24,7 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Source/imgui.h"
 //==========================
 
-namespace ImGui::Style {
+namespace ImGui::Style
+{
 
     // TODO
     // Console Widget:    warning buttons are not vertically aligned
