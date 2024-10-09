@@ -67,7 +67,7 @@ void Console::OnTickVisible()
     {
         bool& visibility = m_log_type_visibility[index];
         ImGui::PushStyleColor(ImGuiCol_Button, visibility ? ImGui::GetStyle().Colors[ImGuiCol_Button] : ImGui::GetStyle().Colors[ImGuiCol_FrameBg]);
-        if (ImGuiSp::image_button(0, nullptr, icon, 15.0f * Spartan::Window::GetDpiScale(), false))
+        if (ImGuiSp::image_button(0, nullptr, icon, 15.0f * Spartan::Window::GetDpiScale(), false,m_log_type_color[index]))
         {
             visibility = !visibility;
         }
@@ -84,9 +84,7 @@ void Console::OnTickVisible()
 
     // text filter
     const float label_width = 37.0f * Spartan::Window::GetDpiScale();
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12);
     m_log_filter.Draw("Filter", ImGui::GetContentRegionAvail().x - label_width);
-    ImGui::PopStyleVar();
     ImGui::Separator();
 
     // safety first
@@ -108,7 +106,7 @@ void Console::OnTickVisible()
         for (uint32_t row = 0; row < m_logs.size(); row++)
         {
             LogPackage& log = m_logs[row];
-    
+
             // text and visibility filters
             if (m_log_filter.PassFilter(log.text.c_str()) && m_log_type_visibility[log.error_level])
             {
@@ -119,9 +117,13 @@ void Console::OnTickVisible()
                 // log
                 ImGui::PushID(row);
                 {
-                    ImGui::PushStyleColor(ImGuiCol_Text, color_to_imvec4(m_log_type_color[log.error_level]));
+                    if(log.error_level != 0) // dont style info text's color
+                        ImGui::PushStyleColor(ImGuiCol_Text, m_log_type_color[log.error_level]);
+
                     ImGui::TextUnformatted(log.text.c_str());
-                    ImGui::PopStyleColor(1);
+
+                    if(log.error_level != 0)
+                        ImGui::PopStyleColor(1);
 
                     // context menu
                     if (ImGui::BeginPopupContextItem("##widget_console_contextMenu"))

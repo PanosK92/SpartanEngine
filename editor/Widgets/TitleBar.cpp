@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Engine.h"
 #include "Profiling/RenderDoc.h"
 #include <Debugging.h>
+#include "Style.h"
 #include <Input/Input.h>
 #include <sstream>
 //========================================
@@ -57,9 +58,21 @@ namespace
     unique_ptr<FileDialog> file_dialog;
 
     namespace
-    { 
+    {
         vector<string> contributors =
         {
+            // role,  name,                country,       button text,   button url,                                               contribution,                             steam key
+            "Spartan, Iker Galardi,        Basque Country,   LinkedIn,   https://www.linkedin.com/in/iker-galardi/,                Linux port (WIP),                         N/A",
+            "Spartan, Jesse Guerrero,      United States,    LinkedIn,   https://www.linkedin.com/in/jguer,                        UX improvements,                          N/A",
+            "Spartan, Konstantinos Benos,  Greece,           Twitter,    https://twitter.com/deg3x,                                Editor theme & bug fixes,                 N/A",
+            "Spartan, Nick Polyderopoulos, Greece,           LinkedIn,   https://www.linkedin.com/in/nick-polyderopoulos-21742397, UX improvements,                          N/A",
+            "Spartan, Panos Kolyvakis,     Greece,           LinkedIn,   https://www.linkedin.com/in/panos-kolyvakis-66863421a/,   Improved water buoyancy,                  N/A",
+            "Spartan, Tri Tran,            Belgium,          LinkedIn,   https://www.linkedin.com/in/mtrantr/,                     Days Gone screen space shadows,           Starfield",
+
+            "Hoplite, Apostolos Bouzalas,  Greece,           LinkedIn,   https://www.linkedin.com/in/apostolos-bouzalas,           Provided performance reports,             N/A",
+            "Hoplite, Marlon Wolfersdorf,  Northern Germany, Google,     https://www.google.com/search?q=Marlon+Wolfersdorf,       Nautilus ACES,                            N/A",
+            "Hoplite, Nikolas Pattakos,    Greece,           LinkedIn,   https://www.linkedin.com/in/nikolaspattakos/,             GCC compile fixes,                        N/A",
+            "Hoplite, Sandro Mtchedlidze,  Georgia,          Artstation, https://www.artstation.com/sandromch,                     Identified lighting & performance issues, N/A",
             // role,  name,                country,       button text,   button url,                                               contribution,                                   steam key
             "Spartan, Iker Galardi,        Basque Country,   LinkedIn,   https://www.linkedin.com/in/iker-galardi/,                Linux port (WIP),                               N/A",
             "Spartan, Jesse Guerrero,      United States,    LinkedIn,   https://www.linkedin.com/in/jguer,                        UX improvements,                                N/A",
@@ -237,7 +250,6 @@ namespace
                             float button_width  = ImGui::CalcTextSize(button_text.c_str()).x + ImGui::GetStyle().FramePadding.x * 2.0f;
                             float button_offset = (cell_width - button_width) * 0.5f;
                             // set cursor position to center the button
-                            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + button_offset);
                             ImGui::PushID(static_cast<uint32_t>(ImGui::GetCursorScreenPos().y));
                             if (ImGui::Button(button_text.c_str()))
                             {
@@ -381,12 +393,6 @@ namespace
     namespace buttons_toolbar
     {
         float button_size               = 19.0f;
-        ImVec4 button_color_play        = { 0.2f, 0.7f, 0.35f, 1.0f };
-        ImVec4 button_color_play_hover  = { 0.22f, 0.8f, 0.4f, 1.0f };
-        ImVec4 button_color_play_active = { 0.1f, 0.4f, 0.2f, 1.0f };
-        ImVec4 button_color_doc         = { 0.25f, 0.7f, 0.75f, 0.9f };
-        ImVec4 button_color_doc_hover   = { 0.3f, 0.75f, 0.8f, 0.9f };
-        ImVec4 button_color_doc_active  = { 0.2f, 0.65f, 0.7f, 0.9f };
         unordered_map<IconType, Widget*> widgets;
 
         // a button that when pressed will call "on press" and derives it's color (active/inactive) based on "get_visibility".
@@ -428,11 +434,7 @@ namespace
 
             // play button
             {
-                ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0f);
-                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 18.0f, TitleBar::GetPadding().y - 2.0f });
-                ImGui::PushStyleColor(ImGuiCol_Button, button_color_play);
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, button_color_play_hover);
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, button_color_play_active);
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 18.0f, TitleBar::GetPadding().y - 5.0f });
 
                toolbar_button(
                    IconType::Button_Play, "Play",
@@ -441,16 +443,12 @@ namespace
                    cursor_pos_x
                );
 
-               ImGui::PopStyleColor(3);
                ImGui::PopStyleVar(1);
             }
-          
+
             // all the other buttons
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { TitleBar::GetPadding().x, TitleBar::GetPadding().y - 2.0f });
-            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 2.0f , 0.0f });
-            ImGui::PushStyleColor(ImGuiCol_Button, button_color_doc);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, button_color_doc_hover);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, button_color_doc_active);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { TitleBar::GetPadding().x - 1.0f, TitleBar::GetPadding().y - 5.0f });
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 4.0f , 0.0f });
             {
                 num_buttons  = 6.0f;
                 size_toolbar = num_buttons * button_size_final + (num_buttons - 1.0f) * ImGui::GetStyle().ItemSpacing.x;
@@ -486,8 +484,7 @@ namespace
                     );
                 }
             }
-            ImGui::PopStyleColor(3);
-            ImGui::PopStyleVar(3);
+            ImGui::PopStyleVar(2);
 
             // screenshot
             //toolbar_button(
@@ -573,9 +570,9 @@ void TitleBar::OnTick()
 
         if (show_imgui_style_window)
         {
-            ImGui::Begin("Style Editor", nullptr, ImGuiWindowFlags_NoDocking);
-            ImGui::ShowStyleEditor();
-            ImGui::End();
+            editor->GetWidget<Style>()->SetVisible(show_imgui_style_window);
+        }else{
+            editor->GetWidget<Style>()->SetVisible(show_imgui_style_window);
         }
 
         if (show_imgui_demo_widow)
