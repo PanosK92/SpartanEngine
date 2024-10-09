@@ -39,7 +39,7 @@ namespace Spartan
 {
     namespace compressonator
     {
-        bool registered = false;
+        atomic<bool> registered = false;
 
         CMP_FORMAT to_cmp_format(const RHI_Format format)
         {
@@ -63,13 +63,6 @@ namespace Spartan
 
         void compress(RHI_Texture* texture, const uint32_t mip_index, const RHI_Format destination_format)
         {
-            if (!compressonator::registered)
-            {
-                string version = to_string(AMD_COMPRESS_VERSION_MAJOR) + "." + to_string(AMD_COMPRESS_VERSION_MINOR);
-                Settings::RegisterThirdPartyLib("AMD Compressonator", version, "https://github.com/GPUOpen-Tools/compressonator");
-                compressonator::registered = true;
-            }
-
             // source texture
             CMP_Texture source_texture = {};
             source_texture.format      = to_cmp_format(texture->GetFormat());
@@ -122,7 +115,7 @@ namespace Spartan
 
     RHI_Texture::RHI_Texture() : IResource(ResourceType::Texture)
     {
-
+        
     }
 
     RHI_Texture::RHI_Texture(
@@ -152,6 +145,13 @@ namespace Spartan
 
         RHI_Texture::RHI_CreateResource();
         m_is_ready_for_use = true;
+
+        if (!compressonator::registered)
+        {
+            string version = to_string(AMD_COMPRESS_VERSION_MAJOR) + "." + to_string(AMD_COMPRESS_VERSION_MINOR);
+            Settings::RegisterThirdPartyLib("AMD Compressonator", version, "https://github.com/GPUOpen-Tools/compressonator");
+            compressonator::registered = true;
+        }
     }
 
     RHI_Texture::RHI_Texture(const char* file_path) : IResource(ResourceType::Texture)

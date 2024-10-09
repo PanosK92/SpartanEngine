@@ -19,12 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============================
+//= INCLUDES =======================
 #include "Console.h"
 #include "Window.h"
 #include "../ImGui/ImGuiExtension.h"
-#include "../ImGui/Source/imgui_internal.h"
-//=========================================
+//==================================
 
 //= NAMESPACES =========
 using namespace std;
@@ -34,7 +33,7 @@ using namespace Math;
 
 namespace
 {
-    static ImVec4 color_to_imvec4(const Color& color)
+    ImVec4 color_to_imvec4(const Color& color)
     {
         return { color.r, color.g, color.b, color.a };
     }
@@ -122,12 +121,16 @@ void Console::OnTickVisible()
                 ImGui::PushID(row);
                 {
                     if(log.error_level != 0) // dont style info text's color
+                    { 
                         ImGui::PushStyleColor(ImGuiCol_Text, m_log_type_color[log.error_level]);
+                    }
 
                     ImGui::TextUnformatted(log.text.c_str());
 
                     if(log.error_level != 0)
+                    { 
                         ImGui::PopStyleColor(1);
+                    }
 
                     // context menu
                     if (ImGui::BeginPopupContextItem("##widget_console_contextMenu"))
