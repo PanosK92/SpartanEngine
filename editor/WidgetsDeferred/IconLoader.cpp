@@ -108,9 +108,7 @@ void IconLoader::Initialize()
     IconLoader::LoadFromFile(data_dir + "Icons\\component_transform.png"             , IconType::Component_Transform);
     IconLoader::LoadFromFile(data_dir + "Icons\\component_terrain.png"               , IconType::Component_Terrain);
     IconLoader::LoadFromFile(data_dir + "Icons\\component_environment.png"           , IconType::Component_Environment);
-    IconLoader::LoadFromFile(data_dir + "Icons\\console_info.png"                    , IconType::Console_Info);
-    IconLoader::LoadFromFile(data_dir + "Icons\\console_warning.png"                 , IconType::Console_Warning);
-    IconLoader::LoadFromFile(data_dir + "Icons\\console_error.png"                   , IconType::Console_Error);
+    IconLoader::LoadFromFile(data_dir + "Icons\\console.png"                         , IconType::Console);
     IconLoader::LoadFromFile(data_dir + "Icons\\file.png"                            , IconType::Directory_File_Default);
     IconLoader::LoadFromFile(data_dir + "Icons\\folder.png"                          , IconType::Directory_Folder);
     IconLoader::LoadFromFile(data_dir + "Icons\\audio.png"                           , IconType::Directory_File_Audio);
