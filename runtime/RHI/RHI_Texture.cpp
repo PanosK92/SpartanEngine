@@ -66,7 +66,7 @@ namespace Spartan
             if (!compressonator::registered)
             {
                 string version = to_string(AMD_COMPRESS_VERSION_MAJOR) + "." + to_string(AMD_COMPRESS_VERSION_MINOR);
-                Settings::RegisterThirdPartyLib("Compressonator", version, "https://github.com/GPUOpen-Tools/compressonator");
+                Settings::RegisterThirdPartyLib("AMD Compressonator", version, "https://github.com/GPUOpen-Tools/compressonator");
                 compressonator::registered = true;
             }
 
