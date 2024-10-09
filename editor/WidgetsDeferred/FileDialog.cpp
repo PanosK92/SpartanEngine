@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileDialog.h"
 #include "../ImGui/Source/imgui_internal.h"
 #include "../ImGui/Source/imgui_stdlib.h"
+#include "../ImGui/Implementation/ImGui_Style.h"
 #include "Rendering/Mesh.h"
 #include "../Widgets/Viewport.h"
 //=========================================
@@ -155,9 +156,7 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
 
     // Search filter
     const float label_width = 37.0f * Spartan::Window::GetDpiScale();
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12);
     m_search_filter.Draw("Filter", ImGui::GetContentRegionAvail().x - label_width);
-    ImGui::PopStyleVar();
 
     ImGui::Separator();
 }
@@ -182,13 +181,6 @@ void FileDialog::ShowMiddle()
 
     // Remove border
     ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
-
-    // Make background slightly darker
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(
-        static_cast<int>(m_content_background_color.x),
-        static_cast<int>(m_content_background_color.y),
-        static_cast<int>(m_content_background_color.z),
-        static_cast<int>(m_content_background_color.w)));
 
     if (ImGui::BeginChild("##ContentRegion", ImVec2(content_width, content_height), true))
     {
@@ -359,7 +351,7 @@ void FileDialog::ShowMiddle()
                     const ImVec2 label_size = ImGui::CalcTextSize(label_text, nullptr, true);
 
                     // Draw text background
-                    ImGui::GetWindowDrawList()->AddRectFilled(rect_label.Min, rect_label.Max, IM_COL32(51, 51, 51, 190));
+                    ImGui::GetWindowDrawList()->AddRectFilled(rect_label.Min, rect_label.Max, ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_ChildBg]),style.ChildRounding,0);
                     //ImGui::GetWindowDrawList()->AddRect(rect_label.Min, rect_label.Max, IM_COL32(255, 0, 0, 255)); // debug
 
                     // Draw text
@@ -399,7 +391,6 @@ void FileDialog::ShowMiddle()
     }
 
     ImGui::EndChild(); // BeginChild() requires EndChild() to always be called
-    ImGui::PopStyleColor();
     ImGui::PopStyleVar();
 }
 
