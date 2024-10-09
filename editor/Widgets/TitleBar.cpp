@@ -568,17 +568,12 @@ void TitleBar::OnTick()
             ImGui::ShowMetricsWindow();
         }
 
-        if (show_imgui_style_window)
-        {
-            editor->GetWidget<Style>()->SetVisible(show_imgui_style_window);
-        }else{
-            editor->GetWidget<Style>()->SetVisible(show_imgui_style_window);
-        }
-
         if (show_imgui_demo_widow)
         {
             ImGui::ShowDemoWindow(&show_imgui_demo_widow);
         }
+
+        editor->GetWidget<Style>()->SetVisible(show_imgui_style_window);
 
         window_about();
         window_shortcuts();
