@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Profiling/RenderDoc.h"
 #include <Debugging.h>
 #include "../ImGui/Implementation/ImGui_Style.h"
+#include "Style.h"
 //========================================
 
 //= NAMESPACES =====
@@ -420,9 +421,6 @@ namespace
             // play button
             {
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 18.0f, TitleBar::GetPadding().y - 5.0f });
-                ImGui::PushStyleColor(ImGuiCol_Button, ImGui::Style::color_green);
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::Style::color_green_hover);
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::Style::color_green_active);
 
                toolbar_button(
                    IconType::Button_Play, "Play",
@@ -431,7 +429,6 @@ namespace
                    cursor_pos_x
                );
 
-               ImGui::PopStyleColor(3);
                ImGui::PopStyleVar(1);
             }
 
@@ -559,9 +556,9 @@ void TitleBar::OnTick()
 
         if (show_imgui_style_window)
         {
-            ImGui::Begin("Style Editor", nullptr, ImGuiWindowFlags_NoDocking);
-            ImGui::ShowStyleEditor();
-            ImGui::End();
+            editor->GetWidget<Style>()->SetVisible(show_imgui_style_window);
+        }else{
+            editor->GetWidget<Style>()->SetVisible(show_imgui_style_window);
         }
 
         if (show_imgui_demo_widow)

@@ -1,7 +1,28 @@
+/*
+Copyright(c) 2016-2024 Panos Karabelas
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
+copies of the Software, and to permit persons to whom the Software is furnished
+to do so, subject to the following conditions :
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
 #pragma once
 
+//= INCLUDES ============================================
 #include "../Source/imgui.h"
-#include <cmath>
+//==================================
 
 namespace ImGui::Style {
 
@@ -10,136 +31,87 @@ namespace ImGui::Style {
     // Console Widget: Filter text label missing left padding
     // FileDialog Widget:   Thumbnail text label background is incorrect size
 
+    static ImVec4 bg_color_1 = {0.1,0.1,0.1,1.0f};
+    static ImVec4 bg_color_2 = {0.59,0.59,0.59,1.0f};
 
-    // default values
-    static ImVec4 bg_1 = {0.1,0.1,0.1,1.0f};
-    static ImVec4 bg_2 = {0.59,0.59,0.59,1.0f};
-
-    static ImVec4 h_1  = {1.0,1.0,1.0,1.0f};
-    static ImVec4 h_2  = {1.0,1.0,1.0,0.1f};
-
-    // blue
-    // static ImVec4 accent        = {255.0f / 255.0f, 59.0f / 255.0f, 59.0f / 255.0f, 1.0f};
+    static ImVec4 h_color_1  = {1.0,1.0,1.0,1.0f};
+    static ImVec4 h_color_2  = {1.0,1.0,1.0,0.1f};
 
     static ImVec4 color_accent_1 = {59.0f / 255.0f, 79.0f / 255.0f, 255.0f / 255.0f, 1.0f};
     static ImVec4 color_accent_2 = {45.0f / 255.0f, 80.0f / 255.0f, 255.0f / 255.0f, 1.0f};
 
-    // should be more generic, green does not fit every theme
-    static ImVec4 color_green        = { 0.2f, 0.7f, 0.35f, 1.0f };
-    static ImVec4 color_green_hover  = { 0.22f, 0.8f, 0.4f, 1.0f };
-    static ImVec4 color_green_active = { 0.1f, 0.4f, 0.2f, 1.0f };
+    static ImVec4 color_ok        = {51.0f / 255.0f, 179.0f / 255.0f, 89.0f / 255.0f, 1.0f};
+    static ImVec4 color_info      = {235.0f / 255.0f, 235.0f / 255.0f, 235.0f / 255.0f, 1.0f};
+    static ImVec4 color_warning   = {255.0f / 255.0f, 149.0f / 255.0f, 49.0f / 255.0f, 1.0f};
+    static ImVec4 color_error     = {255.0f / 255.0f, 58.0f / 255.0f, 58.0f / 255.0f, 1.0f};
 
-    inline ImVec4 HSV(float h, float s, float v, float a = 1.0f){
+    inline ImVec4 HSV(float h, float s, float v, float a = 1.0f)
+    {
         float r, g, b;
         ImGui::ColorConvertHSVtoRGB(h, s, v, r, g, b);
         return {r, g, b, a};
     }
 
-    inline ImVec4 Lerp(const ImVec4& a, const ImVec4& b, float t) {
+    inline ImVec4 Lerp(const ImVec4& a, const ImVec4& b, float t)
+    {
         return ImVec4(a.x + (b.x - a.x) * t,
                       a.y + (b.y - a.y) * t,
                       a.z + (b.z - a.z) * t,
                       a.w + (b.w - a.w) * t);
     }
 
-    // needs polish to fix missing colors from PushStyleColor calls
-    inline const void SetupImGuiStyleClassic()
+    inline void StyleSpartan()
     {
-        // use default dark style as a base
-        ImGui::StyleColorsDark();
-        ImVec4* colors = ImGui::GetStyle().Colors;
+        bg_color_1 = {30.0f / 255.0f, 30.0f / 255.0f, 41.0f / 255.0f, 1.0f};
+        bg_color_2 = {71.0f / 255.0f, 85.0f / 255.0f, 117.0f / 255.0f, 1.0f};
 
-        // color
-        const ImVec4 k_palette_color_0 = { 10.0f / 255.0f, 12.0f / 255.0f, 17.0f / 255.0f, 1.0f };
-        const ImVec4 k_palette_color_1 = { 18.0f / 255.0f, 20.0f / 255.0f, 25.0f / 255.0f, 1.0f };
-        const ImVec4 k_palette_color_2 = { 22.0f / 255.0f, 30.0f / 255.0f, 45.0f / 255.0f, 1.0f };
-        const ImVec4 k_palette_color_3 = { 35.0f / 255.0f, 48.0f / 255.0f, 76.0f / 255.0f, 1.0f };
-        const ImVec4 k_palette_color_4 = { 65.0f / 255.0f, 90.0f / 255.0f, 119.0f / 255.0f, 1.0f };
-        const ImVec4 k_palette_color_5 = { 119.0f / 255.0f, 141.0f / 255.0f, 169.0f / 255.0f, 1.0f };
-        const ImVec4 k_palette_color_6 = { 224.0f / 255.0f, 225.0f / 255.0f, 221.0f / 255.0f, 1.0f };
+        h_color_1  = {1.0,1.0,1.0,1.0f};
+        h_color_2  = {1.0,1.0,1.0,0.1f};
 
-        colors[ImGuiCol_Text]                  = k_palette_color_6;
-        colors[ImGuiCol_TextDisabled]          = k_palette_color_6;
-        colors[ImGuiCol_WindowBg]              = k_palette_color_1;
-        colors[ImGuiCol_ChildBg]               = k_palette_color_1;
-        colors[ImGuiCol_PopupBg]               = k_palette_color_1;
-        colors[ImGuiCol_Border]                = k_palette_color_3;
-        colors[ImGuiCol_BorderShadow]          = k_palette_color_0;
-        colors[ImGuiCol_FrameBg]               = k_palette_color_2; // Background of checkbox, radio button, plot, slider, text input
-        colors[ImGuiCol_FrameBgHovered]        = k_palette_color_3;
-        colors[ImGuiCol_FrameBgActive]         = k_palette_color_4;
-        colors[ImGuiCol_TitleBg]               = k_palette_color_1;
-        colors[ImGuiCol_TitleBgActive]         = k_palette_color_1;
-        colors[ImGuiCol_TitleBgCollapsed]      = k_palette_color_1;
-        colors[ImGuiCol_MenuBarBg]             = k_palette_color_0;
-        colors[ImGuiCol_ScrollbarBg]           = k_palette_color_0;
-        colors[ImGuiCol_ScrollbarGrab]         = k_palette_color_3;
-        colors[ImGuiCol_ScrollbarGrabHovered]  = k_palette_color_4;
-        colors[ImGuiCol_ScrollbarGrabActive]   = k_palette_color_2;
-        colors[ImGuiCol_CheckMark]             = k_palette_color_6;
-        colors[ImGuiCol_SliderGrab]            = k_palette_color_4;
-        colors[ImGuiCol_SliderGrabActive]      = k_palette_color_3;
-        colors[ImGuiCol_Button]                = k_palette_color_3;
-        colors[ImGuiCol_ButtonHovered]         = k_palette_color_4;
-        colors[ImGuiCol_ButtonActive]          = k_palette_color_2;
-        colors[ImGuiCol_Header]                = k_palette_color_4;
-        colors[ImGuiCol_HeaderHovered]         = k_palette_color_3;
-        colors[ImGuiCol_HeaderActive]          = k_palette_color_0;
-        colors[ImGuiCol_Separator]             = k_palette_color_5;
-        colors[ImGuiCol_SeparatorHovered]      = k_palette_color_6;
-        colors[ImGuiCol_SeparatorActive]       = k_palette_color_6;
-        colors[ImGuiCol_ResizeGrip]            = k_palette_color_4;
-        colors[ImGuiCol_ResizeGripHovered]     = k_palette_color_5;
-        colors[ImGuiCol_ResizeGripActive]      = k_palette_color_3;
-        colors[ImGuiCol_Tab]                   = k_palette_color_2;
-        colors[ImGuiCol_TabHovered]            = k_palette_color_3;
-        colors[ImGuiCol_TabSelected]           = k_palette_color_1;
-        colors[ImGuiCol_TabDimmed]             = k_palette_color_2;
-        colors[ImGuiCol_TabDimmedSelected]     = k_palette_color_2; // Might be called active, but it's active only because it's it's the only tab available, the user didn't really activate it
-        colors[ImGuiCol_DockingPreview]        = k_palette_color_4; // Preview overlay color when about to docking something
-        colors[ImGuiCol_DockingEmptyBg]        = k_palette_color_6; // Background color for empty node (e.g. CentralNode with no window docked into it)
-        colors[ImGuiCol_PlotLines]             = k_palette_color_5;
-        colors[ImGuiCol_PlotLinesHovered]      = k_palette_color_6;
-        colors[ImGuiCol_PlotHistogram]         = k_palette_color_5;
-        colors[ImGuiCol_PlotHistogramHovered]  = k_palette_color_6;
-        colors[ImGuiCol_TextSelectedBg]        = k_palette_color_4;
-        colors[ImGuiCol_DragDropTarget]        = k_palette_color_4; // Color when hovering over target
-        colors[ImGuiCol_NavHighlight]          = k_palette_color_3; // Gamepad/keyboard: current highlighted item
-        colors[ImGuiCol_NavWindowingHighlight] = k_palette_color_2; // Highlight window when using CTRL+TAB
-        colors[ImGuiCol_NavWindowingDimBg]     = k_palette_color_2; // Darken/colorize entire screen behind the CTRL+TAB window list, when active
-        colors[ImGuiCol_ModalWindowDimBg]      = k_palette_color_2;
+        color_accent_1 = {181.0f / 255.0f, 198.0f / 255.0f, 238.0f / 255.0f, 1.0f};
+        color_accent_2 = {79.0f / 255.0f, 82.0f / 255.0f, 99.0f / 255.0f, 1.0f};
 
-        ImGuiStyle& style = ImGui::GetStyle();
-
-        style.WindowPadding     = ImVec2(8.0f, 8.0f);
-        style.FramePadding      = ImVec2(5.0f, 5.0f);
-        style.CellPadding       = ImVec2(6.0f, 5.0f);
-        style.ItemSpacing       = ImVec2(6.0f, 5.0f);
-        style.ItemInnerSpacing  = ImVec2(6.0f, 6.0f);
-        style.TouchExtraPadding = ImVec2(0.0f, 0.0f);
-        style.IndentSpacing     = 25.0f;
-        style.ScrollbarSize     = 13.0f;
-        style.GrabMinSize       = 10.0f;
-        style.WindowBorderSize  = 1.0f;
-        style.ChildBorderSize   = 1.0f;
-        style.PopupBorderSize   = 1.0f;
-        style.FrameBorderSize   = 1.0f;
-        style.TabBorderSize     = 1.0f;
-        style.WindowRounding    = 2.0f;
-        style.ChildRounding     = 3.0f;
-        style.FrameRounding     = 0.0f;
-        style.PopupRounding     = 3.0f;
-        style.ScrollbarRounding = 9.0f;
-        style.GrabRounding      = 3.0f;
-        style.LogSliderDeadzone = 4.0f;
-        style.TabRounding       = 3.0f;
-        style.Alpha             = 1.0f;
-
-        style.ScaleAllSizes(Spartan::Window::GetDpiScale());
+        color_ok        = {51.0f / 255.0f, 179.0f / 255.0f, 89.0f / 255.0f, 1.0f};
+        color_info      = {235.0f / 255.0f, 235.0f / 255.0f, 235.0f / 255.0f, 1.0f};
+        color_warning   = {255.0f / 255.0f, 149.0f / 255.0f, 49.0f / 255.0f, 1.0f};
+        color_error     = {255.0f / 255.0f, 58.0f / 255.0f, 58.0f / 255.0f, 1.0f};
     }
 
-    inline const void SetupImGuiStyle() {
-        // Fork of Comfy style from ImThemes
+    inline void StyleDark()
+    {
+        bg_color_1 = {0.1,0.1,0.1,1.0f};
+        bg_color_2 = {0.59,0.59,0.59,1.0f};
+
+        h_color_1  = {1.0,1.0,1.0,1.0f};
+        h_color_2  = {1.0,1.0,1.0,0.1f};
+
+        color_accent_1 = {59.0f / 255.0f, 79.0f / 255.0f, 255.0f / 255.0f, 1.0f};
+        color_accent_2 = {45.0f / 255.0f, 80.0f / 255.0f, 255.0f / 255.0f, 1.0f};
+
+        color_ok        = {51.0f / 255.0f, 179.0f / 255.0f, 89.0f / 255.0f, 1.0f};
+        color_info      = {235.0f / 255.0f, 235.0f / 255.0f, 235.0f / 255.0f, 1.0f};
+        color_warning   = {255.0f / 255.0f, 149.0f / 255.0f, 49.0f / 255.0f, 1.0f};
+        color_error     = {255.0f / 255.0f, 58.0f / 255.0f, 58.0f / 255.0f, 1.0f};
+    }
+
+    inline void StyleLight()
+    {
+        bg_color_1 = {219.0f / 255.0f, 219.0f / 255.0f, 219.0f / 255.0f, 1.0f};
+        bg_color_2 = {70.0f / 255.0f, 70.0f / 255.0f, 70.0f / 255.0f, 1.0f};
+
+        h_color_1 = {7.0f / 255.0f, 7.0f / 255.0f, 7.0f / 255.0f, 1.0f};
+        h_color_2  = {0.0,0.0,0.0,0.1f};
+
+        color_accent_1 = {59.0f / 255.0f, 79.0f / 255.0f, 255.0f / 255.0f, 1.0f};
+        color_accent_2 = {45.0f / 255.0f, 80.0f / 255.0f, 255.0f / 255.0f, 1.0f};
+
+        color_ok        = {51.0f / 255.0f, 179.0f / 255.0f, 89.0f / 255.0f, 1.0f};
+        color_info      = {235.0f / 255.0f, 235.0f / 255.0f, 235.0f / 255.0f, 1.0f};
+        color_warning   = {255.0f / 255.0f, 149.0f / 255.0f, 49.0f / 255.0f, 1.0f};
+        color_error     = {255.0f / 255.0f, 58.0f / 255.0f, 58.0f / 255.0f, 1.0f};
+    }
+
+    inline const void SetupImGuiBase() {
         ImGuiStyle& style = ImGui::GetStyle();
 
         style.Alpha = 1.0f;
@@ -178,17 +150,21 @@ namespace ImGui::Style {
         style.ColorButtonPosition = ImGuiDir_Right;
         style.ButtonTextAlign = ImVec2(0.5f, 0.5f);
         style.SelectableTextAlign = ImVec2(0.0f, 0.0f);
+    }
 
-        ImVec4 color_background_1     = Lerp(bg_1, bg_2, .0);
-        ImVec4 color_background_2     = Lerp(bg_1, bg_2, .1);
-        ImVec4 color_background_3     = Lerp(bg_1, bg_2, .2);
-        ImVec4 color_background_4     = Lerp(bg_1, bg_2, .3);
-        ImVec4 color_background_5     = Lerp(bg_1, bg_2, .4);
-        ImVec4 color_background_6     = Lerp(bg_1, bg_2, .5);
-        ImVec4 color_background_7     = Lerp(bg_1, bg_2, .6);
-        ImVec4 color_background_8     = Lerp(bg_1, bg_2, .7);
-        ImVec4 color_background_9     = Lerp(bg_1, bg_2, .8);
-        ImVec4 color_background_10    = Lerp(bg_1, bg_2, .9);
+    inline void SetupImGuiColors() {
+        ImGuiStyle& style = ImGui::GetStyle();
+
+        ImVec4 color_background_1     = Lerp(bg_color_1, bg_color_2, .0);
+        ImVec4 color_background_2     = Lerp(bg_color_1, bg_color_2, .1);
+        ImVec4 color_background_3     = Lerp(bg_color_1, bg_color_2, .2);
+        ImVec4 color_background_4     = Lerp(bg_color_1, bg_color_2, .3);
+        ImVec4 color_background_5     = Lerp(bg_color_1, bg_color_2, .4);
+        ImVec4 color_background_6     = Lerp(bg_color_1, bg_color_2, .5);
+        ImVec4 color_background_7     = Lerp(bg_color_1, bg_color_2, .6);
+        ImVec4 color_background_8     = Lerp(bg_color_1, bg_color_2, .7);
+        ImVec4 color_background_9     = Lerp(bg_color_1, bg_color_2, .8);
+        ImVec4 color_background_10    = Lerp(bg_color_1, bg_color_2, .9);
 
         // should be dark
         ImVec4 color_black_transparent_9     = {0.0f, 0.0f, 0.0f, 0.9f};
@@ -196,21 +172,21 @@ namespace ImGui::Style {
         ImVec4 color_black_transparent_3     = {0.0f, 0.0f, 0.0f, 0.3f};
         ImVec4 color_black_transparent_1     = {0.0f, 0.0f, 0.0f, 0.1f};
 
-        ImVec4 color_highlight_1       = Lerp(h_1,h_2, 0);
+        ImVec4 color_highlight_1       = Lerp(h_color_1,h_color_2, 0);
 
-        ImVec4 color_accent_2         = Lerp(h_1,h_2, 0.2);//{55.0f / 255.0f, 75.0f / 255.0f, 255.0f / 255.0f, 1.0f};
-        ImVec4 color_accent_3         = Lerp(h_1,h_2, 0.3);//{50.0f / 255.0f, 70.0f / 255.0f, 255.0f / 255.0f, 1.0f};
+        ImVec4 color_accent_2         = Lerp(h_color_1,h_color_2, 0.2);//{55.0f / 255.0f, 75.0f / 255.0f, 255.0f / 255.0f, 1.0f};
+        ImVec4 color_accent_3         = Lerp(h_color_1,h_color_2, 0.3);//{50.0f / 255.0f, 70.0f / 255.0f, 255.0f / 255.0f, 1.0f};
 
         // not used
-        // ImVec4 color_highlight_2     = Lerp(h_1,h_2,.1);
-        // ImVec4 color_highlight_3     = Lerp(h_1,h_2,.2);
-        // ImVec4 color_highlight_4     = Lerp(h_1,h_2,.3);
-        // ImVec4 color_highlight_5     = Lerp(h_1,h_2,.4);
-        // ImVec4 color_highlight_6     = Lerp(h_1,h_2,.5);
-        // ImVec4 color_highlight_7     = Lerp(h_1,h_2,.6);
-        // ImVec4 color_highlight_8     = Lerp(h_1,h_2,.7);
-        // ImVec4 color_highlight_9     = Lerp(h_1,h_2,.8);
-        // ImVec4 color_highlight_10     = Lerp(h_1,h_2,.9);
+        // ImVec4 color_highlight_2     = Lerp(h_color_1,h_color_2,.1);
+        // ImVec4 color_highlight_3     = Lerp(h_color_1,h_color_2,.2);
+        // ImVec4 color_highlight_4     = Lerp(h_color_1,h_color_2,.3);
+        // ImVec4 color_highlight_5     = Lerp(h_color_1,h_color_2,.4);
+        // ImVec4 color_highlight_6     = Lerp(h_color_1,h_color_2,.5);
+        // ImVec4 color_highlight_7     = Lerp(h_color_1,h_color_2,.6);
+        // ImVec4 color_highlight_8     = Lerp(h_color_1,h_color_2,.7);
+        // ImVec4 color_highlight_9     = Lerp(h_color_1,h_color_2,.8);
+        // ImVec4 color_highlight_10     = Lerp(h_color_1,h_color_2,.9);
 
         style.Colors[ImGuiCol_Text] = color_highlight_1;
         style.Colors[ImGuiCol_TextDisabled] = color_background_9;
@@ -245,9 +221,9 @@ namespace ImGui::Style {
         style.Colors[ImGuiCol_ScrollbarBg] = color_background_2;
 
 
-        style.Colors[ImGuiCol_Button] = color_background_2;
-        style.Colors[ImGuiCol_ButtonHovered] = color_background_3;
-        style.Colors[ImGuiCol_ButtonActive] = color_background_4;
+        style.Colors[ImGuiCol_Button] = color_background_3;
+        style.Colors[ImGuiCol_ButtonHovered] = color_background_4;
+        style.Colors[ImGuiCol_ButtonActive] = color_background_1;
 
         // alternative
         // style.Colors[ImGuiCol_Button] = {};
@@ -291,7 +267,5 @@ namespace ImGui::Style {
 
         style.Colors[ImGuiCol_TableRowBg] = {};
         style.Colors[ImGuiCol_BorderShadow] = {};
-
-        style.ScaleAllSizes(Spartan::Window::GetDpiScale());
     }
 }

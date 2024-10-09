@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ImGui/Implementation/ImGui_Style.h"
 #include "Widgets/AssetBrowser.h"
 #include "Widgets/Console.h"
+#include "Widgets/Style.h"
 #include "Widgets/TitleBar.h"
 #include "Widgets/ProgressDialog.h"
 #include "Widgets/Properties.h"
@@ -56,36 +57,6 @@ namespace
     {
         SDL_Event* event_sdl = static_cast<SDL_Event*>(get<void*>(data));
         ImGui_ImplSDL2_ProcessEvent(event_sdl);
-    }
-
-    void window_theme()
-    {
-        const float width  = 600.0f;
-        const float height = 300.0f;
-
-        // set position
-        ImVec2 display_size = ImGui::GetIO().DisplaySize;
-        ImVec2 window_pos   = ImVec2((display_size.x - width) * 0.25f, (display_size.y - height) * 0.25f);
-        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
-
-        if (ImGui::Begin("Theme"))
-        {
-            ImGui::Text("Test");
-
-            ImGui::ColorEdit4("Background 1",&ImGui::Style::bg_1.x);
-            ImGui::ColorEdit4("Background 2",&ImGui::Style::bg_2.x);
-
-            ImGui::ColorEdit4("Highlight 1",&ImGui::Style::h_1.x);
-            ImGui::ColorEdit4("Highlight 2",&ImGui::Style::h_2.x);
-
-            ImGui::ColorEdit4("Accent 1",&ImGui::Style::color_accent_1.x);
-            ImGui::ColorEdit4("Accent 2",&ImGui::Style::color_accent_2.x);
-
-            if(ImGui::Button("Apply")){
-                ImGui::Style::SetupImGuiStyle();
-            }
-        }
-        ImGui::End();
     }
 
     void window_sponsor()
@@ -152,15 +123,12 @@ Editor::Editor(const std::vector<std::string>& args)
     SP_ASSERT_MSG(ImGui_ImplSDL2_InitForVulkan(static_cast<SDL_Window*>(Spartan::Window::GetHandleSDL())), "Failed to initialize ImGui's SDL backend");
     ImGui::RHI::Initialize();
 
-    // apply colors and style
-    ImGui::Style::SetupImGuiStyle();
-    // ImGui::Style::SetupImGuiStyleClassic();
-
     // initialization of some helper static classes
     IconLoader::Initialize();
     EditorHelper::Initialize(this);
 
     // create all imgui widgets
+    m_widgets.emplace_back(make_shared<Style>(this));
     m_widgets.emplace_back(make_shared<ProgressDialog>(this));
     m_widgets.emplace_back(make_shared<Console>(this));
     m_widgets.emplace_back(make_shared<Profiler>(this));
@@ -218,7 +186,6 @@ void Editor::Tick()
             Spartan::Engine::Tick();
 
             window_sponsor();
-            window_theme();
 
             // editor
             if (render_editor)
