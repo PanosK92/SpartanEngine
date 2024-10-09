@@ -20,16 +20,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 #pragma once
 
-//= INCLUDES ============================================
+//= INCLUDES ===============
 #include "../Source/imgui.h"
-//==================================
+//==========================
 
 namespace ImGui::Style {
 
     // TODO
-    // Console Widget: warning buttons are not vertically aligned
-    // Console Widget: Filter text label missing left padding
-    // FileDialog Widget:   Thumbnail text label background is incorrect size
+    // Console Widget:    warning buttons are not vertically aligned
+    // Console Widget:    filter text label missing left padding
+    // FileDialog Widget: thumbnail text label background is incorrect size
 
     static ImVec4 bg_color_1 = {0.1f,0.1f,0.1f,1.0f};
     static ImVec4 bg_color_2 = {0.59f,0.59f,0.59f,1.0f};
@@ -40,10 +40,10 @@ namespace ImGui::Style {
     static ImVec4 color_accent_1 = {59.0f / 255.0f, 79.0f / 255.0f, 255.0f / 255.0f, 1.0f};
     static ImVec4 color_accent_2 = {45.0f / 255.0f, 80.0f / 255.0f, 255.0f / 255.0f, 1.0f};
 
-    static ImVec4 color_ok        = {51.0f / 255.0f, 179.0f / 255.0f, 89.0f / 255.0f, 1.0f};
-    static ImVec4 color_info      = {235.0f / 255.0f, 235.0f / 255.0f, 235.0f / 255.0f, 1.0f};
-    static ImVec4 color_warning   = {255.0f / 255.0f, 149.0f / 255.0f, 49.0f / 255.0f, 1.0f};
-    static ImVec4 color_error     = {255.0f / 255.0f, 58.0f / 255.0f, 58.0f / 255.0f, 1.0f};
+    static ImVec4 color_ok      = {51.0f / 255.0f, 179.0f / 255.0f, 89.0f / 255.0f, 1.0f};
+    static ImVec4 color_info    = {235.0f / 255.0f, 235.0f / 255.0f, 235.0f / 255.0f, 1.0f};
+    static ImVec4 color_warning = {255.0f / 255.0f, 149.0f / 255.0f, 49.0f / 255.0f, 1.0f};
+    static ImVec4 color_error   = {255.0f / 255.0f, 58.0f / 255.0f, 58.0f / 255.0f, 1.0f};
 
     inline ImVec4 HSV(float h, float s, float v, float a = 1.0f)
     {
@@ -111,161 +111,163 @@ namespace ImGui::Style {
         color_error     = {255.0f / 255.0f, 58.0f / 255.0f, 58.0f / 255.0f, 1.0f};
     }
 
-    inline const void SetupImGuiBase() {
+    inline const void SetupImGuiBase()
+    {
         ImGuiStyle& style = ImGui::GetStyle();
 
-        style.Alpha = 1.0f;
-        style.DisabledAlpha = 0.60f;
+        style.Alpha                     = 1.0f;
+        style.DisabledAlpha             = 0.60f;
 
-        style.WindowPadding = ImVec2(8.0f, 4.0f);
-        style.CellPadding = ImVec2(8.0f, 4.0f);
-        style.FramePadding = ImVec2(8.0f, 4.0f);
-        style.ItemSpacing = ImVec2(8.0f, 4.0f);
+        style.WindowPadding             = ImVec2(8.0f, 4.0f);
+        style.CellPadding               = ImVec2(8.0f, 4.0f);
+        style.FramePadding              = ImVec2(8.0f, 4.0f);
+        style.ItemSpacing               = ImVec2(8.0f, 4.0f);
 
-        style.WindowRounding = 2.0f;
-        style.GrabRounding = 2.0f;
-        style.TabRounding = 2.0f;
-        style.ChildRounding = 2.0f;
-        style.PopupRounding = 2.0f;
-        style.FrameRounding = 2.0f;
-        style.ScrollbarRounding = 2.0f;
+        style.WindowRounding            = 2.0f;
+        style.GrabRounding              = 2.0f;
+        style.TabRounding               = 2.0f;
+        style.ChildRounding             = 2.0f;
+        style.PopupRounding             = 2.0f;
+        style.FrameRounding             = 2.0f;
+        style.ScrollbarRounding         = 2.0f;
 
-        style.WindowBorderSize = 1.0f;
-        style.PopupBorderSize = 1.0f;
+        style.WindowBorderSize          = 1.0f;
+        style.PopupBorderSize           = 1.0f;
 
-        style.ChildBorderSize = 0.0f;
-        style.FrameBorderSize = 0.0f;
-        style.TabBorderSize = 0.0f;
+        style.ChildBorderSize           = 0.0f;
+        style.FrameBorderSize           = 0.0f;
+        style.TabBorderSize             = 0.0f;
 
-        style.WindowMinSize = ImVec2(32.0f, 32.0f);
-        style.WindowTitleAlign = ImVec2(0.0f, 0.5f);
-        style.WindowMenuButtonPosition = ImGuiDir_Left;
+        style.WindowMinSize             = ImVec2(32.0f, 32.0f);
+        style.WindowTitleAlign          = ImVec2(0.0f, 0.5f);
+        style.WindowMenuButtonPosition  = ImGuiDir_Left;
 
-        style.ItemInnerSpacing = ImVec2(2.0f, 2.0f);
-        style.IndentSpacing = 21.0f;
-        style.ColumnsMinSpacing = 6.0f;
-        style.ScrollbarSize = 13.0f;
-        style.GrabMinSize = 7.0f;
+        style.ItemInnerSpacing          = ImVec2(2.0f, 2.0f);
+        style.IndentSpacing             = 21.0f;
+        style.ColumnsMinSpacing         = 6.0f;
+        style.ScrollbarSize             = 13.0f;
+        style.GrabMinSize               = 7.0f;
         style.TabMinWidthForCloseButton = 0.0f;
-        style.ColorButtonPosition = ImGuiDir_Right;
-        style.ButtonTextAlign = ImVec2(0.5f, 0.5f);
-        style.SelectableTextAlign = ImVec2(0.0f, 0.0f);
+        style.ColorButtonPosition       = ImGuiDir_Right;
+        style.ButtonTextAlign           = ImVec2(0.5f, 0.5f);
+        style.SelectableTextAlign       = ImVec2(0.0f, 0.0f);
     }
 
-    inline void SetupImGuiColors() {
-        ImGuiStyle& style = ImGui::GetStyle();
+    inline void SetupImGuiColors()
+    {
+        ImGuiStyle& style                                = ImGui::GetStyle();
 
-        ImVec4 color_background_1     = Lerp(bg_color_1, bg_color_2, .0f);
-        ImVec4 color_background_2     = Lerp(bg_color_1, bg_color_2, .1f);
-        ImVec4 color_background_3     = Lerp(bg_color_1, bg_color_2, .2f);
-        ImVec4 color_background_4     = Lerp(bg_color_1, bg_color_2, .3f);
-        ImVec4 color_background_5     = Lerp(bg_color_1, bg_color_2, .4f);
-        ImVec4 color_background_6     = Lerp(bg_color_1, bg_color_2, .5f);
-        ImVec4 color_background_7     = Lerp(bg_color_1, bg_color_2, .6f);
-        ImVec4 color_background_8     = Lerp(bg_color_1, bg_color_2, .7f);
-        ImVec4 color_background_9     = Lerp(bg_color_1, bg_color_2, .8f);
-        ImVec4 color_background_10    = Lerp(bg_color_1, bg_color_2, .9f);
+        ImVec4 color_background_1                        = Lerp(bg_color_1, bg_color_2, .0f);
+        ImVec4 color_background_2                        = Lerp(bg_color_1, bg_color_2, .1f);
+        ImVec4 color_background_3                        = Lerp(bg_color_1, bg_color_2, .2f);
+        ImVec4 color_background_4                        = Lerp(bg_color_1, bg_color_2, .3f);
+        ImVec4 color_background_5                        = Lerp(bg_color_1, bg_color_2, .4f);
+        ImVec4 color_background_6                        = Lerp(bg_color_1, bg_color_2, .5f);
+        ImVec4 color_background_7                        = Lerp(bg_color_1, bg_color_2, .6f);
+        ImVec4 color_background_8                        = Lerp(bg_color_1, bg_color_2, .7f);
+        ImVec4 color_background_9                        = Lerp(bg_color_1, bg_color_2, .8f);
+        ImVec4 color_background_10                       = Lerp(bg_color_1, bg_color_2, .9f);
 
         // should be dark
-        ImVec4 color_black_transparent_9     = {0.0f, 0.0f, 0.0f, 0.9f};
-        ImVec4 color_black_transparent_6     = {0.0f, 0.0f, 0.0f, 0.6f};
-        ImVec4 color_black_transparent_3     = {0.0f, 0.0f, 0.0f, 0.3f};
-        ImVec4 color_black_transparent_1     = {0.0f, 0.0f, 0.0f, 0.1f};
+        ImVec4 color_black_transparent_9                 = {0.0f, 0.0f, 0.0f, 0.9f};
+        ImVec4 color_black_transparent_6                 = {0.0f, 0.0f, 0.0f, 0.6f};
+        ImVec4 color_black_transparent_3                 = {0.0f, 0.0f, 0.0f, 0.3f};
+        ImVec4 color_black_transparent_1                 = {0.0f, 0.0f, 0.0f, 0.1f};
 
-        ImVec4 color_highlight_1       = Lerp(h_color_1,h_color_2, 0);
+        ImVec4 color_highlight_1                         = Lerp(h_color_1,h_color_2, 0);
 
-        ImVec4 color_accent_2         = Lerp(h_color_1,h_color_2, 0.2f);//{55.0f / 255.0f, 75.0f / 255.0f, 255.0f / 255.0f, 1.0f};
-        ImVec4 color_accent_3         = Lerp(h_color_1,h_color_2, 0.3f);//{50.0f / 255.0f, 70.0f / 255.0f, 255.0f / 255.0f, 1.0f};
+        ImVec4 color_accent_2                            = Lerp(h_color_1,h_color_2, 0.2f);//{55.0f / 255.0f, 75.0f / 255.0f, 255.0f / 255.0f, 1.0f};
+        ImVec4 color_accent_3                            = Lerp(h_color_1,h_color_2, 0.3f);//{50.0f / 255.0f, 70.0f / 255.0f, 255.0f / 255.0f, 1.0f};
 
         // not used
-        // ImVec4 color_highlight_2     = Lerp(h_color_1,h_color_2,.1);
-        // ImVec4 color_highlight_3     = Lerp(h_color_1,h_color_2,.2);
-        // ImVec4 color_highlight_4     = Lerp(h_color_1,h_color_2,.3);
-        // ImVec4 color_highlight_5     = Lerp(h_color_1,h_color_2,.4);
-        // ImVec4 color_highlight_6     = Lerp(h_color_1,h_color_2,.5);
-        // ImVec4 color_highlight_7     = Lerp(h_color_1,h_color_2,.6);
-        // ImVec4 color_highlight_8     = Lerp(h_color_1,h_color_2,.7);
-        // ImVec4 color_highlight_9     = Lerp(h_color_1,h_color_2,.8);
-        // ImVec4 color_highlight_10     = Lerp(h_color_1,h_color_2,.9);
+        // ImVec4 color_highlight_2                      = Lerp(h_color_1,h_color_2,.1);
+        // ImVec4 color_highlight_3                      = Lerp(h_color_1,h_color_2,.2);
+        // ImVec4 color_highlight_4                      = Lerp(h_color_1,h_color_2,.3);
+        // ImVec4 color_highlight_5                      = Lerp(h_color_1,h_color_2,.4);
+        // ImVec4 color_highlight_6                      = Lerp(h_color_1,h_color_2,.5);
+        // ImVec4 color_highlight_7                      = Lerp(h_color_1,h_color_2,.6);
+        // ImVec4 color_highlight_8                      = Lerp(h_color_1,h_color_2,.7);
+        // ImVec4 color_highlight_9                      = Lerp(h_color_1,h_color_2,.8);
+        // ImVec4 color_highlight_10                     = Lerp(h_color_1,h_color_2,.9);
 
-        style.Colors[ImGuiCol_Text] = color_highlight_1;
-        style.Colors[ImGuiCol_TextDisabled] = color_background_9;
+        style.Colors[ImGuiCol_Text]                      = color_highlight_1;
+        style.Colors[ImGuiCol_TextDisabled]              = color_background_9;
 
-        style.Colors[ImGuiCol_WindowBg] = color_background_2;
-        style.Colors[ImGuiCol_FrameBg] = color_background_4;
-        style.Colors[ImGuiCol_TitleBg] = color_background_1;
-        style.Colors[ImGuiCol_TitleBgActive] = color_background_2;
+        style.Colors[ImGuiCol_WindowBg]                  = color_background_2;
+        style.Colors[ImGuiCol_FrameBg]                   = color_background_4;
+        style.Colors[ImGuiCol_TitleBg]                   = color_background_1;
+        style.Colors[ImGuiCol_TitleBgActive]             = color_background_2;
 
         // accent
-        style.Colors[ImGuiCol_ScrollbarGrabActive] = color_accent_1;
-        style.Colors[ImGuiCol_SeparatorActive] = color_accent_1;
-        style.Colors[ImGuiCol_SliderGrabActive] = color_accent_1;
-        style.Colors[ImGuiCol_ResizeGripActive] = color_accent_1;
-        style.Colors[ImGuiCol_DragDropTarget] = color_accent_1;
-        style.Colors[ImGuiCol_NavHighlight] = color_accent_1;
-        style.Colors[ImGuiCol_NavWindowingHighlight] = color_accent_1;
-        style.Colors[ImGuiCol_TabSelectedOverline] = color_accent_1;
+        style.Colors[ImGuiCol_ScrollbarGrabActive]       = color_accent_1;
+        style.Colors[ImGuiCol_SeparatorActive]           = color_accent_1;
+        style.Colors[ImGuiCol_SliderGrabActive]          = color_accent_1;
+        style.Colors[ImGuiCol_ResizeGripActive]          = color_accent_1;
+        style.Colors[ImGuiCol_DragDropTarget]            = color_accent_1;
+        style.Colors[ImGuiCol_NavHighlight]              = color_accent_1;
+        style.Colors[ImGuiCol_NavWindowingHighlight]     = color_accent_1;
+        style.Colors[ImGuiCol_TabSelectedOverline]       = color_accent_1;
         style.Colors[ImGuiCol_TabDimmedSelectedOverline] = color_accent_1;
-        style.Colors[ImGuiCol_CheckMark] = color_accent_1;
+        style.Colors[ImGuiCol_CheckMark]                 = color_accent_1;
 
-        style.Colors[ImGuiCol_Tab] = style.Colors[ImGuiCol_TitleBg];
-        style.Colors[ImGuiCol_TabDimmed] = style.Colors[ImGuiCol_TitleBg];
+        style.Colors[ImGuiCol_Tab]                       = style.Colors[ImGuiCol_TitleBg];
+        style.Colors[ImGuiCol_TabDimmed]                 = style.Colors[ImGuiCol_TitleBg];
 
-        style.Colors[ImGuiCol_TabSelected] = style.Colors[ImGuiCol_WindowBg];
-        style.Colors[ImGuiCol_TabDimmedSelected] = style.Colors[ImGuiCol_WindowBg];
+        style.Colors[ImGuiCol_TabSelected]               = style.Colors[ImGuiCol_WindowBg];
+        style.Colors[ImGuiCol_TabDimmedSelected]         = style.Colors[ImGuiCol_WindowBg];
 
-        style.Colors[ImGuiCol_FrameBgHovered] = color_background_3;
+        style.Colors[ImGuiCol_FrameBgHovered]            = color_background_3;
 
-        style.Colors[ImGuiCol_TitleBgCollapsed] = color_background_2;
-        style.Colors[ImGuiCol_MenuBarBg] = color_background_3;
-        style.Colors[ImGuiCol_ScrollbarBg] = color_background_2;
+        style.Colors[ImGuiCol_TitleBgCollapsed]          = color_background_2;
+        style.Colors[ImGuiCol_MenuBarBg]                 = color_background_3;
+        style.Colors[ImGuiCol_ScrollbarBg]               = color_background_2;
 
 
-        style.Colors[ImGuiCol_Button] = color_background_3;
-        style.Colors[ImGuiCol_ButtonHovered] = color_background_4;
-        style.Colors[ImGuiCol_ButtonActive] = color_background_1;
+        style.Colors[ImGuiCol_Button]                    = color_background_3;
+        style.Colors[ImGuiCol_ButtonHovered]             = color_background_4;
+        style.Colors[ImGuiCol_ButtonActive]              = color_background_1;
 
         // alternative
-        // style.Colors[ImGuiCol_Button] = {};
-        // style.Colors[ImGuiCol_ButtonHovered] = color_highlight_4;
-        // style.Colors[ImGuiCol_ButtonActive] = color_highlight_5;
+        // style.Colors[ImGuiCol_Button]                 = {};
+        // style.Colors[ImGuiCol_ButtonHovered]          = color_highlight_4;
+        // style.Colors[ImGuiCol_ButtonActive]           = color_highlight_5;
 
-        style.Colors[ImGuiCol_ResizeGrip] =  color_black_transparent_3;
-        style.Colors[ImGuiCol_ResizeGripHovered] = color_black_transparent_6;
-        style.Colors[ImGuiCol_TableRowBgAlt] = color_black_transparent_1;
-        style.Colors[ImGuiCol_TextSelectedBg] = color_black_transparent_1;
+        style.Colors[ImGuiCol_ResizeGrip]                =  color_black_transparent_3;
+        style.Colors[ImGuiCol_ResizeGripHovered]         = color_black_transparent_6;
+        style.Colors[ImGuiCol_TableRowBgAlt]             = color_black_transparent_1;
+        style.Colors[ImGuiCol_TextSelectedBg]            = color_black_transparent_1;
 
-        style.Colors[ImGuiCol_DockingPreview] = color_accent_1;
-        style.Colors[ImGuiCol_PlotLinesHovered] = color_accent_2;
-        style.Colors[ImGuiCol_PlotHistogramHovered] = color_accent_3;
+        style.Colors[ImGuiCol_DockingPreview]            = color_accent_1;
+        style.Colors[ImGuiCol_PlotLinesHovered]          = color_accent_2;
+        style.Colors[ImGuiCol_PlotHistogramHovered]      = color_accent_3;
 
-        style.Colors[ImGuiCol_PlotHistogram] = color_background_10;
+        style.Colors[ImGuiCol_PlotHistogram]             = color_background_10;
 
-        style.Colors[ImGuiCol_HeaderHovered] = color_background_9;
-        style.Colors[ImGuiCol_HeaderActive] = color_background_9;
-        style.Colors[ImGuiCol_PlotLines] = color_background_9;
+        style.Colors[ImGuiCol_HeaderHovered]             = color_background_9;
+        style.Colors[ImGuiCol_HeaderActive]              = color_background_9;
+        style.Colors[ImGuiCol_PlotLines]                 = color_background_9;
 
-        style.Colors[ImGuiCol_TabHovered] = color_background_7;
-        style.Colors[ImGuiCol_SeparatorHovered] = color_background_8;
-        style.Colors[ImGuiCol_SliderGrab] = color_background_8;
-        style.Colors[ImGuiCol_PopupBg] = color_background_6;
-        style.Colors[ImGuiCol_Header] = color_background_6;
-        style.Colors[ImGuiCol_TableBorderStrong] = color_background_6;
-        style.Colors[ImGuiCol_ScrollbarGrabHovered] = color_background_6;
-        style.Colors[ImGuiCol_Separator] = color_background_4;
-        style.Colors[ImGuiCol_TableBorderLight] = color_background_4;
-        style.Colors[ImGuiCol_FrameBgActive] = color_background_5;
-        style.Colors[ImGuiCol_ScrollbarGrab] = color_background_5;
+        style.Colors[ImGuiCol_TabHovered]                = color_background_7;
+        style.Colors[ImGuiCol_SeparatorHovered]          = color_background_8;
+        style.Colors[ImGuiCol_SliderGrab]                = color_background_8;
+        style.Colors[ImGuiCol_PopupBg]                   = color_background_6;
+        style.Colors[ImGuiCol_Header]                    = color_background_6;
+        style.Colors[ImGuiCol_TableBorderStrong]         = color_background_6;
+        style.Colors[ImGuiCol_ScrollbarGrabHovered]      = color_background_6;
+        style.Colors[ImGuiCol_Separator]                 = color_background_4;
+        style.Colors[ImGuiCol_TableBorderLight]          = color_background_4;
+        style.Colors[ImGuiCol_FrameBgActive]             = color_background_5;
+        style.Colors[ImGuiCol_ScrollbarGrab]             = color_background_5;
 
-        style.Colors[ImGuiCol_ChildBg] = {};
-        style.Colors[ImGuiCol_Border] = color_background_5;
+        style.Colors[ImGuiCol_ChildBg]                   = {};
+        style.Colors[ImGuiCol_Border]                    = color_background_5;
 
-        style.Colors[ImGuiCol_TableHeaderBg] = color_background_3;
+        style.Colors[ImGuiCol_TableHeaderBg]             = color_background_3;
 
-        style.Colors[ImGuiCol_NavWindowingDimBg] = color_black_transparent_6;
-        style.Colors[ImGuiCol_ModalWindowDimBg] = color_black_transparent_6;
+        style.Colors[ImGuiCol_NavWindowingDimBg]         = color_black_transparent_6;
+        style.Colors[ImGuiCol_ModalWindowDimBg]          = color_black_transparent_6;
 
-        style.Colors[ImGuiCol_TableRowBg] = {};
-        style.Colors[ImGuiCol_BorderShadow] = {};
+        style.Colors[ImGuiCol_TableRowBg]                = {};
+        style.Colors[ImGuiCol_BorderShadow]              = {};
     }
 }

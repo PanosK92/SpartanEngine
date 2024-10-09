@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================================
+//= INCLUDES ===================================
 #include "Style.h"
 #include "../ImGui/Implementation/ImGui_Style.h"
 #include "../Logging/Log.h"
@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <Window.h>
 #include <fstream>
 #include <iostream>
-//==================================
+//==============================================
 
 //= NAMESPACES =========
 using namespace std;
