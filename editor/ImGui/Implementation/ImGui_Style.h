@@ -31,11 +31,11 @@ namespace ImGui::Style {
     // Console Widget: Filter text label missing left padding
     // FileDialog Widget:   Thumbnail text label background is incorrect size
 
-    static ImVec4 bg_color_1 = {0.1,0.1,0.1,1.0f};
-    static ImVec4 bg_color_2 = {0.59,0.59,0.59,1.0f};
+    static ImVec4 bg_color_1 = {0.1f,0.1f,0.1f,1.0f};
+    static ImVec4 bg_color_2 = {0.59f,0.59f,0.59f,1.0f};
 
-    static ImVec4 h_color_1  = {1.0,1.0,1.0,1.0f};
-    static ImVec4 h_color_2  = {1.0,1.0,1.0,0.1f};
+    static ImVec4 h_color_1  = {1.0f,1.0f,1.0f,1.0f};
+    static ImVec4 h_color_2  = {1.0f,1.0f,1.0f,0.1f};
 
     static ImVec4 color_accent_1 = {59.0f / 255.0f, 79.0f / 255.0f, 255.0f / 255.0f, 1.0f};
     static ImVec4 color_accent_2 = {45.0f / 255.0f, 80.0f / 255.0f, 255.0f / 255.0f, 1.0f};
@@ -79,11 +79,11 @@ namespace ImGui::Style {
 
     inline void StyleDark()
     {
-        bg_color_1 = {0.1,0.1,0.1,1.0f};
-        bg_color_2 = {0.59,0.59,0.59,1.0f};
+        bg_color_1 = {0.1f,0.1f,0.1f,1.0f};
+        bg_color_2 = {0.59f,0.59f,0.59f,1.0f};
 
-        h_color_1  = {1.0,1.0,1.0,1.0f};
-        h_color_2  = {1.0,1.0,1.0,0.1f};
+        h_color_1  = {1.0f,1.0f,1.0f,1.0f};
+        h_color_2  = {1.0f,1.0f,1.0f,0.1f};
 
         color_accent_1 = {59.0f / 255.0f, 79.0f / 255.0f, 255.0f / 255.0f, 1.0f};
         color_accent_2 = {45.0f / 255.0f, 80.0f / 255.0f, 255.0f / 255.0f, 1.0f};
@@ -100,7 +100,7 @@ namespace ImGui::Style {
         bg_color_2 = {70.0f / 255.0f, 70.0f / 255.0f, 70.0f / 255.0f, 1.0f};
 
         h_color_1 = {7.0f / 255.0f, 7.0f / 255.0f, 7.0f / 255.0f, 1.0f};
-        h_color_2  = {0.0,0.0,0.0,0.1f};
+        h_color_2  = {0.0f,0.0f,0.0f,0.1f};
 
         color_accent_1 = {59.0f / 255.0f, 79.0f / 255.0f, 255.0f / 255.0f, 1.0f};
         color_accent_2 = {45.0f / 255.0f, 80.0f / 255.0f, 255.0f / 255.0f, 1.0f};
@@ -155,16 +155,16 @@ namespace ImGui::Style {
     inline void SetupImGuiColors() {
         ImGuiStyle& style = ImGui::GetStyle();
 
-        ImVec4 color_background_1     = Lerp(bg_color_1, bg_color_2, .0);
-        ImVec4 color_background_2     = Lerp(bg_color_1, bg_color_2, .1);
-        ImVec4 color_background_3     = Lerp(bg_color_1, bg_color_2, .2);
-        ImVec4 color_background_4     = Lerp(bg_color_1, bg_color_2, .3);
-        ImVec4 color_background_5     = Lerp(bg_color_1, bg_color_2, .4);
-        ImVec4 color_background_6     = Lerp(bg_color_1, bg_color_2, .5);
-        ImVec4 color_background_7     = Lerp(bg_color_1, bg_color_2, .6);
-        ImVec4 color_background_8     = Lerp(bg_color_1, bg_color_2, .7);
-        ImVec4 color_background_9     = Lerp(bg_color_1, bg_color_2, .8);
-        ImVec4 color_background_10    = Lerp(bg_color_1, bg_color_2, .9);
+        ImVec4 color_background_1     = Lerp(bg_color_1, bg_color_2, .0f);
+        ImVec4 color_background_2     = Lerp(bg_color_1, bg_color_2, .1f);
+        ImVec4 color_background_3     = Lerp(bg_color_1, bg_color_2, .2f);
+        ImVec4 color_background_4     = Lerp(bg_color_1, bg_color_2, .3f);
+        ImVec4 color_background_5     = Lerp(bg_color_1, bg_color_2, .4f);
+        ImVec4 color_background_6     = Lerp(bg_color_1, bg_color_2, .5f);
+        ImVec4 color_background_7     = Lerp(bg_color_1, bg_color_2, .6f);
+        ImVec4 color_background_8     = Lerp(bg_color_1, bg_color_2, .7f);
+        ImVec4 color_background_9     = Lerp(bg_color_1, bg_color_2, .8f);
+        ImVec4 color_background_10    = Lerp(bg_color_1, bg_color_2, .9f);
 
         // should be dark
         ImVec4 color_black_transparent_9     = {0.0f, 0.0f, 0.0f, 0.9f};
@@ -174,8 +174,8 @@ namespace ImGui::Style {
 
         ImVec4 color_highlight_1       = Lerp(h_color_1,h_color_2, 0);
 
-        ImVec4 color_accent_2         = Lerp(h_color_1,h_color_2, 0.2);//{55.0f / 255.0f, 75.0f / 255.0f, 255.0f / 255.0f, 1.0f};
-        ImVec4 color_accent_3         = Lerp(h_color_1,h_color_2, 0.3);//{50.0f / 255.0f, 70.0f / 255.0f, 255.0f / 255.0f, 1.0f};
+        ImVec4 color_accent_2         = Lerp(h_color_1,h_color_2, 0.2f);//{55.0f / 255.0f, 75.0f / 255.0f, 255.0f / 255.0f, 1.0f};
+        ImVec4 color_accent_3         = Lerp(h_color_1,h_color_2, 0.3f);//{50.0f / 255.0f, 70.0f / 255.0f, 255.0f / 255.0f, 1.0f};
 
         // not used
         // ImVec4 color_highlight_2     = Lerp(h_color_1,h_color_2,.1);
