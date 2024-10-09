@@ -36,8 +36,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Engine.h"
 #include "Profiling/RenderDoc.h"
 #include <Debugging.h>
-#include "../ImGui/Implementation/ImGui_Style.h"
 #include "Style.h"
+#include <Input/Input.h>
+#include <sstream>
 //========================================
 
 //= NAMESPACES =====
