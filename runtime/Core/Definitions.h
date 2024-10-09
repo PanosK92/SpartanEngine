@@ -142,7 +142,7 @@ if (!(expression))                                                    \
     SP_LOG_ERROR("Assertion failed: " #expression);                   \
     SP_LOG_ERROR("Message: %s",       text_message);                  \
     SP_LOG_ERROR("Callstack:\n%s",    Spartan::get_callstack_c_str());\
-    assert(expression);                                               \
+    assert(expression && text_message);                               \
 }
 
 // A static assert
