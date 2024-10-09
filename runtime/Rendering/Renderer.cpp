@@ -280,7 +280,7 @@ namespace Spartan
             }
 
             RHI_Device::Tick(frame_num);
-            RHI_FidelityFX::Update(&m_cb_frame_cpu);
+            RHI_FidelityFX::Tick(&m_cb_frame_cpu);
             dynamic_resolution();
         }
 
@@ -303,7 +303,7 @@ namespace Spartan
             bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
             if (is_standalone)
             {
-                BlitToBackBuffer(cmd_list_graphics, GetRenderTarget(Renderer_RenderTarget::frame_output).get());
+                BlitToBackBuffer(cmd_list_graphics, GetRenderTarget(Renderer_RenderTarget::frame_output));
             }
 
             // present
@@ -824,11 +824,6 @@ namespace Spartan
         return RHI_Context::api_type;
     }
 
-    RHI_Texture* Renderer::GetFrameTexture()
-    {
-        return GetRenderTarget(Renderer_RenderTarget::frame_output).get();
-    }
-
     uint64_t Renderer::GetFrameNum()
     {
         return frame_num;
@@ -1007,7 +1002,7 @@ namespace Spartan
                     // set light properties
                     if (RHI_Texture* texture = light->GetDepthTexture())
                     {
-                        for (uint32_t i = 0; i < texture->GetArrayLength(); i++)
+                        for (uint32_t i = 0; i < texture->GetDepth(); i++)
                         {
                             if (light->GetLightType() == LightType::Point)
                             {
@@ -1044,13 +1039,13 @@ namespace Spartan
 
         // cpu to gpu
         uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Light)) * index;
-        RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::StorageLights).get();
+        RHI_Buffer* buffer   = GetBuffer(Renderer_Buffer::StorageLights);
         buffer->ResetOffset();
         buffer->Update(&properties[0], update_size);
     }
 
     void Renderer::Screenshot(const string& file_path)
     {
-        GetFrameTexture()->SaveAsImage(file_path);
+        GetRenderTarget(Renderer_RenderTarget::frame_output)->SaveAsImage(file_path);
     }
 }

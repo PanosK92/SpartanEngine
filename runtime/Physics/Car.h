@@ -75,7 +75,7 @@ namespace Spartan
         std::vector<Entity*> transform_wheels;
     };
 
-    class SP_CLASS Car
+    class Car
     {
     public:
         Car() = default;

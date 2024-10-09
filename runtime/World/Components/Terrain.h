@@ -43,7 +43,7 @@ namespace Spartan
         Grass
     };
 
-    class SP_CLASS Terrain : public Component
+    class Terrain : public Component
     {
     public:
         Terrain(Entity* entity);
@@ -54,9 +54,8 @@ namespace Spartan
         void Deserialize(FileStream* stream) override;
         //============================================
 
-        const std::shared_ptr<RHI_Texture> GetHeightMap() const { return m_height_texture; }
-        void SetHeightMap(const std::shared_ptr<RHI_Texture>& height_map);
-        void SetHeightMap(const std::string& file_path);
+        RHI_Texture* GetHeightMap() const          { return m_height_texture; }
+        void SetHeightMap(RHI_Texture* height_map) { m_height_texture = height_map;}
 
         float GetMinY() const     { return m_min_y; }
         void SetMinY(float min_z) { m_min_y = min_z; }
@@ -85,7 +84,7 @@ namespace Spartan
         uint32_t m_vertex_count           = 0;
         uint32_t m_index_count            = 0;
         uint32_t m_triangle_count         = 0;
-        std::shared_ptr<RHI_Texture> m_height_texture;
+        RHI_Texture* m_height_texture     = nullptr;
         std::vector<float> m_height_data;
         std::vector<std::vector<RHI_Vertex_PosTexNorTan>> m_tile_vertices;
         std::vector<RHI_Vertex_PosTexNorTan> m_vertices;

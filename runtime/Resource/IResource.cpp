@@ -19,18 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES ======================
 #include "pch.h"
 #include "IResource.h"
 #include "../Audio/AudioClip.h"
-#include "../RHI/RHI_Texture2D.h"
-#include "../RHI/RHI_Texture3D.h"
-#include "../RHI/RHI_Texture2DArray.h"
-#include "../RHI/RHI_TextureCube.h"
+#include "../RHI/RHI_Texture.h"
 #include "../Rendering/Font/Font.h"
 #include "../Rendering/Animation.h"
 #include "../Rendering/Mesh.h"
-//====================================
+//=================================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -49,16 +46,12 @@ template<typename T>
 inline constexpr void validate_resource_type() { static_assert(std::is_base_of<IResource, T>::value, "Provided type does not implement IResource"); }
 
 // Explicit template instantiation
-#define INSTANTIATE_TO_RESOURCE_TYPE(T, enumT) template<> SP_CLASS ResourceType IResource::TypeToEnum<T>() { validate_resource_type<T>(); return enumT; }
+#define INSTANTIATE_TO_RESOURCE_TYPE(T, enumT) template<>  ResourceType IResource::TypeToEnum<T>() { validate_resource_type<T>(); return enumT; }
 
 // To add a new resource to the engine, simply register it here
-INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture,           ResourceType::Texture)
-INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture2D,         ResourceType::Texture2d)
-INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture3D,         ResourceType::Texture3d)
-INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture2DArray,    ResourceType::Texture2dArray)
-INSTANTIATE_TO_RESOURCE_TYPE(RHI_TextureCube,       ResourceType::TextureCube)
-INSTANTIATE_TO_RESOURCE_TYPE(AudioClip,             ResourceType::Audio)
-INSTANTIATE_TO_RESOURCE_TYPE(Material,              ResourceType::Material)
-INSTANTIATE_TO_RESOURCE_TYPE(Animation,             ResourceType::Animation)
-INSTANTIATE_TO_RESOURCE_TYPE(Font,                  ResourceType::Font)
-INSTANTIATE_TO_RESOURCE_TYPE(Mesh,                  ResourceType::Mesh)
+INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture, ResourceType::Texture)
+INSTANTIATE_TO_RESOURCE_TYPE(AudioClip,   ResourceType::Audio)
+INSTANTIATE_TO_RESOURCE_TYPE(Material,    ResourceType::Material)
+INSTANTIATE_TO_RESOURCE_TYPE(Animation,   ResourceType::Animation)
+INSTANTIATE_TO_RESOURCE_TYPE(Font,        ResourceType::Font)
+INSTANTIATE_TO_RESOURCE_TYPE(Mesh,        ResourceType::Mesh)

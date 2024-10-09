@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderable.h"
 #include "../Entity.h"
 #include "../World.h"
-#include "../../RHI/RHI_Texture2D.h"
+#include "../../RHI/RHI_Texture.h"
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../Rendering/Mesh.h"
@@ -44,7 +44,7 @@ namespace Spartan
         const uint32_t smoothing_iterations = 1; // the number of height map neighboring pixel averaging
         const uint32_t tile_count           = 8; // the number of tiles in each dimension to split the terrain into
 
-        bool generate_height_points_from_height_map(vector<float>& height_data_out, shared_ptr<RHI_Texture> height_texture, float min_y, float max_y)
+        bool generate_height_points_from_height_map(vector<float>& height_data_out, RHI_Texture* height_texture, float min_y, float max_y)
         {
             vector<byte> height_data = height_texture->GetMip(0, 0).bytes;
 
@@ -541,17 +541,6 @@ namespace Spartan
     void Terrain::Deserialize(FileStream* stream)
     {
         SP_LOG_WARNING("Not implemented");
-    }
-
-    void Terrain::SetHeightMap(const shared_ptr<RHI_Texture>& height_map)
-    {
-        m_height_texture = height_map;
-    }
-
-    void Terrain::SetHeightMap(const string& file_path)
-    {
-        m_height_texture = make_shared<RHI_Texture2D>();
-        m_height_texture->LoadFromFile(file_path);
     }
 
     void Terrain::GenerateTransforms(vector<Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop)

@@ -9,8 +9,6 @@
   
 - <img align="left" width="32" height="32" src="https://www.freeiconspng.com/uploads/git-github-hub-icon-25.png">For issues and anything directly related to the project, feel free to open an issue.
   
-- <img align="left" width="32" height="32" src="https://cdn3d.iconscout.com/3d/premium/thumb/ai-5143193-4312366.png?f=webp">My AI replica is always around, click [here](https://chat.openai.com/g/g-etpaCChzi-spartan) for live assistance.
-
 - <img align="left" width="32" height="32" src="https://i0.wp.com/opensource.org/wp-content/uploads/2023/01/cropped-cropped-OSI_Horizontal_Logo_0-e1674081292667.png">Please adhere to the <a href="https://en.wikipedia.org/wiki/MIT_License">MIT license</a>. You're free to copy the code, provided you include the original license.
   
 #### Status
@@ -79,8 +77,6 @@ The [wiki](https://github.com/PanosK92/SpartanEngine/wiki/Wiki) can answer most 
 - [Compiling](https://github.com/PanosK92/SpartanEngine/wiki/Compiling) 
 - [Contributing](https://github.com/PanosK92/SpartanEngine/blob/master/contributing.md)
 - [Perks of a contributor](https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor)
-
-Questions can also be answered by my AI replica, [Panos](https://chat.openai.com/g/g-etpaCChzi-spartan).
 
 # Interesting facts
 - This engine started as a way to learn and enrich my portfolio while I was a university student, circa 2014, represeting over a decade of non-stop development.

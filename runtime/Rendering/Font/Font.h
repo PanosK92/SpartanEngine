@@ -60,7 +60,7 @@ namespace Spartan
         Math::Vector2 position;
     };
 
-    class SP_CLASS Font : public IResource
+    class Font : public IResource
     {
     public:
         Font(const std::string& file_path, const uint32_t font_size, const Color& color);

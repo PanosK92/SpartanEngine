@@ -89,7 +89,7 @@ namespace Spartan
 
                 // get texture, if unable to do so, fallback to a checkerboard texture, so we can spot it by eye
                 void* srv_fallback = nullptr;
-                if (shared_ptr<RHI_Texture> texture = Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard))
+                if (RHI_Texture* texture = Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard))
                 { 
                     void* srv_fallback = texture->GetRhiSrv();
                 }

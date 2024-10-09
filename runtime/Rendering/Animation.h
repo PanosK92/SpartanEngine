@@ -61,7 +61,7 @@ namespace Spartan
         std::vector<KeyVector> scaleFrames;
     };
 
-    class SP_CLASS Animation : public IResource
+    class Animation : public IResource
     {
     public:
         Animation();

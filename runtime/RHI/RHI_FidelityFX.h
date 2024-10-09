@@ -37,9 +37,9 @@ namespace Spartan
         static void Initialize();
         static void Shutdown();
         static void Resize(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output);
-        static void Update(Cb_Frame* cb_frame);
+        static void Tick(Cb_Frame* cb_frame);
 
-        // FSR 3
+        // fsr 3
         static void FSR3_ResetHistory();
         static void FSR3_GenerateJitterSample(float* x, float* y);
         static void FSR3_Dispatch(
@@ -55,7 +55,7 @@ namespace Spartan
             RHI_Texture* tex_output
         );
 
-        // SSSR
+        // sssr
         static void SSSR_Dispatch(
             RHI_CommandList* cmd_list,
             const float resolution_scale,
@@ -69,7 +69,7 @@ namespace Spartan
             RHI_Texture* tex_output
         );
 
-        // Brixelizer GI
+        // brixelizer gi
         static void BrixelizerGI_Update(
             RHI_CommandList* cmd_list,
             Cb_Frame* cb_frame,
@@ -92,6 +92,12 @@ namespace Spartan
             RHI_Texture* tex_specular_gi,
             RHI_Texture* tex_debug
         );
+
+        // breadcrumbs
+        static void Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name);
+        static void Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_PipelineState& pso);
+        static void Breadcrumbs_MarkerBegind(RHI_CommandList* cmd_list, const char* name);
+        static void Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list);
 
     private:
         static void DestroyContexts();

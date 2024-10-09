@@ -26,9 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Geometry.h"
 #include "../World/Components/Light.h"
 #include "../Resource/ResourceCache.h"
-#include "../RHI/RHI_Texture2D.h"
-#include "../RHI/RHI_Texture2DArray.h"
-#include "../RHI/RHI_TextureCube.h"
+#include "../RHI/RHI_Texture.h"
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_Sampler.h"
 #include "../RHI/RHI_BlendState.h"
@@ -214,38 +212,38 @@ namespace Spartan
         if (create_render)
         {
             // frame
-            render_target(Renderer_RenderTarget::frame_render) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_rt_clearable, "frame_render");
+            render_target(Renderer_RenderTarget::frame_render) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags_rt_clearable, "frame_render");
 
             // g-buffer
             {
-                render_target(Renderer_RenderTarget::gbuffer_color)          = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     flags_rt_clearable, "gbuffer_color");
-                render_target(Renderer_RenderTarget::gbuffer_normal)         = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, flags_rt_clearable, "gbuffer_normal");
-                render_target(Renderer_RenderTarget::gbuffer_material)       = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     flags_rt_clearable, "gbuffer_material");
-                render_target(Renderer_RenderTarget::gbuffer_velocity)       = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16_Float,       flags_rt_clearable, "gbuffer_velocity");
-                render_target(Renderer_RenderTarget::gbuffer_depth)          = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth");
-                render_target(Renderer_RenderTarget::gbuffer_depth_opaque)   = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth_opaque");
-                render_target(Renderer_RenderTarget::gbuffer_depth_backface) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth_backface");
+                render_target(Renderer_RenderTarget::gbuffer_color)          = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8G8B8A8_Unorm,     flags_rt_clearable, "gbuffer_color");
+                render_target(Renderer_RenderTarget::gbuffer_normal)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags_rt_clearable, "gbuffer_normal");
+                render_target(Renderer_RenderTarget::gbuffer_material)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8G8B8A8_Unorm,     flags_rt_clearable, "gbuffer_material");
+                render_target(Renderer_RenderTarget::gbuffer_velocity)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16_Float,       flags_rt_clearable, "gbuffer_velocity");
+                render_target(Renderer_RenderTarget::gbuffer_depth)          = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth");
+                render_target(Renderer_RenderTarget::gbuffer_depth_opaque)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth_opaque");
+                render_target(Renderer_RenderTarget::gbuffer_depth_backface) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth_backface");
             }
 
             // light
             {
                 uint32_t light_flags = flags | RHI_Texture_ClearBlit;
 
-                render_target(Renderer_RenderTarget::light_diffuse)     = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, light_flags, "light_diffuse");
-                render_target(Renderer_RenderTarget::light_diffuse_gi)  = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, light_flags, "light_diffuse_gi");
-                render_target(Renderer_RenderTarget::light_specular)    = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, light_flags, "light_specular");
-                render_target(Renderer_RenderTarget::light_specular_gi) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, light_flags, "light_specular_gi");
-                render_target(Renderer_RenderTarget::light_shadow)      = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8_Unorm,           light_flags, "light_shadow");
-                render_target(Renderer_RenderTarget::light_volumetric)  = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R11G11B10_Float,    light_flags, "light_volumetric");
+                render_target(Renderer_RenderTarget::light_diffuse)     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, light_flags, "light_diffuse");
+                render_target(Renderer_RenderTarget::light_diffuse_gi)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, light_flags, "light_diffuse_gi");
+                render_target(Renderer_RenderTarget::light_specular)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, light_flags, "light_specular");
+                render_target(Renderer_RenderTarget::light_specular_gi) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, light_flags, "light_specular_gi");
+                render_target(Renderer_RenderTarget::light_shadow)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8_Unorm,           light_flags, "light_shadow");
+                render_target(Renderer_RenderTarget::light_volumetric)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R11G11B10_Float,    light_flags, "light_volumetric");
             }
 
             // misc
-            render_target(Renderer_RenderTarget::sss)  = make_shared<RHI_Texture2DArray>(width_render, height_render,    RHI_Format::R16_Float, 4,       flags | RHI_Texture_ClearBlit, "sss");
-            render_target(Renderer_RenderTarget::ssr)  = make_shared<RHI_Texture2D>(width_render,      height_render, 1, RHI_Format::R16G16B16A16_Float, flags | RHI_Texture_ClearBlit, "ssr");
-            render_target(Renderer_RenderTarget::ssao) = make_shared<RHI_Texture2D>(width_render,      height_render, 1, RHI_Format::R16_Float,          flags,                         "ssao"); 
+            render_target(Renderer_RenderTarget::sss)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_render, height_render, 4, 1, RHI_Format::R16_Float,          flags | RHI_Texture_ClearBlit, "sss");
+            render_target(Renderer_RenderTarget::ssr)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags | RHI_Texture_ClearBlit, "ssr");
+            render_target(Renderer_RenderTarget::ssao) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16_Float,          flags,                         "ssao"); 
             if (RHI_Device::PropertyIsShadingRateSupported())
             { 
-                render_target(Renderer_RenderTarget::shading_rate) = make_shared<RHI_Texture2D>(width_render / 4, height_render / 4, 1, RHI_Format::R8_Uint, RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_Rtv | RHI_Texture_Vrs, "shading_rate");
+                render_target(Renderer_RenderTarget::shading_rate) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render / 4, height_render / 4, 1, 1, RHI_Format::R8_Uint, RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_Rtv | RHI_Texture_Vrs, "shading_rate");
             }
         }
 
@@ -253,24 +251,24 @@ namespace Spartan
         if (create_output)
         {
             // frame
-            render_target(Renderer_RenderTarget::frame_output)   = make_shared<RHI_Texture2D>(width_output, height_output, mip_count, RHI_Format::R16G16B16A16_Float, flags_rt | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "frame_output");
-            render_target(Renderer_RenderTarget::frame_output_2) = make_shared<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, flags_rt | RHI_Texture_ClearBlit, "frame_output_2");
+            render_target(Renderer_RenderTarget::frame_output)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, mip_count, RHI_Format::R16G16B16A16_Float, flags_rt | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "frame_output");
+            render_target(Renderer_RenderTarget::frame_output_2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::R16G16B16A16_Float, flags_rt | RHI_Texture_ClearBlit, "frame_output_2");
 
             // misc
-            render_target(Renderer_RenderTarget::bloom)                = make_shared<RHI_Texture2D>(width_output, height_output, mip_count, RHI_Format::R11G11B10_Float, flags | RHI_Texture_PerMipViews, "bloom");
-            render_target(Renderer_RenderTarget::outline)              = make_shared<RHI_Texture2D>(width_output, height_output, 1,         RHI_Format::R8G8B8A8_Unorm,  flags_rt,                        "outline");
-            render_target(Renderer_RenderTarget::gbuffer_depth_output) = make_shared<RHI_Texture2D>(width_output, height_output, 1,         RHI_Format::D32_Float,       flags_rt_depth,                  "gbuffer_depth_output");
+            render_target(Renderer_RenderTarget::bloom)                = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, mip_count, RHI_Format::R11G11B10_Float, flags | RHI_Texture_PerMipViews, "bloom");
+            render_target(Renderer_RenderTarget::outline)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::R8G8B8A8_Unorm,  flags_rt,                        "outline");
+            render_target(Renderer_RenderTarget::gbuffer_depth_output) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::D32_Float,       flags_rt_depth,                  "gbuffer_depth_output");
         }
 
         // resolution - fixed (created once)
         if (!render_target(Renderer_RenderTarget::brdf_specular_lut))
         {
-            render_target(Renderer_RenderTarget::brdf_specular_lut) = make_shared<RHI_Texture2D>(512,  512,  1, RHI_Format::R8G8_Unorm,         flags, "brdf_specular_lut");
-            render_target(Renderer_RenderTarget::blur)              = make_shared<RHI_Texture2D>(4096, 4096, 1, RHI_Format::R16G16B16A16_Float, flags, "blur"); // scratch
+            render_target(Renderer_RenderTarget::brdf_specular_lut) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512,  512,  1, 1, RHI_Format::R8G8_Unorm,         flags, "brdf_specular_lut");
+            render_target(Renderer_RenderTarget::blur)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 4096, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "blur"); // scratch
 
             // sky
-            render_target(Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture2D>(4096, 4096, mip_count, RHI_Format::R11G11B10_Float, flags | RHI_Texture_PerMipViews, "skysphere");
-            render_target(Renderer_RenderTarget::skybox)    = make_shared<RHI_TextureCube>(256, 256, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Uav, "skybox"); // for fidelityfx
+            render_target(Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 4096, 1, mip_count, RHI_Format::R11G11B10_Float, flags | RHI_Texture_PerMipViews, "skysphere");
+            render_target(Renderer_RenderTarget::skybox)    = make_shared<RHI_Texture>(RHI_Texture_Type::TypeCube, 256, 256, 6, 1,         RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Uav, "skybox"); // for fidelityfx
         }
 
         RHI_Device::QueueWaitAll();
@@ -563,53 +561,34 @@ namespace Spartan
         const string dir_texture = ResourceCache::GetResourceDirectory(ResourceDirectory::Textures) + "\\";
         #define standard_texture(x) standard_textures[static_cast<uint32_t>(x)]
 
-        uint32_t flags = RHI_Texture_Srv;
-
         // noise
         {
-            standard_texture(Renderer_StandardTexture::Noise_blue_0) = make_shared<RHI_Texture2D>(flags, "standard_noise_blue_0");
-            standard_texture(Renderer_StandardTexture::Noise_blue_0)->LoadFromFile(dir_texture + "noise_blue_0.png");
-            standard_texture(Renderer_StandardTexture::Noise_blue_1) = make_shared<RHI_Texture2D>(flags, "standard_noise_blue_1");
-            standard_texture(Renderer_StandardTexture::Noise_blue_1)->LoadFromFile(dir_texture + "noise_blue_1.png");
-            standard_texture(Renderer_StandardTexture::Noise_blue_2) = make_shared<RHI_Texture2D>(flags, "standard_noise_blue_2");
-            standard_texture(Renderer_StandardTexture::Noise_blue_2)->LoadFromFile(dir_texture + "noise_blue_2.png");
-            standard_texture(Renderer_StandardTexture::Noise_blue_3) = make_shared<RHI_Texture2D>(flags, "standard_noise_blue_3");
-            standard_texture(Renderer_StandardTexture::Noise_blue_3)->LoadFromFile(dir_texture + "noise_blue_3.png");
-            standard_texture(Renderer_StandardTexture::Noise_blue_4) = make_shared<RHI_Texture2D>(flags, "standard_noise_blue_4");
-            standard_texture(Renderer_StandardTexture::Noise_blue_4)->LoadFromFile(dir_texture + "noise_blue_4.png");
-            standard_texture(Renderer_StandardTexture::Noise_blue_5) = make_shared<RHI_Texture2D>(flags, "standard_noise_blue_5");
-            standard_texture(Renderer_StandardTexture::Noise_blue_5)->LoadFromFile(dir_texture + "noise_blue_5.png");
-            standard_texture(Renderer_StandardTexture::Noise_blue_6) = make_shared<RHI_Texture2D>(flags, "standard_noise_blue_6");
-            standard_texture(Renderer_StandardTexture::Noise_blue_6)->LoadFromFile(dir_texture + "noise_blue_6.png");
-            standard_texture(Renderer_StandardTexture::Noise_blue_7) = make_shared<RHI_Texture2D>(flags, "standard_noise_blue_7");
-            standard_texture(Renderer_StandardTexture::Noise_blue_7)->LoadFromFile(dir_texture + "noise_blue_7.png");
+            standard_texture(Renderer_StandardTexture::Noise_blue_0) = make_shared<RHI_Texture>(dir_texture + "noise_blue_0.png");
+            standard_texture(Renderer_StandardTexture::Noise_blue_1) = make_shared<RHI_Texture>(dir_texture + "noise_blue_1.png");
+            standard_texture(Renderer_StandardTexture::Noise_blue_2) = make_shared<RHI_Texture>(dir_texture + "noise_blue_2.png");
+            standard_texture(Renderer_StandardTexture::Noise_blue_3) = make_shared<RHI_Texture>(dir_texture + "noise_blue_3.png");
+            standard_texture(Renderer_StandardTexture::Noise_blue_4) = make_shared<RHI_Texture>(dir_texture + "noise_blue_4.png");
+            standard_texture(Renderer_StandardTexture::Noise_blue_5) = make_shared<RHI_Texture>(dir_texture + "noise_blue_5.png");
+            standard_texture(Renderer_StandardTexture::Noise_blue_6) = make_shared<RHI_Texture>(dir_texture + "noise_blue_6.png");
+            standard_texture(Renderer_StandardTexture::Noise_blue_7) = make_shared<RHI_Texture>(dir_texture + "noise_blue_7.png");
         }
 
         // color
         {
-            standard_texture(Renderer_StandardTexture::Checkerboard) = make_shared<RHI_Texture2D>(flags, "standard_transparent");
-            standard_texture(Renderer_StandardTexture::Checkerboard)->LoadFromFile(dir_texture + "no_texture.png");
+            standard_texture(Renderer_StandardTexture::Checkerboard) = make_shared<RHI_Texture>(dir_texture + "no_texture.png");
         }
 
         // gizmos
         {
-            standard_texture(Renderer_StandardTexture::Gizmo_light_directional) = make_shared<RHI_Texture2D>(flags, "standard_icon_light_directional");
-            standard_texture(Renderer_StandardTexture::Gizmo_light_directional)->LoadFromFile(dir_texture + "sun.png");
-
-            standard_texture(Renderer_StandardTexture::Gizmo_light_point) = make_shared<RHI_Texture2D>(flags, "standard_icon_light_point");
-            standard_texture(Renderer_StandardTexture::Gizmo_light_point)->LoadFromFile(dir_texture + "light_bulb.png");
-
-            standard_texture(Renderer_StandardTexture::Gizmo_light_spot) = make_shared<RHI_Texture2D>(flags, "standard_icon_light_spot");
-            standard_texture(Renderer_StandardTexture::Gizmo_light_spot)->LoadFromFile(dir_texture + "flashlight.png");
-
-            standard_texture(Renderer_StandardTexture::Gizmo_audio_source) = make_shared<RHI_Texture2D>(flags, "standard_icon_audio_source");
-            standard_texture(Renderer_StandardTexture::Gizmo_audio_source)->LoadFromFile(dir_texture + "audio.png");
+            standard_texture(Renderer_StandardTexture::Gizmo_light_directional) = make_shared<RHI_Texture>(dir_texture + "sun.png");
+            standard_texture(Renderer_StandardTexture::Gizmo_light_point)       = make_shared<RHI_Texture>(dir_texture + "light_bulb.png");
+            standard_texture(Renderer_StandardTexture::Gizmo_light_spot)        = make_shared<RHI_Texture>(dir_texture + "flashlight.png");
+            standard_texture(Renderer_StandardTexture::Gizmo_audio_source)      = make_shared<RHI_Texture>(dir_texture + "audio.png");
         }
 
         // misc
         {
-            standard_texture(Renderer_StandardTexture::Foam) = make_shared<RHI_Texture2D>(flags, "standard_foam");
-            standard_texture(Renderer_StandardTexture::Foam)->LoadFromFile(dir_texture + "foam.jpg");
+            standard_texture(Renderer_StandardTexture::Foam) = make_shared<RHI_Texture>(dir_texture + "foam.jpg");
         } 
     }
 
@@ -657,47 +636,47 @@ namespace Spartan
         return buffers;
     }
 
-    shared_ptr<RHI_RasterizerState> Renderer::GetRasterizerState(const Renderer_RasterizerState type)
+    RHI_RasterizerState* Renderer::GetRasterizerState(const Renderer_RasterizerState type)
     {
-        return rasterizer_states[static_cast<uint8_t>(type)];
+        return rasterizer_states[static_cast<uint8_t>(type)].get();
     }
 
-    shared_ptr<RHI_DepthStencilState> Renderer::GetDepthStencilState(const Renderer_DepthStencilState type)
+    RHI_DepthStencilState* Renderer::GetDepthStencilState(const Renderer_DepthStencilState type)
     {
-        return depth_stencil_states[static_cast<uint8_t>(type)];
+        return depth_stencil_states[static_cast<uint8_t>(type)].get();
     }
 
-    shared_ptr<RHI_BlendState> Renderer::GetBlendState(const Renderer_BlendState type)
+    RHI_BlendState* Renderer::GetBlendState(const Renderer_BlendState type)
     {
-        return blend_states[static_cast<uint8_t>(type)];
+        return blend_states[static_cast<uint8_t>(type)].get();
     }
 
-    shared_ptr<RHI_Texture> Renderer::GetRenderTarget(const Renderer_RenderTarget type)
+    RHI_Texture* Renderer::GetRenderTarget(const Renderer_RenderTarget type)
     {
-        return render_targets[static_cast<uint8_t>(type)];
+        return render_targets[static_cast<uint8_t>(type)].get();
     }
 
-    shared_ptr<RHI_Shader> Renderer::GetShader(const Renderer_Shader type)
+    RHI_Shader* Renderer::GetShader(const Renderer_Shader type)
     {
-        return shaders[static_cast<uint8_t>(type)];
+        return shaders[static_cast<uint8_t>(type)].get();
     }
 
-    shared_ptr<RHI_Sampler> Renderer::GetSampler(const Renderer_Sampler type)
+    RHI_Sampler* Renderer::GetSampler(const Renderer_Sampler type)
     {
-        return samplers[static_cast<uint8_t>(type)];
+        return samplers[static_cast<uint8_t>(type)].get();
     }
 
-    shared_ptr<RHI_Buffer> Renderer::GetBuffer(const Renderer_Buffer type)
+    RHI_Buffer* Renderer::GetBuffer(const Renderer_Buffer type)
     {
-        return buffers[static_cast<uint8_t>(type)];
+        return buffers[static_cast<uint8_t>(type)].get();
     }
 
-    shared_ptr<RHI_Texture> Renderer::GetStandardTexture(const Renderer_StandardTexture type)
+    RHI_Texture* Renderer::GetStandardTexture(const Renderer_StandardTexture type)
     {
-        return standard_textures[static_cast<uint8_t>(type)];
+        return standard_textures[static_cast<uint8_t>(type)].get();
     }
 
-    shared_ptr<Mesh> Renderer::GetStandardMesh(const MeshType type)
+    shared_ptr<Mesh>& Renderer::GetStandardMesh(const MeshType type)
     {
         return standard_meshes[static_cast<uint8_t>(type)];
     }
@@ -707,7 +686,7 @@ namespace Spartan
         return standard_font;
     }
 
-    shared_ptr<Material> Renderer::GetStandardMaterial()
+    shared_ptr<Material>& Renderer::GetStandardMaterial()
     {
         return standard_material;
     }

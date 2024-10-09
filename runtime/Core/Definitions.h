@@ -29,19 +29,6 @@ struct sp_info
     static constexpr int  version_revision = 3;
 };
 
-//= CLASS EXPORTING/IMPORTING =====================================
-// The engine runtime links statically to the editor, therefore
-// this macro is not defined anymore. However, we keep the
-// platform-specific variations for potential future use.
-#if defined(_MSC_VER)
-#define SP_CLASS
-#elif defined(__clang__) || defined(__GNUC__) || defined(__GNUG__)
-#define SP_CLASS
-#else
-#error "SP_CLASS is not implemented for this compiler/platform"
-#endif
-//=================================================================
-
 //= OPTIMISATION ON/OFF ================================================
 #if defined(_MSC_VER)
     #define SP_OPTIMISE_OFF __pragma(optimize("", off))

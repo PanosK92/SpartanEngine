@@ -1483,7 +1483,7 @@ namespace Spartan
 
     // queues
 
-    uint32_t RHI_Device::QueueGetIndex(const RHI_Queue_Type type)
+    uint32_t RHI_Device::GetQueueIndex(const RHI_Queue_Type type)
     {
         if (type == RHI_Queue_Type::Graphics)
         {
@@ -1538,6 +1538,9 @@ namespace Spartan
 
     void RHI_Device::DeletionQueueAdd(const RHI_Resource_Type resource_type, void* resource)
     {
+        if (!resource)
+            return;
+
         lock_guard<mutex> guard(mutex_deletion_queue);
         deletion_queue[resource_type].emplace_back(resource);
     }
@@ -1546,11 +1549,13 @@ namespace Spartan
     {
         lock_guard<mutex> guard(mutex_deletion_queue);
        
-        for (const auto& it : deletion_queue)
+        for (auto& it : deletion_queue)
         {
-            for (void* resource : it.second)
+            RHI_Resource_Type resource_type = it.first;
+
+            for (uint32_t i = 0; i < static_cast<uint32_t>(it.second.size()); i++)
             {
-                RHI_Resource_Type resource_type = it.first;
+                void* resource = it.second[i];
 
                 switch (resource_type)
                 {
@@ -1899,14 +1904,14 @@ namespace Spartan
         VkImageCreateInfo create_info_image = {};
         create_info_image.sType             = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         create_info_image.pNext             = texture->HasExternalMemory() ? &external_memory_image_create_info : nullptr;
-        create_info_image.imageType         = texture->GetResourceType() == ResourceType::Texture3d ? VK_IMAGE_TYPE_3D : VK_IMAGE_TYPE_2D;
-        create_info_image.flags             = texture->GetResourceType() == ResourceType::TextureCube ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
+        create_info_image.imageType         = texture->GetType() == RHI_Texture_Type::Type3D ? VK_IMAGE_TYPE_3D : VK_IMAGE_TYPE_2D;
+        create_info_image.flags             = texture->GetType() == RHI_Texture_Type::TypeCube ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
         create_info_image.usage             = get_image_usage_flags(texture);
         create_info_image.extent.width      = texture->GetWidth();
         create_info_image.extent.height     = texture->GetHeight();
-        create_info_image.extent.depth      = texture->GetDepth();
+        create_info_image.extent.depth      = texture->GetType() == RHI_Texture_Type::Type3D ? texture->GetDepth() : 1;
         create_info_image.mipLevels         = texture->GetMipCount();
-        create_info_image.arrayLayers       = texture->GetArrayLength();
+        create_info_image.arrayLayers       = texture->GetType() != RHI_Texture_Type::Type3D  ? texture->GetDepth() : 1;
         create_info_image.format            = vulkan_format[rhi_format_to_index(texture->GetFormat())];
         create_info_image.tiling            = get_format_tiling(texture);
         create_info_image.initialLayout     = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout(0))];

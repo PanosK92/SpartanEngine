@@ -50,7 +50,7 @@ namespace Spartan
         uint32_t offset;
     };
 
-    class SP_CLASS RHI_InputLayout : public SpartanObject
+    class RHI_InputLayout : public SpartanObject
     {
     public:
         RHI_InputLayout() = default;

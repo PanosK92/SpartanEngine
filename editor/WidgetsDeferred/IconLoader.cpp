@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "IconLoader.h"
 #include "Resource/ResourceCache.h"
-#include "RHI/RHI_Texture2D.h"
+#include "RHI/RHI_Texture.h"
 #include "Core/ThreadPool.h"
 #include "Event.h"
 //=================================
@@ -59,14 +59,10 @@ Icon::Icon(IconType type, const string& file_path)
 {
     m_type = type;
 
-    // create texture
-    string name = FileSystem::GetFileNameFromFilePath(file_path);
-    m_texture   = make_shared<RHI_Texture2D>(RHI_Texture_Srv, name.c_str());
-
     // load texture
     ThreadPool::AddTask([this, file_path]()
     {
-        m_texture->LoadFromFile(file_path);
+        m_texture = make_shared<RHI_Texture>(file_path);
     });
 }
 
