@@ -719,7 +719,7 @@ namespace Spartan
                      return oss.str();
                 };
 
-                Settings::RegisterThirdPartyLib("Vulkan Memory Allocator", version_to_string(VMA_VULKAN_VERSION), "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator");
+                Settings::RegisterThirdPartyLib("AMD Vulkan Memory Allocator", version_to_string(VMA_VULKAN_VERSION), "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator");
             }
         }
 
