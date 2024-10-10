@@ -657,11 +657,11 @@ namespace Spartan
         m_pso = pso;
         RHI_Device::GetOrCreatePipeline(m_pso, m_pipeline, m_descriptor_layout_current);
 
-        // bind pipeline
+        // set pipeline
         {
             // get vulkan pipeline object
             SP_ASSERT(m_pipeline != nullptr);
-            VkPipeline vk_pipeline = static_cast<VkPipeline>(m_pipeline->GetResource_Pipeline());
+            VkPipeline vk_pipeline = static_cast<VkPipeline>(m_pipeline->GetRhiResource());
             SP_ASSERT(vk_pipeline != nullptr);
 
             // bind
@@ -692,16 +692,21 @@ namespace Spartan
                 m_buffer_id_index  = 0;
                 m_buffer_id_vertex = 0;
             }
+
+            if (Debugging::IsBreadcrumbsEnabled())
+            { 
+                RHI_FidelityFX::Breadcrumbs_SetPipelineState(this, m_pipeline);
+            }
         }
 
         // bind descriptors
         {
             // set bindless descriptors
-            descriptor_sets::set_bindless(m_pso, m_rhi_resource, m_pipeline->GetResource_PipelineLayout());
+            descriptor_sets::set_bindless(m_pso, m_rhi_resource, m_pipeline->GetRhiResourceLayout());
 
             // set standard resources (dynamic descriptors)
             Renderer::SetStandardResources(this);
-            descriptor_sets::set_dynamic(m_pso, m_rhi_resource, m_pipeline->GetResource_PipelineLayout(), m_descriptor_layout_current);
+            descriptor_sets::set_dynamic(m_pso, m_rhi_resource, m_pipeline->GetRhiResourceLayout(), m_descriptor_layout_current);
         }
 
         RenderPassBegin();
@@ -1370,7 +1375,7 @@ namespace Spartan
 
         vkCmdPushConstants(
             static_cast<VkCommandBuffer>(m_rhi_resource),
-            static_cast<VkPipelineLayout>(m_pipeline->GetResource_PipelineLayout()),
+            static_cast<VkPipelineLayout>(m_pipeline->GetRhiResourceLayout()),
             stages,
             offset,
             size,
@@ -1512,7 +1517,7 @@ namespace Spartan
 
         if (Debugging::IsBreadcrumbsEnabled())
         {
-            RHI_FidelityFX::Breadcrumbs_MarkerBegind(this, name);
+            RHI_FidelityFX::Breadcrumbs_MarkerBegin(this, name);
         }
     }
 
@@ -1773,7 +1778,7 @@ namespace Spartan
 
         if (descriptor_sets::bind_dynamic)
         {
-            descriptor_sets::set_dynamic(m_pso, m_rhi_resource, m_pipeline->GetResource_PipelineLayout(), m_descriptor_layout_current);
+            descriptor_sets::set_dynamic(m_pso, m_rhi_resource, m_pipeline->GetRhiResourceLayout(), m_descriptor_layout_current);
         }
     }
 }

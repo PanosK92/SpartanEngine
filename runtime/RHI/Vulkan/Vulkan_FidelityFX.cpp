@@ -30,6 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_Swapchain.h"
 #include "../RHI_Queue.h"
+#include "../RHI_Shader.h"
+#include "../RHI_Pipeline.h"
 #include "../Input/Input.h"
 #include "../Rendering/Renderer_Buffers.h"
 #include "../Rendering/Renderer.h"
@@ -266,6 +268,11 @@ namespace Spartan
             return ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
         }
 
+        FfxPipeline to_ffx_pipeline(RHI_Pipeline* pipeline)
+        {
+            return ffxGetPipelineVK(static_cast<VkPipeline>(pipeline->GetRhiResource()));
+        }
+
         void set_ffx_float3(FfxFloat32x3& dest, const Vector3& source)
         {
             dest[0] = source.x;
@@ -337,6 +344,9 @@ namespace Spartan
 
         namespace fsr3
         {
+            // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/super-resolution-upscaler.md
+            // requires:      VK_KHR_get_memory_requirements2
+
             bool                                       context_created              = false;
             FfxFsr3UpscalerContext                     context                      = {};
             FfxFsr3UpscalerContextDescription          description_context          = {};
@@ -362,6 +372,14 @@ namespace Spartan
 
         namespace brixelizer_gi
         {
+            // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/brixelizer.md
+            // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/brixelizer-gi.md
+
+            // sdk issue #1: the sdk should keep track of static/dynamic instances and decide what needs to be deleted or created, not the user.
+            // sdk issue #2: all the buffers which are needed, should be created and bound internally by the sdk, not the user.
+            // sdk issue #3: instance ids are really indices, using actual ids (a big number) will cause an out of bounds crash.
+            // sdk issue #4: the previous depth and normal textures, should be created internally using a blit operation, not by the user.
+
             // parameters
             const float    voxel_size               = 0.05f;
             const float    cascade_size_ratio       = 2.0f;
@@ -539,6 +557,7 @@ namespace Spartan
 
         namespace breadcrumbs
         {
+            // requires: VK_KHR_synchronization2 because of vkCmdWriteBufferMarkerAMD and vkCmdWriteBufferMarker2AMD 
             bool                  context_created = false;
             FfxBreadcrumbsContext context         = {};
         }
@@ -960,9 +979,6 @@ namespace Spartan
     )
     {
     #ifdef _MSC_VER
-        // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/super-resolution-upscaler.md
-        // requires:      VK_KHR_get_memory_requirements2
-
         // output is displayed in the viewport, so add a barrier to ensure any work is done before writting to it
         cmd_list->InsertBarrierTextureReadWrite(tex_output);
         cmd_list->InsertPendingBarrierGroup();
@@ -1081,14 +1097,6 @@ namespace Spartan
     )
     {
     #ifdef _MSC_VER
-        // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/brixelizer.md
-        // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/brixelizer-gi.md
-
-        // sdk issue #1: the sdk should keep track of static/dynamic instances and decide what needs to be deleted or created, not the user.
-        // sdk issue #2: all the buffers which are needed, should be created and bound internally by the sdk, not the user.
-        // sdk issue #3: instance ids are really indices, using actual ids (a big number) will cause an out of bounds crash.
-        // sdk issue #4: the previous depth and normal textures, should be created internally using a blit operation, not by the user.
-
         // instances
         {
             brixelizer_gi::instances_to_create.clear();
@@ -1270,9 +1278,6 @@ namespace Spartan
     )
     {
     #ifdef _MSC_VER
-        // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/brixelizer.md
-        // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/brixelizer-gi.md
-
         bool debug_enabled  = brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Max;
         bool debug_dispatch = brixelizer_gi::debug_mode == brixelizer_gi::DebugMode::Radiance || brixelizer_gi::debug_mode == brixelizer_gi::DebugMode::Irradiance;
         bool debug_update   = debug_enabled && !debug_dispatch;
@@ -1369,6 +1374,8 @@ namespace Spartan
 
     void RHI_FidelityFX::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name)
     {
+        SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
+
         // during engine startup this can happen, this is from immediate command lists
         // that are used to initialize certain resources, we don't track them
         if (!breadcrumbs::context_created)
@@ -1384,23 +1391,63 @@ namespace Spartan
         SP_ASSERT(ffxBreadcrumbsRegisterCommandList(&breadcrumbs::context, &description) == FFX_OK);
     }
 
-    void RHI_FidelityFX::Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_PipelineState& pso)
+    void RHI_FidelityFX::Breadcrumbs_RegisterPipeline(RHI_Pipeline* pipeline)
     {
-        // todo
-        FfxPipeline pipeline = {};
-        SP_ASSERT(ffxBreadcrumbsSetPipeline(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), pipeline) == FFX_OK);
+        SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
+
+        FfxBreadcrumbsPipelineStateDescription description = {};
+        description.pipeline                               = to_ffx_pipeline(pipeline);
+
+        RHI_PipelineState* pso = pipeline->GetState();
+        description.name       = { pso->name.c_str(), true};
+
+        if (pso->shaders[RHI_Shader_Type::Vertex])
+        { 
+            description.vertexShader = { pso->shaders[RHI_Shader_Type::Vertex]->GetObjectName().c_str(), true};
+        }
+
+        if (pso->shaders[RHI_Shader_Type::Pixel])
+        { 
+            description.pixelShader = { pso->shaders[RHI_Shader_Type::Pixel]->GetObjectName().c_str(), true};
+        }
+
+        if (pso->shaders[RHI_Shader_Type::Compute])
+        { 
+            description.computeShader = { pso->shaders[RHI_Shader_Type::Compute]->GetObjectName().c_str(), true};
+        }
+
+        if (pso->shaders[RHI_Shader_Type::Hull])
+        { 
+            description.hullShader = { pso->shaders[RHI_Shader_Type::Hull]->GetObjectName().c_str(), true};
+        }
+
+        if (pso->shaders[RHI_Shader_Type::Domain])
+        { 
+            description.domainShader = { pso->shaders[RHI_Shader_Type::Domain]->GetObjectName().c_str(), true};
+        }
+
+        SP_ASSERT(ffxBreadcrumbsRegisterPipeline(&breadcrumbs::context, &description) == FFX_OK);
     }
 
-    void RHI_FidelityFX::Breadcrumbs_MarkerBegind(RHI_CommandList* cmd_list, const char* name)
+    void RHI_FidelityFX::Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_Pipeline* pipeline)
     {
-        // requires: VK_KHR_synchronization2 because of vkCmdWriteBufferMarkerAMD and vkCmdWriteBufferMarker2AMD 
+        SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
+        SP_ASSERT(ffxBreadcrumbsSetPipeline(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), to_ffx_pipeline(pipeline)) == FFX_OK);
+    }
 
+    void RHI_FidelityFX::Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const char* name)
+    {
+        SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
+
+        // requires: VK_KHR_synchronization2 because of vkCmdWriteBufferMarkerAMD and vkCmdWriteBufferMarker2AMD 
+ 
         const FfxBreadcrumbsNameTag name_tag = { name, true };
         SP_ASSERT(ffxBreadcrumbsBeginMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), FFX_BREADCRUMBS_MARKER_BEGIN_RENDER_PASS, &name_tag) == FFX_OK);
     }
 
     void RHI_FidelityFX::Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list)
     {
+        SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
         SP_ASSERT(ffxBreadcrumbsEndMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list)) == FFX_OK);
     }
 }
