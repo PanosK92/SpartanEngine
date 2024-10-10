@@ -563,7 +563,7 @@ namespace Spartan
         queries::shutdown(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion, m_rhi_query_pool_pipeline_statistics);
     }
 
-    void RHI_CommandList::Begin(const RHI_Queue* queue)
+    void RHI_CommandList::Begin(const RHI_Queue* queue, const bool immediate)
     {
         if (m_state == RHI_CommandListState::Recording)
         {
@@ -576,10 +576,9 @@ namespace Spartan
         SP_ASSERT_MSG(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource), &begin_info) == VK_SUCCESS, "Failed to begin command buffer");
 
         // enable breadcrumbs for this commannd list
-        if (Debugging::IsBreadcrumbsEnabled() && (queue->GetType() != RHI_Queue_Type::Copy) && !m_breadcrumbs_enabled)
+        if (Debugging::IsBreadcrumbsEnabled() && (queue->GetType() != RHI_Queue_Type::Copy) && !immediate)
         {
             RHI_FidelityFX::Breadcrumbs_RegisterCommandList(this, queue, m_rendering_complete_semaphore_timeline->GetObjectName().c_str());
-            m_breadcrumbs_enabled = true;
         }
 
         // set states
@@ -1675,7 +1674,6 @@ namespace Spartan
             }
 
             Profiler::TimeBlockEnd(); // cpu
-
         }
 
         m_timeblock_active = nullptr;

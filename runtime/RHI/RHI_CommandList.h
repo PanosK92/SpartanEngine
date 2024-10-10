@@ -60,7 +60,7 @@ namespace Spartan
         RHI_CommandList(void* cmd_pool, const char* name);
         ~RHI_CommandList();
 
-        void Begin(const RHI_Queue* queue);
+        void Begin(const RHI_Queue* queue, const bool immediate = false);
         void Submit(RHI_Queue* queue, const uint64_t swapchain_id);
         void WaitForExecution();
         void SetPipelineState(RHI_PipelineState& pso);
@@ -189,7 +189,6 @@ namespace Spartan
         RHI_CullMode m_cull_mode                             = RHI_CullMode::Back;
         const char* m_timeblock_active                       = nullptr;
         bool m_render_pass_active                            = false;
-        bool m_breadcrumbs_enabled                           = false;
         std::mutex m_mutex_reset;
         RHI_PipelineState m_pso;
         std::vector<ImageBarrierInfo> m_image_barriers;

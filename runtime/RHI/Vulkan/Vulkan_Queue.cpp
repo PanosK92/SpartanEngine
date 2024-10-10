@@ -185,7 +185,7 @@ namespace Spartan
             submit_info.pCommandBufferInfos      = &cmd_buffer_info;
 
             void* queue = RHI_Device::GetQueueRhiResource(m_type);
-            SP_ASSERT_VK_MSG(vkQueueSubmit2(static_cast<VkQueue>(queue), 1, &submit_info, nullptr), "Failed to submit");
+            SP_ASSERT_VK_MSG(vkQueueSubmit2(static_cast<VkQueue>(queue), 1, &submit_info, nullptr), "GPU crash");
             semaphore->SetSignaled(true);
         }
     }

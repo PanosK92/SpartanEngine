@@ -2079,7 +2079,7 @@ namespace Spartan
         // get command pool
         queues::queue = queues::immediate[static_cast<uint32_t>(queue_type)].get();
         queues::queue->NextCommandList();
-        queues::queue->GetCommandList()->Begin(queues::queue);
+        queues::queue->GetCommandList()->Begin(queues::queue, true);
 
         return queues::queue->GetCommandList();
     }
