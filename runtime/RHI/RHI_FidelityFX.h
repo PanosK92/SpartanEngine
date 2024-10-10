@@ -99,6 +99,7 @@ namespace Spartan
         static void Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_Pipeline* pipeline);
         static void Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const char* name);
         static void Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list);
+        static void Breadcrumbs_OnDeviceRemoved(void* data);
 
     private:
         static void DestroySizeDependentContexts();
