@@ -557,7 +557,8 @@ namespace Spartan
 
         namespace breadcrumbs
         {
-            // requires: VK_KHR_synchronization2 because of vkCmdWriteBufferMarkerAMD and vkCmdWriteBufferMarker2AMD 
+            // requires: VK_KHR_synchronization2 because of vkCmdWriteBufferMarkerAMD and vkCmdWriteBufferMarker2AMD
+
             bool                  context_created = false;
             FfxBreadcrumbsContext context         = {};
         }
@@ -660,15 +661,9 @@ namespace Spartan
     #endif
     }
 
-    void RHI_FidelityFX::DestroyContexts()
+    void RHI_FidelityFX::DestroySizeDependentContexts()
     {
     #ifdef _MSC_VER
-        if (breadcrumbs::context_created)
-        {
-            SP_ASSERT(ffxBreadcrumbsContextDestroy(&breadcrumbs::context) == FFX_OK);
-            breadcrumbs::context_created = false;
-        }
-
         // brixelizer gi
         if (brixelizer_gi::context_created)
         {
@@ -705,7 +700,13 @@ namespace Spartan
     void RHI_FidelityFX::Shutdown()
     {
     #ifdef _MSC_VER
-        DestroyContexts();
+        DestroySizeDependentContexts();
+
+        if (breadcrumbs::context_created)
+        {
+            SP_ASSERT(ffxBreadcrumbsContextDestroy(&breadcrumbs::context) == FFX_OK);
+            breadcrumbs::context_created = false;
+        }
 
         // ffx interface
         if (ffx_interface.scratchBuffer != nullptr)
@@ -727,8 +728,7 @@ namespace Spartan
     void RHI_FidelityFX::Resize(const Vector2& resolution_render, const Vector2& resolution_output)
     {
     #ifdef _MSC_VER
-        // some contexts are resolution dependent, so we destroy and (re)create them here
-        DestroyContexts();
+        DestroySizeDependentContexts();
 
         uint32_t width  = static_cast<uint32_t>(resolution_render.x);
         uint32_t height = static_cast<uint32_t>(resolution_render.y);
@@ -925,13 +925,12 @@ namespace Spartan
                     (static_cast<uint32_t>(brixelizer_gi::DebugMode::Max) + 1));
                 SP_LOG_INFO("Debug mode: %s", brixelizer_gi::debug_mode_to_string(brixelizer_gi::debug_mode));
             }
-
         }
 
         // breadcrumbs
         if (breadcrumbs::context_created)
         {
-             SP_ASSERT(ffxBreadcrumbsStartFrame(&breadcrumbs::context) == FFX_OK);
+            SP_ASSERT(ffxBreadcrumbsStartFrame(&breadcrumbs::context) == FFX_OK);
         }
     #endif
     }
@@ -1374,25 +1373,23 @@ namespace Spartan
 
     void RHI_FidelityFX::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name)
     {
+        // note: command lists need to register per frame
         SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
-
-        // during engine startup this can happen, this is from immediate command lists
-        // that are used to initialize certain resources, we don't track them
-        if (!breadcrumbs::context_created)
-            return;
-
+    
         FfxBreadcrumbsCommandListDescription description = {};
         description.commandList                          = to_ffx_cmd_list(cmd_list);
         description.queueType                            = RHI_Device::GetQueueIndex(queue->GetType());
-        description.name                                 = { name, true};
+        description.name                                 = { name, true };
         description.pipeline                             = nullptr;
         description.submissionIndex                      = 0;
-
+    
         SP_ASSERT(ffxBreadcrumbsRegisterCommandList(&breadcrumbs::context, &description) == FFX_OK);
     }
 
     void RHI_FidelityFX::Breadcrumbs_RegisterPipeline(RHI_Pipeline* pipeline)
     {
+        // note: pipelines need to register only once
+
         SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
 
         FfxBreadcrumbsPipelineStateDescription description = {};
@@ -1438,11 +1435,8 @@ namespace Spartan
     void RHI_FidelityFX::Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const char* name)
     {
         SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
-
-        // requires: VK_KHR_synchronization2 because of vkCmdWriteBufferMarkerAMD and vkCmdWriteBufferMarker2AMD 
- 
         const FfxBreadcrumbsNameTag name_tag = { name, true };
-        SP_ASSERT(ffxBreadcrumbsBeginMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), FFX_BREADCRUMBS_MARKER_BEGIN_RENDER_PASS, &name_tag) == FFX_OK);
+        SP_ASSERT(ffxBreadcrumbsBeginMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), FFX_BREADCRUMBS_MARKER_PASS, &name_tag) == FFX_OK);
     }
 
     void RHI_FidelityFX::Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list)

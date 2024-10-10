@@ -101,6 +101,6 @@ namespace Spartan
         static void Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list);
 
     private:
-        static void DestroyContexts();
+        static void DestroySizeDependentContexts();
     };
 }

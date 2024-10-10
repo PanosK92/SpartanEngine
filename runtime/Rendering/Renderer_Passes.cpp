@@ -1434,7 +1434,7 @@ namespace Spartan
             Pass_DepthOfField(cmd_list, get_output_in, get_output_out);
         }
         
-        // motion Blur
+        // motion blur
         if (GetOption<bool>(Renderer_Option::MotionBlur))
         {
             swap_output = !swap_output;
@@ -1779,7 +1779,7 @@ namespace Spartan
                 tex_out
             );
         }
-        else
+        else // no upscale or linear upscale
         {
             cmd_list->Blit(tex_in, tex_out, false, GetOption<float>(Renderer_Option::ResolutionScale));
         }
