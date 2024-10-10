@@ -730,6 +730,11 @@ namespace Spartan
     #ifdef _MSC_VER
         DestroySizeDependentContexts();
 
+        bool resolution_render_changed = resolution_render.x != fsr3::description_context.maxRenderSize.width  || resolution_render.y != fsr3::description_context.maxRenderSize.height;
+        bool resolution_output_changed = resolution_output.x != fsr3::description_context.maxUpscaleSize.width || resolution_output.y != fsr3::description_context.maxUpscaleSize.height;
+        if (!resolution_render_changed && !resolution_output_changed)
+            return;
+
         uint32_t width  = static_cast<uint32_t>(resolution_render.x);
         uint32_t height = static_cast<uint32_t>(resolution_render.y);
 
@@ -882,7 +887,9 @@ namespace Spartan
              context_description.flags                            = FFX_BREADCRUMBS_PRINT_FINISHED_LISTS    |
                                                                     FFX_BREADCRUMBS_PRINT_NOT_STARTED_LISTS |
                                                                     FFX_BREADCRUMBS_PRINT_FINISHED_NODES    |
-                                                                    FFX_BREADCRUMBS_PRINT_NOT_STARTED_NODES;
+                                                                    FFX_BREADCRUMBS_PRINT_NOT_STARTED_NODES |
+                                                                    FFX_BREADCRUMBS_PRINT_EXTENDED_DEVICE_INFO |
+                                                                    FFX_BREADCRUMBS_ENABLE_THREAD_SYNCHRONIZATION;
 
              SP_ASSERT(ffxBreadcrumbsContextCreate(&breadcrumbs::context, &context_description) == FFX_OK);
              breadcrumbs::context_created = true;
