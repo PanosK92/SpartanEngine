@@ -506,10 +506,10 @@ namespace Spartan
 
         // set pso
         static RHI_PipelineState pso;
+        pso.name                             = "shadow_maps_depth";
         pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
         pso.blend_state                      = is_transparent_pass ? GetBlendState(Renderer_BlendState::Alpha) : GetBlendState(Renderer_BlendState::Off);
         pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Read) : GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
-        pso.name                             = is_transparent_pass ? "shadow_maps_alpha_color" : "shadow_maps_depth";
         pso.clear_depth                      = 0.0f;
         pso.clear_color[0]                   = Color::standard_white;
 
@@ -750,6 +750,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
+        pso.name                             = "depth_prepass";
         pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
         pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
         pso.rasterizer_state                 = rasterizer_state;
@@ -817,7 +818,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
-        pso.name                             = is_transparent_pass ? "g_buffer_transparent" : "g_buffer";
+        pso.name                             = "g_buffer";
         pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
         pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
         pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
@@ -926,6 +927,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
+        pso.name             = "ssao";
         pso.shaders[Compute] = shader_ssao;
         cmd_list->SetPipelineState(pso);
 
@@ -987,6 +989,7 @@ namespace Spartan
         {
             // set pipeline state
             static RHI_PipelineState pso;
+            pso.name             = "sss";
             pso.shaders[Compute] = shader_c;
             cmd_list->SetPipelineState(pso);
 
@@ -1092,6 +1095,7 @@ namespace Spartan
             {
                 // set pipeline state
                 static RHI_PipelineState pso_skysphere;
+                pso_skysphere.name             = "skysphere";
                 pso_skysphere.shaders[Compute] = shader_skysphere;
                 cmd_list->SetPipelineState(pso_skysphere);
 
@@ -1147,6 +1151,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
+        pso.name             = "light";
         pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
@@ -1270,6 +1275,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
+        pso.name             = "light_composition_transparent";
         pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
@@ -1307,6 +1313,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
+        pso.name             = "light_image_based";
         pso.shaders[Compute] = shader;
         cmd_list->SetPipelineState(pso);
 
@@ -1345,6 +1352,7 @@ namespace Spartan
         {
             // set pipeline state
             static RHI_PipelineState pso;
+            pso.name             = "light_integration_brdf_specular_lut";
             pso.shaders[Compute] = shader_c;
             cmd_list->SetPipelineState(pso);
 
@@ -1391,6 +1399,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
+        pso.name             = "light_integration_environment_filter";
         pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
@@ -1496,11 +1505,11 @@ namespace Spartan
     void Renderer::Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // acquire resources
-        RHI_Shader* shader_luminance        = GetShader(Renderer_Shader::bloom_luminance_c);
-        RHI_Shader* shader_upsampleBlendMip = GetShader(Renderer_Shader::bloom_upsample_blend_mip_c);
-        RHI_Shader* shader_blendFrame       = GetShader(Renderer_Shader::bloom_blend_frame_c);
-        RHI_Texture* tex_bloom              = GetRenderTarget(Renderer_RenderTarget::bloom);
-        if (!shader_luminance->IsCompiled() || !shader_upsampleBlendMip->IsCompiled() || !shader_blendFrame->IsCompiled())
+        RHI_Shader* shader_luminance          = GetShader(Renderer_Shader::bloom_luminance_c);
+        RHI_Shader* shader_upsample_blend_mip = GetShader(Renderer_Shader::bloom_upsample_blend_mip_c);
+        RHI_Shader* shader_blend_frame        = GetShader(Renderer_Shader::bloom_blend_frame_c);
+        RHI_Texture* tex_bloom                = GetRenderTarget(Renderer_RenderTarget::bloom);
+        if (!shader_luminance->IsCompiled() || !shader_upsample_blend_mip->IsCompiled() || !shader_blend_frame->IsCompiled())
             return;
 
         cmd_list->BeginTimeblock("bloom");
@@ -1510,6 +1519,7 @@ namespace Spartan
         {
             // define pipeline state
             static RHI_PipelineState pso;
+            pso.name             = "bloom_luminance";
             pso.shaders[Compute] = shader_luminance;
 
             // set pipeline state
@@ -1532,7 +1542,8 @@ namespace Spartan
         {
             // define pipeline state
             static RHI_PipelineState pso;
-            pso.shaders[Compute] = shader_upsampleBlendMip;
+            pso.name             = "bloom_upsample_blend_mip";
+            pso.shaders[Compute] = shader_upsample_blend_mip;
 
             // set pipeline state
             cmd_list->SetPipelineState(pso);
@@ -1563,7 +1574,8 @@ namespace Spartan
         {
             // define pipeline state
             static RHI_PipelineState pso;
-            pso.shaders[Compute] = shader_blendFrame;
+            pso.name             = "bloom_blend_frame";
+            pso.shaders[Compute] = shader_blend_frame;
 
             // set pipeline state
             cmd_list->SetPipelineState(pso);
@@ -1596,6 +1608,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
+        pso.name             = "output";
         pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
@@ -1624,6 +1637,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
+        pso.name             = "fxaa";
         pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
@@ -1648,6 +1662,7 @@ namespace Spartan
 
         // define pipeline state
         static RHI_PipelineState pso;
+        pso.name             = "chromatic_aberration";
         pso.shaders[Compute] = shader_c;
 
         // set pipeline state
@@ -1678,6 +1693,7 @@ namespace Spartan
 
         // define pipeline state
         static RHI_PipelineState pso;
+        pso.name             = "motion_blur";
         pso.shaders[Compute] = shader_c;
 
         // set pipeline state
@@ -1709,6 +1725,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
+        pso.name             = "depth_of_field";
         pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
@@ -1739,6 +1756,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
+        pso.name             = "film_grain";
         pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
@@ -1819,11 +1837,11 @@ namespace Spartan
                 return;
         }
 
-        cmd_list->BeginMarker("mips");
+        cmd_list->BeginMarker("downscale");
         {
             // set pipeline state
             static RHI_PipelineState pso;
-            pso.name             = "ffx_spd";
+            pso.name             = "downscale";
             pso.shaders[Compute] = shader_c;
             cmd_list->SetPipelineState(pso);
 
@@ -1853,6 +1871,7 @@ namespace Spartan
         {
             // set pipeline state
             static RHI_PipelineState pso;
+            pso.name             = "sharpening";
             pso.shaders[Compute] = shader_c;
             cmd_list->SetPipelineState(pso);
             
@@ -1881,6 +1900,7 @@ namespace Spartan
         {
             // set pipeline state
             static RHI_PipelineState pso;
+            pso.name             = "additive_transparent";
             pso.shaders[Compute] = shader_c;
             cmd_list->SetPipelineState(pso);
            
@@ -2205,6 +2225,7 @@ namespace Spartan
                         {
                             // set pipeline state
                             static RHI_PipelineState pso;
+                            pso.name                             = "color_silhouette";
                             pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
                             pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
                             pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
@@ -2240,6 +2261,7 @@ namespace Spartan
                         {
                             // set pipeline state
                             static RHI_PipelineState pso;
+                            pso.name             = "composition";
                             pso.shaders[Compute] = shader_c;
                             cmd_list->SetPipelineState(pso);
                         
@@ -2272,6 +2294,7 @@ namespace Spartan
 
         // set pipeline state
         static RHI_PipelineState pso;
+        pso.name                             = "text";
         pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
         pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
         pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
@@ -2279,7 +2302,6 @@ namespace Spartan
         pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
         pso.render_target_color_textures[0]  = tex_out;
         pso.clear_color[0]                   = rhi_color_load;
-        pso.name                             = "Pass_Text";
         cmd_list->SetPipelineState(pso);
 
         font->UpdateVertexAndIndexBuffers();
