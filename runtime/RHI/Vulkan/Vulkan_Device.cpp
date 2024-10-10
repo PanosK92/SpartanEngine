@@ -226,13 +226,13 @@ namespace Spartan
         vector<const char*> extensions_instance = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_swapchain_colorspace", };
         vector<const char*> extensions_device   = {
             "VK_KHR_swapchain",
-            "VK_EXT_memory_budget",            // to obtain precise memory usage information from Vulkan Memory Allocator
+            "VK_EXT_memory_budget",           // to obtain precise memory usage information from Vulkan Memory Allocator
             "VK_KHR_fragment_shading_rate",
             "VK_EXT_hdr_metadata",
             "VK_EXT_robustness2",
-            "VK_KHR_external_memory",          // to share images with Intel Open Image Denoise
+            "VK_KHR_external_memory",         // to share images with Intel Open Image Denoise
             #if defined(_MSC_VER)
-            "VK_KHR_external_memory_win32",    // external memory handle type, linux alternative: VK_KHR_external_memory_fd
+            "VK_KHR_external_memory_win32",   // external memory handle type, linux alternative: VK_KHR_external_memory_fd
             #endif
             "VK_KHR_synchronization2",        // needed by AMD FidelityFX - Breadcrumbs
             "VK_KHR_get_memory_requirements2" // needed by AMD FidelityFX - FSR 3
@@ -332,7 +332,7 @@ namespace Spartan
 
     namespace validation_layer
     {
-        // layers configuration: https://vulkan.lunarg.com/doc/view/1.3.283.0/windows/layer_configuration.html
+        // layers configuration: https://vulkan.lunarg.com/doc/view/1.3.296.0/windows/layer_configuration.html
         const char* name = "VK_LAYER_KHRONOS_validation";
 
         const VkBool32 setting_validate_core          = VK_TRUE;                                                       // enable core validation checks

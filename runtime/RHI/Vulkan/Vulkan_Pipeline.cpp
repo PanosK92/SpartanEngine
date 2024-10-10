@@ -32,6 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Device.h"
 #include "../RHI_Texture.h"
+#include "../RHI_FidelityFX.h"
+#include "../Core/Debugging.h"
 //=====================================
 
 //= NAMESPACES =====
@@ -129,11 +131,11 @@ namespace Spartan
             pipeline_layout_info.pPushConstantRanges        = push_constant_ranges.data();
 
             // create
-            SP_ASSERT_VK_MSG(vkCreatePipelineLayout(RHI_Context::device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_resource_pipeline_layout)),
+            SP_ASSERT_VK_MSG(vkCreatePipelineLayout(RHI_Context::device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_rhi_resource_pipeline)),
                 "Failed to create pipeline layout");
 
             // name
-            RHI_Device::SetResourceName(m_resource_pipeline_layout, RHI_Resource_Type::PipelineLayout, pipeline_state.name);
+            RHI_Device::SetResourceName(m_rhi_resource_pipeline, RHI_Resource_Type::PipelineLayout, pipeline_state.name);
         }
 
         // viewport & scissor
@@ -363,7 +365,7 @@ namespace Spartan
 
         // pipeline
         {
-            VkPipeline* pipeline = reinterpret_cast<VkPipeline*>(&m_resource_pipeline);
+            VkPipeline* pipeline = reinterpret_cast<VkPipeline*>(&m_rhi_resource);
 
             if (pipeline_state.IsGraphics())
             {
@@ -435,7 +437,7 @@ namespace Spartan
                     pipeline_info.pMultisampleState            = &multisample_state;
                     pipeline_info.pColorBlendState             = &color_blend_state;
                     pipeline_info.pDepthStencilState           = &depth_stencil_state;
-                    pipeline_info.layout                       = static_cast<VkPipelineLayout>(m_resource_pipeline_layout);
+                    pipeline_info.layout                       = static_cast<VkPipelineLayout>(m_rhi_resource_pipeline);
                     pipeline_info.flags                        = m_state.vrs_input_texture ? VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR : 0;
 
                     SP_ASSERT_VK_MSG(vkCreateGraphicsPipelines(RHI_Context::device, nullptr, 1, &pipeline_info, nullptr, pipeline), "Failed to create graphics pipeline");
@@ -446,21 +448,26 @@ namespace Spartan
             {
                 VkComputePipelineCreateInfo pipeline_info = {};
                 pipeline_info.sType                       = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-                pipeline_info.layout                      = static_cast<VkPipelineLayout>(m_resource_pipeline_layout);
+                pipeline_info.layout                      = static_cast<VkPipelineLayout>(m_rhi_resource_pipeline);
                 pipeline_info.stage                       = shader_stages[0];
 
                 SP_ASSERT_VK_MSG(vkCreateComputePipelines(RHI_Context::device, nullptr, 1, &pipeline_info, nullptr, pipeline),"Failed to create compute pipeline");
                 RHI_Device::SetResourceName(static_cast<void*>(*pipeline), RHI_Resource_Type::Pipeline, pipeline_state.name);
             }
         }
+
+        if (Debugging::IsBreadcrumbsEnabled())
+        { 
+            RHI_FidelityFX::Breadcrumbs_RegisterPipeline(this);
+        }
     }
     
     RHI_Pipeline::~RHI_Pipeline()
     {
-        RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Pipeline, m_resource_pipeline);
-        m_resource_pipeline = nullptr;
+        RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Pipeline, m_rhi_resource);
+        m_rhi_resource = nullptr;
         
-        RHI_Device::DeletionQueueAdd(RHI_Resource_Type::PipelineLayout, m_resource_pipeline_layout);
-        m_resource_pipeline_layout = nullptr;
+        RHI_Device::DeletionQueueAdd(RHI_Resource_Type::PipelineLayout, m_rhi_resource_pipeline);
+        m_rhi_resource_pipeline = nullptr;
     }
 }
