@@ -25,6 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_Queue.h"
 #include "../RHI_Semaphore.h"
+#include "../RHI_FidelityFX.h"
+#include "../Core/Debugging.h"
 //================================
 
 //= NAMESPACES =====
@@ -184,8 +186,12 @@ namespace Spartan
             submit_info.commandBufferInfoCount   = 1;
             submit_info.pCommandBufferInfos      = &cmd_buffer_info;
 
-            void* queue = RHI_Device::GetQueueRhiResource(m_type);
-            SP_ASSERT_VK_MSG(vkQueueSubmit2(static_cast<VkQueue>(queue), 1, &submit_info, nullptr), "GPU crash");
+            VkResult result = vkQueueSubmit2(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type)), 1, &submit_info, nullptr);
+            if (result == VK_ERROR_DEVICE_LOST && Debugging::IsBreadcrumbsEnabled())
+            {
+                RHI_FidelityFX::Breadcrumbs_OnDeviceRemoved(nullptr);
+            }
+            SP_ASSERT_VK_MSG(result, "GPU crash");
             semaphore->SetSignaled(true);
         }
     }
