@@ -1445,10 +1445,10 @@ namespace Spartan
         SP_ASSERT(ffxBreadcrumbsEndMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list)) == FFX_OK);
     }
 
-    void RHI_FidelityFX::Breadcrumbs_OnDeviceRemoved(void* data)
+    void RHI_FidelityFX::Breadcrumbs_OnDeviceRemoved()
     {
         FfxBreadcrumbsMarkersStatus marker_status = {};
-        SP_ASSERT(ffxBreadcrumbsPrintStatus(static_cast<FfxBreadcrumbsContext*>(data), &marker_status) == FFX_OK);
+        SP_ASSERT(ffxBreadcrumbsPrintStatus(&breadcrumbs::context, &marker_status) == FFX_OK);
 
         ofstream fout("breadcrumbs.txt", ios::binary);
         SP_ASSERT_MSG(fout.good(), "Failed to create breadcrumbs.txt!");

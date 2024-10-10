@@ -152,7 +152,7 @@ namespace Spartan
 
     }
 
-    void RHI_FidelityFX::Breadcrumbs_OnDeviceRemoved(void* data)
+    void RHI_FidelityFX::Breadcrumbs_OnDeviceRemoved(a)
     {
 
     }
