@@ -189,7 +189,7 @@ namespace Spartan
             VkResult result = vkQueueSubmit2(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type)), 1, &submit_info, nullptr);
             if (result == VK_ERROR_DEVICE_LOST && Debugging::IsBreadcrumbsEnabled())
             {
-                RHI_FidelityFX::Breadcrumbs_OnDeviceRemoved(nullptr);
+                RHI_FidelityFX::Breadcrumbs_OnDeviceRemoved();
             }
             SP_ASSERT_VK_MSG(result, "GPU crash");
             semaphore->SetSignaled(true);
