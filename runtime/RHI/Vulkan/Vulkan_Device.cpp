@@ -1356,7 +1356,15 @@ namespace Spartan
         vulkan_memory_allocator::initialize();
         CreateDescriptorPool();
 
-        Debugging::Initialize(GetPrimaryPhysicalDevice()->IsAmd());
+        // gpu dependent actions
+        {
+            Debugging::Initialize(GetPrimaryPhysicalDevice()->IsAmd());
+
+            if (RHI_Device::GetPrimaryPhysicalDevice()->IsBelowMinimumRequirments())
+            {
+                SP_WARNING_WINDOW("The GPU does not meet the minimum requirements for running the engine. The engine may not function correctly.");
+            }
+        }
 
         // register the vulkan sdk version, which can be higher than the version we are using which is driver dependent
         string version_Sdlk = to_string(VK_VERSION_MAJOR(VK_HEADER_VERSION_COMPLETE)) + "." + to_string(VK_VERSION_MINOR(VK_HEADER_VERSION_COMPLETE)) + "." + to_string(VK_VERSION_PATCH(VK_HEADER_VERSION_COMPLETE));

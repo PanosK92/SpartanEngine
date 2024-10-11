@@ -57,6 +57,15 @@ namespace Spartan
         bool IsArm()      const { return vendor_id == 0x13B5 || name.find("Arm,") != std::string::npos; }
         bool IsQualcomm() const { return vendor_id == 0x5143 || name.find("Qualcomm") != std::string::npos; }
 
+        bool IsBelowMinimumRequirments()
+        {
+            // minimum requirements
+            const uint32_t min_memory_mb           = 4096; // minimum memory in MB, 4GB in this case
+            const RHI_PhysicalDevice_Type min_type = RHI_PhysicalDevice_Type::Discrete;
+
+            return memory < min_memory_mb || type != min_type;
+        }
+
         const std::string& GetName()          const { return name; }
         const std::string& GetDriverVersion() const { return driver_version; }
         const std::string& GetApiVersion()    const { return api_version; }
