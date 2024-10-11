@@ -61,35 +61,35 @@ namespace Spartan
         }
 
         void create_image_view(
-            void* image,
-            void*& image_view,
-            const RHI_Texture* texture,
-            const uint32_t array_index,
-            const uint32_t array_length,
-            const uint32_t mip_index,
-            const uint32_t mip_count
+        void* image,
+        void*& image_view,
+        const RHI_Texture* texture,
+        const uint32_t array_index,
+        const uint32_t array_length,
+        const uint32_t mip_index,
+        const uint32_t mip_count
         )
         {
             VkImageViewType view_type = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+        
+            // Determine the correct view type based on the texture type
+            if (texture->GetType() == RHI_Texture_Type::Type2D)
             {
-                if (texture->GetType() == RHI_Texture_Type::Type2D)
-                {
-                    view_type = VkImageViewType::VK_IMAGE_VIEW_TYPE_2D;
-                }
-                else if (texture->GetType() == RHI_Texture_Type::Type2DArray)
-                {
-                    view_type = VkImageViewType::VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-                }
-                else if (texture->GetType() == RHI_Texture_Type::Type3D)
-                {
-                    view_type = VkImageViewType::VK_IMAGE_VIEW_TYPE_3D;
-                }
-                else if (texture->GetType() == RHI_Texture_Type::TypeCube)
-                {
-                    view_type = VkImageViewType::VK_IMAGE_VIEW_TYPE_CUBE;
-                }
+                view_type = VkImageViewType::VK_IMAGE_VIEW_TYPE_2D;
             }
-
+            else if (texture->GetType() == RHI_Texture_Type::Type2DArray)
+            {
+                view_type = VkImageViewType::VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+            }
+            else if (texture->GetType() == RHI_Texture_Type::Type3D)
+            {
+                view_type = VkImageViewType::VK_IMAGE_VIEW_TYPE_3D;
+            }
+            else if (texture->GetType() == RHI_Texture_Type::TypeCube)
+            {
+                view_type = VkImageViewType::VK_IMAGE_VIEW_TYPE_CUBE;
+            }
+        
             VkImageViewCreateInfo create_info           = {};
             create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
             create_info.image                           = static_cast<VkImage>(image);
@@ -98,13 +98,25 @@ namespace Spartan
             create_info.subresourceRange.aspectMask     = get_aspect_mask(texture, texture->IsDepthFormat(), false);
             create_info.subresourceRange.baseMipLevel   = mip_index;
             create_info.subresourceRange.levelCount     = mip_count;
-            create_info.subresourceRange.baseArrayLayer = array_index;
-            create_info.subresourceRange.layerCount     = array_length;
+        
+            if (texture->GetType() == RHI_Texture_Type::Type3D)
+            {
+                // For 3D textures, baseArrayLayer must be 0, and layerCount must be 1
+                create_info.subresourceRange.baseArrayLayer = 0;
+                create_info.subresourceRange.layerCount     = 1;
+            }
+            else
+            {
+                // For other types (2D arrays, cube maps), use array layers
+                create_info.subresourceRange.baseArrayLayer = array_index;
+                create_info.subresourceRange.layerCount     = array_length;
+            }
+        
             create_info.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
             create_info.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
             create_info.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
             create_info.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-
+        
             SP_ASSERT_MSG(vkCreateImageView(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkImageView*>(&image_view)) == VK_SUCCESS, "Failed to create image view");
         }
 
@@ -305,7 +317,15 @@ namespace Spartan
             RHI_Image_Layout target_layout = GetAppropriateLayout(this);
 
             // transition to the final layout
-            cmd_list->InsertBarrierTexture(this, 0, m_mip_count, m_depth, m_layout[0], target_layout);
+            uint32_t array_length = m_type == RHI_Texture_Type::Type3D ? 1 : m_depth;
+            cmd_list->InsertBarrierTexture(
+                this,
+                0,            // mip start
+                m_mip_count,  // mip count
+                array_length, // array length
+                m_layout[0],
+                target_layout
+            );
         
             // flush
             RHI_Device::CmdImmediateSubmit(cmd_list);
