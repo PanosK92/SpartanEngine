@@ -1938,14 +1938,26 @@ namespace Spartan
             create_info_allocation.flags                   |= texture->HasExternalMemory() ? VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT : 0;
 
             void*& resource = texture->GetRhiResource();
-            SP_ASSERT_VK_MSG(vmaCreateImage(
+            VkResult result = vmaCreateImage
+            (
                 allocator,
                 &create_info_image,
                 &create_info_allocation,
                 reinterpret_cast<VkImage*>(&resource),
                 &allocation,
-                &allocation_info),
-            "Failed to allocate texture");
+                &allocation_info
+            );
+
+            if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY || result == VK_ERROR_OUT_OF_HOST_MEMORY)
+            {
+                SP_ERROR_WINDOW
+                (
+                    "Failed to allocate texture due to insufficient memory. "
+                    "This likely occurred while loading a large scene or too many materials/textures."
+                );
+            }
+
+            SP_ASSERT_VK_MSG(result, "Failed to create image");
 
             // set allocation name and data
             //vmaSetAllocationUserData(allocator, allocation, resource);
