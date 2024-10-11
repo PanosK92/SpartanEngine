@@ -187,11 +187,17 @@ namespace Spartan
             submit_info.pCommandBufferInfos      = &cmd_buffer_info;
 
             VkResult result = vkQueueSubmit2(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type)), 1, &submit_info, nullptr);
-            if (result == VK_ERROR_DEVICE_LOST && Debugging::IsBreadcrumbsEnabled())
+            if (result == VK_ERROR_DEVICE_LOST)
             {
-                RHI_FidelityFX::Breadcrumbs_OnDeviceRemoved();
+                if (Debugging::IsBreadcrumbsEnabled())
+                { 
+                    RHI_FidelityFX::Breadcrumbs_OnDeviceRemoved();
+                }
+
+                SP_ASSERT_MSG(false, "GPU crash");
             }
-            SP_ASSERT_VK_MSG(result, "GPU crash");
+
+            SP_ASSERT_VK_MSG(result, "Submission failed");
             semaphore->SetSignaled(true);
         }
     }

@@ -369,7 +369,7 @@ namespace Spartan
                     }
                 }
 
-                SP_ASSERT_MSG(!validation_layer_unavailable, "Please install the Vulkan SDK: https://vulkan.lunarg.com/sdk/home");
+                SP_ASSERT_MSG(!validation_layer_unavailable, "Please install the Vulkan SDK, ensure correct environment variables and restart your machine: https://vulkan.lunarg.com/sdk/home");
             }
 
             // create settings
@@ -1901,7 +1901,7 @@ namespace Spartan
         create_info_image.extent.height     = texture->GetHeight();
         create_info_image.extent.depth      = texture->GetType() == RHI_Texture_Type::Type3D ? texture->GetDepth() : 1;
         create_info_image.mipLevels         = texture->GetMipCount();
-        create_info_image.arrayLayers       = texture->GetType() != RHI_Texture_Type::Type3D  ? texture->GetDepth() : 1;
+        create_info_image.arrayLayers       = texture->GetType() == RHI_Texture_Type::Type3D ? 1 : texture->GetDepth();
         create_info_image.format            = vulkan_format[rhi_format_to_index(texture->GetFormat())];
         create_info_image.tiling            = get_format_tiling(texture);
         create_info_image.initialLayout     = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout(0))];

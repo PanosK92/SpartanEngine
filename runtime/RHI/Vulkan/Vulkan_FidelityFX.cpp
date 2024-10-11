@@ -1458,7 +1458,7 @@ namespace Spartan
         SP_ASSERT(ffxBreadcrumbsPrintStatus(&breadcrumbs::context, &marker_status) == FFX_OK);
 
         ofstream fout("breadcrumbs.txt", ios::binary);
-        SP_ASSERT_MSG(fout.good(), "Failed to create breadcrumbs.txt!");
+        SP_ASSERT_MSG(fout.good(), "Failed to create breadcrumbs.txt");
 
         if (fout.good())
         {
