@@ -46,14 +46,15 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - Vulkan (main) and DirectX 12 (wip) backends with universal HLSL shaders.
 - Unified deferred rendering with transparency (BSDF with same render path).
 - Atmospheric scattering, real-time filtering and image-based lighting.
-- Real-time global illumination (FidelityFX Brixelizer GI)
-- Screen space shadows from Bend Studio's Days Gone.
+- Real-time global illumination (FidelityFX Brixelizer GI).
+- Screen space shadows (Bend Studio's Days Gone).
 - Screen space ambient occlusion.
 - Screen space reflections (FidelityFX SSSR).
 - Variable rate shading.
 - Dynamic resolution scaling.
 - Upscaling (FidelityFX FSR 3.1).
 - Temporal anti-aliasing.
+- Breadcrumbs for tracing GPU crashes (FidelityFX Breadcrumbs).
 - Advanced shadow features with penumbra and colored translucency.
 - Physical light units (intensity from lumens and color from kelvin).
 - Frustum & occlusion culling (software and hardware hybrid).
