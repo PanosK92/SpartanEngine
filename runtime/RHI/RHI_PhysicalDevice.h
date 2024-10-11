@@ -66,32 +66,24 @@ namespace Spartan
         RHI_PhysicalDevice_Type GetType()     const { return type; }
 
     private:
-        std::string get_vendor_name()
+        const char* get_vendor_name()
         {
-            std::string name = "Unknown";
-
             if (IsNvidia())
-            {
-                name = "Nvidia";
-            }
-            else if (IsAmd())
-            {
-                name = "AMD";
-            }
-            else if (IsIntel())
-            {
-                name = "Intel";
-            }
-            else if (IsArm())
-            {
-                name = "Arm";
-            }
-            else if (IsQualcomm())
-            {
-                name = "Qualcomm";
-            }
+                return "Nvidia";
 
-            return name;
+            if (IsAmd())
+               return "Amd";
+
+            if (IsIntel())
+                return "Intel";
+
+            if (IsArm())
+             return "Arm";
+
+            if (IsQualcomm())
+                return "Qualcomm";
+
+            return "Unknown";
         }
 
         std::string decode_api_version(const uint32_t version);

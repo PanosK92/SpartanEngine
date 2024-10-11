@@ -26,6 +26,13 @@ namespace Spartan
     class Debugging
     {
     public:
+        static void Initialize(const bool is_amd)
+        {
+            #ifdef DEBUG
+            m_breadcrumbs_enabled = is_amd;
+            #endif
+        }
+
         static bool IsValidationLayerEnabled()              { return m_validation_layer_enabled; }
         static bool IsGpuAssistedValidationEnabled()        { return m_gpu_assisted_validation_enabled; }
         static bool IsGpuMarkingEnabled()                   { return m_gpu_marking_enabled; }
@@ -39,18 +46,11 @@ namespace Spartan
     private:
         inline static bool m_validation_layer_enabled        = false; // enables vulkan validation, high cpu overhead per draw
         inline static bool m_gpu_assisted_validation_enabled = false; // gpu-based validation, significant cpu and gpu cost
-
-        // breadcrumbs: tracks gpu crashes and writes info into breadcrumbs.txt, minimal overhead
-#ifdef DEBUG
-        inline static bool m_breadcrumbs_enabled = true;
-#else
-        inline static bool m_breadcrumbs_enabled = false;
-#endif
-
-        inline static bool m_logging_to_file_enabled     = false; // logs to file, high cpu cost due to disk i/o
-        inline static bool m_renderdoc_enabled           = false; // integrates renderdoc, high cpu overhead from api wrapping
-        inline static bool m_gpu_marking_enabled         = true;  // gpu markers for debugging, no performance impact
-        inline static bool m_gpu_timing_enabled          = true;  // measures gpu timings, negligible cost
-        inline static bool m_shader_optimization_enabled = true;  // enables shader optimizations, high cost when off
+        inline static bool m_breadcrumbs_enabled             = false; // breadcrumbs: tracks gpu crashes and writes info into breadcrumbs.txt, minimal overhead
+        inline static bool m_logging_to_file_enabled         = false; // logs to file, high cpu cost due to disk i/o
+        inline static bool m_renderdoc_enabled               = false; // integrates renderdoc, high cpu overhead from api wrapping
+        inline static bool m_gpu_marking_enabled             = true;  // gpu markers for debugging, no performance impact
+        inline static bool m_gpu_timing_enabled              = true;  // measures gpu timings, negligible cost
+        inline static bool m_shader_optimization_enabled     = true;  // enables shader optimizations, high cost when off
     };
 }

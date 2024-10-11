@@ -1356,6 +1356,8 @@ namespace Spartan
         vulkan_memory_allocator::initialize();
         CreateDescriptorPool();
 
+        Debugging::Initialize(GetPrimaryPhysicalDevice()->IsAmd());
+
         // register the vulkan sdk version, which can be higher than the version we are using which is driver dependent
         string version_Sdlk = to_string(VK_VERSION_MAJOR(VK_HEADER_VERSION_COMPLETE)) + "." + to_string(VK_VERSION_MINOR(VK_HEADER_VERSION_COMPLETE)) + "." + to_string(VK_VERSION_PATCH(VK_HEADER_VERSION_COMPLETE));
         Settings::RegisterThirdPartyLib("Vulkan", version_Sdlk, "https://vulkan.lunarg.com/");
