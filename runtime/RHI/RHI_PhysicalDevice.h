@@ -42,20 +42,11 @@ namespace Spartan
             this->driver_version = decode_driver_version(driver_version);
         }
 
-        /*
-            0x10DE - Nvidia
-            0x8086 - Intel
-            0x1002 - Amd
-            0x13B5 - ARM
-            0x5143 - Qualcomm
-            0x1010 - ImgTec
-            
-        */
-        bool IsNvidia()   const { return vendor_id == 0x10DE || name.find("Nvidia") != std::string::npos; }
-        bool IsAmd()      const { return vendor_id == 0x1002 || vendor_id == 0x1022 || name.find("Amd") != std::string::npos; }
-        bool IsIntel()    const { return vendor_id == 0x8086 || vendor_id == 0x163C || vendor_id == 0x8087 || name.find("Intel") != std::string::npos;}
-        bool IsArm()      const { return vendor_id == 0x13B5 || name.find("Arm,") != std::string::npos; }
-        bool IsQualcomm() const { return vendor_id == 0x5143 || name.find("Qualcomm") != std::string::npos; }
+        bool IsNvidia()   const { return vendor_id == 0x10DE ||                                               name.find("Nvidia")   != std::string::npos; }
+        bool IsAmd()      const { return vendor_id == 0x1002 || vendor_id == 0x1022 ||                        name.find("Amd")      != std::string::npos; }
+        bool IsIntel()    const { return vendor_id == 0x8086 || vendor_id == 0x163C || vendor_id == 0x8087 || name.find("Intel")    != std::string::npos;}
+        bool IsArm()      const { return vendor_id == 0x13B5 ||                                               name.find("Arm,")     != std::string::npos; }
+        bool IsQualcomm() const { return vendor_id == 0x5143 ||                                               name.find("Qualcomm") != std::string::npos; }
 
         bool IsBelowMinimumRequirments()
         {
