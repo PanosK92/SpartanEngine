@@ -21,8 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========================
 #include "pch.h"
-#include "../Rendering/Renderer.h"
 #include "../../Profiling/Profiler.h"
+#include "../Core/Debugging.h"
+#include "../Rendering/Renderer.h"
 #include "../RHI_Device.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Queue.h"
@@ -31,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Shader.h"
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Pipeline.h"
-#include "../Core/Debugging.h"
 SP_WARNINGS_OFF
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
