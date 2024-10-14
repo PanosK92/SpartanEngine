@@ -19,19 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======
+//= INCLUDES ===================
 #include "pch.h"
 #include "Display.h"
 #include <SDL.h>
 #include "Window.h"
-//==================
-
 #if defined(_MSC_VER)
 #include <dxgi.h>
 #include <dxgi1_6.h>
 #include <wrl.h>
 #pragma comment(lib, "dxgi.lib")
 #endif
+//==============================
 
 //= NAMESPACES =====
 using namespace std;
@@ -43,15 +42,17 @@ namespace Spartan
     {
         vector<DisplayMode> display_modes;
         bool is_hdr_capable      = false;
-        float max_luminance_nits = 0;
+        float luminance_nits_max = 0;
+        float luminance_nits_min = 0;
 
-        void get_hdr_capabilities(bool* is_hdr_capable, float* max_luminance)
+        void get_hdr_capabilities(bool* is_hdr_capable, float* luminace_min, float* luminance_max)
         {
             *is_hdr_capable = false;
-            *max_luminance  = 0.0f;
+            *luminace_min   = 0.0f;
+            *luminance_max  = 0.0f;
 
             #if defined(_MSC_VER)
-                // create DXGI factory
+                // create dxgi factory
                 Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
                 if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory))))
                 {
@@ -59,7 +60,7 @@ namespace Spartan
                     return;
                 }
 
-                // enumerate and get the primary adapter (GPU)
+                // enumerate and get the primary adapter (gpu)
                 Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
                 for (UINT i = 0; DXGI_ERROR_NOT_FOUND != factory->EnumAdapters1(i, &adapter); ++i)
                 {
@@ -129,7 +130,8 @@ namespace Spartan
                     if (SUCCEEDED(output6->GetDesc1(&desc)))
                     {
                         *is_hdr_capable = desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
-                        *max_luminance  = desc.MaxLuminance;
+                        *luminace_min   = desc.MinLuminance;
+                        *luminace_min   = desc.MaxLuminance;
                     }
                 }
             #else
@@ -154,10 +156,10 @@ namespace Spartan
                 return;
         }
 
-        // Add the new display mode
+        // add the new display mode
         display_modes.emplace_back(width, height, hz, display_index);
 
-        // Sort display modes based on width, descending order
+        // sort display modes based on width, descending order
         sort(display_modes.begin(), display_modes.end(), [](const DisplayMode& display_mode_a, const DisplayMode& display_mode_b)
         {
             return display_mode_a.width > display_mode_b.width;
@@ -168,7 +170,7 @@ namespace Spartan
     {
         display_modes.clear();
 
-        // Get display index of the display that contains this window
+        // get display index of the display that contains this window
         int display_index = SDL_GetWindowDisplayIndex(static_cast<SDL_Window*>(Window::GetHandleSDL()));
         if (display_index < 0)
         {
@@ -176,7 +178,7 @@ namespace Spartan
             return;
         }
 
-        // Get display mode count
+        // get display mode count
         int display_mode_count = SDL_GetNumDisplayModes(display_index);
         if (display_mode_count <= 0)
         {
@@ -184,7 +186,7 @@ namespace Spartan
             return;
         }
 
-        // Register display modes
+        // register display modes
         for (int display_mode_index = 0; display_mode_index < display_mode_count; display_mode_index++)
         {
             SDL_DisplayMode display_mode;
@@ -198,9 +200,9 @@ namespace Spartan
             }
         }
 
-        // Detect HDR capabilities
-        get_hdr_capabilities(&is_hdr_capable, &max_luminance_nits);
-        SP_LOG_INFO("HDR: %s, Max luminance: %.0f nits", is_hdr_capable ? "true" : "false", max_luminance_nits);
+        // detect hdr capabilities
+        get_hdr_capabilities(&is_hdr_capable, &luminance_nits_min, &luminance_nits_max);
+        SP_LOG_INFO("HDR: %s, min luminance: %d nits, max luminance: %d nits", is_hdr_capable ? "true" : "false", luminance_nits_min, luminance_nits_max);
     }
 
     const vector<DisplayMode>& Display::GetDisplayModes()
@@ -250,6 +252,6 @@ namespace Spartan
 
     float Display::GetLuminanceMax()
     {
-        return max_luminance_nits;
+        return luminance_nits_max;
     }
 }

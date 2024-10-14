@@ -29,7 +29,7 @@ namespace Spartan
         static void Initialize(const bool is_amd)
         {
             #ifdef DEBUG
-            m_breadcrumbs_enabled = is_amd;
+            m_breadcrumbs_enabled = m_breadcrumbs_enabled ? is_amd : false;
             #endif
         }
 
