@@ -80,8 +80,8 @@ namespace
         if (ImGui::Begin("Support Spartan Engine", &window_sponsor_visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize))
         {
             ImGui::TextWrapped(
-                "I cover the costs for Dropbox hosting, a dedicated website, and a GitHub Pro subscription for extra benefits like package bandwidth. "
-                "If you enjoy the simplicity of running a single script to get all the necessary assets, please consider sponsoring to help keep everything running smoothly!"
+                "I cover the costs for Dropbox hosting, a dedicated website, and a GitHub Pro subscription for benefits like assets and package bandwidth. "
+                "If you enjoy the simplicity of running a single script and have everything just work, please consider sponsoring to help keep everything running smoothly!"
             );
         
             ImGui::Separator();
