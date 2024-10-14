@@ -561,6 +561,10 @@ namespace Spartan
 
             bool                  context_created = false;
             FfxBreadcrumbsContext context         = {};
+
+            // FFX_BREADCRUMBS_ENABLE_THREAD_SYNCHRONIZATION doesn't seem to work
+            mutex                 mutex_marker_start;
+            mutex                 mutex_marker_end;
         }
     }
     #endif 
@@ -889,7 +893,7 @@ namespace Spartan
                                                                     FFX_BREADCRUMBS_PRINT_FINISHED_NODES    |
                                                                     FFX_BREADCRUMBS_PRINT_NOT_STARTED_NODES |
                                                                     FFX_BREADCRUMBS_PRINT_EXTENDED_DEVICE_INFO |
-                                                                    FFX_BREADCRUMBS_ENABLE_THREAD_SYNCHRONIZATION;
+                                                                    FFX_BREADCRUMBS_ENABLE_THREAD_SYNCHRONIZATION; // probably doesn't work, as the markers require mutexes
 
              SP_ASSERT(ffxBreadcrumbsContextCreate(&breadcrumbs::context, &context_description) == FFX_OK);
              breadcrumbs::context_created = true;
@@ -1441,6 +1445,7 @@ namespace Spartan
 
     void RHI_FidelityFX::Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const char* name)
     {
+        lock_guard<mutex> lock(breadcrumbs::mutex_marker_start); // without a mutex, after loading a world, a gpu crash can occur
         SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
         const FfxBreadcrumbsNameTag name_tag = { name, true };
         SP_ASSERT(ffxBreadcrumbsBeginMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), FFX_BREADCRUMBS_MARKER_PASS, &name_tag) == FFX_OK);
@@ -1448,6 +1453,7 @@ namespace Spartan
 
     void RHI_FidelityFX::Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list)
     {
+        lock_guard<mutex> lock(breadcrumbs::mutex_marker_end); // without a mutex, after loading a world, a gpu crash can occur
         SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
         SP_ASSERT(ffxBreadcrumbsEndMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list)) == FFX_OK);
     }
