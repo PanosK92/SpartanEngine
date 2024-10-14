@@ -123,8 +123,6 @@ namespace Spartan
 //====================================
 
 //= ASSERT =====================================================================
-// on debug mode, the assert will have the default behaviour
-// on release mode, the assert will write the error to a file and then break
 #include <cassert>
 #define SP_ASSERT(expression)                                         \
 if (!(expression))                                                    \
@@ -145,7 +143,7 @@ if (!(expression))                                                    \
     assert(expression && text_message);                               \
 }
 
-// A static assert
+// a static assert
 #define SP_ASSERT_STATIC_IS_TRIVIALLY_COPYABLE(T) \
 static_assert(std::is_trivially_copyable_v<T>, "Type is not trivially copyable")
 //==============================================================================
@@ -174,7 +172,7 @@ static_assert(std::is_trivially_copyable_v<T>, "Type is not trivially copyable")
 // https://docs.microsoft.com/en-us/cpp/code-quality/c26110?view=msvc-170
 //===================================================================================================================
 
-//= Avoid conflicts with numeric limit min/max =
+//= avoid conflicts with numeric limit min/max =
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif

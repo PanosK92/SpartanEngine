@@ -65,27 +65,30 @@ namespace
             return;
 
         const float width  = 600.0f;
-        const float height = 300.0f;
+        const float height = 240.0f;
 
         // set position
         ImVec2 display_size = ImGui::GetIO().DisplaySize;
         ImVec2 window_pos   = ImVec2((display_size.x - width) * 0.5f, (display_size.y - height) * 0.5f);
         ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
+
         // set size
         ImGui::SetNextWindowSize(ImVec2(width, height), ImGuiCond_Always);
+
         // set focus
         ImGui::SetNextWindowFocus();
-
         if (ImGui::Begin("Support Spartan Engine", &window_sponsor_visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize))
         {
             ImGui::TextWrapped(
-                "I'm covering the costs for hosting the Spartan Engine's assets on my personal Dropbox, "
-                "as well as running a dedicated website. If you enjoy the convenience of downloading the engine, "
-                "running a single script, and getting all the necessary assets without hassle, "
-                "please consider sponsoring me. Your support will help keep everything smooth and accessible!"
+                "I cover the costs for Dropbox hosting, a dedicated website, and a GitHub Pro subscription for extra benefits like package bandwidth. "
+                "If you enjoy the simplicity of running a single script to get all the necessary assets, please consider sponsoring to help keep everything running smoothly!"
             );
-
+        
             ImGui::Separator();
+        
+            float button_width = ImGui::CalcTextSize("Sponsor").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+            float window_width = ImGui::GetWindowSize().x;
+            ImGui::SetCursorPosX((window_width - button_width) * 0.5f);
 
             if (ImGui::Button("Sponsor"))
             {
