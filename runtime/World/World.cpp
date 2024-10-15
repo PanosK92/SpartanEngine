@@ -345,9 +345,6 @@ namespace Spartan
             }
 
             ProgressTracker::SetLoadingStateGlobal(false);
-
-            // simulate physics and play music
-            Engine::SetFlag(EngineMode::Playing, true);
         });
     }
 
@@ -383,8 +380,8 @@ namespace Spartan
         {
             // Get the root entity and its descendants
             std::vector<Entity*> entities_to_remove;
-            entities_to_remove.push_back(entity_to_remove);        // Add the root entity
-            entity_to_remove->GetDescendants(&entities_to_remove); // Get descendants 
+            entities_to_remove.push_back(entity_to_remove);        // add the root entity
+            entity_to_remove->GetDescendants(&entities_to_remove); // get descendants
 
             // Create a set containing the object IDs of entities to remove
             std::set<uint64_t> ids_to_remove;
