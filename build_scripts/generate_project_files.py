@@ -190,25 +190,27 @@ def print_local_file_hashes():
     input("Press Enter to continue...")
     
 def main():
-    # Skip asset downloads when running in CI
+    #print_local_file_hashes()
+     
+    # skip asset downloads when running in CI
     is_ci = "ci" in sys.argv
 
     library_url           = 'https://www.dropbox.com/scl/fi/6behqi6a1ymt3claptq8c/libraries.7z?rlkey=wq6ac6ems9oq9j8qhd0dbtich&st=tdakenrt&dl=1'
     library_destination   = 'third_party/libraries/libraries.7z'
-    library_expected_hash = '0b68371b01ba4a1d1bc9ec29b8605cec04478ffbae11c3a22c203ac54fdcb65e'
+    library_expected_hash = '3aff247046a474d2ad6a30865803639fabe38b229c0d8d9f5bac2d44c4e7a562'
 
     assets_url           = 'https://www.dropbox.com/scl/fi/hagxxndy0dnq7pu0ufkxh/assets.7z?rlkey=gmwlxlhf6q3eubh7r50q2xp27&st=60lavvyz&dl=1'
     assets_destination   = 'assets/assets.7z'
     assets_expected_hash = '59cd3b52b0aa84ed3f9bfc9fdef7af945d3f42e134e8bc8bded2bc9519380b8a'
     
-    # Download libraries regardless
+    # download libraries regardless
     download_file(library_url, library_destination, library_expected_hash)
     
-    # Skip asset download if running in CI
+    # skip asset download if running in CI
     if not is_ci:
         download_file(assets_url, assets_destination, assets_expected_hash)
 
-    # Extract the downloaded files (libraries always extracted)
+    # extract the downloaded files (libraries always extracted)
     extract_third_party_dependencies()
     
     if not is_ci:
