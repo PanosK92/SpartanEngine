@@ -22,7 +22,6 @@ import shutil
 import sys
 import subprocess
 from pathlib import Path
-import requests
 import importlib
 import stat
 import hashlib
@@ -58,7 +57,10 @@ def install_and_import(package):
         globals()[package] = importlib.import_module(package)
 
 install_and_import('tqdm')
+install_and_import('requests')
+
 from tqdm import tqdm
+import requests
 
 def calculate_file_hash(file_path, hash_type="sha256"):
     hash_func = hashlib.new(hash_type)
