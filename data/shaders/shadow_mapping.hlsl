@@ -255,35 +255,32 @@ float4 Shadow_Map(Surface surface, Light light)
                 shadow.rgb = Technique_Vogel_Color(light, surface, sample_coords);
             }
         }
-        else // directiona, spot
+        else // directional, spot
         {
             uint slice_index = 0;
             float3 pos_ndc   = world_to_ndc(position_world, light.transform[slice_index]);
             float2 pos_uv    = ndc_to_uv(pos_ndc);
 
-            if (is_valid_uv(pos_uv))
+            float3 sample_coords = float3(pos_uv.x, pos_uv.y, slice_index);
+            float  compare_value = pos_ndc.z;
+
+            shadow.a = SampleShadowMap(light, surface, sample_coords, compare_value);
+
+            if (shadow.a > 0.0f && light.has_shadows_transparent())
             {
-                float3 sample_coords = float3(pos_uv.x, pos_uv.y, slice_index);
-                float  compare_value = pos_ndc.z;
+                shadow.rgb = Technique_Vogel_Color(light, surface, sample_coords);
+            }
 
-                shadow.a = SampleShadowMap(light, surface, sample_coords, compare_value);
+            // blend with the far cascade for directional lights
+            float cascade_fade = saturate((max(abs(pos_ndc.x), abs(pos_ndc.y)) - g_shadow_cascade_blend_threshold) * 4.0f);
+            if (light.is_directional())
+            {
+                slice_index      = 1;
+                pos_ndc          = world_to_ndc(position_world, light.transform[slice_index]);
+                pos_uv           = ndc_to_uv(pos_ndc);
+                float shadow_far = SampleShadowMap(light, surface, float3(pos_uv, slice_index), pos_ndc.z);
 
-                if (shadow.a > 0.0f && light.has_shadows_transparent())
-                {
-                    shadow.rgb = Technique_Vogel_Color(light, surface, sample_coords);
-                }
-
-                // blend with the far cascade for directional lights
-                float cascade_fade = saturate((max(abs(pos_ndc.x), abs(pos_ndc.y)) - g_shadow_cascade_blend_threshold) * 4.0f);
-                if (light.is_directional() && cascade_fade > 0.0f)
-                {
-                    slice_index = 1;
-                    pos_ndc     = world_to_ndc(position_world, light.transform[slice_index]);
-                    pos_uv      = ndc_to_uv(pos_ndc);
-                    float shadow_far = SampleShadowMap(light, surface, float3(pos_uv, slice_index), pos_ndc.z);
-
-                    shadow.a = lerp(shadow.a, shadow_far, cascade_fade);
-                }
+                shadow.a = lerp(shadow.a, shadow_far, cascade_fade);
             }
         }
     }
