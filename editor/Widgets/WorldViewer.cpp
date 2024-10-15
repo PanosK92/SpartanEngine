@@ -55,7 +55,6 @@ namespace
     bool popup_rename_entity           = false;
     Spartan::Entity* entity_copied     = nullptr;
     static bool default_worlds_present = false;
-    static bool show_download_window   = true;
 
     void world_selection_window(Editor* editor)
     {
@@ -66,21 +65,21 @@ namespace
        {
            ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
            ImGui::SetNextWindowSize(ImVec2(300, 150), ImGuiCond_FirstUseEver);
-           if (ImGui::Begin("Download Default Worlds", &show_download_window, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+           if (ImGui::Begin("Download Default Worlds", &world_download_visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
            {
                ImGui::Text("No default worlds are present. Would you like to download them?");
                
                if (ImGui::Button("Yes"))
                {
                    Spartan::FileSystem::Command("python download_assets.py");
-                   show_download_window = false;
-                   world_list_visible   = true;
+                   world_download_visible = false;
+                   world_list_visible     = true;
                }
                ImGui::SameLine();
                if (ImGui::Button("No"))
                {
-                   show_download_window = false;
-                   world_list_visible   = false;
+                   world_download_visible = false;
+                   world_list_visible     = false;
                }
            }
            ImGui::End();
