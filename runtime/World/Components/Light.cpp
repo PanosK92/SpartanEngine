@@ -489,16 +489,18 @@ namespace Spartan
         uint32_t flags          = RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_ClearBlit;
         m_texture_depth         = nullptr;
         m_texture_color         = nullptr;
-        uint32_t array_length   = (GetLightType() == LightType::Spot) ? 1 : 2;
+        bool is_spot_light      = GetLightType() == LightType::Spot;
+        uint32_t array_length   = is_spot_light ? 1 : 2;
+        RHI_Texture_Type type   = is_spot_light ? RHI_Texture_Type::Type2D : RHI_Texture_Type::Type2DArray;
 
         // spot light:        1 slice
         // directional light: 2 slices for cascades
         // point light:       2 slices for front and back paraboloid
 
-        m_texture_depth = make_unique<RHI_Texture>(RHI_Texture_Type::Type2DArray, resolution, resolution, array_length, 1, format_depth, flags, "light_depth");
+        m_texture_depth = make_unique<RHI_Texture>(type, resolution, resolution, array_length, 1, format_depth, flags, "light_depth");
         if (IsFlagSet(LightFlags::ShadowsTransparent))
         {
-            m_texture_color = make_unique<RHI_Texture>(RHI_Texture_Type::Type2DArray,resolution, resolution, array_length, 1, format_color, flags, "light_color");
+            m_texture_color = make_unique<RHI_Texture>(type,resolution, resolution, array_length, 1, format_color, flags, "light_color");
         }
     }
 }  
