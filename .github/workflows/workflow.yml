@@ -54,8 +54,7 @@ jobs:
           import subprocess
           import os
           api = os.environ["API"]
-          ci_flag = "ci" if is_ci else ""
-          subprocess.run(f"python generate_vs2022_{api}.py {ci_flag}")
+          subprocess.run(f"python generate_vs2022_{api}.py ci")
 
       - name: Build
         shell: cmd
