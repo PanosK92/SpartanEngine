@@ -114,30 +114,20 @@ def main():
     copy("data", paths["binaries"]["data"])
     copy("build_scripts/download_assets.py", "binaries/")
     copy("build_scripts/file_utilities.py", "binaries/")
+    copy("build_scripts/7z.exe", "binaries/")
     
     print("\n2. Download and extract libraries...\n")
     library_url           = 'https://www.dropbox.com/scl/fi/6behqi6a1ymt3claptq8c/libraries.7z?rlkey=wq6ac6ems9oq9j8qhd0dbtich&st=tdakenrt&dl=1'
     library_destination   = 'third_party/libraries/libraries.7z'
     library_expected_hash = '3aff247046a474d2ad6a30865803639fabe38b229c0d8d9f5bac2d44c4e7a562'
     file_utilities.download_file(library_url, library_destination, library_expected_hash)
-    file_utilities.extract_archive("third_party/libraries/libraries.7z", "third_party/libraries/", sys.argv[1] == "vs2022")
+    file_utilities.extract_archive("third_party/libraries/libraries.7z", "third_party/libraries/", sys.argv[1] == "vs2022", False)
     
     print("\n3. Copying required DLLs to the binary directory...")
     for lib in paths["third_party_libs"].values():
         copy(lib, Path("binaries"))
-    
-    if not is_ci:
-        print("\n4. Download and extract assets...\n")
-        assets_url           = 'https://www.dropbox.com/scl/fi/hagxxndy0dnq7pu0ufkxh/assets.7z?rlkey=gmwlxlhf6q3eubh7r50q2xp27&st=60lavvyz&dl=1'
-        assets_destination   = 'assets/assets.7z'
-        assets_expected_hash = '59cd3b52b0aa84ed3f9bfc9fdef7af945d3f42e134e8bc8bded2bc9519380b8a'
-        file_utilities.download_file(assets_url, assets_destination, assets_expected_hash)
-        file_utilities.extract_archive("assets/assets.7z", "assets/", sys.argv[1] == "vs2022")
-        print("\n5.Copying some assets to the project directory...")
-        for asset_type, asset_path in paths["assets"].items():
-            copy(asset_path, paths["binaries"][asset_type])
 
-    print("\n6. Generate project files...\n")
+    print("\n4. Generate project files...\n")
     generate_project_files()
     
     if not is_ci:

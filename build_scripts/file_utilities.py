@@ -17,6 +17,7 @@
 #IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 #CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import subprocess
 import importlib
 
 def install_and_import(package):
@@ -70,11 +71,28 @@ def download_file(url, destination, expected_hash):
         print(f"ERROR, hash mismatch for {destination}")
         return
 
-def extract_archive(archive_path, destination_path, is_windows):
-    cmd = (
-        f"build_scripts\\7z.exe x {archive_path} -o{destination_path} -aoa"
-        if is_windows
-        else f"7za x {archive_path} -o{destination_path} -aoa"
-    )
-    print(f"Extracting {archive_path} to {destination_path}...")
-    os.system(cmd)
+def extract_archive(archive_path, destination_path, is_windows, use_working_dir=False):
+    # Determine the path to 7z based on the use_working_dir flag
+    if use_working_dir:
+        seven_zip_exe = '7z.exe' if is_windows else '7za'
+    else:
+        exe_dir = os.path.join(os.getcwd(), 'build_scripts')
+        seven_zip_exe = os.path.join(exe_dir, '7z.exe' if is_windows else '7za')
+
+    # Construct the command
+    cmd = f"{seven_zip_exe} x {archive_path} -o{destination_path} -aoa"
+
+    print(f"Extracting {archive_path} to {destination_path} using: {seven_zip_exe}")
+
+    try:
+        # Execute the command
+        result = subprocess.run(cmd, check=True, shell=True, text=True, capture_output=True)
+        print(result.stdout)
+    except subprocess.CalledProcessError as e:
+        print(f"An error occurred while extracting: {e}")
+        print(f"Error output: {e.stderr}")
+        raise  # Re-raise the exception for higher-level error handling if needed
+
+    except FileNotFoundError:
+        print(f"The 7z executable was not found at {seven_zip_exe}. Please check the path or installation.")
+        raise
