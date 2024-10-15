@@ -68,7 +68,7 @@ def calculate_file_hash(file_path, hash_type="sha256"):
     return hash_func.hexdigest()
 
 def download_file(url, destination, expected_hash):
-    """Downloads a file from the specified URL to the given destination with a progress bar and hash check."""
+    # downloads a file from the specified URL to the given destination with a progress bar and hash check."""
     if not os.path.exists(destination):
         print(f"\nFile {destination} doesn't exist. Downloading...")
     elif calculate_file_hash(destination) != expected_hash:
@@ -77,10 +77,10 @@ def download_file(url, destination, expected_hash):
         print(f"\nFile {destination} already exists with the correct hash. Skipping download.")
         return
 
-    os.makedirs(os.path.dirname(destination), exist_ok=True)  # Ensure the directory exists
+    os.makedirs(os.path.dirname(destination), exist_ok=True)  # ensure the directory exists
     response = requests.get(url, stream=True)
     total_size = int(response.headers.get('content-length', 0))
-    block_size = 1024  # 1 Kibibyte
+    block_size = 1024  # 1 kilobyte
     t = tqdm(total=total_size, unit='iB', unit_scale=True)
     with open(destination, 'wb') as f:
         for chunk in response.iter_content(block_size):
@@ -98,7 +98,7 @@ def is_directory(path):
 
 def copy(source, destination):
     def on_rm_error(func, path, exc_info):
-        # Make the file writable if it's read-only
+        # make the file writable if it's read-only
         os.chmod(path, stat.S_IWRITE)
         func(path)
 
@@ -109,7 +109,7 @@ def copy(source, destination):
             dest_file = destination
         print(f"Copying file \"{source}\" to \"{dest_file}\"...")
         if os.path.exists(dest_file):
-            os.chmod(dest_file, stat.S_IWRITE)  # Make the file writable if it exists
+            os.chmod(dest_file, stat.S_IWRITE)  # make the file writable if it exists
         shutil.copy2(source, dest_file)
     elif is_directory(source) and is_directory(destination):
         print(f"Copying directory \"{source}\" to directory \"{destination}\"...")
@@ -188,10 +188,10 @@ def print_local_file_hashes():
             print(f"{name}: File not found")
     
 def main():
-    print_local_file_hashes()
-     
     # skip asset downloads when running in CI
     is_ci = "ci" in sys.argv
+    
+    print_local_file_hashes()
 
     library_url           = 'https://www.dropbox.com/scl/fi/6behqi6a1ymt3claptq8c/libraries.7z?rlkey=wq6ac6ems9oq9j8qhd0dbtich&st=tdakenrt&dl=1'
     library_destination   = 'third_party/libraries/libraries.7z'
