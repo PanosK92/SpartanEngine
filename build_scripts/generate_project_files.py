@@ -25,6 +25,7 @@ from pathlib import Path
 import importlib
 import stat
 import hashlib
+import file_utilities
 
 paths = {
     "binaries": {
@@ -69,30 +70,6 @@ def calculate_file_hash(file_path, hash_type="sha256"):
             hash_func.update(chunk)
     return hash_func.hexdigest()
 
-def download_file(url, destination, expected_hash):
-    # downloads a file from the specified URL to the given destination with a progress bar and hash check."""
-    if not os.path.exists(destination):
-        print(f"\nFile {destination} doesn't exist. Downloading...")
-    elif calculate_file_hash(destination) != expected_hash:
-        print(f"\nHash of {destination} is outdated. Downloading new version...")
-    else:
-        print(f"\nFile {destination} already exists with the correct hash. Skipping download.")
-        return
-
-    os.makedirs(os.path.dirname(destination), exist_ok=True)  # ensure the directory exists
-    response = requests.get(url, stream=True)
-    total_size = int(response.headers.get('content-length', 0))
-    block_size = 1024  # 1 kilobyte
-    t = tqdm(total=total_size, unit='iB', unit_scale=True)
-    with open(destination, 'wb') as f:
-        for chunk in response.iter_content(block_size):
-            t.update(len(chunk))
-            f.write(chunk)
-    t.close()
-    if total_size != 0 and t.n != total_size:
-        print("ERROR, something went wrong during download")
-        return
-        
 def is_directory(path):
     if not os.path.exists(path):
         return os.path.splitext(path)[1] == ""
@@ -123,43 +100,7 @@ def copy(source, destination):
         return False
     return True
     
-def extract_third_party_dependencies():
-    print("\n1. Extracting third-party dependencies...")
-    cmd = (
-        "build_scripts\\7z.exe e third_party\\libraries\\libraries.7z -othird_party\\libraries\\ -aoa"
-        if sys.argv[1] == "vs2022"
-        else "7za e third_party/libraries/libraries.7z -othird_party/libraries/ -aoa"
-    )
-    os.system(cmd)
-
-def extract_assets():
-    print("1.5 Extracting assets...")
-    cmd = (
-        "build_scripts\\7z.exe x assets\\assets.7z -oassets\\ -aoa"
-        if sys.argv[1] == "vs2022"
-        else "7za x assets/assets.7z -oassets/ -aoa"
-    )
-    os.system(cmd)
-    
-    if not os.path.exists("assets\\models"):
-        print("Warning: assets\\models directory not found after extraction.")
-
-def create_binaries_folder():
-    print("\n2. Copying required data to the binaries directory..")
-    copy("data", paths["binaries"]["data"])
-
-def copy_dlls():
-    print("\n3. Copying required DLLs to the binary directory...")
-    for lib in paths["third_party_libs"].values():
-        copy(lib, Path("binaries"))
-
-def copy_assets():
-    print("\n4. Copying some assets to the project directory...")
-    for asset_type, asset_path in paths["assets"].items():
-        copy(asset_path, paths["binaries"][asset_type])
-
 def generate_project_files():
-    print("\n5. Generating project files...")
     cmd = (
         f"build_scripts\\premake5.exe --file=build_scripts\\premake.lua {sys.argv[1]} {sys.argv[2]}"
         if sys.argv[1] == "vs2022"
@@ -190,41 +131,38 @@ def print_local_file_hashes():
             print(f"{name}: File not found")
     
 def main():
-    # skip asset downloads when running in CI
     is_ci = "ci" in sys.argv
     
     print_local_file_hashes()
-
+    
+    print("\n1. Create binaries folder with the required data files...\n")
+    copy("data", paths["binaries"]["data"])
+    
+    print("\n2. Download and extract libraries...\n")
     library_url           = 'https://www.dropbox.com/scl/fi/6behqi6a1ymt3claptq8c/libraries.7z?rlkey=wq6ac6ems9oq9j8qhd0dbtich&st=tdakenrt&dl=1'
     library_destination   = 'third_party/libraries/libraries.7z'
     library_expected_hash = '3aff247046a474d2ad6a30865803639fabe38b229c0d8d9f5bac2d44c4e7a562'
-
-    assets_url           = 'https://www.dropbox.com/scl/fi/hagxxndy0dnq7pu0ufkxh/assets.7z?rlkey=gmwlxlhf6q3eubh7r50q2xp27&st=60lavvyz&dl=1'
-    assets_destination   = 'assets/assets.7z'
-    assets_expected_hash = '59cd3b52b0aa84ed3f9bfc9fdef7af945d3f42e134e8bc8bded2bc9519380b8a'
+    file_utilities.download_file(library_url, library_destination, library_expected_hash)
+    file_utilities.extract_archive("third_party/libraries/libraries.7z", "third_party/libraries/", sys.argv[1] == "vs2022")
     
-    # download libraries regardless
-    download_file(library_url, library_destination, library_expected_hash)
-    
-    # skip asset download if running in CI
-    if not is_ci:
-        download_file(assets_url, assets_destination, assets_expected_hash)
-
-    # extract the downloaded files (libraries always extracted)
-    extract_third_party_dependencies()
+    print("\n3. Copying required DLLs to the binary directory...")
+    for lib in paths["third_party_libs"].values():
+        copy(lib, Path("binaries"))
     
     if not is_ci:
-        extract_assets()
+        print("\n4. Download and extract assets...\n")
+        assets_url           = 'https://www.dropbox.com/scl/fi/hagxxndy0dnq7pu0ufkxh/assets.7z?rlkey=gmwlxlhf6q3eubh7r50q2xp27&st=60lavvyz&dl=1'
+        assets_destination   = 'assets/assets.7z'
+        assets_expected_hash = '59cd3b52b0aa84ed3f9bfc9fdef7af945d3f42e134e8bc8bded2bc9519380b8a'
+        file_utilities.download_file(assets_url, assets_destination, assets_expected_hash)
+        file_utilities.extract_archive("assets/assets.7z", "assets/", sys.argv[1] == "vs2022")
+        print("\n5.Copying some assets to the project directory...")
+        for asset_type, asset_path in paths["assets"].items():
+            copy(asset_path, paths["binaries"][asset_type])
 
-    create_binaries_folder()
-    copy_dlls()
-    
-    if not is_ci:
-        copy_assets()
-
+    print("\n6. Generate project files...\n")
     generate_project_files()
     
-    # allow humans to observe the output
     if not is_ci:
         input("\nPress any key to continue...")
         
