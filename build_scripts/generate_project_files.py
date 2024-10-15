@@ -112,6 +112,8 @@ def main():
     
     print("\n1. Create binaries folder with the required data files...\n")
     copy("data", paths["binaries"]["data"])
+    copy("build_scripts/download_assets.py", "binaries/")
+    copy("build_scripts/file_utilities.py", "binaries/")
     
     print("\n2. Download and extract libraries...\n")
     library_url           = 'https://www.dropbox.com/scl/fi/6behqi6a1ymt3claptq8c/libraries.7z?rlkey=wq6ac6ems9oq9j8qhd0dbtich&st=tdakenrt&dl=1'

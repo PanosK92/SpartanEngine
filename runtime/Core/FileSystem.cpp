@@ -622,6 +622,11 @@ namespace Spartan
         SDL_OpenURL(url.c_str());
     }
 
+    void FileSystem::Command(const std::string& command)
+    {
+         int result = system(command.c_str());
+    }
+
     bool FileSystem::Delete(const string& path)
     {
         try
