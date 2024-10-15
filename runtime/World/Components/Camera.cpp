@@ -487,7 +487,7 @@ namespace Spartan
         {
             Vector3 translation = (movement_acceleration + m_movement_scroll_accumulator) * movement_direction;
 
-            // on shift, double the translation
+            // on shift, increase the translation
             if (Input::GetKey(KeyCode::Shift_Left))
             {
                 translation *= 3.0f;
@@ -519,7 +519,7 @@ namespace Spartan
                         if (is_grounded)
                         {
                             Vector3 velocity_current = m_physics_body_to_control->GetLinearVelocity();
-                            Vector3 velocity_new     = Vector3(m_movement_speed.x * 50.0f, velocity_current.y, m_movement_speed.z * 50.0f);
+                            Vector3 velocity_new     = Vector3(m_movement_speed.x * 70.0f, velocity_current.y, m_movement_speed.z * 70.0f);
                             m_physics_body_to_control->SetLinearVelocity(velocity_new);
                         }
 
@@ -568,7 +568,7 @@ namespace Spartan
                         {
                             if (is_grounded)
                             {
-                                m_physics_body_to_control->ApplyForce(Vector3::Up * 400.0f, PhysicsForce::Impulse);
+                                m_physics_body_to_control->ApplyForce(Vector3::Up * 450.0f, PhysicsForce::Impulse);
                             }
                         }
                     }
