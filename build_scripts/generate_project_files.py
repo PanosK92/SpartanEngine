@@ -20,11 +20,10 @@
 import os
 import shutil
 import sys
+import stat
 import subprocess
 from pathlib import Path
 import importlib
-import stat
-import hashlib
 import file_utilities
 
 paths = {
@@ -62,13 +61,6 @@ install_and_import('requests')
 
 from tqdm import tqdm
 import requests
-
-def calculate_file_hash(file_path, hash_type="sha256"):
-    hash_func = hashlib.new(hash_type)
-    with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_func.update(chunk)
-    return hash_func.hexdigest()
 
 def is_directory(path):
     if not os.path.exists(path):
@@ -115,7 +107,6 @@ def generate_project_files():
         print("Error: makefiles not generated")
         sys.exit(1)
 
-
 def print_local_file_hashes():
     local_files = {
         'libraries': 'third_party/libraries/libraries.7z',
@@ -125,7 +116,7 @@ def print_local_file_hashes():
     print("Local file hashes:")
     for name, path in local_files.items():
         if os.path.exists(path):
-            hash = calculate_file_hash(path)
+            hash = file_utilities.calculate_file_hash(path)
             print(f"{name}: {hash}")
         else:
             print(f"{name}: File not found")

@@ -18,13 +18,12 @@
 #CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import os
-from pathlib import Path
 import hashlib
 import requests
 from tqdm import tqdm
 
-def calculate_file_hash(file_path, hash_type="sha256"):
-    hash_func = hashlib.new(hash_type)
+def calculate_file_hash(file_path):
+    hash_func = hashlib.new("sha256")
     with open(file_path, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
             hash_func.update(chunk)
