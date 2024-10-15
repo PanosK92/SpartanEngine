@@ -86,6 +86,7 @@ namespace Spartan
         static bool IsDirectory(const std::string& path);
         static bool IsFile(const std::string& path);
         static void OpenUrl(const std::string& url);
+        static void Command(const std::string& command);
         static bool Delete(const std::string& path);
         static bool CreateDirectory(const std::string& path);
         static bool CopyFileFromTo(const std::string& source, const std::string& destination);
