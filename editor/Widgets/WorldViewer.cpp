@@ -58,17 +58,18 @@ namespace
 
     void world_selection_window(Editor* editor)
     {
-        static bool world_list_visible     = default_worlds_present;
-        static bool world_download_visible = !default_worlds_present;
+       static bool world_download_visible = !default_worlds_present;
+       static bool world_list_visible     = default_worlds_present;
 
        if (world_download_visible)
        {
            ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
            ImGui::SetNextWindowSize(ImVec2(300, 150), ImGuiCond_FirstUseEver);
-           if (ImGui::Begin("Download Default Worlds", &world_download_visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+           if (ImGui::Begin("Default worlds", &world_download_visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
            {
                ImGui::Text("No default worlds are present. Would you like to download them?");
-               
+               ImGui::Separator();
+
                if (ImGui::Button("Yes"))
                {
                    Spartan::FileSystem::Command("python download_assets.py");
@@ -88,7 +89,7 @@ namespace
         if (world_list_visible)
         {
             ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-            if (ImGui::Begin("World selection", &world_list_visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar))
+            if (ImGui::Begin("World selection", &world_list_visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
             {
                 ImGui::Text("Select the world you would like to load and click \"Ok\"");
     

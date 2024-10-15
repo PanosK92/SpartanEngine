@@ -17,16 +17,15 @@
 #IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 #CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import sys
 import file_utilities
 
-library_url           = 'https://www.dropbox.com/scl/fi/hagxxndy0dnq7pu0ufkxh/assets.7z?rlkey=gmwlxlhf6q3eubh7r50q2xp27&st=60lavvyz&dl=1'
-library_destination   = 'project/assets.7z'
-library_expected_hash = '59cd3b52b0aa84ed3f9bfc9fdef7af945d3f42e134e8bc8bded2bc9519380b8a'
+file_url           = 'https://www.dropbox.com/scl/fi/hagxxndy0dnq7pu0ufkxh/assets.7z?rlkey=gmwlxlhf6q3eubh7r50q2xp27&st=60lavvyz&dl=1'
+file_destination   = 'project/assets.7z'
+file_expected_hash = '59cd3b52b0aa84ed3f9bfc9fdef7af945d3f42e134e8bc8bded2bc9519380b8a'
 
 def main():
-    file_utilities.download_file(library_url, library_destination, library_expected_hash)
-    file_utilities.extract_archive(library_destination, "project/", True)
+    file_utilities.download_file(file_url, file_destination, file_expected_hash)
+    file_utilities.extract_archive(file_destination, "project/", True, True)
 
 if __name__ == "__main__":
     main()
