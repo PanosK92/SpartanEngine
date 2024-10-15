@@ -45,10 +45,10 @@ namespace Spartan
         float luminance_nits_max = 0;
         float luminance_nits_min = 0;
 
-        void get_hdr_capabilities(bool* is_hdr_capable, float* luminace_min, float* luminance_max)
+        void get_hdr_capabilities(bool* is_hdr_capable, float* luminance_min, float* luminance_max)
         {
             *is_hdr_capable = false;
-            *luminace_min   = 0.0f;
+            *luminance_min  = 0.0f;
             *luminance_max  = 0.0f;
 
             #if defined(_MSC_VER)
@@ -130,8 +130,8 @@ namespace Spartan
                     if (SUCCEEDED(output6->GetDesc1(&desc)))
                     {
                         *is_hdr_capable = desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
-                        *luminace_min   = desc.MinLuminance;
-                        *luminace_min   = desc.MaxLuminance;
+                        *luminance_min  = desc.MinLuminance;
+                        *luminance_max  = desc.MaxLuminance;
                     }
                 }
             #else
