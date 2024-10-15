@@ -54,7 +54,8 @@ jobs:
           import subprocess
           import os
           api = os.environ["API"]
-          subprocess.run(f"python generate_vs2022_{api}.py")
+          ci_flag = "ci" if is_ci else ""
+          subprocess.run(f"python generate_vs2022_{api}.py {ci_flag}")
 
       - name: Build
         shell: cmd
@@ -66,29 +67,20 @@ jobs:
         run: |
           echo "Creating artifacts for ${{ matrix.api }} - ${{ matrix.configuration }}"
           IF "${{ matrix.configuration }}" == "Release" (
-            echo "Creating full build archive for Release..."
-            build_scripts\7z.exe a -bb1 spartan_vulkan_full.7z .\binaries\dxcompiler.dll .\binaries\fmod.dll .\binaries\data .\binaries\project .\binaries\spartan_${{ matrix.api }}.exe
             echo "Creating binaries-only archive for Release..."
-            build_scripts\7z.exe a -bb1 spartan_vulkan_binaries_release.7z .\binaries\dxcompiler.dll .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
+            build_scripts\7z.exe a -bb1 spartan_vulkan_release.7z .\binaries\dxcompiler.dll .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
           ) ELSE (
             echo "Creating binaries-only archive for Debug..."
-            build_scripts\7z.exe a -bb1 spartan_vulkan_binaries_debug.7z .\binaries\dxcompiler.dll .\binaries\fmodL.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}_debug.exe
+            build_scripts\7z.exe a -bb1 spartan_vulkan_debug.7z .\binaries\dxcompiler.dll .\binaries\fmodL.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}_debug.exe
           )
           echo "Artifact creation completed for ${{ matrix.api }} - ${{ matrix.configuration }}"
 
-      - name: Upload full artifact
-        if: github.event_name != 'pull_request' && matrix.api == 'vulkan' && matrix.configuration == 'Release'
-        uses: actions/upload-artifact@v4
-        with:
-          name: spartan_vulkan_full
-          path: spartan_vulkan_full.7z
-
-      - name: Upload binaries-only artifact
+      - name: Upload artifact
         if: github.event_name != 'pull_request' && matrix.api == 'vulkan'
         uses: actions/upload-artifact@v4
         with:
-          name: spartan_vulkan_binaries_${{ matrix.configuration == 'Release' && 'release' || 'debug' }}
-          path: spartan_vulkan_binaries_${{ matrix.configuration == 'Release' && 'release' || 'debug' }}.7z
+          name: spartan_vulkan_${{ matrix.configuration == 'Release' && 'release' || 'debug' }}
+          path: spartan_vulkan_${{ matrix.configuration == 'Release' && 'release' || 'debug' }}.7z
 
   release:
     if: github.event_name != 'pull_request'
@@ -100,23 +92,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download vulkan full build (Release)
+      - name: Download vulkan release build
         uses: actions/download-artifact@v4
         with:
-          name: spartan_vulkan_full
-          path: spartan_vulkan_full.7z
+          name: spartan_vulkan_release
+          path: spartan_vulkan_release.7z
 
-      - name: Download vulkan binaries-only release build
+      - name: Download vulkan debug build
         uses: actions/download-artifact@v4
         with:
-          name: spartan_vulkan_binaries_release
-          path: spartan_vulkan_binaries_release.7z
-
-      - name: Download vulkan binaries-only debug build
-        uses: actions/download-artifact@v4
-        with:
-          name: spartan_vulkan_binaries_debug
-          path: spartan_vulkan_binaries_debug.7z
+          name: spartan_vulkan_debug
+          path: spartan_vulkan_debug.7z
 
       - name: Publish release
         uses: "marvinpinto/action-automatic-releases@latest"
@@ -126,9 +112,8 @@ jobs:
           prerelease: true
           title: "Development Build"
           files: |
-            spartan_vulkan_full.7z
-            spartan_vulkan_binaries_release.7z
-            spartan_vulkan_binaries_debug.7z
+            spartan_vulkan_release.7z
+            spartan_vulkan_debug.7z
 
       - name: Set environment file for release
         run: echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
