@@ -23,7 +23,6 @@ import sys
 import stat
 import subprocess
 from pathlib import Path
-import importlib
 import file_utilities
 
 paths = {
@@ -46,21 +45,6 @@ paths = {
         "materials": Path("assets/materials"),
     },
 }
-
-def install_and_import(package):
-    try:
-        importlib.import_module(package)
-    except ImportError:
-        print(f"{package} not installed. Installing now...")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-    finally:
-        globals()[package] = importlib.import_module(package)
-
-install_and_import('tqdm')
-install_and_import('requests')
-
-from tqdm import tqdm
-import requests
 
 def is_directory(path):
     if not os.path.exists(path):

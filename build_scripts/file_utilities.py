@@ -17,10 +17,24 @@
 #IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 #CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import importlib
+
+def install_and_import(package):
+    try:
+        importlib.import_module(package)
+    except ImportError:
+        print(f"{package} not installed. Installing now...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+    finally:
+        globals()[package] = importlib.import_module(package)
+
+install_and_import('tqdm')
+install_and_import('requests')
+
 import os
 import hashlib
-import requests
 from tqdm import tqdm
+import requests
 
 def calculate_file_hash(file_path):
     hash_func = hashlib.new("sha256")
