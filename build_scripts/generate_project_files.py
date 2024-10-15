@@ -115,6 +115,7 @@ def main():
     copy("build_scripts/download_assets.py", "binaries/")
     copy("build_scripts/file_utilities.py", "binaries/")
     copy("build_scripts/7z.exe", "binaries/")
+    copy("build_scripts/7z.dll", "binaries/")
     
     print("\n2. Download and extract libraries...")
     library_url           = 'https://www.dropbox.com/scl/fi/6behqi6a1ymt3claptq8c/libraries.7z?rlkey=wq6ac6ems9oq9j8qhd0dbtich&st=tdakenrt&dl=1'
