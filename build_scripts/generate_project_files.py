@@ -116,14 +116,14 @@ def main():
     copy("build_scripts/file_utilities.py", "binaries/")
     copy("build_scripts/7z.exe", "binaries/")
     
-    print("\n2. Download and extract libraries...\n")
+    print("\n2. Download and extract libraries...")
     library_url           = 'https://www.dropbox.com/scl/fi/6behqi6a1ymt3claptq8c/libraries.7z?rlkey=wq6ac6ems9oq9j8qhd0dbtich&st=tdakenrt&dl=1'
     library_destination   = 'third_party/libraries/libraries.7z'
     library_expected_hash = '3aff247046a474d2ad6a30865803639fabe38b229c0d8d9f5bac2d44c4e7a562'
     file_utilities.download_file(library_url, library_destination, library_expected_hash)
     file_utilities.extract_archive("third_party/libraries/libraries.7z", "third_party/libraries/", sys.argv[1] == "vs2022", False)
     
-    print("\n3. Copying required DLLs to the binary directory...")
+    print("3. Copying required DLLs to the binary directory...")
     for lib in paths["third_party_libs"].values():
         copy(lib, Path("binaries"))
 
