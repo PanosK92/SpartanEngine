@@ -70,11 +70,11 @@ def calculate_file_hash(file_path, hash_type="sha256"):
 def download_file(url, destination, expected_hash):
     """Downloads a file from the specified URL to the given destination with a progress bar and hash check."""
     if not os.path.exists(destination):
-        print(f"File {destination} doesn't exist. Downloading...")
+        print(f"\nFile {destination} doesn't exist. Downloading...")
     elif calculate_file_hash(destination) != expected_hash:
-        print(f"Hash of {destination} is outdated. Downloading new version...")
+        print(f"\nHash of {destination} is outdated. Downloading new version...")
     else:
-        print(f"File {destination} already exists with the correct hash. Skipping download.")
+        print(f"\nFile {destination} already exists with the correct hash. Skipping download.")
         return
 
     os.makedirs(os.path.dirname(destination), exist_ok=True)  # Ensure the directory exists
@@ -122,7 +122,7 @@ def copy(source, destination):
     return True
     
 def extract_third_party_dependencies():
-    print("1. Extracting third-party dependencies...")
+    print("\n1. Extracting third-party dependencies...")
     cmd = (
         "build_scripts\\7z.exe e third_party\\libraries\\libraries.7z -othird_party\\libraries\\ -aoa"
         if sys.argv[1] == "vs2022"
@@ -187,10 +187,8 @@ def print_local_file_hashes():
         else:
             print(f"{name}: File not found")
     
-    input("Press Enter to continue...")
-    
 def main():
-    #print_local_file_hashes()
+    print_local_file_hashes()
      
     # skip asset downloads when running in CI
     is_ci = "ci" in sys.argv
@@ -223,6 +221,11 @@ def main():
         copy_assets()
 
     generate_project_files()
+    
+    # allow humans to observe the output
+    if not is_ci:
+        input("\nPress any key to continue...")
+        
     sys.exit(0)
 
 if __name__ == "__main__":
