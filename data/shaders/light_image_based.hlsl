@@ -33,7 +33,7 @@ float3 get_dominant_specular_direction(float3 normal, float3 reflection, float r
 
 float3 sample_environment(float2 uv, float mip_level, float mip_max)
 {
-    // sample at texture center for the lowest mip level to avoid seams
+    // sample at texture center for the lowest mip level to avoid seams (two giant pixels with different color)
     if (mip_level >= mip_max - 1)
     {
         uv = float2(0.5, 0.5);
@@ -79,9 +79,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float mip_level                    = lerp(0, mip_count_environment - 1, surface.roughness);
     float3 specular_skysphere          = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level, mip_count_environment);
     float3 diffuse_skysphere           = sample_environment(direction_sphere_uv(surface.normal), mip_count_environment, mip_count_environment);
-    float4 specular_ssr                = tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, 0) * (float)surface.is_opaque(); // only compute for opaques
-    float3 diffuse_gi                  = tex_light_diffuse_gi[thread_id.xy].rgb  * 2.0f * (float)surface.is_opaque();                        // only computed for opaques
-    float3 specular_gi                 = tex_light_specular_gi[thread_id.xy].rgb * 2.0f * (float)surface.is_opaque();                        // only computed for opaques
+    float4 specular_ssr                = tex_ssr[thread_id.xy].rgba * (float)surface.is_opaque();                     // only compute for opaques
+    float3 diffuse_gi                  = tex_light_diffuse_gi[thread_id.xy].rgb  * 2.0f * (float)surface.is_opaque(); // only computed for opaques
+    float3 specular_gi                 = tex_light_specular_gi[thread_id.xy].rgb * 2.0f * (float)surface.is_opaque(); // only computed for opaques
     float shadow_mask                  = tex[thread_id.xy].r;
 
     // combine the diffuse light
