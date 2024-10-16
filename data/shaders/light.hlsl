@@ -81,10 +81,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             if (light.has_shadows())
             {
                 // shadow maps
-                if (pass_is_opaque() || (surface.is_transparent() && light.has_shadows_transparent()))
-                {
-                    shadow = Shadow_Map(surface, light);
-                }
+                shadow = Shadow_Map(surface, light);
             
                 // screen space shadows - for opaque objects
                 uint array_slice_index = light.get_array_index();
