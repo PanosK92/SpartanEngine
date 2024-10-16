@@ -79,9 +79,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float mip_level                    = lerp(0, mip_count_environment - 1, surface.roughness);
     float3 specular_skysphere          = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level, mip_count_environment);
     float3 diffuse_skysphere           = sample_environment(direction_sphere_uv(surface.normal), mip_count_environment, mip_count_environment);
-    float4 specular_ssr                = tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, 0) * (float)surface.is_opaque(); // only valid for opaque objects
-    float3 diffuse_gi                  = tex_light_diffuse_gi[thread_id.xy].rgb  * (float)surface.is_opaque() * 2.0f;                        // only valid for opaque objects
-    float3 specular_gi                 = tex_light_specular_gi[thread_id.xy].rgb * (float)surface.is_opaque() * 2.0f;                        // only valid for opaque objects
+    float4 specular_ssr                = tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, 0) * (float)surface.is_opaque(); // only compute for opaques
+    float3 diffuse_gi                  = tex_light_diffuse_gi[thread_id.xy].rgb  * 2.0f; // only computed for opaques but it can be used as an approximation for transparents
+    float3 specular_gi                 = tex_light_specular_gi[thread_id.xy].rgb * 2.0f; // only computed for opaques but it can be used as an approximation for transparents
     float shadow_mask                  = tex[thread_id.xy].r;
 
     // combine the diffuse light
