@@ -622,9 +622,26 @@ namespace Spartan
         SDL_OpenURL(url.c_str());
     }
 
-    void FileSystem::Command(const std::string& command)
+    void FileSystem::Command(const string& command, function<void()> callback, bool blocking)
     {
-         int result = system(command.c_str());
+        auto execute_command = [command, callback]()
+        {
+            int result = system(command.c_str());
+            
+            if (callback)
+            {
+                callback();
+            }
+        };
+
+        if (blocking)
+        {
+            execute_command();
+        }
+        else
+        {
+            thread(execute_command).detach();
+        }
     }
 
     bool FileSystem::Delete(const string& path)
