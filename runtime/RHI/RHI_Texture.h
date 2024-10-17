@@ -81,8 +81,6 @@ namespace Spartan
             const char* name                    = nullptr,
             std::vector<RHI_Texture_Slice> data = {}
         );
-
-        RHI_Texture(const char* file_path);
         RHI_Texture(const std::string& file_path);
         RHI_Texture();
         ~RHI_Texture();
