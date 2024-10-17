@@ -21,15 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES =================
 #include <vector>
-#include "../RHI/RHI_Definitions.h"
 #include "../RHI/RHI_Vertex.h"
-//=================================
+//============================
 
 namespace Spartan::Geometry
 {
-    static void CreateCube(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices)
+    static void generate_cube(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices)
     {
         using namespace Math;
 
@@ -94,7 +93,7 @@ namespace Spartan::Geometry
         indices->emplace_back(23); indices->emplace_back(21); indices->emplace_back(22);
     }
 
-    static void CreateQuad(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices)
+    static void generate_quad(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices)
     {
         using namespace Math;
 
@@ -111,7 +110,7 @@ namespace Spartan::Geometry
         indices->emplace_back(1);
     }
 
-    void CreateGrid(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, uint32_t resolution)
+    void generate_grid(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, uint32_t resolution)
     {
         using namespace Math;
 
@@ -154,7 +153,7 @@ namespace Spartan::Geometry
         }
     }
 
-    static void CreateSphere(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius = 1.0f, int slices = 20, int stacks = 20)
+    static void generate_sphere(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius = 1.0f, int slices = 20, int stacks = 20)
     {
         using namespace Math;
 
@@ -219,7 +218,7 @@ namespace Spartan::Geometry
         }
     }
 
-    static void CreateCylinder(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radiusTop = 1.0f, float radiusBottom = 1.0f, float height = 1.0f, int slices = 15, int stacks = 15)
+    static void generate_cylinder(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radiusTop = 1.0f, float radiusBottom = 1.0f, float height = 1.0f, int slices = 15, int stacks = 15)
     {
         using namespace Math;
 
@@ -326,8 +325,8 @@ namespace Spartan::Geometry
         }
     }
 
-    static void CreateCone(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius = 1.0f, float height = 2.0f)
+    static void generate_cone(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius = 1.0f, float height = 2.0f)
     {
-        CreateCylinder(vertices, indices, 0.0f, radius, height);
+        generate_cylinder(vertices, indices, 0.0f, radius, height);
     }
 }
