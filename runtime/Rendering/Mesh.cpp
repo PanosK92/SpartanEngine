@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================================
+//= INCLUDES =======================================
 #include "pch.h"
 #include "Mesh.h"
 #include "../RHI/RHI_Buffer.h"
@@ -30,9 +30,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/FileStream.h"
 #include "../Resource/Import/ModelImporter.h"
 SP_WARNINGS_OFF
-#include "meshoptimizer/meshoptimizer.h"
+#include "../Geometry/meshoptimizer/meshoptimizer.h"
 SP_WARNINGS_ON
-//===========================================
+//==================================================
 
 //= NAMESPACES ================
 using namespace std;
