@@ -154,11 +154,6 @@ namespace Spartan
         }
     }
 
-    RHI_Texture::RHI_Texture(const char* file_path) : IResource(ResourceType::Texture)
-    {
-        LoadFromFile(file_path);
-    }
-
     RHI_Texture::RHI_Texture(const std::string& file_path) : IResource(ResourceType::Texture)
     {
          LoadFromFile(file_path);
