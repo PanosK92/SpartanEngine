@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <string>
 #include "Definitions.h"
+#include <functional>
 //======================
 
 namespace Spartan
@@ -86,7 +87,7 @@ namespace Spartan
         static bool IsDirectory(const std::string& path);
         static bool IsFile(const std::string& path);
         static void OpenUrl(const std::string& url);
-        static void Command(const std::string& command);
+        static void Command(const std::string& command, std::function<void()> callback = nullptr, const bool blocking = false);
         static bool Delete(const std::string& path);
         static bool CreateDirectory(const std::string& path);
         static bool CopyFileFromTo(const std::string& source, const std::string& destination);
