@@ -487,25 +487,7 @@ namespace Spartan
                     this_thread::sleep_for(std::chrono::milliseconds(16));
                 }
 
-                // optimize
-                if ((mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::OptimizeVertexCache)) ||
-                    (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::OptimizeVertexFetch)) ||
-                    (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::OptimizeOverdraw)))
-                {
-                    mesh->Optimize();
-                }
-
-                // aabb
-                mesh->ComputeAabb();
-
-                // normalize scale
-                if (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportNormalizeScale))
-                {
-                    float normalized_scale = mesh->ComputeNormalizedScale();
-                    mesh->GetRootEntity().lock()->SetScale(normalized_scale);
-                }
-
-                mesh->CreateGpuBuffers();
+                mesh->PostProcess();
             }
 
             // make the root entity active since it's now thread-safe

@@ -33,13 +33,12 @@ namespace Spartan
 {
     enum class MeshFlags : uint32_t
     {
-        ImportRemoveRedundantData = 1 << 0,
-        ImportLights              = 1 << 1,
-        ImportCombineMeshes       = 1 << 2,
-        ImportNormalizeScale      = 1 << 3,
-        OptimizeVertexCache       = 1 << 4,
-        OptimizeVertexFetch       = 1 << 5,
-        OptimizeOverdraw          = 1 << 6,
+        ImportRemoveRedundantData      = 1 << 0,
+        ImportLights                   = 1 << 1,
+        ImportCombineMeshes            = 1 << 2,
+        ImportNormalizeScale           = 1 << 3,
+        OptimizeVertexCacheAndOverdraw = 1 << 4, // Optimize GPU's post-transform cache hit rate and reorder vertices for better cache performance, decreasing vertex shader calls and bandwidth use.
+        OptimizeVertexFetch            = 1 << 5,
     };
 
     enum class MeshType
@@ -105,11 +104,11 @@ namespace Spartan
         MeshType GetType() const          { return m_type; }
         void SetType(const MeshType type) { m_type = type; }
 
-        // misc
+        // flags
         uint32_t GetFlags() const { return m_flags; }
         static uint32_t GetDefaultFlags();
-        float ComputeNormalizedScale();
-        void Optimize();
+
+        void PostProcess();
         void SetMaterial(std::shared_ptr<Material>& material, Entity* entity) const;
         void AddTexture(std::shared_ptr<Material>& material, MaterialTexture texture_type, const std::string& file_path, bool is_gltf);
 

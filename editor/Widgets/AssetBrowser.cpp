@@ -92,9 +92,9 @@ namespace
                     "Some models might define lights, they can be imported as well."
                 );
 
-                mesh_import_dialog_checkbox(MeshFlags::OptimizeVertexCache,
+                mesh_import_dialog_checkbox(MeshFlags::OptimizeVertexCacheAndOverdraw,
                     "Optimize vertex cache (slower import)",
-                    "Improve the GPU's post-transform cache hit rate, reducing the required vertex shader invocations"
+                    "Optimize GPU's post-transform cache hit rate and reorder vertices for better cache performance, decreasing vertex shader calls and bandwidth use."
                 );
 
                 mesh_import_dialog_checkbox(MeshFlags::OptimizeVertexFetch,
@@ -102,11 +102,6 @@ namespace
                     "Reorder vertices and changes indices to improve vertex fetch cache performance, reducing the bandwidth needed to fetch vertices"
                 );
 
-                mesh_import_dialog_checkbox(MeshFlags::OptimizeOverdraw,
-                    "Optimize overdraw (slower import)",
-                    "Minimize overdraw by reordering triangles, aiming to reduce pixel shader invocations"
-                );
-    
                 // Ok button
                 if (ImGuiSp::button_centered_on_line("Ok", 0.5f))
                 {
