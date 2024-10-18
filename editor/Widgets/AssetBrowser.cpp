@@ -92,14 +92,9 @@ namespace
                     "Some models might define lights, they can be imported as well."
                 );
 
-                mesh_import_dialog_checkbox(MeshFlags::PostProcessOptimizeVertexCacheAndOverdraw,
-                    "Optimize vertex cache (slower import)",
-                    "Optimize GPU's post-transform cache hit rate and reorder vertices for better cache performance, decreasing vertex shader calls and bandwidth use."
-                );
-
-                mesh_import_dialog_checkbox(MeshFlags::PostProcessOptimizeVertexFetch,
-                    "Optimize vertex fetch (slower import)",
-                    "Reorder vertices and changes indices to improve vertex fetch cache performance, reducing the bandwidth needed to fetch vertices"
+                mesh_import_dialog_checkbox(MeshFlags::PostProcessOptimize,
+                    "Optimize",
+                    "Performs a variety of optimizations aimed at reduce cache misses, overdraw and so on..."
                 );
 
                 // Ok button
