@@ -41,6 +41,40 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    namespace meshoptimizer
+    {
+        void optimize_mesh(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const uint32_t flags)
+        {
+            if (flags & static_cast<uint32_t>(MeshFlags::OptimizeVertexCacheAndOverdraw))
+            {
+                // optimize the order of the indices for vertex cache
+                meshopt_optimizeVertexCache
+                (
+                    &indices[0],    // destination
+                    &indices[0],    // indices
+                    indices.size(), // index count
+                    vertices.size() // vertex count
+                );
+
+                // optimize triangle order to reduce overdraw - needs input from meshopt_optimizeVertexCache
+                meshopt_optimizeOverdraw(&indices[0],                                  // destination
+                                         &indices[0],                                  // indices
+                                         indices.size(),                               // index count
+                                         reinterpret_cast<const float*>(&vertices[0]), // vertex positions
+                                         vertices.size(),                              // vertex count
+                                         sizeof(RHI_Vertex_PosTexNorTan),              // vertex positions stride
+                                         1.05f                                         // threshold
+                );
+            }
+
+            if (flags & static_cast<uint32_t>(MeshFlags::OptimizeVertexFetch))
+            {
+                // optimize vertex fetch by reordering vertices based on the new index order
+                meshopt_optimizeVertexFetch(vertices.data(), indices.data(), indices.size(), vertices.data(), vertices.size(), sizeof(RHI_Vertex_PosTexNorTan));
+            }
+        }
+    }
+
     Mesh::Mesh() : IResource(ResourceType::Mesh)
     {
         m_flags = GetDefaultFlags();
@@ -83,10 +117,7 @@ namespace Spartan
             file->Read(&m_indices);
             file->Read(&m_vertices);
 
-            //Optimize();
-            ComputeAabb();
-            ComputeNormalizedScale();
-            CreateGpuBuffers();
+            PostProcess();
         }
         // load foreign format
         else
@@ -192,64 +223,16 @@ namespace Spartan
         return static_cast<uint32_t>(m_indices.size());
     }
 
-    void Mesh::ComputeAabb()
-    {
-        SP_ASSERT_MSG(m_vertices.size() != 0, "There are no vertices");
-
-        m_aabb = BoundingBox(m_vertices.data(), static_cast<uint32_t>(m_vertices.size()));
-    }
-
     uint32_t Mesh::GetDefaultFlags()
     {
         return
-            static_cast<uint32_t>(MeshFlags::ImportRemoveRedundantData) |
+            static_cast<uint32_t>(MeshFlags::ImportRemoveRedundantData)      |
             static_cast<uint32_t>(MeshFlags::ImportNormalizeScale);
-            //static_cast<uint32_t>(MeshFlags::OptimizeVertexCache) |
-            //static_cast<uint32_t>(MeshFlags::OptimizeOverdraw) |
+
+            //static_cast<uint32_t>(MeshFlags::OptimizeVertexCacheAndOverdraw) |
             //static_cast<uint32_t>(MeshFlags::OptimizeVertexFetch);
     }
 
-    float Mesh::ComputeNormalizedScale()
-    {
-        float scale_offset     = m_aabb.GetExtents().Length();
-        float normalized_scale = 1.0f / scale_offset;
-
-        return normalized_scale;
-    }
-    
-    void Mesh::Optimize()
-    {
-        SP_ASSERT(!m_indices.empty());
-        SP_ASSERT(!m_vertices.empty());
-
-        const uint32_t index_count               = static_cast<uint32_t>(m_indices.size());
-        const uint32_t vertex_count              = static_cast<uint32_t>(m_vertices.size());
-        const size_t vertex_size                 = sizeof(RHI_Vertex_PosTexNorTan);
-        vector<uint32_t> indices                 = m_indices;
-        vector<RHI_Vertex_PosTexNorTan> vertices = m_vertices;
-
-        // vertex cache optimization
-        if (m_flags & static_cast<uint32_t>(MeshFlags::OptimizeVertexCache))
-        {
-            meshopt_optimizeVertexCache(&indices[0], &indices[0], index_count, vertex_count);
-        }
-
-        // overdraw optimization
-        if (m_flags & static_cast<uint32_t>(MeshFlags::OptimizeOverdraw))
-        {
-            meshopt_optimizeOverdraw(&indices[0], &indices[0], index_count, &vertices[0].pos[0], vertex_count, vertex_size, 1.05f);
-        }
-
-        // vertex fetch optimization
-        if (m_flags & static_cast<uint32_t>(MeshFlags::OptimizeVertexFetch))
-        {
-            meshopt_optimizeVertexFetch(&vertices[0], &indices[0], index_count, &vertices[0], vertex_count, vertex_size);
-        }
-
-        // store the updated data back to member variables
-        m_indices  = move(indices);
-        m_vertices = move(vertices);
-    }
     void Mesh::CreateGpuBuffers()
     {
         m_vertex_buffer = make_shared<RHI_Buffer>(RHI_Buffer_Type::Vertex,
@@ -267,6 +250,29 @@ namespace Spartan
             false,
             (string("mesh_index_buffer_") + m_object_name).c_str()
         );
+    }
+
+    void Mesh::PostProcess()
+    {
+        // work on the vertices an indices
+        meshoptimizer::optimize_mesh(m_vertices, m_indices, m_flags);
+
+        // compute an axis-aligned bounding box
+        m_aabb = BoundingBox(m_vertices.data(), static_cast<uint32_t>(m_vertices.size()));
+        
+        // normalize scale
+        if (m_flags & static_cast<uint32_t>(MeshFlags::ImportNormalizeScale))
+        {
+            if (shared_ptr<Entity> root_entity = m_root_entity.lock())
+            {
+                float scale_offset     = m_aabb.GetExtents().Length();
+                float normalized_scale = 1.0f / scale_offset;
+
+                root_entity->SetScale(normalized_scale);
+            }
+        }
+        
+        CreateGpuBuffers();
     }
 
     void Mesh::SetMaterial(shared_ptr<Material>& material, Entity* entity) const

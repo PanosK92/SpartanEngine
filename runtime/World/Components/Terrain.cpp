@@ -686,9 +686,7 @@ namespace Spartan
         mesh->Clear();
         mesh->AddIndices(m_tile_indices[tile_index]);
         mesh->AddVertices(m_tile_vertices[tile_index]);
-        mesh->CreateGpuBuffers();
-        mesh->ComputeNormalizedScale();
-        mesh->ComputeAabb();
+        mesh->PostProcess();
 
         // create a child entity, add a renderable, and this mesh tile to it
         {

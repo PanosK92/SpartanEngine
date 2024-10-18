@@ -538,9 +538,7 @@ namespace Spartan
             mesh->AddIndices(indices);
             mesh->AddVertices(vertices);
             mesh->SetType(type);
-            mesh->ComputeAabb();
-            mesh->ComputeNormalizedScale();
-            mesh->CreateGpuBuffers();
+            mesh->PostProcess();
 
             standard_meshes[static_cast<uint8_t>(type)] = mesh;
         };
