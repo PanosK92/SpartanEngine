@@ -45,7 +45,7 @@ namespace Spartan
     {
         void optimize_mesh(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const uint32_t flags)
         {
-            if (flags & static_cast<uint32_t>(MeshFlags::OptimizeVertexCacheAndOverdraw))
+            if (flags & static_cast<uint32_t>(MeshFlags::PostProcessOptimizeVertexCacheAndOverdraw))
             {
                 // optimize the order of the indices for vertex cache
                 meshopt_optimizeVertexCache
@@ -67,7 +67,7 @@ namespace Spartan
                 );
             }
 
-            if (flags & static_cast<uint32_t>(MeshFlags::OptimizeVertexFetch))
+            if (flags & static_cast<uint32_t>(MeshFlags::PostProcessOptimizeVertexFetch))
             {
                 // optimize vertex fetch by reordering vertices based on the new index order
                 meshopt_optimizeVertexFetch(vertices.data(), indices.data(), indices.size(), vertices.data(), vertices.size(), sizeof(RHI_Vertex_PosTexNorTan));
@@ -227,7 +227,7 @@ namespace Spartan
     {
         return
             static_cast<uint32_t>(MeshFlags::ImportRemoveRedundantData)      |
-            static_cast<uint32_t>(MeshFlags::ImportNormalizeScale);
+            static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale);
 
             //static_cast<uint32_t>(MeshFlags::OptimizeVertexCacheAndOverdraw) |
             //static_cast<uint32_t>(MeshFlags::OptimizeVertexFetch);
@@ -261,7 +261,7 @@ namespace Spartan
         m_aabb = BoundingBox(m_vertices.data(), static_cast<uint32_t>(m_vertices.size()));
         
         // normalize scale
-        if (m_flags & static_cast<uint32_t>(MeshFlags::ImportNormalizeScale))
+        if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale))
         {
             if (shared_ptr<Entity> root_entity = m_root_entity.lock())
             {

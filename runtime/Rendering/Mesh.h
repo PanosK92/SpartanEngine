@@ -33,12 +33,12 @@ namespace Spartan
 {
     enum class MeshFlags : uint32_t
     {
-        ImportRemoveRedundantData      = 1 << 0,
-        ImportLights                   = 1 << 1,
-        ImportCombineMeshes            = 1 << 2,
-        ImportNormalizeScale           = 1 << 3,
-        OptimizeVertexCacheAndOverdraw = 1 << 4, // Optimize GPU's post-transform cache hit rate and reorder vertices for better cache performance, decreasing vertex shader calls and bandwidth use.
-        OptimizeVertexFetch            = 1 << 5,
+        ImportRemoveRedundantData                 = 1 << 0,
+        ImportLights                              = 1 << 1,
+        ImportCombineMeshes                       = 1 << 2,
+        PostProcessNormalizeScale                 = 1 << 3,
+        PostProcessOptimizeVertexCacheAndOverdraw = 1 << 4, // reduces vertex shader invocations and pixel overdraw
+        PostProcessOptimizeVertexFetch            = 1 << 5, // reduces the amount of gpu memory fetches
     };
 
     enum class MeshType

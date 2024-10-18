@@ -77,7 +77,7 @@ namespace
                     "Remove redundant data",
                     "Join identical vertices, remove redundant materials, duplicate meshes, zeroed normals and invalid UVs.");
     
-                mesh_import_dialog_checkbox(MeshFlags::ImportNormalizeScale,
+                mesh_import_dialog_checkbox(MeshFlags::PostProcessNormalizeScale,
                     "Normalize scale",
                     "Scale the mesh so that it's not bigger than a cubic unit."
                 );
@@ -92,12 +92,12 @@ namespace
                     "Some models might define lights, they can be imported as well."
                 );
 
-                mesh_import_dialog_checkbox(MeshFlags::OptimizeVertexCacheAndOverdraw,
+                mesh_import_dialog_checkbox(MeshFlags::PostProcessOptimizeVertexCacheAndOverdraw,
                     "Optimize vertex cache (slower import)",
                     "Optimize GPU's post-transform cache hit rate and reorder vertices for better cache performance, decreasing vertex shader calls and bandwidth use."
                 );
 
-                mesh_import_dialog_checkbox(MeshFlags::OptimizeVertexFetch,
+                mesh_import_dialog_checkbox(MeshFlags::PostProcessOptimizeVertexFetch,
                     "Optimize vertex fetch (slower import)",
                     "Reorder vertices and changes indices to improve vertex fetch cache performance, reducing the bandwidth needed to fetch vertices"
                 );
