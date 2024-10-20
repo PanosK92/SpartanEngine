@@ -76,7 +76,19 @@ namespace Spartan
                 if (RegQueryValueExA(hKey, value_name, nullptr, nullptr, (LPBYTE)&value, &value_length) == ERROR_SUCCESS)
                 {
                     RegCloseKey(hKey);
-                    return string(value);
+
+                    // remove the number between the last two dots
+                    std::string version = value;
+                    size_t first_dot    = version.find('.');
+                    size_t second_dot   = version.find('.', first_dot + 1);
+                    size_t third_dot    = version.find('.', second_dot + 1);
+
+                    if (third_dot != string::npos)
+                    {
+                        version = version.substr(0, second_dot) + version.substr(third_dot);
+                    }
+
+                    return version;
                 }
                 RegCloseKey(hKey);
             }
