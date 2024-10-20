@@ -43,10 +43,10 @@ namespace Spartan
 {
     namespace
     {
-        void optimize_mesh(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const uint32_t flags)
+        void optimize_mesh(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices)
         {
             // documentation: https://meshoptimizer.org/
-             
+
             // When optimizing a mesh, you should typically feed it through a set of optimizations (the order is important!):
             // 1. Indexing
             // 2. (optional) Simplification
@@ -58,18 +58,18 @@ namespace Spartan
 
             return;
 
-            // optimize the order of the indices for vertex cache
+            // 3. optimize the order of the indices for vertex cache
             vector<uint32_t> indices_new(indices.size());
             meshopt_optimizeVertexCache
             (
                 &indices_new[0], // destination
-                &indices[0],     // indices
+                indices.data(),  // indices
                 indices.size(),  // index count
                 vertices.size()  // vertex count
             );
             indices = indices_new;
 
-            // optimize triangle order to reduce overdraw - needs input from meshopt_optimizeVertexCache
+            // 4. optimize triangle order to reduce overdraw - needs input from meshopt_optimizeVertexCache
             meshopt_optimizeOverdraw(&indices[0],                                         // destination
                                      &indices[0],                                         // indices
                                      indices.size(),                                      // index count
@@ -79,7 +79,7 @@ namespace Spartan
                                      1.05f                                                // threshold
             );
 
-            // optimize vertex fetch by reordering vertices based on the new index order
+            // 5. optimize vertex fetch by reordering vertices based on the new index order
             meshopt_optimizeVertexFetch(vertices.data(), indices.data(), indices.size(), vertices.data(), vertices.size(), sizeof(RHI_Vertex_PosTexNorTan));
         }
     }
@@ -263,11 +263,11 @@ namespace Spartan
     {
         if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessOptimize))
         {
-            optimize_mesh(m_vertices, m_indices, m_flags);
+            optimize_mesh(m_vertices, m_indices);
         }
 
         m_aabb = BoundingBox(m_vertices.data(), static_cast<uint32_t>(m_vertices.size()));
-        
+
         // normalize scale
         if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale))
         {
@@ -279,7 +279,7 @@ namespace Spartan
                 root_entity->SetScale(normalized_scale);
             }
         }
-        
+
         CreateGpuBuffers();
     }
 

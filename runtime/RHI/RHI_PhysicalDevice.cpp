@@ -22,6 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "pch.h"
 #include "RHI_PhysicalDevice.h"
+#ifdef _MSC_VER
+#include <Windows.h>
+#endif
 //=============================
 
 //= NAMESPACES =====
@@ -34,7 +37,7 @@ namespace Spartan
     {
         char buffer[256];
 
-        // vulkan version conventions
+        // vulkan version convention
         uint32_t major = (version >> 22);
         uint32_t minor = (version >> 12) & 0x3ff;
         uint32_t patch = version & 0xfff;
@@ -51,24 +54,47 @@ namespace Spartan
 
             uint32_t major     = (version >> 22) & 0x3ff;
             uint32_t minor     = (version >> 14) & 0x0ff;
-            uint32_t secondary = (version >> 6) & 0x0ff;
-            uint32_t tertiary  = version & 0x003f;
+            uint32_t secondary = (version >> 6)  & 0x0ff;
+            uint32_t tertiary  = version         & 0x003f;
+
             sprintf(buffer, "%d.%d.%d.%d", major, minor, secondary, tertiary);
 
             return buffer;
         }
-        else if (IsIntel())
+
+        if (IsAmd())
+        {
+            #ifdef _MSC_VER
+            HKEY hKey;
+            const char* subkey     = "SOFTWARE\\AMD\\CN";
+            const char* value_name = "WizardProfileReleaseVer";
+            char value[255];
+            DWORD value_length = 255;
+
+            if (RegOpenKeyExA(HKEY_CURRENT_USER, subkey, 0, KEY_READ, &hKey) == ERROR_SUCCESS)
+            {
+                if (RegQueryValueExA(hKey, value_name, nullptr, nullptr, (LPBYTE)&value, &value_length) == ERROR_SUCCESS)
+                {
+                    RegCloseKey(hKey);
+                    return string(value);
+                }
+                RegCloseKey(hKey);
+            }
+            #endif
+        }
+
+        if (IsIntel())
         {
             char buffer[256];
 
             uint32_t major = (version >> 14);
             uint32_t minor = version & 0x3fff;
+
             sprintf(buffer, "%d.%d", major, minor);
 
             return buffer;
         }
 
-        // Use the Vulkan convention for all other vendors as we don't have a specific convention for them
-        return decode_api_version(version);
+        return "Unable to determine driver version";
     }
 }
