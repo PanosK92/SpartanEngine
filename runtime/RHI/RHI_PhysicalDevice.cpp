@@ -67,16 +67,34 @@ namespace Spartan
             #ifdef _MSC_VER
             HKEY hKey;
             const char* subkey     = "SOFTWARE\\AMD\\CN";
-            const char* value_name = "WizardProfileReleaseVer";
+            const char* value_name = "OldReleaseVersion";
             char value[255];
             DWORD value_length = 255;
-
+            
             if (RegOpenKeyExA(HKEY_CURRENT_USER, subkey, 0, KEY_READ, &hKey) == ERROR_SUCCESS)
             {
                 if (RegQueryValueExA(hKey, value_name, nullptr, nullptr, (LPBYTE)&value, &value_length) == ERROR_SUCCESS)
                 {
                     RegCloseKey(hKey);
-                    return string(value);
+            
+                    // remove everything after the version number (a bunch of codes and text)
+                    string version = value;
+                    size_t pos_dash = version.find('-');
+                    if (pos_dash != string::npos)
+                    {
+                        version = version.substr(0, pos_dash);
+                    }
+                    
+                    // extract year, month, and revision
+                    size_t pos1 = version.find('.');
+                    size_t pos2 = version.find('.', pos1 + 1);
+                    size_t pos3 = version.find('.', pos2 + 1); // Find the fourth dot
+
+                    string year = version.substr(0, pos1);
+                    string month = version.substr(pos1 + 1, pos2 - pos1 - 1); // Exclude the dot
+                    string revision = version.substr(pos3 + 1); // Start from the fourth dot
+
+                    return year + "." + month + "." + revision;
                 }
                 RegCloseKey(hKey);
             }
