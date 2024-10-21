@@ -43,44 +43,69 @@ namespace Spartan
 {
     namespace
     {
-        void optimize_mesh(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices)
+        namespace meshoptimizer
         {
             // documentation: https://meshoptimizer.org/
 
-            // When optimizing a mesh, you should typically feed it through a set of optimizations (the order is important!):
-            // 1. Indexing
-            // 2. (optional) Simplification
-            // 3. Vertex cache optimization
-            // 4. Overdraw optimization
-            // 5. Vertex fetch optimization
-            // 6. Vertex quantization
-            // 7. (optional) Vertex/index buffer compression
+            void optimize(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices)
+            {
+                // When optimizing a mesh, you should typically feed it through a set of optimizations (the order is important!):
+                // 1. Indexing
+                // 2. (optional) Simplification
+                // 3. Vertex cache optimization
+                // 4. Overdraw optimization
+                // 5. Vertex fetch optimization
+                // 6. Vertex quantization
+                // 7. (optional) Vertex/index buffer compression
 
-            return;
 
-            // 3. optimize the order of the indices for vertex cache
-            vector<uint32_t> indices_new(indices.size());
-            meshopt_optimizeVertexCache
-            (
-                &indices_new[0], // destination
-                indices.data(),  // indices
-                indices.size(),  // index count
-                vertices.size()  // vertex count
-            );
-            indices = indices_new;
+                // 3. optimize the order of the indices for vertex cache
+                vector<uint32_t> indices_new(indices.size());
+                meshopt_optimizeVertexCache
+                (
+                    &indices_new[0], // destination
+                    indices.data(),  // indices
+                    indices.size(),  // index count
+                    vertices.size()  // vertex count
+                );
+                indices = indices_new;
 
-            // 4. optimize triangle order to reduce overdraw - needs input from meshopt_optimizeVertexCache
-            meshopt_optimizeOverdraw(&indices[0],                                         // destination
-                                     &indices[0],                                         // indices
-                                     indices.size(),                                      // index count
-                                     reinterpret_cast<const float*>(&vertices[0].pos[0]), // vertex positions
-                                     vertices.size(),                                     // vertex count
-                                     sizeof(RHI_Vertex_PosTexNorTan),                     // vertex positions stride
-                                     1.05f                                                // threshold
-            );
+                return;
 
-            // 5. optimize vertex fetch by reordering vertices based on the new index order
-            meshopt_optimizeVertexFetch(vertices.data(), indices.data(), indices.size(), vertices.data(), vertices.size(), sizeof(RHI_Vertex_PosTexNorTan));
+                // 4. optimize triangle order to reduce overdraw - needs input from meshopt_optimizeVertexCache
+                meshopt_optimizeOverdraw(&indices[0],                                         // destination
+                                         &indices[0],                                         // indices
+                                         indices.size(),                                      // index count
+                                         reinterpret_cast<const float*>(&vertices[0].pos[0]), // vertex positions
+                                         vertices.size(),                                     // vertex count
+                                         sizeof(RHI_Vertex_PosTexNorTan),                     // vertex positions stride
+                                         1.05f                                                // threshold
+                );
+
+                // 5. optimize vertex fetch by reordering vertices based on the new index order
+                meshopt_optimizeVertexFetch(vertices.data(), indices.data(), indices.size(), vertices.data(), vertices.size(), sizeof(RHI_Vertex_PosTexNorTan));
+            }
+
+            void simplify(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices)
+            {
+                const size_t target_index_count = static_cast<size_t>(indices.size() * 0.1f);
+                const float target_error        = 0.01f;
+
+                float result_error = 0.0f;
+                vector<uint32_t> indices_new(indices.size());
+                size_t index_count = meshopt_simplifySloppy(
+                    &indices_new[0],                                  // destination
+                    &indices[0],                                      // indices
+                    indices.size(),                                   // index count
+                    reinterpret_cast<const float*>(&vertices[0].pos), // vertex positions
+                    vertices.size(),                                  // vertex count
+                    sizeof(RHI_Vertex_PosTexNorTan),                  // vertex size
+                    target_index_count,
+                    target_error,
+                    &result_error
+                );
+                indices = indices_new;
+            }
         }
     }
 
@@ -263,7 +288,8 @@ namespace Spartan
     {
         if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessOptimize))
         {
-            optimize_mesh(m_vertices, m_indices);
+            //meshoptimizer::optimize(m_vertices, m_indices);
+            //meshoptimizer::simplify(m_vertices, m_indices);
         }
 
         m_aabb = BoundingBox(m_vertices.data(), static_cast<uint32_t>(m_vertices.size()));
