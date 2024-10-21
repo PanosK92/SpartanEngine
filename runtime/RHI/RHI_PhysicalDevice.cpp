@@ -86,13 +86,12 @@ namespace Spartan
                     }
                     
                     // extract year, month, and revision
-                    size_t pos1 = version.find('.');
-                    size_t pos2 = version.find('.', pos1 + 1);
-                    size_t pos3 = version.find('.', pos2 + 1); // Find the fourth dot
-
-                    string year = version.substr(0, pos1);
-                    string month = version.substr(pos1 + 1, pos2 - pos1 - 1); // Exclude the dot
-                    string revision = version.substr(pos3 + 1); // Start from the fourth dot
+                    size_t pos1     = version.find('.');
+                    size_t pos2     = version.find('.', pos1 + 1);
+                    size_t pos3     = version.find('.', pos2 + 1);               // find the fourth dot
+                    string year     = version.substr(0, pos1);
+                    string month    = version.substr(pos1 + 1, pos2 - pos1 - 1); // exclude the dot
+                    string revision = version.substr(pos3 + 1);                  // start from the fourth dot
 
                     return year + "." + month + "." + revision;
                 }
