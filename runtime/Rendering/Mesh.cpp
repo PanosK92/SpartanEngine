@@ -58,19 +58,14 @@ namespace Spartan
                 // 6. Vertex quantization
                 // 7. (optional) Vertex/index buffer compression
 
-
                 // 3. optimize the order of the indices for vertex cache
-                vector<uint32_t> indices_new(indices.size());
                 meshopt_optimizeVertexCache
                 (
-                    &indices_new[0], // destination
-                    indices.data(),  // indices
-                    indices.size(),  // index count
-                    vertices.size()  // vertex count
+                    &indices[0],    // destination
+                    &indices[0],    // indices
+                    indices.size(), // index count
+                    vertices.size() // vertex count
                 );
-                indices = indices_new;
-
-                return;
 
                 // 4. optimize triangle order to reduce overdraw - needs input from meshopt_optimizeVertexCache
                 meshopt_optimizeOverdraw(&indices[0],                                         // destination
@@ -105,6 +100,7 @@ namespace Spartan
                     &result_error
                 );
                 indices = indices_new;
+                indices.resize(index_count);
             }
         }
     }
