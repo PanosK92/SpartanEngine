@@ -91,24 +91,8 @@ def generate_project_files():
         print("Error: makefiles not generated")
         sys.exit(1)
 
-def print_local_file_hashes():
-    local_files = {
-        'libraries': 'third_party/libraries/libraries.7z',
-        'assets': 'assets/assets.7z'
-    }
-    
-    print("Local file hashes:")
-    for name, path in local_files.items():
-        if os.path.exists(path):
-            hash = file_utilities.calculate_file_hash(path)
-            print(f"{name}: {hash}")
-        else:
-            print(f"{name}: File not found")
-    
 def main():
     is_ci = "ci" in sys.argv
-    
-    print_local_file_hashes()
     
     print("\n1. Create binaries folder with the required data files...\n")
     copy("data", paths["binaries"]["data"])

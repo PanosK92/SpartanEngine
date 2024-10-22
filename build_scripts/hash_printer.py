@@ -17,15 +17,26 @@
 #IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 #CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import os
+from pathlib import Path
 import file_utilities
 
-file_url           = 'https://www.dropbox.com/scl/fi/xkc76vrsiwu4l2f67030e/assets.7z?rlkey=r3kym37skmay9e79slre6e60j&dl=1'
-file_destination   = 'project/assets.7z'
-file_expected_hash = '9983e29f40aafc9bbc9550901cbde90e8b48ae2fafb8148ffc16f4ff0a18e640'
-
-def main():
-    file_utilities.download_file(file_url, file_destination, file_expected_hash)
-    file_utilities.extract_archive(file_destination, "project/", True, True)
+def print_local_file_hashes():
+    local_files = {
+        'libraries': 'third_party/libraries/libraries.7z',
+        'assets': 'binaries/project/assets.7z'
+    }
+    
+    print("Local file hashes:")
+    for name, path in local_files.items():
+        if os.path.exists(path):
+            hash = file_utilities.calculate_file_hash(path)
+            print(f"{name}: {hash}")
+        else:
+            print(f"{name}: File not found")
+    
+    # wait for user input to give them time to read the hashes
+    input("\nPress Enter to continue...")
 
 if __name__ == "__main__":
-    main()
+    print_local_file_hashes()
