@@ -379,6 +379,7 @@ namespace Spartan
             // sdk issue #2: all the buffers which are needed, should be created and bound internally by the sdk, not the user.
             // sdk issue #3: instance ids are really indices, using actual ids (a big number) will cause an out of bounds crash.
             // sdk issue #4: the previous depth and normal textures, should be created internally using a blit operation, not by the user.
+            // sdk issue #5: after a number of instances (a lot) debug drawing the AABB starts to flicker, and the AABBs are not always correct.
 
             // parameters
             const float    voxel_size               = 0.05f;
@@ -504,7 +505,11 @@ namespace Spartan
                 desc.aabb.max[2]        = aabb.GetMax().z;
             
                 // transform: world space, row-major
-                Matrix transform = renderable->HasInstancing() ? renderable->GetInstanceTransform(instance_index) : entity->GetMatrix();
+                Matrix transform = entity->GetMatrix();
+                if (renderable->HasInstancing())
+                {
+                     transform *= renderable->GetInstanceTransform(instance_index);
+                }
                 set_ffx_float16(desc.transform, transform);
             
                 // vertex buffer
