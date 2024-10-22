@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Properties.h"
 #include "TitleBar.h"
 #include "Viewport.h"
+#include <World/DefaultWorlds.h>
 #include "World/Entity.h"
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
@@ -125,7 +126,7 @@ namespace
                     // button
                     if (ImGuiSp::button_centered_on_line("Ok"))
                     {
-                        Spartan::World::LoadDefaultWorld(static_cast<Spartan::DefaultWorld>(item_index));
+                        Spartan::DefaultWorlds::Load(static_cast<Spartan::DefaultWorld>(item_index));
                         window_visible_list = false;
                     }
                 }
