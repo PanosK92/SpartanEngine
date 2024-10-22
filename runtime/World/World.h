@@ -48,7 +48,7 @@ namespace Spartan
         static const std::unordered_map<uint64_t, std::shared_ptr<Entity>>& GetAllEntities();
 
         // misc
-        static void New();
+        static void Clear();
         static void Resolve();
         static const std::string GetName();
         static const std::string& GetFilePath();

@@ -577,7 +577,7 @@ void TitleBar::EntryWorld()
     {
         if (ImGui::MenuItem("New"))
         {
-            Spartan::World::New();
+            Spartan::World::Clear();
         }
 
         ImGui::Separator();
