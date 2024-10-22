@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Properties.h"
 #include "TitleBar.h"
 #include "Viewport.h"
-#include <World/DefaultWorlds.h>
+#include "Game/Game.h"
 #include "World/Entity.h"
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Terrain.h"
 #include "World/Components/Camera.h"
 #include "Commands/CommandStack.h"
-#include <Input/Input.h>
+#include "Input/Input.h"
 #include "FileSystem.h"
 #include "Resource/ResourceCache.h"
 #include "Core/Engine.h"
@@ -126,7 +126,7 @@ namespace
                     // button
                     if (ImGuiSp::button_centered_on_line("Ok"))
                     {
-                        Spartan::DefaultWorlds::Load(static_cast<Spartan::DefaultWorld>(item_index));
+                        Spartan::Game::Load(static_cast<Spartan::DefaultWorld>(item_index));
                         window_visible_list = false;
                     }
                 }

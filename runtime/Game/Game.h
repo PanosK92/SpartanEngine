@@ -36,7 +36,7 @@ namespace Spartan
         Max
     };
 
-    class DefaultWorlds
+    class Game
     {
     public:
         static void Shutdown();

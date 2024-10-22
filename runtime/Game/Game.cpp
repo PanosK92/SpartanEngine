@@ -19,24 +19,24 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES =================================
 #include "pch.h"
-#include "DefaultWorlds.h"
-#include "World.h"
-#include "Entity.h"
-#include "Components/Camera.h"
-#include "Components/Light.h"
-#include "Components/PhysicsBody.h"
-#include "Components/AudioListener.h"
-#include "Components/AudioSource.h"
-#include "Components/Terrain.h"
+#include "Game.h"
+#include "../World/World.h"
+#include "../World/Entity.h"
+#include "../World/Components/Camera.h"
+#include "../World/Components/Light.h"
+#include "../World/Components/PhysicsBody.h"
+#include "../World/Components/AudioListener.h"
+#include "../World/Components/AudioSource.h"
+#include "../World/Components/Terrain.h"
 #include "../Core/ThreadPool.h"
 #include "../Core/ProgressTracker.h"
 #include "../Rendering/Mesh.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
 #include "../Physics/Car.h"
-//====================================
+//============================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -1029,7 +1029,7 @@ namespace Spartan
     }
     }
 
-    void DefaultWorlds::Shutdown()
+    void Game::Shutdown()
     {
         m_default_terrain             = nullptr;
         m_default_physics_body_camera = nullptr;
@@ -1038,7 +1038,7 @@ namespace Spartan
         m_default_model_car           = nullptr;
     }
 
-    void DefaultWorlds::Tick()
+    void Game::Tick()
     {
         // forest default world logic
         {
@@ -1095,7 +1095,7 @@ namespace Spartan
         }
     }
 
-    void DefaultWorlds::Load(DefaultWorld default_world)
+    void Game::Load(DefaultWorld default_world)
     {
         ThreadPool::AddTask([default_world]()
         {
