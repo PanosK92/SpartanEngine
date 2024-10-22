@@ -161,7 +161,6 @@ namespace Spartan
 
     const BoundingBox& Renderable::GetBoundingBox(const BoundingBoxType type, const uint32_t index)
     {
-        // compute if dirty
         if (m_bounding_box_dirty || m_transform_previous != GetEntity()->GetMatrix())
         {
             Matrix transform = GetEntity()->GetMatrix();
@@ -180,8 +179,8 @@ namespace Spartan
                 for (uint32_t i = 0; i < static_cast<uint32_t>(m_instances.size()); i++)
                 {
                     const Matrix& instance_transform = m_instances[i];
-                    m_bounding_box_instances[i]      = m_bounding_box.Transform(transform * instance_transform ); // 1. bounding box of the instance
-                    m_bounding_box_transformed.Merge(m_bounding_box_instances[i]);                                // 2. bounding box of all instances
+                    m_bounding_box_instances[i]      = m_bounding_box.Transform(transform * instance_transform); // 1. bounding box of the instance
+                    m_bounding_box_transformed.Merge(m_bounding_box_instances[i]);                               // 2. bounding box of all instances
                 }
 
                 // 3. bounding boxes of instance groups
@@ -209,23 +208,17 @@ namespace Spartan
             m_bounding_box_dirty = false;
         }
 
-        // return
         if (type == BoundingBoxType::Mesh)
-        {
             return m_bounding_box;
-        }
-        else if (type == BoundingBoxType::Transformed)
-        {
+
+        if (type == BoundingBoxType::Transformed)
             return m_bounding_box_transformed;
-        }
-         else if (type == BoundingBoxType::TransformedInstance)
-        {
+
+        if (type == BoundingBoxType::TransformedInstance)
             return m_bounding_box_instances[index];
-        }
-        else if (type == BoundingBoxType::TransformedInstanceGroup)
-        {
+
+        if (type == BoundingBoxType::TransformedInstanceGroup)
             return m_bounding_box_instance_group[index];
-        }
 
         return BoundingBox::Undefined;
     }
