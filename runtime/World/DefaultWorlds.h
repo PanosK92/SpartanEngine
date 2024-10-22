@@ -21,36 +21,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
-#include <unordered_map>
-//======================
-
 namespace Spartan
 {
-    class World
+    enum class DefaultWorld
+    {
+        Objects,
+        Car,
+        Forest,
+        Sponza,
+        Doom,
+        Bistro,
+        Minecraft,
+        LivingRoom,
+        Max
+    };
+
+    class DefaultWorlds
     {
     public:
-        // system
-        static void Initialize();
         static void Shutdown();
         static void Tick();
-
-        // io
-        static bool SaveToFile(const std::string& filePath);
-        static bool LoadFromFile(const std::string& file_path);
-
-        // entities
-        static std::shared_ptr<Entity> CreateEntity();
-        static bool EntityExists(Entity* entity);
-        static void RemoveEntity(Entity* entity);
-        static std::vector<std::shared_ptr<Entity>> GetRootEntities();
-        static const std::shared_ptr<Entity>& GetEntityById(uint64_t id);
-        static const std::unordered_map<uint64_t, std::shared_ptr<Entity>>& GetAllEntities();
-
-        // misc
-        static void New();
-        static void Resolve();
-        static const std::string GetName();
-        static const std::string& GetFilePath();
+        static void Load(DefaultWorld default_world);
     };
 }
