@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======================
 #include "pch.h"
 #include "World.h"
-#include "DefaultWorlds.h"
 #include "Entity.h"
+#include "../Game/Game.h"
 #include "../IO/FileStream.h"
 #include "../Profiling/Profiler.h"
 #include "../Rendering/Renderer.h"
@@ -69,7 +69,7 @@ namespace Spartan
     void World::Shutdown()
     {
         clear();
-        DefaultWorlds::Shutdown();
+        Game::Shutdown();
     }
 
     void World::Tick()
@@ -117,7 +117,7 @@ namespace Spartan
             resolve = false;
         }
 
-        DefaultWorlds::Tick();
+        Game::Tick();
     }
 
     void World::New()
