@@ -234,7 +234,7 @@ float4 Shadow_Map(Surface surface, Light light)
     if (light.distance_to_pixel <= light.far)
     {
         // compute world position with normal offset bias to reduce shadow acne
-        float3 normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * light.texel_size.x;
+        float3 normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * light.texel_size.x * 16.0f;
         float3 position_world     = surface.position + normal_offset_bias;
 
         if (light.is_point())
@@ -287,3 +287,4 @@ float4 Shadow_Map(Surface surface, Light light)
 
     return shadow;
 }
+
