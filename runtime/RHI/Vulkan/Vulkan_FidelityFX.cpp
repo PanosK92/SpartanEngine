@@ -389,7 +389,7 @@ namespace Spartan
             const uint32_t cascade_index_end        = cascade_offset + cascade_count - 1;
             const uint32_t cascade_resolution       = 64;
             const uint32_t sdf_atlas_size           = 512;
-            const bool     sdf_center_around_camera = false;
+            const bool     sdf_center_around_camera = true;
             const float    sdf_ray_normal_offset    = 0.5f;      // distance from a surface along the normal vector to offset the ray origin - below 0.5 I see artifacts
             const float    sdf_ray_epsilon          = 0.5f;      // epsilon value for ray marching to be used with brixelizer for rays
             const uint32_t bricks_max               = 262144;
@@ -426,6 +426,25 @@ namespace Spartan
             unordered_map<uint64_t, shared_ptr<Entity>> entity_map;
             vector<FfxBrixelizerInstanceDescription> instances_to_create;
             vector<uint32_t> instances_to_delete;
+
+            // debug visualisation
+            enum class DebugMode
+            {
+                Distance,   // brixelizer
+                UVW,        // brixelizer
+                Iterations, // brixelizer
+                Gradient,   // brixelizer
+                BrickID,    // brixelizer
+                CascadeID,  // brixelizer
+                Radiance,   // brixelizer gi
+                Irradiance, // brixelizer gi
+                Max
+            };
+            DebugMode debug_mode            = DebugMode::Max;
+            bool debug_mode_arrow_switch    = false;
+            bool debug_mode_aabbs_and_stats = false;
+            bool debug_mode_log_instances   = false;
+            FfxBrixelizerStats debug_stats  = {};
            
             uint32_t& get_or_create_id(uint64_t entity_id)
             {
@@ -470,64 +489,45 @@ namespace Spartan
                 }
             }
 
-           FfxBrixelizerInstanceDescription create_instance_description(const shared_ptr<Entity>& entity, uint32_t instance_index = 0)
-           {
-               FfxBrixelizerInstanceDescription desc = {};
-               shared_ptr<Renderable> renderable     = entity->GetComponent<Renderable>();
-           
-               // aabb: world space, pre-transformed
-               const BoundingBox& aabb = renderable->HasInstancing() ? renderable->GetBoundingBox(BoundingBoxType::TransformedInstance, instance_index) : renderable->GetBoundingBox(BoundingBoxType::Transformed);
-               desc.aabb.min[0]        = aabb.GetMin().x;
-               desc.aabb.min[1]        = aabb.GetMin().y;
-               desc.aabb.min[2]        = aabb.GetMin().z;
-               desc.aabb.max[0]        = aabb.GetMax().x;
-               desc.aabb.max[1]        = aabb.GetMax().y;
-               desc.aabb.max[2]        = aabb.GetMax().z;
-           
-               // transform: world space, row-major
-               Matrix transform = renderable->HasInstancing() ? renderable->GetInstanceTransform(instance_index) : entity->GetMatrix();
-               set_ffx_float16(desc.transform, transform);
-           
-               // vertex buffer
-               desc.vertexBuffer       = register_geometry_buffer(renderable->GetVertexBuffer());
-               desc.vertexStride       = renderable->GetVertexBuffer()->GetStride();
-               desc.vertexBufferOffset = renderable->GetVertexOffset() * desc.vertexStride;
-               desc.vertexCount        = renderable->GetVertexCount();
-               desc.vertexFormat       = FFX_SURFACE_FORMAT_R32G32B32_FLOAT;
-           
-               // index buffer
-               desc.indexBuffer       = register_geometry_buffer(renderable->GetIndexBuffer());
-               desc.indexBufferOffset = renderable->GetIndexOffset() * renderable->GetIndexBuffer()->GetStride();
-               desc.triangleCount     = renderable->GetIndexCount() / 3;
-               desc.indexFormat       = (renderable->GetIndexBuffer()->GetStride() == sizeof(uint16_t)) ? FFX_INDEX_TYPE_UINT16 : FFX_INDEX_TYPE_UINT32;
-           
-               // misc
-               desc.flags           = entity->IsMoving() ? FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC : FFX_BRIXELIZER_INSTANCE_FLAG_NONE;
-               uint64_t instance_id = renderable->HasInstancing() ? (entity->GetObjectId() | (static_cast<uint64_t>(instance_index) << 32)) : entity->GetObjectId();
-               desc.outInstanceID   = &get_or_create_id(instance_id);
-           
-               return desc;
-           }
-
-            // debug visualisation
-            enum class DebugMode
+            FfxBrixelizerInstanceDescription create_instance_description(const shared_ptr<Entity>& entity, uint32_t instance_index = 0)
             {
-                Distance,   // brixelizer
-                UVW,        // brixelizer
-                Iterations, // brixelizer
-                Gradient,   // brixelizer
-                BrickID,    // brixelizer
-                CascadeID,  // brixelizer
-                Radiance,   // brixelizer gi
-                Irradiance, // brixelizer gi
-                Max
-            };
-            DebugMode debug_mode            = DebugMode::Max;
-            bool debug_mode_arrow_switch    = false;
-            bool debug_mode_aabbs_and_stats = false;
-            bool debug_mode_log_instances   = false;
-            FfxBrixelizerStats debug_stats  = {};
-
+                FfxBrixelizerInstanceDescription desc = {};
+                shared_ptr<Renderable> renderable     = entity->GetComponent<Renderable>();
+            
+                // aabb: world space, pre-transformed
+                const BoundingBox& aabb = renderable->HasInstancing() ? renderable->GetBoundingBox(BoundingBoxType::TransformedInstance, instance_index) : renderable->GetBoundingBox(BoundingBoxType::Transformed);
+                desc.aabb.min[0]        = aabb.GetMin().x;
+                desc.aabb.min[1]        = aabb.GetMin().y;
+                desc.aabb.min[2]        = aabb.GetMin().z;
+                desc.aabb.max[0]        = aabb.GetMax().x;
+                desc.aabb.max[1]        = aabb.GetMax().y;
+                desc.aabb.max[2]        = aabb.GetMax().z;
+            
+                // transform: world space, row-major
+                Matrix transform = renderable->HasInstancing() ? renderable->GetInstanceTransform(instance_index) : entity->GetMatrix();
+                set_ffx_float16(desc.transform, transform);
+            
+                // vertex buffer
+                desc.vertexBuffer       = register_geometry_buffer(renderable->GetVertexBuffer());
+                desc.vertexStride       = renderable->GetVertexBuffer()->GetStride();
+                desc.vertexBufferOffset = renderable->GetVertexOffset() * desc.vertexStride;
+                desc.vertexCount        = renderable->GetVertexCount();
+                desc.vertexFormat       = FFX_SURFACE_FORMAT_R32G32B32_FLOAT;
+            
+                // index buffer
+                desc.indexBuffer       = register_geometry_buffer(renderable->GetIndexBuffer());
+                desc.indexBufferOffset = renderable->GetIndexOffset() * renderable->GetIndexBuffer()->GetStride();
+                desc.triangleCount     = renderable->GetIndexCount() / 3;
+                desc.indexFormat       = (renderable->GetIndexBuffer()->GetStride() == sizeof(uint16_t)) ? FFX_INDEX_TYPE_UINT16 : FFX_INDEX_TYPE_UINT32;
+            
+                // misc
+                desc.flags           = entity->IsMoving() ? FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC : FFX_BRIXELIZER_INSTANCE_FLAG_NONE;
+                uint64_t instance_id = renderable->HasInstancing() ? (entity->GetObjectId() | (static_cast<uint64_t>(instance_index) << 32)) : entity->GetObjectId();
+                desc.outInstanceID   = &get_or_create_id(instance_id);
+            
+                return desc;
+            }
+            
             FfxBrixelizerTraceDebugModes to_ffx_debug_mode(const DebugMode debug_mode)
             {
                 if (debug_mode == brixelizer_gi::DebugMode::Distance)   return FFX_BRIXELIZER_TRACE_DEBUG_MODE_DISTANCE;
@@ -536,22 +536,22 @@ namespace Spartan
                 if (debug_mode == brixelizer_gi::DebugMode::Gradient)   return FFX_BRIXELIZER_TRACE_DEBUG_MODE_GRAD;
                 if (debug_mode == brixelizer_gi::DebugMode::BrickID)    return FFX_BRIXELIZER_TRACE_DEBUG_MODE_BRICK_ID;
                 if (debug_mode == brixelizer_gi::DebugMode::CascadeID)  return FFX_BRIXELIZER_TRACE_DEBUG_MODE_CASCADE_ID;
-
+            
                 return FFX_BRIXELIZER_TRACE_DEBUG_MODE_DISTANCE;
             }
-
+            
             string debug_mode_to_string(const DebugMode debug_mode)
             {
-                if (debug_mode == brixelizer_gi::DebugMode::Distance)   return "Distance";
-                if (debug_mode == brixelizer_gi::DebugMode::UVW)        return "UVW";
-                if (debug_mode == brixelizer_gi::DebugMode::Iterations) return "Iterations";
-                if (debug_mode == brixelizer_gi::DebugMode::Gradient)   return "Gradient";
-                if (debug_mode == brixelizer_gi::DebugMode::BrickID)    return "Brick ID";
-                if (debug_mode == brixelizer_gi::DebugMode::CascadeID)  return "Cascade ID";
-                if (debug_mode == brixelizer_gi::DebugMode::Radiance)   return "Radiance";
-                if (debug_mode == brixelizer_gi::DebugMode::Irradiance) return "Irradiance";
+               if (debug_mode == brixelizer_gi::DebugMode::Distance)   return "Distance";
+               if (debug_mode == brixelizer_gi::DebugMode::UVW)        return "UVW";
+               if (debug_mode == brixelizer_gi::DebugMode::Iterations) return "Iterations";
+               if (debug_mode == brixelizer_gi::DebugMode::Gradient)   return "Gradient";
+               if (debug_mode == brixelizer_gi::DebugMode::BrickID)    return "Brick ID";
+               if (debug_mode == brixelizer_gi::DebugMode::CascadeID)  return "Cascade ID";
+               if (debug_mode == brixelizer_gi::DebugMode::Radiance)   return "Radiance";
+               if (debug_mode == brixelizer_gi::DebugMode::Irradiance) return "Irradiance";
 
-                return "Disabled";
+               return "Disabled";
             }
         }
 
