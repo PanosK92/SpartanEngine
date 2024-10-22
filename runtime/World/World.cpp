@@ -45,20 +45,6 @@ namespace Spartan
         mutex entity_access_mutex;
         bool resolve            = false;
         bool was_in_editor_mode = false;
-
-        void clear()
-        {
-            // fire event
-            SP_FIRE_EVENT(EventType::WorldClear);
-
-            // clear
-            entities.clear();
-            name.clear();
-            file_path.clear();
-
-            // mark for resolve
-            resolve = true;
-        }
     }
 
     void World::Initialize()
@@ -68,8 +54,8 @@ namespace Spartan
 
     void World::Shutdown()
     {
-        clear();
         Game::Shutdown();
+        Clear();
     }
 
     void World::Tick()
@@ -120,9 +106,18 @@ namespace Spartan
         Game::Tick();
     }
 
-    void World::New()
+    void World::Clear()
     {
-        clear();
+        // fire event
+        SP_FIRE_EVENT(EventType::WorldClear);
+        
+        // clear
+        entities.clear();
+        name.clear();
+        file_path.clear();
+        
+        // mark for resolve
+        resolve = true;
     }
 
     bool World::SaveToFile(const string& file_path_in)
@@ -199,8 +194,7 @@ namespace Spartan
             return false;
         }
 
-        // clear existing entities
-        clear();
+        Clear();
 
         name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
 

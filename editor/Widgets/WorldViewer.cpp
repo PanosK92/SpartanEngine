@@ -109,12 +109,13 @@ namespace
                         {
                             "1. Objects",
                             "2. Car",
-                            "3. Forest",
-                            "4. Sponza",
-                            "5. Doom",
-                            "6. Bistro",
-                            "7. Minecraft",
-                            "8. Living Room"
+                            "3. Doom",
+                            "4. Minecraft",
+                            "5. Living Room",
+                            "6. Subway",
+                            "7. Sponza - stress: low",
+                            "8. Bistro - stress: medium",
+                            "9. Forest - stress: high",
                         };
                         static int item_count = IM_ARRAYSIZE(items);
                  
