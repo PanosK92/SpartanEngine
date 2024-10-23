@@ -47,21 +47,17 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         case 5: direction = float3(-(uv.x * 2.0f - 1.0f), uv.y * 2.0f - 1.0f, -1.0f); break;  // -Z
     }
 
-    // Normalize the direction
     direction = normalize(direction);
 
-    // Convert the cubemap direction back to spherical coordinates
+    // convert the cubemap direction back to spherical coordinates
     float phi   = atan2(direction.z, direction.x);
     float theta = acos(direction.y);
 
-    // Map spherical coordinates back to UV space of the input texture
+    // map spherical coordinates back to UV space of the input texture
     float2 spherical_uv;
     spherical_uv.x = (phi / (2.0f * PI)) + 0.5f;
     spherical_uv.y = 1.0f - (theta / PI);
 
-    // Sample from the spherical map
-    float4 spherical_color = tex.SampleLevel(samplers[sampler_bilinear_clamp], spherical_uv, 0);
 
-    // Store the sampled color in the cubemap
-    tex_uav_sss[uint3(thread_id.xy, face_index)] = spherical_color;
+    tex_uav_sss[uint3(thread_id.xy, face_index)] = tex.SampleLevel(samplers[sampler_bilinear_clamp], spherical_uv, 0);
 }
