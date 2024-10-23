@@ -1110,16 +1110,15 @@ namespace Spartan
             // write the skysphere to a small cubemap because fidelityfx requires it
             {
                 // set pipeline state
-                //static RHI_PipelineState pso_skysphere_to_skybox;
-                //pso_skysphere_to_skybox.shaders[Compute] = shader_skysphere;
-                //cmd_list->SetPipelineState(pso_skysphere_to_skybox);
-                //
-                //cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
-                //for (uint32_t i = 0; i < 6; i++)
-                //{
-                //    cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_skybox, i , 1);
-                //    cmd_list->Dispatch(tex_skybox);
-                //}
+                static RHI_PipelineState pso_skysphere_to_skybox;
+                pso_skysphere_to_skybox.name             = "skysphere_to_skybox";
+                pso_skysphere_to_skybox.shaders[Compute] = shader_skysphere_to_skybox;
+                cmd_list->SetPipelineState(pso_skysphere_to_skybox);
+
+                // dispatch
+                cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, tex_skybox);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_skysphere);
+                cmd_list->Dispatch(tex_skybox);
             }
         }
         cmd_list->EndTimeblock();

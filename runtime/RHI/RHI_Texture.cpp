@@ -427,8 +427,8 @@ namespace Spartan
         // asserts
         if (mip_specified)
         {
-            SP_ASSERT_MSG(HasPerMipViews(), (string("A mip is specified but texture \"") + GetObjectName() + string("\" has no per mip views")).c_str());
-            SP_ASSERT_MSG(mip_range != 0, "When a mip is specified, the mip_range can't be zero");
+            SP_ASSERT(HasPerMipViews());
+            SP_ASSERT(mip_range != 0);
         }
 
         // check if the layouts are indeed different from the new layout

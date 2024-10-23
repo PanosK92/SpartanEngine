@@ -99,15 +99,21 @@ namespace Spartan
             create_info.subresourceRange.baseMipLevel   = mip_index;
             create_info.subresourceRange.levelCount     = mip_count;
         
-            if (texture->GetType() == RHI_Texture_Type::Type3D)
+            if (texture->GetType() == RHI_Texture_Type::TypeCube)
             {
-                // For 3D textures, baseArrayLayer must be 0, and layerCount must be 1
+                // fFor cubemaps, array layers represent the faces, so we set layerCount to 6
+                create_info.subresourceRange.baseArrayLayer = 0; // starting from the first face
+                create_info.subresourceRange.layerCount     = 6; // 6 faces of the cubemap
+            }
+            else if (texture->GetType() == RHI_Texture_Type::Type3D)
+            {
+                // for 3D textures, baseArrayLayer must be 0, and layerCount must be 1
                 create_info.subresourceRange.baseArrayLayer = 0;
                 create_info.subresourceRange.layerCount     = 1;
             }
             else
             {
-                // For other types (2D arrays, cube maps), use array layers
+                // for other types (2D arrays), use array layers
                 create_info.subresourceRange.baseArrayLayer = array_index;
                 create_info.subresourceRange.layerCount     = array_length;
             }
