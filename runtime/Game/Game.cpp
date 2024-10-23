@@ -54,6 +54,55 @@ namespace Spartan
         shared_ptr<Entity> m_default_light_directional   = nullptr;
         shared_ptr<Mesh> m_default_model_car             = nullptr;
 
+        void create_music(const char* soundtrack_file_path = "project\\music\\jake_chudnow_shona.mp3")
+        {
+            if (!soundtrack_file_path)
+                return;
+
+            shared_ptr<Entity> entity = World::CreateEntity();
+            entity->SetObjectName("audio_source");
+
+            shared_ptr<AudioSource> audio_source = entity->AddComponent<AudioSource>();
+            audio_source->SetAudioClip(soundtrack_file_path);
+            audio_source->SetLoop(true);
+        }
+
+        void create_sun(const LightIntensity sun_intensity = LightIntensity::sky_sunlight_morning_evening, const bool shadows_enabled = true)
+        {
+            m_default_light_directional = World::CreateEntity();
+            m_default_light_directional->SetObjectName("light_directional");
+            m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(35.0f, 90.0f, 0.0f));
+            
+            shared_ptr<Light> light = m_default_light_directional->AddComponent<Light>();
+            light->SetLightType(LightType::Directional);
+            light->SetTemperature(2300.0f);
+            light->SetIntensity(sun_intensity);
+            light->SetFlag(LightFlags::Shadows, shadows_enabled ? (light->GetIntensityLumens() > 0.0f) : false);
+            light->SetFlag(LightFlags::ShadowsTransparent, false);
+        }
+
+        void create_floor()
+        {
+            // the scale of the entity and the UV tiling is adjusted so that it each square represents 1 unit (cube size)
+
+            shared_ptr<Entity> entity = World::CreateEntity();
+            entity->SetObjectName("floor");
+            entity->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise it a bit to avoid z-fighting with world grid
+            entity->SetScale(Vector3(1000.0f, 1.0f, 1000.0f));
+            
+            // add a renderable component
+            shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>();
+            renderable->SetGeometry(Renderer::GetStandardMesh(MeshType::Quad).get());
+            renderable->SetDefaultMaterial();
+            renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingX, 170.0f);
+            renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingY, 170.0f);
+            
+            // add physics components
+            shared_ptr<PhysicsBody> rigid_body = entity->AddComponent<PhysicsBody>();
+            rigid_body->SetMass(0.0f); // static
+            rigid_body->SetShapeType(PhysicsShape::StaticPlane);
+        }
+
         void create_camera(const Vector3& camera_position = Vector3(0.0f, 2.0f, -10.0f), const Vector3& camera_rotation = Vector3(0.0f, 0.0f, 0.0f))
         {
             // create the camera's root (which will be used for movement)
@@ -78,69 +127,12 @@ namespace Spartan
             camera->SetRotation(Quaternion::FromEulerAngles(camera_rotation));
         }
 
-        void create_common(
-            const Math::Vector3& camera_position = Vector3(0.0f, 2.0f, -10.0f),
-            const Math::Vector3& camera_rotation = Vector3(0.0f, 0.0f, 0.0f),
-            const LightIntensity sun_intensity   = LightIntensity::sky_sunlight_morning_evening,
-            const char* soundtrack_file_path     = "project\\music\\jake_chudnow_shona.mp3",
-            const bool shadows_enabled           = true,
-            const bool load_floor                = true
-        )
-        {
-            create_camera(camera_position, camera_rotation);
-
-            // light - directional
-            {
-                m_default_light_directional = World::CreateEntity();
-                m_default_light_directional->SetObjectName("light_directional");
-                m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(35.0f, 90.0f, 0.0f));
-
-                shared_ptr<Light> light = m_default_light_directional->AddComponent<Light>();
-                light->SetLightType(LightType::Directional);
-                light->SetTemperature(2300.0f);
-                light->SetIntensity(sun_intensity);
-                light->SetFlag(LightFlags::Shadows, shadows_enabled ? (light->GetIntensityLumens() > 0.0f) : false);
-                light->SetFlag(LightFlags::ShadowsTransparent, false);
-            }
-
-            // music
-            if (soundtrack_file_path)
-            {
-                shared_ptr<Entity> entity = World::CreateEntity();
-                entity->SetObjectName("audio_source");
-
-                shared_ptr<AudioSource> audio_source = entity->AddComponent<AudioSource>();
-                audio_source->SetAudioClip(soundtrack_file_path);
-                audio_source->SetLoop(true);
-            }
-
-            // floor
-            if (load_floor)
-            {
-                // the scale of the entity and the UV tiling is adjusted so that it each square represents 1 unit (cube size)
-
-                shared_ptr<Entity> entity = World::CreateEntity();
-                entity->SetObjectName("floor");
-                entity->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise it a bit to avoid z-fighting with world grid
-                entity->SetScale(Vector3(1000.0f, 1.0f, 1000.0f));
-
-                // add a renderable component
-                shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>();
-                renderable->SetGeometry(Renderer::GetStandardMesh(MeshType::Quad).get());
-                renderable->SetDefaultMaterial();
-                renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingX, 170.0f);
-                renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingY, 170.0f);
-
-                // add physics components
-                shared_ptr<PhysicsBody> rigid_body = entity->AddComponent<PhysicsBody>();
-                rigid_body->SetMass(0.0f); // static
-                rigid_body->SetShapeType(PhysicsShape::StaticPlane);
-            }
-        }
-
         void create_objects()
         {
-            create_common();
+            create_camera();
+            create_sun(LightIntensity::sky_sunlight_morning_evening);
+            create_music();
+            create_floor();
 
             // we have long screen space shadows so they don't look good with small objects here
             m_default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
@@ -218,10 +210,10 @@ namespace Spartan
 
         void create_car()
         {
-            Vector3 camera_position = Vector3(8.7844f, 2.0f, -4.1412f);
-            Vector3 camera_rotation = Vector3(3.5996f, -44.099f, 0.0f);
-            create_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, "project\\music\\take_control.mp3");
-            m_default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::Volumetric, false);
+            create_camera(Vector3(8.7844f, 2.0f, -4.1412f), Vector3(3.5996f, -44.099f, 0.0f));
+            create_sun(LightIntensity::sky_sunlight_morning_evening);
+            create_music("project\\music\\take_control.mp3");
+            create_floor();
 
             // create car
             {
@@ -448,9 +440,8 @@ namespace Spartan
 
         void create_forest()
         {
-            Vector3 camera_position = Vector3(-244.5046f, 68.0f, 407.8690f);
-            Vector3 camera_rotation = Vector3(0.0f, 144.0f, 0.0f);
-            create_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_morning_evening, nullptr, true, false);
+            create_camera(Vector3(-244.5046f, 68.0f, 407.8690f), Vector3(0.0f, 144.0f, 0.0f));
+            create_sun(LightIntensity::sky_sunlight_morning_evening);
 
             // mood adjustment
             m_default_light_directional->GetComponent<Light>()->SetTemperature(2300.0f);
@@ -687,9 +678,9 @@ namespace Spartan
 
         void create_sponza()
         {
-            Vector3 camera_position = Vector3(-27.405f, 3.5f, -0.07f);
-            Vector3 camera_rotation = Vector3(-8.5f, 90.0f, 0.0f);
-            create_common(camera_position, camera_rotation, LightIntensity::black_hole, "project\\music\\jake_chudnow_olive.mp3", false, false);
+            create_camera(Vector3(-27.405f, 3.5f, -0.07f), Vector3(-8.5f, 90.0f, 0.0f));
+            create_sun(LightIntensity::black_hole, false);
+            create_music("project\\music\\jake_chudnow_olive.mp3");
 
             // point light
             {
@@ -775,9 +766,9 @@ namespace Spartan
 
         void create_doom()
         {
-            Vector3 camera_position = Vector3(-120.0f, 23.0f, -30.0f);
-            Vector3 camera_rotation = Vector3(0.0f, 90.0f, 0.0f);
-            create_common(camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\doom_e1m1.mp3", false, false);
+            create_camera(Vector3(-120.0f, 23.0f, -30.0f), Vector3(0.0f, 90.0f, 0.0f));
+            create_sun(LightIntensity::sky_sunlight_noon, false);
+            create_music("project\\music\\doom_e1m1.mp3");
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
             {
@@ -803,9 +794,9 @@ namespace Spartan
 
         void create_bistro()
         {
-            Vector3 camera_position = Vector3(5.2739f, 1.6343f, 8.2956f);
-            Vector3 camera_rotation = Vector3(0.0f, -180.0f, 0.0f);
-            create_common(camera_position, camera_rotation, LightIntensity::bulb_150_watt, "project\\music\\jake_chudnow_shona.mp3", false);
+            create_camera(Vector3(5.2739f, 1.6343f, 8.2956f), Vector3(0.0f, -180.0f, 0.0f));
+            create_sun(LightIntensity::bulb_150_watt, false);
+            create_music();
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroExterior.fbx"))
             {
@@ -877,9 +868,10 @@ namespace Spartan
 
         void create_minecraft()
         {
-            Vector3 camera_position = Vector3(-51.7576f, 21.4551f, -85.3699f);
-            Vector3 camera_rotation = Vector3(11.3991f, 30.6026f, 0.0f);
-            create_common(camera_position, camera_rotation);
+            create_camera(Vector3(-51.7576f, 21.4551f, -85.3699f), Vector3(11.3991f, 30.6026f, 0.0f));
+            create_sun();
+            create_music();
+            create_floor();
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\vokselia_spawn\\vokselia_spawn.obj"))
             {
@@ -905,9 +897,9 @@ namespace Spartan
 
         void create_living_room()
         {
-            Vector3 camera_position = Vector3(3.6573f, 2.4959f, -15.6978f);
-            Vector3 camera_rotation = Vector3(3.9999f, -12.1947f, 0.0f);
-            create_common(camera_position, camera_rotation);
+            create_camera(Vector3(3.6573f, 2.4959f, -15.6978f), Vector3(3.9999f, -12.1947f, 0.0f));
+            create_sun();
+            create_music();
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\living_room\\living_room.obj"))
             {
