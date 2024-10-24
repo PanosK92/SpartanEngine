@@ -487,6 +487,7 @@ namespace Spartan
         float resolution_scale = Renderer::GetOption<float>(Renderer_Option::ResolutionScale);
         oss_metrics << "\nDisplay\n"
             << "Name:\t\t\t"   << Display::GetName() << endl
+            << "Hz:\t\t\t\t\t" << Display::GetRefreshRate() << endl
             << "HDR:\t\t\t\t"  << (Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled") << endl
             << "Max nits:\t\t" << Display::GetLuminanceMax() << endl
             << "Render:\t\t\t" << static_cast<uint32_t>(Renderer::GetResolutionRender().x) << "x" << static_cast<int>(Renderer::GetResolutionRender().y) << " - " << resolution_scale * 100.0f << "%" << endl
