@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Vertex.h"
 #include "../RHI/RHI_Texture.h"
 #include "../../IO/FileStream.h"
-#include "../Physics/Car.h"
+#include "../Game/Car.h"
 #include "../../Physics/Physics.h"
 #include "../../Physics/BulletPhysicsHelper.h"
 #include "../Rendering/Renderer.h"

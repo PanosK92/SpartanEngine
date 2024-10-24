@@ -22,12 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======================================
 #include "pch.h"
 #include "Car.h"
-#include "Physics.h"
-#include "BulletPhysicsHelper.h"
+#include "../Physics/Physics.h"
+#include "../Physics/BulletPhysicsHelper.h"
 #include "../Rendering/Renderer.h"
 #include "../Input/Input.h"
 #include "../World/Entity.h"
-#include "../World/Components/AudioSource.h"
 SP_WARNINGS_OFF
 #include <BulletDynamics/Vehicle/btRaycastVehicle.h>
 #include "LinearMath/btVector3.h"
