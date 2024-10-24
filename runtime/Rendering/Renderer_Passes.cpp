@@ -1368,25 +1368,16 @@ namespace Spartan
         // find a directional light, check if it has changed and update the mip count that we need to process
         if (m_environment_mips_to_filter_count == 0)
         {
-            static Quaternion rotation;
-            static float intensity;
-            static Color color;
-
             for (const shared_ptr<Entity>& entity : m_renderables[Renderer_Entity::Light])
             {
                 if (const shared_ptr<Light>& light = entity->GetComponent<Light>())
                 {
                     if (light->GetLightType() == LightType::Directional)
                     {
-                        // filtering is very expensive hence why we try to minimize it
-                        if (!light->GetEntity()->IsMoving() && // has a rest time (a couple of seconds)
-                            (light->GetEntity()->GetRotation() != rotation || light->GetIntensityLumens() != intensity || light->GetColor() != color))
+                        if (light->IsFilteringPending())
                         {
-                            rotation  = light->GetEntity()->GetRotation();
-                            intensity = light->GetIntensityLumens();
-                            color     = light->GetColor();
-
                             m_environment_mips_to_filter_count = GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount() - 1;
+                            light->DisableFilterPending();
                         }
                     }
                 }
