@@ -232,7 +232,7 @@ namespace Spartan
     {
         SDL_DisplayMode display_mode;
         SP_ASSERT(SDL_GetCurrentDisplayMode(GetIndex(), &display_mode) == 0);
-
+       
         return display_mode.refresh_rate;
     }
 
@@ -253,5 +253,10 @@ namespace Spartan
     float Display::GetLuminanceMax()
     {
         return luminance_nits_max;
+    }
+
+    const char* Display::GetName()
+    {
+        return SDL_GetDisplayName(GetIndex());
     }
 }
