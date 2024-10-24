@@ -97,7 +97,7 @@ namespace Spartan
         const Color& GetColor() const { return m_color_rgb; }
 
         // intensity
-        void SetIntensityLumens(const float lumens);
+        void SetIntensity(const float lumens);
         void SetIntensity(const LightIntensity lumens);
         float GetIntensityLumens() const    { return m_intensity_lumens; }
         LightIntensity GetIntensity() const { return m_intensity; }

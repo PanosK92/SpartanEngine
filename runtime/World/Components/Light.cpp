@@ -337,7 +337,7 @@ namespace Spartan
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
-    void Light::SetIntensityLumens(const float lumens)
+    void Light::SetIntensity(const float lumens)
     {
         m_intensity_lumens = lumens;
         m_intensity        = LightIntensity::custom;

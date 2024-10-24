@@ -351,7 +351,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         }
 
         //= MAP ===================================================================================================================
-        if (intensity != light->GetIntensityLumens())                     light->SetIntensityLumens(intensity);
+        if (intensity != light->GetIntensityLumens())                     light->SetIntensity(intensity);
         if (angle != light->GetAngle() * Math::Helper::RAD_TO_DEG * 0.5f) light->SetAngle(angle * Math::Helper::DEG_TO_RAD * 0.5f);
         if (range != light->GetRange())                                   light->SetRange(range);
         if (m_colorPicker_light->GetColor() != light->GetColor())         light->SetColor(m_colorPicker_light->GetColor());
