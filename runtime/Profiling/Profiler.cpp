@@ -486,11 +486,12 @@ namespace Spartan
         // display
         float resolution_scale = Renderer::GetOption<float>(Renderer_Option::ResolutionScale);
         oss_metrics << "\nDisplay\n"
+            << "Name:\t\t\t"   << Display::GetName() << endl
+            << "HDR:\t\t\t\t"  << (Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled") << endl
+            << "Max nits:\t\t" << Display::GetLuminanceMax() << endl
             << "Render:\t\t\t" << static_cast<uint32_t>(Renderer::GetResolutionRender().x) << "x" << static_cast<int>(Renderer::GetResolutionRender().y) << " - " << resolution_scale * 100.0f << "%" << endl
             << "Output:\t\t\t" << static_cast<uint32_t>(Renderer::GetResolutionOutput().x) << "x" << static_cast<int>(Renderer::GetResolutionOutput().y) << endl
-            << "Viewport:\t\t" << static_cast<uint32_t>(Renderer::GetViewport().width)     << "x" << static_cast<int>(Renderer::GetViewport().height)    << endl
-            << "HDR:\t\t\t\t"  << (Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled") << endl
-            << "Max nits:\t\t" << Display::GetLuminanceMax() << endl;
+            << "Viewport:\t\t" << static_cast<uint32_t>(Renderer::GetViewport().width)     << "x" << static_cast<int>(Renderer::GetViewport().height)    << endl;
 
         // cpu
         oss_metrics << endl << "CPU" << endl
