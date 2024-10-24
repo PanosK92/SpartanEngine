@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Mesh.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
-#include "../Physics/Car.h"
+#include "../Game/Car.h"
 //============================================
 
 //= NAMESPACES ===============
