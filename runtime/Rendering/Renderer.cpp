@@ -584,7 +584,6 @@ namespace Spartan
             {
                 RHI_Device::QueueWaitAll();
                 RHI_Device::DeletionQueueParse();
-                SP_LOG_INFO("Parsed deletion queue");
             }
 
             // reset dynamic buffer offsets
@@ -734,19 +733,6 @@ namespace Spartan
                     {
                         m_options[Renderer_Option::Antialiasing] = static_cast<float>(Renderer_Antialiasing::Taa);
                         RHI_FidelityFX::FSR3_ResetHistory();
-                    }
-                }
-            }
-            // shadow resolution
-            else if (option == Renderer_Option::ShadowResolution)
-            {
-                const auto& light_entities = m_renderables[Renderer_Entity::Light];
-                for (const auto& light_entity : light_entities)
-                {
-                    auto light = light_entity->GetComponent<Light>();
-                    if (light->IsFlagSet(LightFlags::Shadows))
-                    {
-                        light->RefreshShadowMap();
                     }
                 }
             }
