@@ -599,34 +599,6 @@ namespace Spartan
 
         UpdateConstantBufferFrame(cmd_list_graphics);
         AddLinesToBeRendered();
-
-        // filter environment on directional light change
-        {
-            static Quaternion rotation;
-            static float intensity;
-            static Color color;
-
-            for (const shared_ptr<Entity>& entity : m_renderables[Renderer_Entity::Light])
-            {
-                if (const shared_ptr<Light>& light = entity->GetComponent<Light>())
-                {
-                    if (light->GetLightType() == LightType::Directional)
-                    {
-                        if (light->GetEntity()->GetRotation() != rotation ||
-                            light->GetIntensityLumens() != intensity ||
-                            light->GetColor() != color
-                            )
-                        {
-                            rotation  = light->GetEntity()->GetRotation();
-                            intensity = light->GetIntensityLumens();
-                            color     = light->GetColor();
-
-                            m_environment_mips_to_filter_count = GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount() - 1;
-                        }
-                    }
-                }
-            }
-        }
     }
 
     void Renderer::DrawString(const string& text, const Vector2& position_screen_percentage)
