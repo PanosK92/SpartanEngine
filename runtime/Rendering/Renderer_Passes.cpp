@@ -396,10 +396,10 @@ namespace Spartan
         { 
             // shadow maps
             {
-                //Pass_ShadowMaps(cmd_list_graphics, false);
+                Pass_ShadowMaps(cmd_list_graphics, false);
                 if (mesh_index_transparent != -1)
                 {
-                   // Pass_ShadowMaps(cmd_list_graphics, true);
+                    Pass_ShadowMaps(cmd_list_graphics, true);
                 }
             }
 
