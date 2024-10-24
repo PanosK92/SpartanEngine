@@ -41,7 +41,8 @@ namespace Spartan
     {
         Directional,
         Point,
-        Spot
+        Spot,
+        Max
     };
 
     enum class LightIntensity
@@ -148,7 +149,7 @@ namespace Spartan
 
         // misc
         uint32_t m_flags           = 0;
-        LightType m_light_type     = LightType::Directional;
+        LightType m_light_type     = LightType::Max;
         Color m_color_rgb          = Color::standard_black;;
         float m_temperature_kelvin = 0.0f;
         float m_range              = 0.0f;

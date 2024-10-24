@@ -389,20 +389,17 @@ namespace Spartan
                 light_integration_brdf_speculat_lut_completed = true;
             }
 
-            if (m_environment_mips_to_filter_count > 0)
-            {
-                Pass_Light_Integration_EnvironmentPrefilter(cmd_list_graphics);
-            }
+            Pass_Light_Integration_EnvironmentPrefilter(cmd_list_graphics);
         }
 
         if (shared_ptr<Camera> camera = GetCamera())
         { 
             // shadow maps
             {
-                Pass_ShadowMaps(cmd_list_graphics, false);
+                //Pass_ShadowMaps(cmd_list_graphics, false);
                 if (mesh_index_transparent != -1)
                 {
-                    Pass_ShadowMaps(cmd_list_graphics, true);
+                   // Pass_ShadowMaps(cmd_list_graphics, true);
                 }
             }
 
@@ -1368,26 +1365,42 @@ namespace Spartan
 
     void Renderer::Pass_Light_Integration_EnvironmentPrefilter(RHI_CommandList* cmd_list)
     {
+        // find a directional light, check if it has changed and update the mip count that we need to process
+        if (m_environment_mips_to_filter_count == 0)
+        {
+            static Quaternion rotation;
+            static float intensity;
+            static Color color;
+
+            for (const shared_ptr<Entity>& entity : m_renderables[Renderer_Entity::Light])
+            {
+                if (const shared_ptr<Light>& light = entity->GetComponent<Light>())
+                {
+                    if (light->GetLightType() == LightType::Directional)
+                    {
+                        // filtering is very expensive hence why we try to minimize it
+                        if (!light->GetEntity()->IsMoving() && // has a rest time (a couple of seconds)
+                            (light->GetEntity()->GetRotation() != rotation || light->GetIntensityLumens() != intensity || light->GetColor() != color))
+                        {
+                            rotation  = light->GetEntity()->GetRotation();
+                            intensity = light->GetIntensityLumens();
+                            color     = light->GetColor();
+
+                            m_environment_mips_to_filter_count = GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount() - 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (m_environment_mips_to_filter_count < 1)
+            return;
+
         // acquire resources
         RHI_Texture* tex_environment = GetRenderTarget(Renderer_RenderTarget::skysphere);
         RHI_Shader* shader_c         = GetShader(Renderer_Shader::light_integration_environment_filter_c);
         if (!shader_c || !shader_c->IsCompiled())
             return;
-
-        // this pass is costly and can cause the engine to freeze for a few seconds
-        // so while the light is moving, we don't update the environment map
-        auto& entities = m_renderables[Renderer_Entity::Light];
-        for (shared_ptr<Entity> entity : entities)
-        {
-            if (shared_ptr<Light> light = entity->GetComponent<Light>())
-            {
-                if (light->GetLightType() == LightType::Directional)
-                {
-                    if (light->GetEntity()->IsMoving())
-                        return;
-                }
-            }
-        }
 
         cmd_list->BeginTimeblock("light_integration_environment_filter");
 
