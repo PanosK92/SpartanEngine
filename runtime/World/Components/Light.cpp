@@ -126,16 +126,20 @@ namespace Spartan
     void Light::OnTick()
     {
         // if the light or the camera moves...
+        m_filtering_pending = GetEntity()->IsMoving() ? true : m_filtering_pending;
         bool update = GetEntity()->IsMoving();
-        if (shared_ptr<Camera> camera = Renderer::GetCamera())
-        {
-            if (camera->GetEntity()->IsMoving())
+        if (m_light_type == LightType::Directional)
+        { 
+            if (shared_ptr<Camera> camera = Renderer::GetCamera())
             {
-                update = true;
+                if (camera->GetEntity()->IsMoving())
+                {
+                    update = true;
+                }
             }
         }
 
-        // ... update the matrices
+        // ...update the matrices
         if (update)
         {
             UpdateMatrices();
@@ -171,6 +175,11 @@ namespace Spartan
             {
                 m_texture_color = nullptr;
             }
+        }
+
+        if (m_filtering_pending)
+        { 
+            m_time_since_last_filtering_sec += static_cast<float>(Timer::GetDeltaTimeSec());
         }
     }
 
@@ -224,6 +233,7 @@ namespace Spartan
                 }
             }
 
+            m_filtering_pending = true;
             SP_FIRE_EVENT(EventType::LightOnChanged);
         }
     }
@@ -248,6 +258,7 @@ namespace Spartan
         m_temperature_kelvin = temperature_kelvin;
         m_color_rgb          = Color(temperature_kelvin);
 
+        m_filtering_pending = true;
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
@@ -278,6 +289,7 @@ namespace Spartan
         else if (rgb == Color::light_photo_flash)
             m_temperature_kelvin = 5500.0f;
 
+        m_filtering_pending = true;
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
@@ -334,6 +346,7 @@ namespace Spartan
             m_intensity_lumens = 0.0f;
         }
 
+        m_filtering_pending = true;
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
@@ -342,6 +355,7 @@ namespace Spartan
         m_intensity_lumens = lumens;
         m_intensity        = LightIntensity::custom;
 
+        m_filtering_pending = true;
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
@@ -391,10 +405,22 @@ namespace Spartan
         UpdateMatrices();
     }
 
+    void Light::DisableFilterPending()
+    {
+        m_filtering_pending             = false;
+        m_time_since_last_filtering_sec = 0.0f;
+    }
+
+    bool Light::IsFilteringPending() const
+    {
+        return m_filtering_pending && (m_time_since_last_filtering_sec >= 2.0f);
+    }
+
     void Light::UpdateMatrices()
     {
         ComputeViewMatrix();
         ComputeProjectionMatrix();
+
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
     

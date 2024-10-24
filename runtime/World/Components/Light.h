@@ -131,6 +131,10 @@ namespace Spartan
         void SetIndex(const uint32_t index) { m_index = index; }
         uint32_t GetIndex() const           { return m_index; }
 
+        // filtering
+        void DisableFilterPending();
+        bool IsFilteringPending() const;
+
     private:
         void UpdateMatrices();
         void ComputeViewMatrix();
@@ -148,12 +152,14 @@ namespace Spartan
         std::array<Math::Matrix, 2> m_matrix_projection;
 
         // misc
-        uint32_t m_flags           = 0;
-        LightType m_light_type     = LightType::Max;
-        Color m_color_rgb          = Color::standard_black;;
-        float m_temperature_kelvin = 0.0f;
-        float m_range              = 0.0f;
-        float m_angle_rad          = Math::Helper::DEG_TO_RAD * 30.0f;
-        uint32_t m_index           = 0;
+        uint32_t m_flags                      = 0;
+        LightType m_light_type                = LightType::Max;
+        Color m_color_rgb                     = Color::standard_black;;
+        float m_temperature_kelvin            = 0.0f;
+        float m_range                         = 0.0f;
+        float m_angle_rad                     = Math::Helper::DEG_TO_RAD * 30.0f;
+        uint32_t m_index                      = 0;
+        bool m_filtering_pending              = false;
+        float m_time_since_last_filtering_sec = 0.0f;
     };
 }
