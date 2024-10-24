@@ -140,6 +140,38 @@ namespace Spartan
         {
             UpdateMatrices();
         }
+
+        // create shadow maps
+        {
+            uint32_t resolution     = Renderer::GetOption<uint32_t>(Renderer_Option::ShadowResolution);
+            RHI_Format format_depth = RHI_Format::D32_Float;
+            RHI_Format format_color = RHI_Format::R8G8B8A8_Unorm;
+            uint32_t flags          = RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_ClearBlit;
+            uint32_t array_length   = GetLightType() == LightType::Spot ? 1 : 2;
+            bool resolution_dirty   = (m_texture_depth ? m_texture_depth->GetWidth() : resolution) != resolution;
+
+            // spot light:        1 slice
+            // directional light: 2 slices for cascades
+            // point light:       2 slices for front and back paraboloid
+
+            if ((IsFlagSet(LightFlags::Shadows) && !m_texture_depth) || resolution_dirty)
+            {
+                m_texture_depth = make_unique<RHI_Texture>(RHI_Texture_Type::Type2DArray, resolution, resolution, array_length, 1, format_depth, flags, "light_depth");
+            }
+            else if (!IsFlagSet(LightFlags::Shadows) && m_texture_depth)
+            {
+                m_texture_depth = nullptr;
+            }
+
+            if ((IsFlagSet(LightFlags::ShadowsTransparent) && !m_texture_depth) || resolution_dirty)
+            {
+                m_texture_color = make_unique<RHI_Texture>(RHI_Texture_Type::Type2DArray, resolution, resolution, array_length, 1, format_color, flags, "light_color");
+            }
+            else if (!IsFlagSet(LightFlags::ShadowsTransparent) && m_texture_color)
+            {
+                m_texture_color = nullptr;
+            }
+        }
     }
 
     void Light::Serialize(FileStream* stream)
@@ -172,7 +204,6 @@ namespace Spartan
         {
             m_flags |= static_cast<uint32_t>(flag);
             enabled  = true;
-
         }
         else if (!enable && flag_present)
         {
@@ -193,11 +224,6 @@ namespace Spartan
                 }
             }
 
-            if (flag & LightFlags::Shadows || flag & LightFlags::ShadowsTransparent)
-            {
-                RefreshShadowMap();
-            }
-
             SP_FIRE_EVENT(EventType::LightOnChanged);
         }
     }
@@ -212,11 +238,6 @@ namespace Spartan
         SetColor(get_sensible_color(m_light_type));
         SetRange(get_sensible_range(m_light_type));
         SetIntensity(get_sensible_intensity(m_light_type));
-
-        if (IsFlagSet(Shadows) || IsFlagSet(ShadowsTransparent))
-        {
-            RefreshShadowMap();
-        }
 
         UpdateMatrices();
         World::Resolve();
@@ -479,26 +500,5 @@ namespace Spartan
         }
 
         return IsInViewFrustum(box, index);
-    }
-
-    void Light::RefreshShadowMap()
-    {
-        uint32_t resolution     = Renderer::GetOption<uint32_t>(Renderer_Option::ShadowResolution);
-        RHI_Format format_depth = RHI_Format::D32_Float;
-        RHI_Format format_color = RHI_Format::R8G8B8A8_Unorm;
-        uint32_t flags          = RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_ClearBlit;
-        m_texture_depth         = nullptr;
-        m_texture_color         = nullptr;
-        uint32_t array_length   = GetLightType() == LightType::Spot ? 1 : 2;
-
-        // spot light:        1 slice
-        // directional light: 2 slices for cascades
-        // point light:       2 slices for front and back paraboloid
-
-        m_texture_depth = make_unique<RHI_Texture>(RHI_Texture_Type::Type2DArray, resolution, resolution, array_length, 1, format_depth, flags, "light_depth");
-        if (IsFlagSet(LightFlags::ShadowsTransparent))
-        {
-            m_texture_color = make_unique<RHI_Texture>(RHI_Texture_Type::Type2DArray, resolution, resolution, array_length, 1, format_color, flags, "light_color");
-        }
     }
 }  

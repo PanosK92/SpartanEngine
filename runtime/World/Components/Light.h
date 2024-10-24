@@ -121,7 +121,6 @@ namespace Spartan
         // textures
         RHI_Texture* GetDepthTexture() const { return m_texture_depth.get(); }
         RHI_Texture* GetColorTexture() const { return m_texture_color.get(); }
-        void RefreshShadowMap();
 
         // frustum
         bool IsInViewFrustum(const Math::BoundingBox& bounding_box, const uint32_t index) const;

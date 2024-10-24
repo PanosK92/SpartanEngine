@@ -1598,7 +1598,13 @@ namespace Spartan
 
     bool RHI_Device::DeletionQueueNeedsToParse()
     {
-        return deletion_queue.size() > 5;
+        uint32_t objects_to_delete = 0;
+        for (uint32_t i = 0; i < static_cast<uint32_t>(RHI_Resource_Type::Max); i++)
+        {
+            objects_to_delete += static_cast<uint32_t>(deletion_queue[static_cast<RHI_Resource_Type>(i)].size());
+        }
+
+        return objects_to_delete > 0;
     }
 
     // descriptors

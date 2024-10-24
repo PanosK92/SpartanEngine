@@ -257,6 +257,7 @@ namespace Spartan
     {
         return
             static_cast<uint32_t>(MeshFlags::ImportRemoveRedundantData) |
+            //static_cast<uint32_t>(MeshFlags::ImportLights)              |
             static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale) |
             static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
     }
