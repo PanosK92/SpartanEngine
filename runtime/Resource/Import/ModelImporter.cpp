@@ -55,7 +55,7 @@ namespace Spartan
         bool model_is_gltf       = false;
         const aiScene* scene     = nullptr;
 
-        Matrix convert_matrix(const aiMatrix4x4& transform)
+        Matrix to_matrix(const aiMatrix4x4& transform)
         {
             return Matrix
             (
@@ -66,27 +66,27 @@ namespace Spartan
             );
         }
 
-        Color convert_color(const aiColor4D& ai_color)
+        Color to_color(const aiColor4D& ai_color)
         {
             return Color(ai_color.r, ai_color.g, ai_color.b, ai_color.a);
         }
 
-        Color convert_color(const aiColor3D& ai_color)
+        Color to_color(const aiColor3D& ai_color)
         {
             return Color(ai_color.r, ai_color.g, ai_color.b, 1.0f);
         }
 
-        Vector3 convert_vector3(const aiVector3D& ai_vector)
+        Vector3 to_vector3(const aiVector3D& ai_vector)
         {
             return Vector3(ai_vector.x, ai_vector.y, ai_vector.z);
         }
 
-        Vector2 convert_vector2(const aiVector2D& ai_vector)
+        Vector2 to_vector2(const aiVector2D& ai_vector)
         {
             return Vector2(ai_vector.x, ai_vector.y);
         }
 
-        Quaternion convert_quaternion(const aiQuaternion& ai_quaternion)
+        Quaternion to_quaternion(const aiQuaternion& ai_quaternion)
         {
             return Quaternion(ai_quaternion.x, ai_quaternion.y, ai_quaternion.z, ai_quaternion.w);
         }
@@ -94,7 +94,7 @@ namespace Spartan
         void set_entity_transform(const aiNode* node, shared_ptr<Entity> entity)
         {
             // convert to engine matrix
-            const Matrix matrix_engine = convert_matrix(node->mTransformation);
+            const Matrix matrix_engine = to_matrix(node->mTransformation);
 
             // apply position, rotation and scale
             entity->SetPositionLocal(matrix_engine.GetTranslation());
@@ -102,7 +102,7 @@ namespace Spartan
             entity->SetScaleLocal(matrix_engine.GetScale());
         }
 
-        constexpr void compute_node_count(const aiNode* node, uint32_t* count)
+        void compute_node_count(const aiNode* node, uint32_t* count)
         {
             if (!node)
                 return;
@@ -608,11 +608,11 @@ namespace Spartan
                 light->SetFlag(LightFlags::Volumetric, false);
 
                 // local transform
-                light->GetEntity()->SetPositionLocal(convert_vector3(light_assimp->mPosition));
-                light->GetEntity()->SetRotationLocal(Quaternion::FromLookRotation(convert_vector3(light_assimp->mDirection)));
+                light->GetEntity()->SetPositionLocal(to_vector3(light_assimp->mPosition));
+                light->GetEntity()->SetRotationLocal(Quaternion::FromLookRotation(to_vector3(light_assimp->mDirection)));
 
                 // color
-                light->SetColor(convert_color(light_assimp->mColorDiffuse));
+                light->SetColor(to_color(light_assimp->mColorDiffuse));
 
                 // type
                 if (light_assimp->mType == aiLightSource_DIRECTIONAL)
@@ -644,7 +644,7 @@ namespace Spartan
         const uint32_t index_count  = assimp_mesh->mNumFaces * 3;
 
         // vertices
-        vector<RHI_Vertex_PosTexNorTan> vertices = vector<RHI_Vertex_PosTexNorTan>(vertex_count);
+        vector<RHI_Vertex_PosTexNorTan> vertices(vertex_count);
         {
             for (uint32_t i = 0; i < vertex_count; i++)
             {
@@ -686,7 +686,7 @@ namespace Spartan
         }
 
         // indices
-        vector<uint32_t> indices = vector<uint32_t>(index_count);
+        vector<uint32_t> indices(index_count);
         {
             // get indices by iterating through each face of the mesh.
             for (uint32_t face_index = 0; face_index < assimp_mesh->mNumFaces; face_index++)
@@ -762,7 +762,7 @@ namespace Spartan
                 for (uint32_t k = 0; k < static_cast<uint32_t>(assimp_node_anim->mNumPositionKeys); k++)
                 {
                     const auto time = assimp_node_anim->mPositionKeys[k].mTime;
-                    const auto value = convert_vector3(assimp_node_anim->mPositionKeys[k].mValue);
+                    const auto value = to_vector3(assimp_node_anim->mPositionKeys[k].mValue);
 
                     animation_node.positionFrames.emplace_back(KeyVector{ time, value });
                 }
@@ -771,7 +771,7 @@ namespace Spartan
                 for (uint32_t k = 0; k < static_cast<uint32_t>(assimp_node_anim->mNumRotationKeys); k++)
                 {
                     const auto time = assimp_node_anim->mPositionKeys[k].mTime;
-                    const auto value = convert_quaternion(assimp_node_anim->mRotationKeys[k].mValue);
+                    const auto value = to_quaternion(assimp_node_anim->mRotationKeys[k].mValue);
 
                     animation_node.rotationFrames.emplace_back(KeyQuaternion{ time, value });
                 }
@@ -780,7 +780,7 @@ namespace Spartan
                 for (uint32_t k = 0; k < static_cast<uint32_t>(assimp_node_anim->mNumScalingKeys); k++)
                 {
                     const auto time = assimp_node_anim->mPositionKeys[k].mTime;
-                    const auto value = convert_vector3(assimp_node_anim->mScalingKeys[k].mValue);
+                    const auto value = to_vector3(assimp_node_anim->mScalingKeys[k].mValue);
 
                     animation_node.scaleFrames.emplace_back(KeyVector{ time, value });
                 }

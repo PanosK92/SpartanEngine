@@ -21,8 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const float g_quality_max_distance = 500.0f;
-
 struct gbuffer
 {
     float4 albedo   : SV_Target0;
@@ -48,14 +46,17 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
 
 gbuffer main_ps(gbuffer_vertex vertex)
 {
-    float4 albedo   = GetMaterial().color;
-    float3 normal   = vertex.normal.xyz;
-    float roughness = GetMaterial().roughness;
-    float metalness = GetMaterial().metallness;
-    float occlusion = 1.0f;
-    float emission  = 0.0f;
-    float2 velocity = 0.0f;
-
+    // setup
+    float4 albedo     = GetMaterial().color;
+    float3 normal     = vertex.normal.xyz;
+    float roughness   = GetMaterial().roughness;
+    float metalness   = GetMaterial().metallness;
+    float occlusion   = 1.0f;
+    float emission    = 0.0f;
+    float2 velocity   = 0.0f;
+    Material material = GetMaterial();
+    Surface surface; surface.flags = material.flags;
+    
     // velocity
     {
         // convert to ndc
@@ -70,9 +71,6 @@ gbuffer main_ps(gbuffer_vertex vertex)
         velocity = ndc_to_uv(position_ndc_current) - ndc_to_uv(position_ndc_previous);
     }
 
-    Material material = GetMaterial();
-    Surface surface; surface.flags = material.flags;
- 
     // alpha mask
     float alpha_mask = 1.0f;
     if (surface.has_texture_alpha_mask())
@@ -99,72 +97,52 @@ gbuffer main_ps(gbuffer_vertex vertex)
         albedo.a = 1.0f;
     }
 
-    // compute pixel distance
-    float3 camera_to_pixel_world = buffer_frame.camera_position - vertex.position.xyz;
-    float pixel_distance         = length(camera_to_pixel_world);
-
-    if (pixel_distance < g_quality_max_distance)
+    // normal mapping
+    if (surface.has_texture_normal())
     {
-        // normal mapping
-        if (surface.has_texture_normal())
+        // get tangent space normal and apply the user defined intensity, then transform it to world space
+        float3 normal_sample  = sampling::smart(surface, vertex, material_normal).xyz;
+        float3 tangent_normal = normalize(unpack(normal_sample));
+    
+        // reconstruct z-component as this can be a BC5 two channel normal map
+        tangent_normal.z = sqrt(max(0.0, 1.0 - tangent_normal.x * tangent_normal.x - tangent_normal.y * tangent_normal.y));
+    
+        float normal_intensity     = max(0.012f, GetMaterial().normal);
+        tangent_normal.xy         *= saturate(normal_intensity);
+        float3x3 tangent_to_world  = make_tangent_to_world_matrix(vertex.normal, vertex.tangent);
+        normal                     = normalize(mul(tangent_normal, tangent_to_world).xyz);
+    }
+    
+    // roughness + metalness
+    {
+        float4 roughness_sample = 1.0f;
+        if (surface.has_texture_roughness())
         {
-            // get tangent space normal and apply the user defined intensity, then transform it to world space
-            float3 normal_sample  = sampling::smart(surface, vertex, material_normal).xyz;
-            float3 tangent_normal = normalize(unpack(normal_sample));
+            roughness_sample  = sampling::smart(surface, vertex, material_roughness);
+            roughness        *= roughness_sample.g;
+        }
         
-            // reconstruct z-component as this can be a BC5 two channel normal map
-            tangent_normal.z = sqrt(max(0.0, 1.0 - tangent_normal.x * tangent_normal.x - tangent_normal.y * tangent_normal.y));
+        float is_single_texture_roughness_metalness = surface.has_single_texture_roughness_metalness() ? 1.0f : 0.0f;
+        metalness *= (1.0 - is_single_texture_roughness_metalness) + (roughness_sample.b * is_single_texture_roughness_metalness);
         
-            float normal_intensity     = max(0.012f, GetMaterial().normal);
-            tangent_normal.xy         *= saturate(normal_intensity);
-            float3x3 tangent_to_world  = make_tangent_to_world_matrix(vertex.normal, vertex.tangent);
-            normal                     = normalize(mul(tangent_normal, tangent_to_world).xyz);
-        }
-
-        // roughness + metalness
+        if (surface.has_texture_metalness() && !surface.has_single_texture_roughness_metalness())
         {
-            float4 roughness_sample = 1.0f;
-            if (surface.has_texture_roughness())
-            {
-                roughness_sample  = sampling::smart(surface, vertex, material_roughness);
-                roughness        *= roughness_sample.g;
-            }
-            
-            float is_single_texture_roughness_metalness = surface.has_single_texture_roughness_metalness() ? 1.0f : 0.0f;
-            metalness *= (1.0 - is_single_texture_roughness_metalness) + (roughness_sample.b * is_single_texture_roughness_metalness);
-            
-            if (surface.has_texture_metalness() && !surface.has_single_texture_roughness_metalness())
-            {
-                metalness *= sampling::smart(surface, vertex, material_metalness).r;
-            }
+            metalness *= sampling::smart(surface, vertex, material_metalness).r;
         }
-
-        // occlusion
-        if (surface.has_texture_occlusion())
-        {
-            occlusion = sampling::smart(surface, vertex, material_occlusion).r;
-        }
-
-        // emission
-        if (surface.has_texture_emissive())
-        {
-            float3 emissive_color  = GET_TEXTURE(material_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv).rgb;
-            emission               = luminance(emissive_color);
-            albedo.rgb            += emissive_color;
-        }
-
-        // specular anti-aliasing
-        {
-            static const float strength           = 1.0f;
-            static const float max_roughness_gain = 0.02f;
-
-            float roughness2         = roughness * roughness;
-            float3 dndu              = ddx(normal), dndv = ddy(normal);
-            float variance           = (dot(dndu, dndu) + dot(dndv, dndv));
-            float kernelRoughness2   = min(variance * strength, max_roughness_gain);
-            float filteredRoughness2 = saturate(roughness2 + kernelRoughness2);
-            roughness                = fast_sqrt(filteredRoughness2);
-        }
+    }
+    
+    // occlusion
+    if (surface.has_texture_occlusion())
+    {
+        occlusion = sampling::smart(surface, vertex, material_occlusion).r;
+    }
+    
+    // emission
+    if (surface.has_texture_emissive())
+    {
+        float3 emissive_color  = GET_TEXTURE(material_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv).rgb;
+        emission               = luminance(emissive_color);
+        albedo.rgb            += emissive_color;
     }
 
     // write to g-buffer
