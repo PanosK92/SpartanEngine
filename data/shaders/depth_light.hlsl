@@ -23,37 +23,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-struct vertex
+gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
-    float4 position : SV_POSITION;
-    float2 uv       : TEXCOORD;
-};
-
-vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
-{
-    vertex output;
-    output.uv = input.uv;
-
     float3 f3_value_2 = pass_get_f3_value2();
     uint index_array  = (uint)f3_value_2.y;
-
     Light light;
     light.Build();
 
     gbuffer_vertex vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);
-    output.position       = mul(float4(vertex.position, 1.0f), light.transform[index_array]);
+    vertex.position_clip  = mul(float4(vertex.position, 1.0f), light.transform[index_array]);
 
     // for point lights, output.position is in view space this because we do the paraboloid projection here
     if (light.is_point())
     {
-        float3 ndc      = project_onto_paraboloid(output.position.xyz, light.near, light.far);
-        output.position = float4(ndc, 1.0);
+        float3 ndc      = project_onto_paraboloid(vertex.position.xyz, light.near, light.far);
+        vertex.position_clip = float4(ndc, 1.0f);
     }
 
-    return output;
+    return vertex;
 }
 
-float4 main_ps(vertex input) : SV_Target0
+float4 main_ps(gbuffer_vertex input) : SV_Target0
 {
     // alpha test
     const float3 f3_value     = pass_get_f3_value();
