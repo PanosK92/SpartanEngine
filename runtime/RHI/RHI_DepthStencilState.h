@@ -38,10 +38,10 @@ namespace Spartan
             const RHI_Comparison_Function depth_comparison_function   = RHI_Comparison_Function::LessEqual,
             const bool stencil_test                                   = false,
             const bool stencil_write                                  = false,
-            const RHI_Comparison_Function stencil_comparison_function = RHI_Comparison_Function::Always,
-            const RHI_Stencil_Operation stencil_fail_op               = RHI_Stencil_Operation::Keep,
-            const RHI_Stencil_Operation stencil_depth_fail_op         = RHI_Stencil_Operation::Keep,
-            const RHI_Stencil_Operation stencil_pass_op               = RHI_Stencil_Operation::Replace
+            const RHI_Comparison_Function stencil_comparison_function = RHI_Comparison_Function::Never,
+            const RHI_Stencil_Operation stencil_fail_op               = RHI_Stencil_Operation::Zero,
+            const RHI_Stencil_Operation stencil_depth_fail_op         = RHI_Stencil_Operation::Zero,
+            const RHI_Stencil_Operation stencil_pass_op               = RHI_Stencil_Operation::Zero
         );
         ~RHI_DepthStencilState();
 
