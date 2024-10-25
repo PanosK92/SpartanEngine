@@ -44,7 +44,7 @@ void main_ps(gbuffer_vertex vertex)
     const bool has_albedo     = f3_value.y == 1.0f;
     const float alpha         = f3_value.z;
 
-    float alpha_threshold = get_alpha_threshold(vertex.position, buffer_frame.camera_position); // distance based alpha threshold
+    float alpha_threshold = get_alpha_threshold(vertex.position); // distance based alpha threshold
     bool mask_alpha       = has_alpha_mask && GET_TEXTURE(material_mask).Sample(samplers[sampler_point_wrap], vertex.uv).r <= alpha_threshold;
     bool mask_albedo      = alpha == 1.0f && has_albedo && GET_TEXTURE(material_albedo).Sample(samplers[sampler_anisotropic_wrap], vertex.uv).a <= alpha_threshold;
 
