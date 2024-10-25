@@ -44,6 +44,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     return vertex;
 }
 
+[earlydepthstencil]
 gbuffer main_ps(gbuffer_vertex vertex)
 {
     // setup
