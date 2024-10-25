@@ -532,11 +532,11 @@ static const float3 hemisphere_samples[64] =
 };
 
 static const float ALPHA_THRESHOLD_DEFAULT = 0.6f;
-float get_alpha_threshold(float3 world_position)
+float get_alpha_threshold(float3 position_world, float3 position_observer)
 {
     // closer objects have a lower threshold, while distant objects have a higher threshold
     // this prevents things like foliage from resolving to little or no pixels over a certain distance
-    float pixel_distance  = length(world_position - buffer_frame.camera_position);
+    float pixel_distance  = length(position_world - position_observer);
     float alpha_threshold = ALPHA_THRESHOLD_DEFAULT - (pixel_distance * 0.001f) * (1.0f - ALPHA_THRESHOLD_DEFAULT);
     alpha_threshold       = saturate(alpha_threshold);
 
