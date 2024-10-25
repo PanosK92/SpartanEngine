@@ -36,7 +36,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     // for point lights, output.position is in view space this because we do the paraboloid projection here
     if (light.is_point())
     {
-        float3 ndc           = project_onto_paraboloid(vertex.position.xyz, light.near, light.far);
+        float3 ndc           = project_onto_paraboloid(vertex.position_clip.xyz, light.near, light.far);
         vertex.position_clip = float4(ndc, 1.0f);
     }
 
