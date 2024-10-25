@@ -72,31 +72,17 @@ gbuffer main_ps(gbuffer_vertex vertex)
         velocity = ndc_to_uv(position_ndc_current) - ndc_to_uv(position_ndc_previous);
     }
 
-    // alpha mask
-    float alpha_mask = 1.0f;
-    if (surface.has_texture_alpha_mask())
-    {
-        alpha_mask = GET_TEXTURE(material_mask).Sample(samplers[sampler_point_clamp_edge], vertex.uv).r;
-    }
-
     // albedo
+    float4 albedo_sample = 1.0f;
     if (surface.has_texture_albedo())
     {
-        float4 albedo_sample  = sampling::smart(surface, vertex, material_albedo);
-        alpha_mask            = min(alpha_mask, albedo_sample.a); // treat the albedo as an alpha mask as well
-        albedo_sample.rgb     = srgb_to_linear(albedo_sample.rgb);
-        albedo               *= albedo_sample;
+        albedo_sample      = sampling::smart(surface, vertex, material_albedo);
+        albedo_sample.rgb  = srgb_to_linear(albedo_sample.rgb);
+        albedo            *= albedo_sample;
     }
 
-    // discard masked pixels
-    if (alpha_mask <= get_alpha_threshold(vertex.position))
-        discard;
-
-    // opaque objects should always have a full alpha (subsequent passes rely on this assumption)
-    if (pass_is_opaque() && alpha_mask < 1.0f)
-    {
-        albedo.a = 1.0f;
-    }
+    // alpah testing happens in the depth pre-pass, so here any opaque pixel has an alpha of 1
+    albedo.a = lerp(albedo.a, 1.0f, step(albedo_sample.a, 1.0f) * pass_is_opaque());
 
     // normal mapping
     if (surface.has_texture_normal())
