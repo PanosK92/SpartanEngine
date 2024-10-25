@@ -532,15 +532,24 @@ static const float3 hemisphere_samples[64] =
 };
 
 static const float ALPHA_THRESHOLD_DEFAULT = 0.6f;
-float get_alpha_threshold(float3 position_world, float3 position_observer)
-{
-    // closer objects have a lower threshold, while distant objects have a higher threshold
-    // this prevents things like foliage from resolving to little or no pixels over a certain distance
-    float pixel_distance  = length(position_world - position_observer);
-    float alpha_threshold = ALPHA_THRESHOLD_DEFAULT - (pixel_distance * 0.001f) * (1.0f - ALPHA_THRESHOLD_DEFAULT);
-    alpha_threshold       = saturate(alpha_threshold);
+static const float ALPHA_DISTANCE_SCALE    = 0.01f;
+static const float ALPHA_MAX_DISTANCE_SQ   = 350.0f * 350.0f;
 
-    return alpha_threshold;
+float get_alpha_threshold(float3 position_world)
+{
+    float3 offset           = position_world - buffer_frame.camera_position;
+    float pixel_distance_sq = dot(offset, offset);
+    
+    // calculate threshold modulation up until max distance
+    float adjusted_scale  = ALPHA_DISTANCE_SCALE * ALPHA_DISTANCE_SCALE;
+    float alpha_threshold = ALPHA_THRESHOLD_DEFAULT - 
+                          (pixel_distance_sq * adjusted_scale) * 
+                          (1.0f - ALPHA_THRESHOLD_DEFAULT);
+    
+    // beyond max distance, no alpha testing (threshold = 0)
+    float distance_factor = step(ALPHA_MAX_DISTANCE_SQ, pixel_distance_sq);
+    
+    return saturate(lerp(alpha_threshold, 0.0f, distance_factor));
 }
 
 //= INCLUDES ===========================
