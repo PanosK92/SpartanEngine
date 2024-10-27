@@ -1,4 +1,3 @@
-#include "pch.h"
 // This file is part of meshoptimizer library; see meshoptimizer.h for version/license details
 #include "meshoptimizer.h"
 
@@ -54,11 +53,10 @@ static void rasterize(OverdrawBuffer* buffer, float v1x, float v1y, float v1z, f
 	// flip backfacing triangles to simplify rasterization logic
 	if (sign)
 	{
-		// flipping v2 & v3 preserves depth gradients since they're based on v1
+		// flipping v2 & v3 preserves depth gradients since they're based on v1; only v1z is used below
 		float t;
 		t = v2x, v2x = v3x, v3x = t;
 		t = v2y, v2y = v3y, v3y = t;
-		t = v2z, v2z = v3z, v3z = t;
 
 		// flip depth since we rasterize backfacing triangles to second buffer with reverse Z; only v1z is used below
 		v1z = kViewport - v1z;

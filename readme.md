@@ -54,7 +54,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - Dynamic resolution scaling.
 - Upscaling (FidelityFX FSR 3.1).
 - Temporal anti-aliasing.
-- Breadcrumbs for tracing GPU crashes (FidelityFX Breadcrumbs).
+- Breadcrumbs for tracing GPU crashes on AMD (FidelityFX Breadcrumbs).
 - Advanced shadow features with penumbra and colored translucency.
 - Physical light units (intensity from lumens and color from kelvin).
 - Frustum & occlusion culling (software and hardware hybrid).
