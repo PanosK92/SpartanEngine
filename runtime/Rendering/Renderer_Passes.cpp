@@ -1289,6 +1289,7 @@ namespace Spartan
         SetGbufferTextures(cmd_list);
         cmd_list->SetTexture(Renderer_BindingsUav::tex,              tex_out);
         cmd_list->SetTexture(Renderer_BindingsUav::tex2,             GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
+        cmd_list->SetTexture(Renderer_BindingsUav::tex3,             GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity));
         cmd_list->SetTexture(Renderer_BindingsSrv::tex,              GetStandardTexture(Renderer_StandardTexture::Foam));
         cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,    GetRenderTarget(Renderer_RenderTarget::light_diffuse));
         cmd_list->SetTexture(Renderer_BindingsSrv::light_specular,   GetRenderTarget(Renderer_RenderTarget::light_specular));

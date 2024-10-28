@@ -112,9 +112,9 @@ struct space
         const float EXPOSURE      = 1000000.0f;
         const float FLICKER_SPEED = 0.2f;
 
-        float stars_noise_base = noise(view_direction * SCALE);
-        float stars_noise      = pow(saturate(stars_noise_base), PROBABILITY) * EXPOSURE;
-        stars_noise *          = lerp(0.5, 1.5, noise(mad(view_direction, SCALE * 0.5f, time * FLICKER_SPEED)));
+        float stars_noise_base  = noise(view_direction * SCALE);
+        float stars_noise       = pow(saturate(stars_noise_base), PROBABILITY) * EXPOSURE;
+        stars_noise            *= lerp(0.5, 1.5, noise(mad(view_direction, SCALE * 0.5f, time * FLICKER_SPEED)));
         
         float atmos_luminance  = dot(atmosphere_color, float3(0.299, 0.587, 0.114));
         float intensity        = saturate(0.05f - atmos_luminance);
