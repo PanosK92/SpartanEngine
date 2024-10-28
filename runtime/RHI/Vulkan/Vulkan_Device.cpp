@@ -1596,21 +1596,21 @@ namespace Spartan
         deletion_queue.clear();
     }
 
-   bool RHI_Device::DeletionQueueNeedsToParse()
+    bool RHI_Device::DeletionQueueNeedsToParse()
     {
         const  uint32_t frames_selflife            = 10;
         static uint32_t frames_equilibrium         = 0;
-        static uint32_t previous_objects_to_delete = 0;
+        static uint32_t objects_to_delete_previous = 0;
     
         // count deletions in the queue
-        uint32_t current_objects_to_delete = 0;
+        uint32_t objects_to_delete = 0;
         for (uint32_t i = 0; i < static_cast<uint32_t>(RHI_Resource_Type::Max); i++)
         {
-            current_objects_to_delete += static_cast<uint32_t>(deletion_queue[static_cast<RHI_Resource_Type>(i)].size());
+            objects_to_delete += static_cast<uint32_t>(deletion_queue[static_cast<RHI_Resource_Type>(i)].size());
         }
     
         // check if the number of objects to delete has remained unchanged
-        if (current_objects_to_delete > 0 && current_objects_to_delete == previous_objects_to_delete)
+        if (objects_to_delete > 0 && objects_to_delete == objects_to_delete_previous)
         {
             frames_equilibrium++;
 
@@ -1628,7 +1628,7 @@ namespace Spartan
         }
     
         // update the previous object count to the current count
-        previous_objects_to_delete = current_objects_to_delete;
+        objects_to_delete_previous = objects_to_delete;
     
         return false;
     }
