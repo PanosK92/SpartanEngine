@@ -126,8 +126,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (surface.is_sky())
     {
         light_emissive       = tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(surface.camera_to_pixel), 0).rgb;
-        alpha                = 1.0f;
-        distance_from_camera = FLT_MAX_10;
+        alpha                = 0.0f;
+        distance_from_camera = FLT_MAX_16;
     }
     else
     {
