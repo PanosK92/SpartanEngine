@@ -76,7 +76,7 @@ namespace
             "Hoplite, Sandro Mtchedlidze,  Georgia,          Artstation, https://www.artstation.com/sandromch,                     Identification of lighting & performance issues, N/A",
             "Hoplite, Roman Koshchei,      Ukraine,          X,          https://x.com/roman_koshchei,                             Circular stack for the undo/redo system,         N/A",
 
-            "Sponsor, Kiss Tibor,          Hungary,          GitHub,     https://github.com/kisstp2006,                            N/A,                                             N/A",
+            "Patron,  Kiss Tibor,          Hungary,          GitHub,     https://github.com/kisstp2006,                            N/A,                                             N/A",
         };
 
         vector<string> comma_seperate_contributors(const vector<string>& contributors)
@@ -261,10 +261,35 @@ namespace
                     // group: role explanations
                     ImGui::BeginGroup();
                     {
-                        ImGui::Text("Title explanations");
-                        ImGui::Text("Spartan: Contributions which are considerable.");
-                        ImGui::Text("Hoplite: Contributions which are minor.");
-                        ImGui::Text("Sponsor: Contributions which are monetary.");
+                        ImGui::Text("Roles");
+
+                        // create a table with 3 columns
+                        ImGui::BeginTable("RoleDescriptions", 3, ImGuiTableFlags_Borders, ImVec2(ImGui::GetContentRegionAvail().x * 0.72f, 0.0f));
+                        ImGui::TableSetupColumn("Name");
+                        ImGui::TableSetupColumn("In Ancient Sparta");
+                        ImGui::TableSetupColumn("In The Engine");
+                        ImGui::TableHeadersRow();
+
+                        // add rows to the table
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn();
+                        ImGui::Text("Spartan"); ImGui::TableNextColumn();
+                        ImGui::Text("Elite warriors of Sparta, known for their strength and discipline."); ImGui::TableNextColumn();
+                        ImGui::Text("Contributions which are considerable.");
+                        
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn();
+                        ImGui::Text("Hoplite"); ImGui::TableNextColumn();
+                        ImGui::Text("Armed citizens and infantry soldiers, typically equipped with a spear and shield."); ImGui::TableNextColumn();
+                        ImGui::Text("Contributions which are minor.");
+                        
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn();
+                        ImGui::Text("Patron"); ImGui::TableNextColumn();
+                        ImGui::Text("Financial supporters and benefactors who provide resources for the community."); ImGui::TableNextColumn();
+                        ImGui::Text("Contributions which are monetary.");
+                        
+                        ImGui::EndTable();
                     }
                     ImGui::EndGroup();
                 }
