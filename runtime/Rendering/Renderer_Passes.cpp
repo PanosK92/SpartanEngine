@@ -828,10 +828,10 @@ namespace Spartan
         pso.render_target_color_textures[2]  = tex_material;
         pso.render_target_color_textures[3]  = tex_velocity;
         pso.render_target_depth_texture      = tex_depth;
-        pso.clear_color[0]                   = is_transparent_pass ? rhi_color_load : Color::standard_black;
-        pso.clear_color[1]                   = is_transparent_pass ? rhi_color_load : Color::standard_black;
-        pso.clear_color[2]                   = is_transparent_pass ? rhi_color_load : Color::standard_black;
-        pso.clear_color[3]                   = is_transparent_pass ? rhi_color_load : Color::standard_black;
+        pso.clear_color[0]                   = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
+        pso.clear_color[1]                   = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
+        pso.clear_color[2]                   = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
+        pso.clear_color[3]                   = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
         cmd_list->SetIgnoreClearValues(false);
         cmd_list->SetPipelineState(pso);
 
