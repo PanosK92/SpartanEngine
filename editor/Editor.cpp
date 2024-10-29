@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================================
 #include "Editor.h"
+#include "EditorWindow.h"
 #include "Core/Engine.h"
 #include "Core/Settings.h"
 #include "ImGui/ImGuiExtension.h"
@@ -47,55 +48,15 @@ using namespace std;
 
 namespace
 {
-    float font_size             = 18.0f;
-    float font_scale            = 1.0f;
-    TitleBar* widget_menu_bar   = nullptr;
-    Widget* widget_world        = nullptr;
-    bool window_sponsor_visible = true;
+    float font_size           = 18.0f;
+    float font_scale          = 1.0f;
+    TitleBar* widget_menu_bar = nullptr;
+    Widget* widget_world      = nullptr;
 
     void process_event(Spartan::sp_variant data)
     {
         SDL_Event* event_sdl = static_cast<SDL_Event*>(get<void*>(data));
         ImGui_ImplSDL2_ProcessEvent(event_sdl);
-    }
-
-    void window_sponsor()
-    {
-        if (!window_sponsor_visible)
-            return;
-
-        const float width  = 600.0f;
-        const float height = 240.0f;
-
-        // set position
-        ImVec2 display_size = ImGui::GetIO().DisplaySize;
-        ImVec2 window_pos   = ImVec2((display_size.x - width) * 0.5f, (display_size.y - height) * 0.5f);
-        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
-
-        // set size
-        ImGui::SetNextWindowSize(ImVec2(width, height), ImGuiCond_Always);
-
-        // set focus
-        ImGui::SetNextWindowFocus();
-        if (ImGui::Begin("Support Spartan Engine", &window_sponsor_visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize))
-        {
-            ImGui::TextWrapped(
-                "I cover the costs for Dropbox hosting, a dedicated website, and a GitHub Pro subscription for benefits like assets and package bandwidth. "
-                "If you enjoy the simplicity of running a single script and have everything just work, please consider sponsoring to help keep everything running smoothly!"
-            );
-        
-            ImGui::Separator();
-        
-            float button_width = ImGui::CalcTextSize("Sponsor").x + ImGui::GetStyle().FramePadding.x * 2.0f;
-            float window_width = ImGui::GetWindowSize().x;
-            ImGui::SetCursorPosX((window_width - button_width) * 0.5f);
-
-            if (ImGui::Button("Sponsor"))
-            {
-                Spartan::FileSystem::OpenUrl("https://github.com/sponsors/PanosK92");
-            }
-        }
-        ImGui::End();
     }
 }
 
@@ -153,8 +114,7 @@ Editor::Editor(const std::vector<std::string>& args)
     // register imgui as a third party library (will show up in the about window)
     Spartan::Settings::RegisterThirdPartyLib("ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
 
-    // the sponsor window only shows up if the editor.ini file doesn't exist, which means that this is the first ever run
-    window_sponsor_visible = !Spartan::FileSystem::Exists(io.IniFilename);
+    EditorWindow::Initialize(this);
 }
 
 Editor::~Editor()
@@ -188,7 +148,7 @@ void Editor::Tick()
             // engine
             Spartan::Engine::Tick();
 
-            window_sponsor();
+            EditorWindow::Tick();
 
             // editor
             if (render_editor)

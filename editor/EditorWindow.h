@@ -21,24 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======
-#include "Widget.h"
-//=================
+class Editor;
 
-class TitleBar : public Widget
+class EditorWindow
 {
 public:
-    TitleBar(Editor* editor);
+    static void Initialize(Editor* editor);
+    static void Tick();
 
-    void OnTick() override;
-    void ShowWorldSaveDialog();
-    void ShowWorldLoadDialog();
-
-    static ImVec2 GetPadding() { return { 14.0f, 8.0f }; }
-
-private:
-    void DrawFileDialog() const;
-    void EntryWorld();
-    void EntryView();
-    void EntryHelp();
+    static bool* GetVisiblityWindowAbout();
+    static bool* GetVisiblityWindowShortcuts();
 };
