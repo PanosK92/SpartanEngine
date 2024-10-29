@@ -49,36 +49,69 @@ namespace Spartan
 
             void optimize(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices)
             {
-                // When optimizing a mesh, you should typically feed it through a set of optimizations (the order is important!):
-                // 1. Indexing
-                // 2. (optional) Simplification
-                // 3. Vertex cache optimization
-                // 4. Overdraw optimization
-                // 5. Vertex fetch optimization
-                // 6. Vertex quantization
-                // 7. (optional) Vertex/index buffer compression
-
-                // 3. optimize the order of the indices for vertex cache
-                meshopt_optimizeVertexCache
-                (
-                    &indices[0],    // destination
-                    &indices[0],    // indices
-                    indices.size(), // index count
-                    vertices.size() // vertex count
+                // 1. first, generate a remap table to optimize vertex reuse
+                vector<uint32_t> remap(indices.size());
+                size_t vertex_count = meshopt_generateVertexRemap(
+                    remap.data(),
+                    indices.data(),
+                    indices.size(),
+                    vertices.data(),
+                    vertices.size(),
+                    sizeof(RHI_Vertex_PosTexNorTan)
                 );
-
-                // 4. optimize triangle order to reduce overdraw - needs input from meshopt_optimizeVertexCache
-                meshopt_optimizeOverdraw(&indices[0],                                         // destination
-                                         &indices[0],                                         // indices
-                                         indices.size(),                                      // index count
-                                         reinterpret_cast<const float*>(&vertices[0].pos[0]), // vertex positions
-                                         vertices.size(),                                     // vertex count
-                                         sizeof(RHI_Vertex_PosTexNorTan),                     // vertex positions stride
-                                         1.05f                                                // threshold
+            
+                // 2. create temporary buffers for remapped data
+                vector<RHI_Vertex_PosTexNorTan> vertices_remapped(vertex_count);
+                vector<uint32_t> indices_remapped(indices.size());
+            
+                // 3. remap both buffers
+                meshopt_remapIndexBuffer(
+                    indices_remapped.data(),
+                    indices.data(),
+                    indices.size(),
+                    remap.data()
                 );
-
-                // 5. optimize vertex fetch by reordering vertices based on the new index order
-                meshopt_optimizeVertexFetch(vertices.data(), indices.data(), indices.size(), vertices.data(), vertices.size(), sizeof(RHI_Vertex_PosTexNorTan));
+            
+                meshopt_remapVertexBuffer(
+                    vertices_remapped.data(),
+                    vertices.data(),
+                    vertices.size(),
+                    sizeof(RHI_Vertex_PosTexNorTan),
+                    remap.data()
+                );
+            
+                // 4. optimize vertex cache
+                meshopt_optimizeVertexCache(
+                    indices_remapped.data(),
+                    indices_remapped.data(),
+                    indices_remapped.size(),
+                    vertex_count
+                );
+            
+                // 5. optimize overdraw
+                meshopt_optimizeOverdraw(
+                    indices_remapped.data(),
+                    indices_remapped.data(),
+                    indices_remapped.size(),
+                    reinterpret_cast<const float*>(&vertices_remapped[0].pos[0]),
+                    vertex_count,
+                    sizeof(RHI_Vertex_PosTexNorTan),
+                    1.05f
+                );
+            
+                // 6. optimize vertex fetch
+                meshopt_optimizeVertexFetch(
+                    vertices_remapped.data(),
+                    indices_remapped.data(),
+                    indices_remapped.size(),
+                    vertices_remapped.data(),
+                    vertex_count,
+                    sizeof(RHI_Vertex_PosTexNorTan)
+                );
+            
+                // 7. copy optimized buffers back to the input vectors
+                vertices = std::move(vertices_remapped);
+                indices  = std::move(indices_remapped);
             }
 
             void simplify(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices)
