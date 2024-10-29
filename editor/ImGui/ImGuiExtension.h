@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============================
+//= INCLUDES ======================
 #include <string>
 #include <variant>
 #include "Window.h"
@@ -34,8 +34,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Display/Display.h"
 #include "Source/imgui_internal.h"
 #include "../Editor.h"
-#include "../WidgetsDeferred/IconLoader.h"
-//========================================
+#include "../Widgets/IconLoader.h"
+//=================================
 
 class EditorHelper
 {

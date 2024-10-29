@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============================
+//= INCLUDES =====================
 #include "Widget.h"
 #include <vector>
-#include "../WidgetsDeferred/TextEditor.h"
-//========================================
+#include "../Widgets/TextEditor.h"
+//================================
 
 namespace Spartan
 {
