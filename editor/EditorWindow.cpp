@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Settings.h"
 #include "Widgets/Viewport.h"
 #include "Input/Input.h"
+#include "Game/Game.h"
 //===============================
 
 //= NAMESPACES =====
@@ -415,6 +416,84 @@ namespace
             ImGui::End();
         }
     }
+
+    namespace default_worlds
+    {
+        static const char* worlds[] =
+        {
+            "1. Objects",
+            "2. Car",
+            "3. Doom",
+            "4. Minecraft",
+            "5. Living Room",
+            "6. Subway",
+            "7. Sponza - stress: low",
+            "8. Bistro - stress: medium",
+            "9. Forest - stress: high",
+        };
+
+        bool downloaded              = false;
+        bool window_visible_download = !downloaded;
+        bool visible                 = downloaded;
+
+        void world_on_download_finished()
+        {
+            Spartan::ProgressTracker::SetLoadingStateGlobal(false);
+            visible = true;
+        }
+    
+        void window()
+        {
+            if (window_visible_download)
+            {
+                ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+                ImGui::SetNextWindowSize(ImVec2(300, 150), ImGuiCond_FirstUseEver);
+                if (ImGui::Begin("Default worlds", &window_visible_download, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
+                {
+                    ImGui::Text("No default worlds are present. Would you like to download them?");
+                    ImGui::Separator();
+            
+                    if (ImGui::Button("Yes"))
+                    {
+                        Spartan::FileSystem::Command("python download_assets.py", world_on_download_finished, false);
+                        Spartan::ProgressTracker::SetLoadingStateGlobal(true);
+                        window_visible_download = false;
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("No"))
+                    {
+                        window_visible_download = false;
+                        visible                 = false;
+                    }
+                }
+                ImGui::End();
+            }
+    
+            if (visible)
+            {
+                ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+                if (ImGui::Begin("World selection", &visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
+                {
+                    ImGui::Text("Select the world you would like to load and click \"Ok\"");
+            
+                    // list
+                    static int item_index = 0;
+                    static int item_count = IM_ARRAYSIZE(worlds);
+                    ImGui::PushItemWidth(500.0f * Spartan::Window::GetDpiScale());
+                    ImGui::ListBox("##list_box", &item_index, worlds, item_count, item_count);
+                    ImGui::PopItemWidth();
+            
+                    // button
+                    if (ImGuiSp::button_centered_on_line("Ok"))
+                    {
+                        Spartan::Game::Load(static_cast<Spartan::DefaultWorld>(item_index));
+                        visible = false;
+                    }
+                }
+                ImGui::End();
+            }
+        }
+    }
 }
 
 void EditorWindow::Initialize(Editor* editor_in)
@@ -423,6 +502,10 @@ void EditorWindow::Initialize(Editor* editor_in)
 
     // the sponsor window only shows up if the editor.ini file doesn't exist, which means that this is the first ever run
     sponsor::visible = !Spartan::FileSystem::Exists(ImGui::GetIO().IniFilename);
+
+    default_worlds::downloaded              = !Spartan::FileSystem::IsDirectoryEmpty(Spartan::ResourceCache::GetProjectDirectory());
+    default_worlds::window_visible_download = !default_worlds::downloaded;
+    default_worlds::visible                 =  default_worlds::downloaded;
 }
 
 void EditorWindow::Tick()
@@ -443,6 +526,8 @@ void EditorWindow::Tick()
         {
             shortcuts::window();
         }
+
+        default_worlds::window();
     }
 
     // shortcuts

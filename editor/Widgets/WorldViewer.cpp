@@ -55,95 +55,12 @@ namespace
     ImGuiSp::DragDropPayload g_payload;
     bool popup_rename_entity       = false;
     Spartan::Entity* entity_copied = nullptr;
-
-    namespace default_worlds
-    { 
-        static bool downloaded              = false;
-        static bool window_visible_download = !downloaded;
-        static bool window_visible_list     = downloaded;
-
-        void world_on_download_finished()
-        {
-            Spartan::ProgressTracker::SetLoadingStateGlobal(false);
-            window_visible_list = true;
-        }
-    
-        void window_list(Editor* editor)
-        {
-           if (window_visible_download)
-           {
-               ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-               ImGui::SetNextWindowSize(ImVec2(300, 150), ImGuiCond_FirstUseEver);
-               if (ImGui::Begin("Default worlds", &window_visible_download, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
-               {
-                   ImGui::Text("No default worlds are present. Would you like to download them?");
-                   ImGui::Separator();
-    
-                   if (ImGui::Button("Yes"))
-                   {
-                       Spartan::FileSystem::Command("python download_assets.py", world_on_download_finished, false);
-                       Spartan::ProgressTracker::SetLoadingStateGlobal(true);
-                       window_visible_download = false;
-                   }
-                   ImGui::SameLine();
-                   if (ImGui::Button("No"))
-                   {
-                       window_visible_download = false;
-                       window_visible_list     = false;
-                   }
-               }
-               ImGui::End();
-           }
-    
-            if (window_visible_list)
-            {
-                ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-                if (ImGui::Begin("World selection", &window_visible_list, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
-                {
-                    ImGui::Text("Select the world you would like to load and click \"Ok\"");
-        
-                    // list
-                    static int item_index = 0;
-                    {
-                        static const char* items[] =
-                        {
-                            "1. Objects",
-                            "2. Car",
-                            "3. Doom",
-                            "4. Minecraft",
-                            "5. Living Room",
-                            "6. Subway",
-                            "7. Sponza - stress: low",
-                            "8. Bistro - stress: medium",
-                            "9. Forest - stress: high",
-                        };
-                        static int item_count = IM_ARRAYSIZE(items);
-                 
-                        ImGui::PushItemWidth(500.0f * Spartan::Window::GetDpiScale());
-                        ImGui::ListBox("##list_box", &item_index, items, item_count, item_count);
-                        ImGui::PopItemWidth();
-                    }
-    
-                    // button
-                    if (ImGuiSp::button_centered_on_line("Ok"))
-                    {
-                        Spartan::Game::Load(static_cast<Spartan::DefaultWorld>(item_index));
-                        window_visible_list = false;
-                    }
-                }
-                ImGui::End();
-            }
-        }
-    }
 }
 
 WorldViewer::WorldViewer(Editor* editor) : Widget(editor)
 {
-    m_title                                 = "World";
-    m_flags                                |= ImGuiWindowFlags_HorizontalScrollbar;
-    default_worlds::downloaded              = !Spartan::FileSystem::IsDirectoryEmpty(Spartan::ResourceCache::GetProjectDirectory());
-    default_worlds::window_visible_download  = !default_worlds::downloaded;
-    default_worlds::window_visible_list      =  default_worlds::downloaded;
+    m_title  = "World";
+    m_flags |= ImGuiWindowFlags_HorizontalScrollbar;
 }
 
 void WorldViewer::OnTickVisible()
@@ -167,8 +84,6 @@ void WorldViewer::OnTickVisible()
             }
         }
     }
-
-    default_worlds::window_list(m_editor);
 }
 
 void WorldViewer::TreeShow()

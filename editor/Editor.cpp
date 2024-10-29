@@ -148,8 +148,6 @@ void Editor::Tick()
             // engine
             Spartan::Engine::Tick();
 
-            EditorWindow::Tick();
-
             // editor
             if (render_editor)
             {
@@ -160,8 +158,10 @@ void Editor::Tick()
                     widget->Tick();
                 }
 
-
                 ImGui::End();
+
+                // various windows that don't belnog to a certain widget
+                EditorWindow::Tick();
             }
         }
 
