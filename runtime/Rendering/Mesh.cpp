@@ -135,6 +135,27 @@ namespace Spartan
                 indices = indices_new;
                 indices.resize(index_count);
             }
+
+            void log_mesh_info(const char* name, vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices)
+            {
+                meshopt_VertexCacheStatistics vcs = meshopt_analyzeVertexCache(
+                    indices.data(),
+                    indices.size(),
+                    vertices.size(),
+                    16,
+                    0,
+                    0 
+                );
+                
+                meshopt_VertexFetchStatistics vfs = meshopt_analyzeVertexFetch(
+                    indices.data(),
+                    indices.size(),
+                    vertices.size(),
+                    sizeof(RHI_Vertex_PosTexNorTan)
+                );
+                
+               SP_LOG_INFO("Mesh: %s | Cache miss ratio: %.2f | Transformed vertex ratio: %.2f | Fetch overfetch: %.2f", name, vcs.acmr, vcs.atvr, vfs.overfetch);
+            }
         }
     }
 
@@ -318,6 +339,7 @@ namespace Spartan
     {
         if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessOptimize))
         {
+            //meshoptimizer::log_mesh_info(m_object_name.c_str(), m_vertices, m_indices);
             //meshoptimizer::optimize(m_vertices, m_indices);
             //meshoptimizer::simplify(m_vertices, m_indices);
         }
