@@ -733,7 +733,7 @@ namespace Spartan
                 }
             }
 
-            // 3d model - sponza curtains
+            // 3d model - curtains
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
             {
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
@@ -761,6 +761,15 @@ namespace Spartan
                         material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                     }
                 }
+            }
+
+            // 3d model - ivy
+            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\ivy\\NewSponza_IvyGrowth_glTF.gltf"))
+            {
+                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                entity->SetObjectName("sponza_ivy");
+                entity->SetPosition(Vector3(0.0f, 0.15f, 0.0f));
+                entity->SetScale(scale);
             }
         }
 

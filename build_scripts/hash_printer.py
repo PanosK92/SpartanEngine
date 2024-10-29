@@ -23,8 +23,8 @@ import file_utilities
 
 def print_local_file_hashes():
     local_files = {
-        'libraries': 'third_party/libraries/libraries.7z',
-        'assets': 'binaries/project/assets.7z'
+        'libraries': '../third_party/libraries/libraries.7z',
+        'assets': '../binaries/project/assets.7z'
     }
     
     print("Local file hashes:")
