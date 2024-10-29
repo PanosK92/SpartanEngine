@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============================
+//= INCLUDES =====================
 #include "TitleBar.h"
 #include "../EditorWindow.h"
 #include "Profiler.h"
@@ -32,13 +32,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Properties.h"
 #include "Viewport.h"
 #include "WorldViewer.h"
-#include "../WidgetsDeferred/FileDialog.h"
+#include "../Widgets/FileDialog.h"
 #include "Engine.h"
 #include "Profiling/RenderDoc.h"
 #include <Debugging.h>
 #include "Style.h"
-#include <Input/Input.h>
-//========================================
+//================================
 
 //= NAMESPACES =====
 using namespace std;
