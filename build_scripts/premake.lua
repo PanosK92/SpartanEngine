@@ -231,6 +231,7 @@ function runtime_project_configuration()
             links { "SDL2" }
             links { "Compressonator_MT" }
 			links { "OpenImageDenoise" , "OpenImageDenoise_core", "OpenImageDenoise_utils" }
+			links { "meshoptimizer" }
 			links(API_LIBRARIES[ARG_API_GRAPHICS].release or {})
 			
         -- "Debug"
@@ -247,6 +248,7 @@ function runtime_project_configuration()
                 links { "SDL2_debug" }
                 links { "Compressonator_MT_debug" }
 				links { "OpenImageDenoise_debug" , "OpenImageDenoise_core_debug", "OpenImageDenoise_utils_debug" }
+				links { "meshoptimizer_debug" }
                 links(API_LIBRARIES[ARG_API_GRAPHICS].debug or {})
             else
                 links { "dxcompiler" }
