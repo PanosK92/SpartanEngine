@@ -120,10 +120,11 @@ namespace
             "Hoplite, Nikolas Pattakos,    Greece,           LinkedIn,   https://www.linkedin.com/in/nikolaspattakos/,             GCC compile fixes,                               N/A",
             "Hoplite, Sandro Mtchedlidze,  Georgia,          Artstation, https://www.artstation.com/sandromch,                     Identification of lighting & performance issues, N/A",
             "Hoplite, Roman Koshchei,      Ukraine,          X,          https://x.com/roman_koshchei,                             Circular stack for the undo/redo system,         N/A",
+            "Hoplite, Kristi Kercyku,      Albania,          GitHub,     https://github.com/kristiker,                             Identified g-buffer depth testing issue,         N/A",
         
-            "Patron,  Kiss Tibor,          Hungary,          GitHub,     https://github.com/kisstp2006,                            N/A,                                             N/A",
+            "Patron,  Kiss Tibor,          Hungary,          GitHub,     https://github.com/kisstp2006,                            Sponsor,                                         N/A",
         };
-        
+
         vector<string> comma_seperate_contributors(const vector<string>& contributors)
         {
             vector<string> result;
