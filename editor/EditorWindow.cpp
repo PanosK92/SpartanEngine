@@ -122,7 +122,7 @@ namespace
             "Hoplite, Roman Koshchei,      Ukraine,          X,          https://x.com/roman_koshchei,                             Circular stack for the undo/redo system,         N/A",
             "Hoplite, Kristi Kercyku,      Albania,          GitHub,     https://github.com/kristiker,                             Identified g-buffer depth testing issue,         N/A",
         
-            "Patron,  Kiss Tibor,          Hungary,          GitHub,     https://github.com/kisstp2006,                            Sponsor,                                         N/A",
+            "Patron,  Kiss Tibor,          Hungary,          GitHub,     https://github.com/kisstp2006,                            GitHub Sponsor,                                  N/A",
         };
 
         vector<string> comma_seperate_contributors(const vector<string>& contributors)
@@ -298,19 +298,19 @@ namespace
                     ImGui::TableNextColumn();
                     ImGui::Text("Spartan"); ImGui::TableNextColumn();
                     ImGui::Text("Elite warriors of Sparta, known for their strength and discipline."); ImGui::TableNextColumn();
-                    ImGui::Text("Considerable contributions (new features or revamps).");
+                    ImGui::Text("Considerable contributions.");
                     
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn();
                     ImGui::Text("Hoplite"); ImGui::TableNextColumn();
                     ImGui::Text("Armed citizens and infantry soldiers, typically equipped with a spear and shield."); ImGui::TableNextColumn();
-                    ImGui::Text("Minor contributions (reports or little code tweaks).");
+                    ImGui::Text("Minor contributions.");
                     
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn();
                     ImGui::Text("Patron"); ImGui::TableNextColumn();
                     ImGui::Text("Financial supporters and benefactors who provide resources for the community."); ImGui::TableNextColumn();
-                    ImGui::Text("Monetary contributions (GitHub sponsor).");
+                    ImGui::Text("Monetary contributions.");
                     
                     ImGui::EndTable();
                 }
