@@ -143,7 +143,7 @@ namespace Spartan
         static void Pass_VariableRateShading(RHI_CommandList* cmd_list);
         static void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_Visibility(RHI_CommandList* cmd_list);
-        static void Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass);
+        static void Pass_Depth_Prepass(RHI_CommandList* cmd_list);
         static void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_Ssao(RHI_CommandList* cmd_list);
         static void Pass_Ssr(RHI_CommandList* cmd_list);
