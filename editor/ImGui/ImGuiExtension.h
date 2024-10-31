@@ -135,7 +135,7 @@ namespace ImGuiSp
         return ImGui::Button(label);
     }
 
-    static bool image_button(uint64_t id, Spartan::RHI_Texture* texture, const IconType icon, const Spartan::Math::Vector2& size, bool border, ImVec4 tint = {1,1,1,1})
+    static bool image_button(Spartan::RHI_Texture* texture, const IconType icon, const Spartan::Math::Vector2& size, bool border, ImVec4 tint = {1,1,1,1})
     {
         if (!border)
         {
@@ -148,13 +148,10 @@ namespace ImGuiSp
             texture = IconLoader::GetTextureByType(icon);
         }
 
-        // Compute ID
-        id += static_cast<uint64_t>(icon);
-        id += texture ? reinterpret_cast<uint64_t>(&texture) : 0;
-
+        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
         bool result = ImGui::ImageButton
         (
-            std::to_string(id).c_str(),             // str_id
+            "",                                     // str_id
             reinterpret_cast<ImTextureID>(texture), // user_texture_id
             size,                                   // size
             ImVec2(0, 0),                           // uv0
@@ -162,6 +159,7 @@ namespace ImGuiSp
             ImColor(0, 0, 0, 0),                    // bg_col
             tint                                    // tint_col
         );
+        ImGui::PopID();
 
         if (!border)
         {
@@ -272,7 +270,7 @@ namespace ImGuiSp
         return nullptr;
     }
 
-    // Image slot
+    // image slot
     static void image_slot(Spartan::RHI_Texture* texture_in, const std::function<void(Spartan::RHI_Texture*)>& setter)
     {
         const ImVec2 slot_size  = ImVec2(80 * Spartan::Window::GetDpiScale());
@@ -285,35 +283,26 @@ namespace ImGuiSp
             const ImVec2 pos_image        = ImGui::GetCursorPos();
             const ImVec2 pos_button       = ImVec2(ImGui::GetCursorPosX() + slot_size.x - button_size * 2.0f + 6.0f, ImGui::GetCursorPosY() + 1.0f);
 
-            uint32_t id = static_cast<uint32_t>(pos_button.x + pos_button.y);
-
-            // Remove button
-            if (texture != nullptr)
-            {
-                ImGui::SetCursorPos(pos_button);
-                if (image_button(id, nullptr, IconType::Component_Material_RemoveTexture, button_size, true))
-                {
-                    texture = nullptr;
-                    setter(nullptr);
-                }
-            }
-
-            // Image
+            // image
             ImVec4 colro_tint   = (texture != nullptr) ? ImVec4(1, 1, 1, 1) : ImVec4(0, 0, 0, 0);
             ImVec4 color_border = ImVec4(1, 1, 1, 0.5f);
             ImGui::SetCursorPos(pos_image);
             image(texture, slot_size, colro_tint, color_border);
 
-            // Remove button - Does nothing, drawn again just to be visible
+            // x (remove) button
             if (texture != nullptr)
             {
                 ImGui::SetCursorPos(pos_button);
-                image_button(id, nullptr, IconType::Component_Material_RemoveTexture, button_size, true);
+                if (image_button(nullptr, IconType::Component_Material_RemoveTexture, button_size, true))
+                {
+                    texture = nullptr;
+                    setter(nullptr);
+                }
             }
         }
         ImGui::EndGroup();
 
-        // Drop target
+        // drop target
         if (auto payload = receive_drag_drop_payload(DragPayloadType::Texture))
         {
             try

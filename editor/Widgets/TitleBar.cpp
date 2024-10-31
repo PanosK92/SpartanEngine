@@ -92,7 +92,7 @@ namespace
 
             ImGui::SetCursorPosY(offset_y);
 
-            if (ImGuiSp::image_button(static_cast<uint64_t>(icon_type), nullptr, icon_type, button_size * Spartan::Window::GetDpiScale(), false))
+            if (ImGuiSp::image_button(nullptr, icon_type, button_size * Spartan::Window::GetDpiScale(), false))
             {
                 on_press();
             }
@@ -185,17 +185,17 @@ namespace
             ImGui::SetCursorPosX(size_avail_x - offset_right);
 
             Spartan::Math::Vector2 icon_size = Spartan::Math::Vector2(24.0f, 24.0f);
-            if (ImGuiSp::image_button(0, nullptr, IconType::Window_Minimize, icon_size, false))
+            if (ImGuiSp::image_button(nullptr, IconType::Window_Minimize, icon_size, false))
             {
                 Spartan::Window::Minimize();
             }
 
-            if (ImGuiSp::image_button(1, nullptr, IconType::Window_Maximize, icon_size, false))
+            if (ImGuiSp::image_button(nullptr, IconType::Window_Maximize, icon_size, false))
             {
                 Spartan::Window::Maximize();
             }
 
-            if (ImGuiSp::image_button(2, nullptr, IconType::Window_Close, icon_size, false))
+            if (ImGuiSp::image_button(nullptr, IconType::Window_Close, icon_size, false))
             {
                 Spartan::Window::Close();
             }

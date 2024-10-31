@@ -112,10 +112,9 @@ namespace
             ImGui::SetCursorPosY(original_pen_y + 5.0f);
             ImGuiSp::image(icon_enum, 15,ImGui::Style::color_accent_1);
             ImGui::SameLine(ImGui::GetContentRegionAvail().x - icon_width + 1.0f); ImGui::SetCursorPosY(original_pen_y);
-            uint32_t id = static_cast<uint32_t>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY());
 
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 1.0f, 1.0f, 0.0f));
-            if (ImGuiSp::image_button(id, nullptr, IconType::Component_Options, icon_width, false))
+            if (ImGuiSp::image_button(nullptr, IconType::Component_Options, icon_width, false))
             {
                 context_menu_id = name;
                 ImGui::OpenPopup(context_menu_id.c_str());
@@ -762,13 +761,14 @@ void Properties::ShowMaterial(Material* material) const
                                     max = 2.4f; // diamond
                                 }
 
-                                ImGuiSp::draw_float_wrap("##material_property_slider", &value, 0.004f, min, max);
+                                // this custom slider already has a unique id
+                                ImGuiSp::draw_float_wrap("", &value, 0.004f, min, max);
                             }
                             else
                             {
                                 bool is_metallic = value != 0.0f;
                                 ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
-                                ImGui::Checkbox("##metalness", &is_metallic);
+                                ImGui::Checkbox("", &is_metallic);
                                 ImGui::PopID();
                                 value = is_metallic ? 1.0f : 0.0f;
                             }
