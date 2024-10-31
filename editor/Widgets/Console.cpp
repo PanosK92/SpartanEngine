@@ -70,7 +70,7 @@ void Console::OnTickVisible()
     {
         bool& visibility = m_log_type_visibility[index];
         ImGui::PushStyleColor(ImGuiCol_Button, visibility ? ImGui::GetStyle().Colors[ImGuiCol_Button] : ImGui::GetStyle().Colors[ImGuiCol_FrameBg]);
-        if (ImGuiSp::image_button(0, nullptr, IconType::Console, 15.0f * Spartan::Window::GetDpiScale(), false,m_log_type_color[index]))
+        if (ImGuiSp::image_button(nullptr, IconType::Console, 15.0f * Spartan::Window::GetDpiScale(), false, m_log_type_color[index]))
         {
             visibility = !visibility;
         }
