@@ -577,7 +577,7 @@ namespace Spartan
     void RHI_FidelityFX::Initialize()
     {
     #ifdef _MSC_VER
-        Settings::RegisterThirdPartyLib("AMD FidelityFX", "1.1.1", "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK");
+        Settings::RegisterThirdPartyLib("AMD FidelityFX", "1.1.2", "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK");
 
         // ffx interface
         {

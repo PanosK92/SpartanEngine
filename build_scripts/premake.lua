@@ -203,6 +203,7 @@ function runtime_project_configuration()
             includedirs { "../third_party/pugixml" }
 			includedirs { "../third_party/open_image_denoise" }
 			includedirs { "../third_party/meshoptimizer" }
+			includedirs { "../third_party/dxc" }
             includedirs(API_INCLUDES[ARG_API_GRAPHICS] or {})
         else
             includedirs { "/usr/include/SDL2" }
