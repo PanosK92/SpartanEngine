@@ -96,9 +96,10 @@ namespace Spartan
     {
         #define depth_stencil_state(x) depth_stencil_states[static_cast<uint8_t>(x)]
         // arguments: depth_test, depth_write, depth_function, stencil_test, stencil_write, stencil_function
-        depth_stencil_state(Renderer_DepthStencilState::Off)       = make_shared<RHI_DepthStencilState>(false, false, RHI_Comparison_Function::Never);
-        depth_stencil_state(Renderer_DepthStencilState::Read)      = make_shared<RHI_DepthStencilState>(true,  false, RHI_Comparison_Function::Equal);
-        depth_stencil_state(Renderer_DepthStencilState::ReadWrite) = make_shared<RHI_DepthStencilState>(true,  true,  RHI_Comparison_Function::GreaterEqual);
+        depth_stencil_state(Renderer_DepthStencilState::Off)              = make_shared<RHI_DepthStencilState>(false, false, RHI_Comparison_Function::Never);
+        depth_stencil_state(Renderer_DepthStencilState::ReadEqual)        = make_shared<RHI_DepthStencilState>(true,  false, RHI_Comparison_Function::Equal);
+        depth_stencil_state(Renderer_DepthStencilState::ReadGreaterEqual) = make_shared<RHI_DepthStencilState>(true,  false, RHI_Comparison_Function::GreaterEqual);
+        depth_stencil_state(Renderer_DepthStencilState::ReadWrite)        = make_shared<RHI_DepthStencilState>(true,  true,  RHI_Comparison_Function::GreaterEqual);
     }
 
     void Renderer::CreateRasterizerStates()

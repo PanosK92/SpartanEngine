@@ -302,7 +302,8 @@ namespace Spartan
     enum class Renderer_DepthStencilState
     {
         Off,
-        Read,
+        ReadEqual,
+        ReadGreaterEqual,
         ReadWrite,
         Max
     };
