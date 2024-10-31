@@ -26,14 +26,13 @@ namespace Spartan
     enum class DefaultWorld
     {
         Objects,
-        Car, 
         Doom,
         Minecraft,
         LivingRoom,
         Subway,
         Sponza,
         Bistro,
-        Forest,
+        ForestCar,
         Max
     };
 

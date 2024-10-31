@@ -36,11 +36,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     switch (face_index)
     {
         case 0: direction = float3(1.0f, -(uv.y * 2.0f - 1.0f), -(uv.x * 2.0f - 1.0f)); break;  // +X
-        case 1: direction = float3(-1.0f, -(uv.y * 2.0f - 1.0f), uv.x * 2.0f - 1.0f); break;  // -X
-        case 2: direction = float3(uv.x * 2.0f - 1.0f, 1.0f, uv.y * 2.0f - 1.0f); break;  // +Y
-        case 3: direction = float3(uv.x * 2.0f - 1.0f, -1.0f, -(uv.y * 2.0f - 1.0f)); break;  // -Y
-        case 4: direction = float3(uv.x * 2.0f - 1.0f, -(uv.y * 2.0f - 1.0f), 1.0f); break;  // +Z
-        case 5: direction = float3(-(uv.x * 2.0f - 1.0f), -(uv.y * 2.0f - 1.0f), -1.0f); break;  // -Z
+        case 1: direction = float3(-1.0f, -(uv.y * 2.0f - 1.0f), uv.x * 2.0f - 1.0f); break;    // -X
+        case 2: direction = float3(uv.x * 2.0f - 1.0f, 1.0f, uv.y * 2.0f - 1.0f); break;        // +Y
+        case 3: direction = float3(uv.x * 2.0f - 1.0f, -1.0f, -(uv.y * 2.0f - 1.0f)); break;    // -Y
+        case 4: direction = float3(uv.x * 2.0f - 1.0f, -(uv.y * 2.0f - 1.0f), 1.0f); break;     // +Z
+        case 5: direction = float3(-(uv.x * 2.0f - 1.0f), -(uv.y * 2.0f - 1.0f), -1.0f); break; // -Z
     }
     direction = normalize(direction);
 
