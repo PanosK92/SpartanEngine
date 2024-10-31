@@ -52,7 +52,6 @@ namespace Spartan
         shared_ptr<Entity> m_default_physics_body_camera = nullptr;
         shared_ptr<Entity> m_default_environment         = nullptr;
         shared_ptr<Entity> m_default_light_directional   = nullptr;
-        shared_ptr<Mesh> m_default_model_car             = nullptr;
 
         void create_music(const char* soundtrack_file_path = "project\\music\\jake_chudnow_shona.mp3")
         {
@@ -129,27 +128,25 @@ namespace Spartan
 
         void create_car(const Vector3& position)
         {
-            // create car
+            const float car_scale   = 0.0180f;
+            const float wheel_scale = 0.3f;
+            
+            if (shared_ptr<Mesh> mesh_car = ResourceCache::Load<Mesh>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
             {
-                const float car_scale   = 0.0180f;
-                const float wheel_scale = 0.3f;
-
-                if (m_default_model_car = ResourceCache::Load<Mesh>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
+                shared_ptr<Entity> entity_car = mesh_car->GetRootEntity().lock();
+                entity_car->SetObjectName("geometry");
+                entity_car->SetRotation(Quaternion::FromEulerAngles(90.0f, 0.0f, -180.0f));
+                entity_car->SetScale(Vector3(car_scale));
+            
+                // the car is defined with a weird rotation (probably a bug with sketchfab auto converting to gltf)
+                // so we create a root which has no rotation and we parent the car to it, then attach the physics body to the root
+                shared_ptr<Entity> entity_root = World::CreateEntity();
+                entity_root->SetObjectName("toyota_ae86_sprinter_trueno");
+                entity_root->SetPosition(position);
+                entity_car->SetParent(entity_root);
+            
+                // body
                 {
-                    shared_ptr<Entity> entity_car = m_default_model_car->GetRootEntity().lock();
-                    entity_car->SetObjectName("geometry");
-                    entity_car->SetRotation(Quaternion::FromEulerAngles(90.0f, 0.0f, -180.0f));
-                    entity_car->SetScale(Vector3(car_scale));
-
-                    // the car is defined with a weird rotation (probably a bug with sketchfab auto converting to gltf)
-                    // so we create a root which has no rotation and we parent the car to it, then attach the physics body to the root
-                    shared_ptr<Entity> entity_root = World::CreateEntity();
-                    entity_root->SetObjectName("toyota_ae86_sprinter_trueno");
-                    entity_root->SetPosition(position);
-                    entity_car->SetParent(entity_root);
-
-                    // body
-                    {
                         if (Entity* body = entity_car->GetDescendantByName("CarBody_Windows_0"))
                         {
                             if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
@@ -201,9 +198,9 @@ namespace Spartan
                             }
                         }
                     }
-
-                    // interior
-                    {
+            
+                // interior
+                {
                         if (Material* material = entity_car->GetDescendantByName("Interior_InteriorPlastic_0")->GetComponent<Renderable>()->GetMaterial())
                         {
                             material->SetColor(Color::material_tire);
@@ -220,9 +217,9 @@ namespace Spartan
                         }
 
                     }
-
-                    // lights
-                    {
+            
+                // lights
+                {
                         if (Material* material = entity_car->GetDescendantByName("CarBody_LampCovers_0")->GetComponent<Renderable>()->GetMaterial())
                         {
                             material->SetColor(Color::material_glass);
@@ -237,9 +234,9 @@ namespace Spartan
                             material->SetColor(Color::material_tire);
                         }
                     }
-
-                    // add physics body
-                    {
+            
+                // add physics body
+                {
                         PhysicsBody* physics_body = entity_root->AddComponent<PhysicsBody>().get();
                         physics_body->SetBodyType(PhysicsBodyType::Vehicle);
                         physics_body->SetCenterOfMass(Vector3(0.0f, 1.2f, 0.0f));
@@ -303,32 +300,29 @@ namespace Spartan
                             }
                         }
                     }
-                }
-            }
+            
+                // disable all the wheels since they have weird rotations, we will add our own
+                {
+                        entity_car->GetDescendantByName("FL_Wheel_RimMaterial_0")->SetActive(false);
+                        entity_car->GetDescendantByName("FL_Wheel_Brake Disc_0")->SetActive(false);
+                        entity_car->GetDescendantByName("FL_Wheel_TireMaterial_0")->SetActive(false);
+                        entity_car->GetDescendantByName("FL_Caliper_BrakeCaliper_0")->SetActive(false);
 
-            // disable all the wheels since they have weird rotations, we will add our own
-            {
-                auto entity_car = m_default_model_car->GetRootEntity().lock();
+                        entity_car->GetDescendantByName("FR_Wheel_RimMaterial_0")->SetActive(false);
+                        entity_car->GetDescendantByName("FR_Wheel_Brake Disc_0")->SetActive(false);
+                        entity_car->GetDescendantByName("FR_Wheel_TireMaterial_0")->SetActive(false);
+                        entity_car->GetDescendantByName("FR_Caliper_BrakeCaliper_0")->SetActive(false);
 
-                entity_car->GetDescendantByName("FL_Wheel_RimMaterial_0")->SetActive(false);
-                entity_car->GetDescendantByName("FL_Wheel_Brake Disc_0")->SetActive(false);
-                entity_car->GetDescendantByName("FL_Wheel_TireMaterial_0")->SetActive(false);
-                entity_car->GetDescendantByName("FL_Caliper_BrakeCaliper_0")->SetActive(false);
+                        entity_car->GetDescendantByName("RL_Wheel_RimMaterial_0")->SetActive(false);
+                        entity_car->GetDescendantByName("RL_Wheel_Brake Disc_0")->SetActive(false);
+                        entity_car->GetDescendantByName("RL_Wheel_TireMaterial_0")->SetActive(false);
+                        entity_car->GetDescendantByName("RL_Caliper_BrakeCaliper_0")->SetActive(false);
 
-                entity_car->GetDescendantByName("FR_Wheel_RimMaterial_0")->SetActive(false);
-                entity_car->GetDescendantByName("FR_Wheel_Brake Disc_0")->SetActive(false);
-                entity_car->GetDescendantByName("FR_Wheel_TireMaterial_0")->SetActive(false);
-                entity_car->GetDescendantByName("FR_Caliper_BrakeCaliper_0")->SetActive(false);
-
-                entity_car->GetDescendantByName("RL_Wheel_RimMaterial_0")->SetActive(false);
-                entity_car->GetDescendantByName("RL_Wheel_Brake Disc_0")->SetActive(false);
-                entity_car->GetDescendantByName("RL_Wheel_TireMaterial_0")->SetActive(false);
-                entity_car->GetDescendantByName("RL_Caliper_BrakeCaliper_0")->SetActive(false);
-
-                entity_car->GetDescendantByName("RR_Wheel_RimMaterial_0")->SetActive(false);
-                entity_car->GetDescendantByName("RR_Wheel_Brake Disc_0")->SetActive(false);
-                entity_car->GetDescendantByName("RR_Wheel_TireMaterial_0")->SetActive(false);
-                entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0")->SetActive(false);
+                        entity_car->GetDescendantByName("RR_Wheel_RimMaterial_0")->SetActive(false);
+                        entity_car->GetDescendantByName("RR_Wheel_Brake Disc_0")->SetActive(false);
+                        entity_car->GetDescendantByName("RR_Wheel_TireMaterial_0")->SetActive(false);
+                        entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0")->SetActive(false);
+                    }
             }
         }
 
@@ -1035,11 +1029,10 @@ namespace Spartan
 
     void Game::Shutdown()
     {
-        m_default_terrain             = nullptr;
         m_default_physics_body_camera = nullptr;
         m_default_environment         = nullptr;
         m_default_light_directional   = nullptr;
-        m_default_model_car           = nullptr;
+        m_default_terrain             = nullptr;
     }
 
     void Game::Tick()
