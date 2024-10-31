@@ -22,17 +22,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =================================
-#include <array>
 #include <atomic>
 #include "RHI_Definitions.h"
 #include "RHI_PipelineState.h"
-#include "RHI_Descriptor.h"
 #include "../Rendering/Renderer_Definitions.h"
 //============================================
 
 namespace Spartan
 {
-    // forward declarations
+    // forward declaration
     namespace Math { class Rectangle; }
 
     enum class RHI_CommandListState : uint8_t

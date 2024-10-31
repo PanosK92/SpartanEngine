@@ -34,7 +34,7 @@ API_INCLUDES = {
 	vulkan_windows = {
         "../third_party/spirv_cross",
         "../third_party/vulkan",
-        "../third_party/amd_fidelityfx"
+        "../third_party/fidelityfx"
     }
 }
 
@@ -192,7 +192,6 @@ function runtime_project_configuration()
 
         -- Includes
         if os.target() == "windows" then
-            includedirs { "../third_party" }
             includedirs { "../third_party/sdl/sdl" }
             includedirs { "../third_party/assimp" }
             includedirs { "../third_party/bullet" }
