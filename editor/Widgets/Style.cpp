@@ -165,7 +165,7 @@ void Style::OnTickVisible()
         }
     }
 
-    if (ImGui::BeginChild("StyleColorSelectChild", ImVec2(-FLT_MIN, 0.0f), ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY)){
+    if (ImGui::BeginChild("StyleColorSelectChild", ImVec2(-FLT_MIN, 0.0f), ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY)){
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {8,8});
 
         if(ImGui::ColorEdit4("Background 1",&ImGui::Style::bg_color_1.x)){

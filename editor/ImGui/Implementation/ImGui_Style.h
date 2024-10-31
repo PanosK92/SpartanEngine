@@ -205,7 +205,7 @@ namespace ImGui::Style
         style.Colors[ImGuiCol_SliderGrabActive]          = color_accent_1;
         style.Colors[ImGuiCol_ResizeGripActive]          = color_accent_1;
         style.Colors[ImGuiCol_DragDropTarget]            = color_accent_1;
-        style.Colors[ImGuiCol_NavHighlight]              = color_accent_1;
+        style.Colors[ImGuiCol_NavCursor]                 = color_accent_1;
         style.Colors[ImGuiCol_NavWindowingHighlight]     = color_accent_1;
         style.Colors[ImGuiCol_TabSelectedOverline]       = color_accent_1;
         style.Colors[ImGuiCol_TabDimmedSelectedOverline] = color_accent_1;

@@ -41,6 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_RasterizerState.h"
 #include "RHI/RHI_DepthStencilState.h"
 #include <Debugging.h>
+#include <SDL_video.h>
 //======================================
 
 namespace ImGui::RHI
@@ -167,7 +168,7 @@ namespace ImGui::RHI
 
             // upload texture to graphics system
             g_font_atlas = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, atlas_width, atlas_height, 1, 1, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv, "imgui_font_atlas", texture_data);
-            io.Fonts->TexID = static_cast<ImTextureID>(g_font_atlas.get());
+            io.Fonts->TexID = reinterpret_cast<ImTextureID>(g_font_atlas.get());
         }
 
         // setup back-end capabilities flags
@@ -326,7 +327,7 @@ namespace ImGui::RHI
                                 bool is_texture_visualised = false;
                                 bool is_frame_texture      = false;
 
-                                if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
+                                if (RHI_Texture* texture = reinterpret_cast<RHI_Texture*>(pcmd->TextureId))
                                 {
                                     is_frame_texture = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output)->GetObjectId() == texture->GetObjectId();
 
@@ -398,14 +399,15 @@ namespace ImGui::RHI
 
     void window_create(ImGuiViewport* viewport)
     {
-        // note: platformHandle is SDL_Window, PlatformHandleRaw is HWND
-
         SP_ASSERT_MSG(viewport->PlatformHandle != nullptr, "Platform handle is invalid");
+
+        // note: platformHandle is SDL_Window, PlatformHandleRaw is HWND
+        SDL_Window* sdl_window = SDL_GetWindowFromID(static_cast<uint32_t>(reinterpret_cast<uintptr_t>(viewport->PlatformHandle)));
 
         WindowData* window = new WindowData();
         window->swapchain = make_shared<RHI_SwapChain>
         (
-            viewport->PlatformHandle,
+            sdl_window, 
             static_cast<uint32_t>(viewport->Size.x),
             static_cast<uint32_t>(viewport->Size.y),
             RHI_Present_Mode::Immediate,

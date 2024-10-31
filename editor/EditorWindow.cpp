@@ -400,8 +400,6 @@ namespace
                 const float col_b = 20.0f;
 
                 {
-
-
                     ImGui::NewLine();
                     ImGui::SameLine(col_b);
                     ImGui::Text("Shortcut");
