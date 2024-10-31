@@ -85,7 +85,7 @@ namespace
         
                 ImVec2 uv0 = ImVec2(region_x / virtual_width, region_y / virtual_height);
                 ImVec2 uv1 = ImVec2((region_x + region_sz) / virtual_width, (region_y + region_sz) / virtual_height);
-                ImGui::Image(static_cast<ImTextureID>(texture), ImVec2(region_sz * zoom, region_sz * zoom), uv0, uv1, tint_col, border_col);
+                ImGui::Image(reinterpret_cast<ImTextureID>(texture), ImVec2(region_sz * zoom, region_sz * zoom), uv0, uv1, tint_col, border_col);
             }
             ImGui::EndTooltip();
         }

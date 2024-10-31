@@ -154,13 +154,13 @@ namespace ImGuiSp
 
         bool result = ImGui::ImageButton
         (
-            std::to_string(id).c_str(),        // str_id
-            static_cast<ImTextureID>(texture), // user_texture_id
-            size,                              // size
-            ImVec2(0, 0),                      // uv0
-            ImVec2(1, 1),                      // uv1
-            ImColor(0, 0, 0, 0),               // bg_col
-            tint                               // tint_col
+            std::to_string(id).c_str(),             // str_id
+            reinterpret_cast<ImTextureID>(texture), // user_texture_id
+            size,                                   // size
+            ImVec2(0, 0),                           // uv0
+            ImVec2(1, 1),                           // uv1
+            ImColor(0, 0, 0, 0),                    // bg_col
+            tint                                    // tint_col
         );
 
         if (!border)
@@ -174,7 +174,7 @@ namespace ImGuiSp
     static void image(const Icon& icon, const float size)
     {
         ImGui::Image(
-            static_cast<ImTextureID>(icon.GetTexture()),
+            reinterpret_cast<ImTextureID>(icon.GetTexture()),
             ImVec2(size, size),
             ImVec2(0, 0),
             ImVec2(1, 1),
@@ -191,7 +191,7 @@ namespace ImGuiSp
         }
 
         ImGui::Image(
-            static_cast<ImTextureID>(texture),
+            reinterpret_cast<ImTextureID>(texture),
             size,
             ImVec2(0, 0),
             ImVec2(1, 1),
@@ -208,7 +208,7 @@ namespace ImGuiSp
     static void image(Spartan::RHI_Texture* texture, const ImVec2& size, const ImVec4& tint = default_tint, const ImColor& border = ImColor(0, 0, 0, 0))
     {
         ImGui::Image(
-            static_cast<ImTextureID>(texture),
+            reinterpret_cast<ImTextureID>(texture),
             size,
             ImVec2(0, 0),
             ImVec2(1, 1),
@@ -220,7 +220,7 @@ namespace ImGuiSp
     static void image(const IconType icon, const float size)
     {
         ImGui::Image(
-            static_cast<void*>(IconLoader::GetTextureByType(icon)),
+            reinterpret_cast<ImTextureID>(IconLoader::GetTextureByType(icon)),
             ImVec2(size, size),
             ImVec2(0, 0),
             ImVec2(1, 1),
@@ -232,7 +232,7 @@ namespace ImGuiSp
     static void image(const IconType icon, const float size,const ImVec4 tint)
     {
         ImGui::Image(
-            static_cast<void*>(IconLoader::GetTextureByType(icon)),
+            reinterpret_cast<ImTextureID>(IconLoader::GetTextureByType(icon)),
             ImVec2(size, size),
             ImVec2(0, 0),
             ImVec2(1, 1),
