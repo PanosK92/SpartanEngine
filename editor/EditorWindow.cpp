@@ -423,14 +423,13 @@ namespace
         const char* worlds[] =
         {
             "1. Objects",
-            "2. Car",
-            "3. Doom",
-            "4. Minecraft",
-            "5. Living Room",
-            "6. Subway",
-            "7. Sponza - stress: low",
-            "8. Bistro - stress: medium",
-            "9. Forest - stress: high",
+            "2. Doom",
+            "3. Minecraft",
+            "4. Living Room",
+            "5. Subway",
+            "6. Sponza HQ (demanding)",
+            "7. Bistro Exterior & Interior (demanding)",
+            "8. Forest Car (very demanding)",
         };
         int world_index = 0;
 
