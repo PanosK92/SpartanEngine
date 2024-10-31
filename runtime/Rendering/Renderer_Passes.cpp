@@ -403,28 +403,25 @@ namespace Spartan
                 }
             }
 
-            // render resolution
+            // render at render resolution (only opaques)
             {
-                // opaque
-                {
-                    bool is_transparent = false;
-                    Pass_Visibility(cmd_list_graphics);
-                    Pass_Depth_Prepass(cmd_list_graphics);
-                    Pass_GBuffer(cmd_list_graphics, is_transparent);
-                    Pass_Ssr(cmd_list_graphics);
-                    Pass_Ssao(cmd_list_graphics);
-                    Pass_Sss(cmd_list_graphics);
-                    Pass_Light(cmd_list_graphics, is_transparent);             // compute diffuse and specular buffers
-                    Pass_Light_GlobalIllumination(cmd_list_graphics);          // compute global illumination
-                    Pass_Light_Composition(cmd_list_graphics, is_transparent); // compose all light (diffuse, specular, etc.)
-                    Pass_Light_ImageBased(cmd_list_graphics, is_transparent);  // apply IBL (skysphere, ssr, global illumination etc.)
-                }
+                bool is_transparent = false;
+                Pass_Visibility(cmd_list_graphics);
+                Pass_Depth_Prepass(cmd_list_graphics);
+                Pass_GBuffer(cmd_list_graphics, is_transparent);
+                Pass_Ssr(cmd_list_graphics);
+                Pass_Ssao(cmd_list_graphics);
+                Pass_Sss(cmd_list_graphics);
+                Pass_Light(cmd_list_graphics, is_transparent);             // compute diffuse and specular buffers
+                Pass_Light_GlobalIllumination(cmd_list_graphics);          // compute global illumination
+                Pass_Light_Composition(cmd_list_graphics, is_transparent); // compose all light (diffuse, specular, etc.)
+                Pass_Light_ImageBased(cmd_list_graphics, is_transparent);  // apply IBL (skysphere, ssr, global illumination etc.)
             }
 
-            // render to output resolution
+            // upscale to output resolution
             Pass_Upscale(cmd_list_graphics);
 
-            // output resolution
+            // render at output resolution
             {
                 // transparent
                 if (mesh_index_transparent != -1)
