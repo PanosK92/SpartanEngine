@@ -457,22 +457,34 @@ namespace
                     ImGui::Text("No default worlds are present. Would you like to download them?");
                     ImGui::Separator();
             
-                    if (ImGui::Button("Yes"))
+                    // calculate the offset to center the group
+                    float button_width = ImGui::CalcTextSize("Yes").x + ImGui::CalcTextSize("No").x + ImGui::GetStyle().ItemSpacing.x * 3.0f;
+                    float offset_x     = (ImGui::GetContentRegionAvail().x - button_width) * 0.5f;
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
+            
+                    // group yes and no buttons
+                    ImGui::BeginGroup();
                     {
-                        Spartan::FileSystem::Command("python download_assets.py", world_on_download_finished, false);
-                        Spartan::ProgressTracker::SetLoadingStateGlobal(true);
-                        visible_download = false;
+                        if (ImGui::Button("Yes"))
+                        {
+                            Spartan::FileSystem::Command("python download_assets.py", world_on_download_finished, false);
+                            Spartan::ProgressTracker::SetLoadingStateGlobal(true);
+                            visible_download = false;
+                        }
+            
+                        ImGui::SameLine();
+            
+                        if (ImGui::Button("No"))
+                        {
+                            visible_download = false;
+                            visible          = false;
+                        }
                     }
-                    ImGui::SameLine();
-                    if (ImGui::Button("No"))
-                    {
-                        visible_download = false;
-                        visible                 = false;
-                    }
+                    ImGui::EndGroup();
                 }
                 ImGui::End();
             }
-    
+
             if (visible)
             {
                 ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
