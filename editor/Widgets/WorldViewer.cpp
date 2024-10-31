@@ -93,37 +93,22 @@ void WorldViewer::TreeShow()
     bool is_in_game_mode = Spartan::Engine::IsFlagSet(Spartan::EngineMode::Playing);
     ImGui::BeginDisabled(is_in_game_mode);
     {
-        if (ImGui::TreeNodeEx("Root", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth))
+        // iterate over root entities directly, omitting the root node
+        vector<shared_ptr<Spartan::Entity>> root_entities = Spartan::World::GetRootEntities();
+        for (const shared_ptr<Spartan::Entity>& entity : root_entities)
         {
-            // dropping on the scene node should unparent the entity
-            if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Entity))
+            if (entity->IsActive())
             {
-                const uint64_t entity_id = get<uint64_t>(payload->data);
-                if (const shared_ptr<Spartan::Entity>& dropped_entity = Spartan::World::GetEntityById(entity_id))
-                {
-                    shared_ptr<Spartan::Entity> null = nullptr;
-                    dropped_entity->SetParent(null);
-                }
+                TreeAddEntity(entity);
             }
+        }
 
-            vector<shared_ptr<Spartan::Entity>> root_entities = Spartan::World::GetRootEntities();
-            for (const shared_ptr<Spartan::Entity>& entity : root_entities)
-            {
-                if (entity->IsActive())
-                {
-                    TreeAddEntity(entity);
-                }
-            }
-
-            // if we have been expanding to show an entity and no more expansions are taking place, we reached it
-            // so, we stop expanding and we bring it into view
-            if (m_expand_to_selection && !m_expanded_to_selection)
-            {
-                ImGui::ScrollToBringRectIntoView(m_window, m_selected_entity_rect);
-                m_expand_to_selection = false;
-            }
-
-            ImGui::TreePop();
+        // if we have been expanding to show an entity and no more expansions are taking place, we reached it
+        // so, we stop expanding and we bring it into view
+        if (m_expand_to_selection && !m_expanded_to_selection)
+        {
+            ImGui::ScrollToBringRectIntoView(m_window, m_selected_entity_rect);
+            m_expand_to_selection = false;
         }
     }
     ImGui::EndDisabled();
