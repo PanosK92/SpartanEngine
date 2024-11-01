@@ -24,20 +24,33 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 /*------------------------------------------------------------------------------
-    FOG - RADIAL
+    FOG - ATMOSPHERIC
 ------------------------------------------------------------------------------*/
-float3 got_fog_radial(const float camera_to_pixel_length, const float3 camera_position, const float directional_light_intensity)
+float3 got_fog_atmospheric(const float camera_to_pixel_length, const float pixel_height_world, const float directional_light_intensity)
 {
     // parameters
-    const float g_fog_radius    = 150.0f; // how far away from the camera the fog starts
-    const float g_fog_fade_rate = 0.05f;  // higher values make the fog fade in more abruptly
+    const float g_fog_radius     = 150.0f;  // how far away from the camera the fog starts
+    const float g_fog_fade_rate  = 0.05f;   // higher values make the fog fade in more abruptly
+    const float g_fog_max_height = 200.0f;  // maximum height where fog is visible
+    const float g_fog_min_height = -50.0f;  // height where fog starts to appear
+    const float g_height_falloff = 1.5f;    // how quickly fog fades with height (higher = sharper transition)
     
+    // calculate basic distance-based fog
     float distance_from_camera = camera_to_pixel_length - g_fog_radius;
-    float distance_factor      = max(0.0f, distance_from_camera) / g_fog_radius; // normalize the distance
-    float fog_factor           = 1.0f - exp(-g_fog_fade_rate * distance_factor); // exponential fog factor
-    float fog_density          = pass_get_f3_value().y;
+    float distance_factor      = max(0.0f, distance_from_camera) / g_fog_radius;
+    float fog_factor           = 1.0f - exp(-g_fog_fade_rate * distance_factor);
     
-    return fog_factor * fog_density * directional_light_intensity;
+    // calculate height factor
+    float height_factor = saturate((g_fog_max_height - pixel_height_world) / (g_fog_max_height - g_fog_min_height));
+    
+    // apply height-based falloff
+    height_factor = pow(height_factor, g_height_falloff);
+    
+    // combine height and distance factors
+    float final_fog_factor = fog_factor * height_factor;
+    float fog_density      = pass_get_f3_value().y;
+    
+    return final_fog_factor * fog_density * directional_light_intensity;
 }
 
 /*------------------------------------------------------------------------------
@@ -114,3 +127,4 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
 
     return fog * light.intensity * light.color;
 }
+
