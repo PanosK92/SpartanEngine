@@ -816,10 +816,10 @@ namespace Spartan
         pso.render_target_color_textures[2]  = tex_material;
         pso.render_target_color_textures[3]  = tex_velocity;
         pso.render_target_depth_texture      = tex_depth;
-        pso.clear_color[0]                   = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
-        pso.clear_color[1]                   = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
-        pso.clear_color[2]                   = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
-        pso.clear_color[3]                   = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
+        pso.clear_color[0]                   = Color::standard_transparent;
+        pso.clear_color[1]                   = Color::standard_transparent;
+        pso.clear_color[2]                   = Color::standard_transparent;
+        pso.clear_color[3]                   = Color::standard_transparent;
         cmd_list->SetIgnoreClearValues(false);
         cmd_list->SetPipelineState(pso);
 
@@ -1175,7 +1175,11 @@ namespace Spartan
                 // push pass constants
                 m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
                 m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), 0.0f, 0.0f);
-                m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Fog), GetOption<float>(Renderer_Option::ShadowResolution), 0.0f);
+                m_pcb_pass_cpu.set_f3_value(
+                    GetOption<float>(Renderer_Option::Fog),
+                    GetOption<float>(Renderer_Option::ShadowResolution),
+                    static_cast<float>(GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount())
+                );
                 cmd_list->PushConstants(m_pcb_pass_cpu);
                 
                 cmd_list->Dispatch(tex_diffuse);
@@ -1257,6 +1261,7 @@ namespace Spartan
         RHI_Shader* shader_c        = GetShader(Renderer_Shader::light_composition_c);
         RHI_Texture* tex_refraction = GetRenderTarget(Renderer_RenderTarget::frame_output);
         RHI_Texture* tex_out        = GetRenderTarget(Renderer_RenderTarget::frame_render);
+        RHI_Texture* tex_skysphere  = GetRenderTarget(Renderer_RenderTarget::skysphere);
         if (!shader_c->IsCompiled())
             return;
 
@@ -1270,7 +1275,7 @@ namespace Spartan
 
         // push pass constants
         m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
-        m_pcb_pass_cpu.set_f3_value(static_cast<float>(tex_refraction->GetMipCount()), GetOption<float>(Renderer_Option::Fog), 0.0f);
+        m_pcb_pass_cpu.set_f3_value(static_cast<float>(tex_skysphere->GetMipCount()), GetOption<float>(Renderer_Option::Fog), 0.0f);
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
         // set textures
@@ -1284,7 +1289,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric, GetRenderTarget(Renderer_RenderTarget::light_volumetric));
         cmd_list->SetTexture(Renderer_BindingsSrv::frame,            tex_refraction);
         cmd_list->SetTexture(Renderer_BindingsSrv::ssao,             GetRenderTarget(Renderer_RenderTarget::ssao));
-        cmd_list->SetTexture(Renderer_BindingsSrv::environment,      GetRenderTarget(Renderer_RenderTarget::skysphere));
+        cmd_list->SetTexture(Renderer_BindingsSrv::environment,      tex_skysphere);
 
         // render
         cmd_list->Dispatch(tex_out);

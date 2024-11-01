@@ -33,7 +33,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float4 color = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0);
     
     // accumulate only non opaque pixels
-    if (color.a < 1.0f)
+    if (color.a > 0.0f && color.a < 1.0f)
     {
         tex_uav[thread_id.xy] = float4(color.rgb, 1.0f);
     }
