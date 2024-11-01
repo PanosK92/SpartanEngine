@@ -1144,6 +1144,10 @@ namespace Spartan
         pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
+        // set these once
+        cmd_list->SetTexture(Renderer_BindingsSrv::sss,         GetRenderTarget(Renderer_RenderTarget::sss));
+        cmd_list->SetTexture(Renderer_BindingsSrv::environment, GetRenderTarget(Renderer_RenderTarget::skysphere));
+
         // iterate through all the lights
         for (uint32_t light_index = 0; light_index < light_count; light_index++)
         {
@@ -1156,7 +1160,6 @@ namespace Spartan
             cmd_list->SetTexture(Renderer_BindingsUav::tex2,        tex_specular);
             cmd_list->SetTexture(Renderer_BindingsUav::tex3,        tex_shadow);
             cmd_list->SetTexture(Renderer_BindingsUav::tex4,        tex_volumetric);
-            cmd_list->SetTexture(Renderer_BindingsSrv::environment, GetRenderTarget(Renderer_RenderTarget::skysphere));
 
             if (shared_ptr<Light> light = entities[light_index]->GetComponent<Light>())
             {
@@ -1170,7 +1173,6 @@ namespace Spartan
 
                     cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, tex_depth);
                     cmd_list->SetTexture(Renderer_BindingsSrv::light_color, tex_color);
-                    cmd_list->SetTexture(Renderer_BindingsSrv::sss,         GetRenderTarget(Renderer_RenderTarget::sss));
                 }
 
                 // push pass constants

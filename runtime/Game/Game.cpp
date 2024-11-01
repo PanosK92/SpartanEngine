@@ -608,7 +608,7 @@ namespace Spartan
                             material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\vegetation_tree_2\\branches_normal.png");
                             material->SetTexture(MaterialTexture::Occlusion,             "project\\terrain\\vegetation_tree_2\\branches_ao.png");
                             material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
-                            material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                            material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
                             material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
                             material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
                         }
@@ -631,7 +631,7 @@ namespace Spartan
                             Material* material = renderable->GetMaterial();
                             material->SetColor(Color::standard_white);
                             material->SetTexture(MaterialTexture::Color,                  "project\\terrain\\vegetation_plant_1\\ormbunke.png");
-                            material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                            material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
                             material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
                             material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
                             material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
@@ -716,19 +716,19 @@ namespace Spartan
                     if (Material* material = entity->GetDescendantByName("curtain_03_2")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
                     }
 
                     if (Material* material = entity->GetDescendantByName("curtain_03_3")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
                     }
 
                     if (Material* material = entity->GetDescendantByName("curtain_hanging_06_3")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
                     }
                 }
             }
