@@ -23,9 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-// ideally I fetch this from my atmospheric texture
-static const float3 g_atmospheric_color = float3(0.4f, 0.4f, 0.8f);
-
 /*------------------------------------------------------------------------------
     FOG - RADIAL
 ------------------------------------------------------------------------------*/
@@ -40,7 +37,7 @@ float3 got_fog_radial(const float camera_to_pixel_length, const float3 camera_po
     float fog_factor           = 1.0f - exp(-g_fog_fade_rate * distance_factor); // exponential fog factor
     float fog_density          = pass_get_f3_value().y;
     
-    return fog_factor * fog_density * g_atmospheric_color * directional_light_intensity;
+    return fog_factor * fog_density * directional_light_intensity;
 }
 
 /*------------------------------------------------------------------------------
@@ -115,5 +112,5 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
         fog /= float(step_count);
     }
 
-    return fog * light.intensity * light.color * g_atmospheric_color;
+    return fog * light.intensity * light.color;
 }

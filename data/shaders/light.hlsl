@@ -145,7 +145,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // volumetric
     if (light.is_volumetric())
     {
-        volumetric_fog = compute_volumetric_fog(surface, light, thread_id.xy);
+        float max_mip    = pass_get_f3_value().z;
+        float3 sky_color = tex_environment.SampleLevel(samplers[sampler_trilinear_clamp], float2(0.5, 0.5f), max_mip).rgb;
+        volumetric_fog   = compute_volumetric_fog(surface, light, thread_id.xy) * sky_color;
     }
 
     // transparents don't use TAA, so specular flickering can be an issue

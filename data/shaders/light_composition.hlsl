@@ -118,7 +118,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 light_specular      = 0.0f;
     float3 light_refraction    = 0.0f;
     float3 light_emissive      = 0.0f;
-    float3 color               = 0.0f;
+    float3 light_atmospheric   = 0.0f;
     float alpha                = 0.0f;
     float distance_from_camera = 0.0f;
 
@@ -151,11 +151,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 tex_uav2[thread_id.xy]  = float4(surface.albedo, alpha);
             }
         }
+
+        // radial fog
+        float max_mip     = pass_get_f3_value().x;
+        float3 sky_color  = tex_environment.SampleLevel(samplers[sampler_trilinear_clamp], float2(0.5, 0.5f), max_mip).rgb;
+        light_atmospheric = got_fog_radial(distance_from_camera, buffer_frame.camera_position.xyz, buffer_frame.directional_light_intensity) * sky_color;
     }
 
-    // compose
-    color  = light_diffuse * surface.albedo + light_specular + light_emissive + light_refraction;
-    color += got_fog_radial(distance_from_camera, buffer_frame.camera_position.xyz, buffer_frame.directional_light_intensity) + tex_light_volumetric[thread_id.xy].rgb;
+    // volumetric atmosphere
+    light_atmospheric += tex_light_volumetric[thread_id.xy].rgb;
 
-    tex_uav[thread_id.xy] = float4(color, alpha);
+    tex_uav[thread_id.xy] = float4(light_diffuse * surface.albedo + light_specular + light_emissive + light_refraction + light_atmospheric, alpha);
 }

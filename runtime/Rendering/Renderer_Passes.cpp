@@ -1152,10 +1152,11 @@ namespace Spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::ssao, GetRenderTarget(Renderer_RenderTarget::ssao));
 
             // write to these
-            cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_diffuse);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_specular);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex3, tex_shadow);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex4, tex_volumetric);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex,         tex_diffuse);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex2,        tex_specular);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex3,        tex_shadow);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex4,        tex_volumetric);
+            cmd_list->SetTexture(Renderer_BindingsSrv::environment, GetRenderTarget(Renderer_RenderTarget::skysphere));
 
             if (shared_ptr<Light> light = entities[light_index]->GetComponent<Light>())
             {
