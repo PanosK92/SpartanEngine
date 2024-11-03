@@ -111,12 +111,12 @@ namespace Spartan
                 }
                 else
                 {
-                    SP_ASSERT(!is_destination_mask && "The new layout used in a transition must not be VK_IMAGE_LAYOUT_UNDEFINED.");
+                    SP_ASSERT_MSG(false, "The new layout used in a transition must not be VK_IMAGE_LAYOUT_UNDEFINED.");
                 }
                 break;
 
             case VK_IMAGE_LAYOUT_PREINITIALIZED:
-                SP_ASSERT(!is_destination_mask && "The new layout used in a transition must not be VK_IMAGE_LAYOUT_PREINITIALIZED.");
+                SP_ASSERT_MSG(!is_destination_mask, "The new layout used in a transition must not be VK_IMAGE_LAYOUT_PREINITIALIZED.");
                 access_mask = VK_ACCESS_2_HOST_WRITE_BIT;
                 break;
 
@@ -175,164 +175,169 @@ namespace Spartan
         }
 
             VkPipelineStageFlags2 access_mask_to_pipeline_stage_mask(VkAccessFlags2 access_flags, RHI_PipelineState& pso, const RHI_Image_Layout layout_old, const bool is_destination_mask, const bool is_depth)
-        {
-            VkPipelineStageFlags2 stages  = 0;
-
-            uint32_t used_stages = 0;
             {
-                if (!is_destination_mask)
+                VkPipelineStageFlags2 stages  = 0;
+
+                uint32_t used_stages = 0;
                 {
-                    // stages that must be waited for
-                    switch (layout_old)
+                    if (!is_destination_mask)
                     {
-                    case RHI_Image_Layout::General:
-                        used_stages |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-                        break;
-
-                    case RHI_Image_Layout::Attachment:
-                        if (is_depth)
+                        // stages that must be waited for
+                        switch (layout_old)
                         {
-                            used_stages |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT;
-                            used_stages |= VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+                        case RHI_Image_Layout::General:
+                            used_stages |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                            used_stages |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+                            break;
+
+                        case RHI_Image_Layout::Attachment:
+                            if (is_depth)
+                            {
+                                used_stages |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT;
+                                used_stages |= VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+                            }
+                            else
+                            {
+                                used_stages |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                            }
+                            break;
+
+                        case RHI_Image_Layout::Shading_Rate_Attachment:
+                            used_stages |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+                            break;
+
+                        case RHI_Image_Layout::Shader_Read:
+                            used_stages |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
+                            used_stages |= VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT;
+                            used_stages |= VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT;
+                            used_stages |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+                            used_stages |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                            break;
+
+                        case RHI_Image_Layout::Transfer_Source:
+                        case RHI_Image_Layout::Transfer_Destination:
+                            used_stages |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                            used_stages |= VK_PIPELINE_STAGE_2_COPY_BIT;
+                            used_stages |= VK_PIPELINE_STAGE_2_BLIT_BIT;
+                            used_stages |= VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+                            break;
+
+                        case RHI_Image_Layout::Present_Source:
+                            used_stages |= VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+                            break;
+
+                        default:
+                            used_stages |= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+                            break;
                         }
-                        else
-                        {
-                            used_stages |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-                        }
+                    }
+                    else
+                    {
+                        // stages at which the barrier applies
+
+                        used_stages |= pso.shaders[RHI_Shader_Type::Vertex]  ? VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT                  : 0;
+                        used_stages |= pso.shaders[RHI_Shader_Type::Hull]    ? VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT    : 0;
+                        used_stages |= pso.shaders[RHI_Shader_Type::Domain]  ? VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT : 0;
+                        used_stages |= pso.shaders[RHI_Shader_Type::Pixel]   ? VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT                : 0;
+                        used_stages |= pso.shaders[RHI_Shader_Type::Compute] ? VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT                 : 0;
+                    }
+                }
+
+                while (access_flags != 0)
+                {
+                    VkAccessFlagBits2 access_flag = static_cast<VkAccessFlagBits2>(access_flags & (~(access_flags - 1)));
+                    SP_ASSERT(access_flag != 0 && (access_flag & (access_flag - 1)) == 0);
+                    access_flags &= ~access_flag;
+
+                    switch (access_flag)
+                    {
+                    case VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT:
+                        stages |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
                         break;
 
-                    case RHI_Image_Layout::Shading_Rate_Attachment:
-                        used_stages |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+                    case VK_ACCESS_2_INDEX_READ_BIT:
+                        stages |= VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
                         break;
 
-                    case RHI_Image_Layout::Shader_Read:
-                        used_stages |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
-                        used_stages |= VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT;
-                        used_stages |= VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT;
-                        used_stages |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-                        used_stages |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                    case VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT:
+                        stages |= VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
                         break;
 
-                    case RHI_Image_Layout::Transfer_Source:
-                    case RHI_Image_Layout::Transfer_Destination:
-                        used_stages |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                    case VK_ACCESS_2_UNIFORM_READ_BIT:
+                        stages |= used_stages;
                         break;
 
-                    case RHI_Image_Layout::Present_Source:
-                        used_stages |= VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+                    case VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT:
+                        stages |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+                        break;
+
+                        // shader
+                    case VK_ACCESS_2_SHADER_READ_BIT:
+                        stages |= used_stages;
+                        break;
+
+                    case VK_ACCESS_2_SHADER_WRITE_BIT:
+                        stages |= used_stages;
+                        break;
+
+                        // attachments - color
+                    case VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT:
+                        stages |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                        break;
+
+                    case VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT:
+                        stages |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                        break;
+
+                        // attachments - depth/stencil
+                    case VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT:
+                        stages |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+                        break;
+
+                        // attachments - shading rate
+                    case VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR:
+                        stages |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+                        break;
+
+                    case VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT:
+                        stages |= VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+                        break;
+
+                        // transfer
+                    case VK_ACCESS_2_TRANSFER_READ_BIT:
+                        stages |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                        break;
+
+                    case VK_ACCESS_2_TRANSFER_WRITE_BIT:
+                        stages |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                        break;
+
+                        // host
+                    case VK_ACCESS_2_HOST_READ_BIT:
+                        stages |= VK_PIPELINE_STAGE_2_HOST_BIT;
+                        break;
+
+                    case VK_ACCESS_2_HOST_WRITE_BIT:
+                        stages |= VK_PIPELINE_STAGE_2_HOST_BIT;
+                        break;
+
+                        // misc
+                    case VK_ACCESS_2_MEMORY_READ_BIT:
+                        stages |= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+                        break;
+
+                    case VK_ACCESS_2_MEMORY_WRITE_BIT:
+                        stages |= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
                         break;
 
                     default:
-                        used_stages |= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+                        SP_ASSERT_MSG(false, "Unhandled access flag");
                         break;
                     }
                 }
-                else
-                {
-                    // stages at which the barrier applies
 
-                    used_stages |= pso.shaders[RHI_Shader_Type::Vertex]  ? VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT                  : 0;
-                    used_stages |= pso.shaders[RHI_Shader_Type::Hull]    ? VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT    : 0;
-                    used_stages |= pso.shaders[RHI_Shader_Type::Domain]  ? VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT : 0;
-                    used_stages |= pso.shaders[RHI_Shader_Type::Pixel]   ? VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT                : 0;
-                    used_stages |= pso.shaders[RHI_Shader_Type::Compute] ? VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT                 : 0;
-                }
+                return stages;
             }
-
-            while (access_flags != 0)
-            {
-                VkAccessFlagBits2 access_flag = static_cast<VkAccessFlagBits2>(access_flags & (~(access_flags - 1)));
-                SP_ASSERT(access_flag != 0 && (access_flag & (access_flag - 1)) == 0);
-                access_flags &= ~access_flag;
-
-                switch (access_flag)
-                {
-                case VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT:
-                    stages |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
-                    break;
-
-                case VK_ACCESS_2_INDEX_READ_BIT:
-                    stages |= VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
-                    break;
-
-                case VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT:
-                    stages |= VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
-                    break;
-
-                case VK_ACCESS_2_UNIFORM_READ_BIT:
-                    stages |= used_stages;
-                    break;
-
-                case VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT:
-                    stages |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-                    break;
-
-                    // shader
-                case VK_ACCESS_2_SHADER_READ_BIT:
-                    stages |= used_stages;
-                    break;
-
-                case VK_ACCESS_2_SHADER_WRITE_BIT:
-                    stages |= used_stages;
-                    break;
-
-                    // attachments - color
-                case VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT:
-                    stages |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-                    break;
-
-                case VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT:
-                    stages |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-                    break;
-
-                    // attachments - depth/stencil
-                case VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT:
-                    stages |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-                    break;
-
-                    // attachments - shading rate
-                case VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR:
-                    stages |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
-                    break;
-
-                case VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT:
-                    stages |= VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-                    break;
-
-                    // transfer
-                case VK_ACCESS_2_TRANSFER_READ_BIT:
-                    stages |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-                    break;
-
-                case VK_ACCESS_2_TRANSFER_WRITE_BIT:
-                    stages |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-                    break;
-
-                    // host
-                case VK_ACCESS_2_HOST_READ_BIT:
-                    stages |= VK_PIPELINE_STAGE_2_HOST_BIT;
-                    break;
-
-                case VK_ACCESS_2_HOST_WRITE_BIT:
-                    stages |= VK_PIPELINE_STAGE_2_HOST_BIT;
-                    break;
-
-                    // misc
-                case VK_ACCESS_2_MEMORY_READ_BIT:
-                    stages |= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-                    break;
-
-                case VK_ACCESS_2_MEMORY_WRITE_BIT:
-                    stages |= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-                    break;
-
-                default:
-                    SP_ASSERT_MSG(false, "Unhandled access flag");
-                    break;
-                }
-            }
-            return stages;
-        }
 
             VkImageMemoryBarrier2 create(
                 const RHI_Image_Layout layout_old,

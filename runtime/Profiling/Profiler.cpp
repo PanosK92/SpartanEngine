@@ -139,6 +139,48 @@ namespace Spartan
 
             return ss.str();
         }
+
+        string cpu_name = "N/A";
+        string get_cpu_name()
+        {
+            #ifdef _WIN32
+
+            // windows: use __cpuid to get CPU name
+            int cpu_info[4]   = { -1 };
+            char cpu_name[49] = { 0 };
+            
+            __cpuid(cpu_info, 0x80000002);
+            memcpy(cpu_name, cpu_info, sizeof(cpu_info));
+
+            __cpuid(cpu_info, 0x80000003);
+            memcpy(cpu_name + 16, cpu_info, sizeof(cpu_info));
+
+            __cpuid(cpu_info, 0x80000004);
+            memcpy(cpu_name + 32, cpu_info, sizeof(cpu_info));
+
+            return string(cpu_name);
+
+            #elif __linux__
+
+            // linux: read from /proc/cpuinfo
+            ifstream cpuinfo("/proc/cpuinfo");
+            string line;
+            while (getline(cpuinfo, line))
+            {
+                if (line.find("model name") != string::npos)
+                {
+                    return line.substr(line.find(":") + 2);
+                }
+            }
+            return "Unknown CPU";
+
+            #else
+
+            // unsupported platform
+            return "N/A";
+
+            #endif
+        }
     }
   
     void Profiler::Initialize()
@@ -147,6 +189,8 @@ namespace Spartan
         m_time_blocks_read.resize(initial_capacity);
         m_time_blocks_write.reserve(initial_capacity);
         m_time_blocks_write.resize(initial_capacity);
+
+        cpu_name = get_cpu_name();
 
         if (Debugging::IsRenderdocEnabled())
         {
@@ -483,6 +527,12 @@ namespace Spartan
             << "API:\t\t\t\t\t" << RHI_Context::api_type_str << "\t" << gpu_api << endl
             << "Driver:\t\t\t"  << RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName() << "\t\t" << gpu_driver << endl;
 
+        // cpu
+        oss_metrics << endl << "CPU" << endl
+            << "Name:\t\t\t\t\t\t"  << cpu_name << endl
+            << "Threads:\t\t\t\t\t" << thread::hardware_concurrency() << endl
+            << "Worker threads:\t"  << ThreadPool::GetWorkingThreadCount() << "/" << ThreadPool::GetThreadCount() << endl;
+
         // display
         float resolution_scale = Renderer::GetOption<float>(Renderer_Option::ResolutionScale);
         oss_metrics << "\nDisplay\n"
@@ -494,26 +544,19 @@ namespace Spartan
             << "Output:\t\t\t" << static_cast<uint32_t>(Renderer::GetResolutionOutput().x) << "x" << static_cast<int>(Renderer::GetResolutionOutput().y) << endl
             << "Viewport:\t\t" << static_cast<uint32_t>(Renderer::GetViewport().width)     << "x" << static_cast<int>(Renderer::GetViewport().height)    << endl;
 
-        // cpu
-        oss_metrics << endl << "CPU" << endl
-            << "Worker threads: " << ThreadPool::GetWorkingThreadCount() << "/" << ThreadPool::GetThreadCount() << endl;
-
-        // api calls
-        oss_metrics << "\nAPI calls" << endl;
+        // graphics api
+        oss_metrics << "\nGraphics API" << endl;
         oss_metrics << "Draw:\t\t\t\t\t\t\t\t\t\t\t"  << m_rhi_draw << endl;
         oss_metrics << "Index buffer bindings:\t\t\t" << m_rhi_bindings_buffer_index   << endl
                     << "Vertex buffer bindings:\t\t"  << m_rhi_bindings_buffer_vertex  << endl
-                    << "Descriptor set bindings:\t\t" << m_rhi_bindings_descriptor_set << endl;
-
-        // resources
-        oss_metrics << "\nPipeline\n"
-            << "Bindings:\t\t\t" << m_rhi_pipeline_bindings << endl
-            << "Barriers:\t\t\t" << m_rhi_pipeline_barriers << endl;
+                    << "Descriptor set bindings:\t\t" << m_rhi_bindings_descriptor_set << endl
+                    << "Bindings:\t\t\t\t\t\t\t\t\t"  << m_rhi_pipeline_bindings << endl
+                    << "Barriers:\t\t\t\t\t\t\t\t\t"  << m_rhi_pipeline_barriers << endl;
 
         // resources
         oss_metrics << "\nResources\n"
             << "Textures:\t\t\t\t\t\t\t\t"  << texture_count          << endl
-            << "Materials:\t\t\t\t\t\t\t"   << material_count         << endl
+            << "Materialst:\t\t\t\t\t\t\t"  << material_count         << endl
             << "Pipelines:\t\t\t\t\t\t\t\t" << pipeline_count         << endl
             << "Descriptor set capacity:\t" << m_descriptor_set_count << "/" << rhi_max_descriptor_set_count;
 
