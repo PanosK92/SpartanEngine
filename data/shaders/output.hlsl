@@ -138,5 +138,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         color.rgb = linear_to_hdr10(color.rgb, buffer_frame.hdr_white_point);
     }
 
+    // at this point there is not reason to store an alpha value
+    // and if the output image is displayed from within ImGui, it will have missing pixels
+    color.a = 1.0f;
+
     tex_uav[thread_id.xy] = color;
 }
