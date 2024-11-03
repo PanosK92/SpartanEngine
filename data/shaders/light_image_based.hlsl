@@ -58,22 +58,13 @@ float3 combine_specular_sources(float4 specular_ssr, float3 specular_gi, float3 
     // get smooth weights for each source
     float ssr_weight = get_blend_weight(specular_ssr.a, threshold, smoothness);
     float gi_weight  = get_blend_weight(luminance(specular_gi), threshold, smoothness);
-    
+
     // start with sky as base
     float3 result = specular_sky;
-    
-    // blend GI on top of sky if we have it
-    if (gi_weight > 0.0f)
-    {
-        result = lerp(result, specular_gi, gi_weight);
-    }
-    
-    // blend ssr on top if we have it
-    if (ssr_weight > 0.0f)
-    {
-        // still keep a tiny bit of the previous result to help with transitions
-        result = lerp(result, specular_ssr.rgb, ssr_weight * 0.95f);
-    }
+    // blend GI on top
+    result = lerp(result, specular_gi, gi_weight);
+    // blend ssr on top
+    result = lerp(result, specular_ssr.rgb, ssr_weight);
     
     return result;
 }
