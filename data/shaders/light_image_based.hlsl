@@ -42,12 +42,40 @@ float3 sample_environment(float2 uv, float mip_level, float mip_max)
     return tex_environment.SampleLevel(samplers[sampler_trilinear_clamp], uv, mip_level).rgb;
 }
 
-float compute_blend_factor(float alpha)
+float get_blend_weight(float value, float threshold, float smoothness)
 {
-    const float blend_threshold = 0.001f;
-    const float blend_speed     = 0.005f;
+    // create a smooth transition around the threshold
+    // smoothness controls the size of the blend region
+    return saturate((value - (threshold - smoothness)) / (smoothness * 2.0f));
+}
+
+float3 combine_specular_sources(float4 specular_ssr, float3 specular_gi, float3 specular_sky)
+{
+    // smooth blending parameters
+    const float threshold  = 0.01f;
+    const float smoothness = 0.2f; // blend region size
     
-    return saturate((alpha - blend_threshold) / blend_speed);
+    // get smooth weights for each source
+    float ssr_weight = get_blend_weight(specular_ssr.a, threshold, smoothness);
+    float gi_weight  = get_blend_weight(luminance(specular_gi), threshold, smoothness);
+    
+    // start with sky as base
+    float3 result = specular_sky;
+    
+    // blend GI on top of sky if we have it
+    if (gi_weight > 0.0f)
+    {
+        result = lerp(result, specular_gi, gi_weight);
+    }
+    
+    // blend ssr on top if we have it
+    if (ssr_weight > 0.0f)
+    {
+        // still keep a tiny bit of the previous result to help with transitions
+        result = lerp(result, specular_ssr.rgb, ssr_weight * 0.95f);
+    }
+    
+    return result;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -88,8 +116,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 diffuse_ibl = diffuse_skysphere * shadow_mask + diffuse_gi;
 
     // combine all the specular light, fallback order: ssr -> gi -> skysphere
-    float3 specular_ssr_gi = lerp(specular_gi, specular_ssr.rgb, compute_blend_factor(specular_ssr.a));
-    float3 specular_ibl    = lerp(specular_skysphere * shadow_mask, specular_ssr_gi, compute_blend_factor(luminance(specular_ssr_gi)));
+    float3 specular_ibl = combine_specular_sources(specular_ssr, specular_gi, specular_skysphere * shadow_mask);
     
     // combine the diffuse and specular light
     float3 ibl             = (diffuse_ibl * diffuse_energy * surface.albedo.rgb) + (specular_ibl * specular_energy);
