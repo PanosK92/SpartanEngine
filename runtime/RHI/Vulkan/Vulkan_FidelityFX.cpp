@@ -399,7 +399,7 @@ namespace Spartan
                 {
                     ffxFsr3UpscalerGetSharedResourceDescriptions(&context, &description_shared_resources);
                 
-                    FfxCreateResourceDescription resource =description_shared_resources.reconstructedPrevNearestDepth;
+                    FfxCreateResourceDescription resource = description_shared_resources.reconstructedPrevNearestDepth;
                     texture_depth_previous_nearest_reconstructed = make_shared<RHI_Texture>(
                          RHI_Texture_Type::Type2D,
                          resource.resourceDescription.width,
@@ -411,7 +411,7 @@ namespace Spartan
                          convert_wchar_to_char(resource.name)
                     );
                 
-                    resource =description_shared_resources.dilatedDepth;
+                    resource = description_shared_resources.dilatedDepth;
                     texture_depth_dilated = make_shared<RHI_Texture>(
                         RHI_Texture_Type::Type2D,
                         resource.resourceDescription.width,
@@ -423,7 +423,7 @@ namespace Spartan
                         convert_wchar_to_char(resource.name)
                     );
                 
-                    resource =description_shared_resources.dilatedMotionVectors;
+                    resource = description_shared_resources.dilatedMotionVectors;
                     texture_motion_vectors_dilated = make_shared<RHI_Texture>(
                          RHI_Texture_Type::Type2D,
                          resource.resourceDescription.width,
@@ -904,7 +904,8 @@ namespace Spartan
             free(ffx_interface.scratchBuffer);
         }
 
-        // release static resources now so that device destruction deallocates them
+        // release static resources now so that they register
+        // themselfs with the RHI for deletion before engine shutdown
         brixelizer_gi::texture_sdf_atlas       = nullptr;
         brixelizer_gi::buffer_brick_aabbs      = nullptr;
         brixelizer_gi::buffer_scratch          = nullptr;
