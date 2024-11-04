@@ -360,6 +360,88 @@ namespace Spartan
             shared_ptr<RHI_Texture> texture_depth_previous_nearest_reconstructed = nullptr;
             shared_ptr<RHI_Texture> texture_depth_dilated                        = nullptr;
             shared_ptr<RHI_Texture> texture_motion_vectors_dilated               = nullptr;
+
+            void context_destroy()
+            {
+                if (context_created)
+                {
+                    SP_ASSERT(ffxFsr3UpscalerContextDestroy(&context) == FFX_OK);
+                    context_created = false;
+
+                    texture_depth_previous_nearest_reconstructed = nullptr;
+                    texture_depth_dilated                        = nullptr;
+                    texture_motion_vectors_dilated               = nullptr;
+                }
+            }
+
+            void create_context(const uint32_t resolution_render_width, const uint32_t resolution_render_height, const uint32_t resolution_output_width, const uint32_t resolution_output_height)
+            {
+                context_destroy();
+
+                // description
+                description_context.maxRenderSize.width    = resolution_render_width;
+                description_context.maxRenderSize.height   = resolution_render_height;
+                description_context.maxUpscaleSize.width   = resolution_output_width;
+                description_context.maxUpscaleSize.height  = resolution_output_height;
+                description_context.flags                  = FFX_FSR3_ENABLE_UPSCALING_ONLY | FFX_FSR3_ENABLE_DEPTH_INVERTED | FFX_FSR3_ENABLE_DYNAMIC_RESOLUTION;
+                description_context.flags                 |= FFX_FSR3_ENABLE_HIGH_DYNAMIC_RANGE; // hdr input
+                #ifdef DEBUG
+                description_context.flags                 |= FFX_FSR3_ENABLE_DEBUG_CHECKING;
+                description_context.fpMessage              = &ffx_message_callback;
+                #endif
+                description_context.backendInterface       = ffx_interface;
+                
+                // context
+                SP_ASSERT(ffxFsr3UpscalerContextCreate(&context, &description_context) == FFX_OK);
+                context_created = true;
+                
+                // create shared resources (between upscaler and interpolator)
+                {
+                    ffxFsr3UpscalerGetSharedResourceDescriptions(&context, &description_shared_resources);
+                
+                    FfxCreateResourceDescription resource =description_shared_resources.reconstructedPrevNearestDepth;
+                    texture_depth_previous_nearest_reconstructed = make_shared<RHI_Texture>(
+                         RHI_Texture_Type::Type2D,
+                         resource.resourceDescription.width,
+                         resource.resourceDescription.height,
+                         resource.resourceDescription.depth,
+                         resource.resourceDescription.mipCount,
+                         to_rhi_format(resource.resourceDescription.format),
+                         RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_ClearBlit,
+                         convert_wchar_to_char(resource.name)
+                    );
+                
+                    resource =description_shared_resources.dilatedDepth;
+                    texture_depth_dilated = make_shared<RHI_Texture>(
+                        RHI_Texture_Type::Type2D,
+                        resource.resourceDescription.width,
+                        resource.resourceDescription.height,
+                        resource.resourceDescription.depth,
+                        resource.resourceDescription.mipCount,
+                        to_rhi_format(resource.resourceDescription.format),
+                        RHI_Texture_Srv | RHI_Texture_Uav,
+                        convert_wchar_to_char(resource.name)
+                    );
+                
+                    resource =description_shared_resources.dilatedMotionVectors;
+                    texture_motion_vectors_dilated = make_shared<RHI_Texture>(
+                         RHI_Texture_Type::Type2D,
+                         resource.resourceDescription.width,
+                         resource.resourceDescription.height,
+                         resource.resourceDescription.depth,
+                         resource.resourceDescription.mipCount, 
+                         to_rhi_format(resource.resourceDescription.format),
+                         RHI_Texture_Srv | RHI_Texture_Uav,
+                         convert_wchar_to_char(resource.name)
+                    );
+                }
+                
+                // set velocity factor [0, 1], this controls the temporal stability of bright pixels
+                ffxFsr3UpscalerSetConstant(&context, FFX_FSR3UPSCALER_CONFIGURE_UPSCALE_KEY_FVELOCITYFACTOR, static_cast<void*>(&velocity_factor));
+                
+                // reset jitter index
+                jitter_index = 0;
+            }
         }
 
         namespace sssr
@@ -368,6 +450,29 @@ namespace Spartan
             FfxSssrContext             context              = {};
             FfxSssrContextDescription  description_context  = {};
             FfxSssrDispatchDescription description_dispatch = {};
+
+            void context_destroy()
+            {
+                if (context_created)
+                {
+                    SP_ASSERT(ffxSssrContextDestroy(&context) == FFX_OK);
+                    context_created = false;
+                }
+            }
+
+            void context_create(const uint32_t width, const uint32_t height)
+            {
+                context_destroy();
+
+                description_context.renderSize.width           = width;
+                description_context.renderSize.height          = height;
+                description_context.normalsHistoryBufferFormat = to_ffx_format(RHI_Format::R16G16B16A16_Float);
+                description_context.flags                      = FFX_SSSR_ENABLE_DEPTH_INVERTED;
+                description_context.backendInterface           = ffx_interface;
+                
+                SP_ASSERT(ffxSssrContextCreate(&context, &description_context) == FFX_OK);
+                context_created = true;
+            }
         }
 
         namespace brixelizer_gi
@@ -558,6 +663,70 @@ namespace Spartan
 
                return "Disabled";
             }
+
+            void context_destroy()
+            {
+                if (context_created)
+                {
+                    SP_ASSERT(ffxBrixelizerContextDestroy(&context) == FFX_OK);
+                    SP_ASSERT(ffxBrixelizerGIContextDestroy(&context_gi) == FFX_OK);
+
+                    static_instances.clear();
+                    instance_buffers.clear();
+                    entity_map.clear();
+                    instances_to_create.clear();
+                    instances_to_delete.clear();
+                    context_created = false;
+                }
+            }
+
+            void context_create(const uint32_t resolution_render_width, const uint32_t resolution_render_height)
+            {
+                context_destroy();
+
+                // context
+                {
+                    // sdf
+                    set_ffx_float3(description_context.sdfCenter, Vector3::Zero);
+                
+                    // cascades
+                    description_context.numCascades = cascade_count;
+                    float voxel_size_ = voxel_size;
+                    for (uint32_t i = 0; i < cascade_count; ++i)
+                    {
+                        FfxBrixelizerCascadeDescription* cascade_description   = &description_context.cascadeDescs[i];
+                        cascade_description->flags                             = static_cast<FfxBrixelizerCascadeFlag>(FFX_BRIXELIZER_CASCADE_STATIC | FFX_BRIXELIZER_CASCADE_DYNAMIC);
+                        cascade_description->voxelSize                         = voxel_size_;
+                        voxel_size_                                           *= cascade_size_ratio;
+                    }
+                
+                    // interface
+                    description_context.flags            = debug_mode_aabbs_and_stats ? FFX_BRIXELIZER_CONTEXT_FLAG_ALL_DEBUG : static_cast<FfxBrixelizerContextFlags>(0);
+                    description_context.backendInterface = ffx_interface;
+                
+                    SP_ASSERT(ffxBrixelizerContextCreate(&description_context, &context) == FFX_OK);
+                }
+                
+                // context gi
+                {
+                    description_context_gi.internalResolution = internal_resolution;
+                    description_context_gi.displaySize.width  = resolution_render_width;
+                    description_context_gi.displaySize.height = resolution_render_height;
+                    description_context_gi.flags              = FfxBrixelizerGIFlags::FFX_BRIXELIZER_GI_FLAG_DEPTH_INVERTED;
+                    description_context_gi.backendInterface   = ffx_interface;
+                    
+                    SP_ASSERT(ffxBrixelizerGIContextCreate(&context_gi, &description_context_gi) == FFX_OK);
+                }
+                
+                // resources
+                {
+                    uint32_t flags = RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit;
+                    texture_depth_previous  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, resolution_render_width, resolution_render_height, 1, 1, RHI_Format::D32_Float,          flags, "ffx_depth_previous");
+                    texture_normal_previous = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, resolution_render_width, resolution_render_height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ffx_normal_previous");
+                }
+                
+                context_created = true;
+            }
         }
 
         namespace breadcrumbs
@@ -568,8 +737,51 @@ namespace Spartan
             FfxBreadcrumbsContext context         = {};
 
             // FFX_BREADCRUMBS_ENABLE_THREAD_SYNCHRONIZATION doesn't seem to work
-            mutex                 mutex_marker_start;
-            mutex                 mutex_marker_end;
+            // that why these two exist
+            mutex mutex_marker_start;
+            mutex mutex_marker_end;
+
+            void context_destroy()
+            {
+                if (context_created)
+                {
+                    SP_ASSERT(ffxBreadcrumbsContextDestroy(&context) == FFX_OK);
+                    context_created = false;
+                }
+            }
+
+            void context_create()
+            {
+                context_destroy();
+
+                if (!context_created && Debugging::IsBreadcrumbsEnabled())
+                {
+                    uint32_t gpu_queue_indices[2] =
+                    {
+                        RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics),
+                        RHI_Device::GetQueueIndex(RHI_Queue_Type::Compute)
+                    };
+
+                     FfxBreadcrumbsContextDescription context_description = {};
+                     context_description.backendInterface                 = ffx_interface;
+                     context_description.maxMarkersPerMemoryBlock         = 3;
+                     context_description.usedGpuQueuesCount               = 2;
+                     context_description.pUsedGpuQueues                   = &gpu_queue_indices[0];
+                     context_description.allocCallbacks.fpAlloc           = malloc;
+                     context_description.allocCallbacks.fpRealloc         = realloc;
+                     context_description.allocCallbacks.fpFree            = free;
+                     context_description.frameHistoryLength               = Renderer::GetSwapChain()->GetBufferCount() * 2; // double the swapchain's backbuffer count
+                     context_description.flags                            = FFX_BREADCRUMBS_PRINT_FINISHED_LISTS    |
+                                                                            FFX_BREADCRUMBS_PRINT_NOT_STARTED_LISTS |
+                                                                            FFX_BREADCRUMBS_PRINT_FINISHED_NODES    |
+                                                                            FFX_BREADCRUMBS_PRINT_NOT_STARTED_NODES |
+                                                                            FFX_BREADCRUMBS_PRINT_EXTENDED_DEVICE_INFO |
+                                                                            FFX_BREADCRUMBS_ENABLE_THREAD_SYNCHRONIZATION; // probably doesn't work, as the markers require mutexes
+
+                     SP_ASSERT(ffxBreadcrumbsContextCreate(&context, &context_description) == FFX_OK);
+                     context_created = true;
+                }
+            }
         }
     }
     #endif 
@@ -577,8 +789,14 @@ namespace Spartan
     void RHI_FidelityFX::Initialize()
     {
     #ifdef _MSC_VER
-        Settings::RegisterThirdPartyLib("AMD FidelityFX", "1.1.2", "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK");
-
+        // register FidelityFX version
+        {
+            string ffx_version = to_string(FFX_SDK_VERSION_MAJOR) + "." +
+                                 to_string(FFX_SDK_VERSION_MINOR) + "." +
+                                 to_string(FFX_SDK_VERSION_PATCH);
+            
+            Settings::RegisterThirdPartyLib("AMD FidelityFX", ffx_version, "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK");
+        }
         // ffx interface
         {
             // all used contexts need to be accounted for here
@@ -599,6 +817,8 @@ namespace Spartan
             
             SP_ASSERT(ffxGetInterfaceVK(&ffx_interface, ffxGetDeviceVK(&device_context), scratch_buffer, scratch_buffer_size, max_contexts)== FFX_OK);
         }
+
+        breadcrumbs::context_create();
 
         // assets
         {
@@ -670,52 +890,13 @@ namespace Spartan
     #endif
     }
 
-    void RHI_FidelityFX::DestroySizeDependentContexts()
-    {
-    #ifdef _MSC_VER
-        // brixelizer gi
-        if (brixelizer_gi::context_created)
-        {
-            SP_ASSERT(ffxBrixelizerContextDestroy(&brixelizer_gi::context) == FFX_OK);
-            SP_ASSERT(ffxBrixelizerGIContextDestroy(&brixelizer_gi::context_gi) == FFX_OK);
-            brixelizer_gi::static_instances.clear();
-            brixelizer_gi::instance_buffers.clear();
-            brixelizer_gi::entity_map.clear();
-            brixelizer_gi::instances_to_create.clear();
-            brixelizer_gi::instances_to_delete.clear();
-            brixelizer_gi::context_created = false;
-        }
-
-        // sssr
-        if (sssr::context_created)
-        {
-            SP_ASSERT(ffxSssrContextDestroy(&sssr::context) == FFX_OK);
-            sssr::context_created = false;
-        }
-
-        // fsr 3
-        if (fsr3::context_created)
-        {
-            SP_ASSERT(ffxFsr3UpscalerContextDestroy(&fsr3::context) == FFX_OK);
-            fsr3::context_created = false;
-
-            fsr3::texture_depth_previous_nearest_reconstructed = nullptr;
-            fsr3::texture_depth_dilated                        = nullptr;
-            fsr3::texture_motion_vectors_dilated               = nullptr;
-        }
-    #endif
-    }
-
     void RHI_FidelityFX::Shutdown()
     {
     #ifdef _MSC_VER
-        DestroySizeDependentContexts();
-
-        if (breadcrumbs::context_created)
-        {
-            SP_ASSERT(ffxBreadcrumbsContextDestroy(&breadcrumbs::context) == FFX_OK);
-            breadcrumbs::context_created = false;
-        }
+        fsr3::context_destroy();
+        brixelizer_gi::context_destroy();
+        sssr::context_destroy();
+        breadcrumbs::context_destroy();
 
         // ffx interface
         if (ffx_interface.scratchBuffer != nullptr)
@@ -723,6 +904,7 @@ namespace Spartan
             free(ffx_interface.scratchBuffer);
         }
 
+        // release static resources now so that device destruction deallocates them
         brixelizer_gi::texture_sdf_atlas       = nullptr;
         brixelizer_gi::buffer_brick_aabbs      = nullptr;
         brixelizer_gi::buffer_scratch          = nullptr;
@@ -730,182 +912,9 @@ namespace Spartan
         brixelizer_gi::texture_normal_previous = nullptr;
         brixelizer_gi::buffer_cascade_aabb_tree.fill(nullptr);
         brixelizer_gi::buffer_cascade_brick_map.fill(nullptr);
-
     #endif
     }
 
-    void RHI_FidelityFX::Resize(const Vector2& resolution_render, const Vector2& resolution_output)
-    {
-    #ifdef _MSC_VER
-        DestroySizeDependentContexts();
-
-        bool resolution_render_changed = resolution_render.x != fsr3::description_context.maxRenderSize.width  || resolution_render.y != fsr3::description_context.maxRenderSize.height;
-        bool resolution_output_changed = resolution_output.x != fsr3::description_context.maxUpscaleSize.width || resolution_output.y != fsr3::description_context.maxUpscaleSize.height;
-        if (!resolution_render_changed && !resolution_output_changed)
-            return;
-
-        uint32_t width  = static_cast<uint32_t>(resolution_render.x);
-        uint32_t height = static_cast<uint32_t>(resolution_render.y);
-
-        // fs3
-        if (!fsr3::context_created)
-        {
-            // description
-            fsr3::description_context.maxRenderSize.width    = width;
-            fsr3::description_context.maxRenderSize.height   = height;
-            fsr3::description_context.maxUpscaleSize.width   = static_cast<uint32_t>(resolution_output.x);
-            fsr3::description_context.maxUpscaleSize.height  = static_cast<uint32_t>(resolution_output.y);
-            fsr3::description_context.flags                  = FFX_FSR3_ENABLE_UPSCALING_ONLY | FFX_FSR3_ENABLE_DEPTH_INVERTED | FFX_FSR3_ENABLE_DYNAMIC_RESOLUTION;
-            fsr3::description_context.flags                 |= FFX_FSR3_ENABLE_HIGH_DYNAMIC_RANGE; // hdr input
-            #ifdef DEBUG
-            fsr3::description_context.flags                 |= FFX_FSR3_ENABLE_DEBUG_CHECKING;
-            fsr3::description_context.fpMessage              = &ffx_message_callback;
-            #endif
-            fsr3::description_context.backendInterface       = ffx_interface;
-
-            // context
-            SP_ASSERT(ffxFsr3UpscalerContextCreate(&fsr3::context, &fsr3::description_context) == FFX_OK);
-            fsr3::context_created = true;
-
-            // create shared resources (between upscaler and interpolator)
-            {
-                ffxFsr3UpscalerGetSharedResourceDescriptions(&fsr3::context, &fsr3::description_shared_resources);
-
-                FfxCreateResourceDescription resource = fsr3::description_shared_resources.reconstructedPrevNearestDepth;
-                fsr3::texture_depth_previous_nearest_reconstructed = make_shared<RHI_Texture>(
-                    RHI_Texture_Type::Type2D,
-                    resource.resourceDescription.width,
-                    resource.resourceDescription.height,
-                    resource.resourceDescription.depth,
-                    resource.resourceDescription.mipCount,
-                    to_rhi_format(resource.resourceDescription.format),
-                    RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_ClearBlit,
-                    convert_wchar_to_char(resource.name)
-                );
-
-                resource = fsr3::description_shared_resources.dilatedDepth;
-                fsr3::texture_depth_dilated = make_shared<RHI_Texture>(
-                    RHI_Texture_Type::Type2D,
-                    resource.resourceDescription.width,
-                    resource.resourceDescription.height,
-                    resource.resourceDescription.depth,
-                    resource.resourceDescription.mipCount,
-                    to_rhi_format(resource.resourceDescription.format),
-                    RHI_Texture_Srv | RHI_Texture_Uav,
-                    convert_wchar_to_char(resource.name)
-                );
-
-                resource = fsr3::description_shared_resources.dilatedMotionVectors;
-                fsr3::texture_motion_vectors_dilated = make_shared<RHI_Texture>(
-                    RHI_Texture_Type::Type2D,
-                    resource.resourceDescription.width,
-                    resource.resourceDescription.height,
-                    resource.resourceDescription.depth,
-                    resource.resourceDescription.mipCount, 
-                    to_rhi_format(resource.resourceDescription.format),
-                    RHI_Texture_Srv | RHI_Texture_Uav,
-                    convert_wchar_to_char(resource.name)
-                );
-            }
-
-            // set velocity factor [0, 1], this controls the temporal stability of bright pixels
-            ffxFsr3UpscalerSetConstant(&fsr3::context, FFX_FSR3UPSCALER_CONFIGURE_UPSCALE_KEY_FVELOCITYFACTOR, static_cast<void*>(&fsr3::velocity_factor));
-
-            // reset jitter index
-            fsr3::jitter_index = 0;
-        }
-
-        // sssr
-        if (!sssr::context_created)
-        {
-             sssr::description_context.renderSize.width           = width;
-             sssr::description_context.renderSize.height          = height;
-             sssr::description_context.normalsHistoryBufferFormat = to_ffx_format(RHI_Format::R16G16B16A16_Float);
-             sssr::description_context.flags                      = FFX_SSSR_ENABLE_DEPTH_INVERTED;
-             sssr::description_context.backendInterface           = ffx_interface;
-
-             SP_ASSERT(ffxSssrContextCreate(&sssr::context, &sssr::description_context) == FFX_OK);
-             sssr::context_created = true;
-        }
-
-        // brixelizer gi
-        if (!brixelizer_gi::context_created)
-        {
-            // context
-            {
-                // sdf
-                set_ffx_float3(brixelizer_gi::description_context.sdfCenter, Vector3::Zero);
-
-                // cascades
-                brixelizer_gi::description_context.numCascades = brixelizer_gi::cascade_count;
-                float voxel_size = brixelizer_gi::voxel_size;
-                for (uint32_t i = 0; i < brixelizer_gi::cascade_count; ++i)
-                {
-                    FfxBrixelizerCascadeDescription* cascade_description  = &brixelizer_gi::description_context.cascadeDescs[i];
-                    cascade_description->flags                            = static_cast<FfxBrixelizerCascadeFlag>(FFX_BRIXELIZER_CASCADE_STATIC | FFX_BRIXELIZER_CASCADE_DYNAMIC);
-                    cascade_description->voxelSize                        = voxel_size;
-                    voxel_size                                           *= brixelizer_gi::cascade_size_ratio;
-                }
-
-                // interface
-                brixelizer_gi::description_context.flags            = brixelizer_gi::debug_mode_aabbs_and_stats ? FFX_BRIXELIZER_CONTEXT_FLAG_ALL_DEBUG : static_cast<FfxBrixelizerContextFlags>(0);
-                brixelizer_gi::description_context.backendInterface = ffx_interface;
-
-                SP_ASSERT(ffxBrixelizerContextCreate(&brixelizer_gi::description_context, &brixelizer_gi::context) == FFX_OK);
-            }
-
-            // context gi
-            {
-                brixelizer_gi::description_context_gi.internalResolution = brixelizer_gi::internal_resolution;         // render resolution
-                brixelizer_gi::description_context_gi.displaySize.width  = static_cast<uint32_t>(resolution_render.x); // output resolution
-                brixelizer_gi::description_context_gi.displaySize.height = static_cast<uint32_t>(resolution_render.y); // output resolution
-                brixelizer_gi::description_context_gi.flags              = FfxBrixelizerGIFlags::FFX_BRIXELIZER_GI_FLAG_DEPTH_INVERTED;
-                brixelizer_gi::description_context_gi.backendInterface   = ffx_interface;
-                
-                SP_ASSERT(ffxBrixelizerGIContextCreate(&brixelizer_gi::context_gi, &brixelizer_gi::description_context_gi) == FFX_OK);
-            }
-            
-            // resources
-            {
-                uint32_t flags = RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit;
-                brixelizer_gi::texture_depth_previous  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::D32_Float,          flags, "ffx_depth_previous");
-                brixelizer_gi::texture_normal_previous = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ffx_normal_previous");
-            }
-
-            brixelizer_gi::context_created = true;
-        }
-
-        // breacrumbs
-        if (!breadcrumbs::context_created && Debugging::IsBreadcrumbsEnabled())
-        {
-            uint32_t gpu_queue_indices[2] =
-            {
-                RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics),
-                RHI_Device::GetQueueIndex(RHI_Queue_Type::Compute)
-            };
-
-             FfxBreadcrumbsContextDescription context_description = {};
-             context_description.backendInterface                 = ffx_interface;
-             context_description.maxMarkersPerMemoryBlock         = 3;
-             context_description.usedGpuQueuesCount               = 2;
-             context_description.pUsedGpuQueues                   = &gpu_queue_indices[0];
-             context_description.allocCallbacks.fpAlloc           = malloc;
-             context_description.allocCallbacks.fpRealloc         = realloc;
-             context_description.allocCallbacks.fpFree            = free;
-             context_description.frameHistoryLength               = Renderer::GetSwapChain()->GetBufferCount() * 2; // double the swapchain's backbuffer count
-             context_description.flags                            = FFX_BREADCRUMBS_PRINT_FINISHED_LISTS    |
-                                                                    FFX_BREADCRUMBS_PRINT_NOT_STARTED_LISTS |
-                                                                    FFX_BREADCRUMBS_PRINT_FINISHED_NODES    |
-                                                                    FFX_BREADCRUMBS_PRINT_NOT_STARTED_NODES |
-                                                                    FFX_BREADCRUMBS_PRINT_EXTENDED_DEVICE_INFO |
-                                                                    FFX_BREADCRUMBS_ENABLE_THREAD_SYNCHRONIZATION; // probably doesn't work, as the markers require mutexes
-
-             SP_ASSERT(ffxBreadcrumbsContextCreate(&breadcrumbs::context, &context_description) == FFX_OK);
-             breadcrumbs::context_created = true;
-        }
-    #endif
-    }
- 
     void RHI_FidelityFX::Tick(Cb_Frame* cb_frame)
     {
     #ifdef _MSC_VER
@@ -948,6 +957,26 @@ namespace Spartan
         {
             SP_ASSERT(ffxBreadcrumbsStartFrame(&breadcrumbs::context) == FFX_OK);
         }
+    #endif
+    }
+
+    void RHI_FidelityFX::Resize(const Vector2& resolution_render, const Vector2& resolution_output)
+    {
+    #ifdef _MSC_VER
+        bool resolution_render_changed = resolution_render.x != fsr3::description_context.maxRenderSize.width  || resolution_render.y != fsr3::description_context.maxRenderSize.height;
+        bool resolution_output_changed = resolution_output.x != fsr3::description_context.maxUpscaleSize.width || resolution_output.y != fsr3::description_context.maxUpscaleSize.height;
+        if (!resolution_render_changed && !resolution_output_changed)
+            return;
+
+        uint32_t resolution_render_width  = static_cast<uint32_t>(resolution_render.x);
+        uint32_t resolution_render_height = static_cast<uint32_t>(resolution_render.y);
+        uint32_t resolution_output_width  = static_cast<uint32_t>(resolution_output.x);
+        uint32_t resolution_output_height = static_cast<uint32_t>(resolution_output.y);
+
+        // re-create resolution dependent contexts
+        fsr3::create_context(resolution_render_width, resolution_render_height, resolution_output_width, resolution_output_height);
+        sssr::context_create(resolution_render_width, resolution_render_height);
+        brixelizer_gi::context_create(resolution_render_width, resolution_render_height);
     #endif
     }
 

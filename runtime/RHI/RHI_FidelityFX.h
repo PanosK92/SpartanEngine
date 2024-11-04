@@ -36,8 +36,10 @@ namespace Spartan
     public:
         static void Initialize();
         static void Shutdown();
-        static void Resize(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output);
         static void Tick(Cb_Frame* cb_frame);
+
+        // fsr 3, brixelizer gi, sssr
+        static void Resize(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output);
 
         // fsr 3
         static void FSR3_ResetHistory();
@@ -100,8 +102,5 @@ namespace Spartan
         static void Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const char* name);
         static void Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list);
         static void Breadcrumbs_OnDeviceRemoved();
-
-    private:
-        static void DestroySizeDependentContexts();
     };
 }
