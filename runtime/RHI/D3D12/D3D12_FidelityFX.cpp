@@ -39,11 +39,6 @@ namespace Spartan
 
     }
 
-    void RHI_FidelityFX::DestroySizeDependentContexts()
-    {
-
-    }
-
     void RHI_FidelityFX::Shutdown()
     {
 
