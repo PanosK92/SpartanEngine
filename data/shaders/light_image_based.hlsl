@@ -44,27 +44,22 @@ float3 sample_environment(float2 uv, float mip_level, float mip_max)
 
 float get_blend_weight(float value, float threshold, float smoothness)
 {
-    // create a smooth transition around the threshold
-    // smoothness controls the size of the blend region
     return saturate((value - (threshold - smoothness)) / (smoothness * 2.0f));
 }
 
 float3 combine_specular_sources(float4 specular_ssr, float3 specular_gi, float3 specular_sky)
 {
-    // smooth blending parameters
     const float threshold  = 0.01f;
-    const float smoothness = 0.2f; // blend region size
+    const float smoothness = 0.2f; // aka blend region size
     
-    // get smooth weights for each source
+    // get weights for each source
     float ssr_weight = get_blend_weight(specular_ssr.a, threshold, smoothness);
     float gi_weight  = get_blend_weight(luminance(specular_gi), threshold, smoothness);
 
-    // start with sky as base
-    float3 result = specular_sky;
-    // blend GI on top
-    result = lerp(result, specular_gi, gi_weight);
-    // blend ssr on top
-    result = lerp(result, specular_ssr.rgb, ssr_weight);
+    // blend
+    float3 result = specular_sky;                               // start with sky as base
+    result        = lerp(result, specular_gi, gi_weight);       // blend in gi
+    result        = lerp(result, specular_ssr.rgb, ssr_weight); // blend in ssr
     
     return result;
 }

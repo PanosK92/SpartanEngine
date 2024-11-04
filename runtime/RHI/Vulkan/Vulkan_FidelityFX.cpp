@@ -382,6 +382,7 @@ namespace Spartan
             // sdk issue #5: after a number of instances (a lot) debug drawing the AABB starts to flicker, and the AABBs are not always correct.
 
             // parameters
+            const FfxBrixelizerGIInternalResolution internal_resolution = FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_50_PERCENT;
             const float    voxel_size               = 0.05f;
             const float    cascade_size_ratio       = 2.0f;
             const uint32_t cascade_count            = 8;         // max is 24
@@ -389,16 +390,15 @@ namespace Spartan
             const uint32_t cascade_index_start      = cascade_offset + 0;
             const uint32_t cascade_index_end        = cascade_offset + cascade_count - 1;
             const uint32_t cascade_resolution       = 64;
-            const uint32_t sdf_atlas_size           = 512;
             const bool     sdf_center_around_camera = true;
             const float    sdf_ray_normal_offset    = 0.5f;      // distance from a surface along the normal vector to offset the ray origin - below 0.5 I see artifacts
             const float    sdf_ray_epsilon          = 0.5f;      // epsilon value for ray marching to be used with brixelizer for rays
-            const uint32_t bricks_max               = 262144;
-            const uint32_t bricks_per_update_max    = 16384;     // maximum number of bricks to be updated
-            const uint32_t triangle_references_max  = 33554432;  // maximum number of triangle voxel references to be stored in the update
-            const uint32_t triangle_swap_size       = 314572800; // size of the swap space available to be used for storing triangles in the update
-            const float t_min                       = 0.0f;
-            const float t_max                       = 10000.0f;
+            const uint32_t bricks_max               = 300000;
+            const uint32_t bricks_per_update_max    = 30000;     // maximum number of bricks to be updated
+            const uint32_t triangle_references_max  = 34000000;  // maximum number of triangle voxel references to be stored in the update
+            const uint32_t triangle_swap_size       = 315000000; // size of the swap space available to be used for storing triangles in the update
+            const float    t_min                    = 0.0f;
+            const float    t_max                    = 10000.0f;
 
             // structs
             bool                                       context_created          = false;
@@ -604,12 +604,12 @@ namespace Spartan
         {
             // brixelizer gi
             {
-                // sdf atlas texture
+                // sdf atlas texture (512 is the size brixelizer gi wants)
                 brixelizer_gi::texture_sdf_atlas = make_shared<RHI_Texture>(
                     RHI_Texture_Type::Type3D,
-                    brixelizer_gi::sdf_atlas_size,
-                    brixelizer_gi::sdf_atlas_size,
-                    brixelizer_gi::sdf_atlas_size,
+                    512,
+                    512,
+                    512,
                     1,
                     RHI_Format::R8_Unorm,
                     RHI_Texture_Srv | RHI_Texture_Uav,
@@ -622,7 +622,7 @@ namespace Spartan
                     1 << 30, // stride - 1024 MB (will assert if not enough)
                     1,       // element count
                     nullptr,
-                    false,   // mappable
+                    false,
                     "ffx_brixelizer_gi_scratch"
                 );
 
@@ -632,7 +632,7 @@ namespace Spartan
                     static_cast<uint32_t>(sizeof(uint32_t)), // stride
                     brixelizer_gi::bricks_max,               // element count
                     nullptr,
-                    false,                                   // mappable
+                    false,
                     "ffx_brick_aabbs"
                 );
 
@@ -646,7 +646,7 @@ namespace Spartan
                         static_cast<uint32_t>(sizeof(uint32_t)),                          // stride
                         static_cast<uint32_t>(cascade_aabb_tree_size / sizeof(uint32_t)), // element count
                         nullptr,
-                        false,                                                            // mappable
+                        false,
                         name.c_str()
                     );
                 }
@@ -661,7 +661,7 @@ namespace Spartan
                         static_cast<uint32_t>(sizeof(uint32_t)),                          // stride
                         static_cast<uint32_t>(cascade_brick_map_size / sizeof(uint32_t)), // element count
                         nullptr,
-                        false,                                                            // mappable
+                        false,
                         name.c_str()
                     );
                 }
@@ -856,9 +856,9 @@ namespace Spartan
 
             // context gi
             {
-                brixelizer_gi::description_context_gi.internalResolution = FfxBrixelizerGIInternalResolution::FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_50_PERCENT; // render resolution
-                brixelizer_gi::description_context_gi.displaySize.width  = static_cast<uint32_t>(resolution_render.x);                                          // output resolution
-                brixelizer_gi::description_context_gi.displaySize.height = static_cast<uint32_t>(resolution_render.y);                                          // output resolution
+                brixelizer_gi::description_context_gi.internalResolution = brixelizer_gi::internal_resolution;         // render resolution
+                brixelizer_gi::description_context_gi.displaySize.width  = static_cast<uint32_t>(resolution_render.x); // output resolution
+                brixelizer_gi::description_context_gi.displaySize.height = static_cast<uint32_t>(resolution_render.y); // output resolution
                 brixelizer_gi::description_context_gi.flags              = FfxBrixelizerGIFlags::FFX_BRIXELIZER_GI_FLAG_DEPTH_INVERTED;
                 brixelizer_gi::description_context_gi.backendInterface   = ffx_interface;
                 
