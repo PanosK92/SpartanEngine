@@ -147,7 +147,7 @@ namespace Spartan
             uint32_t width  = Window::GetWidth();
             uint32_t height = Window::GetHeight();
 
-            // the resolution of the output frame (we can upscale to that linearly or with fsr 2)
+            // the resolution of the output frame (we can upscale to that linearly or with fsr)
             SetResolutionOutput(width, height, false);
 
             // set the render resolution to something smaller than the output resolution
@@ -226,7 +226,7 @@ namespace Spartan
         SetOption(Renderer_Option::ScreenSpaceAmbientOcclusion, 1.0f);
         SetOption(Renderer_Option::ScreenSpaceShadows,          static_cast<float>(Renderer_ScreenspaceShadow::Bend));
         SetOption(Renderer_Option::ScreenSpaceReflections,      1.0f);
-        SetOption(Renderer_Option::GlobalIllumination,          1.0f);
+        SetOption(Renderer_Option::GlobalIllumination,          0.5f); // 0.5 is the percentage of the internal resolution (options are 25%, 50%,75% and 100%)
         SetOption(Renderer_Option::Anisotropy,                  16.0f);
         SetOption(Renderer_Option::ShadowResolution,            4096.0f);
         SetOption(Renderer_Option::Exposure,                    1.0f);
@@ -735,6 +735,13 @@ namespace Spartan
                 }
 
                 enabled = value != 0.0f;
+            }
+            else if (option == Renderer_Option::GlobalIllumination)
+            {
+                if (value != 0.0f)
+                { 
+                    RHI_FidelityFX::BrixelizerGI_SetResolution(value);
+                }
             }
         }
     }

@@ -1196,7 +1196,7 @@ namespace Spartan
     {
         static bool cleared = true;
 
-        if (GetOption<bool>(Renderer_Option::GlobalIllumination) && m_initialized_third_party)
+        if (GetOption<float>(Renderer_Option::GlobalIllumination) != 0.0f && m_initialized_third_party)
         { 
             cmd_list->BeginTimeblock("light_global_illumination");
 
