@@ -306,14 +306,45 @@ void RenderOptions::OnTickVisible()
             // ssr
             option_check_box("SSR - Screen space reflections", Renderer_Option::ScreenSpaceReflections);
 
-            // ssgi
+            // ssao
             option_check_box("SSAO - Screen space ambient occlusion", Renderer_Option::ScreenSpaceAmbientOcclusion);
 
             // sss
             option_check_box("SSS - Screen space shadows", Renderer_Option::ScreenSpaceShadows, "Requires a light with shadows enabled");
 
-            // sss
-            option_check_box("GI - Global Illumination (WIP)", Renderer_Option::GlobalIllumination);
+            // gi
+            {
+                // toggle
+                option_check_box("GI - Global illumination (WIP)", Renderer_Option::GlobalIllumination);
+            
+                // internal resolution
+                //float gi_value = Renderer::GetOption<float>(Renderer_Option::GlobalIllumination);
+                //bool gi_enabled = gi_value != 0.0f;
+                //ImGui::BeginDisabled(!gi_enabled);
+                //{
+                //    static vector<string> internal_resolutions =
+                //    {
+                //        "25%",
+                //        "50%",
+                //        "75%",
+                //        "100%",
+                //    };
+                //
+                //    // adjust index for 25%, 50%, 75%, and 100%
+                //    uint32_t index = gi_value == 0.25f ? 0 : (gi_value == 0.5f ? 1 : (gi_value == 0.75f ? 2 : 3));
+                //    
+                //    if (option_combo_box("GI - Internal resolution", internal_resolutions, index))
+                //    {
+                //        // set selected value based on the updated index
+                //        float selected_value = index == 0 ? 0.25f : (index == 1 ? 0.5f : (index == 2 ? 0.75f : 1.0f));
+                //        Renderer::SetOption(Renderer_Option::GlobalIllumination, selected_value);
+                //    }
+                //}
+                //ImGui::EndDisabled();
+            }
+
+            // volumetric fog
+            option_check_box("Volumetric fog", Renderer_Option::FogVolumetric, "Requires a light with shadows enabled");
         }
 
         if (option("Anti-Aliasing"))
@@ -366,19 +397,13 @@ void RenderOptions::OnTickVisible()
             option_check_box("Film grain", Renderer_Option::FilmGrain);
         }
 
-        if (option("Lights"))
+        if (option("Misc"))
         {
-            // volumetric fog
-            option_check_box("Volumetric fog", Renderer_Option::FogVolumetric, "Requires a light with shadows enabled");
-
             // shadow resolution
             int resolution_shadow = Renderer::GetOption<int>(Renderer_Option::ShadowResolution);
             option_int("Shadow resolution", resolution_shadow);
             Renderer::SetOption(Renderer_Option::ShadowResolution, static_cast<float>(resolution_shadow));
-        }
 
-        if (option("Misc"))
-        {
             option_value("Fog",      Renderer_Option::Fog, "Controls the density of the fog", 0.1f);
             option_value("Exposure", Renderer_Option::Exposure);
 

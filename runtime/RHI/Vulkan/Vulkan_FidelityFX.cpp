@@ -62,16 +62,20 @@ namespace Spartan
     namespace
     {
         // shared among all contexts
-        FfxInterface ffx_interface      = {};
-        Matrix view                     = Matrix::Identity;
-        Matrix view_previous            = Matrix::Identity;
-        Matrix projection               = Matrix::Identity;
-        Matrix projection_previous      = Matrix::Identity;
-        Matrix view_projection          = Matrix::Identity;
-        Matrix view_inverted            = Matrix::Identity;
-        Matrix projection_inverted      = Matrix::Identity;
-        Matrix view_projection_previous = Matrix::Identity;
-        Matrix view_projection_inverted = Matrix::Identity;
+        FfxInterface ffx_interface        = {};
+        Matrix view                       = Matrix::Identity;
+        Matrix view_previous              = Matrix::Identity;
+        Matrix projection                 = Matrix::Identity;
+        Matrix projection_previous        = Matrix::Identity;
+        Matrix view_projection            = Matrix::Identity;
+        Matrix view_inverted              = Matrix::Identity;
+        Matrix projection_inverted        = Matrix::Identity;
+        Matrix view_projection_previous   = Matrix::Identity;
+        Matrix view_projection_inverted   = Matrix::Identity;
+        uint32_t resolution_render_width  = 0;
+        uint32_t resolution_render_height = 0;
+        uint32_t resolution_output_width  = 0;
+        uint32_t resolution_output_height = 0;
 
         void ffx_message_callback(FfxMsgType type, const wchar_t* message)
         {
@@ -374,7 +378,7 @@ namespace Spartan
                 }
             }
 
-            void create_context(const uint32_t resolution_render_width, const uint32_t resolution_render_height, const uint32_t resolution_output_width, const uint32_t resolution_output_height)
+            void create_context()
             {
                 context_destroy();
 
@@ -460,12 +464,12 @@ namespace Spartan
                 }
             }
 
-            void context_create(const uint32_t width, const uint32_t height)
+            void context_create()
             {
                 context_destroy();
 
-                description_context.renderSize.width           = width;
-                description_context.renderSize.height          = height;
+                description_context.renderSize.width           = resolution_render_width;
+                description_context.renderSize.height          = resolution_render_height;
                 description_context.normalsHistoryBufferFormat = to_ffx_format(RHI_Format::R16G16B16A16_Float);
                 description_context.flags                      = FFX_SSSR_ENABLE_DEPTH_INVERTED;
                 description_context.backendInterface           = ffx_interface;
@@ -487,7 +491,7 @@ namespace Spartan
             // sdk issue #5: after a number of instances (a lot) debug drawing the AABB starts to flicker, and the AABBs are not always correct.
 
             // parameters
-            const FfxBrixelizerGIInternalResolution internal_resolution = FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_50_PERCENT;
+            FfxBrixelizerGIInternalResolution internal_resolution = FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_50_PERCENT;
             const float    voxel_size               = 0.05f;
             const float    cascade_size_ratio       = 2.0f;
             const uint32_t cascade_count            = 8;         // max is 24
@@ -680,7 +684,7 @@ namespace Spartan
                 }
             }
 
-            void context_create(const uint32_t resolution_render_width, const uint32_t resolution_render_height)
+            void context_create()
             {
                 context_destroy();
 
@@ -969,15 +973,15 @@ namespace Spartan
         if (!resolution_render_changed && !resolution_output_changed)
             return;
 
-        uint32_t resolution_render_width  = static_cast<uint32_t>(resolution_render.x);
-        uint32_t resolution_render_height = static_cast<uint32_t>(resolution_render.y);
-        uint32_t resolution_output_width  = static_cast<uint32_t>(resolution_output.x);
-        uint32_t resolution_output_height = static_cast<uint32_t>(resolution_output.y);
+        resolution_render_width  = static_cast<uint32_t>(resolution_render.x);
+        resolution_render_height = static_cast<uint32_t>(resolution_render.y);
+        resolution_output_width  = static_cast<uint32_t>(resolution_output.x);
+        resolution_output_height = static_cast<uint32_t>(resolution_output.y);
 
         // re-create resolution dependent contexts
-        fsr3::create_context(resolution_render_width, resolution_render_height, resolution_output_width, resolution_output_height);
-        sssr::context_create(resolution_render_width, resolution_render_height);
-        brixelizer_gi::context_create(resolution_render_width, resolution_render_height);
+        fsr3::create_context();
+        sssr::context_create();
+        brixelizer_gi::context_create();
     #endif
     }
 
@@ -1415,6 +1419,35 @@ namespace Spartan
             SP_ASSERT(ffxBrixelizerGIContextDebugVisualization(&brixelizer_gi::context_gi, &brixelizer_gi::debug_description_gi, to_ffx_cmd_list(cmd_list)) == FFX_OK);
         }
     #endif
+    }
+
+    void RHI_FidelityFX::BrixelizerGI_SetResolution(const float percentage)
+    {
+        if (brixelizer_gi::internal_resolution == percentage)
+            return;
+
+        if (percentage == 0.25f)
+        {
+            brixelizer_gi::internal_resolution = FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_25_PERCENT;
+        }
+        else if (percentage == 0.5f)
+        {
+            brixelizer_gi::internal_resolution = FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_50_PERCENT;
+        }
+        else if (percentage == 0.75f)
+        {
+            brixelizer_gi::internal_resolution = FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_75_PERCENT;
+        }
+        else if (percentage == 1.0f)
+        {
+            brixelizer_gi::internal_resolution = FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_NATIVE;
+        }
+        else
+        {
+            SP_ASSERT_MSG(false, "Invalid scale");
+        }
+
+        brixelizer_gi::context_create();
     }
 
     void RHI_FidelityFX::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name)

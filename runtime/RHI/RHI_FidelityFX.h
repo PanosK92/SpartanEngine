@@ -94,6 +94,7 @@ namespace Spartan
             RHI_Texture* tex_specular_gi,
             RHI_Texture* tex_debug
         );
+        static void BrixelizerGI_SetResolution(const float percentage);
 
         // breadcrumbs
         static void Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name);
