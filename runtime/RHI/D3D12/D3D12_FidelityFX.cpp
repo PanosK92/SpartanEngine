@@ -127,6 +127,11 @@ namespace Spartan
 
     }
 
+    void RHI_FidelityFX::BrixelizerGI_SetResolution(const float percentage)
+    {
+
+    }
+
     void RHI_FidelityFX::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name)
     {
 
