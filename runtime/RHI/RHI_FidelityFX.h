@@ -31,15 +31,21 @@ namespace Spartan
     class Camera;
     struct Cb_Frame;
 
+    enum class FidelityFX
+    {
+        Fsr,
+        BrixelizerGi,
+        Sssr
+    };
+
     class RHI_FidelityFX
     {
     public:
         static void Initialize();
         static void Shutdown();
         static void Tick(Cb_Frame* cb_frame);
-
-        // fsr 3, brixelizer gi, sssr
         static void Resize(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output);
+        static void Shutdown(const FidelityFX fx);
 
         // fsr 3
         static void FSR3_ResetHistory();
@@ -94,7 +100,7 @@ namespace Spartan
             RHI_Texture* tex_specular_gi,
             RHI_Texture* tex_debug
         );
-        static void BrixelizerGI_SetResolution(const float percentage);
+        static void BrixelizerGI_SetResolutionPercentage(const float resolution_percentage);
 
         // breadcrumbs
         static void Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name);
