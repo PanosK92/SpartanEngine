@@ -698,6 +698,8 @@ namespace Spartan
                     {
                         m_options[Renderer_Option::Antialiasing] = static_cast<float>(Renderer_Antialiasing::Disabled);
                     }
+
+                    RHI_FidelityFX::Shutdown(FidelityFX::Fsr);
                 }
                 else if (value == static_cast<float>(Renderer_Upsampling::Fsr3))
                 {
@@ -738,9 +740,20 @@ namespace Spartan
             }
             else if (option == Renderer_Option::GlobalIllumination)
             {
-                if (value != 0.0f)
+                if (value == 0.0)
+                {
+                    //RHI_FidelityFX::Shutdown(FidelityFX::BrixelizerGi);
+                }
+                else
                 { 
-                    RHI_FidelityFX::BrixelizerGI_SetResolution(value);
+                    RHI_FidelityFX::BrixelizerGI_SetResolutionPercentage(value);
+                }
+            }
+            else if (option == Renderer_Option::ScreenSpaceReflections)
+            {
+                if (value == 0.0)
+                {
+                    //RHI_FidelityFX::Shutdown(FidelityFX::Sssr);
                 }
             }
         }

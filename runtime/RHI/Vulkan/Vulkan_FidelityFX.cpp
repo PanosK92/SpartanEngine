@@ -369,6 +369,8 @@ namespace Spartan
             {
                 if (context_created)
                 {
+                    RHI_Device::QueueWaitAll();
+
                     SP_ASSERT(ffxFsr3UpscalerContextDestroy(&context) == FFX_OK);
                     context_created = false;
 
@@ -459,6 +461,8 @@ namespace Spartan
             {
                 if (context_created)
                 {
+                    RHI_Device::QueueWaitAll();
+
                     SP_ASSERT(ffxSssrContextDestroy(&context) == FFX_OK);
                     context_created = false;
                 }
@@ -500,9 +504,8 @@ namespace Spartan
             const uint32_t cascade_index_end        = cascade_offset + cascade_count - 1;
             const uint32_t cascade_resolution       = 64;
             const bool     sdf_center_around_camera = true;
-            const float    sdf_ray_normal_offset    = 0.5f;      // distance from a surface along the normal vector to offset the ray origin - below 0.5 I see artifacts
-            const float    sdf_ray_epsilon          = 0.5f;      // epsilon value for ray marching to be used with brixelizer for rays
-            const uint32_t bricks_max               = 300000;
+            const float    sdf_ray_normal_offset    = 0.25f;     // distance from a surface along the normal vector to offset the ray origin - below 0.5 I see artifacts
+            const float    sdf_ray_epsilon          = 0.25f;     // epsilon value for ray marching to be used with brixelizer for rays
             const uint32_t bricks_per_update_max    = 30000;     // maximum number of bricks to be updated
             const uint32_t triangle_references_max  = 34000000;  // maximum number of triangle voxel references to be stored in the update
             const uint32_t triangle_swap_size       = 315000000; // size of the swap space available to be used for storing triangles in the update
@@ -672,6 +675,8 @@ namespace Spartan
             {
                 if (context_created)
                 {
+                    RHI_Device::QueueWaitAll();
+
                     SP_ASSERT(ffxBrixelizerContextDestroy(&context) == FFX_OK);
                     SP_ASSERT(ffxBrixelizerGIContextDestroy(&context_gi) == FFX_OK);
 
@@ -749,6 +754,8 @@ namespace Spartan
             {
                 if (context_created)
                 {
+                    RHI_Device::QueueWaitAll();
+
                     SP_ASSERT(ffxBreadcrumbsContextDestroy(&context) == FFX_OK);
                     context_created = false;
                 }
@@ -828,12 +835,12 @@ namespace Spartan
         {
             // brixelizer gi
             {
-                // sdf atlas texture (512 is the size brixelizer gi wants)
+                // sdf atlas texture
                 brixelizer_gi::texture_sdf_atlas = make_shared<RHI_Texture>(
                     RHI_Texture_Type::Type3D,
-                    512,
-                    512,
-                    512,
+                    FFX_BRIXELIZER_STATIC_CONFIG_SDF_ATLAS_SIZE,
+                    FFX_BRIXELIZER_STATIC_CONFIG_SDF_ATLAS_SIZE,
+                    FFX_BRIXELIZER_STATIC_CONFIG_SDF_ATLAS_SIZE,
                     1,
                     RHI_Format::R8_Unorm,
                     RHI_Texture_Srv | RHI_Texture_Uav,
@@ -853,37 +860,34 @@ namespace Spartan
                 // brick aabbs buffer
                 brixelizer_gi::buffer_brick_aabbs = make_shared<RHI_Buffer>(
                     RHI_Buffer_Type::Storage,
-                    static_cast<uint32_t>(sizeof(uint32_t)), // stride
-                    brixelizer_gi::bricks_max,               // element count
+                    static_cast<uint32_t>(FFX_BRIXELIZER_BRICK_AABBS_STRIDE),                                   // stride
+                    static_cast<uint32_t>(FFX_BRIXELIZER_BRICK_AABBS_SIZE / FFX_BRIXELIZER_BRICK_AABBS_STRIDE), // element count
                     nullptr,
                     false,
                     "ffx_brick_aabbs"
                 );
 
-                // cascade aabb trees
-                const uint32_t cascade_aabb_tree_size = (16 * 16 * 16) * sizeof(uint32_t) + (4 * 4 * 4 + 1) * sizeof(Vector3) * 2;
+                // cascade cascade aabb trees
                 for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; i++)
                 {
-                    string name = "ffx_cascade_aabb_tree_" + to_string(i);
                     brixelizer_gi::buffer_cascade_aabb_tree[i] = make_shared<RHI_Buffer>(
                         RHI_Buffer_Type::Storage,
-                        static_cast<uint32_t>(sizeof(uint32_t)),                          // stride
-                        static_cast<uint32_t>(cascade_aabb_tree_size / sizeof(uint32_t)), // element count
+                        FFX_BRIXELIZER_CASCADE_AABB_TREE_STRIDE,                                                                // stride
+                        static_cast<uint32_t>(FFX_BRIXELIZER_CASCADE_AABB_TREE_SIZE / FFX_BRIXELIZER_CASCADE_AABB_TREE_STRIDE), // element count
                         nullptr,
                         false,
-                        name.c_str()
+                        ("ffx_cascade_aabb_tree_" + to_string(i)).c_str()
                     );
                 }
 
                 // cascade brick maps
-                const uint32_t cascade_brick_map_size = brixelizer_gi::cascade_resolution * brixelizer_gi::cascade_resolution * brixelizer_gi::cascade_resolution * sizeof(uint32_t);
                 for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; i++)
                 {
                     string name = "ffx_cascade_brick_map_" + to_string(i);
                     brixelizer_gi::buffer_cascade_brick_map[i] = make_shared<RHI_Buffer>(
                         RHI_Buffer_Type::Storage,
-                        static_cast<uint32_t>(sizeof(uint32_t)),                          // stride
-                        static_cast<uint32_t>(cascade_brick_map_size / sizeof(uint32_t)), // element count
+                        static_cast<uint32_t>(FFX_BRIXELIZER_CASCADE_BRICK_MAP_STRIDE),                                         // stride
+                        static_cast<uint32_t>(FFX_BRIXELIZER_CASCADE_BRICK_MAP_SIZE / FFX_BRIXELIZER_CASCADE_BRICK_MAP_STRIDE), // element count
                         nullptr,
                         false,
                         name.c_str()
@@ -968,10 +972,8 @@ namespace Spartan
     void RHI_FidelityFX::Resize(const Vector2& resolution_render, const Vector2& resolution_output)
     {
     #ifdef _MSC_VER
-        bool resolution_render_changed = resolution_render.x != fsr3::description_context.maxRenderSize.width  || resolution_render.y != fsr3::description_context.maxRenderSize.height;
-        bool resolution_output_changed = resolution_output.x != fsr3::description_context.maxUpscaleSize.width || resolution_output.y != fsr3::description_context.maxUpscaleSize.height;
-        if (!resolution_render_changed && !resolution_output_changed)
-            return;
+        bool resolution_render_changed = resolution_render.x != resolution_render_width  || resolution_render.y != resolution_render_height;
+        bool resolution_output_changed = resolution_output.x != resolution_output_width  || resolution_output.y != resolution_output_height;
 
         resolution_render_width  = static_cast<uint32_t>(resolution_render.x);
         resolution_render_height = static_cast<uint32_t>(resolution_render.y);
@@ -979,10 +981,35 @@ namespace Spartan
         resolution_output_height = static_cast<uint32_t>(resolution_output.y);
 
         // re-create resolution dependent contexts
-        fsr3::create_context();
-        sssr::context_create();
-        brixelizer_gi::context_create();
+        {
+            if (resolution_render_changed || resolution_output_changed)
+            { 
+                fsr3::create_context();
+            }
+
+            if (resolution_render_changed)
+            {
+                sssr::context_create();
+                brixelizer_gi::context_create();
+            }
+        }
     #endif
+    }
+
+    void RHI_FidelityFX::Shutdown(const FidelityFX fx)
+    {
+        if (fx == FidelityFX::Sssr)
+        {
+            sssr::context_destroy();
+        }
+        else if (fx == FidelityFX::BrixelizerGi)
+        {
+            brixelizer_gi::context_destroy();
+        }
+        else if (fx == FidelityFX::Fsr)
+        {
+            fsr3::context_destroy();
+        }
     }
 
     void RHI_FidelityFX::FSR3_ResetHistory()
@@ -1028,6 +1055,8 @@ namespace Spartan
     )
     {
     #ifdef _MSC_VER
+        SP_ASSERT(fsr3::context_created);
+
         // output is displayed in the viewport, so add a barrier to ensure any work is done before writting to it
         cmd_list->InsertBarrierTextureReadWrite(tex_output);
         cmd_list->InsertPendingBarrierGroup();
@@ -1082,6 +1111,8 @@ namespace Spartan
     )
     {
     #ifdef _MSC_VER
+        SP_ASSERT(sssr::context_created);
+
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/stochastic-screen-space-reflections.md
 
         // transition the depth to shader read, to avoid validation errors caused by ffx
@@ -1146,6 +1177,8 @@ namespace Spartan
     )
     {
     #ifdef _MSC_VER
+        SP_ASSERT(brixelizer_gi::context_created);
+
         // instances
         {
             brixelizer_gi::instances_to_create.clear();
@@ -1327,6 +1360,8 @@ namespace Spartan
     )
     {
     #ifdef _MSC_VER
+        SP_ASSERT(brixelizer_gi::context_created);
+
         bool debug_enabled  = brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Max;
         bool debug_dispatch = brixelizer_gi::debug_mode == brixelizer_gi::DebugMode::Radiance || brixelizer_gi::debug_mode == brixelizer_gi::DebugMode::Irradiance;
         bool debug_update   = debug_enabled && !debug_dispatch;
@@ -1421,30 +1456,27 @@ namespace Spartan
     #endif
     }
 
-    void RHI_FidelityFX::BrixelizerGI_SetResolution(const float percentage)
+    void RHI_FidelityFX::BrixelizerGI_SetResolutionPercentage(const float resolution_percentage)
     {
-        if (brixelizer_gi::internal_resolution == percentage)
-            return;
-
-        if (percentage == 0.25f)
+        if (resolution_percentage == 0.25f)
         {
             brixelizer_gi::internal_resolution = FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_25_PERCENT;
         }
-        else if (percentage == 0.5f)
+        else if (resolution_percentage == 0.5f)
         {
             brixelizer_gi::internal_resolution = FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_50_PERCENT;
         }
-        else if (percentage == 0.75f)
+        else if (resolution_percentage == 0.75f)
         {
             brixelizer_gi::internal_resolution = FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_75_PERCENT;
         }
-        else if (percentage == 1.0f)
+        else if (resolution_percentage == 1.0f)
         {
             brixelizer_gi::internal_resolution = FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_NATIVE;
         }
         else
         {
-            SP_ASSERT_MSG(false, "Invalid scale");
+            SP_ASSERT_MSG(false, "Invalid percentage. Supported percentages are 0.25, 0.5, 0.75 and 1.0.");
         }
 
         brixelizer_gi::context_create();
