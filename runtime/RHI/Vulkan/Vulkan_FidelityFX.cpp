@@ -924,6 +924,22 @@ namespace Spartan
     #endif
     }
 
+    void RHI_FidelityFX::Shutdown(const FidelityFX fx)
+    {
+        if (fx == FidelityFX::Sssr)
+        {
+            sssr::context_destroy();
+        }
+        else if (fx == FidelityFX::BrixelizerGi)
+        {
+            brixelizer_gi::context_destroy();
+        }
+        else if (fx == FidelityFX::Fsr)
+        {
+            fsr3::context_destroy();
+        }
+    }
+
     void RHI_FidelityFX::Tick(Cb_Frame* cb_frame)
     {
     #ifdef _MSC_VER
@@ -994,22 +1010,6 @@ namespace Spartan
             }
         }
     #endif
-    }
-
-    void RHI_FidelityFX::Shutdown(const FidelityFX fx)
-    {
-        if (fx == FidelityFX::Sssr)
-        {
-            sssr::context_destroy();
-        }
-        else if (fx == FidelityFX::BrixelizerGi)
-        {
-            brixelizer_gi::context_destroy();
-        }
-        else if (fx == FidelityFX::Fsr)
-        {
-            fsr3::context_destroy();
-        }
     }
 
     void RHI_FidelityFX::FSR3_ResetHistory()

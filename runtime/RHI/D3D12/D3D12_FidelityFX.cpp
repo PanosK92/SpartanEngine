@@ -44,6 +44,11 @@ namespace Spartan
 
     }
 
+    void RHI_FidelityFX::Shutdown(const FidelityFX fx)
+    {
+
+    }
+
     void RHI_FidelityFX::FSR3_ResetHistory()
     {
 
@@ -127,7 +132,7 @@ namespace Spartan
 
     }
 
-    void RHI_FidelityFX::BrixelizerGI_SetResolution(const float percentage)
+    void RHI_FidelityFX::BrixelizerGI_SetResolutionPercentage(const float resolution_percentage)
     {
 
     }

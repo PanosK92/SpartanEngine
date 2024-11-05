@@ -43,9 +43,9 @@ namespace Spartan
     public:
         static void Initialize();
         static void Shutdown();
+        static void Shutdown(const FidelityFX fx);
         static void Tick(Cb_Frame* cb_frame);
         static void Resize(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output);
-        static void Shutdown(const FidelityFX fx);
 
         // fsr 3
         static void FSR3_ResetHistory();
