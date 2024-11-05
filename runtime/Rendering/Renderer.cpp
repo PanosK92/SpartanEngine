@@ -746,7 +746,7 @@ namespace Spartan
                 }
                 else
                 { 
-                    RHI_FidelityFX::BrixelizerGI_SetResolutionPercentage(value);
+                    //RHI_FidelityFX::BrixelizerGI_SetResolutionPercentage(value);
                 }
             }
             else if (option == Renderer_Option::ScreenSpaceReflections)

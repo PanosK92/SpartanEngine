@@ -504,8 +504,8 @@ namespace Spartan
             const uint32_t cascade_index_end        = cascade_offset + cascade_count - 1;
             const uint32_t cascade_resolution       = 64;
             const bool     sdf_center_around_camera = true;
-            const float    sdf_ray_normal_offset    = 0.25f;     // distance from a surface along the normal vector to offset the ray origin - below 0.5 I see artifacts
-            const float    sdf_ray_epsilon          = 0.25f;     // epsilon value for ray marching to be used with brixelizer for rays
+            const float    sdf_ray_normal_offset    = 0.5f;      // distance from a surface along the normal vector to offset the ray origin - below 0.5 I see artifacts
+            const float    sdf_ray_epsilon          = 0.5f;      // epsilon value for ray marching to be used with brixelizer for rays
             const uint32_t bricks_per_update_max    = 30000;     // maximum number of bricks to be updated
             const uint32_t triangle_references_max  = 34000000;  // maximum number of triangle voxel references to be stored in the update
             const uint32_t triangle_swap_size       = 315000000; // size of the swap space available to be used for storing triangles in the update
