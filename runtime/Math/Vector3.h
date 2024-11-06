@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDE ===========
 #include "MathHelper.h"
+#include <immintrin.h>
 //=====================
 
 namespace Spartan::Math
@@ -190,24 +191,39 @@ namespace Spartan::Math
         // return absolute vector
         [[nodiscard]] Vector3 Abs() const { return Vector3(Helper::Abs(x), Helper::Abs(y), Helper::Abs(z)); }
 
-        // linear interpolation with another vector.
-        Vector3 Lerp(const Vector3& v, float t)                                    const { return *this * (1.0f - t) + v * t; }
-        static inline Vector3 Lerp(const Vector3& a, const Vector3& b, const float t)    { return a + (b - a) * t; }
+        // linear interpolation with another vector
+        Vector3 Lerp(const Vector3& v, float t) const                                 { return *this * (1.0f - t) + v * t; }
+        static inline Vector3 Lerp(const Vector3& a, const Vector3& b, const float t) { return a + (b - a) * t; }
 
         Vector3 operator*(const Vector3& b) const
         {
+        #ifdef __AVX2__
+            // create an __m128 vector from the components of this Vector3, with padding
+            __m128 thisVec = _mm_set_ps(0.0f, z, y, x);
+            // create an __m128 vector from the components of the input Vector3, with padding
+            __m128 bVec    = _mm_set_ps(0.0f, b.z, b.y, b.x);
+            // oerform element-wise multiplication of the two vectors
+            __m128 result  = _mm_mul_ps(thisVec, bVec);
+            
+            // temporary array to hold the result (we need to extract the data from the SIMD register)
+            float res[4];
+            // store the result from the SIMD register into the array
+            _mm_storeu_ps(res, result);
+
+            // return a new Vector3 constructed from the result, ignoring the padding (res[3])
+            return Vector3(res[0], res[1], res[2]);
+        #else
             return Vector3(
                 x * b.x,
                 y * b.y,
                 z * b.z
             );
+        #endif
         }
-
+        
         void operator*=(const Vector3& b)
         {
-            x *= b.x;
-            y *= b.y;
-            z *= b.z;
+            *this = *this * b;
         }
 
         Vector3 operator*(const float value) const
