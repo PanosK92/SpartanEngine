@@ -137,10 +137,12 @@ function solution_configuration()
             filter { "platforms:Windows" }
                 system "windows"
                 architecture "x64"
+				buildoptions { "/arch:AVX2" }
 		elseif os.target() == "linux" then
             filter { "platforms:Linux" }
                 system "linux"
                 architecture "x86_64"
+				buildoptions { "-mavx2" }
         end
 
         -- "Debug"
