@@ -80,7 +80,7 @@ namespace Spartan::Math
 
         [[nodiscard]] Vector3 GetTranslation() const { return Vector3(m30, m31, m32); }
 
-        static inline Matrix CreateTranslation(const Vector3& translation)
+        static Matrix CreateTranslation(const Vector3& translation)
         {
             return Matrix(
                 1, 0, 0, 0,
@@ -90,7 +90,7 @@ namespace Spartan::Math
             );
         }
 
-        static inline Matrix CreateRotation(const Quaternion& rotation)
+        static Matrix CreateRotation(const Quaternion& rotation)
         {
             const float num9 = rotation.x * rotation.x;
             const float num8 = rotation.y * rotation.y;
@@ -124,20 +124,50 @@ namespace Spartan::Math
 
         [[nodiscard]] Quaternion GetRotation() const
         {
-            const Vector3 scale = GetScale();
-
-            // avoid division by zero (division is needed to remove scaling)
-            if (scale.x == 0.0f || scale.y == 0.0f || scale.z == 0.0f)
-                return Quaternion::Identity;
-
-            // extract rotation and remove scaling
-            Matrix normalized;
-            normalized.m00 = m00 / scale.x; normalized.m01 = m01 / scale.x; normalized.m02 = m02 / scale.x; normalized.m03 = 0.0f;
-            normalized.m10 = m10 / scale.y; normalized.m11 = m11 / scale.y; normalized.m12 = m12 / scale.y; normalized.m13 = 0.0f;
-            normalized.m20 = m20 / scale.z; normalized.m21 = m21 / scale.z; normalized.m22 = m22 / scale.z; normalized.m23 = 0.0f;
-            normalized.m30 = 0;             normalized.m31 = 0;             normalized.m32 = 0;             normalized.m33 = 1.0f;
-
-            return RotationMatrixToQuaternion(normalized);
+            #if defined(__AVX2__)
+                const Vector3 scale = GetScale();
+                // avoid division by zero
+                if (scale.x == 0.0f || scale.y == 0.0f || scale.z == 0.0f)
+                    return Quaternion::Identity;
+                
+                // Create scale reciprocal vector for faster division
+                __m128 scaleRecip = _mm_set_ps(1.0f, 1.0f/scale.z, 1.0f/scale.y, 1.0f/scale.x);
+                
+                // Load and normalize first three columns
+                __m128 col0 = _mm_setr_ps(m00, m10, m20, m30);
+                __m128 col1 = _mm_setr_ps(m01, m11, m21, m31);
+                __m128 col2 = _mm_setr_ps(m02, m12, m22, m32);
+                
+                // Normalize by scale
+                col0 = _mm_mul_ps(col0, scaleRecip);
+                col1 = _mm_mul_ps(col1, scaleRecip);
+                col2 = _mm_mul_ps(col2, scaleRecip);
+                
+                // Store in normalized matrix
+                Matrix normalized;
+                _mm_store_ps(&normalized.m00, col0);
+                _mm_store_ps(&normalized.m01, col1);
+                _mm_store_ps(&normalized.m02, col2);
+                
+                // Set last column
+                normalized.m03 = 0.0f;
+                normalized.m13 = 0.0f;
+                normalized.m23 = 0.0f;
+                normalized.m33 = 1.0f;
+                
+                return RotationMatrixToQuaternion(normalized);
+            #else
+                const Vector3 scale = GetScale();
+                if (scale.x == 0.0f || scale.y == 0.0f || scale.z == 0.0f)
+                    return Quaternion::Identity;
+                
+                Matrix normalized;
+                normalized.m00 = m00 / scale.x; normalized.m01 = m01 / scale.x; normalized.m02 = m02 / scale.x; normalized.m03 = 0.0f;
+                normalized.m10 = m10 / scale.y; normalized.m11 = m11 / scale.y; normalized.m12 = m12 / scale.y; normalized.m13 = 0.0f;
+                normalized.m20 = m20 / scale.z; normalized.m21 = m21 / scale.z; normalized.m22 = m22 / scale.z; normalized.m23 = 0.0f;
+                normalized.m30 = 0;             normalized.m31 = 0;             normalized.m32 = 0;             normalized.m33 = 1.0f;
+                return RotationMatrixToQuaternion(normalized);
+            #endif
         }
 
         static Quaternion RotationMatrixToQuaternion(const Matrix& mRot)
@@ -231,7 +261,6 @@ namespace Spartan::Math
                     zs * Helper::Sqrt(_mm_cvtss_f32(square2))
                 );
             #else
-                // Fallback implementation
                 const int xs = (Helper::Sign(m00 * m01 * m02 * m03) < 0) ? -1 : 1;
                 const int ys = (Helper::Sign(m10 * m11 * m12 * m13) < 0) ? -1 : 1;
                 const int zs = (Helper::Sign(m20 * m21 * m22 * m23) < 0) ? -1 : 1;
