@@ -531,7 +531,12 @@ namespace Spartan
         oss_metrics << endl << "CPU" << endl
             << "Name:\t\t\t\t\t\t"  << cpu_name << endl
             << "Threads:\t\t\t\t\t" << thread::hardware_concurrency() << endl
-            << "Worker threads:\t"  << ThreadPool::GetWorkingThreadCount() << "/" << ThreadPool::GetThreadCount() << endl;
+            << "Worker threads:\t"  << ThreadPool::GetWorkingThreadCount() << "/" << ThreadPool::GetThreadCount() << endl
+            #ifdef __AVX2__
+            << "AVX2:\t\t\t\t\t\t\tYes" << endl;
+            #else
+            << "AVX2:\t\t\t\t\t\t\tNo" << endl;
+            #endif
 
         // display
         float resolution_scale = Renderer::GetOption<float>(Renderer_Option::ResolutionScale);
