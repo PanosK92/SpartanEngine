@@ -124,50 +124,45 @@ namespace Spartan::Math
 
         [[nodiscard]] Quaternion GetRotation() const
         {
-            #if defined(__AVX2__)
-                const Vector3 scale = GetScale();
-                // avoid division by zero
-                if (scale.x == 0.0f || scale.y == 0.0f || scale.z == 0.0f)
-                    return Quaternion::Identity;
-                
-                // Create scale reciprocal vector for faster division
-                __m128 scaleRecip = _mm_set_ps(1.0f, 1.0f/scale.z, 1.0f/scale.y, 1.0f/scale.x);
-                
-                // Load and normalize first three columns
-                __m128 col0 = _mm_setr_ps(m00, m10, m20, m30);
-                __m128 col1 = _mm_setr_ps(m01, m11, m21, m31);
-                __m128 col2 = _mm_setr_ps(m02, m12, m22, m32);
-                
-                // Normalize by scale
-                col0 = _mm_mul_ps(col0, scaleRecip);
-                col1 = _mm_mul_ps(col1, scaleRecip);
-                col2 = _mm_mul_ps(col2, scaleRecip);
-                
-                // Store in normalized matrix
-                Matrix normalized;
-                _mm_store_ps(&normalized.m00, col0);
-                _mm_store_ps(&normalized.m01, col1);
-                _mm_store_ps(&normalized.m02, col2);
-                
-                // Set last column
-                normalized.m03 = 0.0f;
-                normalized.m13 = 0.0f;
-                normalized.m23 = 0.0f;
-                normalized.m33 = 1.0f;
-                
-                return RotationMatrixToQuaternion(normalized);
-            #else
-                const Vector3 scale = GetScale();
-                if (scale.x == 0.0f || scale.y == 0.0f || scale.z == 0.0f)
-                    return Quaternion::Identity;
-                
-                Matrix normalized;
-                normalized.m00 = m00 / scale.x; normalized.m01 = m01 / scale.x; normalized.m02 = m02 / scale.x; normalized.m03 = 0.0f;
-                normalized.m10 = m10 / scale.y; normalized.m11 = m11 / scale.y; normalized.m12 = m12 / scale.y; normalized.m13 = 0.0f;
-                normalized.m20 = m20 / scale.z; normalized.m21 = m21 / scale.z; normalized.m22 = m22 / scale.z; normalized.m23 = 0.0f;
-                normalized.m30 = 0;             normalized.m31 = 0;             normalized.m32 = 0;             normalized.m33 = 1.0f;
-                return RotationMatrixToQuaternion(normalized);
-            #endif
+            const Vector3 scale = GetScale();
+            if (scale.x == 0.0f || scale.y == 0.0f || scale.z == 0.0f)
+                return Quaternion::Identity;
+
+            Matrix normalized;
+        #if defined(__AVX2__)
+            // Create scale reciprocal vector for faster division
+            __m128 scaleRecip = _mm_set_ps(1.0f, 1.0f/scale.z, 1.0f/scale.y, 1.0f/scale.x);
+            
+            // Load and normalize first three columns
+            __m128 col0 = _mm_setr_ps(m00, m10, m20, m30);
+            __m128 col1 = _mm_setr_ps(m01, m11, m21, m31);
+            __m128 col2 = _mm_setr_ps(m02, m12, m22, m32);
+            
+            // Normalize by scale
+            col0 = _mm_mul_ps(col0, scaleRecip);
+            col1 = _mm_mul_ps(col1, scaleRecip);
+            col2 = _mm_mul_ps(col2, scaleRecip);
+            
+            // Store in normalized matrix
+            _mm_store_ps(&normalized.m00, col0);
+            _mm_store_ps(&normalized.m01, col1);
+            _mm_store_ps(&normalized.m02, col2);
+            
+            // Set last column
+            normalized.m03 = 0.0f;
+            normalized.m13 = 0.0f;
+            normalized.m23 = 0.0f;
+            normalized.m33 = 1.0f;
+            
+            return RotationMatrixToQuaternion(normalized);
+        #else
+            normalized.m00 = m00 / scale.x; normalized.m01 = m01 / scale.x; normalized.m02 = m02 / scale.x; normalized.m03 = 0.0f;
+            normalized.m10 = m10 / scale.y; normalized.m11 = m11 / scale.y; normalized.m12 = m12 / scale.y; normalized.m13 = 0.0f;
+            normalized.m20 = m20 / scale.z; normalized.m21 = m21 / scale.z; normalized.m22 = m22 / scale.z; normalized.m23 = 0.0f;
+            normalized.m30 = 0;             normalized.m31 = 0;             normalized.m32 = 0;             normalized.m33 = 1.0f;
+
+            return RotationMatrixToQuaternion(normalized);
+        #endif
         }
 
         static Quaternion RotationMatrixToQuaternion(const Matrix& mRot)
@@ -226,50 +221,50 @@ namespace Spartan::Math
 
         [[nodiscard]] Vector3 GetScale() const
         {
-            #if defined(__AVX2__)
-                // For first row (m00, m01, m02)
-                __m128 row0 = _mm_setr_ps(m00, m01, m02, 0.0f);
-                // For second row (m10, m11, m12)
-                __m128 row1 = _mm_setr_ps(m10, m11, m12, 0.0f);
-                // For third row (m20, m21, m22)
-                __m128 row2 = _mm_setr_ps(m20, m21, m22, 0.0f);
-
-                // Calculate signs (using scalar math as it's only done once per row)
-                float xs = (Helper::Sign(m00 * m01 * m02 * m03) < 0) ? -1.0f : 1.0f;
-                float ys = (Helper::Sign(m10 * m11 * m12 * m13) < 0) ? -1.0f : 1.0f;
-                float zs = (Helper::Sign(m20 * m21 * m22 * m23) < 0) ? -1.0f : 1.0f;
-
-                // Square each component
-                __m128 square0 = _mm_mul_ps(row0, row0);
-                __m128 square1 = _mm_mul_ps(row1, row1);
-                __m128 square2 = _mm_mul_ps(row2, row2);
-
-                // Horizontal add for the squares (sum first 3 components)
-                square0 = _mm_hadd_ps(square0, square0);
-                square0 = _mm_hadd_ps(square0, square0);
-                
-                square1 = _mm_hadd_ps(square1, square1);
-                square1 = _mm_hadd_ps(square1, square1);
-                
-                square2 = _mm_hadd_ps(square2, square2);
-                square2 = _mm_hadd_ps(square2, square2);
-
-                // Extract results and apply signs
-                return Vector3(
-                    xs * Helper::Sqrt(_mm_cvtss_f32(square0)),
-                    ys * Helper::Sqrt(_mm_cvtss_f32(square1)),
-                    zs * Helper::Sqrt(_mm_cvtss_f32(square2))
-                );
-            #else
-                const int xs = (Helper::Sign(m00 * m01 * m02 * m03) < 0) ? -1 : 1;
-                const int ys = (Helper::Sign(m10 * m11 * m12 * m13) < 0) ? -1 : 1;
-                const int zs = (Helper::Sign(m20 * m21 * m22 * m23) < 0) ? -1 : 1;
-                return Vector3(
-                    static_cast<float>(xs) * Helper::Sqrt(m00 * m00 + m01 * m01 + m02 * m02),
-                    static_cast<float>(ys) * Helper::Sqrt(m10 * m10 + m11 * m11 + m12 * m12),
-                    static_cast<float>(zs) * Helper::Sqrt(m20 * m20 + m21 * m21 + m22 * m22)
-                );
-            #endif
+        #if defined(__AVX2__)
+            // For first row (m00, m01, m02)
+            __m128 row0 = _mm_setr_ps(m00, m01, m02, 0.0f);
+            // For second row (m10, m11, m12)
+            __m128 row1 = _mm_setr_ps(m10, m11, m12, 0.0f);
+            // For third row (m20, m21, m22)
+            __m128 row2 = _mm_setr_ps(m20, m21, m22, 0.0f);
+        
+            // Calculate signs (using scalar math as it's only done once per row)
+            float xs = (Helper::Sign(m00 * m01 * m02 * m03) < 0) ? -1.0f : 1.0f;
+            float ys = (Helper::Sign(m10 * m11 * m12 * m13) < 0) ? -1.0f : 1.0f;
+            float zs = (Helper::Sign(m20 * m21 * m22 * m23) < 0) ? -1.0f : 1.0f;
+        
+            // Square each component
+            __m128 square0 = _mm_mul_ps(row0, row0);
+            __m128 square1 = _mm_mul_ps(row1, row1);
+            __m128 square2 = _mm_mul_ps(row2, row2);
+        
+            // Horizontal add for the squares (sum first 3 components)
+            square0 = _mm_hadd_ps(square0, square0);
+            square0 = _mm_hadd_ps(square0, square0);
+            
+            square1 = _mm_hadd_ps(square1, square1);
+            square1 = _mm_hadd_ps(square1, square1);
+            
+            square2 = _mm_hadd_ps(square2, square2);
+            square2 = _mm_hadd_ps(square2, square2);
+        
+            // Extract results and apply signs
+            return Vector3(
+                xs * Helper::Sqrt(_mm_cvtss_f32(square0)),
+                ys * Helper::Sqrt(_mm_cvtss_f32(square1)),
+                zs * Helper::Sqrt(_mm_cvtss_f32(square2))
+            );
+        #else
+            const int xs = (Helper::Sign(m00 * m01 * m02 * m03) < 0) ? -1 : 1;
+            const int ys = (Helper::Sign(m10 * m11 * m12 * m13) < 0) ? -1 : 1;
+            const int zs = (Helper::Sign(m20 * m21 * m22 * m23) < 0) ? -1 : 1;
+            return Vector3(
+                static_cast<float>(xs) * Helper::Sqrt(m00 * m00 + m01 * m01 + m02 * m02),
+                static_cast<float>(ys) * Helper::Sqrt(m10 * m10 + m11 * m11 + m12 * m12),
+                static_cast<float>(zs) * Helper::Sqrt(m20 * m20 + m21 * m21 + m22 * m22)
+            );
+        #endif
         }
 
         static Matrix CreateScale(float scale) { return CreateScale(scale, scale, scale); }
