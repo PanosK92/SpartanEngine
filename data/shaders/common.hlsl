@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common_samplers.hlsl"
 #include "common_textures_storage.hlsl"
 #include "common_colorspace.hlsl"
+#include "common_sampling.hlsl"
 //=====================================
 
 /*------------------------------------------------------------------------------

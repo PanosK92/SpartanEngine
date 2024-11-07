@@ -76,7 +76,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
     float4 albedo_sample = 1.0f;
     if (surface.has_texture_albedo())
     {
-        albedo_sample      = sampling::smart(surface, vertex, material_albedo);
+        albedo_sample      = sampling::smart(vertex.position, vertex.normal, vertex.uv, material_albedo, surface.is_water(), surface.texture_slope_based(), surface.vertex_animate_wind());
         albedo_sample.rgb  = srgb_to_linear(albedo_sample.rgb);
         albedo            *= albedo_sample;
     }
@@ -88,7 +88,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
     if (surface.has_texture_normal())
     {
         // get tangent space normal and apply the user defined intensity, then transform it to world space
-        float3 normal_sample  = sampling::smart(surface, vertex, material_normal).xyz;
+        float3 normal_sample  = sampling::smart(vertex.position, vertex.normal, vertex.uv, material_normal, surface.is_water(), surface.texture_slope_based(), surface.vertex_animate_wind()).xyz;
         float3 tangent_normal = normalize(unpack(normal_sample));
     
         // reconstruct z-component as this can be a BC5 two channel normal map
@@ -105,7 +105,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
         float4 roughness_sample = 1.0f;
         if (surface.has_texture_roughness())
         {
-            roughness_sample  = sampling::smart(surface, vertex, material_roughness);
+            roughness_sample  = sampling::smart(vertex.position, vertex.normal, vertex.uv, material_roughness, surface.is_water(), surface.texture_slope_based(), surface.vertex_animate_wind());
             roughness        *= roughness_sample.g;
         }
         
@@ -114,14 +114,14 @@ gbuffer main_ps(gbuffer_vertex vertex)
         
         if (surface.has_texture_metalness() && !surface.has_single_texture_roughness_metalness())
         {
-            metalness *= sampling::smart(surface, vertex, material_metalness).r;
+            metalness *= sampling::smart(vertex.position, vertex.normal, vertex.uv, material_metalness, surface.is_water(), surface.texture_slope_based(), surface.vertex_animate_wind()).r;
         }
     }
     
     // occlusion
     if (surface.has_texture_occlusion())
     {
-        occlusion = sampling::smart(surface, vertex, material_occlusion).r;
+        occlusion = sampling::smart(vertex.position, vertex.normal, vertex.uv, material_occlusion, surface.is_water(), surface.texture_slope_based(), surface.vertex_animate_wind()).r;
     }
     
     // emission
