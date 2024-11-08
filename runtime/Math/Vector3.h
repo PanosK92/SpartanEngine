@@ -65,52 +65,46 @@ namespace Spartan::Math
             z = f;
         }
 
-       void Normalize()
+        void Normalize()
         {
-        #ifdef __AVX2__
-            __m128 thisVec = _mm_set_ps(0.0f, z, y, x);
-            __m128 squared = _mm_mul_ps(thisVec, thisVec); // Squaring components
-        
-            // Sum the squares for length squared
-            __m128 sum1 = _mm_add_ps(squared, _mm_shuffle_ps(squared, squared, _MM_SHUFFLE(0, 3, 2, 1)));
-            __m128 sum2 = _mm_add_ss(sum1, _mm_shuffle_ps(sum1, sum1, _MM_SHUFFLE(1, 0, 3, 2)));
-            float length_squared = _mm_cvtss_f32(sum2);
-        
-            if (!Helper::Equals(length_squared, 1.0f) && length_squared > 0.0f)
-            {
-                // Compute the inverse of the length
-                float length_inverted = 1.0f / Helper::Sqrt(length_squared);
-                __m128 invLength = _mm_set_ps1(length_inverted);
-        
-                // Multiply each component by the inverse length
-                thisVec = _mm_mul_ps(thisVec, invLength);
-        
-                // Store back the normalized vector
-                _mm_storeu_ps((float*)this, thisVec);
-            }
-        #else
             const auto length_squared = LengthSquared();
             if (!Helper::Equals(length_squared, 1.0f) && length_squared > 0.0f)
             {
+            #ifdef __AVX2__
+                // load x, y, z into an AVX vector (set w component to 0)
+                __m128 vec = _mm_set_ps(0.0f, z, y, x);
+                
+                // calculate the length squared (dot product of vec with itself)
+                __m128 dot = _mm_dp_ps(vec, vec, 0x7F); // only sum x, y, z and leave w as 0
+                
+                // calculate reciprocal square root of the length
+                __m128 inv_sqrt = _mm_rsqrt_ps(dot);
+                
+                // normalize vec by multiplying with inv_sqrt
+                vec = _mm_mul_ps(vec, inv_sqrt);
+                
+                // store back the normalized values
+                x = _mm_cvtss_f32(vec);
+                y = _mm_cvtss_f32(_mm_shuffle_ps(vec, vec, _MM_SHUFFLE(1, 1, 1, 1)));
+                z = _mm_cvtss_f32(_mm_shuffle_ps(vec, vec, _MM_SHUFFLE(2, 2, 2, 2)));
+            #else
+                // fallback to scalar path
                 const auto length_inverted = 1.0f / Helper::Sqrt(length_squared);
                 x *= length_inverted;
                 y *= length_inverted;
                 z *= length_inverted;
+            #endif
             }
-        #endif
-        }
-        
+        };
+
         [[nodiscard]] Vector3 Normalized() const
         {
             Vector3 v = *this;
             v.Normalize();
             return v;
         }
-        
-        static Vector3 Normalize(const Vector3& v)
-        {
-            return v.Normalized();
-        }
+
+        static Vector3 Normalize(const Vector3& v) { return v.Normalized(); }
 
         bool IsNormalized() const
         {
@@ -123,30 +117,18 @@ namespace Spartan::Math
             return Helper::Max3(x, y, z);
         }
 
-        static float Dot(const Vector3& v1, const Vector3& v2)
-        {
-        #ifdef __AVX2__
-            __m128 v1Vec = _mm_set_ps(0.0f, v1.z, v1.y, v1.x);
-            __m128 v2Vec = _mm_set_ps(0.0f, v2.z, v2.y, v2.x);
-            __m128 mul   = _mm_mul_ps(v1Vec, v2Vec);
-            
-            // Horizontal add to sum the products
-            __m128 sum1 = _mm_add_ps(mul, _mm_shuffle_ps(mul, mul, _MM_SHUFFLE(0, 3, 2, 1)));
-            __m128 sum2 = _mm_add_ss(sum1, _mm_shuffle_ps(sum1, sum1, _MM_SHUFFLE(1, 0, 3, 2)));
-            
-            return _mm_cvtss_f32(sum2);
-        
-        #else
-            return (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z); 
-        #endif
+        [[nodiscard]] static float Dot(const Vector3& v1, const Vector3& v2) 
+        { 
+            return (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z);
         }
         
-        [[nodiscard]] float Dot(const Vector3& rhs) const
+        [[nodiscard]] float Dot(const Vector3& rhs) const 
         {
             return Dot(*this, rhs);
         }
 
-        static Vector3 Cross(const Vector3& v1, const Vector3& v2)
+
+        [[nodiscard]] static Vector3 Cross(const Vector3& v1, const Vector3& v2)
         {
             return Vector3(
                 v1.y * v2.z - v2.y * v1.z,
@@ -155,27 +137,24 @@ namespace Spartan::Math
             );
         }
 
-        [[nodiscard]] Vector3 Cross(const Vector3& v2) const
-        {
-            return Cross(*this, v2);
-        }
+        [[nodiscard]] Vector3 Cross(const Vector3& v2) const { return Cross(*this, v2); }
 
         [[nodiscard]] float Length() const
         {
         #ifdef __AVX2__
-            __m128 thisVec = _mm_set_ps(0.0f, z, y, x);
-            __m128 squared = _mm_mul_ps(thisVec, thisVec);  // Element-wise multiply for square
-            __m128 sum;
+            // Load x, y, z, and 0.0f into an AVX register
+            __m128 vec = _mm_set_ps(0.0f, z, y, x);
         
-            // Perform horizontal sum
-            __m128 sum1 = _mm_add_ps(squared, _mm_shuffle_ps(squared, squared, _MM_SHUFFLE(0, 3, 2, 1)));
-            __m128 sum2 = _mm_add_ps(sum1, _mm_shuffle_ps(sum1, sum1, _MM_SHUFFLE(1, 0, 3, 2)));
-            sum = _mm_sqrt_ss(sum2);
+            // Calculate squared length (dot product of vec with itself)
+            __m128 dot = _mm_dp_ps(vec, vec, 0x7F); // only sum x, y, z and leave w as 0
         
-            // Extract the result
-            return _mm_cvtss_f32(sum);
+            // Take the square root of the dot product
+            __m128 length = _mm_sqrt_ps(dot);
         
+            // Extract the result as a scalar float
+            return _mm_cvtss_f32(length);
         #else
+            // Fallback to scalar path
             return Helper::Sqrt(x * x + y * y + z * z);
         #endif
         }
@@ -183,21 +162,21 @@ namespace Spartan::Math
         [[nodiscard]] float LengthSquared() const
         {
         #ifdef __AVX2__
-            __m128 thisVec = _mm_set_ps(0.0f, z, y, x);
-            __m128 squared = _mm_mul_ps(thisVec, thisVec);  // Element-wise multiply for square
+            // Load x, y, z, and 0.0f into an AVX register
+            __m128 vec = _mm_set_ps(0.0f, z, y, x);
         
-            // Sum the squares
-            squared = _mm_add_ps(squared, _mm_shuffle_ps(squared, squared, _MM_SHUFFLE(0, 3, 2, 1)));
-            squared = _mm_add_ss(squared, _mm_shuffle_ps(squared, squared, _MM_SHUFFLE(1, 0, 3, 2)));
+            // Calculate squared length (dot product of vec with itself)
+            __m128 dot = _mm_dp_ps(vec, vec, 0x7F); // only sum x, y, z and leave w as 0
         
-            // Extract the result
-            return _mm_cvtss_f32(squared);
-        
+            // Extract the result as a scalar float
+            return _mm_cvtss_f32(dot);
         #else
+            // Fallback to scalar path
             return x * x + y * y + z * z;
         #endif
         }
 
+        // Returns a copy of /vector/ with its magnitude clamped to /maxLength/
         void ClampMagnitude(float max_length)
         {
             const float sqrmag = LengthSquared();
@@ -260,8 +239,8 @@ namespace Spartan::Math
         [[nodiscard]] Vector3 Abs() const { return Vector3(Helper::Abs(x), Helper::Abs(y), Helper::Abs(z)); }
 
         // linear interpolation with another vector
-        Vector3 Lerp(const Vector3& v, float t) const                                 { return *this * (1.0f - t) + v * t; }
-        static inline Vector3 Lerp(const Vector3& a, const Vector3& b, const float t) { return a + (b - a) * t; }
+        Vector3 Lerp(const Vector3& v, float t) const                          { return *this * (1.0f - t) + v * t; }
+        static Vector3 Lerp(const Vector3& a, const Vector3& b, const float t) { return a + (b - a) * t; }
 
         Vector3 operator*(const Vector3& b) const
         {
