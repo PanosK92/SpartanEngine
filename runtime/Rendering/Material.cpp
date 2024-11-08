@@ -81,6 +81,58 @@ namespace Spartan
         }
     }
 
+    namespace texture_packing
+    {
+        // helper function to pack a single channel into the alpha component
+        inline uint32_t pack_alpha(float value)
+        {
+            return static_cast<uint32_t>(round(value * 255.0f));
+        }
+        
+        // Main function to pack multiple RGBA32 textures into two RGBA32 textures
+        // Assumes:
+        // - All input textures have the same dimensions (width x height)
+        // - Input textures are in RGBA32 format (R8G8B8A8_UNORM)
+        // - Output texture 1: RGBA - RGB (Albedo) - A (Normal.x)
+        // - Output texture 2: RGBA - R (Occlusion) - G (Roughness) - B (Metalness) - A (Normal.y)
+        void pack_textures(
+            const vector<uint32_t>& albedo,
+            const vector<uint32_t>& normal,
+            const vector<uint32_t>& occlusion,
+            const vector<uint32_t>& roughness,
+            const vector<uint32_t>& metalness,
+            vector<uint32_t>& output1,
+            vector<uint32_t>& output2
+        )
+        {
+            // Calculate the width and height of the textures
+            // Assuming all input textures have the same dimensions
+            size_t width        = albedo.size();
+            size_t height       = albedo.size() / width;
+            size_t total_pixels = width * height;
+        
+            // Resize the output vectors to match the total number of pixels
+            output1.resize(total_pixels);
+            output2.resize(total_pixels);
+        
+            // Iterate through each pixel and pack the data into the output textures
+            for (size_t i = 0; i < total_pixels; ++i)
+            {
+                // Pack the first output texture
+                // RGB components are from the albedo texture, and the alpha component is from the normal texture (x component)
+                output1[i] = (albedo[i] & 0xFFFFFF00) | ((normal[i] >> 24) & 0xFF);
+        
+                // Pack the second output texture
+                // R component is from the occlusion texture, G component is from the roughness texture,
+                // B component is from the metalness texture, and the alpha component is from the normal texture (y component)
+                output2[i] = ((occlusion[i] >> 24) & 0xFF) << 24 |
+                             ((roughness[i] >> 16) & 0xFF) << 16 |
+                             ((metalness[i] >> 8) & 0xFF) << 8 |
+                             ((normal[i] >> 16) & 0xFF);
+            }
+        }
+    }
+
     Material::Material() : IResource(ResourceType::Material)
     {
         m_textures.fill(nullptr);
