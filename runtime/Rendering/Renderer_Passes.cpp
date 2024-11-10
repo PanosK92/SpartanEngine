@@ -588,8 +588,8 @@ namespace Spartan
                         if (Material* material = renderable->GetMaterial())
                         {
                             m_pcb_pass_cpu.set_f3_value(
-                                material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
-                                material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f
+                                material->HasTextureOfType(MaterialTextureType::AlphaMask) ? 1.0f : 0.0f,
+                                material->HasTextureOfType(MaterialTextureType::Color)     ? 1.0f : 0.0f
                             );
 
                             m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
@@ -708,8 +708,8 @@ namespace Spartan
                     {
                         // for alpha testing
                         m_pcb_pass_cpu.set_f3_value(
-                            material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f,
-                            material->HasTexture(MaterialTexture::Color)     ? 1.0f : 0.0f,
+                            material->HasTextureOfType(MaterialTextureType::AlphaMask) ? 1.0f : 0.0f,
+                            material->HasTextureOfType(MaterialTextureType::Color)     ? 1.0f : 0.0f,
                             material->GetProperty(MaterialProperty::ColorA)
                         );
 

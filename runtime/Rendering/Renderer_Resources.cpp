@@ -602,7 +602,7 @@ namespace Spartan
         standard_material->SetProperty(MaterialProperty::ColorG,         1.0f);
         standard_material->SetProperty(MaterialProperty::ColorB,         1.0f);
         standard_material->SetProperty(MaterialProperty::ColorA,         1.0f);
-        standard_material->SetTexture(MaterialTexture::Color,            Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard));
+        standard_material->SetTexture(MaterialTextureType::Color,        Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard));
     }
 
     void Renderer::DestroyResources()

@@ -839,20 +839,20 @@ namespace Spartan
         static array<Sb_Material, rhi_max_array_size> properties; // mapped to the gpu as a structured properties buffer
         static unordered_set<uint64_t> unique_material_ids;
         static uint32_t index = 0;
-
+    
         auto update_material = [](Material* material)
         {
             // check if the material's ID is already processed
             if (unique_material_ids.find(material->GetObjectId()) != unique_material_ids.end())
                 return;
-
+    
             // if not, add it to the list
             unique_material_ids.insert(material->GetObjectId());
-
+    
             // properties
             {
                 SP_ASSERT(index < rhi_max_array_size);
-
+    
                 properties[index].world_space_height     = material->GetProperty(MaterialProperty::WorldSpaceHeight);
                 properties[index].color.x                = material->GetProperty(MaterialProperty::ColorR);
                 properties[index].color.y                = material->GetProperty(MaterialProperty::ColorG);
@@ -875,40 +875,45 @@ namespace Spartan
                 properties[index].subsurface_scattering  = material->GetProperty(MaterialProperty::SubsurfaceScattering);
                 properties[index].ior                    = material->GetProperty(MaterialProperty::Ior);
                 properties[index].flags                 |= material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness) ? (1U << 0) : 0;
-                properties[index].flags                 |= material->HasTexture(MaterialTexture::Height)               ? (1U << 1)  : 0;
-                properties[index].flags                 |= material->HasTexture(MaterialTexture::Normal)               ? (1U << 2)  : 0;
-                properties[index].flags                 |= material->HasTexture(MaterialTexture::Color)                ? (1U << 3)  : 0;
-                properties[index].flags                 |= material->HasTexture(MaterialTexture::Roughness)            ? (1U << 4)  : 0;
-                properties[index].flags                 |= material->HasTexture(MaterialTexture::Metalness)            ? (1U << 5)  : 0;
-                properties[index].flags                 |= material->HasTexture(MaterialTexture::AlphaMask)            ? (1U << 6)  : 0;
-                properties[index].flags                 |= material->HasTexture(MaterialTexture::Emission)             ? (1U << 7)  : 0;
-                properties[index].flags                 |= material->HasTexture(MaterialTexture::Occlusion)            ? (1U << 8)  : 0;
+    
+                // Update HasTexture flags to check if any slot of each type has a texture
+                properties[index].flags                 |= material->HasTextureOfType(MaterialTextureType::Height)     ? (1U << 1)  : 0;
+                properties[index].flags                 |= material->HasTextureOfType(MaterialTextureType::Normal)     ? (1U << 2)  : 0;
+                properties[index].flags                 |= material->HasTextureOfType(MaterialTextureType::Color)      ? (1U << 3)  : 0;
+                properties[index].flags                 |= material->HasTextureOfType(MaterialTextureType::Roughness)  ? (1U << 4)  : 0;
+                properties[index].flags                 |= material->HasTextureOfType(MaterialTextureType::Metalness)  ? (1U << 5)  : 0;
+                properties[index].flags                 |= material->HasTextureOfType(MaterialTextureType::AlphaMask)  ? (1U << 6)  : 0;
+                properties[index].flags                 |= material->HasTextureOfType(MaterialTextureType::Emission)   ? (1U << 7)  : 0;
+                properties[index].flags                 |= material->HasTextureOfType(MaterialTextureType::Occlusion)  ? (1U << 8)  : 0;
                 properties[index].flags                 |= material->GetProperty(MaterialProperty::TextureSlopeBased)  ? (1U << 9)  : 0;
                 properties[index].flags                 |= material->GetProperty(MaterialProperty::VertexAnimateWind)  ? (1U << 10) : 0;
                 properties[index].flags                 |= material->GetProperty(MaterialProperty::VertexAnimateWater) ? (1U << 11) : 0;
                 properties[index].flags                 |= material->IsTessellated()                                   ? (1U << 12) : 0;
                 // when changing the bit flags, ensure that you also update the Surface struct in common_structs.hlsl, so that it reads those flags as expected
             }
-
+    
             // textures
             {
-
+                // iterate through all texture types and their slots
                 for (uint32_t type = 0; type < material_texture_type_count; type++)
                 {
-                    for (uint32_t variation = 0; variation < material_texture_slots_per_type; variation++)
+                    for (uint32_t slot = 0; slot < material_texture_slots_per_type; slot++)
                     {
-                        uint32_t texture_index                   = type * material_texture_slots_per_type + variation;
-                        MaterialTexture textureType              = static_cast<MaterialTexture>(texture_index);
-                        bindless_textures[index + texture_index] = material->GetTexture(static_cast<MaterialTexture>(texture_index));
+                        // calculate the final index in the bindless array
+                        uint32_t bindless_index = index + (type * material_texture_slots_per_type) + slot;
+                        
+                        // get the texture from the material using type and slot
+                        bindless_textures[bindless_index] = material->GetTexture(static_cast<MaterialTextureType>(type), slot);
                     }
                 }
-
             }
-
+    
             material->SetIndex(index);
-            index += static_cast<uint32_t>(MaterialTexture::Max);
-        };
 
+            // update index increment to account for all texture slots
+            index += material_texture_type_count * material_texture_slots_per_type;
+        };
+    
         auto update_entities = [update_material](vector<shared_ptr<Entity>>& entities)
         {
             for (shared_ptr<Entity> entity : entities)
@@ -925,12 +930,12 @@ namespace Spartan
                 }
             }
         };
-
+    
         if (ProgressTracker::IsLoading())
             return;
-
+    
         lock_guard lock(m_mutex_renderables);
-
+    
         // cpu
         {
             // clear
@@ -940,14 +945,14 @@ namespace Spartan
             index = 0;
             update_entities(m_renderables[Renderer_Entity::Mesh]);
         }
-
+    
         // gpu
         {
             // material properties
             Renderer::GetBuffer(Renderer_Buffer::StorageMaterials)->ResetOffset();
             uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Material)) * index;
             Renderer::GetBuffer(Renderer_Buffer::StorageMaterials)->Update(&properties[0], update_size);
-
+    
             // material textures
             bindless_materials_dirty = true;
         }
