@@ -58,19 +58,25 @@ Texture2D tex2            : register(t21);
 Texture2D tex_font_atlas  : register(t22);
 Texture2DArray tex_sss    : register(t23);
 
-//= MATERIALS ===============================================================================
-// texture array containing all material present int the world
-static const uint material_texture_slots = 4;
-static const uint material_albedo    = material_texture_slots * 0;
-static const uint material_roughness = material_texture_slots * 1;
-static const uint material_metalness = material_texture_slots * 2;
-static const uint material_normal    = material_texture_slots * 3;
-static const uint material_occlusion = material_texture_slots * 4;
-static const uint material_emission  = material_texture_slots * 5;
-static const uint material_height    = material_texture_slots * 6;
-static const uint material_mask      = material_texture_slots * 7;
+//= MATERIALS =============================================================================
 
+// max number of slots per material texture type
+static const uint material_texture_type_slots_max = 4;
+
+// indices for each material texture type within the array
+static const uint material_texture_index_albedo    = 0 * material_texture_type_slots_max;
+static const uint material_texture_index_roughness = 1 * material_texture_type_slots_max;
+static const uint material_texture_index_metalness = 2 * material_texture_type_slots_max;
+static const uint material_texture_index_normal    = 3 * material_texture_type_slots_max;
+static const uint material_texture_index_occlusion = 4 * material_texture_type_slots_max;
+static const uint material_texture_index_emission  = 5 * material_texture_type_slots_max;
+static const uint material_texture_index_height    = 6 * material_texture_type_slots_max;
+static const uint material_texture_index_mask      = 7 * material_texture_type_slots_max;
+
+// array containing all the materials present in the world
 Texture2D tex_materials[] : register(t24, space1);
+
+// easy access macro
 #define GET_TEXTURE(index_texture) tex_materials[pass_get_material_index() + index_texture]
 
 // property buffer containg all materials present in the world
@@ -102,7 +108,7 @@ struct Material
 
 RWStructuredBuffer<Material> buffer_materials : register(u0);
 Material GetMaterial() { return buffer_materials[pass_get_material_index()]; }
-//===========================================================================================
+//=========================================================================================
 
 //= LIGHTS =============================================
 struct Light_

@@ -106,7 +106,7 @@ namespace Spartan
         void SetTexture(const MaterialTextureType texture_type, const std::string& file_path, const uint8_t slot = 0);
         bool HasTextureOfType(const std::string& path) const;
         bool HasTextureOfType(const MaterialTextureType texture_type) const;
-        std::string GetTexturePathByType(const MaterialTextureType texture_type);
+        std::string GetTexturePathByType(const MaterialTextureType texture_type, const uint8_t slot = 0);
         std::vector<std::string> GetTexturePaths();
         RHI_Texture* GetTexture(const MaterialTextureType texture_type, const uint8_t slot = 0);
         uint32_t GetUsedSlotCount() const;
@@ -129,7 +129,6 @@ namespace Spartan
             return HasTextureOfType(MaterialTextureType::Height) || GetProperty(MaterialProperty::VertexAnimateWater);
         }
 
-        // index
         void SetIndex(const uint32_t index) { m_index = index; }
         uint32_t GetIndex() const           { return m_index; }
 

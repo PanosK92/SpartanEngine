@@ -297,7 +297,7 @@ namespace Spartan
         return m_textures[static_cast<uint32_t>(texture_type)] != nullptr;
     }
 
-    string Material::GetTexturePathByType(const MaterialTextureType texture_type)
+    string Material::GetTexturePathByType(const MaterialTextureType texture_type, const uint8_t slot)
     {
         if (!HasTextureOfType(texture_type))
             return "";
@@ -321,7 +321,8 @@ namespace Spartan
 
     RHI_Texture* Material::GetTexture(const MaterialTextureType texture_type, const uint8_t slot)
     {
-        return m_textures[static_cast<uint32_t>(texture_type)];
+        SP_ASSERT(slot < material_texture_slots_per_type);
+        return m_textures[(static_cast<uint32_t>(texture_type) * material_texture_slots_per_type) + slot];
     }
 
     uint32_t Material::GetUsedSlotCount() const

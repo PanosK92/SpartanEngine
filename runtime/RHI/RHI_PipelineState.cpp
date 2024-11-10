@@ -48,7 +48,7 @@ namespace Spartan
             bool is_graphics         = (has_shader_vertex || has_shader_pixel) && !has_shader_compute;
             bool is_compute          = has_shader_compute && (!has_shader_vertex && !has_shader_pixel);
 
-            SP_ASSERT_MSG(has_shader_compute || has_shader_vertex || has_shader_pixel, "There must be at least one shader");
+            SP_ASSERT_MSG(has_shader_compute || has_shader_vertex || has_shader_pixel, "There is no shader set, ensure that it compiled successfully and that it has been set");
             if (is_graphics)
             {
                 bool has_render_target   = pso.render_target_color_textures[0] || pso.render_target_depth_texture; // ensure at least one render target

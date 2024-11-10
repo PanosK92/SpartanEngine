@@ -51,8 +51,8 @@ float4 main_ps(gbuffer_vertex vertex) : SV_Target0
     const bool has_albedo     = f3_value.y == 1.0f;
     
     float alpha_threshold = get_alpha_threshold(vertex.position); // distance based alpha threshold
-    bool mask_alpha       = has_alpha_mask && GET_TEXTURE(material_mask).Sample(samplers[sampler_point_wrap], vertex.uv).r <= alpha_threshold;
-    bool mask_albedo      = has_albedo && GET_TEXTURE(material_albedo).Sample(samplers[sampler_anisotropic_wrap], vertex.uv).a <= alpha_threshold;
+    bool mask_alpha       = has_alpha_mask && GET_TEXTURE(material_texture_index_mask).Sample(samplers[sampler_point_wrap], vertex.uv).r <= alpha_threshold;
+    bool mask_albedo      = has_albedo && GET_TEXTURE(material_texture_index_albedo).Sample(samplers[sampler_anisotropic_wrap], vertex.uv).a <= alpha_threshold;
 
     if (mask_alpha || mask_albedo)
         discard;
