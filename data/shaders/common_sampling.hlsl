@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SPARTAN_COMMON_SAMPLING
 
 static const float sea_level   = 0.0f;
-static const float sand_offset = 2.0f;
+static const float sand_offset = 1.0f;
 static const float snow_level  = 75.0f;
 
 struct sampling

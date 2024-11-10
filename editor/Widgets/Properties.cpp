@@ -93,17 +93,17 @@ namespace
 
     bool component_begin(const string& name, const IconType icon_enum, shared_ptr<Component> component_instance, bool options = true, const bool removable = true)
     {
-        // Collapsible contents
+        // collapsible contents
         ImGui::PushFont(Editor::font_bold);
         const bool collapsed = ImGuiSp::collapsing_header(name.c_str(), ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_DefaultOpen);
         ImGui::PopFont();
 
-        // Component Icon - Top left
+        // component Icon - top left
         ImGui::SameLine();
         ImGui::Spacing();
         ImGui::SameLine();
 
-        // Component Options - Top right
+        // component Options - top right
         if (options)
         {
             const float icon_width = 16.0f;
@@ -701,7 +701,7 @@ void Properties::ShowMaterial(Material* material) const
                     bool show_texture  = mat_tex      != MaterialTextureType::Max;
                     bool show_modifier = mat_property != MaterialProperty::Max;
 
-                    // Name
+                    // name
                     if (name)
                     {
                         ImGui::Text(name);
@@ -731,7 +731,7 @@ void Properties::ShowMaterial(Material* material) const
                                 material->SetTexture(texture_type, texture, slot);
                             };
                     
-                            // add spacing between texture slots
+                            // slots are shown side by side for each type
                             if (slot > 0)
                             {
                                 ImGui::SameLine();

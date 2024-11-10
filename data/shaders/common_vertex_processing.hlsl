@@ -378,7 +378,7 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
     bool tessellated  = input.edges[0] > 1.0f || input.edges[1] > 1.0f || input.edges[2] > 1.0f || input.inside > 1.0f;
     if (surface.has_texture_height() && tessellated)
     {
-        float height              = 1.0f - GET_TEXTURE(material_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv, 0.0f).r;
+        float height              = 1.0f - GET_TEXTURE(material_texture_index_height).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv, 0.0f).r;
         float strength            = GetMaterial().height * 0.1f;
         float3 tangent_1          = patch[1].position - patch[0].position;
         float3 tangent_2          = patch[2].position - patch[0].position;
