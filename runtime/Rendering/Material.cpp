@@ -178,9 +178,9 @@ namespace Spartan
             string node_name            = "texture_" + to_string(i);
             pugi::xml_node node_texture = node_material.child("textures").child(node_name.c_str());
 
-            MaterialTexture tex_type = static_cast<MaterialTexture>(node_texture.attribute("texture_type").as_uint());
-            string tex_name         = node_texture.attribute("texture_name").as_string();
-            string tex_path         = node_texture.attribute("texture_path").as_string();
+            MaterialTextureType tex_type = static_cast<MaterialTextureType>(node_texture.attribute("texture_type").as_uint());
+            string tex_name              = node_texture.attribute("texture_name").as_string();
+            string tex_path              = node_texture.attribute("texture_path").as_string();
 
             // If the texture happens to be loaded, get a reference to it
             auto texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
@@ -229,34 +229,38 @@ namespace Spartan
         return doc.save_file(file_path.c_str());
     }
 
-    void Material::SetTexture(const MaterialTexture texture_type, RHI_Texture* texture)
+    void Material::SetTexture(const MaterialTextureType texture_type, RHI_Texture* texture, const uint8_t slot)
     {
-        uint32_t type_int = static_cast<uint32_t>(texture_type);
+        // validate slot range
+        SP_ASSERT(slot < material_texture_slots_per_type);
+    
+        // calculate the actual array index based on texture type and slot
+        uint32_t array_index = (static_cast<uint32_t>(texture_type) * material_texture_slots_per_type) + slot;
 
         if (texture)
         {
-            m_textures[type_int] = texture;
+            m_textures[array_index] = texture;
         }
         else
         {
-            m_textures[type_int] = nullptr;
+            m_textures[array_index] = nullptr;
         }
 
         // set the correct multiplier
         float multiplier = texture != nullptr;
-        if (texture_type == MaterialTexture::Roughness)
+        if (texture_type == MaterialTextureType::Roughness)
         {
             SetProperty(MaterialProperty::Roughness, multiplier);
         }
-        else if (texture_type == MaterialTexture::Metalness)
+        else if (texture_type == MaterialTextureType::Metalness)
         {
             SetProperty(MaterialProperty::Metalness, multiplier);
         }
-        else if (texture_type == MaterialTexture::Normal)
+        else if (texture_type == MaterialTextureType::Normal)
         {
             SetProperty(MaterialProperty::Normal, multiplier);
         }
-        else if (texture_type == MaterialTexture::Height)
+        else if (texture_type == MaterialTextureType::Height)
         {
             SetProperty(MaterialProperty::Height, multiplier);
         }
@@ -264,17 +268,17 @@ namespace Spartan
         SP_FIRE_EVENT(EventType::MaterialOnChanged);
     }
 
-    void Material::SetTexture(const MaterialTexture texture_type, std::shared_ptr<RHI_Texture> texture)
+    void Material::SetTexture(const MaterialTextureType texture_type, shared_ptr<RHI_Texture> texture, const uint8_t slot)
     {
-        SetTexture(texture_type, texture.get());
+        SetTexture(texture_type, texture.get(), slot);
     }
 
-    void Material::SetTexture(const MaterialTexture texture_type, const string& file_path)
+    void Material::SetTexture(const MaterialTextureType texture_type, const string& file_path, const uint8_t slot)
     {
-        SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv));
+        SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv), slot);
     }
  
-    bool Material::HasTexture(const string& path) const
+    bool Material::HasTextureOfType(const string& path) const
     {
         for (const auto& texture : m_textures)
         {
@@ -288,14 +292,14 @@ namespace Spartan
         return false;
     }
 
-    bool Material::HasTexture(const MaterialTexture texture_type) const
+    bool Material::HasTextureOfType(const MaterialTextureType texture_type) const
     {
         return m_textures[static_cast<uint32_t>(texture_type)] != nullptr;
     }
 
-    string Material::GetTexturePathByType(const MaterialTexture texture_type)
+    string Material::GetTexturePathByType(const MaterialTextureType texture_type)
     {
-        if (!HasTexture(texture_type))
+        if (!HasTextureOfType(texture_type))
             return "";
 
         return m_textures[static_cast<uint32_t>(texture_type)]->GetResourceFilePathNative();
@@ -315,29 +319,35 @@ namespace Spartan
         return paths;
     }
 
-    RHI_Texture* Material::GetTexture(const MaterialTexture texture_type)
+    RHI_Texture* Material::GetTexture(const MaterialTextureType texture_type, const uint8_t slot)
     {
         return m_textures[static_cast<uint32_t>(texture_type)];
     }
 
-    uint32_t Material::GetArraySize()
+    uint32_t Material::GetUsedSlotCount() const
     {
-        uint32_t max_index[static_cast<size_t>(MaterialTexture::Max)] = { 0 };
-
-        for (size_t i = 0; i < m_textures.size(); ++i)
+        // array to track highest used slot for each texture type
+        uint32_t max_used_slot[static_cast<size_t>(MaterialTextureType::Max)] = { 0 };
+    
+        // iterate through each texture type
+        for (size_t type = 0; type < static_cast<size_t>(MaterialTextureType::Max); ++type)
         {
-            if (m_textures[i])
+            // check each slot for this type
+            for (uint32_t slot = 0; slot < material_texture_slots_per_type; ++slot)
             {
-                // determine the texture type by dividing the index by 4 (since there are 4 of each type)
-                size_t type_index = i / material_texture_slots_per_type;
-
-                // find the max index for this texture type
-                max_index[type_index] = max(max_index[type_index], static_cast<uint32_t>(i % material_texture_slots_per_type + 1));
+                // calculate array index using the helper function
+                uint32_t index = (static_cast<uint32_t>(type) * material_texture_slots_per_type) + slot;
+                
+                // if this slot has a texture, update the max used slot for this type
+                if (m_textures[index])
+                {
+                    max_used_slot[type] = slot + 1; // +1 because we want count, not index
+                }
             }
         }
-
-        // find the overall max array size among all texture types (minimum is 1 slot)
-        return max<uint32_t>(*max_element(begin(max_index), end(max_index)), 1);
+    
+        // return the maximum used slot count across all texture types (minimum of 1)
+        return max<uint32_t>(*max_element(begin(max_used_slot), end(max_used_slot)), 1);
     }
 
     void Material::SetProperty(const MaterialProperty property_type, float value)
@@ -387,12 +397,12 @@ namespace Spartan
     bool Material::IsAlphaTested()
     {
         bool albedo_mask = false;
-        if (RHI_Texture* texture = GetTexture(MaterialTexture::Color))
+        if (RHI_Texture* texture = GetTexture(MaterialTextureType::Color))
         {
             albedo_mask = texture->IsSemiTransparent();
         }
 
-        return HasTexture(MaterialTexture::AlphaMask) || albedo_mask;
+        return HasTextureOfType(MaterialTextureType::AlphaMask) || albedo_mask;
     }
 
     float Material::EnumToIor(const MaterialIor ior)

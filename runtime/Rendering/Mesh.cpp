@@ -374,7 +374,7 @@ namespace Spartan
         entity->AddComponent<Renderable>()->SetMaterial(material);
     }
 
-    void Mesh::AddTexture(shared_ptr<Material>& material, const MaterialTexture texture_type, const string& file_path, bool is_gltf)
+    void Mesh::AddTexture(shared_ptr<Material>& material, const MaterialTextureType texture_type, const string& file_path, bool is_gltf)
     {
         SP_ASSERT(material != nullptr);
         SP_ASSERT(!file_path.empty());

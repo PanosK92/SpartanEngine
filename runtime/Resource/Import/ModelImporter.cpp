@@ -219,7 +219,7 @@ namespace Spartan
             const bool is_gltf,
             shared_ptr<Material> material,
             const aiMaterial* material_assimp,
-            const MaterialTexture texture_type,
+            const MaterialTextureType texture_type,
             const aiTextureType texture_type_assimp_pbr,
             const aiTextureType texture_type_assimp_legacy
         )
@@ -256,13 +256,13 @@ namespace Spartan
             }
 
             // FIX: Some models pass a normal map as a height map and vice versa, we correct that
-            if (texture_type == MaterialTexture::Normal || texture_type == MaterialTexture::Height)
+            if (texture_type == MaterialTextureType::Normal || texture_type == MaterialTextureType::Height)
             {
                 if (RHI_Texture* texture = material->GetTexture(texture_type))
                 {
-                    MaterialTexture proper_type = texture_type;
-                    proper_type = (proper_type == MaterialTexture::Normal && texture->IsGrayscale()) ? MaterialTexture::Height : proper_type;
-                    proper_type = (proper_type == MaterialTexture::Height && !texture->IsGrayscale()) ? MaterialTexture::Normal : proper_type;
+                    MaterialTextureType proper_type = texture_type;
+                    proper_type = (proper_type == MaterialTextureType::Normal && texture->IsGrayscale())  ? MaterialTextureType::Height : proper_type;
+                    proper_type = (proper_type == MaterialTextureType::Height && !texture->IsGrayscale()) ? MaterialTextureType::Normal : proper_type;
 
                     if (proper_type != texture_type)
                     {
@@ -280,15 +280,15 @@ namespace Spartan
             SP_ASSERT(material_assimp != nullptr);
             shared_ptr<Material> material = make_shared<Material>();
 
-            //                                                                         texture type,                texture type assimp (pbr),       texture type assimp (legacy/fallback)
-            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Color,      aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
-            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Roughness,  aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS); // use specular as fallback
-            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Metalness,  aiTextureType_METALNESS,         aiTextureType_NONE);
-            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Normal,     aiTextureType_NORMAL_CAMERA,     aiTextureType_NORMALS);
-            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Occlusion,  aiTextureType_AMBIENT_OCCLUSION, aiTextureType_LIGHTMAP);
-            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Emission,   aiTextureType_EMISSION_COLOR,    aiTextureType_EMISSIVE);
-            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Height,     aiTextureType_HEIGHT,            aiTextureType_NONE);
-            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::AlphaMask,  aiTextureType_OPACITY,           aiTextureType_NONE);
+            //                                                                         texture type,                    texture type assimp (pbr),       texture type assimp (legacy/fallback)
+            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTextureType::Color,      aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
+            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTextureType::Roughness,  aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS); // use specular as fallback
+            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTextureType::Metalness,  aiTextureType_METALNESS,         aiTextureType_NONE);
+            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTextureType::Normal,     aiTextureType_NORMAL_CAMERA,     aiTextureType_NORMALS);
+            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTextureType::Occlusion,  aiTextureType_AMBIENT_OCCLUSION, aiTextureType_LIGHTMAP);
+            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTextureType::Emission,   aiTextureType_EMISSION_COLOR,    aiTextureType_EMISSIVE);
+            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTextureType::Height,     aiTextureType_HEIGHT,            aiTextureType_NONE);
+            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTextureType::AlphaMask,  aiTextureType_OPACITY,           aiTextureType_NONE);
 
             // name
             aiString name_assimp;
@@ -320,8 +320,8 @@ namespace Spartan
                 }
 
                 // set appropriate properties for transparents which are not PBR (aka badly set materials)
-                bool has_roughness   = material->HasTexture(MaterialTexture::Roughness);
-                bool has_metalness   = material->HasTexture(MaterialTexture::Metalness);
+                bool has_roughness   = material->HasTextureOfType(MaterialTextureType::Roughness);
+                bool has_metalness   = material->HasTextureOfType(MaterialTextureType::Metalness);
                 bool is_pbr_material = has_roughness && has_metalness;
                 if (is_transparent && !is_pbr_material)
                 {
@@ -349,7 +349,7 @@ namespace Spartan
             }
 
             // if metalness and/or roughness are not provided, try to deduce some sensible values
-            if (!material->HasTexture(MaterialTexture::Metalness) || !material->HasTexture(MaterialTexture::Roughness))
+            if (!material->HasTextureOfType(MaterialTextureType::Metalness) || !material->HasTextureOfType(MaterialTextureType::Roughness))
             {
                 bool is_metal =
                     name.find("metal")    != string::npos ||
@@ -362,13 +362,13 @@ namespace Spartan
                 bool is_tile    = name.find("tile")    != string::npos; // floor
 
                 // metalness
-                if (!material->HasTexture(MaterialTexture::Metalness) && is_metal)
+                if (!material->HasTextureOfType(MaterialTextureType::Metalness) && is_metal)
                 {
                     material->SetProperty(MaterialProperty::Metalness, 1.0f);
                 }
 
                 // roughness
-                if (!material->HasTexture(MaterialTexture::Roughness))
+                if (!material->HasTextureOfType(MaterialTextureType::Roughness))
                 {
                     if (is_smooth || is_metal)
                     {

@@ -204,7 +204,7 @@ namespace Spartan
                         if (Material* material = entity_car->GetDescendantByName("Interior_InteriorPlastic_0")->GetComponent<Renderable>()->GetMaterial())
                         {
                             material->SetColor(Color::material_tire);
-                            material->SetTexture(MaterialTexture::Roughness, nullptr);
+                            material->SetTexture(MaterialTextureType::Roughness, nullptr);
                             material->SetProperty(MaterialProperty::Roughness, 0.8f);
                             material->SetProperty(MaterialProperty::Metalness, 0.0f);
                         }
@@ -224,7 +224,7 @@ namespace Spartan
                         {
                             material->SetColor(Color::material_glass);
                             material->SetProperty(MaterialProperty::Roughness, 0.2f);
-                            material->SetTexture(MaterialTexture::Emission, material->GetTexture(MaterialTexture::Color));
+                            material->SetTexture(MaterialTextureType::Emission, material->GetTexture(MaterialTextureType::Color));
                         }
 
                         // plastic covers
@@ -259,10 +259,10 @@ namespace Spartan
                             {
                                 // create material
                                 shared_ptr<Material> material = make_shared<Material>();
-                                material->SetTexture(MaterialTexture::Color, "project\\models\\wheel\\albedo.jpeg");
-                                material->SetTexture(MaterialTexture::Normal, "project\\models\\wheel\\normal.png");
-                                material->SetTexture(MaterialTexture::Roughness, "project\\models\\wheel\\roughness.png");
-                                material->SetTexture(MaterialTexture::Metalness, "project\\models\\wheel\\metalness.png");
+                                material->SetTexture(MaterialTextureType::Color, "    project\\models\\wheel\\albedo.jpeg");
+                                material->SetTexture(MaterialTextureType::Normal,    "project\\models\\wheel\\normal.png");
+                                material->SetTexture(MaterialTextureType::Roughness, "project\\models\\wheel\\roughness.png");
+                                material->SetTexture(MaterialTextureType::Metalness, "project\\models\\wheel\\metalness.png");
                         
                                 // create a file path for this material (required for the material to be able to be cached by the resource cache)
                                 const string file_path = "project\\models\\wheel" + string(EXTENSION_MATERIAL);
@@ -348,12 +348,12 @@ namespace Spartan
 
                 // create material
                 shared_ptr<Material> material = make_shared<Material>();
-                material->SetTexture(MaterialTexture::Color,     "project\\materials\\crate_space\\albedo.png");
-                material->SetTexture(MaterialTexture::Normal,    "project\\materials\\crate_space\\normal.png");
-                material->SetTexture(MaterialTexture::Occlusion, "project\\materials\\crate_space\\ao.png");
-                material->SetTexture(MaterialTexture::Roughness, "project\\materials\\crate_space\\roughness.png");
-                material->SetTexture(MaterialTexture::Metalness, "project\\materials\\crate_space\\metallic.png");
-                material->SetTexture(MaterialTexture::Height,    "project\\materials\\crate_space\\height.png");
+                material->SetTexture(MaterialTextureType::Color,     "project\\materials\\crate_space\\albedo.png");
+                material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\crate_space\\normal.png");
+                material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\crate_space\\ao.png");
+                material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\crate_space\\roughness.png");
+                material->SetTexture(MaterialTextureType::Metalness, "project\\materials\\crate_space\\metallic.png");
+                material->SetTexture(MaterialTextureType::Height,    "project\\materials\\crate_space\\height.png");
 
                 // create a file path for this material (required for the material to be able to be cached by the resource cache)
                 const string file_path = "project\\materials\\crate_space" + string(EXTENSION_MATERIAL);
@@ -498,31 +498,31 @@ namespace Spartan
                     material->SetProperty(MaterialProperty::TextureTilingY,    500.0f);
 
                     // texture flat
-                    material->SetTexture(MaterialTexture::Color,     "project\\terrain\\grass\\albedo.png");
-                    material->SetTexture(MaterialTexture::Normal,    "project\\terrain\\grass\\normal.png");
-                    material->SetTexture(MaterialTexture::Roughness, "project\\terrain\\grass\\roughness.png");
-                    material->SetTexture(MaterialTexture::Occlusion, "project\\terrain\\grass\\occlusion.png");
+                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\grass\\albedo.png");
+                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\grass\\normal.png");
+                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\grass\\roughness.png");
+                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\grass\\occlusion.png");
                     //material->SetTexture(MaterialTexture::Height,    "project\\terrain\\grass\\height.png");
 
                     // texture slope
-                    material->SetTexture(MaterialTexture::Color2,     "project\\terrain\\rock\\albedo.png");
-                    material->SetTexture(MaterialTexture::Normal2,    "project\\terrain\\rock\\normal.png");
-                    material->SetTexture(MaterialTexture::Roughness2, "project\\terrain\\rock\\roughness.png");
-                    material->SetTexture(MaterialTexture::Occlusion2, "project\\terrain\\rock\\occlusion.png");
+                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\rock\\albedo.png", 1);
+                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\rock\\normal.png", 1);
+                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\rock\\roughness.png", 1);
+                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\rock\\occlusion.png", 1);
                     //material->SetTexture(MaterialTexture::Height2,    "project\\terrain\\rock\\height.png");
 
                     // texture subterranean
-                    material->SetTexture(MaterialTexture::Color3,     "project\\terrain\\sand\\albedo.png");
-                    material->SetTexture(MaterialTexture::Normal3,    "project\\terrain\\sand\\normal.png");
-                    material->SetTexture(MaterialTexture::Roughness3, "project\\terrain\\sand\\roughness.png");
-                    material->SetTexture(MaterialTexture::Occlusion3, "project\\terrain\\sand\\occlusion.png");
+                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\sand\\albedo.png", 2);
+                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\sand\\normal.png", 2);
+                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\sand\\roughness.png",2);
+                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\sand\\occlusion.png", 2);
                     //material->SetTexture(MaterialTexture::Height3,    "project\\terrain\\sand\\height.png");
 
                     // texture snow
-                    material->SetTexture(MaterialTexture::Color4,     "project\\terrain\\snow\\albedo.png");
-                    material->SetTexture(MaterialTexture::Normal4,    "project\\terrain\\snow\\normal.png");
-                    material->SetTexture(MaterialTexture::Roughness4, "project\\terrain\\snow\\roughness.png");
-                    material->SetTexture(MaterialTexture::Occlusion4, "project\\terrain\\snow\\occlusion.png");
+                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\snow\\albedo.png", 3);
+                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\snow\\normal.png", 3);
+                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\snow\\roughness.png", 3);
+                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\snow\\occlusion.png", 3);
                     //material->SetTexture(MaterialTexture::Height4,    "project\\terrain\\snow\\height.png");
                 }
                 
@@ -553,7 +553,7 @@ namespace Spartan
                             shared_ptr<Material> material = make_shared<Material>();
                             material->SetObjectName("material_water");
                             material->SetColor(Color(0.0f, 60.0f / 255.0f, 120.0f / 255.0f, 250.0f / 255.0f));
-                            material->SetTexture(MaterialTexture::Normal,               "project\\terrain\\water_normal.jpeg");
+                            material->SetTexture(MaterialTextureType::Normal,           "project\\terrain\\water_normal.jpeg");
                             material->SetProperty(MaterialProperty::Ior,                Material::EnumToIor(MaterialIor::Water)); // water
                             material->SetProperty(MaterialProperty::Roughness,          0.0f);
                             material->SetProperty(MaterialProperty::Normal,             0.1f);
@@ -586,8 +586,8 @@ namespace Spartan
 
                             Renderable* renderable = bark->GetComponent<Renderable>().get();
                             renderable->GetMaterial()->SetColor(Color::standard_white);
-                            renderable->GetMaterial()->SetTexture(MaterialTexture::Color,  "project\\terrain\\vegetation_tree_2\\trunk_color.png");
-                            renderable->GetMaterial()->SetTexture(MaterialTexture::Normal, "project\\terrain\\vegetation_tree_2\\trunk_normal.png");
+                            renderable->GetMaterial()->SetTexture(MaterialTextureType::Color,  "project\\terrain\\vegetation_tree_2\\trunk_color.png");
+                            renderable->GetMaterial()->SetTexture(MaterialTextureType::Normal, "project\\terrain\\vegetation_tree_2\\trunk_normal.png");
 
                             // generate instances
                             terrain->GenerateTransforms(&instances, 5000, TerrainProp::Tree);
@@ -604,9 +604,9 @@ namespace Spartan
                             // tweak material
                             Material* material = renderable->GetMaterial();
                             material->SetColor(Color::standard_white);
-                            material->SetTexture(MaterialTexture::Color,                 "project\\terrain\\vegetation_tree_2\\branches_color.png");
-                            material->SetTexture(MaterialTexture::Normal,                "project\\terrain\\vegetation_tree_2\\branches_normal.png");
-                            material->SetTexture(MaterialTexture::Occlusion,             "project\\terrain\\vegetation_tree_2\\branches_ao.png");
+                            material->SetTexture(MaterialTextureType::Color,              "project\\terrain\\vegetation_tree_2\\branches_color.png");
+                            material->SetTexture(MaterialTextureType::Normal,             "project\\terrain\\vegetation_tree_2\\branches_normal.png");
+                            material->SetTexture(MaterialTextureType::Occlusion,          "project\\terrain\\vegetation_tree_2\\branches_ao.png");
                             material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
                             material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
                             material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
@@ -630,7 +630,7 @@ namespace Spartan
                             // tweak material
                             Material* material = renderable->GetMaterial();
                             material->SetColor(Color::standard_white);
-                            material->SetTexture(MaterialTexture::Color,                  "project\\terrain\\vegetation_plant_1\\ormbunke.png");
+                            material->SetTexture(MaterialTextureType::Color,              "project\\terrain\\vegetation_plant_1\\ormbunke.png");
                             material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
                             material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
                             material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
@@ -827,8 +827,8 @@ namespace Spartan
 
                 // remove color and normal textures from the tablecloth material as they are empty/corrupted
                 Material* material = entity->GetDescendantByName("Bistro_Research_Interior_Cotton_Placemat_1276")->GetComponent<Renderable>()->GetMaterial();
-                material->SetTexture(MaterialTexture::Color, nullptr);
-                material->SetTexture(MaterialTexture::Normal, nullptr);
+                material->SetTexture(MaterialTextureType::Color, nullptr);
+                material->SetTexture(MaterialTextureType::Normal, nullptr);
 
                 // enable physics for all meshes
                 vector<Entity*> entities;

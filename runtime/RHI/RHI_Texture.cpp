@@ -39,6 +39,7 @@ namespace Spartan
 {
     namespace compressonator
     {
+        RHI_Format destination_format = RHI_Format::BC3_Unorm;
         atomic<bool> registered = false;
 
         CMP_FORMAT to_cmp_format(const RHI_Format format)
@@ -89,9 +90,9 @@ namespace Spartan
                 options.dwSize              = sizeof(CMP_CompressOptions);
                 options.fquality            = 0.05f;                            // set for lower quality, faster compression
                 options.dwnumThreads        = ThreadPool::GetIdleThreadCount(); // use all free threads
+                options.nEncodeWith         = CMP_HPC;                          // set encoder
 
-                CMP_ERROR result = CMP_ConvertTexture(&source_texture, &destination_texture, &options, nullptr);
-                SP_ASSERT(result == CMP_OK);
+                SP_ASSERT(CMP_ConvertTexture(&source_texture, &destination_texture, &options, nullptr) == CMP_OK);
             }
 
             // update texture with compressed data
@@ -101,8 +102,6 @@ namespace Spartan
         void compress(RHI_Texture* texture)
         {
             SP_ASSERT(texture != nullptr);
-
-            RHI_Format destination_format = RHI_Format::BC3_Unorm;
 
             for (uint32_t mip_index = 0; mip_index < texture->GetMipCount(); mip_index++)
             {

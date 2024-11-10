@@ -696,9 +696,9 @@ void Properties::ShowMaterial(Material* material) const
         {
             // texture slots
             {
-                const auto show_property = [this, &material](const char* name, const char* tooltip, const MaterialTexture mat_tex, const MaterialProperty mat_property)
+                const auto show_property = [this, &material](const char* name, const char* tooltip, const MaterialTextureType mat_tex, const MaterialProperty mat_property)
                 {
-                    bool show_texture  = mat_tex      != MaterialTexture::Max;
+                    bool show_texture  = mat_tex      != MaterialTextureType::Max;
                     bool show_modifier = mat_property != MaterialProperty::Max;
 
                     // Name
@@ -720,19 +720,28 @@ void Properties::ShowMaterial(Material* material) const
                     // texture
                     if (show_texture)
                     {
-                        for (uint32_t i = 0; i < material->GetArraySize(); ++i)
+                        // for the current texture type (mat_tex), show all its slots
+                        for (uint32_t slot = 0; slot < material->GetUsedSlotCount(); ++slot)
                         {
-                            MaterialTexture textureType = static_cast<MaterialTexture>(static_cast<uint32_t>(mat_tex) + i);
-                            auto setter = [&, textureType](Spartan::RHI_Texture* texture) { material->SetTexture(textureType, texture); };
-
-                            if (i > 0)
+                            MaterialTextureType texture_type = static_cast<MaterialTextureType>(mat_tex);
+                            
+                            // create a lambda that captures both the type and slot for the setter
+                            auto setter = [material, texture_type, slot](Spartan::RHI_Texture* texture) 
+                            { 
+                                material->SetTexture(texture_type, texture, slot);
+                            };
+                    
+                            // add spacing between texture slots
+                            if (slot > 0)
                             {
                                 ImGui::SameLine();
                             }
-
-                            ImGuiSp::image_slot(material->GetTexture(textureType), setter);
+                    
+                            // get the texture for this slot and show it in the UI
+                            RHI_Texture* texture = material->GetTexture(texture_type, slot);
+                            ImGuiSp::image_slot(texture, setter);
                         }
-
+                    
                         if (show_modifier)
                         {
                             ImGui::SameLine();
@@ -779,21 +788,21 @@ void Properties::ShowMaterial(Material* material) const
                 };
 
                 // properties with textures
-                show_property("Color",                "Surface color",                                                                     MaterialTexture::Color,     MaterialProperty::ColorTint);
-                show_property("Roughness",            "Specifies microfacet roughness of the surface for diffuse and specular reflection", MaterialTexture::Roughness, MaterialProperty::Roughness);
-                show_property("Metalness",            "Blends between a non-metallic and metallic material model",                         MaterialTexture::Metalness, MaterialProperty::Metalness);
-                show_property("Normal",               "Controls the normals of the base layers",                                           MaterialTexture::Normal,    MaterialProperty::Normal);
-                show_property("Height",               "Perceived depth for parallax mapping",                                              MaterialTexture::Height,    MaterialProperty::Height);
-                show_property("Occlusion",            "Amount of light loss, can be complementary to SSAO",                                MaterialTexture::Occlusion, MaterialProperty::Max);
-                show_property("Emission",             "Light emission from the surface, works nice with bloom",                            MaterialTexture::Emission,  MaterialProperty::Max);
-                show_property("Alpha mask",           "Discards pixels",                                                                   MaterialTexture::AlphaMask, MaterialProperty::Max);
-                show_property("Clearcoat",            "Extra white specular layer on top of others",                                       MaterialTexture::Max,       MaterialProperty::Clearcoat);
-                show_property("Clearcoat roughness",  "Roughness of clearcoat specular",                                                   MaterialTexture::Max,       MaterialProperty::Clearcoat_Roughness);
-                show_property("Anisotropic",          "Amount of anisotropy for specular reflection",                                      MaterialTexture::Max,       MaterialProperty::Anisotropic);
-                show_property("Anisotropic rotation", "Rotates the direction of anisotropy, with 1.0 going full circle",                   MaterialTexture::Max,       MaterialProperty::AnisotropicRotation);
-                show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTexture::Max,       MaterialProperty::Sheen);
-                show_property("Sheen tint",           "Mix between white and using base color for sheen reflection",                       MaterialTexture::Max,       MaterialProperty::SheenTint);
-                show_property("Subsurface scattering","Amount of translucency",                                                            MaterialTexture::Max,       MaterialProperty::SubsurfaceScattering);
+                show_property("Color",                "Surface color",                                                                     MaterialTextureType::Color,     MaterialProperty::ColorTint);
+                show_property("Roughness",            "Specifies microfacet roughness of the surface for diffuse and specular reflection", MaterialTextureType::Roughness, MaterialProperty::Roughness);
+                show_property("Metalness",            "Blends between a non-metallic and metallic material model",                         MaterialTextureType::Metalness, MaterialProperty::Metalness);
+                show_property("Normal",               "Controls the normals of the base layers",                                           MaterialTextureType::Normal,    MaterialProperty::Normal);
+                show_property("Height",               "Perceived depth for parallax mapping",                                              MaterialTextureType::Height,    MaterialProperty::Height);
+                show_property("Occlusion",            "Amount of light loss, can be complementary to SSAO",                                MaterialTextureType::Occlusion, MaterialProperty::Max);
+                show_property("Emission",             "Light emission from the surface, works nice with bloom",                            MaterialTextureType::Emission,  MaterialProperty::Max);
+                show_property("Alpha mask",           "Discards pixels",                                                                   MaterialTextureType::AlphaMask, MaterialProperty::Max);
+                show_property("Clearcoat",            "Extra white specular layer on top of others",                                       MaterialTextureType::Max,       MaterialProperty::Clearcoat);
+                show_property("Clearcoat roughness",  "Roughness of clearcoat specular",                                                   MaterialTextureType::Max,       MaterialProperty::Clearcoat_Roughness);
+                show_property("Anisotropic",          "Amount of anisotropy for specular reflection",                                      MaterialTextureType::Max,       MaterialProperty::Anisotropic);
+                show_property("Anisotropic rotation", "Rotates the direction of anisotropy, with 1.0 going full circle",                   MaterialTextureType::Max,       MaterialProperty::AnisotropicRotation);
+                show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTextureType::Max,       MaterialProperty::Sheen);
+                show_property("Sheen tint",           "Mix between white and using base color for sheen reflection",                       MaterialTextureType::Max,       MaterialProperty::SheenTint);
+                show_property("Subsurface scattering","Amount of translucency",                                                            MaterialTextureType::Max,       MaterialProperty::SubsurfaceScattering);
             }
 
             // index of refraction

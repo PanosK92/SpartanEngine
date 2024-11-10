@@ -33,17 +33,16 @@ namespace Spartan
     const uint32_t material_texture_type_count     = 8;
     const uint32_t material_texture_slots_per_type = 4;
 
-    // each texture type can have up to 4 slots
-    enum class MaterialTexture
+    enum class MaterialTextureType
     {
-        Color,     Color2,     Color3,     Color4,
-        Roughness, Roughness2, Roughness3, Roughness4,
-        Metalness, Metalness2, Metalness3, Metalness4,
-        Normal,    Normal2,    Normal3,    Normal4,
-        Occlusion, Occlusion2, Occlusion3, Occlusion4,
-        Emission,  Emission2,  Emission3,  Emission4,
-        Height,    Height2,    Height3,    Height4,
-        AlphaMask, AlphaMask2, AlphaMask3, AlphaMask4,
+        Color,
+        Roughness,
+        Metalness,
+        Normal,
+        Occlusion,
+        Emission,
+        Height,
+        AlphaMask,
         Max
     };
 
@@ -102,15 +101,15 @@ namespace Spartan
         bool SaveToFile(const std::string& file_path) override;
 
         // textures
-        void SetTexture(const MaterialTexture texture_type, RHI_Texture* texture);
-        void SetTexture(const MaterialTexture texture_type, std::shared_ptr<RHI_Texture> texture);
-        void SetTexture(const MaterialTexture texture_type, const std::string& file_path);
-        bool HasTexture(const std::string& path) const;
-        bool HasTexture(const MaterialTexture texture_type) const;
-        std::string GetTexturePathByType(const MaterialTexture texture_type);
+        void SetTexture(const MaterialTextureType texture_type, RHI_Texture* texture, const uint8_t slot = 0);
+        void SetTexture(const MaterialTextureType texture_type, std::shared_ptr<RHI_Texture> texture, const uint8_t slot = 0);
+        void SetTexture(const MaterialTextureType texture_type, const std::string& file_path, const uint8_t slot = 0);
+        bool HasTextureOfType(const std::string& path) const;
+        bool HasTextureOfType(const MaterialTextureType texture_type) const;
+        std::string GetTexturePathByType(const MaterialTextureType texture_type);
         std::vector<std::string> GetTexturePaths();
-        RHI_Texture* GetTexture(const MaterialTexture texture_type);
-        uint32_t GetArraySize();
+        RHI_Texture* GetTexture(const MaterialTextureType texture_type, const uint8_t slot = 0);
+        uint32_t GetUsedSlotCount() const;
 
         // index of refraction
         static float EnumToIor(const MaterialIor ior);
@@ -126,11 +125,8 @@ namespace Spartan
 
         bool IsTessellated() const
         {
-            return HasTexture(MaterialTexture::Height)  ||
-                   HasTexture(MaterialTexture::Height2) ||
-                   HasTexture(MaterialTexture::Height3) ||
-                   HasTexture(MaterialTexture::Height4) ||
-                   GetProperty(MaterialProperty::VertexAnimateWater);
+            // the gbuffer will tesselate in one of these cases
+            return HasTextureOfType(MaterialTextureType::Height) || GetProperty(MaterialProperty::VertexAnimateWater);
         }
 
         // index
@@ -138,7 +134,7 @@ namespace Spartan
         uint32_t GetIndex() const           { return m_index; }
 
     private:
-        std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTexture::Max)> m_textures;
+        std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * material_texture_slots_per_type> m_textures;
         std::array<float, static_cast<uint32_t>(MaterialProperty::Max)> m_properties;
         uint32_t m_index = 0;
     };
