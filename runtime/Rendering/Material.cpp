@@ -348,7 +348,7 @@ namespace Spartan
         return m_textures[(static_cast<uint32_t>(texture_type) * slots_per_texture_type) + slot];
     }
 
-    void Material::Optimize()
+    void Material::PrepareForGPU()
     {
         if (HasTextureOfType(MaterialTextureType::Color) && HasTextureOfType(MaterialTextureType::AlphaMask))
         {

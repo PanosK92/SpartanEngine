@@ -88,7 +88,6 @@ namespace Spartan
 
         // aabb
         const Math::BoundingBox& GetAabb() const { return m_aabb; }
-        void ComputeAabb();
 
         // gpu buffers
         void CreateGpuBuffers();
@@ -109,7 +108,6 @@ namespace Spartan
 
         void PostProcess();
         void SetMaterial(std::shared_ptr<Material>& material, Entity* entity) const;
-        void AddTexture(std::shared_ptr<Material>& material, MaterialTextureType texture_type, const std::string& file_path, bool is_gltf);
 
     private:
         // geometry
