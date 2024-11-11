@@ -30,9 +30,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    const uint32_t material_texture_type_count     = 8;
-    const uint32_t material_texture_slots_per_type = 4;
-
     enum class MaterialTextureType
     {
         Color,
@@ -132,8 +129,10 @@ namespace Spartan
         void SetIndex(const uint32_t index) { m_index = index; }
         uint32_t GetIndex() const           { return m_index; }
 
+        static const uint32_t slots_per_texture_type = 4;
+
     private:
-        std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * material_texture_slots_per_type> m_textures;
+        std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * slots_per_texture_type> m_textures;
         std::array<float, static_cast<uint32_t>(MaterialProperty::Max)> m_properties;
         uint32_t m_index = 0;
     };
