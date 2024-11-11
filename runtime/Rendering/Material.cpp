@@ -89,12 +89,12 @@ namespace Spartan
             return static_cast<uint32_t>(round(value * 255.0f));
         }
         
-        // Main function to pack multiple RGBA32 textures into two RGBA32 textures
-        // Assumes:
+        // This function takes all material textures and packes them as tightly as possible.
         // - All input textures have the same dimensions (width x height)
         // - Input textures are in RGBA32 format (R8G8B8A8_UNORM)
-        // - Output texture 1: RGBA - RGB (Albedo) - A (Normal.x)
-        // - Output texture 2: RGBA - R (Occlusion) - G (Roughness) - B (Metalness) - A (Normal.y)
+        // - Output texture 1: RGBA - RGB (Albedo) - A (min(Albedo.a, Mask.a))
+        // - Output texture 2: RGBA - R (Occlusion) - G (Roughness) - B (Metalness) - A (Normal.x)
+        // - Output texture 3: RGBA - R (Normal.y) - G (Normal.z) - B (Height) - A (?)
         void pack_textures(
             const vector<uint32_t>& albedo,
             const vector<uint32_t>& normal,
@@ -232,10 +232,10 @@ namespace Spartan
     void Material::SetTexture(const MaterialTextureType texture_type, RHI_Texture* texture, const uint8_t slot)
     {
         // validate slot range
-        SP_ASSERT(slot < material_texture_slots_per_type);
+        SP_ASSERT(slot < slots_per_texture_type);
     
         // calculate the actual array index based on texture type and slot
-        uint32_t array_index = (static_cast<uint32_t>(texture_type) * material_texture_slots_per_type) + slot;
+        uint32_t array_index = (static_cast<uint32_t>(texture_type) * slots_per_texture_type) + slot;
 
         if (texture)
         {
@@ -294,7 +294,13 @@ namespace Spartan
 
     bool Material::HasTextureOfType(const MaterialTextureType texture_type) const
     {
-        return m_textures[static_cast<uint32_t>(texture_type)] != nullptr;
+        for (uint32_t slot = 0; slot < slots_per_texture_type; slot++)
+        {
+            if (m_textures[static_cast<uint32_t>(texture_type) * slots_per_texture_type + slot] != nullptr)
+                return true; 
+        }
+    
+        return false;
     }
 
     string Material::GetTexturePathByType(const MaterialTextureType texture_type, const uint8_t slot)
@@ -321,8 +327,8 @@ namespace Spartan
 
     RHI_Texture* Material::GetTexture(const MaterialTextureType texture_type, const uint8_t slot)
     {
-        SP_ASSERT(slot < material_texture_slots_per_type);
-        return m_textures[(static_cast<uint32_t>(texture_type) * material_texture_slots_per_type) + slot];
+        SP_ASSERT(slot < slots_per_texture_type);
+        return m_textures[(static_cast<uint32_t>(texture_type) * slots_per_texture_type) + slot];
     }
 
     uint32_t Material::GetUsedSlotCount() const
@@ -331,13 +337,13 @@ namespace Spartan
         uint32_t max_used_slot[static_cast<size_t>(MaterialTextureType::Max)] = { 0 };
     
         // iterate through each texture type
-        for (size_t type = 0; type < static_cast<size_t>(MaterialTextureType::Max); ++type)
+        for (size_t type = 0; type < static_cast<size_t>(MaterialTextureType::Max); type++)
         {
             // check each slot for this type
-            for (uint32_t slot = 0; slot < material_texture_slots_per_type; ++slot)
+            for (uint32_t slot = 0; slot < slots_per_texture_type; ++slot)
             {
                 // calculate array index using the helper function
-                uint32_t index = (static_cast<uint32_t>(type) * material_texture_slots_per_type) + slot;
+                uint32_t index = (static_cast<uint32_t>(type) * slots_per_texture_type) + slot;
                 
                 // if this slot has a texture, update the max used slot for this type
                 if (m_textures[index])

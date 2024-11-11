@@ -874,33 +874,33 @@ namespace Spartan
                 properties[index].sheen_tint             = material->GetProperty(MaterialProperty::SheenTint);
                 properties[index].subsurface_scattering  = material->GetProperty(MaterialProperty::SubsurfaceScattering);
                 properties[index].ior                    = material->GetProperty(MaterialProperty::Ior);
-                properties[index].flags                 |= material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness) ? (1U << 0) : 0;
-    
-                // Update HasTexture flags to check if any slot of each type has a texture
-                properties[index].flags                 |= material->HasTextureOfType(MaterialTextureType::Height)     ? (1U << 1)  : 0;
-                properties[index].flags                 |= material->HasTextureOfType(MaterialTextureType::Normal)     ? (1U << 2)  : 0;
-                properties[index].flags                 |= material->HasTextureOfType(MaterialTextureType::Color)      ? (1U << 3)  : 0;
-                properties[index].flags                 |= material->HasTextureOfType(MaterialTextureType::Roughness)  ? (1U << 4)  : 0;
-                properties[index].flags                 |= material->HasTextureOfType(MaterialTextureType::Metalness)  ? (1U << 5)  : 0;
-                properties[index].flags                 |= material->HasTextureOfType(MaterialTextureType::AlphaMask)  ? (1U << 6)  : 0;
-                properties[index].flags                 |= material->HasTextureOfType(MaterialTextureType::Emission)   ? (1U << 7)  : 0;
-                properties[index].flags                 |= material->HasTextureOfType(MaterialTextureType::Occlusion)  ? (1U << 8)  : 0;
-                properties[index].flags                 |= material->GetProperty(MaterialProperty::TextureSlopeBased)  ? (1U << 9)  : 0;
-                properties[index].flags                 |= material->GetProperty(MaterialProperty::VertexAnimateWind)  ? (1U << 10) : 0;
-                properties[index].flags                 |= material->GetProperty(MaterialProperty::VertexAnimateWater) ? (1U << 11) : 0;
-                properties[index].flags                 |= material->IsTessellated()                                   ? (1U << 12) : 0;
+              
+                // flags
+                properties[index].flags  = material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness) ? (1U << 0) : 0;
+                properties[index].flags |= material->HasTextureOfType(MaterialTextureType::Height)                  ? (1U << 1)  : 0;
+                properties[index].flags |= material->HasTextureOfType(MaterialTextureType::Normal)                  ? (1U << 2)  : 0;
+                properties[index].flags |= material->HasTextureOfType(MaterialTextureType::Color)                   ? (1U << 3)  : 0;
+                properties[index].flags |= material->HasTextureOfType(MaterialTextureType::Roughness)               ? (1U << 4)  : 0;
+                properties[index].flags |= material->HasTextureOfType(MaterialTextureType::Metalness)               ? (1U << 5)  : 0;
+                properties[index].flags |= material->HasTextureOfType(MaterialTextureType::AlphaMask)               ? (1U << 6)  : 0;
+                properties[index].flags |= material->HasTextureOfType(MaterialTextureType::Emission)                ? (1U << 7)  : 0;
+                properties[index].flags |= material->HasTextureOfType(MaterialTextureType::Occlusion)               ? (1U << 8)  : 0;
+                properties[index].flags |= material->GetProperty(MaterialProperty::TextureSlopeBased)               ? (1U << 9)  : 0;
+                properties[index].flags |= material->GetProperty(MaterialProperty::VertexAnimateWind)               ? (1U << 10) : 0;
+                properties[index].flags |= material->GetProperty(MaterialProperty::VertexAnimateWater)              ? (1U << 11) : 0;
+                properties[index].flags |= material->IsTessellated()                                                ? (1U << 12) : 0;
                 // when changing the bit flags, ensure that you also update the Surface struct in common_structs.hlsl, so that it reads those flags as expected
             }
     
             // textures
             {
                 // iterate through all texture types and their slots
-                for (uint32_t type = 0; type < material_texture_type_count; type++)
+                for (uint32_t type = 0; type < static_cast<uint32_t>(MaterialTextureType::Max); type++)
                 {
-                    for (uint32_t slot = 0; slot < material_texture_slots_per_type; slot++)
+                    for (uint32_t slot = 0; slot < Material::slots_per_texture_type; slot++)
                     {
                         // calculate the final index in the bindless array
-                        uint32_t bindless_index = index + (type * material_texture_slots_per_type) + slot;
+                        uint32_t bindless_index = index + (type * Material::slots_per_texture_type) + slot;
                         
                         // get the texture from the material using type and slot
                         bindless_textures[bindless_index] = material->GetTexture(static_cast<MaterialTextureType>(type), slot);
@@ -911,7 +911,7 @@ namespace Spartan
             material->SetIndex(index);
 
             // update index increment to account for all texture slots
-            index += material_texture_type_count * material_texture_slots_per_type;
+            index += static_cast<uint32_t>(MaterialTextureType::Max) * Material::slots_per_texture_type;
         };
     
         auto update_entities = [update_material](vector<shared_ptr<Entity>>& entities)
@@ -942,7 +942,6 @@ namespace Spartan
             properties.fill(Sb_Material{});
             bindless_textures.fill(nullptr);
             unique_material_ids.clear();
-            index = 0;
             update_entities(m_renderables[Renderer_Entity::Mesh]);
         }
     
@@ -956,6 +955,8 @@ namespace Spartan
             // material textures
             bindless_materials_dirty = true;
         }
+
+        index = 0;
     }
 
     void Renderer::BindlessUpdateLights()

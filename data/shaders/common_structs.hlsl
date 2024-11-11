@@ -130,6 +130,7 @@ struct Surface
 struct Light
 {
     // properties
+    uint   index;
     uint   flags;
     float3 color;
     float3 position;
@@ -240,8 +241,8 @@ struct Light
 
     void Build(float3 surface_position, float3 surface_normal, float occlusion)
     {
-        Light_ light = buffer_lights[(uint)pass_get_f3_value2().x];
-
+        index             = (uint)pass_get_f3_value2().x;
+        Light_ light      = buffer_lights[index];
         flags             = light.flags;
         transform         = light.transform;
         color             = light.color.rgb;
