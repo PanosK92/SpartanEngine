@@ -373,27 +373,4 @@ namespace Spartan
         // create a Renderable and pass the material to it
         entity->AddComponent<Renderable>()->SetMaterial(material);
     }
-
-    void Mesh::AddTexture(shared_ptr<Material>& material, const MaterialTextureType texture_type, const string& file_path, bool is_gltf)
-    {
-        SP_ASSERT(material != nullptr);
-        SP_ASSERT(!file_path.empty());
-
-        // Try to get the texture
-        const auto tex_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-        shared_ptr<RHI_Texture> texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
-
-        if (texture)
-        {
-            material->SetTexture(texture_type, texture);
-        }
-        else // if we didn't get a texture, it's not cached, hence we have to load it and cache it now
-        {
-            // load texture
-            texture = ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv | RHI_Texture_Compress);
-
-            // set the texture to the provided material
-            material->SetTexture(texture_type, texture);
-        }
-    }
 }

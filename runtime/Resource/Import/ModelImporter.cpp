@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES ============================
 #include "pch.h"
 #include "ModelImporter.h"
 #include "../../Core/ProgressTracker.h"
@@ -28,7 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Mesh.h"
 #include "../../World/World.h"
 #include "../../World/Entity.h"
-#include "../World/Components/Light.h"
+#include "../../World/Components/Light.h"
+#include "../../Resource/ResourceCache.h"
 SP_WARNINGS_OFF
 #include "assimp/scene.h"
 #include "assimp/ProgressHandler.hpp"
@@ -36,7 +37,7 @@ SP_WARNINGS_OFF
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
 SP_WARNINGS_ON
-//=====================================
+//=======================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -244,7 +245,24 @@ namespace Spartan
                 return false;
 
             // add the texture to the model
-            mesh->AddTexture(material, texture_type, texture_validate_path(texture_path.data, file_path), is_gltf);
+            {
+                // Try to get the texture
+                const string tex_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(deduced_path);
+                shared_ptr<RHI_Texture> texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
+
+                if (texture)
+                {
+                    material->SetTexture(texture_type, texture);
+                }
+                else // if we didn't get a texture, it's not cached, hence we have to load it and cache it now
+                {
+                    // load texture
+                    texture = ResourceCache::Load<RHI_Texture>(deduced_path, RHI_Texture_Srv | RHI_Texture_Compress);
+
+                    // set the texture to the provided material
+                    material->SetTexture(texture_type, texture);
+                }
+            }
 
             // FIX: materials that have a diffuse texture should not be tinted black/gray
             if (type_assimp == aiTextureType_BASE_COLOR || type_assimp == aiTextureType_DIFFUSE)
@@ -385,7 +403,7 @@ namespace Spartan
                 }
             }
 
-            material->Optimize();
+            material->PrepareForGPU();
 
             return material;
         }
