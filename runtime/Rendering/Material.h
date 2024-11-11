@@ -106,7 +106,7 @@ namespace Spartan
         std::string GetTexturePathByType(const MaterialTextureType texture_type, const uint8_t slot = 0);
         std::vector<std::string> GetTexturePaths();
         RHI_Texture* GetTexture(const MaterialTextureType texture_type, const uint8_t slot = 0);
-        uint32_t GetUsedSlotCount() const;
+
 
         // index of refraction
         static float EnumToIor(const MaterialIor ior);
@@ -119,13 +119,15 @@ namespace Spartan
         bool IsTransparent() const { return GetProperty(MaterialProperty::ColorA) < 1.0f; }
         bool IsVisible()     const { return GetProperty(MaterialProperty::ColorA) > 0.0f; }
         bool IsAlphaTested();
-
         bool IsTessellated() const
         {
             // the gbuffer will tesselate in one of these cases
             return HasTextureOfType(MaterialTextureType::Height) || GetProperty(MaterialProperty::VertexAnimateWater);
         }
 
+        // misc
+        void Optimize();
+        uint32_t GetUsedSlotCount() const;
         void SetIndex(const uint32_t index) { m_index = index; }
         uint32_t GetIndex() const           { return m_index; }
 
