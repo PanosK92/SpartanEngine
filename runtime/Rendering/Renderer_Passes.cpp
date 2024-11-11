@@ -1132,12 +1132,6 @@ namespace Spartan
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_transparent" : "light");
 
-        // clear render targets
-        cmd_list->ClearTexture(tex_diffuse,    Color::standard_black);
-        cmd_list->ClearTexture(tex_specular,   Color::standard_black);
-        cmd_list->ClearTexture(tex_shadow,     Color::standard_white);
-        cmd_list->ClearTexture(tex_volumetric, Color::standard_black);
-
         // set pipeline state
         static RHI_PipelineState pso;
         pso.name             = "light";
