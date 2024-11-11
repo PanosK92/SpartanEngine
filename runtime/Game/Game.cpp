@@ -808,14 +808,13 @@ namespace Spartan
             {
                 shared_ptr<Entity> light = World::CreateEntity();
                 light->SetObjectName("light_point");
-                light->SetPositionLocal(Vector3(2.2039f, 3.9965f, 3.2015f));
-                light->AddComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
-                light->GetComponent<Light>()->SetFlag(LightFlags::ShadowsTransparent, false);
+                light->SetPositionLocal(Vector3(2.2f, 4.0f, 3.2f));
+                light->AddComponent<Light>()->SetFlag(LightFlags::ShadowsTransparent, false);
                 light->GetComponent<Light>()->SetFlag(LightFlags::Volumetric, false);
                 light->GetComponent<Light>()->SetLightType(LightType::Point);
                 light->GetComponent<Light>()->SetRange(120.0f);
                 light->GetComponent<Light>()->SetIntensity(LightIntensity::bulb_60_watt);
-                light->GetComponent<Light>()->SetTemperature(4000.0f); // a bit white, what the emissive textures seems to try to emulate
+                light->GetComponent<Light>()->SetTemperature(4000.0f); // a bit white, what the emissive textures seem to try to emulate
 
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                 entity->SetObjectName("bistro_interior");
