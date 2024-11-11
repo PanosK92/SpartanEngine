@@ -385,6 +385,8 @@ namespace Spartan
                 }
             }
 
+            material->Optimize();
+
             return material;
         }
     }

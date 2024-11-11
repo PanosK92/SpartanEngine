@@ -131,6 +131,23 @@ namespace Spartan
                              ((normal[i] >> 16) & 0xFF);
             }
         }
+
+        // assume rgba32 has 4 bytes per pixel: 1 byte each for red, green, blue, and alpha
+        void merge_alpha_mask_into_color_alpha(vector<byte>& albedo, vector<byte>& alpha_mask)
+        {
+            SP_ASSERT_MSG(albedo.size() == alpha_mask.size(), "The dimensions must be equal");
+
+            // iterate over each pixel, 4 bytes at a time (RGBA format)
+            for (size_t i = 0; i < albedo.size(); i += 4)
+            {
+                // get alpha values from albedo and mask as uint8_t
+                uint8_t albedo_alpha = static_cast<uint8_t>(albedo[i + 3]);
+                uint8_t mask_alpha   = static_cast<uint8_t>(alpha_mask[i + 3]);
+                
+                // perform min operation and store back into albedo's alpha channel
+                albedo[i + 3] = static_cast<byte>(min(albedo_alpha, mask_alpha));
+            }
+        }
     }
 
     Material::Material() : IResource(ResourceType::Material)
@@ -329,6 +346,21 @@ namespace Spartan
     {
         SP_ASSERT(slot < slots_per_texture_type);
         return m_textures[(static_cast<uint32_t>(texture_type) * slots_per_texture_type) + slot];
+    }
+
+    void Material::Optimize()
+    {
+        if (HasTextureOfType(MaterialTextureType::Color) && HasTextureOfType(MaterialTextureType::AlphaMask))
+        {
+            // this can be tested by loading the subway default world
+
+            //texture_packing::merge_alpha_mask_into_color_alpha(
+            //    GetTexture(MaterialTextureType::Color)->GetMip(0, 0).bytes,
+            //    GetTexture(MaterialTextureType::AlphaMask)->GetMip(0, 0).bytes
+            //);
+            //
+            //SetTexture(MaterialTextureType::AlphaMask, nullptr);
+        }
     }
 
     uint32_t Material::GetUsedSlotCount() const
