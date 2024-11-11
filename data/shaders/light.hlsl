@@ -159,9 +159,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         light_specular     = clamp(light_specular, 0.0f, max_specular);
     }
 
-    // mulitple ligts can go through this shader, so we accumulate the results
-    /* diffuse    */ tex_uav[thread_id.xy]  += float4(light_diffuse  * light.radiance + light_subsurface, 0.0f);
-    /* specular   */ tex_uav2[thread_id.xy] += float4(light_specular * light.radiance, 0.0f);
-    /* shadow     */ tex_uav3[thread_id.xy]  = saturate(tex_uav3[thread_id.xy] - (1.0f - shadow.a));
-    /* volumetric */ tex_uav4[thread_id.xy] += float4(volumetric_fog, 1.0f);
+    // to avoid clearing the buffers with API calls (and introducing memory barriers), we clear them via not accumulating on the first light
+    float accumulate       = light.index != 0;
+    float shadow_value     = lerp(tex_uav3[thread_id.xy].r, 1.0f, 1.0f - accumulate);
+    tex_uav[thread_id.xy]  = tex_uav[thread_id.xy]  * accumulate + float4(light_diffuse  * light.radiance + light_subsurface, 0.0f); /* diffuse    - clears to zero*/
+    tex_uav2[thread_id.xy] = tex_uav2[thread_id.xy] * accumulate + float4(light_specular * light.radiance, 0.0f);                    /* specular   - clears to zero*/
+    tex_uav3[thread_id.xy] = saturate(shadow_value - (1.0f - shadow.a));                                                             /* shadow     - clears to one*/
+    tex_uav4[thread_id.xy] = tex_uav4[thread_id.xy] * accumulate + float4(volumetric_fog, 1.0f);                                     /* volumetric - clears to zero*/
 }
