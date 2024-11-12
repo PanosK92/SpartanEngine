@@ -29,7 +29,7 @@ namespace Spartan
 {
     class RHI_Texture;
 
-    class ImageImporterExporter
+    class ImageImporter
     {
     public:
         static void Initialize();

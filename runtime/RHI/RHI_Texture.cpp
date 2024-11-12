@@ -19,17 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================================
+//= INCLUDES ================================
 #include "pch.h"
 #include "RHI_Texture.h"
 #include "ThreadPool.h"
 #include "RHI_CommandList.h"
 #include "../IO/FileStream.h"
-#include "../Resource/Import/ImageImporterExporter.h"
+#include "../Resource/Import/ImageImporter.h"
 SP_WARNINGS_OFF
 #include "compressonator.h"
 SP_WARNINGS_ON
-//===================================================
+//===========================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -114,7 +114,7 @@ namespace Spartan
 
     RHI_Texture::RHI_Texture() : IResource(ResourceType::Texture)
     {
-        
+
     }
 
     RHI_Texture::RHI_Texture(
@@ -305,7 +305,7 @@ namespace Spartan
             // load texture
             for (uint32_t slice_index = 0; slice_index < static_cast<uint32_t>(file_paths.size()); slice_index++)
             {
-                if (!ImageImporterExporter::Load(file_paths[slice_index], slice_index, this))
+                if (!ImageImporter::Load(file_paths[slice_index], slice_index, this))
                 {
                     SP_LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
                     return false;
@@ -481,7 +481,7 @@ namespace Spartan
     void RHI_Texture::SaveAsImage(const string& file_path)
     {
         SP_ASSERT_MSG(m_mapped_data != nullptr, "The texture needs to be mappable");
-        ImageImporterExporter::Save(file_path, m_width, m_height, m_channel_count, m_bits_per_channel, m_mapped_data);
+        ImageImporter::Save(file_path, m_width, m_height, m_channel_count, m_bits_per_channel, m_mapped_data);
         SP_LOG_INFO("Screenshot has been saved");
     }
 
