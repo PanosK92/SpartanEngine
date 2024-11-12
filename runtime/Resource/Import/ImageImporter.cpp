@@ -295,21 +295,6 @@ namespace Spartan
             SP_LOG_ERROR("%s, Format: %s", text, format);
         };
 
-        uint32_t calculate_mip_count(uint32_t width, uint32_t height)
-        {
-            uint32_t mip_count = 0;
-            while (width > 1 || height > 1)
-            {
-                width  >>= 1;
-                height >>= 1;
-                if (width > 0 && height > 0)
-                {
-                    mip_count++;
-                }
-            }
-            return mip_count;
-        }
-
         bool has_transparent_pixels(FIBITMAP* bitmap)
         {
             SP_ASSERT(FreeImage_GetBPP(bitmap) == 32);
@@ -458,46 +443,16 @@ namespace Spartan
         texture->SetHeight(FreeImage_GetHeight(bitmap));
         texture->SetChannelCount(get_channel_count(bitmap));
         texture->SetFormat(get_rhi_format(texture->GetBitsPerChannel(), texture->GetChannelCount()));
+        texture->SetFlag(RHI_Texture_Transparent, has_transparent_pixels(bitmap));
 
-        // fill in all the mips
-        uint32_t mip_count       = calculate_mip_count(texture->GetWidth(), texture->GetHeight());
-        FIBITMAP* current_bitmap = bitmap;
-        for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
-        {
-            if (mip_index != 0) // rescale bitmap for next mip levels
-            {
-                uint32_t width           = texture->GetWidth() >> mip_index;
-                uint32_t height          = texture->GetHeight() >> mip_index;
-                FIBITMAP* resized_bitmap = FreeImage_Rescale(current_bitmap, width, height, FILTER_BICUBIC);
-                if (!resized_bitmap)
-                {
-                    SP_LOG_ERROR("Failed to resize image for mip level %d", mip_index);
-                    FreeImage_Unload(bitmap);
-                    return false;
-                }
+        // copy data over
+        RHI_Texture_Mip& mip = texture->CreateMip(slice_index);
+        BYTE* bytes          = FreeImage_GetBits(bitmap);
+        size_t bytes_size    = FreeImage_GetPitch(bitmap) * FreeImage_GetHeight(bitmap);
+        mip.bytes.resize(bytes_size);
+        memcpy(&mip.bytes[0], bytes, bytes_size);
 
-                if (mip_index > 1)
-                {
-                    FreeImage_Unload(current_bitmap);
-                }
-
-                current_bitmap = resized_bitmap;
-            }
-
-            if (mip_index == 2)
-            {
-                texture->SetFlag(RHI_Texture_Transparent, has_transparent_pixels(current_bitmap));
-            }
-
-            // copy data over to the texture
-            RHI_Texture_Mip& mip = texture->CreateMip(slice_index);
-            BYTE* bytes          = FreeImage_GetBits(current_bitmap);
-            size_t bytes_size    = FreeImage_GetPitch(current_bitmap) * FreeImage_GetHeight(current_bitmap);
-            mip.bytes.resize(bytes_size);
-            memcpy(&mip.bytes[0], bytes, bytes_size);
-        }
-
-        FreeImage_Unload(current_bitmap);
+        FreeImage_Unload(bitmap);
 
         return true;
     }

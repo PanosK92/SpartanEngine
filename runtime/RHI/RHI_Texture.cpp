@@ -81,7 +81,7 @@ namespace Spartan
             destination_texture.dwWidth     = source_texture.dwWidth;
             destination_texture.dwHeight    = source_texture.dwHeight;
             destination_texture.dwDataSize  = CMP_CalculateBufferSize(&destination_texture);
-            vector<std::byte> destination_data(destination_texture.dwDataSize);
+            vector<byte> destination_data(destination_texture.dwDataSize);
             destination_texture.pData       = reinterpret_cast<uint8_t*>(destination_data.data());
 
             // compress texture
@@ -109,6 +109,78 @@ namespace Spartan
             }
 
             texture->SetFormat(destination_format);
+        }
+    }
+
+    namespace mips
+    {
+        void downsample_bilinear(const vector<byte>& input, vector<byte>& output, uint32_t width, uint32_t height)
+        {
+            constexpr uint32_t channels = 4; // RGBA32
+            
+            // Calculate new dimensions (halving both width and height)
+            uint32_t new_width  = width  >> 1;
+            uint32_t new_height = height >> 1;
+            
+            // Ensure minimum size
+            if (new_width < 1) new_width = 1;
+            if (new_height < 1) new_height = 1;
+            
+            // Perform bilinear downsampling
+            for (uint32_t y = 0; y < new_height; y++)
+            {
+                for (uint32_t x = 0; x < new_width; x++)
+                {
+                    // Calculate base indices for this 2x2 block
+                    uint32_t src_idx = (y * 2 * width + x * 2) * channels;
+                    uint32_t dst_idx = (y * new_width + x) * channels;
+                    
+                    // Process all 4 channels (RGBA)
+                    for (uint32_t c = 0; c < channels; c++)
+                    {
+                        uint32_t sum = to_integer<uint32_t>(input[src_idx + c]);
+                        uint32_t count = 1;
+                        
+                        // Right pixel
+                        if (x * 2 + 1 < width)
+                        {
+                            sum += to_integer<uint32_t>(input[src_idx + channels + c]);
+                            count++;
+                        }
+                        
+                        // Bottom pixel
+                        if (y * 2 + 1 < height)
+                        {
+                            sum += to_integer<uint32_t>(input[src_idx + (width * channels) + c]);
+                            count++;
+                        }
+                        
+                        // Bottom-right pixel
+                        if ((x * 2 + 1 < width) && (y * 2 + 1 < height))
+                        {
+                            sum += to_integer<uint32_t>(input[src_idx + (width * channels) + channels + c]);
+                            count++;
+                        }
+                        
+                        output[dst_idx + c] = byte(sum / count);
+                    }
+                }
+            }
+        }
+
+        uint32_t compute_count(uint32_t width, uint32_t height)
+        {
+            uint32_t mip_count = 0;
+            while (width > 1 || height > 1)
+            {
+                width  >>= 1;
+                height >>= 1;
+                if (width > 0 && height > 0)
+                {
+                    mip_count++;
+                }
+            }
+            return mip_count;
         }
     }
 
@@ -153,7 +225,7 @@ namespace Spartan
         }
     }
 
-    RHI_Texture::RHI_Texture(const std::string& file_path) : IResource(ResourceType::Texture)
+    RHI_Texture::RHI_Texture(const string& file_path) : IResource(ResourceType::Texture)
     {
          LoadFromFile(file_path);
     }
@@ -338,7 +410,7 @@ namespace Spartan
         RHI_Texture_Mip& mip = m_slices[array_index].mips.emplace_back();
         m_depth              = static_cast<uint32_t>(m_slices.size());
         m_mip_count          = static_cast<uint32_t>(m_slices[0].mips.size());
-
+        
         // allocate memory if requested
         {
             uint32_t mip_index = static_cast<uint32_t>(m_slices[array_index].mips.size()) - 1;
@@ -346,9 +418,7 @@ namespace Spartan
             uint32_t height    = max(1u, m_height >> mip_index);
             uint32_t depth     = (GetType() == RHI_Texture_Type::Type3D) ? (m_depth >> mip_index) : 1;
             size_t size_bytes  = CalculateMipSize(width, height, depth, m_format, m_bits_per_channel, m_channel_count);
-
             mip.bytes.resize(size_bytes);
-            mip.bytes.reserve(size_bytes);
         }
 
         return mip;
@@ -456,6 +526,21 @@ namespace Spartan
     {
         SP_ASSERT(m_slices.size() > 0);
         SP_ASSERT(m_slices[0].mips.size() > 0);
+
+        // generate mips
+        uint32_t mip_count = mips::compute_count(m_width, m_height);
+        for (uint32_t mip_index = 1; mip_index < mip_count; mip_index++)
+        {
+            const uint32_t width_above  = max(1u, m_width  >> (mip_index - 1));
+            const uint32_t height_above = max(1u, m_height >> (mip_index - 1));
+
+            mips::downsample_bilinear(
+                m_slices[0].mips[mip_index - 1].bytes, // above
+                CreateMip(0).bytes,                    // below
+                width_above,
+                height_above
+            );
+        }
 
         // compress
         bool compress       = m_flags & RHI_Texture_Compress;
