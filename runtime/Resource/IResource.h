@@ -106,7 +106,7 @@ namespace Spartan
         void SetFlags(const uint32_t flags) { m_flags = flags; }
 
         // ready to use
-        bool IsReadyForUse() const { return m_is_ready_for_use; }
+        bool IsGpuReady() const { return m_is_gpu_ready; }
 
         // io
         virtual bool SaveToFile(const std::string& file_path) { return true; }
@@ -117,9 +117,9 @@ namespace Spartan
         static constexpr ResourceType TypeToEnum();
 
     protected:
-        ResourceType m_resource_type         = ResourceType::Max;
-        std::atomic<bool> m_is_ready_for_use = false;
-        uint32_t m_flags                     = 0;
+        ResourceType m_resource_type     = ResourceType::Max;
+        std::atomic<bool> m_is_gpu_ready = false;
+        uint32_t m_flags                 = 0;
 
     private:
         std::string m_resource_directory;

@@ -91,59 +91,59 @@ namespace Spartan
         bool LoadFromFile(const std::string& file_path) override;
         //=======================================================
 
-        uint32_t GetWidth()                                const { return m_width; }
-        void SetWidth(const uint32_t width)                      { m_width = width; }
+        uint32_t GetWidth() const           { return m_width; }
+        void SetWidth(const uint32_t width) { m_width = width; }
 
-        uint32_t GetHeight()                               const { return m_height; }
-        void SetHeight(const uint32_t height)                    { m_height = height; }
+        uint32_t GetHeight() const            { return m_height; }
+        void SetHeight(const uint32_t height) { m_height = height; }
 
-        uint32_t GetBitsPerChannel()                       const { return m_bits_per_channel; }
-        void SetBitsPerChannel(const uint32_t bits)              { m_bits_per_channel = bits; }
-        uint32_t GetBytesPerChannel()                      const { return m_bits_per_channel / 8; }
-        uint32_t GetBytesPerPixel()                        const { return (m_bits_per_channel / 8) * m_channel_count; }
-                                                                 
-        uint32_t GetChannelCount()                         const { return m_channel_count; }
-        void SetChannelCount(const uint32_t channel_count)       { m_channel_count = channel_count; }
-                                                                 
-        RHI_Format GetFormat()                             const { return m_format; }
-        void SetFormat(const RHI_Format format)                  { m_format = format; }
+        uint32_t GetBitsPerChannel() const          { return m_bits_per_channel; }
+        void SetBitsPerChannel(const uint32_t bits) { m_bits_per_channel = bits; }
+        uint32_t GetBytesPerChannel() const         { return m_bits_per_channel / 8; }
+        uint32_t GetBytesPerPixel() const           { return (m_bits_per_channel / 8) * m_channel_count; }
+
+        uint32_t GetChannelCount()  const                  { return m_channel_count; }
+        void SetChannelCount(const uint32_t channel_count) { m_channel_count = channel_count; }
+
+        RHI_Format GetFormat() const            { return m_format; }
+        void SetFormat(const RHI_Format format) { m_format = format; }
 
         // external memory
         void* GetExternalMemoryHandle() const      { return m_rhi_external_memory; }
         void SetExternalMemoryHandle(void* handle) { m_rhi_external_memory = handle; }
 
         // misc
+        void ClearBytes();
         void PrepareForGpu();
         void SaveAsImage(const std::string& file_path);
         static bool IsCompressedFormat(const RHI_Format format);
         static size_t CalculateMipSize(uint32_t width, uint32_t height, uint32_t depth, RHI_Format format, uint32_t bits_per_channel, uint32_t channel_count);
 
         // data
-        uint32_t GetMipCount()                    const { return m_mip_count; }
-        uint32_t GetDepth()                       const { return m_depth; }
-        bool HasData()                            const { return !m_slices.empty() && !m_slices[0].mips.empty() && !m_slices[0].mips[0].bytes.empty(); };
-        std::vector<RHI_Texture_Slice>& GetData()       { return m_slices; }
+        uint32_t GetMipCount() const { return m_mip_count; }
+        uint32_t GetDepth() const    { return m_depth; }
+        bool HasData() const         { return !m_slices.empty() && !m_slices[0].mips.empty() && !m_slices[0].mips[0].bytes.empty(); };
         RHI_Texture_Mip& CreateMip(const uint32_t array_index);
         RHI_Texture_Mip& GetMip(const uint32_t array_index, const uint32_t mip_index);
         RHI_Texture_Slice& GetSlice(const uint32_t array_index);
 
         // flags
-        bool IsSrv()             const { return m_flags & RHI_Texture_Srv; }
-        bool IsUav()             const { return m_flags & RHI_Texture_Uav; }
-        bool IsVrs()             const { return m_flags & RHI_Texture_Vrs; }
-        bool IsRt()              const { return m_flags & RHI_Texture_Rtv; }
-        bool IsDsv()             const { return IsRt() && IsDepthStencilFormat(); }
-        bool IsRtv()             const { return IsRt() && IsColorFormat(); }
-        bool HasPerMipViews()    const { return m_flags & RHI_Texture_PerMipViews; }
-        bool IsGrayscale()       const { return m_flags & RHI_Texture_Greyscale; }
+        bool IsSrv() const             { return m_flags & RHI_Texture_Srv; }
+        bool IsUav() const             { return m_flags & RHI_Texture_Uav; }
+        bool IsVrs() const             { return m_flags & RHI_Texture_Vrs; }
+        bool IsRt() const              { return m_flags & RHI_Texture_Rtv; }
+        bool IsDsv() const             { return IsRt() && IsDepthStencilFormat(); }
+        bool IsRtv() const             { return IsRt() && IsColorFormat(); }
+        bool HasPerMipViews() const    { return m_flags & RHI_Texture_PerMipViews; }
+        bool IsGrayscale() const       { return m_flags & RHI_Texture_Greyscale; }
         bool IsSemiTransparent() const { return m_flags & RHI_Texture_Transparent; }
         bool HasExternalMemory() const { return m_flags & RHI_Texture_ExternalMemory; }
 
         // format type
-        bool IsDepthFormat()        const { return m_format == RHI_Format::D16_Unorm || m_format == RHI_Format::D32_Float || m_format == RHI_Format::D32_Float_S8X24_Uint; }
-        bool IsStencilFormat()      const { return m_format == RHI_Format::D32_Float_S8X24_Uint; }
+        bool IsDepthFormat() const        { return m_format == RHI_Format::D16_Unorm || m_format == RHI_Format::D32_Float || m_format == RHI_Format::D32_Float_S8X24_Uint; }
+        bool IsStencilFormat() const      { return m_format == RHI_Format::D32_Float_S8X24_Uint; }
         bool IsDepthStencilFormat() const { return IsDepthFormat() || IsStencilFormat(); }
-        bool IsColorFormat()        const { return !IsDepthStencilFormat(); }
+        bool IsColorFormat() const        { return !IsDepthStencilFormat(); }
 
         // layout
         void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* cmd_list, uint32_t mip_index = rhi_all_mips,  uint32_t mip_range = 0);
@@ -154,10 +154,10 @@ namespace Spartan
         const auto& GetViewport() const { return m_viewport; }
 
         // rhi
-        RHI_Texture_Type GetType()            const { return m_type; }
+        RHI_Texture_Type GetType() const            { return m_type; }
         void*& GetRhiResource()                     { return m_rhi_resource; }
-        void* GetRhiSrv()                     const { return m_rhi_srv; }
-        void* GetRhiSrvMip(const uint32_t i)  const { return m_rhi_srv_mips[i]; }
+        void* GetRhiSrv() const                     { return m_rhi_srv; }
+        void* GetRhiSrvMip(const uint32_t i) const  { return m_rhi_srv_mips[i]; }
         void* GetRhiDsv(const uint32_t i = 0) const { return m_rhi_dsv[i]; }
         void* GetRhiRtv(const uint32_t i = 0) const { return m_rhi_rtv[i]; }
         void RHI_DestroyResource();

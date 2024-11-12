@@ -143,7 +143,7 @@ namespace Spartan
         m_bits_per_channel = rhi_format_to_bits_per_channel(m_format);
 
         RHI_Texture::RHI_CreateResource();
-        m_is_ready_for_use = true;
+        m_is_gpu_ready = true;
 
         if (!compressonator::registered)
         {
@@ -160,8 +160,6 @@ namespace Spartan
 
     RHI_Texture::~RHI_Texture()
     {
-        m_slices.clear();
-        m_slices.shrink_to_fit();
         RHI_DestroyResource();
     }
 
@@ -215,9 +213,7 @@ namespace Spartan
                 }
             }
 
-            // the bytes have been saved, so we can now free some memory
-            m_slices.clear();
-            m_slices.shrink_to_fit();
+            ClearBytes();
         }
 
         // write properties
@@ -236,94 +232,95 @@ namespace Spartan
 
     bool RHI_Texture::LoadFromFile(const string& file_path)
     {
-        m_type         = RHI_Texture_Type::Type2D;
-        m_depth        = 1;
-        m_flags       |= RHI_Texture_Srv;
-        m_object_name  = FileSystem::GetFileNameFromFilePath(file_path);
-
         if (!FileSystem::IsFile(file_path))
         {
             SP_LOG_ERROR("Invalid file path \"%s\".", file_path.c_str());
             return false;
         }
 
-        m_slices.clear();
-        m_slices.shrink_to_fit();
+        m_type         = RHI_Texture_Type::Type2D;
+        m_depth        = 1;
+        m_flags       |= RHI_Texture_Srv;
+        m_object_name  = FileSystem::GetFileNameFromFilePath(file_path);
+
+        ClearBytes();
 
         // load from drive
+        if (FileSystem::IsEngineTextureFile(file_path))
         {
-            if (FileSystem::IsEngineTextureFile(file_path))
+            auto file = make_unique<FileStream>(file_path, FileStream_Read);
+            if (!file->IsOpen())
             {
-                auto file = make_unique<FileStream>(file_path, FileStream_Read);
-                if (!file->IsOpen())
+                SP_LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
+                return false;
+            }
+
+            // read mip info
+            file->Read(&m_object_size);
+            file->Read(&m_depth);
+            file->Read(&m_mip_count);
+
+            // read mip data
+            m_slices.resize(m_depth);
+            for (RHI_Texture_Slice& slice : m_slices)
+            {
+                slice.mips.resize(m_mip_count);
+                for (RHI_Texture_Mip& mip : slice.mips)
+                {
+                    file->Read(&mip.bytes);
+                }
+            }
+
+            // read properties
+            file->Read(&m_width);
+            file->Read(&m_height);
+            file->Read(&m_channel_count);
+            file->Read(&m_bits_per_channel);
+            file->Read(reinterpret_cast<uint32_t*>(&m_type));
+            file->Read(reinterpret_cast<uint32_t*>(&m_format));
+            file->Read(&m_flags);
+            SetObjectId(file->ReadAs<uint64_t>());
+            SetResourceFilePath(file->ReadAs<string>());
+        }
+        else if (FileSystem::IsSupportedImageFile(file_path))
+        {
+            vector<string> file_paths = { file_path };
+
+            // if this is an array, try to find all the textures
+            if (m_type == RHI_Texture_Type::Type2DArray)
+            {
+                string file_path_extension    = FileSystem::GetExtensionFromFilePath(file_path);
+                string file_path_no_extension = FileSystem::GetFilePathWithoutExtension(file_path);
+                string file_path_no_digit     = file_path_no_extension.substr(0, file_path_no_extension.size() - 1);
+
+                uint32_t index = 1;
+                string file_path_guess = file_path_no_digit + to_string(index) + file_path_extension;
+                while (FileSystem::Exists(file_path_guess))
+                {
+                    file_paths.emplace_back(file_path_guess);
+                    file_path_guess = file_path_no_digit + to_string(++index) + file_path_extension;
+                }
+            }
+
+            // load texture
+            for (uint32_t slice_index = 0; slice_index < static_cast<uint32_t>(file_paths.size()); slice_index++)
+            {
+                if (!ImageImporterExporter::Load(file_paths[slice_index], slice_index, this))
                 {
                     SP_LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
                     return false;
                 }
-
-                // read mip info
-                file->Read(&m_object_size);
-                file->Read(&m_depth);
-                file->Read(&m_mip_count);
-
-                // read mip data
-                m_slices.resize(m_depth);
-                for (RHI_Texture_Slice& slice : m_slices)
-                {
-                    slice.mips.resize(m_mip_count);
-                    for (RHI_Texture_Mip& mip : slice.mips)
-                    {
-                        file->Read(&mip.bytes);
-                    }
-                }
-
-                // read properties
-                file->Read(&m_width);
-                file->Read(&m_height);
-                file->Read(&m_channel_count);
-                file->Read(&m_bits_per_channel);
-                file->Read(reinterpret_cast<uint32_t*>(&m_type));
-                file->Read(reinterpret_cast<uint32_t*>(&m_format));
-                file->Read(&m_flags);
-                SetObjectId(file->ReadAs<uint64_t>());
-                SetResourceFilePath(file->ReadAs<string>());
             }
-            else if (FileSystem::IsSupportedImageFile(file_path))
-            {
-                vector<string> file_paths = { file_path };
 
-                // if this is an array, try to find all the textures
-                if (m_type == RHI_Texture_Type::Type2DArray)
-                {
-                    string file_path_extension    = FileSystem::GetExtensionFromFilePath(file_path);
-                    string file_path_no_extension = FileSystem::GetFilePathWithoutExtension(file_path);
-                    string file_path_no_digit     = file_path_no_extension.substr(0, file_path_no_extension.size() - 1);
-
-                    uint32_t index = 1;
-                    string file_path_guess = file_path_no_digit + to_string(index) + file_path_extension;
-                    while (FileSystem::Exists(file_path_guess))
-                    {
-                        file_paths.emplace_back(file_path_guess);
-                        file_path_guess = file_path_no_digit + to_string(++index) + file_path_extension;
-                    }
-                }
-
-                // load texture
-                for (uint32_t slice_index = 0; slice_index < static_cast<uint32_t>(file_paths.size()); slice_index++)
-                {
-                    if (!ImageImporterExporter::Load(file_paths[slice_index], slice_index, this))
-                    {
-                        SP_LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
-                        return false;
-                    }
-                }
-
-                // set resource file path so it can be used by the resource cache.
-                SetResourceFilePath(file_path);
-            }
+            // set resource file path so it can be used by the resource cache.
+            SetResourceFilePath(file_path);
         }
 
-        PrepareForGpu();
+        if (!(m_flags & RHI_Texture_DontPrepareForGpu))
+        {
+            PrepareForGpu();
+        }
+
         ComputeMemoryUsage();
 
         return true;
@@ -432,7 +429,7 @@ namespace Spartan
         if (cmd_list != nullptr)
         {
             // wait in case this texture loading in another thread
-            while (!IsReadyForUse())
+            while (!IsGpuReady())
             {
                 SP_LOG_INFO("Waiting for texture \"%s\" to finish loading...", m_object_name.c_str());
                 this_thread::sleep_for(chrono::milliseconds(16));
@@ -449,23 +446,33 @@ namespace Spartan
         }
     }
 
+    void RHI_Texture::ClearBytes()
+    {
+         m_slices.clear();
+         m_slices.shrink_to_fit();
+    }
+
     void RHI_Texture::PrepareForGpu()
     {
-        // compress texture (if not alraedy compressed)
-        if ((m_flags & RHI_Texture_Compress) && !IsCompressedFormat(m_format))
+        SP_ASSERT(m_slices.size() > 0);
+        SP_ASSERT(m_slices[0].mips.size() > 0);
+
+        // compress
+        bool compress       = m_flags & RHI_Texture_Compress;
+        bool not_compressed = !IsCompressedFormat(m_format);
+        if (compress && not_compressed)
         {
             compressonator::compress(this);
         }
         
-        // create gpu resource
+        // upload to gpu
         SP_ASSERT_MSG(RHI_CreateResource(), "Failed to create GPU resource");
-        m_is_ready_for_use = true;
+        m_is_gpu_ready = true;
 
         // clear data
         if (!(m_flags & RHI_Texture_KeepData))
         { 
-            m_slices.clear();
-            m_slices.shrink_to_fit();
+            ClearBytes();
         }
 
         ComputeMemoryUsage();
