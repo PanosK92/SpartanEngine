@@ -244,9 +244,9 @@ namespace Spartan
             if (!FileSystem::IsSupportedImageFile(deduced_path))
                 return false;
 
-            // add the texture to the model
+            // load the texture and set it to the material
             {
-                // Try to get the texture
+                // try to get the texture
                 const string tex_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(deduced_path);
                 shared_ptr<RHI_Texture> texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
 
@@ -257,7 +257,7 @@ namespace Spartan
                 else // if we didn't get a texture, it's not cached, hence we have to load it and cache it now
                 {
                     // load texture
-                    texture = ResourceCache::Load<RHI_Texture>(deduced_path, RHI_Texture_Srv | RHI_Texture_Compress);
+                    texture = ResourceCache::Load<RHI_Texture>(deduced_path, RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu);
 
                     // set the texture to the provided material
                     material->SetTexture(texture_type, texture);
