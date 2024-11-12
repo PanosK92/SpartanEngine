@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture.h"
 #include "../World/World.h"
+#include "../Core/ThreadPool.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -362,17 +363,20 @@ namespace Spartan
             //SetTexture(MaterialTextureType::AlphaMask, nullptr);
         }
 
-        for (RHI_Texture* texture : m_textures)
-        {
-            if (texture)
+        //ThreadPool::AddTask([this]() // if one mip waits for the previous one, we can multithread this here
+        //{
+           for (RHI_Texture* texture : m_textures)
             {
-               // check IsGpuReady() to avoid redundant PrepareForGpu() calls, as textures may be shared across materials and material slots
-                if (!texture->IsGpuReady())
-                { 
-                    texture->PrepareForGpu();
+                if (texture)
+                {
+                    // check IsGpuReady() to avoid redundant PrepareForGpu() calls, as textures may be shared across materials and material slots
+                    if (!texture->IsGpuReady())
+                    { 
+                        texture->PrepareForGpu();
+                    }
                 }
             }
-        }
+        //});
     }
 
     uint32_t Material::GetUsedSlotCount() const
