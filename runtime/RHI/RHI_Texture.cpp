@@ -250,9 +250,6 @@ namespace Spartan
         m_slices.clear();
         m_slices.shrink_to_fit();
 
-        bool keep_data = (m_flags & RHI_Texture_KeepData) != 0;
-        bool compress  = (m_flags & RHI_Texture_Compress) != 0;
-
         // load from drive
         {
             if (FileSystem::IsEngineTextureFile(file_path))
@@ -323,26 +320,10 @@ namespace Spartan
 
                 // set resource file path so it can be used by the resource cache.
                 SetResourceFilePath(file_path);
-
-                // compress texture (if not alraedy compressed)
-                if (compress && !IsCompressedFormat(m_format))
-                {
-                    compressonator::compress(this);
-                }
             }
         }
 
-        // create gpu resource
-        SP_ASSERT_MSG(RHI_CreateResource(), "Failed to create GPU resource");
-        m_is_ready_for_use = true;
-
-        // clear data
-        if (!keep_data)
-        { 
-            m_slices.clear();
-            m_slices.shrink_to_fit();
-        }
-
+        PrepareForGpu();
         ComputeMemoryUsage();
 
         return true;
@@ -466,6 +447,28 @@ namespace Spartan
         {
             m_layout[i] = new_layout;
         }
+    }
+
+    void RHI_Texture::PrepareForGpu()
+    {
+        // compress texture (if not alraedy compressed)
+        if ((m_flags & RHI_Texture_Compress) && !IsCompressedFormat(m_format))
+        {
+            compressonator::compress(this);
+        }
+        
+        // create gpu resource
+        SP_ASSERT_MSG(RHI_CreateResource(), "Failed to create GPU resource");
+        m_is_ready_for_use = true;
+
+        // clear data
+        if (!(m_flags & RHI_Texture_KeepData))
+        { 
+            m_slices.clear();
+            m_slices.shrink_to_fit();
+        }
+
+        ComputeMemoryUsage();
     }
 
     void RHI_Texture::SaveAsImage(const string& file_path)
