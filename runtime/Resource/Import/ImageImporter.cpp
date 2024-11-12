@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======================
 #include "pch.h"
-#include "ImageImporterExporter.h"
+#include "ImageImporter.h"
 #include "../../RHI/RHI_Texture.h"
 SP_WARNINGS_OFF
 #define FREEIMAGE_LIB
@@ -331,19 +331,19 @@ namespace Spartan
         }
     }
 
-    void ImageImporterExporter::Initialize()
+    void ImageImporter::Initialize()
     {
         FreeImage_Initialise();
         FreeImage_SetOutputMessage(free_image_error_handler);
         Settings::RegisterThirdPartyLib("FreeImage", FreeImage_GetVersion(), "https://freeimage.sourceforge.io/");
     }
 
-    void ImageImporterExporter::Shutdown()
+    void ImageImporter::Shutdown()
     {
         FreeImage_DeInitialise();
     }
 
-    bool ImageImporterExporter::Load(const string& file_path, const uint32_t slice_index, RHI_Texture* texture)
+    bool ImageImporter::Load(const string& file_path, const uint32_t slice_index, RHI_Texture* texture)
     {
         SP_ASSERT(texture != nullptr);
 
@@ -502,7 +502,7 @@ namespace Spartan
         return true;
     }
 
-    void ImageImporterExporter::Save(const string& file_path, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel, void* data)
+    void ImageImporter::Save(const string& file_path, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel, void* data)
     {
         uint32_t bytes_per_pixel = (bits_per_channel / 8) * channel_count;
 

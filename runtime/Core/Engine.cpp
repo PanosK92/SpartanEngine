@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================================
+//= INCLUDES ================================
 #include "pch.h"
 #include "Window.h"
 #include "ThreadPool.h"
@@ -32,9 +32,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceCache.h"
 #include "../Resource/Import/FontImporter.h"
 #include "../Resource/Import/ModelImporter.h"
-#include "../Resource/Import/ImageImporterExporter.h"
+#include "../Resource/Import/ImageImporter.h"
 #include "../Display/Display.h"
-//===================================================
+//===========================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -73,7 +73,7 @@ namespace Spartan
         {
             Log::Initialize();
             FontImporter::Initialize();
-            ImageImporterExporter::Initialize();
+            ImageImporter::Initialize();
             ModelImporter::Initialize();
             Window::Initialize();
             Display::Initialize();
@@ -104,7 +104,7 @@ namespace Spartan
         Audio::Shutdown();
         Profiler::Shutdown();
         Window::Shutdown();
-        ImageImporterExporter::Shutdown();
+        ImageImporter::Shutdown();
         FontImporter::Shutdown();
         Settings::Shutdown();
     }
