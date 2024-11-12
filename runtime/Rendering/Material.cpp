@@ -292,7 +292,7 @@ namespace Spartan
 
     void Material::SetTexture(const MaterialTextureType texture_type, const string& file_path, const uint8_t slot)
     {
-        SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv), slot);
+        SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv | RHI_Texture_Compress), slot);
     }
  
     bool Material::HasTextureOfType(const string& path) const
@@ -366,8 +366,7 @@ namespace Spartan
         {
             if (texture)
             {
-                // it's important to check if it's ready GPU ready as the same
-                // texture can be shared among multiple materials or material slots
+               // check IsGpuReady() to avoid redundant PrepareForGpu() calls, as textures may be shared across materials and material slots
                 if (!texture->IsGpuReady())
                 { 
                     texture->PrepareForGpu();
