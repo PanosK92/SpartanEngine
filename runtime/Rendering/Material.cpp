@@ -361,6 +361,19 @@ namespace Spartan
             //
             //SetTexture(MaterialTextureType::AlphaMask, nullptr);
         }
+
+        for (RHI_Texture* texture : m_textures)
+        {
+            if (texture)
+            {
+                // it's important to check if it's ready GPU ready as the same
+                // texture can be shared among multiple materials or material slots
+                if (!texture->IsGpuReady())
+                { 
+                    texture->PrepareForGpu();
+                }
+            }
+        }
     }
 
     uint32_t Material::GetUsedSlotCount() const

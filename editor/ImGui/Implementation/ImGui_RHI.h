@@ -332,7 +332,7 @@ namespace ImGui::RHI
                                     is_frame_texture = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output)->GetObjectId() == texture->GetObjectId();
 
                                     // during engine startup, some textures might be loading in different threads
-                                    if (texture->IsReadyForUse())
+                                    if (texture->IsGpuReady())
                                     {
                                         cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
 

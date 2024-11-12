@@ -313,7 +313,7 @@ namespace Spartan
             stage(this);
             if ((m_flags & RHI_Texture_KeepData) == 0)
             { 
-                m_slices.clear();
+                ClearBytes();
             }
         }
 

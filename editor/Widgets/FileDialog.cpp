@@ -305,7 +305,7 @@ void FileDialog::ShowMiddle()
                     // Image
                     if (RHI_Texture* texture = item.GetTexture())
                     {
-                        if (texture->IsReadyForUse()) // This is possible for when the editor is reading from drive
+                        if (texture->IsGpuReady()) // This is possible for when the editor is reading from drive
                         {
                             // Compute thumbnail size
                             ImVec2 image_size     = ImVec2(static_cast<float>(texture->GetWidth()), static_cast<float>(texture->GetHeight()));
