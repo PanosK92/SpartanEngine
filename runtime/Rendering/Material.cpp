@@ -136,23 +136,14 @@ namespace Spartan
         void merge_alpha_mask_into_color_alpha(vector<byte>& albedo, vector<byte>& mask)
         {
             SP_ASSERT_MSG(albedo.size() == mask.size(), "The dimensions must be equal");
-            
-            const float alpha_threshold = 0.6f;
-            
+        
             for (size_t i = 0; i < albedo.size(); i += 4)
             {
-                float alpha_albedo = static_cast<float>(albedo[i + 3]) / 255.0f;
-                float alpha_mask   = static_cast<float>(mask[i]) / 255.0f;
-                
-                // apply the alpha threshold
-                if (alpha_mask >= alpha_threshold)
-                {
-                    albedo[i + 3] = static_cast<byte>(min(alpha_albedo, alpha_mask) * 255.0f);
-                }
-                else
-                {
-                    albedo[i + 3] = static_cast<byte>(alpha_albedo * 255.0f);
-                }
+                float alpha_albedo   = static_cast<float>(albedo[i + 3]) / 255.0f; // channel a
+                float alpha_mask     = static_cast<float>(mask[i]) / 255.0f;       // channel r
+                float alpha_combined = min(alpha_albedo, alpha_mask);
+
+                albedo[i + 3] = static_cast<byte>(alpha_combined * 255.0f);
             }
         }
     }
@@ -357,17 +348,27 @@ namespace Spartan
 
     void Material::PrepareForGPU()
     {
-        RHI_Texture* texture_color      = GetTexture(MaterialTextureType::Color);
-        RHI_Texture* texture_alpha_mask = GetTexture(MaterialTextureType::Color);
-        if (texture_color && texture_alpha_mask)
+        // texture packing
         {
+            // pack alpha mask into albedo alpha
             // note: this can be tested by loading the subway default world
-            // todo: what if a mask is present but an albedo is not?
+            RHI_Texture* texture_color      = GetTexture(MaterialTextureType::Color);
+            RHI_Texture* texture_alpha_mask = GetTexture(MaterialTextureType::AlphaMask);
+            if (texture_alpha_mask)
+            {
+                if (texture_color)
+                { 
+                    if (!texture_color->IsCompressedFormat(texture_color->GetFormat()) && !texture_alpha_mask->IsCompressedFormat(texture_alpha_mask->GetFormat()))
+                    { 
+                        texture_packing::merge_alpha_mask_into_color_alpha(texture_color->GetMip(0, 0).bytes, texture_alpha_mask->GetMip(0, 0).bytes);
+                    }
+                }
+                else
+                {
+                    SetTexture(MaterialTextureType::Color, texture_alpha_mask);
+                }
 
-            if (!texture_color->IsCompressedFormat(texture_color->GetFormat()) && !texture_alpha_mask->IsCompressedFormat(texture_alpha_mask->GetFormat()))
-            { 
-                //texture_packing::merge_alpha_mask_into_color_alpha(texture_color->GetMip(0, 0).bytes, texture_alpha_mask->GetMip(0, 0).bytes);
-                //SetTexture(MaterialTextureType::AlphaMask, nullptr);
+                SetTexture(MaterialTextureType::AlphaMask, nullptr);
             }
         }
 

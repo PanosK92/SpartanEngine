@@ -39,15 +39,9 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
 
 void main_ps(gbuffer_vertex vertex)
 {
-    const float3 f3_value     = pass_get_f3_value();
-    const bool has_alpha_mask = f3_value.x == 1.0f;
-    const bool has_albedo     = f3_value.y == 1.0f;
-    const float alpha         = f3_value.z;
+    const bool has_albedo       = pass_get_f3_value().x == 1.0f;
+    const float alpha_threshold = get_alpha_threshold(vertex.position); // distance based alpha threshold
 
-    float alpha_threshold = get_alpha_threshold(vertex.position); // distance based alpha threshold
-    bool mask_alpha       = has_alpha_mask && GET_TEXTURE(material_texture_index_mask).Sample(samplers[sampler_point_wrap], vertex.uv).r <= alpha_threshold;
-    bool mask_albedo      = alpha == 1.0f && has_albedo && GET_TEXTURE(material_texture_index_albedo).Sample(samplers[sampler_anisotropic_wrap], vertex.uv).a <= alpha_threshold;
-
-    if (mask_alpha || mask_albedo)
+    if (has_albedo && GET_TEXTURE(material_texture_index_albedo).Sample(samplers[sampler_anisotropic_wrap], vertex.uv).a <= alpha_threshold)
         discard;
 }
