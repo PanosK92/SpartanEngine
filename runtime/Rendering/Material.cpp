@@ -84,52 +84,22 @@ namespace Spartan
 
     namespace texture_packing
     {
-        // helper function to pack a single channel into the alpha component
-        inline uint32_t pack_alpha(float value)
-        {
-            return static_cast<uint32_t>(round(value * 255.0f));
-        }
-        
-        // This function takes all material textures and packes them as tightly as possible.
-        // - All input textures have the same dimensions (width x height)
-        // - Input textures are in RGBA32 format (R8G8B8A8_UNORM)
-        // - Output texture 1: RGBA - RGB (Albedo) - A (min(Albedo.a, Mask.a))
-        // - Output texture 2: RGBA - R (Occlusion) - G (Roughness) - B (Metalness) - A (Normal.x)
-        // - Output texture 3: RGBA - R (Normal.y) - G (Normal.z) - B (Height) - A (?)
-        void pack_textures(
-            const vector<uint32_t>& albedo,
-            const vector<uint32_t>& normal,
-            const vector<uint32_t>& occlusion,
-            const vector<uint32_t>& roughness,
-            const vector<uint32_t>& metalness,
-            vector<uint32_t>& output1,
-            vector<uint32_t>& output2
+        void pack_occlusion_roughness_metalness_height(
+            vector<byte>& occlusion,
+            const vector<byte>& roughness,
+            const vector<byte>& metalness,
+            const vector<byte>& height
         )
         {
-            // Calculate the width and height of the textures
-            // Assuming all input textures have the same dimensions
-            size_t width        = albedo.size();
-            size_t height       = albedo.size() / width;
-            size_t total_pixels = width * height;
-        
-            // Resize the output vectors to match the total number of pixels
-            output1.resize(total_pixels);
-            output2.resize(total_pixels);
-        
-            // Iterate through each pixel and pack the data into the output textures
-            for (size_t i = 0; i < total_pixels; ++i)
+            vector<byte>& output = occlusion;
+
+            size_t size = max(max(occlusion.size(), roughness.size()), max(metalness.size(), height.size()));
+            for (size_t i = 0; i < size; i += 4)
             {
-                // Pack the first output texture
-                // RGB components are from the albedo texture, and the alpha component is from the normal texture (x component)
-                output1[i] = (albedo[i] & 0xFFFFFF00) | ((normal[i] >> 24) & 0xFF);
-        
-                // Pack the second output texture
-                // R component is from the occlusion texture, G component is from the roughness texture,
-                // B component is from the metalness texture, and the alpha component is from the normal texture (y component)
-                output2[i] = ((occlusion[i] >> 24) & 0xFF) << 24 |
-                             ((roughness[i] >> 16) & 0xFF) << 16 |
-                             ((metalness[i] >> 8) & 0xFF) << 8 |
-                             ((normal[i] >> 16) & 0xFF);
+                output[i + 0] = i < occlusion.size() ? occlusion[i] : static_cast<byte>(0); // occlusion
+                output[i + 1] = i < roughness.size() ? roughness[i] : static_cast<byte>(0); // roughness
+                output[i + 2] = i < metalness.size() ? metalness[i] : static_cast<byte>(0); // metalness
+                output[i + 3] = i < height.size()    ? height[i]    : static_cast<byte>(0); // height
             }
         }
 
@@ -350,18 +320,24 @@ namespace Spartan
     {
         // texture packing
         {
-            // pack alpha mask into albedo alpha
-            // note: this can be tested by loading the subway default world
             RHI_Texture* texture_color      = GetTexture(MaterialTextureType::Color);
             RHI_Texture* texture_alpha_mask = GetTexture(MaterialTextureType::AlphaMask);
+            RHI_Texture* texture_occlusion  = GetTexture(MaterialTextureType::Occlusion);
+            RHI_Texture* texture_roughness  = GetTexture(MaterialTextureType::Roughness);
+            RHI_Texture* texture_metalness  = GetTexture(MaterialTextureType::Metalness);
+            RHI_Texture* texture_height     = GetTexture(MaterialTextureType::Height);
+
+            // in some cases, models use DDS textures with pre-compressed textures, so we skip packing
+            if (texture_color && texture_color->IsCompressedFormat(texture_color->GetFormat()))
+                return;
+
+            // step 1: pack alpha mask into albedo alpha
             if (texture_alpha_mask)
             {
+                // note: this can be tested by loading the subway default world
                 if (texture_color)
                 { 
-                    if (!texture_color->IsCompressedFormat(texture_color->GetFormat()) && !texture_alpha_mask->IsCompressedFormat(texture_alpha_mask->GetFormat()))
-                    { 
-                        texture_packing::merge_alpha_mask_into_color_alpha(texture_color->GetMip(0, 0).bytes, texture_alpha_mask->GetMip(0, 0).bytes);
-                    }
+                    texture_packing::merge_alpha_mask_into_color_alpha(texture_color->GetMip(0, 0).bytes, texture_alpha_mask->GetMip(0, 0).bytes);
                 }
                 else
                 {
@@ -369,6 +345,25 @@ namespace Spartan
                 }
 
                 SetTexture(MaterialTextureType::AlphaMask, nullptr);
+            }
+
+            // step 2: pack occlusion, roughness, metalness, and height into a single texture
+            {
+                //vector<byte> empty;
+                //RHI_Texture* texture = nullptr;
+                //
+                //texture_packing::pack_occlusion_roughness_metalness_height(
+                //        texture_occlusion ? texture_occlusion->GetMip(0, 0).bytes : empty,
+                //        texture_roughness ? texture_roughness->GetMip(0, 0).bytes : empty,
+                //        texture_metalness ? texture_metalness->GetMip(0, 0).bytes : empty,
+                //        texture_height    ? texture_height->GetMip(0, 0).bytes    : empty
+                //    );
+                //
+                //SetTexture(MaterialTextureType::Packed,    texture);
+                //SetTexture(MaterialTextureType::Occlusion, nullptr);
+                //SetTexture(MaterialTextureType::Roughness, nullptr);
+                //SetTexture(MaterialTextureType::Metalness, nullptr);
+                //SetTexture(MaterialTextureType::Height,    nullptr);
             }
         }
 
