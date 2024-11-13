@@ -351,16 +351,18 @@ namespace Spartan
 
     void Material::PrepareForGPU()
     {
-        if (HasTextureOfType(MaterialTextureType::Color) && HasTextureOfType(MaterialTextureType::AlphaMask))
+        RHI_Texture* texture_color      = GetTexture(MaterialTextureType::Color);
+        RHI_Texture* texture_alpha_mask = GetTexture(MaterialTextureType::Color);
+        if (texture_color && texture_alpha_mask)
         {
-            // this can be tested by loading the subway default world
+            // note: this can be tested by loading the subway default world
+            // todo: what if a mask is present but an albedo is not?
 
-            //texture_packing::merge_alpha_mask_into_color_alpha(
-            //    GetTexture(MaterialTextureType::Color)->GetMip(0, 0).bytes,
-            //    GetTexture(MaterialTextureType::AlphaMask)->GetMip(0, 0).bytes
-            //);
-            
-            //SetTexture(MaterialTextureType::AlphaMask, nullptr);
+            if (!texture_color->IsCompressedFormat(texture_color->GetFormat()) && !texture_alpha_mask->IsCompressedFormat(texture_alpha_mask->GetFormat()))
+            { 
+                //texture_packing::merge_alpha_mask_into_color_alpha(texture_color->GetMip(0, 0).bytes, texture_alpha_mask->GetMip(0, 0).bytes);
+                //SetTexture(MaterialTextureType::AlphaMask, nullptr);
+            }
         }
 
         for (RHI_Texture* texture : m_textures)
