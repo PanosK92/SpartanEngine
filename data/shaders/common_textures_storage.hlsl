@@ -75,6 +75,7 @@ static const uint material_texture_index_occlusion = 4 * material_texture_type_s
 static const uint material_texture_index_emission  = 5 * material_texture_type_slots_max;
 static const uint material_texture_index_height    = 6 * material_texture_type_slots_max;
 static const uint material_texture_index_mask      = 7 * material_texture_type_slots_max;
+static const uint material_texture_index_packed    = 8 * material_texture_type_slots_max;
 
 // easy access macro
 #define GET_TEXTURE(index_texture) tex_materials[pass_get_material_index() + index_texture]
