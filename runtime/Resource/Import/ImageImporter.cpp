@@ -401,8 +401,10 @@ namespace Spartan
             // set data
             for (uint32_t mip_index = 0; mip_index < dds_file.GetMipCount(); mip_index++)
             {
-                RHI_Texture_Mip& mip = texture->CreateMip(0);
-                const auto& data     = dds_file.GetImageData(mip_index, 0);
+                texture->AllocateMip();
+                RHI_Texture_Mip& mip = texture->GetMip(0, mip_index);
+
+                const auto& data = dds_file.GetImageData(mip_index, 0);
                 memcpy(&mip.bytes[0], data->m_mem, mip.bytes.size());
             }
 
@@ -446,7 +448,8 @@ namespace Spartan
         texture->SetFlag(RHI_Texture_Transparent, has_transparent_pixels(bitmap));
 
         // copy data over
-        RHI_Texture_Mip& mip = texture->CreateMip(slice_index);
+        texture->AllocateMip();
+        RHI_Texture_Mip& mip = texture->GetMip(0, 0);
         BYTE* bytes          = FreeImage_GetBits(bitmap);
         size_t bytes_size    = FreeImage_GetPitch(bitmap) * FreeImage_GetHeight(bitmap);
         mip.bytes.resize(bytes_size);

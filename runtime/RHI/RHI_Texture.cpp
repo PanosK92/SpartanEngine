@@ -116,52 +116,56 @@ namespace Spartan
     {
         void downsample_bilinear(const vector<byte>& input, vector<byte>& output, uint32_t width, uint32_t height)
         {
-            constexpr uint32_t channels = 4; // RGBA32
-            
-            // Calculate new dimensions (halving both width and height)
+            constexpr uint32_t channels = 4; // RGBA32 - engine standard
+  
+            // calculate new dimensions (halving both width and height)
             uint32_t new_width  = width  >> 1;
             uint32_t new_height = height >> 1;
             
-            // Ensure minimum size
+            // ensure minimum size
             if (new_width < 1) new_width = 1;
             if (new_height < 1) new_height = 1;
             
-            // Perform bilinear downsampling
+             // perform bilinear downsampling
             for (uint32_t y = 0; y < new_height; y++)
             {
                 for (uint32_t x = 0; x < new_width; x++)
                 {
-                    // Calculate base indices for this 2x2 block
-                    uint32_t src_idx = (y * 2 * width + x * 2) * channels;
-                    uint32_t dst_idx = (y * new_width + x) * channels;
-                    
-                    // Process all 4 channels (RGBA)
+                    // calculate base indices for this 2x2 block
+                    uint32_t src_idx              = (y * 2 * width + x * 2) * channels;
+                    uint32_t src_idx_right        = src_idx + channels;                      // right pixel
+                    uint32_t src_idx_bottom       = src_idx + (width * channels);            // bottom pixel
+                    uint32_t src_idx_bottom_right = src_idx + (width * channels) + channels; // bottom-right pixel
+                    uint32_t dst_idx              = (y * new_width + x) * channels;
+
+                    // process all 4 channels (RGBA)
                     for (uint32_t c = 0; c < channels; c++)
                     {
                         uint32_t sum = to_integer<uint32_t>(input[src_idx + c]);
                         uint32_t count = 1;
-                        
-                        // Right pixel
+            
+                        // right pixel
                         if (x * 2 + 1 < width)
                         {
-                            sum += to_integer<uint32_t>(input[src_idx + channels + c]);
+                            sum += to_integer<uint32_t>(input[src_idx_right + c]);
                             count++;
                         }
-                        
-                        // Bottom pixel
+            
+                        // bottom pixel
                         if (y * 2 + 1 < height)
                         {
-                            sum += to_integer<uint32_t>(input[src_idx + (width * channels) + c]);
+                            sum += to_integer<uint32_t>(input[src_idx_bottom + c]);
                             count++;
                         }
-                        
-                        // Bottom-right pixel
+            
+                        // bottom-right pixel
                         if ((x * 2 + 1 < width) && (y * 2 + 1 < height))
                         {
-                            sum += to_integer<uint32_t>(input[src_idx + (width * channels) + channels + c]);
+                            sum += to_integer<uint32_t>(input[src_idx_bottom_right + c]);
                             count++;
                         }
-                        
+            
+                        // assign the averaged result to the output
                         output[dst_idx + c] = byte(sum / count);
                     }
                 }
@@ -398,32 +402,6 @@ namespace Spartan
         return true;
     }
 
-    RHI_Texture_Mip& RHI_Texture::CreateMip(const uint32_t array_index)
-    {
-        // ensure there's room for the new array index
-        while (array_index >= m_slices.size())
-        {
-            m_slices.emplace_back();
-        }
-
-        // add the mip
-        RHI_Texture_Mip& mip = m_slices[array_index].mips.emplace_back();
-        m_depth              = static_cast<uint32_t>(m_slices.size());
-        m_mip_count          = static_cast<uint32_t>(m_slices[0].mips.size());
-        
-        // allocate memory if requested
-        {
-            uint32_t mip_index = static_cast<uint32_t>(m_slices[array_index].mips.size()) - 1;
-            uint32_t width     = max(1u, m_width >> mip_index);
-            uint32_t height    = max(1u, m_height >> mip_index);
-            uint32_t depth     = (GetType() == RHI_Texture_Type::Type3D) ? (m_depth >> mip_index) : 1;
-            size_t size_bytes  = CalculateMipSize(width, height, depth, m_format, m_bits_per_channel, m_channel_count);
-            mip.bytes.resize(size_bytes);
-        }
-
-        return mip;
-    }
-
     RHI_Texture_Mip& RHI_Texture::GetMip(const uint32_t array_index, const uint32_t mip_index)
     {
         static RHI_Texture_Mip empty;
@@ -445,6 +423,24 @@ namespace Spartan
             return empty;
 
         return m_slices[array_index];
+    }
+
+    void RHI_Texture::AllocateMip()
+    {
+        if (m_slices.empty())
+        { 
+            m_slices.emplace_back();
+        }
+
+        RHI_Texture_Mip& mip = m_slices[0].mips.emplace_back();
+        m_depth              = static_cast<uint32_t>(m_slices.size());
+        m_mip_count          = static_cast<uint32_t>(m_slices[0].mips.size());
+        int32_t mip_index    = static_cast<uint32_t>(m_slices[0].mips.size()) - 1;
+        uint32_t width       = max(1u, m_width >> mip_index);
+        uint32_t height      = max(1u, m_height >> mip_index);
+        uint32_t depth       = (GetType() == RHI_Texture_Type::Type3D) ? (m_depth >> mip_index) : 1;
+        size_t size_bytes    = CalculateMipSize(width, height, depth, m_format, m_bits_per_channel, m_channel_count);
+        mip.bytes.resize(size_bytes);
     }
 
     void RHI_Texture::ComputeMemoryUsage()
@@ -527,27 +523,29 @@ namespace Spartan
         SP_ASSERT(m_slices.size() > 0);
         SP_ASSERT(m_slices[0].mips.size() > 0);
 
-        // generate mips
-        uint32_t mip_count = mips::compute_count(m_width, m_height);
-        for (uint32_t mip_index = 1; mip_index < mip_count; mip_index++)
+        if (!IsCompressedFormat(m_format)) // the bistro world loads compressed textures with mips
         {
-            const uint32_t width_above  = max(1u, m_width  >> (mip_index - 1));
-            const uint32_t height_above = max(1u, m_height >> (mip_index - 1));
+            // generate mip chain
+            uint32_t mip_count = mips::compute_count(m_width, m_height);
+            for (uint32_t mip_index = 1; mip_index < mip_count; mip_index++)
+            {
+                AllocateMip();
 
-            mips::downsample_bilinear(
-                m_slices[0].mips[mip_index - 1].bytes, // above
-                CreateMip(0).bytes,                    // below
-                width_above,
-                height_above
-            );
-        }
+                mips::downsample_bilinear(
+                    m_slices[0].mips[mip_index - 1].bytes, // above
+                    m_slices[0].mips[mip_index].bytes,     // below
+                    max(1u, m_width  >> (mip_index - 1)),  // above width
+                    max(1u, m_height >> (mip_index - 1))   // above height
+                );
+            }
 
-        // compress
-        bool compress       = m_flags & RHI_Texture_Compress;
-        bool not_compressed = !IsCompressedFormat(m_format);
-        if (compress && not_compressed)
-        {
-            compressonator::compress(this);
+            // compress
+            bool compress       = m_flags & RHI_Texture_Compress;
+            bool not_compressed = !IsCompressedFormat(m_format);
+            if (compress && not_compressed)
+            {
+                compressonator::compress(this);
+            }
         }
         
         // upload to gpu
