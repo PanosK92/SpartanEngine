@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture.h"
 #include "../World/World.h"
-#include "../Core/ThreadPool.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -85,14 +84,13 @@ namespace Spartan
     namespace texture_packing
     {
         void pack_occlusion_roughness_metalness_height(
-            vector<byte>& occlusion,
+            const vector<byte>& occlusion,
             const vector<byte>& roughness,
             const vector<byte>& metalness,
-            const vector<byte>& height
+            const vector<byte>& height,
+            vector<byte>& output
         )
         {
-            vector<byte>& output = occlusion;
-
             size_t size = max(max(occlusion.size(), roughness.size()), max(metalness.size(), height.size()));
             for (size_t i = 0; i < size; i += 4)
             {
@@ -349,16 +347,39 @@ namespace Spartan
 
             // step 2: pack occlusion, roughness, metalness, and height into a single texture
             {
-                //vector<byte> empty;
-                //RHI_Texture* texture = nullptr;
+                //// try to get the texture (in case it's already packed)
+                //const string tex_name           = GetObjectName() + "_packed";
+                //shared_ptr<RHI_Texture> texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
                 //
-                //texture_packing::pack_occlusion_roughness_metalness_height(
-                //        texture_occlusion ? texture_occlusion->GetMip(0, 0).bytes : empty,
-                //        texture_roughness ? texture_roughness->GetMip(0, 0).bytes : empty,
-                //        texture_metalness ? texture_metalness->GetMip(0, 0).bytes : empty,
-                //        texture_height    ? texture_height->GetMip(0, 0).bytes    : empty
+                //if (!texture)
+                //{
+                //    // create packed texture
+                //    texture = make_shared<RHI_Texture>
+                //    (
+                //        RHI_Texture_Type::Type2D,
+                //        texture_color->GetWidth(),
+                //        texture_color->GetHeight(),
+                //        texture_color->GetDepth(),
+                //        texture_color->GetMipCount(),
+                //        texture_color->GetFormat(),
+                //        RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu,
+                //        "packed"
                 //    );
+                //    texture->AllocateMip();
+                //    ResourceCache::Cache<RHI_Texture>(texture);
                 //
+                //    // create packed data
+                //    vector<byte> empty;
+                //    texture_packing::pack_occlusion_roughness_metalness_height(
+                //            texture_occlusion ? texture_occlusion->GetMip(0, 0).bytes : empty,
+                //            texture_roughness ? texture_roughness->GetMip(0, 0).bytes : empty,
+                //            texture_metalness ? texture_metalness->GetMip(0, 0).bytes : empty,
+                //            texture_height    ? texture_height->GetMip(0, 0).bytes    : empty,
+                //            texture->GetMip(0, 0).bytes
+                //        );
+                //}
+                //
+                //// set the packed texture
                 //SetTexture(MaterialTextureType::Packed,    texture);
                 //SetTexture(MaterialTextureType::Occlusion, nullptr);
                 //SetTexture(MaterialTextureType::Roughness, nullptr);
