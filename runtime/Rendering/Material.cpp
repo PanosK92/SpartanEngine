@@ -133,20 +133,26 @@ namespace Spartan
             }
         }
 
-        // assume rgba32 has 4 bytes per pixel: 1 byte each for red, green, blue, and alpha
-        void merge_alpha_mask_into_color_alpha(vector<byte>& albedo, vector<byte>& alpha_mask)
+        void merge_alpha_mask_into_color_alpha(vector<byte>& albedo, vector<byte>& mask)
         {
-            SP_ASSERT_MSG(albedo.size() == alpha_mask.size(), "The dimensions must be equal");
-
-            // iterate over each pixel, 4 bytes at a time (RGBA format)
+            SP_ASSERT_MSG(albedo.size() == mask.size(), "The dimensions must be equal");
+            
+            const float alpha_threshold = 0.6f;
+            
             for (size_t i = 0; i < albedo.size(); i += 4)
             {
-                // get alpha values from albedo and mask as uint8_t
-                uint8_t albedo_alpha = static_cast<uint8_t>(albedo[i + 3]);
-                uint8_t mask_alpha   = static_cast<uint8_t>(alpha_mask[i + 3]);
+                float alpha_albedo = static_cast<float>(albedo[i + 3]) / 255.0f;
+                float alpha_mask   = static_cast<float>(mask[i]) / 255.0f;
                 
-                // perform min operation and store back into albedo's alpha channel
-                albedo[i + 3] = static_cast<byte>(min(albedo_alpha, mask_alpha));
+                // apply the alpha threshold
+                if (alpha_mask >= alpha_threshold)
+                {
+                    albedo[i + 3] = static_cast<byte>(min(alpha_albedo, alpha_mask) * 255.0f);
+                }
+                else
+                {
+                    albedo[i + 3] = static_cast<byte>(alpha_albedo * 255.0f);
+                }
             }
         }
     }

@@ -705,6 +705,7 @@ namespace Spartan
                     {
                         // for alpha testing
                         m_pcb_pass_cpu.set_f3_value(
+                            material->HasTextureOfType(MaterialTextureType::AlphaMask) ? 1.0f : 0.0f,
                             material->HasTextureOfType(MaterialTextureType::Color) ? 1.0f : 0.0f,
                             material->GetProperty(MaterialProperty::ColorA)
                         );
