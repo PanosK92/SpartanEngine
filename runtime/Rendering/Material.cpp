@@ -359,24 +359,24 @@ namespace Spartan
             //    GetTexture(MaterialTextureType::Color)->GetMip(0, 0).bytes,
             //    GetTexture(MaterialTextureType::AlphaMask)->GetMip(0, 0).bytes
             //);
-            //
+            
             //SetTexture(MaterialTextureType::AlphaMask, nullptr);
         }
 
-        //ThreadPool::AddTask([this]() // if one mip waits for the previous one, we can multithread this here
-        //{
-           for (RHI_Texture* texture : m_textures)
+        for (RHI_Texture* texture : m_textures)
+        {
+            if (texture)
             {
-                if (texture)
+                // check IsGpuReady() to avoid redundant PrepareForGpu() calls, as textures may be shared across materials and material slots
+                if (!texture->IsGpuReady())
                 {
-                    // check IsGpuReady() to avoid redundant PrepareForGpu() calls, as textures may be shared across materials and material slots
-                    if (!texture->IsGpuReady())
-                    { 
+                    //ThreadPool::AddTask([texture]() // good perf gain if PrepareForGpu() becomes thread safe
+                    //{
                         texture->PrepareForGpu();
-                    }
+                    //});
                 }
             }
-        //});
+        }
     }
 
     uint32_t Material::GetUsedSlotCount() const

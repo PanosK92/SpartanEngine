@@ -123,9 +123,9 @@ namespace Spartan
         uint32_t GetMipCount() const { return m_mip_count; }
         uint32_t GetDepth() const    { return m_depth; }
         bool HasData() const         { return !m_slices.empty() && !m_slices[0].mips.empty() && !m_slices[0].mips[0].bytes.empty(); };
-        RHI_Texture_Mip& CreateMip(const uint32_t array_index);
         RHI_Texture_Mip& GetMip(const uint32_t array_index, const uint32_t mip_index);
         RHI_Texture_Slice& GetSlice(const uint32_t array_index);
+        void AllocateMip();
 
         // flags
         bool IsSrv() const             { return m_flags & RHI_Texture_Srv; }
@@ -168,8 +168,8 @@ namespace Spartan
 
         uint32_t m_width            = 0;
         uint32_t m_height           = 0;
-        uint32_t m_depth            = 1;
-        uint32_t m_mip_count        = 1;
+        uint32_t m_depth            = 0;
+        uint32_t m_mip_count        = 0;
         uint32_t m_bits_per_channel = 0;
         uint32_t m_channel_count    = 0;
         RHI_Format m_format         = RHI_Format::Max;
