@@ -40,6 +40,7 @@ namespace Spartan
         Emission,
         Height,
         AlphaMask,
+        Packed, // occlusion, roughness, metalness, height
         Max
     };
 
