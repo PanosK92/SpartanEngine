@@ -57,24 +57,23 @@ struct Surface
     float3 diffuse_energy;
 
     // easy access to certain properties
-    bool has_single_texture_roughness_metalness() { return flags & uint(1U << 0);  }
-    bool has_texture_height()                     { return flags & uint(1U << 1);  }
-    bool has_texture_normal()                     { return flags & uint(1U << 2);  }
-    bool has_texture_albedo()                     { return flags & uint(1U << 3);  }
-    bool has_texture_roughness()                  { return flags & uint(1U << 4);  }
-    bool has_texture_metalness()                  { return flags & uint(1U << 5);  }
-    bool has_texture_alpha_mask()                 { return flags & uint(1U << 6);  }
-    bool has_texture_emissive()                   { return flags & uint(1U << 7);  }
-    bool has_texture_occlusion()                  { return flags & uint(1U << 8);  }
-    bool texture_slope_based()                    { return flags & uint(1U << 9);  }
-    bool vertex_animate_wind()                    { return flags & uint(1U << 10); }
-    bool vertex_animate_water()                   { return flags & uint(1U << 11); }
-    bool is_tessellated()                         { return flags & uint(1U << 12); }
-    bool is_water()                               { return ior == 1.33f; }
-    bool is_glass()                               { return ior == 1.52f; }
-    bool is_sky()                                 { return alpha == 0.0f; }
-    bool is_opaque()                              { return alpha == 1.0f; }
-    bool is_transparent()                         { return alpha > 0.0f && alpha < 1.0f && ior != 1.0f; } // the ior is to avoid treating alpha tested objects as transparent
+    bool has_texture_height()     { return flags & uint(1U << 0);  }
+    bool has_texture_normal()     { return flags & uint(1U << 1);  }
+    bool has_texture_albedo()     { return flags & uint(1U << 2);  }
+    bool has_texture_roughness()  { return flags & uint(1U << 3);  }
+    bool has_texture_metalness()  { return flags & uint(1U << 4);  }
+    bool has_texture_alpha_mask() { return flags & uint(1U << 5);  }
+    bool has_texture_emissive()   { return flags & uint(1U << 6);  }
+    bool has_texture_occlusion()  { return flags & uint(1U << 7);  }
+    bool texture_slope_based()    { return flags & uint(1U << 8);  }
+    bool vertex_animate_wind()    { return flags & uint(1U << 9); }
+    bool vertex_animate_water()   { return flags & uint(1U << 10); }
+    bool is_tessellated()         { return flags & uint(1U << 11); }
+    bool is_water()               { return ior == 1.33f; }
+    bool is_glass()               { return ior == 1.52f; }
+    bool is_sky()                 { return alpha == 0.0f; }
+    bool is_opaque()              { return alpha == 1.0f; }
+    bool is_transparent()         { return alpha > 0.0f && alpha < 1.0f && ior != 1.0f; } // the ior is to avoid treating alpha tested objects as transparent
     
     void Build(uint2 position_screen, float2 resolution_out, bool use_albedo, bool replace_color_with_one)
     {

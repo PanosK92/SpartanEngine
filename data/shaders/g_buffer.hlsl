@@ -84,6 +84,14 @@ gbuffer main_ps(gbuffer_vertex vertex)
     // alpah testing happens in the depth pre-pass, so here any opaque pixel has an alpha of 1
     albedo.a = lerp(albedo.a, 1.0f, step(albedo_sample.a, 1.0f) * pass_is_opaque());
 
+    // emission
+    if (surface.has_texture_emissive())
+    {
+        float3 emissive_color  = GET_TEXTURE(material_texture_index_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv).rgb;
+        emission               = luminance(emissive_color);
+        albedo.rgb            += emissive_color;
+    }
+    
     // normal mapping
     if (surface.has_texture_normal())
     {
@@ -99,38 +107,12 @@ gbuffer main_ps(gbuffer_vertex vertex)
         float3x3 tangent_to_world  = make_tangent_to_world_matrix(vertex.normal, vertex.tangent);
         normal                     = normalize(mul(tangent_normal, tangent_to_world).xyz);
     }
-    
-    // roughness + metalness
-    {
-        float4 roughness_sample = 1.0f;
-        if (surface.has_texture_roughness())
-        {
-            roughness_sample  = sampling::smart(vertex.position, vertex.normal, vertex.uv, material_texture_index_roughness, surface.is_water(), surface.texture_slope_based(), surface.vertex_animate_wind());
-            roughness        *= roughness_sample.g;
-        }
-        
-        float is_single_texture_roughness_metalness = surface.has_single_texture_roughness_metalness() ? 1.0f : 0.0f;
-        metalness *= (1.0 - is_single_texture_roughness_metalness) + (roughness_sample.b * is_single_texture_roughness_metalness);
-        
-        if (surface.has_texture_metalness() && !surface.has_single_texture_roughness_metalness())
-        {
-            metalness *= sampling::smart(vertex.position, vertex.normal, vertex.uv, material_texture_index_metalness, surface.is_water(), surface.texture_slope_based(), surface.vertex_animate_wind()).r;
-        }
-    }
-    
-    // occlusion
-    if (surface.has_texture_occlusion())
-    {
-        occlusion = sampling::smart(vertex.position, vertex.normal, vertex.uv, material_texture_index_occlusion, surface.is_water(), surface.texture_slope_based(), surface.vertex_animate_wind()).r;
-    }
-    
-    // emission
-    if (surface.has_texture_emissive())
-    {
-        float3 emissive_color  = GET_TEXTURE(material_texture_index_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv).rgb;
-        emission               = luminance(emissive_color);
-        albedo.rgb            += emissive_color;
-    }
+
+    // occlusion, roughness, metalness, height sample
+    float4 packed_sample  = sampling::smart(vertex.position, vertex.normal, vertex.uv, material_texture_index_packed, surface.is_water(), surface.texture_slope_based(), surface.vertex_animate_wind());
+    occlusion             = packed_sample.r;
+    roughness            *= packed_sample.g;
+    metalness            *= packed_sample.b;
 
     // write to g-buffer
     gbuffer g_buffer;
