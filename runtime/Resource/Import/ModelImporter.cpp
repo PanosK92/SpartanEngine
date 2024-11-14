@@ -308,7 +308,7 @@ namespace Spartan
 
             // this will pack textures, compress them, and upload them to the GPU
             bool is_gltf = FileSystem::GetExtensionFromFilePath(file_path) == ".gltf";
-            material->PrepareForGPU(is_gltf);
+            material->PrepareForGpu(is_gltf);
 
             // name
             aiString name_assimp;

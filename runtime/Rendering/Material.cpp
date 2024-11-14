@@ -321,7 +321,7 @@ namespace Spartan
         return m_textures[(static_cast<uint32_t>(texture_type) * slots_per_texture_type) + slot];
     }
 
-    void Material::PrepareForGPU(const bool is_gltf)
+    void Material::PrepareForGpu(const bool is_gltf)
     {
         RHI_Texture* texture_color      = GetTexture(MaterialTextureType::Color);
         RHI_Texture* texture_alpha_mask = GetTexture(MaterialTextureType::AlphaMask);
@@ -336,76 +336,86 @@ namespace Spartan
                                          texture_roughness  ? texture_roughness  :
                                          texture_metalness  ? texture_metalness  :
                                          texture_height;
-        
-        // ensure there are textures to pack and that they are not already compressed (possible if loading from DDS)
-        if (reference_texture && !reference_texture->IsCompressedFormat(texture_color->GetFormat()))
+
+        // pack texture
         {
-            // step 1: pack alpha mask into albedo alpha
+            // step 1: pack alpha mask into color alpha
             if (texture_alpha_mask)
             {
-                // note: this can be tested by loading the subway default world
-                if (texture_color)
-                { 
-                    texture_packing::merge_alpha_mask_into_color_alpha(texture_color->GetMip(0, 0).bytes, texture_alpha_mask->GetMip(0, 0).bytes);
+                if (!texture_color)
+                {
+                    SetTexture(MaterialTextureType::Color, texture_alpha_mask);
                 }
                 else
                 {
-                    SetTexture(MaterialTextureType::Color, texture_alpha_mask);
+                    texture_packing::merge_alpha_mask_into_color_alpha(texture_color->GetMip(0, 0).bytes, texture_alpha_mask->GetMip(0, 0).bytes);
                 }
             }
 
             // step 2: pack occlusion, roughness, metalness, and height into a single texture
             {
-                // try to get the texture (in case it's already packed)
-                const string tex_name = GetObjectName() + "_packed";
-                texture_packed        = ResourceCache::GetByName<RHI_Texture>(tex_name);
-                
-                if (!texture_packed)
+                bool pack = true;
+                if (texture_roughness)
                 {
-                    // create packed texture
-                    texture_packed = make_shared<RHI_Texture>
-                    (
-                        RHI_Texture_Type::Type2D,
-                        reference_texture->GetWidth(),
-                        reference_texture->GetHeight(),
-                        reference_texture->GetDepth(),
-                        reference_texture->GetMipCount(),
-                        reference_texture->GetFormat(),
-                        RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu,
-                        "packed"
-                    );
-                    texture_packed->AllocateMip();
-
-                    // todo: fix resource caching so it doesn't rely on filepath but on a hash that it generates
-                    //ResourceCache::Cache<RHI_Texture>(texture_packed);
-                
-                    // create packed data
-                    const size_t texture_size = reference_texture->GetMip(0, 0).bytes.size();
-                    vector<byte> texture_one(texture_size, static_cast<byte>(255));
-                    vector<byte> texture_zero(texture_size, static_cast<byte>(0));
-                    vector<byte> texture_half(texture_size, static_cast<byte>(127)); 
-                    texture_packing::pack_occlusion_roughness_metalness_height(
-                            texture_occlusion ? texture_occlusion->GetMip(0, 0).bytes : texture_one,
-                            texture_roughness ? texture_roughness->GetMip(0, 0).bytes : texture_one,
-                            texture_metalness ? texture_metalness->GetMip(0, 0).bytes : texture_zero,
-                            texture_height    ? texture_height->GetMip(0, 0).bytes    : texture_half,
-                            is_gltf,
-                            texture_packed->GetMip(0, 0).bytes
-                        );
+                    // some worlds, like the bistro, have pre-compressed DDS textures
+                    pack = !texture_roughness->IsCompressedFormat();
                 }
-                
-                // set the packed texture
-                SetTexture(MaterialTextureType::Packed, texture_packed);
+
+                if (pack)
+                {
+                    // try to get the texture (in case it's already packed)
+                    const string tex_name = GetObjectName() + "_packed";
+                    texture_packed        = ResourceCache::GetByName<RHI_Texture>(tex_name);
+                    
+                    if (!texture_packed)
+                    {
+                        // create packed texture
+                        texture_packed = make_shared<RHI_Texture>
+                        (
+                            RHI_Texture_Type::Type2D,
+                            reference_texture->GetWidth(),
+                            reference_texture->GetHeight(),
+                            reference_texture->GetDepth(),
+                            reference_texture->GetMipCount(),
+                            reference_texture->GetFormat(),
+                            RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu,
+                            "packed"
+                        );
+                        texture_packed->AllocateMip();
+
+                        // todo: fix resource caching so it doesn't rely on filepath but on a hash that it generates
+                        //ResourceCache::Cache<RHI_Texture>(texture_packed);
+
+                        // create some default data to replace missing textures
+                        const size_t texture_size = reference_texture->GetWidth() * reference_texture->GetHeight() * reference_texture->GetChannelCount();
+                        vector<byte> texture_one(texture_size, static_cast<byte>(255));
+                        vector<byte> texture_zero(texture_size, static_cast<byte>(0));
+                        vector<byte> texture_half(texture_size, static_cast<byte>(127));
+
+                        // create packed data and fallback to default data when needed
+                        texture_packing::pack_occlusion_roughness_metalness_height(
+                                texture_occlusion ? texture_occlusion->GetMip(0, 0).bytes : texture_one,
+                                texture_roughness ? texture_roughness->GetMip(0, 0).bytes : texture_one,
+                                texture_metalness ? texture_metalness->GetMip(0, 0).bytes : texture_zero,
+                                texture_height    ? texture_height->GetMip(0, 0).bytes    : texture_half,
+                                is_gltf,
+                                texture_packed->GetMip(0, 0).bytes
+                            );
+                    }
+                    
+                    // set the packed texture
+                    SetTexture(MaterialTextureType::Packed, texture_packed);
+                }
             }
 
-            // step 3: reduce memory usage by shrinking redundant textures, allowing them to appear in the editor as usual without significant memory cost
+            // step 3: convert all previous textures to thumbnails, this way they can still be accessed and displayed in the editor but with neglectible memory usage
             {
-               if (texture_color)      texture_color->SetFlag(RHI_Texture_Thumnail);
-               if (texture_alpha_mask) texture_alpha_mask->SetFlag(RHI_Texture_Thumnail);
-               if (texture_occlusion)  texture_occlusion->SetFlag(RHI_Texture_Thumnail);
-               if (texture_roughness)  texture_roughness->SetFlag(RHI_Texture_Thumnail);
-               if (texture_metalness)  texture_metalness->SetFlag(RHI_Texture_Thumnail);
-               if (texture_height)     texture_height->SetFlag(RHI_Texture_Thumnail);
+                if (texture_color      && !texture_color->IsCompressedFormat())      texture_color->SetFlag(RHI_Texture_Thumnail);
+                if (texture_alpha_mask && !texture_alpha_mask->IsCompressedFormat()) texture_alpha_mask->SetFlag(RHI_Texture_Thumnail);
+                if (texture_occlusion  && !texture_occlusion->IsCompressedFormat())  texture_occlusion->SetFlag(RHI_Texture_Thumnail);
+                if (texture_roughness  && !texture_roughness->IsCompressedFormat())  texture_roughness->SetFlag(RHI_Texture_Thumnail);
+                if (texture_metalness  && !texture_metalness->IsCompressedFormat())  texture_metalness->SetFlag(RHI_Texture_Thumnail);
+                if (texture_height     && !texture_height->IsCompressedFormat())     texture_height->SetFlag(RHI_Texture_Thumnail);
             }
         }
 
