@@ -99,12 +99,11 @@ namespace Spartan
             );
 
             // gltf stores occlusion, roughness and metalness in the same texture, as r, g, b channels respectively
-
             for (size_t i = 0; i < occlusion.size(); i += 4)
             {
                 output[i + 0] = occlusion[i];
-                output[i + 1] = roughness[i + is_gltf ? 1 : 0];
-                output[i + 2] = metalness[i + is_gltf ? 2 : 0];
+                output[i + 1] = roughness[i + (is_gltf ? 1 : 0)];
+                output[i + 2] = metalness[i + (is_gltf ? 2 : 0)];
                 output[i + 3] = height[i];
             }
         }
@@ -324,19 +323,23 @@ namespace Spartan
 
     void Material::PrepareForGPU(const bool is_gltf)
     {
-        // texture packing
+        RHI_Texture* texture_color      = GetTexture(MaterialTextureType::Color);
+        RHI_Texture* texture_alpha_mask = GetTexture(MaterialTextureType::AlphaMask);
+        RHI_Texture* texture_occlusion  = GetTexture(MaterialTextureType::Occlusion);
+        RHI_Texture* texture_roughness  = GetTexture(MaterialTextureType::Roughness);
+        RHI_Texture* texture_metalness  = GetTexture(MaterialTextureType::Metalness);
+        RHI_Texture* texture_height     = GetTexture(MaterialTextureType::Height);
+        
+        RHI_Texture* reference_texture = texture_color      ? texture_color      :
+                                         texture_alpha_mask ? texture_alpha_mask :
+                                         texture_occlusion  ? texture_occlusion  :
+                                         texture_roughness  ? texture_roughness  :
+                                         texture_metalness  ? texture_metalness  :
+                                         texture_height;
+        
+        // ensure there are textures to pack and that they are not already compressed (possible if loading from DDS)
+        if (reference_texture && !reference_texture->IsCompressedFormat(texture_color->GetFormat()))
         {
-            RHI_Texture* texture_color      = GetTexture(MaterialTextureType::Color);
-            RHI_Texture* texture_alpha_mask = GetTexture(MaterialTextureType::AlphaMask);
-            RHI_Texture* texture_occlusion  = GetTexture(MaterialTextureType::Occlusion);
-            RHI_Texture* texture_roughness  = GetTexture(MaterialTextureType::Roughness);
-            RHI_Texture* texture_metalness  = GetTexture(MaterialTextureType::Metalness);
-            RHI_Texture* texture_height     = GetTexture(MaterialTextureType::Height);
-
-            // in some cases, models use DDS textures with pre-compressed textures, so we skip packing
-            if (texture_color && texture_color->IsCompressedFormat(texture_color->GetFormat()))
-                return;
-
             // step 1: pack alpha mask into albedo alpha
             if (texture_alpha_mask)
             {
@@ -363,12 +366,12 @@ namespace Spartan
                     texture_packed = make_shared<RHI_Texture>
                     (
                         RHI_Texture_Type::Type2D,
-                        texture_color->GetWidth(),
-                        texture_color->GetHeight(),
-                        texture_color->GetDepth(),
-                        texture_color->GetMipCount(),
-                        texture_color->GetFormat(),
-                        RHI_Texture_Srv | RHI_Texture_Compress,
+                        reference_texture->GetWidth(),
+                        reference_texture->GetHeight(),
+                        reference_texture->GetDepth(),
+                        reference_texture->GetMipCount(),
+                        reference_texture->GetFormat(),
+                        RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu,
                         "packed"
                     );
                     texture_packed->AllocateMip();
@@ -392,22 +395,26 @@ namespace Spartan
 
             // step 3: reduce memory usage by shrinking redundant textures, allowing them to appear in the editor as usual without significant memory cost
             {
-               
+               if (texture_color)      texture_color->SetFlag(RHI_Texture_Thumnail);
+               if (texture_alpha_mask) texture_alpha_mask->SetFlag(RHI_Texture_Thumnail);
+               if (texture_occlusion)  texture_occlusion->SetFlag(RHI_Texture_Thumnail);
+               if (texture_roughness)  texture_roughness->SetFlag(RHI_Texture_Thumnail);
+               if (texture_metalness)  texture_metalness->SetFlag(RHI_Texture_Thumnail);
+               if (texture_height)     texture_height->SetFlag(RHI_Texture_Thumnail);
             }
         }
 
+        // prepare all textures
         for (RHI_Texture* texture : m_textures)
         {
-            if (texture)
+            if (texture == GetTexture(MaterialTextureType::Packed))
             {
-                // check IsGpuReady() to avoid redundant PrepareForGpu() calls, as textures may be shared across materials and material slots
-                if (!texture->IsGpuReady())
-                {
-                    //ThreadPool::AddTask([texture]() // good perf gain if PrepareForGpu() becomes thread safe
-                    //{
-                        texture->PrepareForGpu();
-                    //});
-                }
+                bool fa = true;
+            }
+            if (texture && !texture->IsGpuReady())
+            {
+                // todo: this could be given to the thread pool
+                texture->PrepareForGpu();
             }
         }
     }

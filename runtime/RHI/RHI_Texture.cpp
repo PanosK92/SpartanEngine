@@ -218,8 +218,11 @@ namespace Spartan
         m_channel_count    = rhi_to_format_channel_count(format);
         m_bits_per_channel = rhi_format_to_bits_per_channel(m_format);
 
-        RHI_Texture::RHI_CreateResource();
-        m_is_gpu_ready = true;
+        if (!(flags & RHI_Texture_DontPrepareForGpu))
+        { 
+            RHI_Texture::RHI_CreateResource();
+            m_is_gpu_ready = true;
+        }
 
         if (!compressonator::registered)
         {
