@@ -375,15 +375,20 @@ namespace Spartan
                         "packed"
                     );
                     texture_packed->AllocateMip();
-                    ResourceCache::Cache<RHI_Texture>(texture_packed);
+
+                    // todo: fix resource caching so it doesn't rely on filepath but on a hash that it generates
+                    //ResourceCache::Cache<RHI_Texture>(texture_packed);
                 
                     // create packed data
-                    vector<byte> empty(texture_packed->GetMip(0, 0).bytes.size());
+                    const size_t texture_size = reference_texture->GetMip(0, 0).bytes.size();
+                    vector<byte> texture_one(texture_size, static_cast<byte>(255));
+                    vector<byte> texture_zero(texture_size, static_cast<byte>(0));
+                    vector<byte> texture_half(texture_size, static_cast<byte>(127)); 
                     texture_packing::pack_occlusion_roughness_metalness_height(
-                            texture_occlusion ? texture_occlusion->GetMip(0, 0).bytes : empty,
-                            texture_roughness ? texture_roughness->GetMip(0, 0).bytes : empty,
-                            texture_metalness ? texture_metalness->GetMip(0, 0).bytes : empty,
-                            texture_height    ? texture_height->GetMip(0, 0).bytes    : empty,
+                            texture_occlusion ? texture_occlusion->GetMip(0, 0).bytes : texture_one,
+                            texture_roughness ? texture_roughness->GetMip(0, 0).bytes : texture_one,
+                            texture_metalness ? texture_metalness->GetMip(0, 0).bytes : texture_zero,
+                            texture_height    ? texture_height->GetMip(0, 0).bytes    : texture_half,
                             is_gltf,
                             texture_packed->GetMip(0, 0).bytes
                         );
@@ -407,10 +412,6 @@ namespace Spartan
         // prepare all textures
         for (RHI_Texture* texture : m_textures)
         {
-            if (texture == GetTexture(MaterialTextureType::Packed))
-            {
-                bool fa = true;
-            }
             if (texture && !texture->IsGpuReady())
             {
                 // todo: this could be given to the thread pool
