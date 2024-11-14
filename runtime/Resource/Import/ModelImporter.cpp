@@ -307,7 +307,8 @@ namespace Spartan
             load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::AlphaMask,  aiTextureType_OPACITY,           aiTextureType_NONE);
 
             // this will pack textures, compress them, and upload them to the GPU
-            material->PrepareForGPU();
+            bool is_gltf = FileSystem::GetExtensionFromFilePath(file_path) == ".gltf";
+            material->PrepareForGPU(is_gltf);
 
             // name
             aiString name_assimp;

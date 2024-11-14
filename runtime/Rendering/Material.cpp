@@ -87,6 +87,7 @@ namespace Spartan
             const vector<byte>& roughness,
             const vector<byte>& metalness,
             const vector<byte>& height,
+            const bool is_gltf,
             vector<byte>& output
         )
         {
@@ -97,14 +98,14 @@ namespace Spartan
                 "The dimensions must be equal"
             );
 
-            size_t size = max(max(occlusion.size(), roughness.size()), max(metalness.size(), height.size()));
+            // gltf stores occlusion, roughness and metalness in the same texture, as r, g, b channels respectively
 
-            for (size_t i = 0; i < size; i += 4)
+            for (size_t i = 0; i < occlusion.size(); i += 4)
             {
-                output[i + 0] = !occlusion.empty() ? occlusion[i] : static_cast<byte>(0); // occlusion
-                output[i + 1] = !roughness.empty() ? roughness[i] : static_cast<byte>(0); // roughness
-                output[i + 2] = !metalness.empty() ? metalness[i] : static_cast<byte>(0); // metalness
-                output[i + 3] = !height.empty()    ? height[i]    : static_cast<byte>(0); // height
+                output[i + 0] = occlusion[i];
+                output[i + 1] = roughness[i + is_gltf ? 1 : 0];
+                output[i + 2] = metalness[i + is_gltf ? 2 : 0];
+                output[i + 3] = height[i];
             }
         }
 
@@ -321,7 +322,7 @@ namespace Spartan
         return m_textures[(static_cast<uint32_t>(texture_type) * slots_per_texture_type) + slot];
     }
 
-    void Material::PrepareForGPU()
+    void Material::PrepareForGPU(const bool is_gltf)
     {
         // texture packing
         {
@@ -348,8 +349,6 @@ namespace Spartan
                 {
                     SetTexture(MaterialTextureType::Color, texture_alpha_mask);
                 }
-
-                SetTexture(MaterialTextureType::AlphaMask, nullptr);
             }
 
             // step 2: pack occlusion, roughness, metalness, and height into a single texture
@@ -382,12 +381,18 @@ namespace Spartan
                             texture_roughness ? texture_roughness->GetMip(0, 0).bytes : empty,
                             texture_metalness ? texture_metalness->GetMip(0, 0).bytes : empty,
                             texture_height    ? texture_height->GetMip(0, 0).bytes    : empty,
+                            is_gltf,
                             texture_packed->GetMip(0, 0).bytes
                         );
                 }
                 
                 // set the packed texture
                 SetTexture(MaterialTextureType::Packed, texture_packed);
+            }
+
+            // step 3: reduce memory usage by shrinking redundant textures, allowing them to appear in the editor as usual without significant memory cost
+            {
+               
             }
         }
 
