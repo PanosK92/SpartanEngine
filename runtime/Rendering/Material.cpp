@@ -90,14 +90,21 @@ namespace Spartan
             vector<byte>& output
         )
         {
+            SP_ASSERT_MSG(
+                occlusion.size() == roughness.size() &&
+                roughness.size() == metalness.size() &&
+                metalness.size() == height.size(),
+                "The dimensions must be equal"
+            );
+
             size_t size = max(max(occlusion.size(), roughness.size()), max(metalness.size(), height.size()));
 
             for (size_t i = 0; i < size; i += 4)
             {
-                output[i + 0] = i < !occlusion.empty() ? occlusion[i] : static_cast<byte>(0); // occlusion
-                output[i + 1] = i < !roughness.empty() ? roughness[i] : static_cast<byte>(0); // roughness
-                output[i + 2] = i < !metalness.empty() ? metalness[i] : static_cast<byte>(0); // metalness
-                output[i + 3] = i < !height.empty()    ? height[i]    : static_cast<byte>(0); // height
+                output[i + 0] = !occlusion.empty() ? occlusion[i] : static_cast<byte>(0); // occlusion
+                output[i + 1] = !roughness.empty() ? roughness[i] : static_cast<byte>(0); // roughness
+                output[i + 2] = !metalness.empty() ? metalness[i] : static_cast<byte>(0); // metalness
+                output[i + 3] = !height.empty()    ? height[i]    : static_cast<byte>(0); // height
             }
         }
 
