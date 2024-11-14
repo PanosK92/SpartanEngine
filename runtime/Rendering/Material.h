@@ -46,35 +46,34 @@ namespace Spartan
 
     enum class MaterialProperty
     {
-        CanBeEdited,                     // indicates if the material properties can be modified
-        SingleTextureRoughnessMetalness, // uses a single texture for both roughness and metalness properties
-        WorldSpaceHeight,                // height of the mesh to which the material is applied
-        Clearcoat,                       // additional specular layer on top of the base specular
-        Clearcoat_Roughness,             // roughness level of the clearcoat layer
-        Anisotropic,                     // controls the anisotropy level of specular reflections
-        AnisotropicRotation,             // adjusts the anisotropy direction, with 1.0 being a full rotation
-        Sheen,                           // adds a soft, velvet-like reflection at edges
-        SheenTint,                       // blends sheen reflection between white and the base color
-        ColorTint,                       // modifies the surface color for diffuse or metallic materials
-        ColorR,                          // red component of the material color
-        ColorG,                          // green component of the material color
-        ColorB,                          // blue component of the material color
-        ColorA,                          // alpha (transparency) component of the material color
-        Roughness,                       // controls the roughness aspect of the surface reflection
-        Metalness,                       // defines the surface as dielectric or metallic
-        Normal,                          // normal map texture for simulating surface details
-        Height,                          // height map texture for surface tessellation
-        Ior,                             // index of refraction for the material
-        SubsurfaceScattering,            // simulates light passing through translucent materials
-        TextureTilingX,                  // tiling factor of the texture along the X-axis
-        TextureTilingY,                  // tiling factor of the texture along the Y-axis
-        TextureOffsetX,                  // offset of the texture along the X-axis
-        TextureOffsetY,                  // offset of the texture along the Y-axis
-        TextureSlopeBased,               // applies texture mapping based on the mesh slope
-        VertexAnimateWind,               // applies vertex-based animation to simulate wind
-        VertexAnimateWater,              // applies vertex-based animation to simulate water flow
-        CullMode,                        // sets the culling mode based on RHI_CullMode enum values
-        Max                              // total number of properties, used to size arrays
+        CanBeEdited,          // indicates if the material properties can be modified
+        WorldSpaceHeight,     // height of the mesh to which the material is applied
+        Clearcoat,            // additional specular layer on top of the base specular
+        Clearcoat_Roughness,  // roughness level of the clearcoat layer
+        Anisotropic,          // controls the anisotropy level of specular reflections
+        AnisotropicRotation,  // adjusts the anisotropy direction, with 1.0 being a full rotation
+        Sheen,                // adds a soft, velvet-like reflection at edges
+        SheenTint,            // blends sheen reflection between white and the base color
+        ColorTint,            // modifies the surface color for diffuse or metallic materials
+        ColorR,               // red component of the material color
+        ColorG,               // green component of the material color
+        ColorB,               // blue component of the material color
+        ColorA,               // alpha (transparency) component of the material color
+        Roughness,            // controls the roughness aspect of the surface reflection
+        Metalness,            // defines the surface as dielectric or metallic
+        Normal,               // normal map texture for simulating surface details
+        Height,               // height map texture for surface tessellation
+        Ior,                  // index of refraction for the material
+        SubsurfaceScattering, // simulates light passing through translucent materials
+        TextureTilingX,       // tiling factor of the texture along the X-axis
+        TextureTilingY,       // tiling factor of the texture along the Y-axis
+        TextureOffsetX,       // offset of the texture along the X-axis
+        TextureOffsetY,       // offset of the texture along the Y-axis
+        TextureSlopeBased,    // applies texture mapping based on the mesh slope
+        VertexAnimateWind,    // applies vertex-based animation to simulate wind
+        VertexAnimateWater,   // applies vertex-based animation to simulate water flow
+        CullMode,             // sets the culling mode based on RHI_CullMode enum values
+        Max                   // total number of properties, used to size arrays
     };
 
     enum class MaterialIor
@@ -138,5 +137,6 @@ namespace Spartan
         std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * slots_per_texture_type> m_textures;
         std::array<float, static_cast<uint32_t>(MaterialProperty::Max)> m_properties;
         uint32_t m_index = 0;
+        std::shared_ptr<RHI_Texture> texture_packed = nullptr; // temporary
     };
 }

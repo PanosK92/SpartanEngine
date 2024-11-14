@@ -43,35 +43,34 @@ namespace Spartan
         {
             switch (material_property)
             {
-                case MaterialProperty::CanBeEdited:                     return "can_be_edited";
-                case MaterialProperty::SingleTextureRoughnessMetalness: return "single_texture_roughness_metalness";
-                case MaterialProperty::WorldSpaceHeight:                return "world_space_height";
-                case MaterialProperty::Clearcoat:                       return "clearcoat";
-                case MaterialProperty::Clearcoat_Roughness:             return "clearcoat_roughness";
-                case MaterialProperty::Anisotropic:                     return "anisotropic";
-                case MaterialProperty::AnisotropicRotation:             return "anisotropic_rotation";
-                case MaterialProperty::Sheen:                           return "sheen";
-                case MaterialProperty::SheenTint:                       return "sheen_tint";
-                case MaterialProperty::ColorTint:                       return "color_tint";
-                case MaterialProperty::ColorR:                          return "color_r";
-                case MaterialProperty::ColorG:                          return "color_g";
-                case MaterialProperty::ColorB:                          return "color_b";
-                case MaterialProperty::ColorA:                          return "color_a";
-                case MaterialProperty::Ior:                             return "ior";
-                case MaterialProperty::Roughness:                       return "roughness";
-                case MaterialProperty::Metalness:                       return "metalness";
-                case MaterialProperty::Normal:                          return "normal";
-                case MaterialProperty::Height:                          return "height";
-                case MaterialProperty::SubsurfaceScattering:            return "subsurface_scattering";
-                case MaterialProperty::TextureTilingX:                  return "texture_tiling_x";
-                case MaterialProperty::TextureTilingY:                  return "texture_tiling_y";
-                case MaterialProperty::TextureOffsetX:                  return "texture_offset_x";
-                case MaterialProperty::TextureOffsetY:                  return "texture_offset_y";
-                case MaterialProperty::TextureSlopeBased:               return "texture_slope_based";
-                case MaterialProperty::VertexAnimateWind:               return "vertex_animate_wind";
-                case MaterialProperty::VertexAnimateWater:              return "vertex_animate_water";
-                case MaterialProperty::CullMode:                        return "cull_mode";
-                case MaterialProperty::Max:                             return "max";
+                case MaterialProperty::CanBeEdited:          return "can_be_edited";
+                case MaterialProperty::WorldSpaceHeight:     return "world_space_height";
+                case MaterialProperty::Clearcoat:            return "clearcoat";
+                case MaterialProperty::Clearcoat_Roughness:  return "clearcoat_roughness";
+                case MaterialProperty::Anisotropic:          return "anisotropic";
+                case MaterialProperty::AnisotropicRotation:  return "anisotropic_rotation";
+                case MaterialProperty::Sheen:                return "sheen";
+                case MaterialProperty::SheenTint:            return "sheen_tint";
+                case MaterialProperty::ColorTint:            return "color_tint";
+                case MaterialProperty::ColorR:               return "color_r";
+                case MaterialProperty::ColorG:               return "color_g";
+                case MaterialProperty::ColorB:               return "color_b";
+                case MaterialProperty::ColorA:               return "color_a";
+                case MaterialProperty::Ior:                  return "ior";
+                case MaterialProperty::Roughness:            return "roughness";
+                case MaterialProperty::Metalness:            return "metalness";
+                case MaterialProperty::Normal:               return "normal";
+                case MaterialProperty::Height:               return "height";
+                case MaterialProperty::SubsurfaceScattering: return "subsurface_scattering";
+                case MaterialProperty::TextureTilingX:       return "texture_tiling_x";
+                case MaterialProperty::TextureTilingY:       return "texture_tiling_y";
+                case MaterialProperty::TextureOffsetX:       return "texture_offset_x";
+                case MaterialProperty::TextureOffsetY:       return "texture_offset_y";
+                case MaterialProperty::TextureSlopeBased:    return "texture_slope_based";
+                case MaterialProperty::VertexAnimateWind:    return "vertex_animate_wind";
+                case MaterialProperty::VertexAnimateWater:   return "vertex_animate_water";
+                case MaterialProperty::CullMode:             return "cull_mode";
+                case MaterialProperty::Max:                  return "max";
                 default:
                 {
                     SP_ASSERT_MSG(false, "Unknown material property");
@@ -92,12 +91,13 @@ namespace Spartan
         )
         {
             size_t size = max(max(occlusion.size(), roughness.size()), max(metalness.size(), height.size()));
+
             for (size_t i = 0; i < size; i += 4)
             {
-                output[i + 0] = i < occlusion.size() ? occlusion[i] : static_cast<byte>(0); // occlusion
-                output[i + 1] = i < roughness.size() ? roughness[i] : static_cast<byte>(0); // roughness
-                output[i + 2] = i < metalness.size() ? metalness[i] : static_cast<byte>(0); // metalness
-                output[i + 3] = i < height.size()    ? height[i]    : static_cast<byte>(0); // height
+                output[i + 0] = i < !occlusion.empty() ? occlusion[i] : static_cast<byte>(0); // occlusion
+                output[i + 1] = i < !roughness.empty() ? roughness[i] : static_cast<byte>(0); // roughness
+                output[i + 2] = i < !metalness.empty() ? metalness[i] : static_cast<byte>(0); // metalness
+                output[i + 3] = i < !height.empty()    ? height[i]    : static_cast<byte>(0); // height
             }
         }
 
@@ -347,44 +347,40 @@ namespace Spartan
 
             // step 2: pack occlusion, roughness, metalness, and height into a single texture
             {
-                //// try to get the texture (in case it's already packed)
-                //const string tex_name           = GetObjectName() + "_packed";
-                //shared_ptr<RHI_Texture> texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
-                //
-                //if (!texture)
-                //{
-                //    // create packed texture
-                //    texture = make_shared<RHI_Texture>
-                //    (
-                //        RHI_Texture_Type::Type2D,
-                //        texture_color->GetWidth(),
-                //        texture_color->GetHeight(),
-                //        texture_color->GetDepth(),
-                //        texture_color->GetMipCount(),
-                //        texture_color->GetFormat(),
-                //        RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu,
-                //        "packed"
-                //    );
-                //    texture->AllocateMip();
-                //    ResourceCache::Cache<RHI_Texture>(texture);
-                //
-                //    // create packed data
-                //    vector<byte> empty;
-                //    texture_packing::pack_occlusion_roughness_metalness_height(
-                //            texture_occlusion ? texture_occlusion->GetMip(0, 0).bytes : empty,
-                //            texture_roughness ? texture_roughness->GetMip(0, 0).bytes : empty,
-                //            texture_metalness ? texture_metalness->GetMip(0, 0).bytes : empty,
-                //            texture_height    ? texture_height->GetMip(0, 0).bytes    : empty,
-                //            texture->GetMip(0, 0).bytes
-                //        );
-                //}
-                //
-                //// set the packed texture
-                //SetTexture(MaterialTextureType::Packed,    texture);
-                //SetTexture(MaterialTextureType::Occlusion, nullptr);
-                //SetTexture(MaterialTextureType::Roughness, nullptr);
-                //SetTexture(MaterialTextureType::Metalness, nullptr);
-                //SetTexture(MaterialTextureType::Height,    nullptr);
+                // try to get the texture (in case it's already packed)
+                const string tex_name = GetObjectName() + "_packed";
+                texture_packed        = ResourceCache::GetByName<RHI_Texture>(tex_name);
+                
+                if (!texture_packed)
+                {
+                    // create packed texture
+                    texture_packed = make_shared<RHI_Texture>
+                    (
+                        RHI_Texture_Type::Type2D,
+                        texture_color->GetWidth(),
+                        texture_color->GetHeight(),
+                        texture_color->GetDepth(),
+                        texture_color->GetMipCount(),
+                        texture_color->GetFormat(),
+                        RHI_Texture_Srv | RHI_Texture_Compress,
+                        "packed"
+                    );
+                    texture_packed->AllocateMip();
+                    ResourceCache::Cache<RHI_Texture>(texture_packed);
+                
+                    // create packed data
+                    vector<byte> empty(texture_packed->GetMip(0, 0).bytes.size());
+                    texture_packing::pack_occlusion_roughness_metalness_height(
+                            texture_occlusion ? texture_occlusion->GetMip(0, 0).bytes : empty,
+                            texture_roughness ? texture_roughness->GetMip(0, 0).bytes : empty,
+                            texture_metalness ? texture_metalness->GetMip(0, 0).bytes : empty,
+                            texture_height    ? texture_height->GetMip(0, 0).bytes    : empty,
+                            texture_packed->GetMip(0, 0).bytes
+                        );
+                }
+                
+                // set the packed texture
+                SetTexture(MaterialTextureType::Packed, texture_packed);
             }
         }
 

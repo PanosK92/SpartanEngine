@@ -53,7 +53,6 @@ namespace Spartan
         string model_name;
         Mesh* mesh               = nullptr;
         bool model_has_animation = false;
-        bool model_is_gltf       = false;
         const aiScene* scene     = nullptr;
 
         Matrix to_matrix(const aiMatrix4x4& transform)
@@ -217,7 +216,6 @@ namespace Spartan
         bool load_material_texture(
             Mesh* mesh,
             const string& file_path,
-            const bool is_gltf,
             shared_ptr<Material> material,
             const aiMaterial* material_assimp,
             const MaterialTextureType texture_type,
@@ -293,20 +291,20 @@ namespace Spartan
             return true;
         }
 
-        shared_ptr<Material> load_material(Mesh* mesh, const string& file_path, const bool is_gltf, const aiMaterial* material_assimp)
+        shared_ptr<Material> load_material(Mesh* mesh, const string& file_path, const aiMaterial* material_assimp)
         {
             SP_ASSERT(material_assimp != nullptr);
             shared_ptr<Material> material = make_shared<Material>();
 
             //                                                                         texture type,                    texture type assimp (pbr),       texture type assimp (legacy/fallback)
-            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTextureType::Color,      aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
-            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTextureType::Roughness,  aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS); // use specular as fallback
-            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTextureType::Metalness,  aiTextureType_METALNESS,         aiTextureType_NONE);
-            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTextureType::Normal,     aiTextureType_NORMAL_CAMERA,     aiTextureType_NORMALS);
-            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTextureType::Occlusion,  aiTextureType_AMBIENT_OCCLUSION, aiTextureType_LIGHTMAP);
-            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTextureType::Emission,   aiTextureType_EMISSION_COLOR,    aiTextureType_EMISSIVE);
-            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTextureType::Height,     aiTextureType_HEIGHT,            aiTextureType_NONE);
-            load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTextureType::AlphaMask,  aiTextureType_OPACITY,           aiTextureType_NONE);
+            load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::Color,      aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
+            load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::Roughness,  aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS); // use specular as fallback
+            load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::Metalness,  aiTextureType_METALNESS,         aiTextureType_NONE);
+            load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::Normal,     aiTextureType_NORMAL_CAMERA,     aiTextureType_NORMALS);
+            load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::Occlusion,  aiTextureType_AMBIENT_OCCLUSION, aiTextureType_LIGHTMAP);
+            load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::Emission,   aiTextureType_EMISSION_COLOR,    aiTextureType_EMISSIVE);
+            load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::Height,     aiTextureType_HEIGHT,            aiTextureType_NONE);
+            load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::AlphaMask,  aiTextureType_OPACITY,           aiTextureType_NONE);
 
             // this will pack textures, compress them, and upload them to the GPU
             material->PrepareForGPU();
@@ -357,9 +355,6 @@ namespace Spartan
             material->SetProperty(MaterialProperty::ColorG, color_diffuse.g);
             material->SetProperty(MaterialProperty::ColorB, color_diffuse.b);
             material->SetProperty(MaterialProperty::ColorA, opacity.r);
-
-            // set roughness and metalness mode
-            material->SetProperty(MaterialProperty::SingleTextureRoughnessMetalness, static_cast<float>(is_gltf));
 
             // two-sided
             int no_culling = opacity.r != 1.0f; // if transparent, default to no culling
@@ -432,7 +427,6 @@ namespace Spartan
         model_file_path = file_path;
         model_name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
         mesh            = mesh_in;
-        model_is_gltf   = FileSystem::GetExtensionFromFilePath(file_path) == ".gltf";
         mesh->SetObjectName(model_name);
 
         // set up the importer
@@ -750,7 +744,7 @@ namespace Spartan
             const aiMaterial* assimp_material = scene->mMaterials[assimp_mesh->mMaterialIndex];
 
             // convert it and add it to the model
-            shared_ptr<Material> material = load_material(mesh, model_file_path, model_is_gltf, assimp_material);
+            shared_ptr<Material> material = load_material(mesh, model_file_path, assimp_material);
 
             mesh->SetMaterial(material, entity_parent.get());
         }
