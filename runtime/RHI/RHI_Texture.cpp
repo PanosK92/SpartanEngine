@@ -526,7 +526,7 @@ namespace Spartan
         SP_ASSERT(m_slices.size() > 0);
         SP_ASSERT(m_slices[0].mips.size() > 0);
 
-        if (!IsCompressedFormat(m_format)) // the bistro world loads compressed textures with mips
+        if (!IsCompressedFormat()) // the bistro world loads compressed textures with mips
         {
             // generate mip chain
             uint32_t mip_count = mips::compute_count(m_width, m_height);
@@ -544,7 +544,7 @@ namespace Spartan
 
             // compress
             bool compress       = m_flags & RHI_Texture_Compress;
-            bool not_compressed = !IsCompressedFormat(m_format);
+            bool not_compressed = !IsCompressedFormat();
             if (compress && not_compressed)
             {
                 compressonator::compress(this);

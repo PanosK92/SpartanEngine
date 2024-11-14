@@ -52,7 +52,6 @@ gbuffer main_ps(gbuffer_vertex vertex)
     float3 normal     = vertex.normal.xyz;
     float roughness   = GetMaterial().roughness;
     float metalness   = GetMaterial().metallness;
-    float occlusion   = 1.0f;
     float emission    = 0.0f;
     float2 velocity   = 0.0f;
     Material material = GetMaterial();
@@ -110,7 +109,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
 
     // occlusion, roughness, metalness, height sample
     float4 packed_sample  = sampling::smart(vertex.position, vertex.normal, vertex.uv, material_texture_index_packed, surface.is_water(), surface.texture_slope_based(), surface.vertex_animate_wind());
-    occlusion             = packed_sample.r;
+    float occlusion       = packed_sample.r;
     roughness            *= packed_sample.g;
     metalness            *= packed_sample.b;
 
