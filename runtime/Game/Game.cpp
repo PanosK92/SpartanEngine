@@ -1109,7 +1109,7 @@ namespace Spartan
                 case DefaultWorld::Objects:    create_objects();      break;
                 case DefaultWorld::ForestCar:  create_forest_car();   break;
                 case DefaultWorld::Doom:       create_doom();         break;
-                case DefaultWorld::Bistro:     create_bistro();       break;
+                case DefaultWorld::Bistro:     SP_LOG_WARNING("Temporarily unavailable"); break;//create_bistro();       break;
                 case DefaultWorld::Minecraft:  create_minecraft();    break;
                 case DefaultWorld::LivingRoom: create_living_room();  break;
                 case DefaultWorld::Sponza:     create_sponza();       break;

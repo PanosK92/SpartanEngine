@@ -323,6 +323,9 @@ namespace Spartan
 
     void Material::PrepareForGpu(const bool is_gltf)
     {
+        if (m_is_gpu_ready)
+            return;
+
         RHI_Texture* texture_color      = GetTexture(MaterialTextureType::Color);
         RHI_Texture* texture_alpha_mask = GetTexture(MaterialTextureType::AlphaMask);
         RHI_Texture* texture_occlusion  = GetTexture(MaterialTextureType::Occlusion);
@@ -432,6 +435,8 @@ namespace Spartan
                 texture->PrepareForGpu();
             }
         }
+
+        m_is_gpu_ready = true;
     }
 
     uint32_t Material::GetUsedSlotCount() const
