@@ -337,7 +337,6 @@ namespace Spartan
                                           texture_height;
 
         // pack textures
-        if (reference_texture)
         {
             // step 1: pack alpha mask into color alpha
             if (texture_alpha_mask)
@@ -369,14 +368,19 @@ namespace Spartan
                     
                     if (!texture_packed)
                     {
+                        uint32_t width     = reference_texture ? reference_texture->GetWidth() : 1;
+                        uint32_t height    = reference_texture ? reference_texture->GetHeight() : 1;
+                        uint32_t depth     = reference_texture ? reference_texture->GetDepth() : 1;
+                        uint32_t mip_count = reference_texture ? reference_texture->GetMipCount() : 1;
+
                         // create packed texture
                         texture_packed = make_shared<RHI_Texture>
                         (
                             RHI_Texture_Type::Type2D,
-                            reference_texture->GetWidth(),
-                            reference_texture->GetHeight(),
-                            reference_texture->GetDepth(),
-                            reference_texture->GetMipCount(),
+                            width,
+                            height,
+                            depth,
+                            mip_count,
                             RHI_Format::R8G8B8A8_Unorm,
                             RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu,
                             "packed"
@@ -384,7 +388,7 @@ namespace Spartan
                         texture_packed->AllocateMip();
 
                         // create some default data to replace missing textures
-                        const size_t texture_size = reference_texture->GetWidth() * reference_texture->GetHeight() * reference_texture->GetChannelCount();
+                        const size_t texture_size = width * height * 4;
                         vector<byte> texture_one(texture_size, static_cast<byte>(255));
                         vector<byte> texture_zero(texture_size, static_cast<byte>(0));
                         vector<byte> texture_half(texture_size, static_cast<byte>(127));
