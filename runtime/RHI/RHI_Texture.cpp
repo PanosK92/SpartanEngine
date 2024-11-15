@@ -542,6 +542,35 @@ namespace Spartan
                 );
             }
 
+            // for thumbnails, find the appropriate mip level close to 128x128 and make it the only mip
+            if (m_flags & RHI_Texture_Thumbnail)
+            {
+                uint32_t target_mip = 0;
+                for (uint32_t i = 0; i < m_slices[0].mips.size(); i++)
+                {
+                    uint32_t mip_width  = max(1u, m_width >> i);
+                    uint32_t mip_height = max(1u, m_height >> i);
+                    
+                    if (mip_width <= 128 && mip_height <= 128)
+                    {
+                        target_mip = i;
+                        break;
+                    }
+                }
+
+                // move the target mip to the top
+                if (target_mip > 0)
+                {
+                    m_slices[0].mips[0] = move(m_slices[0].mips[target_mip]);
+                    m_width             = max(1u, m_width >> target_mip);
+                    m_height            = max(1u, m_height >> target_mip);
+                }
+                
+                // clear all other mips
+                m_slices[0].mips.resize(1);
+                m_mip_count = static_cast<uint32_t>(m_slices[0].mips.size());
+            }
+
             // compress
             bool compress       = m_flags & RHI_Texture_Compress;
             bool not_compressed = !IsCompressedFormat();

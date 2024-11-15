@@ -329,15 +329,15 @@ namespace Spartan
         RHI_Texture* texture_roughness  = GetTexture(MaterialTextureType::Roughness);
         RHI_Texture* texture_metalness  = GetTexture(MaterialTextureType::Metalness);
         RHI_Texture* texture_height     = GetTexture(MaterialTextureType::Height);
-        
-        RHI_Texture* reference_texture = texture_color      ? texture_color      :
-                                         texture_alpha_mask ? texture_alpha_mask :
-                                         texture_occlusion  ? texture_occlusion  :
-                                         texture_roughness  ? texture_roughness  :
-                                         texture_metalness  ? texture_metalness  :
-                                         texture_height;
+        RHI_Texture* reference_texture  = texture_color      ? texture_color      :
+                                          texture_alpha_mask ? texture_alpha_mask :
+                                          texture_occlusion  ? texture_occlusion  :
+                                          texture_roughness  ? texture_roughness  :
+                                          texture_metalness  ? texture_metalness  :
+                                          texture_height;
 
-        // pack texture
+        // pack textures
+        if (reference_texture)
         {
             // step 1: pack alpha mask into color alpha
             if (texture_alpha_mask)
@@ -377,14 +377,11 @@ namespace Spartan
                             reference_texture->GetHeight(),
                             reference_texture->GetDepth(),
                             reference_texture->GetMipCount(),
-                            reference_texture->GetFormat(),
+                            RHI_Format::R8G8B8A8_Unorm,
                             RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu,
                             "packed"
                         );
                         texture_packed->AllocateMip();
-
-                        // todo: fix resource caching so it doesn't rely on filepath but on a hash that it generates
-                        //ResourceCache::Cache<RHI_Texture>(texture_packed);
 
                         // create some default data to replace missing textures
                         const size_t texture_size = reference_texture->GetWidth() * reference_texture->GetHeight() * reference_texture->GetChannelCount();
@@ -405,17 +402,19 @@ namespace Spartan
                     
                     // set the packed texture
                     SetTexture(MaterialTextureType::Packed, texture_packed);
+
+                    // todo: fix resource caching so it doesn't rely on filepath but on a hash that it generates
+                    //ResourceCache::Cache<RHI_Texture>(texture_packed);
                 }
             }
 
-            // step 3: convert all previous textures to thumbnails, this way they can still be accessed and displayed in the editor but with neglectible memory usage
+            // step 3: textues that have been packed into others can now be downsampled to circa 128x128 so they can be displayed in the editor and take little memory
             {
-                if (texture_color      && !texture_color->IsCompressedFormat())      texture_color->SetFlag(RHI_Texture_Thumnail);
-                if (texture_alpha_mask && !texture_alpha_mask->IsCompressedFormat()) texture_alpha_mask->SetFlag(RHI_Texture_Thumnail);
-                if (texture_occlusion  && !texture_occlusion->IsCompressedFormat())  texture_occlusion->SetFlag(RHI_Texture_Thumnail);
-                if (texture_roughness  && !texture_roughness->IsCompressedFormat())  texture_roughness->SetFlag(RHI_Texture_Thumnail);
-                if (texture_metalness  && !texture_metalness->IsCompressedFormat())  texture_metalness->SetFlag(RHI_Texture_Thumnail);
-                if (texture_height     && !texture_height->IsCompressedFormat())     texture_height->SetFlag(RHI_Texture_Thumnail);
+                if (texture_alpha_mask && !texture_alpha_mask->IsCompressedFormat()) texture_alpha_mask->SetFlag(RHI_Texture_Thumbnail);
+                if (texture_occlusion  && !texture_occlusion->IsCompressedFormat())  texture_occlusion->SetFlag(RHI_Texture_Thumbnail);
+                if (texture_roughness  && !texture_roughness->IsCompressedFormat())  texture_roughness->SetFlag(RHI_Texture_Thumbnail);
+                if (texture_metalness  && !texture_metalness->IsCompressedFormat())  texture_metalness->SetFlag(RHI_Texture_Thumbnail);
+                if (texture_height     && !texture_height->IsCompressedFormat())     texture_height->SetFlag(RHI_Texture_Thumbnail);
             }
         }
 
