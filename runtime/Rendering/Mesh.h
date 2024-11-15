@@ -37,7 +37,8 @@ namespace Spartan
         ImportLights              = 1 << 1,
         ImportCombineMeshes       = 1 << 2,
         PostProcessNormalizeScale = 1 << 3,
-        PostProcessOptimize       = 1 << 4
+        PostProcessOptimize       = 1 << 4,
+        DontOptimizeMaterials     = 1 << 5,
     };
 
     enum class MeshType

@@ -37,7 +37,7 @@ namespace Spartan
     {
     public:
         static void Initialize();
-        static bool Load(Mesh* mesh, const std::string& file_path);
+        static bool Load(Mesh* mesh, const std::string& file_path, const bool optimize_materials);
 
     private:
         static void ParseNode(const aiNode* node, std::shared_ptr<Entity> parent_entity = nullptr);

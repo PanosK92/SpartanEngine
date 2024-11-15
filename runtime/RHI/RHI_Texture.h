@@ -41,21 +41,21 @@ namespace Spartan
 
     enum RHI_Texture_Flags : uint32_t
     {
-        RHI_Texture_Srv               = 1U << 0,
-        RHI_Texture_Uav               = 1U << 1,
-        RHI_Texture_Rtv               = 1U << 2,
-        RHI_Texture_Vrs               = 1U << 3,
-        RHI_Texture_ClearBlit         = 1U << 4,
-        RHI_Texture_PerMipViews       = 1U << 5,
-        RHI_Texture_Greyscale         = 1U << 6,
-        RHI_Texture_Transparent       = 1U << 7,
-        RHI_Texture_Srgb              = 1U << 8,
-        RHI_Texture_Mappable          = 1U << 9,
-        RHI_Texture_KeepData          = 1U << 10,
-        RHI_Texture_Compress          = 1U << 11,
-        RHI_Texture_ExternalMemory    = 1U << 12,
-        RHI_Texture_DontPrepareForGpu = 1U << 13,
-        RHI_Texture_Thumbnail          = 1U << 14
+        RHI_Texture_Srv            = 1U << 0,
+        RHI_Texture_Uav            = 1U << 1,
+        RHI_Texture_Rtv            = 1U << 2,
+        RHI_Texture_Vrs            = 1U << 3,
+        RHI_Texture_ClearBlit      = 1U << 4,
+        RHI_Texture_PerMipViews    = 1U << 5,
+        RHI_Texture_Greyscale      = 1U << 6,
+        RHI_Texture_Transparent    = 1U << 7,
+        RHI_Texture_Srgb           = 1U << 8,
+        RHI_Texture_Mappable       = 1U << 9,
+        RHI_Texture_KeepData       = 1U << 10,
+        RHI_Texture_Compress       = 1U << 11,
+        RHI_Texture_ExternalMemory = 1U << 12,
+        RHI_Texture_DontOptimize   = 1U << 13,
+        RHI_Texture_Thumbnail      = 1U << 14
     };
 
     struct RHI_Texture_Mip
@@ -117,7 +117,7 @@ namespace Spartan
 
         // misc
         void ClearBytes();
-        void PrepareForGpu();
+        void Optimize();
         void SaveAsImage(const std::string& file_path);
         static size_t CalculateMipSize(uint32_t width, uint32_t height, uint32_t depth, RHI_Format format, uint32_t bits_per_channel, uint32_t channel_count);
 
