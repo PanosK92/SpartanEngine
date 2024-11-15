@@ -53,6 +53,7 @@ namespace Spartan
         string model_name;
         Mesh* mesh               = nullptr;
         bool model_has_animation = false;
+        bool optimize_materials  = false;
         const aiScene* scene     = nullptr;
 
         Matrix to_matrix(const aiMatrix4x4& transform)
@@ -255,7 +256,7 @@ namespace Spartan
                 else // if we didn't get a texture, it's not cached, hence we have to load it and cache it now
                 {
                     // load texture
-                    texture = ResourceCache::Load<RHI_Texture>(deduced_path, RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu);
+                    texture = ResourceCache::Load<RHI_Texture>(deduced_path, RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontOptimize);
 
                     // set the texture to the provided material
                     material->SetTexture(texture_type, texture);
@@ -307,8 +308,11 @@ namespace Spartan
             load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::AlphaMask,  aiTextureType_OPACITY,           aiTextureType_NONE);
 
             // this will pack textures, compress them, and upload them to the GPU
-            bool is_gltf = FileSystem::GetExtensionFromFilePath(file_path) == ".gltf";
-            material->PrepareForGpu(is_gltf);
+            if (optimize_materials)
+            {
+                bool is_gltf = FileSystem::GetExtensionFromFilePath(file_path) == ".gltf";
+                material->Optimize(is_gltf);
+            }
 
             // name
             aiString name_assimp;
@@ -414,7 +418,7 @@ namespace Spartan
         Settings::RegisterThirdPartyLib("Assimp", to_string(major) + "." + to_string(minor) + "." + to_string(rev), "https://github.com/assimp/assimp");
     }
 
-    bool ModelImporter::Load(Mesh* mesh_in, const string& file_path)
+    bool ModelImporter::Load(Mesh* mesh_in, const string& file_path, const bool optimize_materials_)
     {
         SP_ASSERT_MSG(mesh_in != nullptr, "Invalid parameter");
 
@@ -425,9 +429,10 @@ namespace Spartan
         }
 
         // model params
-        model_file_path = file_path;
-        model_name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-        mesh            = mesh_in;
+        optimize_materials = optimize_materials_;
+        model_file_path    = file_path;
+        model_name         = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+        mesh               = mesh_in;
         mesh->SetObjectName(model_name);
 
         // set up the importer

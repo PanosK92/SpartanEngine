@@ -218,7 +218,7 @@ namespace Spartan
         m_channel_count    = rhi_to_format_channel_count(format);
         m_bits_per_channel = rhi_format_to_bits_per_channel(m_format);
 
-        if (!(flags & RHI_Texture_DontPrepareForGpu))
+        if (!(flags & RHI_Texture_DontOptimize))
         { 
             RHI_Texture::RHI_CreateResource();
             m_is_gpu_ready = true;
@@ -395,9 +395,9 @@ namespace Spartan
             SetResourceFilePath(file_path);
         }
 
-        if (!(m_flags & RHI_Texture_DontPrepareForGpu))
+        if (!(m_flags & RHI_Texture_DontOptimize))
         {
-            PrepareForGpu();
+            Optimize();
         }
 
         ComputeMemoryUsage();
@@ -521,7 +521,7 @@ namespace Spartan
          m_slices.shrink_to_fit();
     }
 
-    void RHI_Texture::PrepareForGpu()
+    void RHI_Texture::Optimize()
     {
         SP_ASSERT(m_slices.size() > 0);
         SP_ASSERT(m_slices[0].mips.size() > 0);

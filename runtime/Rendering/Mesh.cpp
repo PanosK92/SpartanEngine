@@ -208,7 +208,8 @@ namespace Spartan
         {
             SetResourceFilePath(file_path);
 
-            if (!ModelImporter::Load(this, file_path))
+            bool optimize_materials = !(m_flags & static_cast<uint32_t>(MeshFlags::DontOptimizeMaterials));
+            if (!ModelImporter::Load(this, file_path, optimize_materials))
                 return false;
         }
 

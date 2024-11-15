@@ -321,7 +321,7 @@ namespace Spartan
         return m_textures[(static_cast<uint32_t>(texture_type) * slots_per_texture_type) + slot];
     }
 
-    void Material::PrepareForGpu(const bool is_gltf)
+    void Material::Optimize(const bool is_gltf)
     {
         if (m_is_gpu_ready)
             return;
@@ -385,7 +385,7 @@ namespace Spartan
                             depth,
                             mip_count,
                             RHI_Format::R8G8B8A8_Unorm,
-                            RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu,
+                            RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontOptimize,
                             "packed"
                         );
                         texture_packed->AllocateMip();
@@ -432,7 +432,7 @@ namespace Spartan
             if (texture && !texture->IsGpuReady())
             {
                 // todo: this could be given to the thread pool
-                texture->PrepareForGpu();
+                texture->Optimize();
             }
         }
 
