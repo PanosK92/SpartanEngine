@@ -348,12 +348,13 @@ namespace Spartan
 
                 // create material
                 shared_ptr<Material> material = make_shared<Material>();
-                material->SetTexture(MaterialTextureType::Color,     "project\\materials\\crate_space\\albedo.png");
-                material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\crate_space\\normal.png");
-                material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\crate_space\\ao.png");
-                material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\crate_space\\roughness.png");
-                material->SetTexture(MaterialTextureType::Metalness, "project\\materials\\crate_space\\metallic.png");
-                material->SetTexture(MaterialTextureType::Height,    "project\\materials\\crate_space\\height.png");
+                material->SetTexture(MaterialTextureType::Color,     "project\\materials\\crate_space\\albedo.png",    0, RHI_Texture_DontPrepareForGpu);
+                material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\crate_space\\normal.png",    0, RHI_Texture_DontPrepareForGpu);
+                material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\crate_space\\ao.png",        0, RHI_Texture_DontPrepareForGpu);
+                material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\crate_space\\roughness.png", 0, RHI_Texture_DontPrepareForGpu);
+                material->SetTexture(MaterialTextureType::Metalness, "project\\materials\\crate_space\\metallic.png",  0, RHI_Texture_DontPrepareForGpu);
+                material->SetTexture(MaterialTextureType::Height,    "project\\materials\\crate_space\\height.png",    0, RHI_Texture_DontPrepareForGpu);
+                material->PrepareForGpu(false);
 
                 // create a file path for this material (required for the material to be able to be cached by the resource cache)
                 const string file_path = "project\\materials\\crate_space" + string(EXTENSION_MATERIAL);
