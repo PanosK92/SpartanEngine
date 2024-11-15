@@ -263,9 +263,9 @@ namespace Spartan
         SetTexture(texture_type, texture.get(), slot);
     }
 
-    void Material::SetTexture(const MaterialTextureType texture_type, const string& file_path, const uint8_t slot)
+    void Material::SetTexture(const MaterialTextureType texture_type, const string& file_path, const uint8_t slot, const uint32_t flags)
     {
-        SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv | RHI_Texture_Compress), slot);
+        SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv | RHI_Texture_Compress | flags), slot);
     }
  
     bool Material::HasTextureOfType(const string& path) const
@@ -390,14 +390,15 @@ namespace Spartan
                         vector<byte> texture_half(texture_size, static_cast<byte>(127));
 
                         // create packed data and fallback to default data when needed
-                        texture_packing::pack_occlusion_roughness_metalness_height(
-                                texture_occlusion ? texture_occlusion->GetMip(0, 0).bytes : texture_one,
-                                texture_roughness ? texture_roughness->GetMip(0, 0).bytes : texture_one,
-                                texture_metalness ? texture_metalness->GetMip(0, 0).bytes : texture_zero,
-                                texture_height    ? texture_height->GetMip(0, 0).bytes    : texture_half,
-                                is_gltf,
-                                texture_packed->GetMip(0, 0).bytes
-                            );
+                        texture_packing::pack_occlusion_roughness_metalness_height
+                        (
+                            texture_occlusion ? texture_occlusion->GetMip(0, 0).bytes : texture_one,
+                            texture_roughness ? texture_roughness->GetMip(0, 0).bytes : texture_one,
+                            texture_metalness ? texture_metalness->GetMip(0, 0).bytes : texture_zero,
+                            texture_height    ? texture_height->GetMip(0, 0).bytes    : texture_half,
+                            is_gltf,
+                            texture_packed->GetMip(0, 0).bytes
+                        );
                     }
                     
                     // set the packed texture
