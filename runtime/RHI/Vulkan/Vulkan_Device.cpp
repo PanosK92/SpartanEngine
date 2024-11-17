@@ -1451,15 +1451,27 @@ namespace Spartan
             if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)    type = RHI_PhysicalDevice_Type::Virtual;
             if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)            type = RHI_PhysicalDevice_Type::Cpu;
 
+            // Find the local device memory heap size
+            uint64_t vram_size_bytes = 0;
+            for (uint32_t i = 0; i < device_memory_properties.memoryHeapCount; i++)
+            {
+                if (device_memory_properties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+                {
+                    vram_size_bytes = device_memory_properties.memoryHeaps[i].size;
+                    break;
+                }
+            }
+            SP_ASSERT(vram_size_bytes >0);
+
             PhysicalDeviceRegister(PhysicalDevice
             (
-                device_properties.apiVersion,                                        // api version
-                device_properties.driverVersion,                                     // driver version
-                device_properties.vendorID,                                          // vendor id
-                type,                                                                // type
-                &device_properties.deviceName[0],                                    // name
-                static_cast<uint64_t>(device_memory_properties.memoryHeaps[0].size), // memory
-                static_cast<void*>(device_physical)                                  // data
+                device_properties.apiVersion,          // api version
+                device_properties.driverVersion,       // driver version
+                device_properties.vendorID,            // vendor id
+                type,                                  // type
+                &device_properties.deviceName[0],      // name
+                vram_size_bytes,                       // memory
+                static_cast<void*>(device_physical)    // data
             ));
         }
     }
