@@ -297,7 +297,7 @@ namespace Spartan
             SP_ASSERT(material_assimp != nullptr);
             shared_ptr<Material> material = make_shared<Material>();
 
-            //                                                                         texture type,                    texture type assimp (pbr),       texture type assimp (legacy/fallback)
+            //                                                                         texture type,           texture type assimp (pbr),       texture type assimp (legacy/fallback)
             load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::Color,      aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
             load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::Roughness,  aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS); // use specular as fallback
             load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::Metalness,  aiTextureType_METALNESS,         aiTextureType_NONE);

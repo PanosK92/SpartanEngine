@@ -87,8 +87,8 @@ gbuffer main_ps(gbuffer_vertex vertex)
     if (surface.has_texture_emissive())
     {
         float3 emissive_color  = GET_TEXTURE(material_texture_index_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv).rgb;
-        emission               = luminance(emissive_color);
-        albedo.rgb            += emissive_color;
+        albedo.rgb            += emissive_color; // overwrite the albedo color
+        emission               = luminance(emissive_color); // use the luminance later to boost it (no need to carry a float3 around)
     }
     
     // normal mapping

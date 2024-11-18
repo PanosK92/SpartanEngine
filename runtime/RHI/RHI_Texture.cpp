@@ -397,7 +397,7 @@ namespace Spartan
 
         if (!(m_flags & RHI_Texture_DontOptimize))
         {
-            Optimize();
+            PrepareForGpu();
         }
 
         ComputeMemoryUsage();
@@ -521,7 +521,7 @@ namespace Spartan
          m_slices.shrink_to_fit();
     }
 
-    void RHI_Texture::Optimize()
+    void RHI_Texture::PrepareForGpu()
     {
         SP_ASSERT(m_slices.size() > 0);
         SP_ASSERT(m_slices[0].mips.size() > 0);
