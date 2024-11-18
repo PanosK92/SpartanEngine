@@ -104,6 +104,7 @@ namespace Spartan
 
     void RHI_FidelityFX::BrixelizerGI_Update(
         RHI_CommandList* cmd_list,
+        const float resolution_scale,
         Cb_Frame* cb_frame,
         vector<shared_ptr<Entity>>& entities,
         int64_t index_start,
