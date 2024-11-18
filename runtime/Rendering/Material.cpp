@@ -344,11 +344,7 @@ namespace Spartan
                 }
                 else
                 {
-                    if (texture_color->IsCompressedFormat() || texture_alpha_mask->IsCompressedFormat())
-                    {
-                        SP_LOG_ERROR("Alpha mask won't be merged into albedo because at least one texture is compressed.", m_object_name.c_str());
-                    }
-                    else
+                    if (!texture_color->IsCompressedFormat() && !texture_alpha_mask->IsCompressedFormat())
                     {
                         texture_packing::merge_alpha_mask_into_color_alpha(texture_color->GetMip(0, 0).bytes, texture_alpha_mask->GetMip(0, 0).bytes);
                     }
