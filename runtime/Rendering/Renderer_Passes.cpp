@@ -1192,6 +1192,7 @@ namespace Spartan
 
                 RHI_FidelityFX::BrixelizerGI_Update(
                     cmd_list,
+                    GetOption<float>(Renderer_Option::ResolutionScale),
                     &m_cb_frame_cpu,
                     entities,
                     index_start,

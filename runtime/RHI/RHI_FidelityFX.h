@@ -80,6 +80,7 @@ namespace Spartan
         // brixelizer gi
         static void BrixelizerGI_Update(
             RHI_CommandList* cmd_list,
+            const float resolution_scale,
             Cb_Frame* cb_frame,
             std::vector<std::shared_ptr<Entity>>& entities,
             int64_t index_start,
