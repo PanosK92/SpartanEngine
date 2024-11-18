@@ -332,99 +332,112 @@ namespace Spartan
         RHI_Texture* texture_roughness  = GetTexture(MaterialTextureType::Roughness);
         RHI_Texture* texture_metalness  = GetTexture(MaterialTextureType::Metalness);
         RHI_Texture* texture_height     = GetTexture(MaterialTextureType::Height);
-        RHI_Texture* reference_texture  = texture_color      ? texture_color      :
+        RHI_Texture* texture_reference  = texture_color      ? texture_color      :
                                           texture_alpha_mask ? texture_alpha_mask :
                                           texture_occlusion  ? texture_occlusion  :
                                           texture_roughness  ? texture_roughness  :
                                           texture_metalness  ? texture_metalness  :
                                           texture_height;
 
+        // generate unique name by hashing texture IDs
+        size_t hash_value = 0;
+        if (texture_color)      hash_value ^= texture_color->GetObjectId();
+        if (texture_alpha_mask) hash_value ^= texture_alpha_mask->GetObjectId();
+        if (texture_occlusion)  hash_value ^= texture_occlusion->GetObjectId();
+        if (texture_roughness)  hash_value ^= texture_roughness->GetObjectId();
+        if (texture_metalness)  hash_value ^= texture_metalness->GetObjectId();
+        if (texture_height)     hash_value ^= texture_height->GetObjectId();
+
+        // fetch the packed texture that corresponds to the hash (in case it was already packed)
+        const string tex_name                  = "texture_packed_" + to_string(hash_value);
+        shared_ptr<RHI_Texture> texture_packed = ResourceCache::GetByName<RHI_Texture>(tex_name);
+
         // pack textures
         {
-            // step 1: pack alpha mask into color alpha
-            if (texture_alpha_mask)
+            bool textures_are_compressed = false;
+            for (RHI_Texture* texture : m_textures)
             {
-                if (!texture_color)
+                if (texture && texture->IsCompressedFormat())
                 {
-                    SetTexture(MaterialTextureType::Color, texture_alpha_mask);
-                }
-                else
-                {
-                    texture_packing::merge_alpha_mask_into_color_alpha(texture_color->GetMip(0, 0).bytes, texture_alpha_mask->GetMip(0, 0).bytes);
+                    textures_are_compressed = true;
+                    break;
                 }
             }
 
-            // step 2: pack occlusion, roughness, metalness, and height into a single texture
+            if (!textures_are_compressed)
             {
-                bool pack = true;
-                if (texture_roughness)
+                // step 1: pack alpha mask into color alpha
+                if (texture_alpha_mask)
                 {
-                    // some worlds, like the bistro, have pre-compressed DDS textures
-                    pack = !texture_roughness->IsCompressedFormat();
-                }
-
-                if (pack)
-                {
-                    // try to get the texture (in case it's already packed)
-                    const string tex_name = GetObjectName() + "_packed";
-                    texture_packed        = ResourceCache::GetByName<RHI_Texture>(tex_name);
-                    
-                    if (!texture_packed)
+                    if (!texture_color)
                     {
-                        uint32_t width     = reference_texture ? reference_texture->GetWidth() : 1;
-                        uint32_t height    = reference_texture ? reference_texture->GetHeight() : 1;
-                        uint32_t depth     = reference_texture ? reference_texture->GetDepth() : 1;
-                        uint32_t mip_count = reference_texture ? reference_texture->GetMipCount() : 1;
-
-                        // create packed texture
-                        texture_packed = make_shared<RHI_Texture>
-                        (
-                            RHI_Texture_Type::Type2D,
-                            width,
-                            height,
-                            depth,
-                            mip_count,
-                            RHI_Format::R8G8B8A8_Unorm,
-                            RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontOptimize,
-                            "packed"
-                        );
-                        texture_packed->AllocateMip();
-
-                        // create some default data to replace missing textures
-                        const size_t texture_size = width * height * 4;
-                        vector<byte> texture_one(texture_size, static_cast<byte>(255));
-                        vector<byte> texture_zero(texture_size, static_cast<byte>(0));
-                        vector<byte> texture_half(texture_size, static_cast<byte>(127));
-
-                        // create packed data and fallback to default data when needed
-                        texture_packing::pack_occlusion_roughness_metalness_height
-                        (
-                            texture_occlusion ? texture_occlusion->GetMip(0, 0).bytes : texture_one,
-                            texture_roughness ? texture_roughness->GetMip(0, 0).bytes : texture_one,
-                            texture_metalness ? texture_metalness->GetMip(0, 0).bytes : texture_zero,
-                            texture_height    ? texture_height->GetMip(0, 0).bytes    : texture_half,
-                            is_gltf,
-                            texture_packed->GetMip(0, 0).bytes
-                        );
+                        SetTexture(MaterialTextureType::Color, texture_alpha_mask);
                     }
-                    
-                    // set the packed texture
-                    SetTexture(MaterialTextureType::Packed, texture_packed);
+                    else
+                    {
+                        texture_packing::merge_alpha_mask_into_color_alpha(texture_color->GetMip(0, 0).bytes, texture_alpha_mask->GetMip(0, 0).bytes);
+                    }
+                }
 
-                    // todo: fix resource caching so it doesn't rely on filepath but on a hash that it generates
-                    //ResourceCache::Cache<RHI_Texture>(texture_packed);
+                // step 2: pack occlusion, roughness, metalness, and height into a single texture
+                if (!texture_packed)
+                {
+                    uint32_t width     = texture_reference ? texture_reference->GetWidth()    : 1;
+                    uint32_t height    = texture_reference ? texture_reference->GetHeight()   : 1;
+                    uint32_t depth     = texture_reference ? texture_reference->GetDepth()    : 1;
+                    uint32_t mip_count = texture_reference ? texture_reference->GetMipCount() : 1;
+                    
+                    // create packed texture
+                    texture_packed = make_shared<RHI_Texture>
+                    (
+                        RHI_Texture_Type::Type2D,
+                        width,
+                        height,
+                        depth,
+                        mip_count,
+                        RHI_Format::R8G8B8A8_Unorm,
+                        RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontOptimize,
+                        tex_name.c_str()
+                    );
+                    texture_packed->SetResourceFilePath(tex_name + ".png"); // that's a hack, need to fix the ResourceCache to rely on a hash, not names and paths
+                    texture_packed->AllocateMip();
+                    
+                    // create some default data to replace missing textures
+                    const size_t texture_size = width * height * 4;
+                    vector<byte> texture_one(texture_size, static_cast<byte>(255));
+                    vector<byte> texture_zero(texture_size, static_cast<byte>(0));
+                    vector<byte> texture_half(texture_size, static_cast<byte>(127));
+                    
+                    // create packed data and fallback to default data when needed
+                    texture_packing::pack_occlusion_roughness_metalness_height
+                    (
+                        texture_occlusion ? texture_occlusion->GetMip(0, 0).bytes : texture_one,
+                        texture_roughness ? texture_roughness->GetMip(0, 0).bytes : texture_one,
+                        texture_metalness ? texture_metalness->GetMip(0, 0).bytes : texture_zero,
+                        texture_height    ? texture_height->GetMip(0, 0).bytes    : texture_half,
+                        is_gltf,
+                        texture_packed->GetMip(0, 0).bytes
+                    );
+                    
+                    texture_packed = ResourceCache::Cache<RHI_Texture>(texture_packed);
+                }
+
+                // step 3: textues that have been packed into others can now be downsampled to circa 128x128 so they can be displayed in the editor and take little memory
+                {
+                    if (texture_alpha_mask && !texture_alpha_mask->IsCompressedFormat()) texture_alpha_mask->SetFlag(RHI_Texture_Thumbnail);
+                    if (texture_occlusion  && !texture_occlusion->IsCompressedFormat())  texture_occlusion->SetFlag(RHI_Texture_Thumbnail);
+                    if (texture_roughness  && !texture_roughness->IsCompressedFormat())  texture_roughness->SetFlag(RHI_Texture_Thumbnail);
+                    if (texture_metalness  && !texture_metalness->IsCompressedFormat())  texture_metalness->SetFlag(RHI_Texture_Thumbnail);
+                    if (texture_height     && !texture_height->IsCompressedFormat())     texture_height->SetFlag(RHI_Texture_Thumbnail);
                 }
             }
-
-            // step 3: textues that have been packed into others can now be downsampled to circa 128x128 so they can be displayed in the editor and take little memory
+            else if (!texture_packed)
             {
-                if (texture_alpha_mask && !texture_alpha_mask->IsCompressedFormat()) texture_alpha_mask->SetFlag(RHI_Texture_Thumbnail);
-                if (texture_occlusion  && !texture_occlusion->IsCompressedFormat())  texture_occlusion->SetFlag(RHI_Texture_Thumbnail);
-                if (texture_roughness  && !texture_roughness->IsCompressedFormat())  texture_roughness->SetFlag(RHI_Texture_Thumbnail);
-                if (texture_metalness  && !texture_metalness->IsCompressedFormat())  texture_metalness->SetFlag(RHI_Texture_Thumbnail);
-                if (texture_height     && !texture_height->IsCompressedFormat())     texture_height->SetFlag(RHI_Texture_Thumbnail);
+                SP_LOG_ERROR("Material \"%s\" won't be optimized because at least one texture is compressed.", m_object_name.c_str());
             }
         }
+
+        SetTexture(MaterialTextureType::Packed, texture_packed);
 
         // prepare all textures
         for (RHI_Texture* texture : m_textures)
@@ -432,7 +445,7 @@ namespace Spartan
             if (texture && !texture->IsGpuReady())
             {
                 // todo: this could be given to the thread pool
-                texture->Optimize();
+                texture->PrepareForGpu();
             }
         }
 

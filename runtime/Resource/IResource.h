@@ -52,18 +52,7 @@ namespace Spartan
 
         void SetResourceFilePath(const std::string& path)
         {
-            const bool is_native_file = FileSystem::IsEngineMaterialFile(path) || FileSystem::IsEngineModelFile(path);
-
-            // if this is an native engine file, don't do a file check as no actual foreign material exists (it was created on the fly)
-            if (!is_native_file)
-            {
-                if (!FileSystem::IsFile(path))
-                {
-                    SP_LOG_ERROR("\"%s\" is not a valid file path", path.c_str());
-                    return;
-                }
-            }
-
+            const bool is_native_file            = FileSystem::IsEngineMaterialFile(path) || FileSystem::IsEngineModelFile(path);
             const std::string file_path_relative = FileSystem::GetRelativePath(path);
 
             // foreign file

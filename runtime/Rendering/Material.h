@@ -137,6 +137,5 @@ namespace Spartan
         std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * slots_per_texture_type> m_textures;
         std::array<float, static_cast<uint32_t>(MaterialProperty::Max)> m_properties;
         uint32_t m_index = 0;
-        std::shared_ptr<RHI_Texture> texture_packed = nullptr; // temporary
     };
 }
