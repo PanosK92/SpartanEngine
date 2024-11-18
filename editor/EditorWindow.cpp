@@ -428,7 +428,7 @@ namespace
             "3. Minecraft",
             "4. Living Room",
             "5. Subway",
-            "6. Sponza HQ (demanding)",
+            "6. Sponza 4K (demanding)",
             "7. Bistro Exterior & Interior (demanding) - WIP",
             "8. Forest Car (very demanding)",
         };
