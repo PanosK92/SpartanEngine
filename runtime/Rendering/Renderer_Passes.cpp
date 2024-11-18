@@ -1140,10 +1140,10 @@ namespace Spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::ssao, GetRenderTarget(Renderer_RenderTarget::ssao));
 
             // write to these
-            cmd_list->SetTexture(Renderer_BindingsUav::tex,         tex_diffuse);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex2,        tex_specular);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex3,        tex_shadow);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex4,        tex_volumetric);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_diffuse);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_specular);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex3, tex_shadow);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex4, tex_volumetric);
 
             if (shared_ptr<Light> light = entities[light_index]->GetComponent<Light>())
             {
@@ -1161,7 +1161,7 @@ namespace Spartan
 
                 // push pass constants
                 m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
-                m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), 0.0f, 0.0f);
+                m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light_index), 0.0f, 0.0f);
                 m_pcb_pass_cpu.set_f3_value(
                     GetOption<float>(Renderer_Option::Fog),
                     GetOption<float>(Renderer_Option::ShadowResolution),
