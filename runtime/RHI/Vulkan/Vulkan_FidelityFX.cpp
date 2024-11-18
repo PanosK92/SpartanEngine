@@ -1079,12 +1079,12 @@ namespace Spartan
             // configure
             fsr3::description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth());
             fsr3::description_dispatch.motionVectorScale.y    = -static_cast<float>(tex_velocity->GetHeight());
-            fsr3::description_dispatch.enableSharpening       = sharpness != 0.0f;         // sdk issue: redundant paramter
-            fsr3::description_dispatch.sharpness              = sharpness;                 
+            fsr3::description_dispatch.enableSharpening       = sharpness != 0.0f;         // sdk issue: redundant parameter
+            fsr3::description_dispatch.sharpness              = sharpness;
             fsr3::description_dispatch.frameTimeDelta         = delta_time_sec * 1000.0f;  // seconds to milliseconds
             fsr3::description_dispatch.preExposure            = exposure;                  // the exposure value if not using FFX_FSR3_ENABLE_AUTO_EXPOSURE
-            fsr3::description_dispatch.renderSize.width       = tex_velocity->GetWidth();  
-            fsr3::description_dispatch.renderSize.height      = tex_velocity->GetHeight(); 
+            fsr3::description_dispatch.renderSize.width       = static_cast<uint32_t>(tex_velocity->GetWidth() * resolution_scale);
+            fsr3::description_dispatch.renderSize.height      = static_cast<uint32_t>(tex_velocity->GetHeight() * resolution_scale);
             fsr3::description_dispatch.cameraNear             = camera->GetFarPlane();     // far as near because we are using reverse-z
             fsr3::description_dispatch.cameraFar              = camera->GetNearPlane();    // near as far because we are using reverse-z
             fsr3::description_dispatch.cameraFovAngleVertical = camera->GetFovVerticalRad();
@@ -1169,6 +1169,7 @@ namespace Spartan
 
     void RHI_FidelityFX::BrixelizerGI_Update(
         RHI_CommandList* cmd_list,
+        const float resolution_scale,
         Cb_Frame* cb_frame,
         vector<shared_ptr<Entity>>& entities,
         int64_t index_start,
@@ -1324,8 +1325,8 @@ namespace Spartan
             brixelizer_gi::description_update.debugVisualizationDesc  = &brixelizer_gi::debug_description;
             brixelizer_gi::debug_description.commandList              = to_ffx_cmd_list(cmd_list);
             brixelizer_gi::debug_description.output                   = to_ffx_resource(tex_debug, L"brixelizer_gi_tex_debug");
-            brixelizer_gi::debug_description.renderWidth              = tex_debug->GetWidth();
-            brixelizer_gi::debug_description.renderHeight             = tex_debug->GetHeight();
+            brixelizer_gi::debug_description.renderWidth              = static_cast<uint32_t>(tex_debug->GetWidth() * resolution_scale);
+            brixelizer_gi::debug_description.renderHeight             = static_cast<uint32_t>(tex_debug->GetHeight() * resolution_scale);
             brixelizer_gi::debug_description.debugState               = brixelizer_gi::to_ffx_debug_mode(brixelizer_gi::debug_mode);
             brixelizer_gi::debug_description.startCascadeIndex        = brixelizer_gi::cascade_index_start;
             brixelizer_gi::debug_description.endCascadeIndex          = brixelizer_gi::cascade_index_end;
