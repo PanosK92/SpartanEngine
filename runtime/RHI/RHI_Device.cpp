@@ -53,13 +53,13 @@ namespace Spartan
 
     void RHI_Device::PhysicalDeviceRegister(const PhysicalDevice& physical_device)
     {
-        physical_devices.emplace_back(physical_device);
-
-        // sort devices by type, discrete devices come first.
-        sort(physical_devices.begin(), physical_devices.end(), [](const PhysicalDevice& adapter1, const PhysicalDevice& adapter2)
+        // discrete devices come first.
+        vector<PhysicalDevice>::const_iterator iter = find_if(physical_devices.begin(), physical_devices.end(), [](const PhysicalDevice& device)
         {
-            return adapter1.GetType() == RHI_PhysicalDevice_Type::Discrete;
+            return device.GetType() != RHI_PhysicalDevice_Type::Discrete;
         });
+
+        physical_devices.emplace(iter, physical_device);
 
         // sort devices by memory, in an ascending order. The type order will be maintained.
         sort(physical_devices.begin(), physical_devices.end(), [](const PhysicalDevice& adapter1, const PhysicalDevice& adapter2)
