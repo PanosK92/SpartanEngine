@@ -429,7 +429,7 @@ namespace
             "4. Living Room",
             "5. Subway",
             "6. Sponza 4K (demanding)",
-            "7. Bistro Exterior & Interior (demanding) - WIP",
+            "7. Bistro Exterior & Interior (demanding)",
             "8. Forest Car (very demanding)",
         };
         int world_index = 0;
