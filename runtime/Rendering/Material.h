@@ -46,7 +46,7 @@ namespace Spartan
 
     enum class MaterialProperty
     {
-        CanBeEdited,          // indicates if the material properties can be modified
+        Optimized,            // indicates if the material has been optimized (textures packed and compressed)
         WorldSpaceHeight,     // height of the mesh to which the material is applied
         Clearcoat,            // additional specular layer on top of the base specular
         Clearcoat_Roughness,  // roughness level of the clearcoat layer
@@ -106,7 +106,6 @@ namespace Spartan
         std::string GetTexturePathByType(const MaterialTextureType texture_type, const uint8_t slot = 0);
         std::vector<std::string> GetTexturePaths();
         RHI_Texture* GetTexture(const MaterialTextureType texture_type, const uint8_t slot = 0);
-
 
         // index of refraction
         static float EnumToIor(const MaterialIor ior);

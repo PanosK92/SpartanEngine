@@ -690,9 +690,19 @@ void Properties::ShowMaterial(Material* material) const
         // name
         ImGui::NewLine();
         ImGui::Text("Name");
-        ImGui::SameLine(column_pos_x); ImGui::Text(material->GetObjectName().c_str());
+        ImGui::SameLine(column_pos_x);
+        ImGui::Text(material->GetObjectName().c_str());
 
-        if (material->GetProperty(MaterialProperty::CanBeEdited) == 1.0f)
+        // optimized
+        bool optimized = material->GetProperty(MaterialProperty::Optimized) != 0.0f;
+        {
+            ImGui::Text("Optimized");
+            ImGui::SameLine(column_pos_x);
+            ImGui::Text(optimized ? "Yes" : "No");
+            ImGuiSp::tooltip("Optimized materials can't be modified");
+        }
+
+        ImGui::BeginDisabled(optimized);
         {
             // texture slots
             {
@@ -843,10 +853,7 @@ void Properties::ShowMaterial(Material* material) const
                 ImGui::SameLine(); ImGui::InputFloat("##matOffsetY", &offset.y, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
             }
         }
-        else
-        {
-            ImGui::Text("Can not be edited");
-        }
+        ImGui::EndDisabled();
 
         //= MAP ===============================================================================
         material->SetProperty(MaterialProperty::TextureTilingX, tiling.x);

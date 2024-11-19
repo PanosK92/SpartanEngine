@@ -1376,7 +1376,7 @@ namespace Spartan
         set_ffx_float16(brixelizer_gi::description_dispatch_gi.prevProjection, projection_previous);
 
         // set resources
-        brixelizer_gi::description_dispatch_gi.environmentMap   = to_ffx_resource(tex_skybox,                                    L"brixelizer_environment");
+        brixelizer_gi::description_dispatch_gi.environmentMap   = to_ffx_resource(tex_skybox,                                    L"brixelizer_gi_environment");
         brixelizer_gi::description_dispatch_gi.prevLitOutput    = to_ffx_resource(tex_frame,                                     L"brixelizer_gi_lit_output_previous");
         brixelizer_gi::description_dispatch_gi.depth            = to_ffx_resource(tex_depth,                                     L"brixelizer_gi_depth");
         brixelizer_gi::description_dispatch_gi.historyDepth     = to_ffx_resource(brixelizer_gi::texture_depth_previous.get(),   L"brixelizer_gi_depth_previous");
@@ -1404,15 +1404,15 @@ namespace Spartan
         brixelizer_gi::description_dispatch_gi.specularSDFSolveEps     = brixelizer_gi::sdf_ray_epsilon;
         brixelizer_gi::description_dispatch_gi.tMin                    = brixelizer_gi::t_min;
         brixelizer_gi::description_dispatch_gi.tMax                    = brixelizer_gi::t_max;
-        brixelizer_gi::description_dispatch_gi.normalsUnpackMul        = 1.0f;                            // a multiply factor to transform the normal to the space expected by brixelizer gi
-        brixelizer_gi::description_dispatch_gi.normalsUnpackAdd        = 0.0f;                            // an offset to transform the normal to the space expected by brixelizer gi
-        brixelizer_gi::description_dispatch_gi.isRoughnessPerceptual   = true;                            // if false, we assume roughness squared was stored in the Gbuffer
-        brixelizer_gi::description_dispatch_gi.roughnessChannel        = 0;                               // the channel to read the roughness from the roughness texture
-        brixelizer_gi::description_dispatch_gi.roughnessThreshold      = 1.0f;                            // regions with a roughness value greater than this threshold won't spawn specular rays
-        brixelizer_gi::description_dispatch_gi.environmentMapIntensity = 0.0f;                            // value to scale the contribution from the environment map
+        brixelizer_gi::description_dispatch_gi.normalsUnpackMul        = 1.0f;
+        brixelizer_gi::description_dispatch_gi.normalsUnpackAdd        = 0.0f;
+        brixelizer_gi::description_dispatch_gi.isRoughnessPerceptual   = true; // if false, we assume roughness squared was stored in the Gbuffer
+        brixelizer_gi::description_dispatch_gi.roughnessChannel        = 0;    // the channel to read the roughness from the roughness texture
+        brixelizer_gi::description_dispatch_gi.roughnessThreshold      = 1.0f; // regions with a roughness value greater than this threshold won't spawn specular rays
+        brixelizer_gi::description_dispatch_gi.environmentMapIntensity = 1.0f; // value to scale the contribution from the environment map
         brixelizer_gi::description_dispatch_gi.motionVectorScale.x     = -1.0f;
         brixelizer_gi::description_dispatch_gi.motionVectorScale.y     = -1.0f;
-        set_ffx_float3(brixelizer_gi::description_dispatch_gi.cameraPosition, cb_frame->camera_position); // camera position
+        set_ffx_float3(brixelizer_gi::description_dispatch_gi.cameraPosition, cb_frame->camera_position);
 
         // dispatch
         SP_ASSERT(ffxBrixelizerGetRawContext(&brixelizer_gi::context, &brixelizer_gi::description_dispatch_gi.brixelizerContext) == FFX_OK);
