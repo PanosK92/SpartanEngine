@@ -440,8 +440,20 @@ namespace Spartan
             }
         }
 
+        // determine if the material is optimized
+        bool is_optimized = GetTexture(MaterialTextureType::Packed) != nullptr;
+        for (RHI_Texture* texture : m_textures)
+        {
+            if (texture && texture->IsCompressedFormat())
+            {
+                is_optimized = true;
+                break;
+            }
+        }
+        SetProperty(MaterialProperty::Optimized, is_optimized ? 1.0f : 0.0f);
+
         m_is_gpu_ready = true;
-        SetProperty(MaterialProperty::Optimized, GetTexture(MaterialTextureType::Packed) == nullptr ? 0.0f : 1.0f);
+
     }
 
     uint32_t Material::GetUsedSlotCount() const
