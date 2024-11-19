@@ -43,7 +43,7 @@ namespace Spartan
         {
             switch (material_property)
             {
-                case MaterialProperty::CanBeEdited:          return "can_be_edited";
+                case MaterialProperty::Optimized:            return "optimzied";
                 case MaterialProperty::WorldSpaceHeight:     return "world_space_height";
                 case MaterialProperty::Clearcoat:            return "clearcoat";
                 case MaterialProperty::Clearcoat_Roughness:  return "clearcoat_roughness";
@@ -129,7 +129,6 @@ namespace Spartan
         m_properties.fill(0.0f);
 
         SetProperty(MaterialProperty::CullMode,         static_cast<float>(RHI_CullMode::Back));
-        SetProperty(MaterialProperty::CanBeEdited,      1.0f);
         SetProperty(MaterialProperty::ColorR,           1.0f);
         SetProperty(MaterialProperty::ColorG,           1.0f);
         SetProperty(MaterialProperty::ColorB,           1.0f);
@@ -442,6 +441,7 @@ namespace Spartan
         }
 
         m_is_gpu_ready = true;
+        SetProperty(MaterialProperty::Optimized, GetTexture(MaterialTextureType::Packed) == nullptr ? 0.0f : 1.0f);
     }
 
     uint32_t Material::GetUsedSlotCount() const
