@@ -74,7 +74,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 volumetric_fog   = 0.0f;
     float3 light_subsurface = 0.0f;
 
-    if (!surface.is_sky())
+    if (!surface.is_sky() && light.intensity > 0.0f)
     {
         // shadows
         {

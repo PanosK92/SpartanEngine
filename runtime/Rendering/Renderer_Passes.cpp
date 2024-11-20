@@ -1093,6 +1093,7 @@ namespace Spartan
                 // textures
                 cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, tex_skybox);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_skysphere);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetStandardTexture(Renderer_StandardTexture::Noise_blue_0));
 
                 // dispatch
                 const uint32_t thread_group_count   = 8;
@@ -1147,8 +1148,7 @@ namespace Spartan
 
             if (shared_ptr<Light> light = entities[light_index]->GetComponent<Light>())
             {
-                if (light->GetIntensityWatt() == 0.0f)
-                    continue;
+                // do lighitng even if the intensity is 0 as the first light (index 0) clears the render targets in the shader
 
                 // set shadow maps
                 {
