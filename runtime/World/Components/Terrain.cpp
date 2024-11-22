@@ -47,22 +47,7 @@ namespace Spartan
         bool generate_height_points_from_height_map(vector<float>& height_data_out, RHI_Texture* height_texture, float min_y, float max_y)
         {
             vector<byte> height_data = height_texture->GetMip(0, 0).bytes;
-
-            // if the data is not there, load it
-            if (height_data.empty())
-            {
-                height_texture->SetFlag(RHI_Texture_KeepData);
-                if (height_texture->LoadFromFile(height_texture->GetResourceFilePath()))
-                {
-                    height_data = height_texture->GetMip(0, 0).bytes;
-
-                    if (height_data.empty())
-                    {
-                        SP_LOG_ERROR("Failed to load height map");
-                        return false;
-                    }
-                }
-            }
+            SP_ASSERT(height_data.size() > 0);
 
             // read from the red channel and save a normalized height value
             {

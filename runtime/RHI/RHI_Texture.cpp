@@ -523,6 +523,7 @@ namespace Spartan
 
     void RHI_Texture::PrepareForGpu()
     {
+        SP_ASSERT_MSG(!m_is_gpu_ready, "The texture is already optimized");
         SP_ASSERT(m_slices.size() > 0);
         SP_ASSERT(m_slices[0].mips.size() > 0);
 
@@ -581,16 +582,16 @@ namespace Spartan
         }
         
         // upload to gpu
-        SP_ASSERT_MSG(RHI_CreateResource(), "Failed to create GPU resource");
-        m_is_gpu_ready = true;
+        SP_ASSERT_MSG(RHI_CreateResource(), "Failed to create GPU resource");;
 
         // clear data
         if (!(m_flags & RHI_Texture_KeepData))
         { 
             ClearBytes();
         }
-
         ComputeMemoryUsage();
+
+        m_is_gpu_ready = true;
     }
 
     void RHI_Texture::SaveAsImage(const string& file_path)

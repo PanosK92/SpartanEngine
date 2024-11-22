@@ -530,7 +530,7 @@ namespace Spartan
                 }
                 
                 // generate a height field
-                shared_ptr<RHI_Texture> height_map = ResourceCache::Load<RHI_Texture>("project\\terrain\\height_map.png");
+                shared_ptr<RHI_Texture> height_map = ResourceCache::Load<RHI_Texture>("project\\terrain\\height_map.png", RHI_Texture_KeepData);
                 terrain->SetHeightMap(height_map.get());
                 terrain->Generate();
 
@@ -637,7 +637,7 @@ namespace Spartan
                             Material* material = renderable->GetMaterial();
                             material->SetColor(Color::standard_white);
                             material->SetTexture(MaterialTextureType::Color,              "project\\terrain\\vegetation_plant_1\\ormbunke.png");
-                            material->Optimize(false);
+                            //material->Optimize(false); // when loading the mesh, the material is already created an optimized, todo: fetch the existing one
                             material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
                             material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
                             material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
