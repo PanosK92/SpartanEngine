@@ -322,8 +322,7 @@ namespace Spartan
 
     void Material::Optimize(const bool is_gltf)
     {
-        if (m_is_gpu_ready)
-            return;
+        SP_ASSERT_MSG(!m_is_gpu_ready, "The material is already optimized");
 
         RHI_Texture* texture_color      = GetTexture(MaterialTextureType::Color);
         RHI_Texture* texture_alpha_mask = GetTexture(MaterialTextureType::AlphaMask);
