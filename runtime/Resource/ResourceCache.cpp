@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ====================
+//= INCLUDES =======================
 #include "pch.h"
 #include "ResourceCache.h"
 #include "../World/World.h"
@@ -27,7 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Texture.h"
 #include "../Audio/AudioClip.h"
 #include "../Rendering/Mesh.h"
-//===============================
+#include "../Core/ProgressTracker.h"
+//==================================
 
 //= NAMESPACES ================
 using namespace std;

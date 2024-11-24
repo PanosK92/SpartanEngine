@@ -221,7 +221,7 @@ namespace Spartan
         if (!(flags & RHI_Texture_DontOptimize))
         { 
             RHI_Texture::RHI_CreateResource();
-            m_is_gpu_ready = true;
+            m_resource_state = ResourceState::Ready;
         }
 
         if (!compressonator::registered)
@@ -523,7 +523,7 @@ namespace Spartan
 
     void RHI_Texture::PrepareForGpu()
     {
-        SP_ASSERT_MSG(!m_is_gpu_ready, "The texture is already optimized");
+        SP_ASSERT_MSG(!IsGpuReady(), "The texture is already optimized");
         SP_ASSERT(m_slices.size() > 0);
         SP_ASSERT(m_slices[0].mips.size() > 0);
 
@@ -591,7 +591,7 @@ namespace Spartan
         }
         ComputeMemoryUsage();
 
-        m_is_gpu_ready = true;
+        m_resource_state = ResourceState::Ready;
     }
 
     void RHI_Texture::SaveAsImage(const string& file_path)

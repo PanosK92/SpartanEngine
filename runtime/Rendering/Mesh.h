@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include <vector>
+#include <mutex>
 #include "Material.h"
 #include "../Resource/IResource.h"
 #include "../Math/BoundingBox.h"

@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture.h"
 #include "../World/World.h"
+#include "../Core/ProgressTracker.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -322,7 +323,7 @@ namespace Spartan
 
     void Material::Optimize(const bool is_gltf)
     {
-        SP_ASSERT_MSG(!m_is_gpu_ready, "The material is already optimized");
+        SP_ASSERT_MSG(!IsGpuReady(), "The material is already optimized");
 
         RHI_Texture* texture_color      = GetTexture(MaterialTextureType::Color);
         RHI_Texture* texture_alpha_mask = GetTexture(MaterialTextureType::AlphaMask);
@@ -451,8 +452,7 @@ namespace Spartan
         }
         SetProperty(MaterialProperty::Optimized, is_optimized ? 1.0f : 0.0f);
 
-        m_is_gpu_ready = true;
-
+        m_resource_state = ResourceState::Ready;
     }
 
     uint32_t Material::GetUsedSlotCount() const

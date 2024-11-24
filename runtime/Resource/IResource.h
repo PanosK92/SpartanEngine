@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <atomic>
 #include "../Core/FileSystem.h"
 #include "../Core/SpartanObject.h"
-#include "../Logging/Log.h"
 //================================
 
 namespace Spartan
@@ -42,6 +41,13 @@ namespace Spartan
         Font,
         Shader,
         Max,
+    };
+
+    enum class ResourceState
+    {
+        Processed,
+        Ready,
+        Max
     };
 
     class IResource : public SpartanObject
@@ -95,7 +101,7 @@ namespace Spartan
         void SetFlags(const uint32_t flags) { m_flags = flags; }
 
         // ready to use
-        bool IsGpuReady() const { return m_is_gpu_ready; }
+        bool IsGpuReady() const { return m_resource_state == ResourceState::Ready; }
 
         // io
         virtual bool SaveToFile(const std::string& file_path) { return true; }
@@ -106,9 +112,9 @@ namespace Spartan
         static constexpr ResourceType TypeToEnum();
 
     protected:
-        ResourceType m_resource_type     = ResourceType::Max;
-        std::atomic<bool> m_is_gpu_ready = false;
-        uint32_t m_flags                 = 0;
+        ResourceType m_resource_type                = ResourceType::Max;
+        std::atomic<ResourceState> m_resource_state = ResourceState::Max;
+        uint32_t m_flags                            = 0;
 
     private:
         std::string m_resource_directory;
