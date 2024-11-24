@@ -21,11 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
-#include <algorithm>
+//= INCLUDES ==============
 #include "IResource.h"
-#include "ProgressTracker.h"
-//==========================
+#include "../Logging/Log.h"
+//=========================
 
 namespace Spartan
 {

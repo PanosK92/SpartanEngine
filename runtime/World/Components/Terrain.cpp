@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Resource/ResourceCache.h"
 #include "../../Rendering/Mesh.h"
 #include "../../Core/ThreadPool.h"
+#include "../../Core/ProgressTracker.h"
 //=======================================
 
 //= NAMESPACES ===============

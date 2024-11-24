@@ -24,6 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include <string>
 #include <variant>
+#include "Definitions.h"
+#include "Logging/Log.h"
 #include "Window.h"
 #include "RHI/RHI_Texture.h"
 #include "Rendering/Renderer.h"
