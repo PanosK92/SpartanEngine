@@ -120,19 +120,31 @@ namespace Spartan
         threads.clear();
     }
 
-    void ThreadPool::AddTask(Task&& task)
+    future<void> ThreadPool::AddTask(Task&& task)
     {
-        // Lock tasks mutex
+        // create a packaged task that will give us a future
+        auto packaged_task = make_shared<std::packaged_task<void()>>(forward<Task>(task));
+        
+        // get the future before we move the packaged_task into the lambda
+        future<void> future = packaged_task->get_future();
+        
+        // lock tasks mutex
         unique_lock<mutex> lock(mutex_tasks);
-
-        // Save the task
-        tasks.emplace_back(bind(std::forward<Task>(task)));
-
-        // Unlock the mutex
+        
+        // save the task - wrap the packaged_task in a lambda that will execute it
+        tasks.emplace_back([packaged_task]()
+        {
+            (*packaged_task)();
+        });
+        
+        // unlock the mutex
         lock.unlock();
-
-        // Wake up a thread
+        
+        // wake up a thread
         condition_var.notify_one();
+        
+        // return the future that can be used to wait for task completion
+        return future;
     }
 
     void ThreadPool::ParallelLoop(function<void(uint32_t work_index_start, uint32_t work_index_end)>&& function, const uint32_t work_total)

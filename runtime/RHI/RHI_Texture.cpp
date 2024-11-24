@@ -498,7 +498,7 @@ namespace Spartan
         if (cmd_list != nullptr)
         {
             // wait in case this texture loading in another thread
-            while (!IsGpuReady())
+            while (m_resource_state != ResourceState::Ready)
             {
                 SP_LOG_INFO("Waiting for texture \"%s\" to finish loading...", m_object_name.c_str());
                 this_thread::sleep_for(chrono::milliseconds(16));
@@ -523,9 +523,12 @@ namespace Spartan
 
     void RHI_Texture::PrepareForGpu()
     {
-        SP_ASSERT_MSG(!IsGpuReady(), "The texture is already optimized");
+        SP_ASSERT_MSG(m_resource_state != ResourceState::Processing, "The texture is already being processed");
+        SP_ASSERT_MSG(m_resource_state != ResourceState::Ready,      "The texture is already optimized");
         SP_ASSERT(m_slices.size() > 0);
         SP_ASSERT(m_slices[0].mips.size() > 0);
+
+        m_resource_state = ResourceState::Processing;
 
         if (!IsCompressedFormat()) // the bistro world loads compressed textures with mips
         {

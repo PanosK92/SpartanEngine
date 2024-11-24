@@ -45,7 +45,7 @@ namespace Spartan
 
     enum class ResourceState
     {
-        Processed,
+        Processing,
         Ready,
         Max
     };
@@ -100,9 +100,6 @@ namespace Spartan
         uint32_t GetFlags()           const { return m_flags; }
         void SetFlags(const uint32_t flags) { m_flags = flags; }
 
-        // ready to use
-        bool IsGpuReady() const { return m_resource_state == ResourceState::Ready; }
-
         // io
         virtual bool SaveToFile(const std::string& file_path) { return true; }
         virtual bool LoadFromFile(const std::string& file_path) { return true; }
@@ -110,6 +107,8 @@ namespace Spartan
         // type
         template <typename T>
         static constexpr ResourceType TypeToEnum();
+
+        ResourceState GetResourceState() const { return m_resource_state; }
 
     protected:
         ResourceType m_resource_type                = ResourceType::Max;

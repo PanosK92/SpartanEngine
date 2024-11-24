@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
-#include "Definitions.h"
+//= INCLUDES ========
+#include <future>
 #include <functional>
-//======================
+//===================
 
 namespace Spartan
 {
@@ -37,7 +37,7 @@ namespace Spartan
         static void Shutdown();
 
         // add a task
-        static void AddTask(Task&& task);
+        static std::future<void> AddTask(Task&& task);
 
         // spread execution of a given function across all available threads
         static void ParallelLoop(std::function<void(uint32_t work_index_start, uint32_t work_index_end)>&& function, const uint32_t work_total);

@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Texture.h"
 #include "../World/World.h"
 #include "../Core/ProgressTracker.h"
+#include "../Core/ThreadPool.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -323,7 +324,10 @@ namespace Spartan
 
     void Material::Optimize(const bool is_gltf)
     {
-        SP_ASSERT_MSG(!IsGpuReady(), "The material is already optimized");
+        SP_ASSERT_MSG(m_resource_state != ResourceState::Processing, "The material is already being processed");
+        SP_ASSERT_MSG(m_resource_state != ResourceState::Ready, "The material is already optimized");
+
+        m_resource_state = ResourceState::Processing;
 
         RHI_Texture* texture_color      = GetTexture(MaterialTextureType::Color);
         RHI_Texture* texture_alpha_mask = GetTexture(MaterialTextureType::AlphaMask);
@@ -431,14 +435,17 @@ namespace Spartan
         }
 
         // prepare all textures
-        for (RHI_Texture* texture : m_textures)
+        future<void> texture_preparation_task = ThreadPool::AddTask([this]()
         {
-            if (texture && !texture->IsGpuReady())
+            for (RHI_Texture* texture : m_textures)
             {
-                // todo: this could be given to the thread pool
-                texture->PrepareForGpu();
+                if (texture && texture->GetResourceState() == ResourceState::Max)
+                {
+                    texture->PrepareForGpu();
+                }
             }
-        }
+        });
+        texture_preparation_task.wait();
 
         // determine if the material is optimized
         bool is_optimized = GetTexture(MaterialTextureType::Packed) != nullptr;
