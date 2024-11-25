@@ -218,10 +218,10 @@ namespace Spartan
         m_channel_count    = rhi_to_format_channel_count(format);
         m_bits_per_channel = rhi_format_to_bits_per_channel(m_format);
 
-        if (!(flags & RHI_Texture_DontOptimize))
+        if (!(flags & RHI_Texture_DontPrepareForGpu))
         { 
             RHI_Texture::RHI_CreateResource();
-            m_resource_state = ResourceState::Ready;
+            m_resource_state = ResourceState::PreparedForGpu;
         }
 
         if (!compressonator::registered)
@@ -395,7 +395,7 @@ namespace Spartan
             SetResourceFilePath(file_path);
         }
 
-        if (!(m_flags & RHI_Texture_DontOptimize))
+        if (!(m_flags & RHI_Texture_DontPrepareForGpu))
         {
             PrepareForGpu();
         }
@@ -498,7 +498,7 @@ namespace Spartan
         if (cmd_list != nullptr)
         {
             // wait in case this texture loading in another thread
-            while (m_resource_state != ResourceState::Ready)
+            while (m_resource_state != ResourceState::PreparedForGpu)
             {
                 SP_LOG_INFO("Waiting for texture \"%s\" to finish loading...", m_object_name.c_str());
                 this_thread::sleep_for(chrono::milliseconds(16));
@@ -523,12 +523,11 @@ namespace Spartan
 
     void RHI_Texture::PrepareForGpu()
     {
-        SP_ASSERT_MSG(m_resource_state != ResourceState::Processing, "The texture is already being processed");
-        SP_ASSERT_MSG(m_resource_state != ResourceState::Ready,      "The texture is already optimized");
+        SP_ASSERT_MSG(m_resource_state == ResourceState::Max, "Only unprepared textures can be prepared");
         SP_ASSERT(m_slices.size() > 0);
         SP_ASSERT(m_slices[0].mips.size() > 0);
 
-        m_resource_state = ResourceState::Processing;
+        m_resource_state = ResourceState::PreparingForGpu;
 
         if (!IsCompressedFormat()) // the bistro world loads compressed textures with mips
         {
@@ -594,7 +593,7 @@ namespace Spartan
         }
         ComputeMemoryUsage();
 
-        m_resource_state = ResourceState::Ready;
+        m_resource_state = ResourceState::PreparedForGpu;
     }
 
     void RHI_Texture::SaveAsImage(const string& file_path)

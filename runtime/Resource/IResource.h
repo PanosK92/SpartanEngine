@@ -45,8 +45,8 @@ namespace Spartan
 
     enum class ResourceState
     {
-        Processing,
-        Ready,
+        PreparingForGpu,
+        PreparedForGpu,
         Max
     };
 

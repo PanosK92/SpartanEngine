@@ -325,10 +325,9 @@ namespace Spartan
 
     void Material::Optimize()
     {
-        SP_ASSERT_MSG(m_resource_state != ResourceState::Processing, "The material is already being processed");
-        SP_ASSERT_MSG(m_resource_state != ResourceState::Ready,      "The material is already optimized");
+        SP_ASSERT_MSG(m_resource_state == ResourceState::Max, "Only unoptimized materials can be optimized");
 
-        m_resource_state = ResourceState::Processing;
+        m_resource_state = ResourceState::PreparingForGpu;
 
         RHI_Texture* texture_color      = GetTexture(MaterialTextureType::Color);
         RHI_Texture* texture_alpha_mask = GetTexture(MaterialTextureType::AlphaMask);
@@ -396,7 +395,7 @@ namespace Spartan
                         depth,
                         mip_count,
                         RHI_Format::R8G8B8A8_Unorm,
-                        RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontOptimize,
+                        RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu,
                         tex_name.c_str()
                     );
                     texture_packed->SetResourceFilePath(tex_name + ".png"); // that's a hack, need to fix the ResourceCache to rely on a hash, not names and paths
@@ -459,7 +458,7 @@ namespace Spartan
              }
              SetProperty(MaterialProperty::Optimized, is_optimized ? 1.0f : 0.0f);
 
-             m_resource_state = ResourceState::Ready;
+             m_resource_state = ResourceState::PreparedForGpu;
         });
     }
 

@@ -348,12 +348,12 @@ namespace Spartan
 
                 // create material
                 shared_ptr<Material> material = make_shared<Material>();
-                material->SetTexture(MaterialTextureType::Color,     "project\\materials\\crate_space\\albedo.png",    0, RHI_Texture_DontOptimize);
-                material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\crate_space\\normal.png",    0, RHI_Texture_DontOptimize);
-                material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\crate_space\\ao.png",        0, RHI_Texture_DontOptimize);
-                material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\crate_space\\roughness.png", 0, RHI_Texture_DontOptimize);
-                material->SetTexture(MaterialTextureType::Metalness, "project\\materials\\crate_space\\metallic.png",  0, RHI_Texture_DontOptimize);
-                material->SetTexture(MaterialTextureType::Height,    "project\\materials\\crate_space\\height.png",    0, RHI_Texture_DontOptimize);
+                material->SetTexture(MaterialTextureType::Color,     "project\\materials\\crate_space\\albedo.png",    0, RHI_Texture_DontPrepareForGpu);
+                material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\crate_space\\normal.png",    0, RHI_Texture_DontPrepareForGpu);
+                material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\crate_space\\ao.png",        0, RHI_Texture_DontPrepareForGpu);
+                material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\crate_space\\roughness.png", 0, RHI_Texture_DontPrepareForGpu);
+                material->SetTexture(MaterialTextureType::Metalness, "project\\materials\\crate_space\\metallic.png",  0, RHI_Texture_DontPrepareForGpu);
+                material->SetTexture(MaterialTextureType::Height,    "project\\materials\\crate_space\\height.png",    0, RHI_Texture_DontPrepareForGpu);
 
                 // create a file path for this material (required for the material to be able to be cached by the resource cache)
                 const string file_path = "project\\materials\\crate_space" + string(EXTENSION_MATERIAL);
@@ -498,31 +498,31 @@ namespace Spartan
                     material->SetProperty(MaterialProperty::TextureTilingY,    500.0f);
 
                     // texture flat
-                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\grass\\albedo.png", 0, RHI_Texture_DontOptimize);
-                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\grass\\normal.png", 0, RHI_Texture_DontOptimize);
-                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\grass\\roughness.png", 0, RHI_Texture_DontOptimize);
-                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\grass\\occlusion.png", 0, RHI_Texture_DontOptimize);
+                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\grass\\albedo.png", 0, RHI_Texture_DontPrepareForGpu);
+                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\grass\\normal.png", 0, RHI_Texture_DontPrepareForGpu);
+                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\grass\\roughness.png", 0, RHI_Texture_DontPrepareForGpu);
+                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\grass\\occlusion.png", 0, RHI_Texture_DontPrepareForGpu);
                     //material->SetTexture(MaterialTexture::Height,    "project\\terrain\\grass\\height.png");
 
                     // texture slope
-                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\rock\\albedo.png", 1, RHI_Texture_DontOptimize);
-                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\rock\\normal.png", 1, RHI_Texture_DontOptimize);
-                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\rock\\roughness.png", 1, RHI_Texture_DontOptimize);
-                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\rock\\occlusion.png", 1, RHI_Texture_DontOptimize);
+                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\rock\\albedo.png", 1, RHI_Texture_DontPrepareForGpu);
+                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\rock\\normal.png", 1, RHI_Texture_DontPrepareForGpu);
+                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\rock\\roughness.png", 1, RHI_Texture_DontPrepareForGpu);
+                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\rock\\occlusion.png", 1, RHI_Texture_DontPrepareForGpu);
                     //material->SetTexture(MaterialTexture::Height2,    "project\\terrain\\rock\\height.png");
 
                     // texture subterranean
-                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\sand\\albedo.png", 2, RHI_Texture_DontOptimize);
-                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\sand\\normal.png", 2, RHI_Texture_DontOptimize);
-                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\sand\\roughness.png",2, RHI_Texture_DontOptimize);
-                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\sand\\occlusion.png", 2, RHI_Texture_DontOptimize);
+                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\sand\\albedo.png", 2, RHI_Texture_DontPrepareForGpu);
+                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\sand\\normal.png", 2, RHI_Texture_DontPrepareForGpu);
+                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\sand\\roughness.png",2, RHI_Texture_DontPrepareForGpu);
+                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\sand\\occlusion.png", 2, RHI_Texture_DontPrepareForGpu);
                     //material->SetTexture(MaterialTexture::Height3,    "project\\terrain\\sand\\height.png");
 
                     // texture snow
-                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\snow\\albedo.png", 3, RHI_Texture_DontOptimize);
-                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\snow\\normal.png", 3, RHI_Texture_DontOptimize);
-                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\snow\\roughness.png", 3, RHI_Texture_DontOptimize);
-                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\snow\\occlusion.png", 3, RHI_Texture_DontOptimize);
+                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\snow\\albedo.png", 3, RHI_Texture_DontPrepareForGpu);
+                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\snow\\normal.png", 3, RHI_Texture_DontPrepareForGpu);
+                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\snow\\roughness.png", 3, RHI_Texture_DontPrepareForGpu);
+                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\snow\\occlusion.png", 3, RHI_Texture_DontPrepareForGpu);
                     //material->SetTexture(MaterialTexture::Height4,    "project\\terrain\\snow\\height.png");
                 }
                 
@@ -587,8 +587,8 @@ namespace Spartan
 
                             shared_ptr<Material> material = make_shared<Material>(); // create a material manually as the tree comes with empty materials
                             material->SetResourceFilePath("project\\terrain\\vegetation_tree_2\\trunk" + string(EXTENSION_MATERIAL));
-                            material->SetTexture(MaterialTextureType::Color,  "project\\terrain\\vegetation_tree_2\\trunk_color.png", 0, RHI_Texture_DontOptimize);
-                            material->SetTexture(MaterialTextureType::Normal, "project\\terrain\\vegetation_tree_2\\trunk_normal.png", 0, RHI_Texture_DontOptimize);
+                            material->SetTexture(MaterialTextureType::Color,  "project\\terrain\\vegetation_tree_2\\trunk_color.png", 0, RHI_Texture_DontPrepareForGpu);
+                            material->SetTexture(MaterialTextureType::Normal, "project\\terrain\\vegetation_tree_2\\trunk_normal.png", 0, RHI_Texture_DontPrepareForGpu);
                             renderable->SetMaterial(material);
 
                             // generate instances
@@ -605,9 +605,9 @@ namespace Spartan
 
                             shared_ptr<Material> material = make_shared<Material>(); // create a material manually as the tree comes with empty materials
                             material->SetResourceFilePath("project\\terrain\\vegetation_tree_2\\branch" + string(EXTENSION_MATERIAL));
-                            material->SetTexture(MaterialTextureType::Color,              "project\\terrain\\vegetation_tree_2\\branches_color.png", 0, RHI_Texture_DontOptimize);
-                            material->SetTexture(MaterialTextureType::Normal,             "project\\terrain\\vegetation_tree_2\\branches_normal.png", 0, RHI_Texture_DontOptimize);
-                            material->SetTexture(MaterialTextureType::Occlusion,          "project\\terrain\\vegetation_tree_2\\branches_ao.png", 0, RHI_Texture_DontOptimize);
+                            material->SetTexture(MaterialTextureType::Color,              "project\\terrain\\vegetation_tree_2\\branches_color.png", 0, RHI_Texture_DontPrepareForGpu);
+                            material->SetTexture(MaterialTextureType::Normal,             "project\\terrain\\vegetation_tree_2\\branches_normal.png", 0, RHI_Texture_DontPrepareForGpu);
+                            material->SetTexture(MaterialTextureType::Occlusion,          "project\\terrain\\vegetation_tree_2\\branches_ao.png", 0, RHI_Texture_DontPrepareForGpu);
                             material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
                             material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
                             material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
