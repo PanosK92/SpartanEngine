@@ -354,7 +354,6 @@ namespace Spartan
                 material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\crate_space\\roughness.png", 0, RHI_Texture_DontOptimize);
                 material->SetTexture(MaterialTextureType::Metalness, "project\\materials\\crate_space\\metallic.png",  0, RHI_Texture_DontOptimize);
                 material->SetTexture(MaterialTextureType::Height,    "project\\materials\\crate_space\\height.png",    0, RHI_Texture_DontOptimize);
-                material->Optimize(false);
 
                 // create a file path for this material (required for the material to be able to be cached by the resource cache)
                 const string file_path = "project\\materials\\crate_space" + string(EXTENSION_MATERIAL);
@@ -525,8 +524,6 @@ namespace Spartan
                     material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\snow\\roughness.png", 3, RHI_Texture_DontOptimize);
                     material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\snow\\occlusion.png", 3, RHI_Texture_DontOptimize);
                     //material->SetTexture(MaterialTexture::Height4,    "project\\terrain\\snow\\height.png");
-
-                    material->Optimize(false);
                 }
                 
                 // generate a height field
@@ -557,7 +554,6 @@ namespace Spartan
                             material->SetObjectName("material_water");
                             material->SetColor(Color(0.0f, 60.0f / 255.0f, 120.0f / 255.0f, 250.0f / 255.0f));
                             material->SetTexture(MaterialTextureType::Normal,           "project\\terrain\\water_normal.jpeg");
-                            material->Optimize();
                             material->SetProperty(MaterialProperty::Ior,                Material::EnumToIor(MaterialIor::Water)); // water
                             material->SetProperty(MaterialProperty::Roughness,          0.0f);
                             material->SetProperty(MaterialProperty::Normal,             0.1f);
@@ -575,7 +571,7 @@ namespace Spartan
                     }
 
                     // vegetation_tree_2
-                    if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\vegetation_tree_2\\tree.fbx", static_cast<uint32_t>(MeshFlags::DontOptimizeMaterials)))
+                    if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\vegetation_tree_2\\tree.fbx"))
                     {
                         shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                         entity->SetObjectName("tree_2");
@@ -587,12 +583,13 @@ namespace Spartan
                         if (Entity* bark = entity->GetDescendantByName("Trunk"))
                         {
                             bark->SetScaleLocal(Vector3::One);
-
                             Renderable* renderable = bark->GetComponent<Renderable>().get();
-                            renderable->GetMaterial()->SetColor(Color::standard_white);
-                            renderable->GetMaterial()->SetTexture(MaterialTextureType::Color,  "project\\terrain\\vegetation_tree_2\\trunk_color.png", 0, RHI_Texture_DontOptimize);
-                            renderable->GetMaterial()->SetTexture(MaterialTextureType::Normal, "project\\terrain\\vegetation_tree_2\\trunk_normal.png", 0, RHI_Texture_DontOptimize);
-                            renderable->GetMaterial()->Optimize();
+
+                            shared_ptr<Material> material = make_shared<Material>(); // create a material manually as the tree comes with empty materials
+                            material->SetResourceFilePath("project\\terrain\\vegetation_tree_2\\trunk" + string(EXTENSION_MATERIAL));
+                            material->SetTexture(MaterialTextureType::Color,  "project\\terrain\\vegetation_tree_2\\trunk_color.png", 0, RHI_Texture_DontOptimize);
+                            material->SetTexture(MaterialTextureType::Normal, "project\\terrain\\vegetation_tree_2\\trunk_normal.png", 0, RHI_Texture_DontOptimize);
+                            renderable->SetMaterial(material);
 
                             // generate instances
                             terrain->GenerateTransforms(&instances, 5000, TerrainProp::Tree);
@@ -606,17 +603,16 @@ namespace Spartan
                             Renderable* renderable = branches->GetComponent<Renderable>().get();
                             renderable->SetInstances(instances);
 
-                            // tweak material
-                            Material* material = renderable->GetMaterial();
-                            material->SetColor(Color::standard_white);
+                            shared_ptr<Material> material = make_shared<Material>(); // create a material manually as the tree comes with empty materials
+                            material->SetResourceFilePath("project\\terrain\\vegetation_tree_2\\branch" + string(EXTENSION_MATERIAL));
                             material->SetTexture(MaterialTextureType::Color,              "project\\terrain\\vegetation_tree_2\\branches_color.png", 0, RHI_Texture_DontOptimize);
                             material->SetTexture(MaterialTextureType::Normal,             "project\\terrain\\vegetation_tree_2\\branches_normal.png", 0, RHI_Texture_DontOptimize);
                             material->SetTexture(MaterialTextureType::Occlusion,          "project\\terrain\\vegetation_tree_2\\branches_ao.png", 0, RHI_Texture_DontOptimize);
-                            material->Optimize();
                             material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
                             material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
                             material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
                             material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
+                            renderable->SetMaterial(material);
                         }
                     }
 
@@ -637,7 +633,6 @@ namespace Spartan
                             Material* material = renderable->GetMaterial();
                             material->SetColor(Color::standard_white);
                             material->SetTexture(MaterialTextureType::Color,              "project\\terrain\\vegetation_plant_1\\ormbunke.png");
-                            //material->Optimize(false); // when loading the mesh, the material is already created an optimized, todo: fetch the existing one
                             material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
                             material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
                             material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
