@@ -444,22 +444,21 @@ namespace Spartan
                     texture->PrepareForGpu();
                 }
             }
+
+             // determine if the material is optimized
+             bool is_optimized = GetTexture(MaterialTextureType::Packed) != nullptr;
+             for (RHI_Texture* texture : m_textures)
+             {
+                 if (texture && texture->IsCompressedFormat())
+                 {
+                     is_optimized = true;
+                     break;
+                 }
+             }
+             SetProperty(MaterialProperty::Optimized, is_optimized ? 1.0f : 0.0f);
+
+             m_resource_state = ResourceState::Ready;
         });
-        texture_preparation_task.wait();
-
-        // determine if the material is optimized
-        bool is_optimized = GetTexture(MaterialTextureType::Packed) != nullptr;
-        for (RHI_Texture* texture : m_textures)
-        {
-            if (texture && texture->IsCompressedFormat())
-            {
-                is_optimized = true;
-                break;
-            }
-        }
-        SetProperty(MaterialProperty::Optimized, is_optimized ? 1.0f : 0.0f);
-
-        m_resource_state = ResourceState::Ready;
     }
 
     uint32_t Material::GetUsedSlotCount() const
