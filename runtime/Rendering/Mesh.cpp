@@ -178,14 +178,14 @@ namespace Spartan
         m_vertices.shrink_to_fit();
     }
 
-    bool Mesh::LoadFromFile(const string& file_path, bool async)
+    void Mesh::LoadFromFile(const string& file_path, bool async)
     {
         const Stopwatch timer;
 
         if (file_path.empty() || FileSystem::IsDirectory(file_path))
         {
             SP_LOG_WARNING("Invalid file path");
-            return false;
+            return;
         }
 
         // load engine format
@@ -194,7 +194,7 @@ namespace Spartan
             // deserialize
             auto file = make_unique<FileStream>(file_path, FileStream_Read);
             if (!file->IsOpen())
-                return false;
+                return;
 
             SetResourceFilePath(file->ReadAs<string>());
             file->Read(&m_indices);
@@ -208,7 +208,7 @@ namespace Spartan
             SetResourceFilePath(file_path);
 
             if (!ModelImporter::Load(this, file_path))
-                return false;
+                return;
         }
 
         // compute memory usage
@@ -221,23 +221,19 @@ namespace Spartan
         }
 
         SP_LOG_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
-
-        return true;
     }
 
-    bool Mesh::SaveToFile(const string& file_path)
+    void Mesh::SaveToFile(const string& file_path)
     {
         auto file = make_unique<FileStream>(file_path, FileStream_Write);
         if (!file->IsOpen())
-            return false;
+            return;
 
         file->Write(GetResourceFilePath());
         file->Write(m_indices);
         file->Write(m_vertices);
 
         file->Close();
-
-        return true;
     }
 
     uint32_t Mesh::GetMemoryUsage() const

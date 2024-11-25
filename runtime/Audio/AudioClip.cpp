@@ -94,10 +94,8 @@ namespace Spartan
         #endif
     }
 
-    bool AudioClip::LoadFromFile(const string& file_path, bool async)
+    void AudioClip::LoadFromFile(const string& file_path, bool async)
     {
-        bool loaded = false;
-
         #if defined(_MSC_VER)
 
         // native
@@ -105,7 +103,7 @@ namespace Spartan
         {
             auto file = make_unique<FileStream>(file_path, FileStream_Read);
             if (!file->IsOpen())
-                return false;
+                return;
 
             SetResourceFilePath(file->ReadAs<string>());
 
@@ -118,28 +116,25 @@ namespace Spartan
         }
 
         // load
-        loaded        = (m_playMode == PlayMode::Memory) ? CreateSound(GetResourceFilePath()) : CreateStream(GetResourceFilePath());
+        (m_playMode == PlayMode::Memory) ? CreateSound(GetResourceFilePath()) : CreateStream(GetResourceFilePath());
         m_object_size = estimate_memory_usage(static_cast<FMOD::Sound*>(m_fmod_sound));
 
         #endif
-
-        return loaded;
     }
 
-    bool AudioClip::SaveToFile(const string& file_path)
+    void AudioClip::SaveToFile(const string& file_path)
     {
         #if defined(_MSC_VER)
 
         auto file = make_unique<FileStream>(file_path, FileStream_Write);
         if (!file->IsOpen())
-            return false;
+            return;
 
         file->Write(GetResourceFilePath());
 
         file->Close();
-        #endif
 
-        return true;
+        #endif
     }
 
     void AudioClip::Play(const bool loop, const bool is_3d)
